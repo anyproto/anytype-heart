@@ -73,13 +73,3 @@ func (mw *Middleware) TemplateExportAll(ctx context.Context, req *pb.RpcTemplate
 	path, err := getService[template.Service](mw).TemplateExportAll(ctx, req.Path)
 	return response(path, err)
 }
-
-// WorkspaceExport is unused now, it must be fixed if someone wants to use it
-func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
-	return &pb.RpcWorkspaceExportResponse{
-		Error: &pb.RpcWorkspaceExportResponseError{
-			Code:        pb.RpcWorkspaceExportResponseError_NULL,
-			Description: "Not implemented",
-		},
-	}
-}

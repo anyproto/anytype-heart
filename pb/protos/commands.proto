@@ -1831,6 +1831,7 @@ message Rpc {
             }
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1962,6 +1963,12 @@ message Rpc {
                 message PbParams {
                     repeated string path = 1;
                     bool noCollection = 2;
+                    string collectionTitle = 3;
+                    Type importType = 4;
+                    enum Type {
+                        SPACE = 0;
+                        EXPERIENCE = 1;
+                    };
                 }
 
                 message CsvParams {
@@ -2013,6 +2020,7 @@ message Rpc {
                         NO_OBJECTS_TO_IMPORT = 5;
                         IMPORT_IS_CANCELED = 6;
                         LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
+                        FILE_LOAD_ERROR = 8;
                     }
                 }
             }
@@ -2112,8 +2120,8 @@ message Rpc {
         message ImportExperience {
             message Request {
                 string spaceId = 1;
-                string source = 2;
-                bool isLocal = 3;
+                string url = 2;
+                string title = 3;
             }
 
             message Response {
@@ -2919,6 +2927,42 @@ message Rpc {
                         // ...
                     }
                 }
+            }
+        }
+    }
+
+    message DownloadManifest {
+        message Request {
+            string url = 1;
+        }
+
+        message Response {
+            Error error = 1;
+            ManifestInfo info = 2;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                }
+            }
+
+            message ManifestInfo {
+                string schema = 1;
+                string id = 2;
+                string name = 3;
+                string author = 4;
+                string license = 5;
+                string title = 6;
+                string description = 7;
+                repeated string screenshots = 8;
+                string downloadLink = 9;
+                int32 fileSize = 10;
+                repeated string categories = 11;
             }
         }
     }

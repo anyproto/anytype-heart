@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -71,6 +71,9 @@ func newFileWatcher(
 const filesToWatchPrefix = "/files_to_watch/"
 
 func (s *fileWatcher) loadFilesToWatch() error {
+	s.filesToWatchLock.Lock()
+	defer s.filesToWatchLock.Unlock()
+
 	return s.badger.View(func(txn *badger.Txn) error {
 		defaultSpaceID := s.provider.PersonalSpaceID()
 		iter := txn.NewIterator(badger.IteratorOptions{

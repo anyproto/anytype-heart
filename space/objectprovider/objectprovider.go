@@ -2,10 +2,14 @@ package objectprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -103,14 +107,23 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.De
 	return
 }
 
-func (o *objectProvider) LoadObjects(ctx context.Context, objIDs []string) (err error) {
+func (o *objectProvider) LoadObjects(ctx context.Context, objIDs []string) error {
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	for _, id := range objIDs {
-		_, err = o.cache.GetObject(ctx, id)
+		_, err := o.cache.GetObject(ctx, id)
 		if err != nil {
+			// we had a bug that allowed some users to remove their profile
+			// this workaround is to allow these users to load their accounts without errors and export their anytype data
+			if id == o.derivedObjectIds.Profile {
+				if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, treechangeproto.ErrGetTree) {
+					log.Error("load profile error", zap.Error(err), zap.String("objectID", id), zap.String("spaceId", o.spaceId))
+					continue
+				}
+			}
 			return err
 		}
 	}
-	return
+	return nil
 }
 
 func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smartblock.Space) (err error) {

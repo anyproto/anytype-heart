@@ -242,9 +242,9 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, space smartblock.Space, 
 			if ok {
 				return
 			}
-			err = i.storageService.BindSpaceID(space.Id(), id)
-			if err != nil {
-				log.Error("failed to bind space id", zap.Error(err), zap.String("id", id))
+			bindErr := i.storageService.BindSpaceID(space.Id(), id)
+			if bindErr != nil {
+				log.Error("failed to bind space id", zap.Error(bindErr), zap.String("id", id))
 				return
 			}
 			// file's hash is id

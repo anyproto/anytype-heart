@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -11,7 +12,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -22,20 +25,47 @@ import (
 type subObjectsAndProfileLinksMigration struct {
 	profileID        string
 	identityObjectID string
+	sbType           smartblock.SmartBlockType
 	space            Space
 	objectStore      objectstore.ObjectStore
 }
 
-func newSubObjectsAndProfileLinksMigration(space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
+		sbType:           sbType,
 		objectStore:      objectStore,
 	}
 }
 
 func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.State) {
 	for _, rel := range s.GetRelationLinks() {
+		if rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+			continue
+		}
+		if rel.Key == bundle.RelationKeySourceObject.String() {
+			// migrate broken sourceObject after v0.29.11
+			// todo: remove this
+			if s.UniqueKeyInternal() == "" {
+				continue
+			}
+
+			internalKey := s.UniqueKeyInternal()
+			switch m.sbType {
+			case smartblock.SmartBlockTypeRelation:
+				if bundle.HasRelation(internalKey) {
+					s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.RelationKey(internalKey).BundledURL()))
+				}
+			case smartblock.SmartBlockTypeObjectType:
+				if bundle.HasObjectTypeByKey(domain.TypeKey(internalKey)) {
+					s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.TypeKey(internalKey).BundledURL()))
+				}
+
+			}
+
+			continue
+		}
 		if m.canRelationContainObjectValues(rel.Format) {
 			rawValue := s.Details().GetFields()[rel.Key]
 
@@ -62,7 +92,7 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 	}
 }
 
-func (m *subObjectsAndProfileLinksMigration) migrate(s *state.State) {
+func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeProfilePage, "")
 	if err != nil {
 		log.Errorf("migration: failed to create unique key for profile: %s", err)
@@ -122,6 +152,12 @@ func subObjectIdToUniqueKey(id string) (uniqueKey domain.UniqueKey, valid bool) 
 	if bson.IsObjectIdHex(id) {
 		return domain.MustUniqueKey(smartblock.SmartBlockTypeRelationOption, id), true
 	}
+	// special case: we don't support bundled relations/types in uniqueKeys (GO-2394). So in case we got it, we need to replace the prefix
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		id = addr.ObjectTypeKeyToIdPrefix + strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)
+	} else if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		id = addr.RelationKeyToIdPrefix + strings.TrimPrefix(id, addr.BundledRelationURLPrefix)
+	}
 	uniqueKey, err := domain.UnmarshalUniqueKey(id)
 	if err != nil {
 		return nil, false
@@ -141,6 +177,13 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilters(dv dataview2.Block) 
 }
 
 func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockContentDataviewFilter) error {
+	if filter == nil {
+		return nil
+	}
+	if filter.Value == nil || filter.Value.Kind == nil {
+		log.With("relationKey", filter.RelationKey).Warnf("empty filter value")
+		return nil
+	}
 	relation, err := m.objectStore.GetRelationByKey(filter.RelationKey)
 	if err != nil {
 		log.Warnf("migration: failed to get relation by key %s: %s", filter.RelationKey, err)

@@ -300,3 +300,33 @@ func (c OpenBlockEvent) ToEvent() *Event {
 		},
 	}
 }
+
+type ImportStartedEvent struct {
+	ID         string
+	ImportType string
+}
+
+func (i ImportStartedEvent) ToEvent() *Event {
+	return &Event{
+		EventType: "import_started",
+		EventData: map[string]interface{}{
+			"import_id":   i.ID,
+			"import_type": i.ImportType,
+		},
+	}
+}
+
+type ImportFinishedEvent struct {
+	ID         string
+	ImportType string
+}
+
+func (i ImportFinishedEvent) ToEvent() *Event {
+	return &Event{
+		EventType: "import_finished",
+		EventData: map[string]interface{}{
+			"import_id":   i.ID,
+			"import_type": i.ImportType,
+		},
+	}
+}

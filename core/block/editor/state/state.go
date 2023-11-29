@@ -132,8 +132,9 @@ type State struct {
 
 	stringBuf []string
 
-	groupId      string
-	noObjectType bool
+	groupId                  string
+	noObjectType             bool
+	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -163,11 +164,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
 }
 
 func (s *State) Context() session.Context {
@@ -675,6 +676,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.storeKeyRemoved = s.storeKeyRemoved
 	}
 
+	if s.parent != nil && s.originalCreatedTimestamp > 0 {
+		s.parent.originalCreatedTimestamp = s.originalCreatedTimestamp
+	}
+
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
@@ -830,12 +835,12 @@ func (s *State) SetDetails(d *types.Struct) *State {
 	// if d != nil && d.Fields != nil {
 	//	shortenDetailsToLimit(s.rootId, d.Fields)
 	// }
-	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+	local := pbtypes.StructFilterKeys(d, bundle.LocalAndDerivedRelationKeys)
 	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
 		for k, v := range local.Fields {
 			s.SetLocalDetail(k, v)
 		}
-		s.details = pbtypes.StructCutKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+		s.details = pbtypes.StructCutKeys(d, bundle.LocalAndDerivedRelationKeys)
 		return s
 	}
 	s.details = d
@@ -886,11 +891,17 @@ func (s *State) SetLocalDetails(d *types.Struct) {
 	s.localDetails = d
 }
 
+func (s *State) AddDetails(details *types.Struct) {
+	for k, v := range details.GetFields() {
+		s.SetDetail(k, v)
+	}
+}
+
 func (s *State) SetDetail(key string, value *types.Value) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// value = shortenValueToLimit(s.rootId, key, value)
 
-	if slice.FindPos(bundle.LocalRelationsKeys, key) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, key) > -1 {
+	if slice.FindPos(bundle.LocalAndDerivedRelationKeys, key) > -1 {
 		s.SetLocalDetail(key, value)
 		return
 	}
@@ -1246,19 +1257,20 @@ func (s *State) Copy() *State {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
 	copy := &State{
-		ctx:                     s.ctx,
-		blocks:                  blocks,
-		rootId:                  s.rootId,
-		details:                 pbtypes.CopyStruct(s.Details()),
-		localDetails:            pbtypes.CopyStruct(s.LocalDetails()),
-		relationLinks:           s.GetRelationLinks(), // Get methods copy inside
-		objectTypeKeys:          objTypes,
-		noObjectType:            s.noObjectType,
-		migrationVersion:        s.migrationVersion,
-		store:                   pbtypes.CopyStruct(s.Store()),
-		storeLastChangeIdByPath: s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
-		storeKeyRemoved:         storeKeyRemovedCopy,
-		uniqueKeyInternal:       s.uniqueKeyInternal,
+		ctx:                      s.ctx,
+		blocks:                   blocks,
+		rootId:                   s.rootId,
+		details:                  pbtypes.CopyStruct(s.Details()),
+		localDetails:             pbtypes.CopyStruct(s.LocalDetails()),
+		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
+		objectTypeKeys:           objTypes,
+		noObjectType:             s.noObjectType,
+		migrationVersion:         s.migrationVersion,
+		store:                    pbtypes.CopyStruct(s.Store()),
+		storeLastChangeIdByPath:  s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
+		storeKeyRemoved:          storeKeyRemovedCopy,
+		uniqueKeyInternal:        s.uniqueKeyInternal,
+		originalCreatedTimestamp: s.originalCreatedTimestamp,
 	}
 	return copy
 }
@@ -1796,6 +1808,15 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 // which will be unique and reproducible within the same space
 func (s *State) UniqueKeyInternal() string {
 	return s.uniqueKeyInternal
+}
+
+func (s *State) OriginalCreatedTimestamp() int64 {
+	return s.originalCreatedTimestamp
+}
+
+// SetOriginalCreatedTimestamp should not be used in the normal flow, because there is no crdt changes for it
+func (s *State) SetOriginalCreatedTimestamp(ts int64) {
+	s.originalCreatedTimestamp = ts
 }
 
 func IsRequiredBlockId(targetId string) bool {

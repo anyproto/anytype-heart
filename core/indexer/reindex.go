@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/util/slice"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
 	"go.uber.org/zap"
 
@@ -26,7 +26,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 8
+	ForceObjectsReindexCounter int32 = 13
 
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
 	ForceFilesReindexCounter int32 = 11 //

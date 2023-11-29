@@ -17,22 +17,23 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/creator"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	creator "github.com/anyproto/anytype-heart/core/block/import/common/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/import/common/objectid"
+	"github.com/anyproto/anytype-heart/core/block/import/common/syncer"
+	"github.com/anyproto/anytype-heart/core/block/import/common/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/import/csv"
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
 	"github.com/anyproto/anytype-heart/core/block/import/notion"
-	"github.com/anyproto/anytype-heart/core/block/import/objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
-	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/import/txt"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
-	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -52,7 +53,7 @@ const CName = "importer"
 const workerPoolSize = 10
 
 type Import struct {
-	converters      map[string]converter.Converter
+	converters      map[string]common.Converter
 	s               *block.Service
 	oc              creator.Service
 	idProvider      objectid.IDProvider
@@ -63,7 +64,7 @@ type Import struct {
 
 func New() Importer {
 	return &Import{
-		converters: make(map[string]converter.Converter, 0),
+		converters: make(map[string]common.Converter, 0),
 	}
 }
 
@@ -73,7 +74,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	spaceService := app.MustComponent[space.Service](a)
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-	converters := []converter.Converter{
+	converters := []common.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
 		pbc.New(col, accountService),
@@ -98,21 +99,32 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin) (string, error) {
+func (i *Import) Import(
+	ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	origin model.ObjectOrigin,
+	progress process.Progress,
+) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
 	}
 	i.Lock()
 	defer i.Unlock()
-	progress := i.setupProgressBar(req)
+	isNewProgress := false
+	if progress == nil {
+		progress = i.setupProgressBar(req)
+		isNewProgress = true
+	}
 	var returnedErr error
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
+		i.recordEvent(&metrics.ImportFinishedEvent{ID: progress.Id(), ImportType: req.Type.String()})
 	}()
-	if i.s != nil && !req.GetNoProgress() {
+	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
+	i.recordEvent(&metrics.ImportStartedEvent{ID: progress.Id(), ImportType: req.Type.String()})
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
 		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
@@ -133,13 +145,14 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(ctx context.Context,
+func (i *Import) importFromBuiltinConverter(
+	ctx context.Context,
 	req *pb.RpcObjectImportRequest,
-	c converter.Converter,
+	c common.Converter,
 	progress process.Progress,
 	origin model.ObjectOrigin,
 ) (string, error) {
-	allErrors := converter.NewError(req.Mode)
+	allErrors := common.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
@@ -168,16 +181,16 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 ) error {
-	allErrors := converter.NewError(req.Mode)
+	allErrors := common.NewError(req.Mode)
 	if req.Snapshots != nil {
-		sn := make([]*converter.Snapshot, len(req.Snapshots))
+		sn := make([]*common.Snapshot, len(req.Snapshots))
 		for i, s := range req.Snapshots {
-			sn[i] = &converter.Snapshot{
+			sn[i] = &common.Snapshot{
 				Id:       s.GetId(),
 				Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
 			}
 		}
-		res := &converter.Response{
+		res := &common.Response{
 			Snapshots: sn,
 		}
 		i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
@@ -186,18 +199,18 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		}
 		return nil
 	}
-	return converter.ErrNoObjectsToImport
+	return common.ErrNoObjectsToImport
 }
 
 func (i *Import) finishImportProcess(returnedErr error, progress process.Progress) {
 	progress.Finish(returnedErr)
 }
 
-func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
+func shouldReturnError(e error, res *common.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		errors.Is(e, converter.ErrFailedToReceiveListOfObjects) || errors.Is(e, converter.ErrLimitExceeded) ||
-		(errors.Is(e, converter.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
-		errors.Is(e, converter.ErrCancel)
+		errors.Is(e, common.ErrFailedToReceiveListOfObjects) || errors.Is(e, common.ErrLimitExceeded) ||
+		(errors.Is(e, common.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
+		errors.Is(e, common.ErrCancel)
 }
 
 func (i *Import) setupProgressBar(req *pb.RpcObjectImportRequest) process.Progress {
@@ -240,7 +253,7 @@ func (i *Import) ValidateNotionToken(
 func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish(nil)
-	allErrors := converter.NewError(0)
+	allErrors := common.NewError(0)
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
@@ -262,10 +275,10 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 }
 
 func (i *Import) createObjects(ctx context.Context,
-	res *converter.Response,
+	res *common.Response,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
-	allErrors *converter.ConvertError,
+	allErrors *common.ConvertError,
 	origin model.ObjectOrigin,
 ) (map[string]*types.Struct, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req)
@@ -286,7 +299,7 @@ func (i *Import) createObjects(ctx context.Context,
 	return details, oldIDToNew[res.RootCollectionID]
 }
 
-func (i *Import) getFilesIDs(res *converter.Response) []string {
+func (i *Import) getFilesIDs(res *common.Response) []string {
 	fileIDs := make([]string, 0)
 	for _, snapshot := range res.Snapshots {
 		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
@@ -297,11 +310,11 @@ func (i *Import) getFilesIDs(res *converter.Response) []string {
 }
 
 func (i *Import) getIDForAllObjects(ctx context.Context,
-	res *converter.Response,
-	allErrors *converter.ConvertError,
+	res *common.Response,
+	allErrors *common.ConvertError,
 	req *pb.RpcObjectImportRequest,
 ) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
-	relationOptions := make([]*converter.Snapshot, 0)
+	relationOptions := make([]*common.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
 	for _, snapshot := range res.Snapshots {
@@ -333,13 +346,12 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	return oldIDToNew, createPayloads, nil
 }
 
-func (i *Import) replaceRelationKeyWithNew(option *converter.Snapshot, oldIDToNew map[string]string) {
+func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew map[string]string) {
 	if option.Snapshot.Data.Details == nil || len(option.Snapshot.Data.Details.Fields) == 0 {
 		return
 	}
 	key := pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-	relationID := addr.RelationKeyToIdPrefix + key
-	if newRelationID, ok := oldIDToNew[relationID]; ok {
+	if newRelationID, ok := oldIDToNew[key]; ok {
 		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
 	}
 	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
@@ -348,23 +360,17 @@ func (i *Import) replaceRelationKeyWithNew(option *converter.Snapshot, oldIDToNe
 func (i *Import) getObjectID(
 	ctx context.Context,
 	spaceID string,
-	snapshot *converter.Snapshot,
+	snapshot *common.Snapshot,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	oldIDToNew map[string]string,
 	updateExisting bool,
 ) error {
 	var (
-		id          string
-		payload     treestorage.TreeStorageCreatePayload
-		createdTime time.Time
+		id      string
+		payload treestorage.TreeStorageCreatePayload
 	)
-	createdTimeTS := pbtypes.GetInt64(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyCreatedDate.String())
-	if createdTimeTS > 0 {
-		createdTime = time.Unix(createdTimeTS, 0)
-	} else {
-		createdTime = time.Now()
-	}
-	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, createdTime, updateExisting)
+
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting)
 	if err != nil {
 		return err
 	}
@@ -375,7 +381,7 @@ func (i *Import) getObjectID(
 	return nil
 }
 
-func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {
+func (i *Import) addWork(spaceID string, res *common.Response, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
 		t := creator.NewTask(spaceID, snapshot, i.oc)
 		stop := pool.AddWork(t)
@@ -388,13 +394,13 @@ func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpo
 
 func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	mode pb.RpcObjectImportRequestMode,
-	allErrors *converter.ConvertError,
+	allErrors *common.ConvertError,
 	progress process.Progress,
 ) map[string]*types.Struct {
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(fmt.Errorf("%w: %w", converter.ErrCancel, err))
+			allErrors.Add(fmt.Errorf("%w: %w", common.ErrCancel, err))
 			pool.Stop()
 			return nil
 		}
@@ -409,6 +415,10 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 		details[res.NewID] = res.Details
 	}
 	return details
+}
+
+func (i *Import) recordEvent(event metrics.EventRepresentable) {
+	metrics.SharedClient.RecordEvent(event)
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

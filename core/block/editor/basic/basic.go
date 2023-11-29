@@ -54,11 +54,10 @@ type CommonOperations interface {
 	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
-	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey) (err error)
-	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey) (err error)
+	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
+	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
 	SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error)
-	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
-	SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error)
+	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout, ignoreRestriction bool) (err error)
 }
 
 type DetailsSettable interface {

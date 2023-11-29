@@ -11,6 +11,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -58,7 +59,7 @@ type CollectionService interface {
 }
 
 type TemplateService interface {
-	StateFromTemplate(templateId, name string) (st *state.State, err error)
+	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
 	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
 }
 
@@ -82,13 +83,16 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) createSmartBlockFromTemplate(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, details *types.Struct, templateId string) (id string, newDetails *types.Struct, err error) {
-	var createState *state.State
-	if createState, err = s.templateService.StateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+func (s *service) createSmartBlockFromTemplate(
+	ctx context.Context,
+	space space.Space,
+	objectTypeKeys []domain.TypeKey,
+	details *types.Struct,
+	templateId string,
+) (id string, newDetails *types.Struct, err error) {
+	createState, err := s.templateService.CreateTemplateStateWithDetails(templateId, details)
+	if err != nil {
 		return
-	}
-	for k, v := range details.GetFields() {
-		createState.SetDetail(k, v)
 	}
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
 }
@@ -188,6 +192,10 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 		if err != nil {
 			return
 		}
+	}
+
+	if err = objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys); err != nil {
+		return "", nil, err
 	}
 
 	id = sb.Id()

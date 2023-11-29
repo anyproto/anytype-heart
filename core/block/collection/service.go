@@ -1,8 +1,6 @@
 package collection
 
 import (
-	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -19,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -102,6 +99,7 @@ func (s *Service) updateCollection(ctx session.Context, contextID string, modifi
 		lst := s.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)
 		s.UpdateStoreSlice(template.CollectionStoreKey, lst)
+		internalflag.Set{}.AddToState(s)
 		return nil
 	})
 }
@@ -143,15 +141,7 @@ func (s *Subscription) Close() {
 func (s *Service) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
 	var initialObjectIDs []string
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	col, ok := s.collections[collectionID]
-	if !ok {
-		col = map[string]chan []string{}
-		s.collections[collectionID] = col
-	}
-	err := block.DoStateAsync(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
 		s.collectionAddHookOnce(sb)
 
 		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)
@@ -159,6 +149,15 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 	})
 	if err != nil {
 		return nil, nil, err
+	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	col, ok := s.collections[collectionID]
+	if !ok {
+		col = map[string]chan []string{}
+		s.collections[collectionID] = col
 	}
 
 	ch, ok := col[subscriptionID]
@@ -205,41 +204,23 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 }
 
 func (s *Service) ObjectToCollection(id string) error {
-	if err := block.Do(s.picker, id, func(b smartblock.SmartBlock) error {
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
-		}
-		st := b.NewState()
-		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_collection)
-		if err != nil {
-			return fmt.Errorf("set layout: %w", err)
-		}
-		st.SetObjectTypeKey(bundle.TypeKeyCollection)
-		setDefaultObjectTypeToViews(st)
-		flags := internalflag.NewFromState(st)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorDeleteEmpty)
-		flags.AddToState(st)
-		return b.Apply(st)
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	return block.DoState(s.picker, id, func(st *state.State, b basic.CommonOperations) error {
+		s.setDefaultObjectTypeToViews(st)
+		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeyCollection}, true)
+	})
 }
 
-func setDefaultObjectTypeToViews(st *state.State) {
-	if !lo.Contains(st.ObjectTypeKeys(), bundle.TypeKeySet) {
+func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
+	if !lo.Contains(st.ParentState().ObjectTypeKeys(), bundle.TypeKeySet) {
 		return
 	}
 
 	setOfValue := pbtypes.GetStringList(st.ParentState().Details(), bundle.RelationKeySetOf.String())
-	if len(setOfValue) == 0 || !strings.HasPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix) {
+	if len(setOfValue) == 0 {
 		return
 	}
 
-	if isNotCreatableType(domain.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
+	if s.isNotCreatableType(setOfValue[0]) {
 		return
 	}
 
@@ -257,6 +238,13 @@ func setDefaultObjectTypeToViews(st *state.State) {
 	}
 }
 
-func isNotCreatableType(key domain.TypeKey) bool {
-	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType), key)
+func (s *Service) isNotCreatableType(id string) bool {
+	uk, err := s.objectStore.GetUniqueKeyById(id)
+	if err != nil {
+		return true
+	}
+	if uk.SmartblockType() != coresb.SmartBlockTypeObjectType {
+		return true
+	}
+	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType), domain.TypeKey(uk.InternalKey()))
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
@@ -71,10 +71,10 @@ func (ds *Service) GetDatabase(_ context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
 	progress process.Progress,
-	req *api.NotionImportContext) (*converter.Response, *property.PropertiesStore, *converter.ConvertError) {
+	req *api.NotionImportContext) (*common.Response, *property.PropertiesStore, *common.ConvertError) {
 	var (
-		allSnapshots = make([]*converter.Snapshot, 0)
-		convertError = converter.NewError(mode)
+		allSnapshots = make([]*common.Snapshot, 0)
+		convertError = common.NewError(mode)
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	relations := &property.PropertiesStore{
@@ -83,7 +83,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			convertError.Add(converter.ErrCancel)
+			convertError.Add(common.ErrCancel)
 			return nil, nil, convertError
 		}
 		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations)
@@ -97,14 +97,14 @@ func (ds *Service) GetDatabase(_ context.Context,
 		allSnapshots = append(allSnapshots, snapshot...)
 	}
 	if convertError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, relations, nil
+		return &common.Response{Snapshots: allSnapshots}, relations, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots}, relations, convertError
+	return &common.Response{Snapshots: allSnapshots}, relations, convertError
 }
 
 func (ds *Service) makeDatabaseSnapshot(d Database,
 	importContext *api.NotionImportContext,
-	relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
+	relations *property.PropertiesStore) ([]*common.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 	detailsStruct := &types.Struct{Fields: details}
 	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
@@ -119,7 +119,7 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	return snapshots, nil
 }
 
-func (ds *Service) fillImportContext(d Database, req *api.NotionImportContext, id string, databaseSnapshot *converter.Snapshot) {
+func (ds *Service) fillImportContext(d Database, req *api.NotionImportContext, id string, databaseSnapshot *common.Snapshot) {
 	req.NotionDatabaseIdsToAnytype[d.ID] = id
 	req.DatabaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
 	if d.Parent.DatabaseID != "" {
@@ -133,8 +133,8 @@ func (ds *Service) fillImportContext(d Database, req *api.NotionImportContext, i
 	}
 }
 
-func (ds *Service) makeRelationsSnapshots(d Database, st *state.State, relations *property.PropertiesStore) []*converter.Snapshot {
-	snapshots := make([]*converter.Snapshot, 0)
+func (ds *Service) makeRelationsSnapshots(d Database, st *state.State, relations *property.PropertiesStore) []*common.Snapshot {
+	snapshots := make([]*common.Snapshot, 0)
 	for _, databaseProperty := range d.Properties {
 		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
 			ds.handleNameProperty(databaseProperty, st)
@@ -171,13 +171,13 @@ func (ds *Service) getNameAndRelationKeyForTagProperty(databaseProperty property
 	return name, relationKey
 }
 
-func (ds *Service) handleNameProperty(databaseProperty property.DatabasePropertyHandler, st *state.State) *converter.Snapshot {
+func (ds *Service) handleNameProperty(databaseProperty property.DatabasePropertyHandler, st *state.State) *common.Snapshot {
 	databaseProperty.SetDetail(bundle.RelationKeyName.String(), st.Details().GetFields())
 	relationLinks := &model.RelationLink{
 		Key:    bundle.RelationKeyName.String(),
 		Format: model.RelationFormat_shorttext,
 	}
-	err := converter.ReplaceRelationsInDataView(st, relationLinks)
+	err := common.ReplaceRelationsInDataView(st, relationLinks)
 	if err != nil {
 		log.Errorf("failed to add relation to notion database, %s", err)
 	}
@@ -187,10 +187,10 @@ func (ds *Service) handleNameProperty(databaseProperty property.DatabaseProperty
 func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.PropertiesStore,
 	databaseProperty property.DatabasePropertyHandler,
 	name, relationKey string,
-	st *state.State) *converter.Snapshot {
+	st *state.State) *common.Snapshot {
 	var (
 		rel *model.SmartBlockSnapshotBase
-		sn  *converter.Snapshot
+		sn  *common.Snapshot
 	)
 	if rel = relations.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
 		rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
@@ -203,28 +203,28 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 		Format: databaseProperty.GetFormat(),
 	}
 	if relationKey == bundle.RelationKeyTag.String() {
-		err := converter.ReplaceRelationsInDataView(st, relationLinks)
+		err := common.ReplaceRelationsInDataView(st, relationLinks)
 		if err != nil {
 			log.Errorf("failed to make tag relation not hidden in notion database, %s", err)
 		}
 		return sn
 	}
 	st.AddRelationLinks(relationLinks)
-	err := converter.AddRelationsToDataView(st, relationLinks)
+	err := common.AddRelationsToDataView(st, relationLinks)
 	if err != nil {
 		log.Errorf("failed to add relation to notion database, %s", err)
 	}
 	return sn
 }
 
-func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *converter.Snapshot) {
+func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *common.Snapshot) {
 	relationDetails := ds.getRelationDetails(databaseProperty, name, relationKey)
 	relationSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     relationDetails,
 		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
 		Key:         relationKey,
 	}
-	snapshot := &converter.Snapshot{
+	snapshot := &common.Snapshot{
 		Id: relationKey,
 		Snapshot: &pb.ChangeSnapshot{
 			Data: relationSnapshot,
@@ -290,7 +290,7 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 	return details
 }
 
-func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *converter.Snapshot) {
+func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *common.Snapshot) {
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       detailsStruct,
@@ -300,7 +300,7 @@ func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsS
 	}
 
 	id := uuid.New().String()
-	databaseSnapshot := &converter.Snapshot{
+	databaseSnapshot := &common.Snapshot{
 		Id:       id,
 		FileName: d.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
@@ -309,7 +309,7 @@ func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsS
 	return id, databaseSnapshot
 }
 
-func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot, pages []page.Page, databases []Database, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
+func (ds *Service) AddPagesToCollections(databaseSnapshots []*common.Snapshot, pages []page.Page, databases []Database, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
 	snapshots := makeSnapshotMapFromArray(databaseSnapshots)
 
 	databaseToObjects := make(map[string][]string, 0)
@@ -334,11 +334,11 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot
 
 func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportContext,
 	notionDB []Database,
-	notionPages []page.Page) (*converter.Snapshot, error) {
+	notionPages []page.Page) (*common.Snapshot, error) {
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
-	rootCollection := converter.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects)
+	rootCollection := common.NewRootCollection(ds.collectionService)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects, "", nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -417,15 +417,15 @@ func isDbContainsTagProperty(databaseProperties property.DatabaseProperties) boo
 	return false
 }
 
-func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*converter.Snapshot {
-	snapshotsMap := make(map[string]*converter.Snapshot, len(snapshots))
+func makeSnapshotMapFromArray(snapshots []*common.Snapshot) map[string]*common.Snapshot {
+	snapshotsMap := make(map[string]*common.Snapshot, len(snapshots))
 	for _, s := range snapshots {
 		snapshotsMap[s.Id] = s
 	}
 	return snapshotsMap
 }
 
-func addObjectToSnapshot(snapshots *converter.Snapshot, targetID []string) {
+func addObjectToSnapshot(snapshots *common.Snapshot, targetID []string) {
 	snapshots.Snapshot.Data.Collections = &types.Struct{
 		Fields: map[string]*types.Value{template.CollectionStoreKey: pbtypes.StringList(targetID)},
 	}

@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -34,7 +34,7 @@ type HTML struct {
 	tempDirProvider   core.TempDirProvider
 }
 
-func New(collectionService *collection.Service, tempDirProvider core.TempDirProvider) converter.Converter {
+func New(collectionService *collection.Service, tempDirProvider core.TempDirProvider) common.Converter {
 	return &HTML{
 		collectionService: collectionService,
 		tempDirProvider:   tempDirProvider,
@@ -53,19 +53,19 @@ func (h *HTML) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
 	path := h.GetParams(req)
 	if len(path) == 0 {
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
-	allErrors := converter.NewError(req.Mode)
+	allErrors := common.NewError(req.Mode)
 	snapshots, targetObjects := h.getSnapshots(req, progress, path, allErrors)
 	if allErrors.ShouldAbortImport(len(path), req.Type) {
 		return nil, allErrors
 	}
-	rootCollection := converter.NewRootCollection(h.collectionService)
-	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
+	rootCollection := common.NewRootCollection(h.collectionService)
+	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(path), req.Type) {
@@ -79,21 +79,21 @@ func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest,
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
+		return &common.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
 	}
 
-	return &converter.Response{
+	return &common.Response{
 		Snapshots:        snapshots,
 		RootCollectionID: rootCollectionID,
 	}, allErrors
 }
 
-func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path []string, allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
-	snapshots := make([]*converter.Snapshot, 0)
+func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path []string, allErrors *common.ConvertError) ([]*common.Snapshot, []string) {
+	snapshots := make([]*common.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(converter.ErrCancel)
+			allErrors.Add(common.ErrCancel)
 			return nil, nil
 		}
 		sn, to := h.handleImportPath(p, allErrors)
@@ -106,7 +106,7 @@ func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	return snapshots, targetObjects
 }
 
-func (h *HTML) handleImportPath(path string, allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
+func (h *HTML) handleImportPath(path string, allErrors *common.ConvertError) ([]*common.Snapshot, []string) {
 	importSource := source.GetSource(path)
 	defer importSource.Close()
 	err := importSource.Initialize(path)
@@ -118,18 +118,18 @@ func (h *HTML) handleImportPath(path string, allErrors *converter.ConvertError) 
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".html"}); numberOfFiles == 0 {
-		allErrors.Add(converter.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrNoObjectsToImport)
 		return nil, nil
 	}
 	return h.getSnapshotsAndRootObjects(path, allErrors, numberOfFiles, importSource)
 }
 
 func (h *HTML) getSnapshotsAndRootObjects(path string,
-	allErrors *converter.ConvertError,
+	allErrors *common.ConvertError,
 	numberOfFiles int,
 	importSource source.Source,
-) ([]*converter.Snapshot, []string) {
-	snapshots := make([]*converter.Snapshot, 0, numberOfFiles)
+) ([]*common.Snapshot, []string) {
+	snapshots := make([]*common.Snapshot, 0, numberOfFiles)
 	rootObjects := make([]string, 0, numberOfFiles)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if filepath.Ext(fileName) != ".html" {
@@ -160,7 +160,7 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, filesSource source.Source,
 	blocks, _, err := anymark.HTMLToBlocks(b)
 	for _, block := range blocks {
 		if block.GetFile() != nil {
-			if newFileName, _, err := converter.ProvideFileName(block.GetFile().GetName(), filesSource, path, h.tempDirProvider); err == nil {
+			if newFileName, _, err := common.ProvideFileName(block.GetFile().GetName(), filesSource, path, h.tempDirProvider); err == nil {
 				block.GetFile().Name = newFileName
 			} else {
 				log.Errorf("failed to update file block with new file name: %v", oserror.TransformError(err))
@@ -182,7 +182,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, filesSource source.Source,
 				newFileName     string
 				createFileBlock bool
 			)
-			if newFileName, createFileBlock, err = converter.ProvideFileName(mark.Param, filesSource, path, h.tempDirProvider); err == nil {
+			if newFileName, createFileBlock, err = common.ProvideFileName(mark.Param, filesSource, path, h.tempDirProvider); err == nil {
 				mark.Param = newFileName
 				if createFileBlock {
 					anymark.ConvertTextToFile(block)
@@ -195,14 +195,14 @@ func (h *HTML) updateFilesInLinks(block *model.Block, filesSource source.Source,
 	}
 }
 
-func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
+func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetCommonDetails(p, "", "", model.ObjectType_basic),
+		Details:     common.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.String()},
 	}
 
-	snapshot := &converter.Snapshot{
+	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},

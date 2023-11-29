@@ -20,6 +20,7 @@
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
     - [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd)
     - [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove)
+    - [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet)
     - [Change.RelationAdd](#anytype-Change-RelationAdd)
     - [Change.RelationRemove](#anytype-Change-RelationRemove)
     - [Change.Snapshot](#anytype-Change-Snapshot)
@@ -528,6 +529,11 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
+    - [Rpc.DownloadManifest](#anytype-Rpc-DownloadManifest)
+    - [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request)
+    - [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response)
+    - [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error)
+    - [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -1067,6 +1073,7 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
+    - [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1101,6 +1108,7 @@
     - [Rpc.Object.Import.Notion.ValidateToken.Response.Error.Code](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error-Code)
     - [Rpc.Object.Import.Request.CsvParams.Mode](#anytype-Rpc-Object-Import-Request-CsvParams-Mode)
     - [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode)
+    - [Rpc.Object.Import.Request.PbParams.Type](#anytype-Rpc-Object-Import-Request-PbParams-Type)
     - [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type)
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
     - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
@@ -1605,6 +1613,7 @@
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
 | UnsplashSearch | [Rpc.Unsplash.Search.Request](#anytype-Rpc-Unsplash-Search-Request) | [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response) |  |
 | UnsplashDownload | [Rpc.Unsplash.Download.Request](#anytype-Rpc-Unsplash-Download-Request) | [Rpc.Unsplash.Download.Response](#anytype-Rpc-Unsplash-Download-Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
+| DownloadManifest | [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request) | [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype-Rpc-Block-Upload-Request) | [Rpc.Block.Upload.Response](#anytype-Rpc-Block-Upload-Response) | General Block commands *** |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype-Rpc-Block-Replace-Request) | [Rpc.Block.Replace.Response](#anytype-Rpc-Block-Replace-Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype-Rpc-Block-Create-Request) | [Rpc.Block.Create.Response](#anytype-Rpc-Block-Create-Response) |  |
@@ -1842,6 +1851,7 @@ the element of change tree used to store and internal apply smartBlock history
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
 | storeKeyUnset | [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset) |  |  |
 | storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
+| originalCreatedTimestampSet | [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet) |  |  |
 
 
 
@@ -1937,6 +1947,21 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
 | key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-OriginalCreatedTimestampSet"></a>
+
+### Change.OriginalCreatedTimestampSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ts | [int64](#int64) |  |  |
 
 
 
@@ -9338,6 +9363,88 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-DownloadManifest"></a>
+
+### Rpc.DownloadManifest
+
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadManifest-Request"></a>
+
+### Rpc.DownloadManifest.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadManifest-Response"></a>
+
+### Rpc.DownloadManifest.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error) |  |  |
+| info | [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadManifest-Response-Error"></a>
+
+### Rpc.DownloadManifest.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadManifest-Response-ManifestInfo"></a>
+
+### Rpc.DownloadManifest.Response.ManifestInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| schema | [string](#string) |  |  |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| author | [string](#string) |  |  |
+| license | [string](#string) |  |  |
+| title | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+| screenshots | [string](#string) | repeated |  |
+| downloadLink | [string](#string) |  |  |
+| fileSize | [int32](#int32) |  |  |
+| categories | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File"></a>
 
 ### Rpc.File
@@ -11315,6 +11422,8 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
 | noCollection | [bool](#bool) |  |  |
+| collectionTitle | [string](#string) |  |  |
+| importType | [Rpc.Object.Import.Request.PbParams.Type](#anytype-Rpc-Object-Import-Request-PbParams-Type) |  |  |
 
 
 
@@ -11403,8 +11512,8 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| source | [string](#string) |  |  |
-| isLocal | [bool](#bool) |  |  |
+| url | [string](#string) |  |  |
+| title | [string](#string) |  |  |
 
 
 
@@ -11898,6 +12007,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ListSetObjectType.Response.Error](#anytype-Rpc-Object-ListSetObjectType-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -17017,6 +17127,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-DownloadManifest-Response-Error-Code"></a>
+
+### Rpc.DownloadManifest.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -17467,6 +17590,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-Import-Request-PbParams-Type"></a>
+
+### Rpc.Object.Import.Request.PbParams.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SPACE | 0 |  |
+| EXPERIENCE | 1 |  |
+
+
+
 <a name="anytype-Rpc-Object-Import-Request-Type"></a>
 
 ### Rpc.Object.Import.Request.Type
@@ -17498,6 +17633,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_OBJECTS_TO_IMPORT | 5 |  |
 | IMPORT_IS_CANCELED | 6 |  |
 | LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| FILE_LOAD_ERROR | 8 |  |
 
 
 
@@ -22691,7 +22827,8 @@ stored |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
-| key | [string](#string) |  | this field is not passing to the crdt changes and can be only set in the snapshot |
+| key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
+| originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
 
 
 

@@ -28,7 +28,7 @@ const (
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
 type spaceService interface {
-	OnViewUpdated(info spaceinfo.SpaceInfo)
+	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
 	OnWorkspaceChanged(spaceId string, details *types.Struct)
 }
 
@@ -58,9 +58,14 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 	s.DisableLayouts()
 	info := s.getSpaceInfo(ctx.State)
-	newInfo := spaceinfo.SpaceInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
-	s.setSpaceInfo(ctx.State, newInfo)
-	s.spaceService.OnViewUpdated(newInfo)
+	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
+	s.setSpacePersistentInfo(ctx.State, newPersistentInfo)
+	s.setSpaceLocalInfo(ctx.State, spaceinfo.SpaceLocalInfo{
+		SpaceID:      spaceID,
+		LocalStatus:  spaceinfo.LocalStatusUnknown,
+		RemoteStatus: spaceinfo.RemoteStatusUnknown,
+	})
+	s.spaceService.OnViewUpdated(newPersistentInfo)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)
 	return
 }
@@ -96,9 +101,15 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return false, nil
 }
 
-func (s *SpaceView) SetSpaceInfo(info spaceinfo.SpaceInfo) (err error) {
+func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
 	st := s.NewState()
-	s.setSpaceInfo(st, info)
+	s.setSpaceLocalInfo(st, info)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
+	st := s.NewState()
+	s.setSpacePersistentInfo(st, info)
 	return s.Apply(st)
 }
 
@@ -107,12 +118,15 @@ func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
 	return nil
 }
 
-func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) {
+func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocalInfo) {
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
+}
+
+func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
+	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
-	return
 }
 
 // targetSpaceID returns space id from the root of space object's tree
@@ -132,12 +146,10 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	return changePayload.Key, nil
 }
 
-func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpaceInfo) {
+func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
 	details := st.CombinedDetails()
-	return spaceinfo.SpaceInfo{
+	return spaceinfo.SpacePersistentInfo{
 		SpaceID:       pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()),
-		LocalStatus:   spaceinfo.LocalStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceLocalStatus.String())),
-		RemoteStatus:  spaceinfo.RemoteStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceRemoteStatus.String())),
 		AccountStatus: spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String())),
 	}
 }
@@ -163,6 +175,15 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 	}
 
 	if changed {
+		if st.ParentState().ParentState() == nil {
+			// in case prev change was the first one
+			createdDate := pbtypes.GetInt64(details, bundle.RelationKeyCreatedDate.String())
+			if createdDate > 0 {
+				// we use this state field to save the original created date, otherwise we use the one from the underlying objectTree
+				st.SetOriginalCreatedTimestamp(createdDate)
+			}
+		}
+
 		return s.Apply(st, smartblock.NoRestrictions, smartblock.NoEvent, smartblock.NoHistory)
 	}
 	return nil

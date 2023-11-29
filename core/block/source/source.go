@@ -280,8 +280,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := newSubObjectsAndProfileLinksMigration(s.space, s.accountService.IdentityObjectId(), s.objectStore)
-	migration.migrate(st)
+	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.IdentityObjectId(), s.objectStore)
+	migration.Migrate(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
@@ -297,8 +297,13 @@ func (s *source) buildState() (doc state.Doc, err error) {
 }
 
 func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
-	createdDate = s.ObjectTree.Root().Timestamp
 	root := s.ObjectTree.Root()
+	createdDate = root.Timestamp
+
+	header := s.ObjectTree.UnmarshalledHeader()
+	if header != nil && header.Timestamp != 0 && header.Timestamp < createdDate {
+		createdDate = header.Timestamp
+	}
 	if root != nil && root.Identity != nil {
 		creatorObjectId = addr.AccountIdToIdentityObjectId(root.Identity.Account())
 	}
@@ -339,6 +344,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		IsSnapshot:  change.Snapshot != nil,
 		IsEncrypted: true,
 		DataType:    dataType,
+		Timestamp:   params.Time.Unix(),
 	})
 	if err != nil {
 		return
@@ -364,12 +370,13 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:        params.State.BlocksToSave(),
-				Details:       params.State.Details(),
-				ObjectTypes:   domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
-				Collections:   params.State.Store(),
-				RelationLinks: params.State.PickRelationLinks(),
-				Key:           params.State.UniqueKeyInternal(),
+				Blocks:                   params.State.BlocksToSave(),
+				Details:                  params.State.Details(),
+				ObjectTypes:              domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
+				Collections:              params.State.Store(),
+				RelationLinks:            params.State.PickRelationLinks(),
+				Key:                      params.State.UniqueKeyInternal(),
+				OriginalCreatedTimestamp: params.State.OriginalCreatedTimestamp(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/unsplash"
@@ -87,4 +88,20 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	})
 
 	return response(hash, err)
+}
+
+func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadManifestRequest) *pb.RpcDownloadManifestResponse {
+	response := func(info *pb.RpcDownloadManifestResponseManifestInfo, err error) *pb.RpcDownloadManifestResponse {
+		m := &pb.RpcDownloadManifestResponse{
+			Error: &pb.RpcDownloadManifestResponseError{Code: pb.RpcDownloadManifestResponseError_NULL},
+			Info:  info,
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcDownloadManifestResponseError_UNKNOWN_ERROR
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	info, err := gallery.DownloadManifest(req.Url)
+	return response(info, err)
 }

@@ -10,7 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -48,6 +48,9 @@ var (
 
 	accountPrefix = "account"
 	accountStatus = ds.NewKey("/" + accountPrefix + "/status")
+
+	spacePrefix   = "space"
+	virtualSpaces = ds.NewKey("/" + spacePrefix + "/virtual")
 
 	ErrObjectNotFound = errors.New("object not found")
 
@@ -104,6 +107,7 @@ type ObjectStore interface {
 	app.ComponentRunnable
 	IndexerStore
 	AccountStore
+	VirtualSpacesStore
 
 	SubscribeForAll(callback func(rec database.Record))
 
@@ -169,6 +173,12 @@ type IndexerStore interface {
 type AccountStore interface {
 	GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error)
 	SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error)
+}
+
+type VirtualSpacesStore interface {
+	SaveVirtualSpace(id string) error
+	ListVirtualSpaces() ([]string, error)
+	DeleteVirtualSpace(spaceID string) error
 }
 
 var ErrNotAnObject = fmt.Errorf("not an object")
