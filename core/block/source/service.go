@@ -48,7 +48,6 @@ type Service interface {
 	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
 	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
-	RemoveStaticSource(id string)
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
@@ -197,14 +196,4 @@ func (s *service) RegisterStaticSource(src Source) error {
 	}
 	s.sbtProvider.RegisterStaticType(src.Id(), src.Type())
 	return nil
-}
-
-func (s *service) RemoveStaticSource(id string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.staticIds, id)
-	err := s.objectStore.DeleteDetails(id)
-	if err != nil {
-		log.Errorf("failed to delete objects details &s, err: %s", id, err)
-	}
 }
