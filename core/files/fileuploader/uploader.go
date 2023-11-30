@@ -425,58 +425,27 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		opts = append(opts, u.opts...)
 	}
 
-	var (
-		fileId     domain.FileId
-		fileKeys   *domain.FileKeys
-		fileExists bool
-	)
+	var addResult *addToStorageResult
 	if u.fileType == model.BlockContentFile_Image {
-		addResult, e := u.fileService.ImageAdd(ctx, u.spaceId, opts...)
-		if errors.Is(e, image.ErrFormat) || errors.Is(e, mill.ErrFormatSupportNotEnabled) {
-			e = nil
+		addResult, err = u.addImageToStorage(ctx, opts)
+		if errors.Is(err, image.ErrFormat) || errors.Is(err, mill.ErrFormatSupportNotEnabled) {
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
 		}
-		if e != nil {
-			err = e
-			return
-		}
-		fileId = addResult.FileId
-		fileKeys = addResult.EncryptionKeys
-		fileExists = addResult.IsExisting
-		orig, _ := addResult.Image.GetOriginalFile(ctx)
-		if orig != nil {
-			result.MIME = orig.Meta().Media
-			result.Size = orig.Meta().Size
+		if err != nil {
+			return UploadResult{Err: fmt.Errorf("add image to storage: %w", err)}
 		}
 	} else {
-		addResult, err := u.fileService.FileAdd(ctx, u.spaceId, opts...)
+		addResult, err = u.addFileToStorage(ctx, opts)
 		if err != nil {
-			return UploadResult{Err: fmt.Errorf("add file: %w", err)}
-		}
-		fileId = addResult.FileId
-		fileKeys = addResult.EncryptionKeys
-		fileExists = addResult.IsExisting
-		if meta := addResult.File.Meta(); meta != nil {
-			result.MIME = meta.Media
-			result.Size = meta.Size
+			return UploadResult{Err: fmt.Errorf("add file to storage: %w", err)}
 		}
 	}
+	result.MIME = addResult.mime
+	result.Size = addResult.size
 
-	var fileObjectId string
-	if fileExists {
-		fileObjectId, err = u.fileObjectService.GetObjectIdByFileId(fileId)
-		if err != nil {
-			return UploadResult{Err: fmt.Errorf("get file object id: %w", err)}
-		}
-	} else {
-		fileObjectId, _, err = u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
-			FileId:         fileId,
-			EncryptionKeys: fileKeys.EncryptionKeys,
-			IsImported:     u.origin == model.ObjectOrigin_import,
-		})
-		if err != nil {
-			return UploadResult{Err: fmt.Errorf("create object: %w", err)}
-		}
+	fileObjectId, err := u.getOrCreateFileObject(ctx, addResult)
+	if err != nil {
+		return UploadResult{Err: err}
 	}
 	result.FileObjectId = fileObjectId
 
@@ -493,6 +462,65 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		u.updateBlock()
 	}
 	return
+}
+
+type addToStorageResult struct {
+	fileId     domain.FileId
+	fileKeys   *domain.FileKeys
+	fileExists bool
+	mime       string
+	size       int64
+}
+
+func (u *uploader) addImageToStorage(ctx context.Context, addOptions []files.AddOption) (*addToStorageResult, error) {
+	addResult, err := u.fileService.ImageAdd(ctx, u.spaceId, addOptions...)
+	if err != nil {
+		return nil, err
+	}
+	res := &addToStorageResult{
+		fileId:     addResult.FileId,
+		fileKeys:   addResult.EncryptionKeys,
+		fileExists: addResult.IsExisting,
+	}
+	orig, _ := addResult.Image.GetOriginalFile(ctx)
+	if orig != nil {
+		res.mime = orig.Meta().Media
+		res.size = orig.Meta().Size
+	}
+	return res, nil
+}
+
+func (u *uploader) addFileToStorage(ctx context.Context, addOptions []files.AddOption) (*addToStorageResult, error) {
+	addResult, err := u.fileService.FileAdd(ctx, u.spaceId, addOptions...)
+	if err != nil {
+		return nil, err
+	}
+	res := &addToStorageResult{
+		fileId:     addResult.FileId,
+		fileKeys:   addResult.EncryptionKeys,
+		fileExists: addResult.IsExisting,
+	}
+	if meta := addResult.File.Meta(); meta != nil {
+		res.mime = meta.Media
+		res.size = meta.Size
+	}
+	return res, nil
+}
+
+func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToStorageResult) (string, error) {
+	if addResult.fileExists {
+		return u.fileObjectService.GetObjectIdByFileId(addResult.fileId)
+	} else {
+		fileObjectId, _, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
+			FileId:         addResult.fileId,
+			EncryptionKeys: addResult.fileKeys.EncryptionKeys,
+			IsImported:     u.origin == model.ObjectOrigin_import,
+		})
+		if err != nil {
+			return "", fmt.Errorf("create file object: %w", err)
+		}
+		return fileObjectId, nil
+	}
 }
 
 func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
