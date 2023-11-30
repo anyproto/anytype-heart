@@ -376,8 +376,15 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
 			return err
 		}
-		if !exportFiles {
-			return nil
+		if b.Type() == smartblock.SmartBlockTypeFileObject && exportFiles {
+			fullId := domain.FullFileId{
+				SpaceId: b.Space().Id(),
+				FileId:  domain.FileId(pbtypes.GetString(b.Details(), bundle.RelationKeyFileId.String())),
+			}
+			err = e.saveFile(ctx, wr, fullId)
+			if err != nil {
+				return fmt.Errorf("save file: %w", err)
+			}
 		}
 		return nil
 	})
@@ -524,7 +531,8 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeWidget ||
 		sbType == smartblock.SmartBlockTypeObjectType ||
 		sbType == smartblock.SmartBlockTypeRelation ||
-		sbType == smartblock.SmartBlockTypeRelationOption
+		sbType == smartblock.SmartBlockTypeRelationOption ||
+		sbType == smartblock.SmartBlockTypeFileObject
 }
 
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
