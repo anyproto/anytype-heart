@@ -216,6 +216,9 @@ func (f *File) FillFileHashes(hashes []string) []string {
 }
 
 func (f *File) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	if f.content.TargetObjectId != "" {
+		return
+	}
 	f.content.TargetObjectId = migrateFunc(f.content.Hash)
 }
 

@@ -67,6 +67,8 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+
 	return nil
 }
 
@@ -120,10 +122,6 @@ func (p *Profile) StateMigrations() migration.Migrations {
 		{
 			Version: 3,
 			Proc:    migrationSetHidden,
-		},
-		{
-			Version: 4,
-			Proc:    migrateFilesToObjects(p, p.fileObjectService),
 		},
 	})
 }

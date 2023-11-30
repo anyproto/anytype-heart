@@ -73,6 +73,8 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+
 	return nil
 }
 
@@ -156,10 +158,5 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations([]migration.Migration{
-		{
-			Version: 2,
-			Proc:    migrateFilesToObjects(p, p.fileObjectService),
-		},
-	})
+	return migration.MakeMigrations(nil)
 }

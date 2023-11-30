@@ -27,6 +27,8 @@ func (t *Template) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	migrateFilesToObjects(t, t.fileObjectService)(ctx.State)
+
 	return
 }
 
@@ -55,10 +57,5 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 }
 
 func (t *Template) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations([]migration.Migration{
-		{
-			Version: 2,
-			Proc:    migrateFilesToObjects(t, t.fileObjectService),
-		},
-	})
+	return migration.MakeMigrations(nil)
 }
