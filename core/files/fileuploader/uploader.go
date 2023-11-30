@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -425,8 +426,9 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	var (
-		fileId   domain.FileId
-		fileKeys *domain.FileKeys
+		fileId     domain.FileId
+		fileKeys   *domain.FileKeys
+		fileExists bool
 	)
 	if u.fileType == model.BlockContentFile_Image {
 		im, keys, e := u.fileService.ImageAdd(ctx, u.spaceId, opts...)
@@ -447,6 +449,10 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		}
 	} else {
 		fl, keys, e := u.fileService.FileAdd(ctx, u.spaceId, opts...)
+		if errors.Is(e, files.ErrFileExists) {
+			e = nil
+			fileExists = true
+		}
 		if e != nil {
 			err = e
 			return
@@ -458,16 +464,24 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.Size = meta.Size
 		}
 	}
-	fileObjectId, fileDetails, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
-		FileId:         fileId,
-		EncryptionKeys: fileKeys.EncryptionKeys,
-		IsImported:     u.origin == model.ObjectOrigin_import,
-	})
-	result.FileObjectId = fileObjectId
-	_ = fileDetails
-	if err != nil {
-		return UploadResult{Err: err}
+
+	var fileObjectId string
+	if fileExists {
+		fileObjectId, err = u.fileObjectService.GetObjectIdByFileId(fileId)
+		if err != nil {
+			return UploadResult{Err: fmt.Errorf("get file object id: %w", err)}
+		}
+	} else {
+		fileObjectId, _, err = u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
+			FileId:         fileId,
+			EncryptionKeys: fileKeys.EncryptionKeys,
+			IsImported:     u.origin == model.ObjectOrigin_import,
+		})
+		if err != nil {
+			return UploadResult{Err: fmt.Errorf("create object: %w", err)}
+		}
 	}
+	result.FileObjectId = fileObjectId
 
 	result.Type = u.fileType
 	result.Name = u.name

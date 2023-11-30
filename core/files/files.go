@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -112,6 +113,24 @@ type fileAddResult struct {
 
 func (s *service) fileAdd(ctx context.Context, spaceId string, opts AddOptions) (*fileAddResult, error) {
 	fileInfo, err := s.fileAddWithConfig(ctx, spaceId, &m.Blob{}, opts)
+	if errors.Is(err, ErrFileExists) {
+		if len(fileInfo.Targets) == 0 {
+			return nil, fmt.Errorf("file exists but has no root")
+		}
+		fileId := domain.FileId(fileInfo.Targets[0])
+		keys, err := s.fileStore.GetFileKeys(fileId)
+		if err != nil {
+			return nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
+		}
+		return &fileAddResult{
+			fileId: fileId,
+			info:   fileInfo,
+			keys: &domain.FileKeys{
+				FileId:         fileId,
+				EncryptionKeys: keys,
+			},
+		}, ErrFileExists
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -532,6 +551,8 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 	return dec.DecryptReader(fd)
 }
 
+var ErrFileExists = errors.New("file exists")
+
 func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
@@ -556,8 +577,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 	}
 
 	if efile, _ := s.fileStore.GetChildBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
-		efile.Targets = nil
-		return efile, nil
+		return efile, ErrFileExists
 	}
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
@@ -573,8 +593,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 	}
 
 	if efile, _ := s.fileStore.GetChildByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
-		efile.Targets = nil
-		return efile, nil
+		return efile, ErrFileExists
 	}
 
 	_, err = conf.Reader.Seek(0, io.SeekStart)
@@ -941,10 +960,10 @@ func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOpt
 	}
 
 	res, err := s.fileAdd(ctx, spaceID, opts)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrFileExists) {
 		return nil, nil, err
 	}
-	return s.newFile(spaceID, res.fileId, res.info), res.keys, nil
+	return s.newFile(spaceID, res.fileId, res.info), res.keys, err
 }
 
 func (s *service) getFileOrigin(fileId domain.FileId) model.ObjectOrigin {
