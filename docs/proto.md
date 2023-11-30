@@ -10512,7 +10512,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) | repeated |  |
+| ids | [string](#string) | repeated |  |
 | actionType | [model.Notification.ActionType](#anytype-model-Notification-ActionType) |  |  |
 
 
