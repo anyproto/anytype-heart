@@ -200,7 +200,8 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 	}
 
 	if err = objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys); err != nil {
-		return "", nil, err
+		log.Warnf("failed to update last used date: %v", err)
+		err = nil
 	}
 
 	id = sb.Id()
