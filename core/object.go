@@ -896,7 +896,7 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title); err != nil {
+	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace); err != nil {
 		return response(pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectImportExperienceResponseError_NULL, nil)
