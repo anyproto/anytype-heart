@@ -58,7 +58,7 @@ type Service interface {
 	FileOffload(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
-	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, *domain.FileKeys, error)
+	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*ImageAddResult, error)
 	ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error)
 	StoreFileKeys(fileKeys ...domain.FileKeys) error
 
@@ -168,22 +168,30 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 }
 
 func (s *service) newExistingFileResult(spaceId string, fileInfo *storage.FileInfo) (*FileAddResult, error) {
+	fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(fileInfo)
+	if err != nil {
+		return nil, err
+	}
+	return &FileAddResult{
+		IsExisting:     true,
+		FileId:         fileId,
+		File:           s.newFile(spaceId, fileId, fileInfo),
+		EncryptionKeys: keys,
+	}, nil
+}
+
+func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo) (domain.FileId, *domain.FileKeys, error) {
 	if len(fileInfo.Targets) == 0 {
-		return nil, fmt.Errorf("file exists but has no root")
+		return "", nil, fmt.Errorf("file exists but has no root")
 	}
 	fileId := domain.FileId(fileInfo.Targets[0])
 	keys, err := s.fileStore.GetFileKeys(fileId)
 	if err != nil {
-		return nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
+		return "", nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
 	}
-	return &FileAddResult{
-		IsExisting: true,
-		FileId:     fileId,
-		File:       s.newFile(spaceId, fileId, fileInfo),
-		EncryptionKeys: &domain.FileKeys{
-			FileId:         fileId,
-			EncryptionKeys: keys,
-		},
+	return fileId, &domain.FileKeys{
+		FileId:         fileId,
+		EncryptionKeys: keys,
 	}, nil
 }
 
@@ -741,6 +749,8 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 		Files: make(map[string]*storage.FileInfo),
 	}
 
+	var isExisting bool
+
 	mil, err := schema.GetMill(sch.Mill, sch.Opts)
 	if err != nil {
 		return nil, err
@@ -759,6 +769,10 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 		}
 
 		added, err := s.fileAddWithConfig(ctx, spaceID, mil, opts)
+		if errors.Is(err, errFileExists) {
+			isExisting = true
+			err = nil
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -811,6 +825,10 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 			}
 
 			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts)
+			if errors.Is(err, errFileExists) {
+				isExisting = true
+				err = nil
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -821,6 +839,9 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 		return nil, schema.ErrEmptySchema
 	}
 
+	if isExisting {
+		return dir, errFileExists
+	}
 	return dir, nil
 }
 

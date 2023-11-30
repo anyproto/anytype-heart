@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -430,8 +431,8 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		fileExists bool
 	)
 	if u.fileType == model.BlockContentFile_Image {
-		im, keys, e := u.fileService.ImageAdd(ctx, u.spaceId, opts...)
-		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
+		addResult, e := u.fileService.ImageAdd(ctx, u.spaceId, opts...)
+		if errors.Is(e, image.ErrFormat) || errors.Is(e, mill.ErrFormatSupportNotEnabled) {
 			e = nil
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
 		}
@@ -439,9 +440,10 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			err = e
 			return
 		}
-		fileId = im.FileId()
-		fileKeys = keys
-		orig, _ := im.GetOriginalFile(ctx)
+		fileId = addResult.FileId
+		fileKeys = addResult.EncryptionKeys
+		fileExists = addResult.IsExisting
+		orig, _ := addResult.Image.GetOriginalFile(ctx)
 		if orig != nil {
 			result.MIME = orig.Meta().Media
 			result.Size = orig.Meta().Size

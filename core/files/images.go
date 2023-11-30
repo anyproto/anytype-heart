@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -49,39 +50,28 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 	}, nil
 }
 
-type imageAddResult struct {
-	fileId          domain.FileId
-	variantsByWidth map[int]*storage.FileInfo
-	keys            *domain.FileKeys
+type ImageAddResult struct {
+	FileId         domain.FileId
+	Image          Image
+	EncryptionKeys *domain.FileKeys
+	IsExisting     bool
 }
 
-func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, *domain.FileKeys, error) {
+func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*ImageAddResult, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
 	}
 
-	err := s.normalizeOptions(ctx, spaceID, &opts)
+	err := s.normalizeOptions(ctx, spaceId, &opts)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	res, err := s.imageAdd(ctx, spaceID, opts)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	img := &image{
-		spaceID:         spaceID,
-		fileId:          res.fileId,
-		variantsByWidth: res.variantsByWidth,
-		service:         s,
-	}
-	return img, res.keys, nil
-}
-
-func (s *service) imageAdd(ctx context.Context, spaceId string, opts AddOptions) (*imageAddResult, error) {
 	dir, err := s.fileBuildDirectory(ctx, spaceId, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
+	if errors.Is(err, errFileExists) {
+		return s.newExisingImageResult(spaceId, dir)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -109,16 +99,6 @@ func (s *service) imageAdd(ctx context.Context, spaceId string, opts AddOptions)
 		return nil, err
 	}
 
-	var variantsByWidth = make(map[int]*storage.FileInfo, len(dir.Files))
-	for _, f := range dir.Files {
-		if f.Mill != "/image/resize" {
-			continue
-		}
-		if v, exists := f.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = f
-		}
-	}
-
 	err = s.storeFileSize(spaceId, fileId)
 	if err != nil {
 		return nil, fmt.Errorf("store file size: %w", err)
@@ -129,13 +109,52 @@ func (s *service) imageAdd(ctx context.Context, spaceId string, opts AddOptions)
 		log.Errorf("failed to set file origin %s: %s", fileId.String(), err)
 	}
 
-	return &imageAddResult{
-		fileId:          fileId,
-		variantsByWidth: variantsByWidth,
-		keys:            &fileKeys,
+	return &ImageAddResult{
+		FileId:         fileId,
+		Image:          s.newImage(spaceId, fileId, dir),
+		EncryptionKeys: &fileKeys,
 	}, nil
 }
 
 func (s *service) isImported(origin model.ObjectOrigin) bool {
 	return origin == model.ObjectOrigin_import
+}
+
+func (s *service) newExisingImageResult(spaceId string, dir *storage.Directory) (*ImageAddResult, error) {
+	for _, fileInfo := range dir.Files {
+		fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(fileInfo)
+		if err != nil {
+			return nil, err
+		}
+		return &ImageAddResult{
+			IsExisting:     true,
+			FileId:         fileId,
+			Image:          s.newImage(spaceId, fileId, dir),
+			EncryptionKeys: keys,
+		}, nil
+	}
+	return nil, errors.New("image directory is empty")
+}
+
+func newVariantsByWidth(dir *storage.Directory) map[int]*storage.FileInfo {
+	variantsByWidth := make(map[int]*storage.FileInfo, len(dir.Files))
+	for _, f := range dir.Files {
+		if f.Mill != "/image/resize" {
+			continue
+		}
+		if v, exists := f.Meta.Fields["width"]; exists {
+			variantsByWidth[int(v.GetNumberValue())] = f
+		}
+	}
+	return variantsByWidth
+}
+
+func (s *service) newImage(spaceId string, fileId domain.FileId, dir *storage.Directory) Image {
+	variantsByWidth := newVariantsByWidth(dir)
+	return &image{
+		spaceID:         spaceId,
+		fileId:          fileId,
+		variantsByWidth: variantsByWidth,
+		service:         s,
+	}
 }

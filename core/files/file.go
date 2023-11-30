@@ -35,7 +35,6 @@ type file struct {
 	origin  model.ObjectOrigin
 }
 
-// TODO use this constructor everywhere
 func (s *service) newFile(spaceId string, fileId domain.FileId, info *storage.FileInfo) File {
 	return &file{
 		spaceID: spaceId,
