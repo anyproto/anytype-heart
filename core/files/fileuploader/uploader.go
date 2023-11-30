@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -448,18 +447,14 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.Size = orig.Meta().Size
 		}
 	} else {
-		fl, keys, e := u.fileService.FileAdd(ctx, u.spaceId, opts...)
-		if errors.Is(e, files.ErrFileExists) {
-			e = nil
-			fileExists = true
+		addResult, err := u.fileService.FileAdd(ctx, u.spaceId, opts...)
+		if err != nil {
+			return UploadResult{Err: fmt.Errorf("add file: %w", err)}
 		}
-		if e != nil {
-			err = e
-			return
-		}
-		fileId = fl.FileId()
-		fileKeys = keys
-		if meta := fl.Meta(); meta != nil {
+		fileId = addResult.FileId
+		fileKeys = addResult.EncryptionKeys
+		fileExists = addResult.IsExisting
+		if meta := addResult.File.Meta(); meta != nil {
 			result.MIME = meta.Media
 			result.Size = meta.Size
 		}

@@ -52,7 +52,7 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
-	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (File, *domain.FileKeys, error)
+	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*FileAddResult, error)
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
 	FileGetKeys(id domain.FullFileId) (*domain.FileKeys, error)
 	FileOffload(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
@@ -105,31 +105,27 @@ var ValidContentLinkNames = []string{"content"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
-type fileAddResult struct {
-	fileId domain.FileId
-	info   *storage.FileInfo
-	keys   *domain.FileKeys
+type FileAddResult struct {
+	FileId         domain.FileId
+	File           File
+	EncryptionKeys *domain.FileKeys
+	IsExisting     bool // Is file already added by user?
 }
 
-func (s *service) fileAdd(ctx context.Context, spaceId string, opts AddOptions) (*fileAddResult, error) {
+func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOption) (*FileAddResult, error) {
+	opts := AddOptions{}
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	err := s.normalizeOptions(ctx, spaceId, &opts)
+	if err != nil {
+		return nil, err
+	}
+
 	fileInfo, err := s.fileAddWithConfig(ctx, spaceId, &m.Blob{}, opts)
-	if errors.Is(err, ErrFileExists) {
-		if len(fileInfo.Targets) == 0 {
-			return nil, fmt.Errorf("file exists but has no root")
-		}
-		fileId := domain.FileId(fileInfo.Targets[0])
-		keys, err := s.fileStore.GetFileKeys(fileId)
-		if err != nil {
-			return nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
-		}
-		return &fileAddResult{
-			fileId: fileId,
-			info:   fileInfo,
-			keys: &domain.FileKeys{
-				FileId:         fileId,
-				EncryptionKeys: keys,
-			},
-		}, ErrFileExists
+	if errors.Is(err, errFileExists) {
+		return s.newExistingFileResult(spaceId, fileInfo)
 	}
 	if err != nil {
 		return nil, err
@@ -164,10 +160,30 @@ func (s *service) fileAdd(ctx context.Context, spaceId string, opts AddOptions) 
 	if err != nil {
 		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
 	}
-	return &fileAddResult{
-		fileId: fileId,
-		info:   fileInfo,
-		keys:   &fileKeys,
+	return &FileAddResult{
+		FileId:         fileId,
+		File:           s.newFile(spaceId, fileId, fileInfo),
+		EncryptionKeys: &fileKeys,
+	}, nil
+}
+
+func (s *service) newExistingFileResult(spaceId string, fileInfo *storage.FileInfo) (*FileAddResult, error) {
+	if len(fileInfo.Targets) == 0 {
+		return nil, fmt.Errorf("file exists but has no root")
+	}
+	fileId := domain.FileId(fileInfo.Targets[0])
+	keys, err := s.fileStore.GetFileKeys(fileId)
+	if err != nil {
+		return nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
+	}
+	return &FileAddResult{
+		IsExisting: true,
+		FileId:     fileId,
+		File:       s.newFile(spaceId, fileId, fileInfo),
+		EncryptionKeys: &domain.FileKeys{
+			FileId:         fileId,
+			EncryptionKeys: keys,
+		},
 	}, nil
 }
 
@@ -551,7 +567,7 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 	return dec.DecryptReader(fd)
 }
 
-var ErrFileExists = errors.New("file exists")
+var errFileExists = errors.New("file exists")
 
 func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
@@ -577,7 +593,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 	}
 
 	if efile, _ := s.fileStore.GetChildBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
-		return efile, ErrFileExists
+		return efile, errFileExists
 	}
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
@@ -593,7 +609,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 	}
 
 	if efile, _ := s.fileStore.GetChildByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
-		return efile, ErrFileExists
+		return efile, errFileExists
 	}
 
 	_, err = conf.Reader.Seek(0, io.SeekStart)
@@ -946,24 +962,6 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 		node:    s,
 		origin:  origin,
 	}, nil
-}
-
-func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOption) (File, *domain.FileKeys, error) {
-	opts := AddOptions{}
-	for _, opt := range options {
-		opt(&opts)
-	}
-
-	err := s.normalizeOptions(ctx, spaceID, &opts)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	res, err := s.fileAdd(ctx, spaceID, opts)
-	if err != nil && !errors.Is(err, ErrFileExists) {
-		return nil, nil, err
-	}
-	return s.newFile(spaceID, res.fileId, res.info), res.keys, err
 }
 
 func (s *service) getFileOrigin(fileId domain.FileId) model.ObjectOrigin {
