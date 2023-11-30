@@ -383,6 +383,18 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 		case pb.RpcObjectListExport_JSON:
 			conv = pbjson.NewConverter(b)
 		}
+
+		if exportFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
+			err = e.saveFile(ctx, wr, b)
+			if err != nil {
+				return fmt.Errorf("save file: %w", err)
+			}
+			// Don't save file objects in markdown
+			if format == pb.RpcObjectListExport_Markdown {
+				return nil
+			}
+		}
+
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert(b.Type().ToProto())
 		filename := docID + conv.Ext()
@@ -399,12 +411,6 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
 			return err
-		}
-		if exportFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
-			err = e.saveFile(ctx, wr, b)
-			if err != nil {
-				return fmt.Errorf("save file: %w", err)
-			}
 		}
 		return nil
 	})
