@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -81,10 +82,9 @@ func (s *service) Init(a *app.App) error {
 }
 
 type CreateRequest struct {
-	FileId            domain.FileId
-	EncryptionKeys    map[string]string
-	IsImported        bool
-	AdditionalDetails *types.Struct
+	FileId         domain.FileId
+	EncryptionKeys map[string]string
+	IsImported     bool
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
@@ -118,11 +118,41 @@ func (s *service) createInSpace(ctx context.Context, space space.Space, req Crea
 	}
 	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
 
-	if req.AdditionalDetails != nil {
-		details = pbtypes.StructMerge(details, req.AdditionalDetails, false)
+	createState := state.NewDoc("", nil).(*state.State)
+	createState.SetDetails(details)
+	createState.SetFileInfo(state.FileInfo{
+		FileId:         req.FileId,
+		EncryptionKeys: req.EncryptionKeys,
+	})
+
+	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
+	if err != nil {
+		return "", nil, fmt.Errorf("create object: %w", err)
+	}
+	return id, object, nil
+}
+
+func (s *service) migrateDeriveObject(ctx context.Context, space space.Space, req CreateRequest) (id string, object *types.Struct, err error) {
+	if req.FileId == "" {
+		return "", nil, fmt.Errorf("file hash is empty")
+	}
+	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
+		SpaceId: space.Id(),
+		FileId:  req.FileId,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("get details for file or image: %w", err)
+	}
+	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
+	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
+
+	// Add fileId as uniqueKey to avoid migration of the same file
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeFileObject, req.FileId.String())
+	if err != nil {
+		return "", nil, fmt.Errorf("create unique key: %w", err)
 	}
 
-	createState := state.NewDoc("", nil).(*state.State)
+	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(details)
 	createState.SetFileInfo(state.FileInfo{
 		FileId:         req.FileId,
@@ -230,11 +260,11 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId s
 			fileKeys = k.Keys
 		}
 	}
-	_, err := s.getFileIdFromObjectInSpace(space, fileId)
+	//_, err := s.getFileIdFromObjectInSpace(space, fileId)
 	// Already migrated
-	if err == nil {
-		return fileId
-	}
+	//if err == nil {
+	//	return fileId
+	//}
 
 	if len(fileKeys) == 0 {
 		log.Warnf("no encryption keys for fileId %s", fileId)
@@ -246,12 +276,7 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId s
 		return fileObjectId
 	}
 
-	fileObjectId, _, err = s.createInSpace(context.Background(), space, CreateRequest{
-		AdditionalDetails: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyFileBackupStatus.String(): pbtypes.Int64(int64(syncstatus.StatusSynced)),
-			},
-		},
+	fileObjectId, _, err = s.migrateDeriveObject(context.Background(), space, CreateRequest{
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: fileKeys,
 		IsImported:     false, // TODO what to do? Probably need to copy origin detail
