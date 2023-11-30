@@ -12,6 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -1102,6 +1103,49 @@ func (s *State) FileRelationKeys() []string {
 		}
 	}
 	return keys
+}
+
+func (s *State) IterateLinkedFiles(proc func(id string) bool) {
+	var stop bool
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if fh, ok := b.(file.Block); ok {
+			cont := proc(fh.TargetObjectId())
+			if !cont {
+				stop = true
+				return false
+			}
+		}
+		return true
+	})
+	if stop {
+		return
+	}
+	det := s.Details()
+	if det == nil || det.Fields == nil {
+		return
+	}
+	for _, key := range s.FileRelationKeys() {
+		if key == bundle.RelationKeyCoverId.String() {
+			v := pbtypes.GetString(det, key)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contains not a file hash but color
+				continue
+			}
+		}
+		if fileObjectIds := pbtypes.GetStringList(det, key); fileObjectIds != nil {
+			for _, id := range fileObjectIds {
+				if id == "" {
+					continue
+				}
+				cont := proc(id)
+				if !cont {
+					return
+				}
+			}
+		}
+	}
+	return
 }
 
 // DEPRECATED, use only for backward compatibility and migration purposes

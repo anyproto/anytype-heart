@@ -30,6 +30,7 @@ func NewFile(m *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	simple.FileHashes
+	TargetObjectId() string
 	SetHash(hash string) Block
 	SetName(name string) Block
 	SetState(state model.BlockContentFileState) Block
@@ -50,6 +51,10 @@ type Updater interface {
 type File struct {
 	*base.Base
 	content *model.BlockContentFile
+}
+
+func (f *File) TargetObjectId() string {
+	return f.content.TargetObjectId
 }
 
 func (f *File) SetHash(hash string) Block {
