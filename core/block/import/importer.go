@@ -99,8 +99,7 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(
-	ctx context.Context,
+func (i *Import) Import(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	origin model.ObjectOrigin,
 	progress process.Progress,
@@ -145,8 +144,7 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(
-	ctx context.Context,
+func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c common.Converter,
 	progress process.Progress,
