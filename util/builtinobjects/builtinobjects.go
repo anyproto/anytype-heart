@@ -274,7 +274,7 @@ func (b *builtinObjects) importArchive(ctx context.Context,
 	importType pb.RpcObjectImportRequestPbParamsType,
 	progress process.Progress,
 ) (err error) {
-	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,

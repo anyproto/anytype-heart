@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -34,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -61,7 +59,6 @@ type Import struct {
 	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
 	fileSync        filesync.FileSync
-	notifications   notifications.Notifications
 	sync.Mutex
 }
 
@@ -98,19 +95,13 @@ func (i *Import) Init(a *app.App) (err error) {
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	i.oc = creator.New(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
-	i.notifications = app.MustComponent[notifications.Notifications](a)
 	return nil
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(
-	ctx context.Context,
-	req *pb.RpcObjectImportRequest,
-	origin model.ObjectOrigin,
-	progress process.Progress,
-) (string, error) {
+func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin, progress process.Progress) (string, string, error) {
 	if req.SpaceId == "" {
-		return "", fmt.Errorf("spaceId is empty")
+		return "", "", fmt.Errorf("spaceId is empty")
 	}
 	i.Lock()
 	defer i.Unlock()
@@ -124,7 +115,6 @@ func (i *Import) Import(
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
 		i.recordEvent(&metrics.ImportFinishedEvent{ID: progress.Id(), ImportType: req.Type.String()})
-		i.sendNotification(progress.Id(), req.SpaceId, returnedErr)
 	}()
 	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
@@ -133,14 +123,14 @@ func (i *Import) Import(
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
 		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
-		return rootCollectionID, returnedErr
+		return rootCollectionID, "", returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		returnedErr = i.importFromExternalSource(ctx, req, progress)
-		return rootCollectionID, returnedErr
+		return rootCollectionID, "", returnedErr
 	}
 	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
-	return rootCollectionID, returnedErr
+	return rootCollectionID, progress.Id(), returnedErr
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -423,24 +413,6 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 }
 func (i *Import) recordEvent(event metrics.EventRepresentable) {
 	metrics.SharedClient.RecordEvent(event)
-}
-
-func (i *Import) sendNotification(id string, spaceId string, returnErr error) {
-	err := i.notifications.CreateAndSendLocal(&model.Notification{
-		Id:         uuid.New().String(),
-		CreateTime: time.Now().Unix(),
-		Status:     model.Notification_Created,
-		IsLocal:    true,
-		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
-			ProcessId:  id,
-			ErrorCode:  common.GetNotificationErrorCode(returnErr),
-			ImportType: model.NotificationImport_Notion,
-			SpaceId:    spaceId,
-		}},
-	})
-	if err != nil {
-		log.Errorf("failed to send notification to client: %s", err)
-	}
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {
