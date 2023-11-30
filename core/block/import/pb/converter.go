@@ -66,7 +66,7 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 	}
 	collectionProvider := GetProvider(params.GetImportType(), p.service)
 	var rootCollectionID string
-	rootCollections, rootCollectionID, colErr := collectionProvider.ProvideCollection(allSnapshots, widgetSnapshot, oldToNewID, params, workspaceSnapshot, req.IsNewSpace)
+	rootCollections, colErr := collectionProvider.ProvideCollection(allSnapshots, widgetSnapshot, oldToNewID, params, workspaceSnapshot, req.IsNewSpace)
 	if colErr != nil {
 		allErrors.Add(colErr)
 		if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
@@ -75,6 +75,7 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 	}
 	if len(rootCollections) > 0 {
 		allSnapshots = append(allSnapshots, rootCollections...)
+		rootCollectionID = rootCollections[0].Id
 	}
 	progress.SetTotalPreservingRatio(int64(len(allSnapshots)))
 	if allErrors.IsEmpty() {

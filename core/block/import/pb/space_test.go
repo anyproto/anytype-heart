@@ -24,7 +24,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// when
-		collection, _, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
@@ -39,7 +39,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: true}
 
 		// when
-		collection, _, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
@@ -70,7 +70,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, _, err := p.ProvideCollection(allSnapshot, nil, nil, params, nil, false)
+		collection, err := p.ProvideCollection(allSnapshot, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
@@ -152,7 +152,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, _, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
@@ -234,7 +234,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, _, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
@@ -331,7 +331,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, _, err := p.ProvideCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, nil, false)
+		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, nil, false)
 
 		// then
 		assert.Nil(t, err)

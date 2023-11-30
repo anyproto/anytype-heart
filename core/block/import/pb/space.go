@@ -28,9 +28,9 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 	params *pb.RpcObjectImportRequestPbParams,
 	_ *common.Snapshot,
 	_ bool,
-) ([]*common.Snapshot, string, error) {
+) ([]*common.Snapshot, error) {
 	if params.GetNoCollection() {
-		return nil, "", nil
+		return nil, nil
 	}
 	var (
 		rootObjects        []string
@@ -59,9 +59,9 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 	rootCollection := common.NewRootCollection(s.service)
 	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	return []*common.Snapshot{rootCollectionSnapshot}, rootCollectionSnapshot.Id, nil
+	return []*common.Snapshot{rootCollectionSnapshot}, nil
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {

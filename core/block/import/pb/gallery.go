@@ -32,9 +32,9 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	params *pb.RpcObjectImportRequestPbParams,
 	workspaceSnapshot *common.Snapshot,
 	isNewSpace bool,
-) (collectionsSnapshots []*common.Snapshot, collectionID string, err error) {
+) (collectionsSnapshots []*common.Snapshot, err error) {
 	if isNewSpace {
-		return nil, "", nil
+		return nil, nil
 	}
 	var widgetObjects []string
 	if widget != nil {
@@ -56,16 +56,16 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	if len(widgetObjects) > 0 {
 		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, widget, collectionsSnapshots)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 	}
 	objectsIDs := g.getObjectsIDs(snapshots)
 	objectsCollection, err := rootCollection.MakeRootCollection(collectionName, objectsIDs, icon, fileKeys, false)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	collectionsSnapshots = append(collectionsSnapshots, objectsCollection)
-	return collectionsSnapshots, "", err
+	return collectionsSnapshots, err
 }
 
 func (g *GalleryImport) getWidgetsCollection(collectionName string,
