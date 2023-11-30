@@ -123,6 +123,7 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 			smartblock2.SmartBlockTypeObjectType,
 			smartblock2.SmartBlockTypeRelation,
 			smartblock2.SmartBlockTypeRelationOption,
+			smartblock2.SmartBlockTypeFileObject,
 
 			smartblock2.SmartBlockTypePage,
 			smartblock2.SmartBlockTypeTemplate,
@@ -170,13 +171,6 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
 			}
 		}()
-	}
-
-	if flags.fileObjects {
-		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, smartblock2.SmartBlockTypeFileObject)
-		if err != nil {
-			return err
-		}
 	}
 
 	if flags.fulltext {
@@ -306,13 +300,6 @@ func (i *indexer) removeOldObjects() (err error) {
 func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
-	}
-	if flags.objects && flags.fileObjects {
-		// files will be indexed within object indexing (see indexLinkedFiles)
-		// because we need to do it in the background.
-		// otherwise it will lead to the situation when files loading called from the reindex with DisableRemoteFlag
-		// will be waiting for the linkedFiles background indexing without this flag
-		flags.fileObjects = false
 	}
 
 	if flags.fileKeys {

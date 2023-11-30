@@ -276,14 +276,14 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId s
 		return fileId
 	}
 
-	if len(fileKeys) == 0 {
-		log.Warnf("no encryption keys for fileId %s", fileId)
-	}
-
 	fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(fileId))
 	if err == nil {
 		fmt.Println("FILE OBJECT ID", fileId, "->", fileObjectId)
 		return fileObjectId
+	}
+
+	if len(fileKeys) == 0 {
+		log.Warnf("no encryption keys for fileId %s", fileId)
 	}
 
 	fileObjectId, err = s.migrateDeriveObject(context.Background(), space, CreateRequest{
