@@ -437,7 +437,7 @@ func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlo
 		}
 	}
 	origName := file.Meta().Name
-	filename := wr.Namer().Get("files", fullId.FileId.String(), filepath.Base(origName), filepath.Ext(origName))
+	filename := wr.Namer().Get("files", fileObject.Id(), filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.Background())
 	if err != nil {
 		return
