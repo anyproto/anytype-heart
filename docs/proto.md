@@ -22570,6 +22570,7 @@ Used to decode block meta only, without the content itself
 | status | [Notification.Status](#anytype-model-Notification-Status) |  |  |
 | isLocal | [bool](#bool) |  |  |
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
+| space | [string](#string) |  |  |
 
 
 

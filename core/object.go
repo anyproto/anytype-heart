@@ -799,6 +799,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		CreateTime: time.Now().Unix(),
 		Status:     model.Notification_Created,
 		IsLocal:    true,
+		Space:      req.SpaceId,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
 			ProcessId:  processID,
 			ErrorCode:  common.GetNotificationErrorCode(err),

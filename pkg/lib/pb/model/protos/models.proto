@@ -897,6 +897,7 @@ message Notification {
   oneof payload {
     Import import = 6;
   }
+  string space = 7;
   message Import {
     string processId = 1;
     Code errorCode = 2;
