@@ -161,6 +161,19 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 		text.WriteString(rt.PlainText)
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+	} else if rt.Href != "" {
+		text.WriteString(rt.Href)
+		to := textUtil.UTF16RuneCountString(text.String())
+		marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: int32(from),
+				To:   int32(to),
+			},
+			Type:  model.BlockContentTextMark_Link,
+			Param: rt.Href,
+		})
+		return marks
 	} else {
 		text.WriteString(notExistingObjectMessage)
 		to := textUtil.UTF16RuneCountString(text.String())
@@ -192,6 +205,19 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 		text.WriteString(rt.PlainText)
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+	} else if rt.Href != "" {
+		text.WriteString(rt.Href)
+		to := textUtil.UTF16RuneCountString(text.String())
+		marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: int32(from),
+				To:   int32(to),
+			},
+			Type:  model.BlockContentTextMark_Link,
+			Param: rt.Href,
+		})
+		return marks
 	} else {
 		text.WriteString(notExistingObjectMessage)
 		to := textUtil.UTF16RuneCountString(text.String())
