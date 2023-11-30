@@ -518,13 +518,17 @@ func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*types.Struct, str
 	err := block.DoState(oc.service, st.RootId(), func(oldState *state.State, sb smartblock.SmartBlock) error {
 		blocks := st.Blocks()
 		blocksMap := make(map[string]*model.Block, len(blocks))
+		existingWidgetsTargetIDs, err := oc.getExistingWidgetsTargetIDs(oldState)
+		if err != nil {
+			return err
+		}
 		for _, block := range blocks {
 			blocksMap[block.Id] = block
 		}
 		for _, block := range blocks {
 			if widget := block.GetWidget(); widget != nil {
 				if len(block.ChildrenIds) > 0 {
-					err := oc.addWidgetBlock(oldState, block, blocksMap)
+					err := oc.addWidgetBlock(oldState, block, blocksMap, existingWidgetsTargetIDs)
 					if err != nil {
 						return err
 					}
@@ -536,10 +540,14 @@ func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*types.Struct, str
 	return nil, "", err
 }
 
-func (oc *ObjectCreator) addWidgetBlock(oldState *state.State, block *model.Block, blocksMap map[string]*model.Block) error {
+func (oc *ObjectCreator) addWidgetBlock(oldState *state.State,
+	block *model.Block,
+	blocksMap map[string]*model.Block,
+	existingWidgetsTargetIDs map[string]struct{},
+) error {
 	linkBlockID := block.ChildrenIds[0]
 	if linkBlock, ok := blocksMap[linkBlockID]; ok {
-		if widgetObject.IsPredefinedWidgetTargetId(linkBlock.GetLink().GetTargetBlockId()) {
+		if oc.skipObject(linkBlock.GetLink().GetTargetBlockId(), existingWidgetsTargetIDs) {
 			return nil
 		}
 		oldState.Add(simple.New(block))
@@ -550,4 +558,27 @@ func (oc *ObjectCreator) addWidgetBlock(oldState *state.State, block *model.Bloc
 		}
 	}
 	return nil
+}
+
+func (oc *ObjectCreator) skipObject(targetID string, existingWidgetsTargetIDs map[string]struct{}) bool {
+	if widgetObject.IsPredefinedWidgetTargetId(targetID) {
+		if _, ok := existingWidgetsTargetIDs[targetID]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map[string]struct{}, error) {
+	existingWidgetsTargetIDs := make(map[string]struct{}, 0)
+	err := oldState.Iterate(func(b simple.Block) (isContinue bool) {
+		if b.Model().GetLink() != nil {
+			existingWidgetsTargetIDs[b.Model().GetLink().GetTargetBlockId()] = struct{}{}
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	return existingWidgetsTargetIDs, nil
 }
