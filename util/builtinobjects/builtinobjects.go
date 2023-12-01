@@ -272,7 +272,7 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID, path, title
 	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
-		Type:                  model.ImportType_Pb,
+		Type:                  model.Import_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		NoProgress:            progress == nil,
 		IsMigration:           false,

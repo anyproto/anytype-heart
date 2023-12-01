@@ -45,7 +45,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(0, model.ImportType_Markdown) {
+		if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
 			return nil
 		}
 	}
@@ -68,7 +68,7 @@ func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := m.fillFilesInfo(fileInfo, fileName, fileReader); err != nil {
 			allErrors.Add(err)
-			if allErrors.ShouldAbortImport(0, model.ImportType_Markdown) {
+			if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
 				return false
 			}
 		}

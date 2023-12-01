@@ -1425,6 +1425,7 @@
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [Export](#anytype-model-Export)
+    - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
@@ -1480,6 +1481,7 @@
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [Export.Format](#anytype-model-Export-Format)
     - [ImportType](#anytype-model-ImportType)
+    - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
@@ -11399,7 +11401,7 @@ DEPRECATED, GO-1926 |
 | csvParams | [Rpc.Object.Import.Request.CsvParams](#anytype-Rpc-Object-Import-Request-CsvParams) |  |  |
 | snapshots | [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot) | repeated | optional, for external developers usage |
 | updateExistingObjects | [bool](#bool) |  |  |
-| type | [model.ImportType](#anytype-model-ImportType) |  |  |
+| type | [model.Import.Type](#anytype-model-Import-Type) |  |  |
 | mode | [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode) |  |  |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
@@ -22446,6 +22448,16 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Import"></a>
+
+### Import
+
+
+
+
+
+
+
 <a name="anytype-model-InternalFlag"></a>
 
 ### InternalFlag
@@ -22585,7 +22597,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | processId | [string](#string) |  |  |
 | errorCode | [Notification.Import.Code](#anytype-model-Notification-Import-Code) |  |  |
-| importType | [ImportType](#anytype-model-ImportType) |  |  |
+| importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 
@@ -23325,9 +23337,9 @@ stored |
 
 
 
-<a name="anytype-model-ImportType"></a>
+<a name="anytype-model-Import-Type"></a>
 
-### ImportType
+### Import.Type
 
 
 | Name | Number | Description |

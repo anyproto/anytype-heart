@@ -902,7 +902,7 @@ message Notification {
   message Import {
     string processId = 1;
     Code errorCode = 2;
-    ImportType importType = 3;
+    model.Import.Type importType = 3;
     string spaceId = 4;
     string name = 5;
     enum Code {
@@ -940,16 +940,6 @@ message Notification {
   }
 }
 
-enum ImportType {
-  Notion = 0;
-  Markdown = 1;
-  External = 2; // external developers use it
-  Pb = 3;
-  Html = 4;
-  Txt = 5;
-  Csv = 6;
-}
-
 message Export {
   enum Format {
     Markdown = 0;
@@ -958,5 +948,16 @@ message Export {
     DOT = 3;
     SVG = 4;
     GRAPH_JSON = 5;
+  }
+}
+message Import{
+  enum Type {
+    Notion = 0;
+    Markdown = 1;
+    External = 2; // external developers use it
+    Pb = 3;
+    Html = 4;
+    Txt = 5;
+    Csv = 6;
   }
 }

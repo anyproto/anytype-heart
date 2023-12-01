@@ -112,7 +112,7 @@ func (h *HTML) handleImportPath(path string, allErrors *common.ConvertError) ([]
 	err := importSource.Initialize(path)
 	if err != nil {
 		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(len(path), model.ImportType_Html) {
+		if allErrors.ShouldAbortImport(len(path), model.Import_Html) {
 			return nil, nil
 		}
 	}
@@ -138,7 +138,7 @@ func (h *HTML) getSnapshotsAndRootObjects(path string,
 		blocks, err := h.getBlocksForSnapshot(fileReader, importSource, path)
 		if err != nil {
 			allErrors.Add(err)
-			if allErrors.ShouldAbortImport(len(path), model.ImportType_Html) {
+			if allErrors.ShouldAbortImport(len(path), model.Import_Html) {
 				return false
 			}
 		}
