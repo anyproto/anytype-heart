@@ -207,48 +207,46 @@ func (s *service) storeFileSize(spaceId string, fileId domain.FileId) error {
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
 func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (map[string]string, error) {
 	dagService := s.dagServiceForSpace(id.SpaceId)
-	links, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
+	outerDirLinks, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get links of outer dir: %w", err)
+	}
+	dirNode, dirLink, err := s.getInnerDirNode(ctx, dagService, outerDirLinks)
+	if err != nil {
+		return nil, fmt.Errorf("get inner dir node: %w", err)
 	}
 
 	fileKeys := domain.FileKeys{
 		FileId:         id.FileId,
 		EncryptionKeys: make(map[string]string),
 	}
-	for _, index := range links {
-		node, err := helpers.NodeAtLink(ctx, dagService, index)
-		if err != nil {
-			return nil, err
-		}
 
-		if looksLikeFileNode(node) {
-			l := schema.LinkByName(node.Links(), ValidContentLinkNames)
-			info, err := s.fileStore.GetChild(domain.ChildFileId(l.Cid.String()))
-			if err == nil {
-				fileKeys.EncryptionKeys[encryptionKeyPath(index.Name)] = info.Key
-			} else {
-				log.Warnf("fileRestoreKeys not found in db %s(%s)", node.Cid().String(), id.FileId.String()+"/"+index.Name)
-			}
+	if looksLikeFileNode(dirNode) {
+		l := schema.LinkByName(dirNode.Links(), ValidContentLinkNames)
+		info, err := s.fileStore.GetChild(domain.ChildFileId(l.Cid.String()))
+		if err == nil {
+			fileKeys.EncryptionKeys[encryptionKeyPath(fileLinkName)] = info.Key
 		} else {
-			for _, link := range node.Links() {
-				innerLinks, err := helpers.LinksAtCid(ctx, dagService, link.Cid.String())
-				if err != nil {
-					return nil, err
-				}
+			log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), id.FileId.String()+"/"+dirLink.Name)
+		}
+	} else {
+		for _, link := range dirNode.Links() {
+			innerLinks, err := helpers.LinksAtCid(ctx, dagService, link.Cid.String())
+			if err != nil {
+				return nil, err
+			}
 
-				l := schema.LinkByName(innerLinks, ValidContentLinkNames)
-				if l == nil {
-					continue
-				}
+			l := schema.LinkByName(innerLinks, ValidContentLinkNames)
+			if l == nil {
+				continue
+			}
 
-				info, err := s.fileStore.GetChild(domain.ChildFileId(l.Cid.String()))
+			info, err := s.fileStore.GetChild(domain.ChildFileId(l.Cid.String()))
 
-				if err == nil {
-					fileKeys.EncryptionKeys[encryptionKeyPath(link.Name)] = info.Key
-				} else {
-					log.Warnf("fileRestoreKeys not found in db %s(%s)", node.Cid().String(), "/"+index.Name+"/"+link.Name+"/")
-				}
+			if err == nil {
+				fileKeys.EncryptionKeys[encryptionKeyPath(link.Name)] = info.Key
+			} else {
+				log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), "/"+dirLink.Name+"/"+link.Name+"/")
 			}
 		}
 	}
@@ -408,19 +406,16 @@ func (s *service) FileGetKeys(id domain.FullFileId) (*domain.FileKeys, error) {
 }
 
 // fileIndexData walks a file data node, indexing file links
-func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, id domain.FullFileId, imported bool) error {
+func (s *service) fileIndexData(ctx context.Context, outerDirNode ipld.Node, id domain.FullFileId, imported bool) error {
 	dagService := s.dagServiceForSpace(id.SpaceId)
-	for _, link := range inode.Links() {
-		nd, err := helpers.NodeAtLink(ctx, dagService, link)
-		if err != nil {
-			return err
-		}
-		err = s.fileIndexNode(ctx, nd, id)
-		if err != nil {
-			return err
-		}
+	dirNode, _, err := s.getInnerDirNode(ctx, dagService, outerDirNode.Links())
+	if err != nil {
+		return fmt.Errorf("get inner dir node: %w", err)
 	}
-
+	err = s.fileIndexNode(ctx, dirNode, id)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -785,9 +780,13 @@ func (s *service) buildImageVariants(ctx context.Context, spaceID string, reader
 
 func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updateIfExists bool) ([]*storage.FileInfo, error) {
 	dagService := s.dagServiceForSpace(id.SpaceId)
-	links, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
+	dirLinks, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
 	if err != nil {
 		return nil, err
+	}
+	dirNode, dirLink, err := s.getInnerDirNode(ctx, dagService, dirLinks)
+	if err != nil {
+		return nil, fmt.Errorf("get inner dir node: %w", err)
 	}
 
 	keys, err := s.fileStore.GetFileKeys(id.FileId)
@@ -797,36 +796,29 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updat
 	}
 
 	var files []*storage.FileInfo
-	for _, index := range links {
-		node, err := helpers.NodeAtLink(ctx, dagService, index)
-		if err != nil {
-			return nil, err
+	if looksLikeFileNode(dirNode) {
+		var key string
+		if keys != nil {
+			key = keys[encryptionKeyPath(fileLinkName)]
 		}
 
-		if looksLikeFileNode(node) {
+		fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+dirLink.Name, key)
+		if err != nil {
+			return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
+		}
+		files = append(files, fileIndex)
+	} else {
+		for _, link := range dirNode.Links() {
 			var key string
 			if keys != nil {
-				key = keys[encryptionKeyPath(fileLinkName)]
+				key = keys[encryptionKeyPath(link.Name)]
 			}
 
-			fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+index.Name, key)
+			fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+dirLink.Name+"/"+link.Name, key)
 			if err != nil {
 				return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 			}
 			files = append(files, fileIndex)
-		} else {
-			for _, link := range node.Links() {
-				var key string
-				if keys != nil {
-					key = keys[encryptionKeyPath(link.Name)]
-				}
-
-				fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+index.Name+"/"+link.Name, key)
-				if err != nil {
-					return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
-				}
-				files = append(files, fileIndex)
-			}
 		}
 	}
 
@@ -936,4 +928,13 @@ func encryptionKeyPath(linkName string) string {
 		return "/0/"
 	}
 	return "/0/" + linkName + "/"
+}
+
+func (s *service) getInnerDirNode(ctx context.Context, dagService ipld.DAGService, outerDirLinks []*ipld.Link) (ipld.Node, *ipld.Link, error) {
+	if len(outerDirLinks) == 0 {
+		return nil, nil, errors.New("no files in directory node")
+	}
+	dirLink := outerDirLinks[0]
+	node, err := helpers.NodeAtLink(ctx, dagService, dirLink)
+	return node, dirLink, err
 }
