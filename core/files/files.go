@@ -744,99 +744,44 @@ func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.Fi
 	return helpers.AddLinkToDirectory(ctx, dagService, outerDir, link, node.Cid().String())
 }
 
-func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *service) buildImageVariants(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool) (*storage.Directory, error) {
+	sch := schema.ImageResizeSchema
+	if len(sch.Links) == 0 {
+		return nil, schema.ErrEmptySchema
+	}
+
+	var isExisting bool
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
 
-	var isExisting bool
-
-	mil, err := schema.GetMill(sch.Mill, sch.Opts)
-	if err != nil {
-		return nil, err
-	}
-	if mil != nil {
-		opts := AddOptions{
+	for _, link := range sch.Links {
+		stepMill, err := schema.GetMill(link.Mill, link.Opts)
+		if err != nil {
+			return nil, err
+		}
+		opts := &AddOptions{
 			Reader:    reader,
 			Use:       "",
 			Media:     "",
 			Name:      filename,
-			Plaintext: sch.Plaintext || plaintext,
+			Plaintext: link.Plaintext || plaintext,
 		}
-		err := s.normalizeOptions(ctx, spaceID, &opts)
+		err = s.normalizeOptions(ctx, spaceID, opts)
 		if err != nil {
 			return nil, err
 		}
-
-		added, err := s.fileAddWithConfig(ctx, spaceID, mil, opts)
+		added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts)
 		if errors.Is(err, errFileExists) {
-			isExisting = true
-			err = nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		dir.Files[schema.SingleFileTag] = added
-
-	} else if len(sch.Links) > 0 {
-		// determine order
-		steps, err := schema.Steps(sch.Links)
-		if err != nil {
-			return nil, err
-		}
-
-		// send each link
-		for _, step := range steps {
-			stepMill, err := schema.GetMill(step.Link.Mill, step.Link.Opts)
-			if err != nil {
-				return nil, err
-			}
-			var opts *AddOptions
-			if step.Link.Use == schema.FileTag {
-				opts = &AddOptions{
-					Reader:    reader,
-					Use:       "",
-					Media:     "",
-					Name:      filename,
-					Plaintext: step.Link.Plaintext || plaintext,
-				}
-				err = s.normalizeOptions(ctx, spaceID, opts)
-				if err != nil {
-					return nil, err
-				}
-
-			} else {
-				if dir.Files[step.Link.Use] == nil {
-					return nil, fmt.Errorf(step.Link.Use + " not found")
-				}
-
-				opts = &AddOptions{
-					Reader:    nil,
-					Use:       dir.Files[step.Link.Use].Hash,
-					Media:     "",
-					Name:      filename,
-					Plaintext: step.Link.Plaintext || plaintext,
-				}
-
-				err = s.normalizeOptions(ctx, spaceID, opts)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts)
-			if errors.Is(err, errFileExists) {
+			// Check only original file
+			if link.Name == "original" {
 				isExisting = true
-				err = nil
 			}
-			if err != nil {
-				return nil, err
-			}
-			dir.Files[step.Name] = added
-			reader.Seek(0, 0)
+		} else if err != nil {
+			return nil, err
 		}
-	} else {
-		return nil, schema.ErrEmptySchema
+		dir.Files[link.Name] = added
+		reader.Seek(0, 0)
 	}
 
 	if isExisting {

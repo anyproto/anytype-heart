@@ -44,19 +44,17 @@ message DirectoryList {
     repeated Directory items = 1;
 }
 
-message Node {
+message ImageResizeSchema {
     string name                        = 1;
-    bool pin                           = 2;
     bool plaintext                     = 3;
     string mill                        = 4;
     map<string, string> opts           = 5;
     google.protobuf.Struct json_schema = 6;
-    map<string, Link> links            = 8;
+    repeated Link links            = 8;
 }
 
 message Link {
-    string use                         = 1;
-    bool pin                           = 2;
+    string name = 1;
     bool plaintext                     = 3;
     string mill                        = 4;
     map<string, string> opts           = 5;

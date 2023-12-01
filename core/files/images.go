@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
@@ -68,7 +67,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, err
 	}
 
-	dir, err := s.fileBuildDirectory(ctx, spaceId, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
+	dir, err := s.buildImageVariants(ctx, spaceId, opts.Reader, opts.Name, opts.Plaintext)
 	if errors.Is(err, errFileExists) {
 		return s.newExisingImageResult(spaceId, dir)
 	}
