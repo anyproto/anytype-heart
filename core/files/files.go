@@ -127,7 +127,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 
-	fileInfo, err := s.fileAddWithConfig(ctx, spaceId, &m.Blob{}, opts)
+	fileInfo, err := s.addFileContentAndMetaNodes(ctx, spaceId, &m.Blob{}, opts)
 	if errors.Is(err, errFileExists) {
 		return s.newExistingFileResult(spaceId, fileInfo)
 	}
@@ -135,19 +135,17 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 
-	node, keys, err := s.fileAddNodeFromFiles(ctx, spaceId, fileInfo)
+	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, fileInfo)
 	if err != nil {
 		return nil, err
 	}
-
-	nodeHash := node.Cid().String()
-	fileId := domain.FileId(nodeHash)
-	if err = s.fileIndexData(ctx, node, domain.FullFileId{SpaceId: spaceId, FileId: fileId}, s.isImported(opts.Origin)); err != nil {
+	fileId := domain.FileId(rootNode.Cid().String())
+	if err = s.fileIndexData(ctx, rootNode, domain.FullFileId{SpaceId: spaceId, FileId: fileId}, s.isImported(opts.Origin)); err != nil {
 		return nil, err
 	}
 
 	fileKeys := domain.FileKeys{
-		FileId:         domain.FileId(nodeHash),
+		FileId:         fileId,
 		EncryptionKeys: keys.KeysByPath,
 	}
 	err = s.fileStore.AddFileKeys(fileKeys)
@@ -162,7 +160,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 
 	err = s.fileStore.SetFileOrigin(fileId, opts.Origin)
 	if err != nil {
-		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
+		log.Errorf("failed to set file origin %s: %s", fileId, err)
 	}
 	return &FileAddResult{
 		FileId:         fileId,
@@ -259,65 +257,7 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 	return fileKeys.EncryptionKeys, nil
 }
 
-// fileAddNodeFromDirs has structure:
-/*
-- dir (outer)
-	- dir (0)
-		- dir (file1)
-			- meta
-			- content
-		- dir (file2)
-			- meta
-			- content
-	...
-*/
-func (s *service) fileAddNodeFromDir(ctx context.Context, spaceID string, dir *storage.Directory) (ipld.Node, *storage.FileKeys, error) {
-	dagService := s.dagServiceForSpace(spaceID)
-	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
-
-	outer := uio.NewDirectory(dagService)
-	outer.SetCidBuilder(cidBuilder)
-
-	inner := uio.NewDirectory(dagService)
-	inner.SetCidBuilder(cidBuilder)
-
-	dirLink := fileLinkName
-
-	for link, file := range dir.Files {
-		err := s.fileNode(ctx, spaceID, file, inner, link)
-		if err != nil {
-			return nil, nil, err
-		}
-		keys.KeysByPath[encryptionKeyPath(link)] = file.Key
-	}
-
-	node, err := inner.GetNode()
-	if err != nil {
-		return nil, nil, err
-	}
-	err = dagService.Add(ctx, node)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	id := node.Cid().String()
-	err = helpers.AddLinkToDirectory(ctx, dagService, outer, dirLink, id)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	outerNode, err := outer.GetNode()
-	if err != nil {
-		return nil, nil, err
-	}
-	err = dagService.Add(ctx, outerNode)
-	if err != nil {
-		return nil, nil, err
-	}
-	return outerNode, keys, nil
-}
-
-// fileAddNodeFromFiles has structure:
+// addFileRootNode has structure:
 /*
 - dir (outer)
 	- dir (file)
@@ -325,13 +265,13 @@ func (s *service) fileAddNodeFromDir(ctx context.Context, spaceID string, dir *s
 		- content
 	...
 */
-func (s *service) fileAddNodeFromFiles(ctx context.Context, spaceID string, fileInfo *storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
+func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo *storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
 	dagService := s.dagServiceForSpace(spaceID)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(dagService)
 	outer.SetCidBuilder(cidBuilder)
 
-	err := s.fileNode(ctx, spaceID, fileInfo, outer, fileLinkName)
+	err := s.addFilePairNode(ctx, spaceID, fileInfo, outer, fileLinkName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -565,7 +505,7 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 
 var errFileExists = errors.New("file exists")
 
-func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+func (s *service) addFileContentAndMetaNodes(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -690,14 +630,14 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 	return fileInfo, nil
 }
 
-// fileNode has structure:
+// addFilePairNode has structure:
 /*
 - dir (outer)
   	- dir
   		- meta
   		- content
 */
-func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.FileInfo, outerDir uio.Directory, link string) error {
+func (s *service) addFilePairNode(ctx context.Context, spaceID string, file *storage.FileInfo, outerDir uio.Directory, link string) error {
 	file, err := s.fileStore.GetChild(domain.ChildFileId(file.Hash))
 	if err != nil {
 		return err
@@ -732,50 +672,9 @@ func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.Fi
 	return helpers.AddLinkToDirectory(ctx, dagService, outerDir, link, node.Cid().String())
 }
 
-func (s *service) buildImageVariants(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool) (*storage.Directory, error) {
-	sch := schema.ImageResizeSchema
-	if len(sch.Links) == 0 {
-		return nil, schema.ErrEmptySchema
-	}
-
-	var isExisting bool
-	dir := &storage.Directory{
-		Files: make(map[string]*storage.FileInfo),
-	}
-
-	for _, link := range sch.Links {
-		stepMill, err := schema.GetMill(link.Mill, link.Opts)
-		if err != nil {
-			return nil, err
-		}
-		opts := &AddOptions{
-			Reader:    reader,
-			Use:       "",
-			Media:     "",
-			Name:      filename,
-			Plaintext: link.Plaintext || plaintext,
-		}
-		err = s.normalizeOptions(ctx, spaceID, opts)
-		if err != nil {
-			return nil, err
-		}
-		added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts)
-		if errors.Is(err, errFileExists) {
-			// Check only original file
-			if link.Name == "original" {
-				isExisting = true
-			}
-		} else if err != nil {
-			return nil, err
-		}
-		dir.Files[link.Name] = added
-		reader.Seek(0, 0)
-	}
-
-	if isExisting {
-		return dir, errFileExists
-	}
-	return dir, nil
+type dirEntry struct {
+	name     string
+	fileInfo *storage.FileInfo
 }
 
 func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updateIfExists bool) ([]*storage.FileInfo, error) {

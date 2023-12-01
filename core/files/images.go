@@ -4,8 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+
+	uio "github.com/ipfs/boxo/ipld/unixfs/io"
+	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
@@ -67,22 +73,19 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, err
 	}
 
-	dir, err := s.buildImageVariants(ctx, spaceId, opts.Reader, opts.Name, opts.Plaintext)
+	dirEntries, err := s.addImageNodes(ctx, spaceId, opts.Reader, opts.Name, opts.Plaintext)
 	if errors.Is(err, errFileExists) {
-		return s.newExisingImageResult(spaceId, dir)
+		return s.newExisingImageResult(spaceId, dirEntries)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	node, keys, err := s.fileAddNodeFromDir(ctx, spaceId, dir)
+	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, dirEntries)
 	if err != nil {
 		return nil, err
 	}
-
-	nodeHash := node.Cid().String()
-
-	fileId := domain.FileId(nodeHash)
+	fileId := domain.FileId(rootNode.Cid().String())
 	fileKeys := domain.FileKeys{
 		FileId:         fileId,
 		EncryptionKeys: keys.KeysByPath,
@@ -93,7 +96,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 
 	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
-	err = s.fileIndexData(ctx, node, id, s.isImported(opts.Origin))
+	err = s.fileIndexData(ctx, rootNode, id, s.isImported(opts.Origin))
 	if err != nil {
 		return nil, err
 	}
@@ -110,46 +113,148 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 
 	return &ImageAddResult{
 		FileId:         fileId,
-		Image:          s.newImage(spaceId, fileId, dir),
+		Image:          s.newImage(spaceId, fileId, dirEntries),
 		EncryptionKeys: &fileKeys,
 	}, nil
+}
+
+func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool) ([]dirEntry, error) {
+	sch := schema.ImageResizeSchema
+	if len(sch.Links) == 0 {
+		return nil, schema.ErrEmptySchema
+	}
+
+	var isExisting bool
+	dirEntries := make([]dirEntry, 0, len(sch.Links))
+	for _, link := range sch.Links {
+		stepMill, err := schema.GetMill(link.Mill, link.Opts)
+		if err != nil {
+			return nil, err
+		}
+		opts := &AddOptions{
+			Reader:    reader,
+			Use:       "",
+			Media:     "",
+			Name:      filename,
+			Plaintext: link.Plaintext || plaintext,
+		}
+		err = s.normalizeOptions(ctx, spaceID, opts)
+		if err != nil {
+			return nil, err
+		}
+		added, err := s.addFileContentAndMetaNodes(ctx, spaceID, stepMill, *opts)
+		if errors.Is(err, errFileExists) {
+			// Check only original file
+			if link.Name == "original" {
+				isExisting = true
+			}
+		} else if err != nil {
+			return nil, err
+		}
+		dirEntries = append(dirEntries, dirEntry{
+			name:     link.Name,
+			fileInfo: added,
+		})
+		reader.Seek(0, 0)
+	}
+
+	if isExisting {
+		return dirEntries, errFileExists
+	}
+	return dirEntries, nil
+}
+
+// addImageRootNode has structure:
+/*
+- dir (outer)
+	- dir (0)
+		- dir (file1)
+			- meta
+			- content
+		- dir (file2)
+			- meta
+			- content
+	...
+*/
+func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntries []dirEntry) (ipld.Node, *storage.FileKeys, error) {
+	dagService := s.dagServiceForSpace(spaceID)
+	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
+
+	outer := uio.NewDirectory(dagService)
+	outer.SetCidBuilder(cidBuilder)
+
+	inner := uio.NewDirectory(dagService)
+	inner.SetCidBuilder(cidBuilder)
+
+	for _, entry := range dirEntries {
+		err := s.addFilePairNode(ctx, spaceID, entry.fileInfo, inner, entry.name)
+		if err != nil {
+			return nil, nil, err
+		}
+		keys.KeysByPath[encryptionKeyPath(entry.name)] = entry.fileInfo.Key
+	}
+
+	node, err := inner.GetNode()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = dagService.Add(ctx, node)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	id := node.Cid().String()
+	err = helpers.AddLinkToDirectory(ctx, dagService, outer, fileLinkName, id)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outerNode, err := outer.GetNode()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = dagService.Add(ctx, outerNode)
+	if err != nil {
+		return nil, nil, err
+	}
+	return outerNode, keys, nil
 }
 
 func (s *service) isImported(origin model.ObjectOrigin) bool {
 	return origin == model.ObjectOrigin_import
 }
 
-func (s *service) newExisingImageResult(spaceId string, dir *storage.Directory) (*ImageAddResult, error) {
-	for _, fileInfo := range dir.Files {
-		fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(fileInfo)
+func (s *service) newExisingImageResult(spaceId string, dirEntries []dirEntry) (*ImageAddResult, error) {
+	for _, entry := range dirEntries {
+		fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(entry.fileInfo)
 		if err != nil {
 			return nil, err
 		}
 		return &ImageAddResult{
 			IsExisting:     true,
 			FileId:         fileId,
-			Image:          s.newImage(spaceId, fileId, dir),
+			Image:          s.newImage(spaceId, fileId, dirEntries),
 			EncryptionKeys: keys,
 		}, nil
 	}
 	return nil, errors.New("image directory is empty")
 }
 
-func newVariantsByWidth(dir *storage.Directory) map[int]*storage.FileInfo {
-	variantsByWidth := make(map[int]*storage.FileInfo, len(dir.Files))
-	for _, f := range dir.Files {
-		if f.Mill != "/image/resize" {
+func newVariantsByWidth(dirEntries []dirEntry) map[int]*storage.FileInfo {
+	variantsByWidth := make(map[int]*storage.FileInfo, len(dirEntries))
+	for _, entry := range dirEntries {
+		if entry.fileInfo.Mill != "/image/resize" {
 			continue
 		}
-		if v, exists := f.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = f
+		if v, exists := entry.fileInfo.Meta.Fields["width"]; exists {
+			variantsByWidth[int(v.GetNumberValue())] = entry.fileInfo
 		}
 	}
 	return variantsByWidth
 }
 
-func (s *service) newImage(spaceId string, fileId domain.FileId, dir *storage.Directory) Image {
-	variantsByWidth := newVariantsByWidth(dir)
+func (s *service) newImage(spaceId string, fileId domain.FileId, dirEntries []dirEntry) Image {
+	variantsByWidth := newVariantsByWidth(dirEntries)
 	return &image{
 		spaceID:         spaceId,
 		fileId:          fileId,
