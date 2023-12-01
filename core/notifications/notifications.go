@@ -1,7 +1,6 @@
 package notifications
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -28,7 +27,6 @@ const CName = "notificationService"
 type Notifications interface {
 	app.ComponentRunnable
 	CreateAndSendLocal(notification *model.Notification) error
-	CreateAndSendCrossDevice(notification *model.Notification) error
 	UpdateAndSend(notification *model.Notification) error
 	Reply(notificationID []string, notificationAction model.NotificationActionType) error
 	List(limit int64, includeRead bool) ([]*model.Notification, error)
@@ -127,30 +125,6 @@ func (n *notificationService) CreateAndSendLocal(notification *model.Notificatio
 	err := n.notificationStore.SaveNotification(notification)
 	if err != nil {
 		return fmt.Errorf("failed to add notification %s to cache: %w", notification.Id, err)
-	}
-	return nil
-}
-
-func (n *notificationService) CreateAndSendCrossDevice(notification *model.Notification) error {
-	var exist bool
-	err := block.DoState(n.picker, n.notificationID, func(s *state.State, sb smartblock.SmartBlock) error {
-		stateNotification := s.GetNotificationByID(notification.Id)
-		if stateNotification != nil {
-			exist = true
-			return nil
-		}
-		s.AddNotification(notification)
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update notification object: %w", err)
-	}
-	if exist {
-		return nil
-	}
-	err = n.CreateAndSendLocal(notification)
-	if err != nil {
-		return err
 	}
 	return nil
 }

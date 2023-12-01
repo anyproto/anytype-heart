@@ -106,7 +106,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 	err := importSource.Initialize(p)
 	if err != nil {
 		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(pathsCount, pb.RpcObjectImportRequest_Txt) {
+		if allErrors.ShouldAbortImport(pathsCount, model.ImportType_Txt) {
 			return nil, nil
 		}
 	}
@@ -125,7 +125,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 		blocks, err = t.getBlocksForSnapshot(fileReader)
 		if err != nil {
 			allErrors.Add(err)
-			if allErrors.ShouldAbortImport(pathsCount, pb.RpcObjectImportRequest_Txt) {
+			if allErrors.ShouldAbortImport(pathsCount, model.ImportType_Txt) {
 				return false
 			}
 		}

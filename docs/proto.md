@@ -1112,7 +1112,6 @@
     - [Rpc.Object.Import.Request.CsvParams.Mode](#anytype-Rpc-Object-Import-Request-CsvParams-Mode)
     - [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode)
     - [Rpc.Object.Import.Request.PbParams.Type](#anytype-Rpc-Object-Import-Request-PbParams-Type)
-    - [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type)
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
     - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
@@ -1480,11 +1479,11 @@
     - [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
+    - [ImportType](#anytype-model-ImportType)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Import.Code](#anytype-model-Notification-Import-Code)
-    - [Notification.Import.Type](#anytype-model-Notification-Import-Type)
     - [Notification.Status](#anytype-model-Notification-Status)
     - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
@@ -11432,7 +11431,7 @@ DEPRECATED, GO-1926 |
 | csvParams | [Rpc.Object.Import.Request.CsvParams](#anytype-Rpc-Object-Import-Request-CsvParams) |  |  |
 | snapshots | [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot) | repeated | optional, for external developers usage |
 | updateExistingObjects | [bool](#bool) |  |  |
-| type | [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type) |  |  |
+| type | [model.ImportType](#anytype-model-ImportType) |  |  |
 | mode | [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode) |  |  |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
@@ -17660,23 +17659,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Object-Import-Request-Type"></a>
-
-### Rpc.Object.Import.Request.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Notion | 0 |  |
-| Markdown | 1 |  |
-| External | 2 | external developers use it |
-| Pb | 3 |  |
-| Html | 4 |  |
-| Txt | 5 |  |
-| Csv | 6 |  |
-
-
-
 <a name="anytype-Rpc-Object-Import-Response-Error-Code"></a>
 
 ### Rpc.Object.Import.Response.Error.Code
@@ -22623,7 +22605,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | processId | [string](#string) |  |  |
 | errorCode | [Notification.Import.Code](#anytype-model-Notification-Import-Code) |  |  |
-| importType | [Notification.Import.Type](#anytype-model-Notification-Import-Type) |  |  |
+| importType | [ImportType](#anytype-model-ImportType) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 
@@ -23347,6 +23329,23 @@ stored |
 
 
 
+<a name="anytype-model-ImportType"></a>
+
+### ImportType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Notion | 0 |  |
+| Markdown | 1 |  |
+| External | 2 | external developers use it |
+| Pb | 3 |  |
+| Html | 4 |  |
+| Txt | 5 |  |
+| Csv | 6 |  |
+
+
+
 <a name="anytype-model-InternalFlag-Value"></a>
 
 ### InternalFlag.Value
@@ -23406,23 +23405,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | IMPORT_IS_CANCELED | 6 |  |
 | LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | FILE_LOAD_ERROR | 8 |  |
-
-
-
-<a name="anytype-model-Notification-Import-Type"></a>
-
-### Notification.Import.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Notion | 0 |  |
-| Markdown | 1 |  |
-| External | 2 | external developers use it |
-| Pb | 3 |  |
-| Html | 4 |  |
-| Txt | 5 |  |
-| Csv | 6 |  |
 
 
 

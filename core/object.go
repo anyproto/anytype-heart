@@ -803,7 +803,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
 			ProcessId:  processID,
 			ErrorCode:  common.GetNotificationErrorCode(err),
-			ImportType: model.NotificationImport_Notion,
+			ImportType: req.Type,
 			SpaceId:    req.SpaceId,
 		}},
 	})

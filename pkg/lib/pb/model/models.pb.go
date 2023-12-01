@@ -264,6 +264,46 @@ func (SpaceStatus) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98a910b73321e591, []int{3}
 }
 
+type ImportType int32
+
+const (
+	ImportType_Notion   ImportType = 0
+	ImportType_Markdown ImportType = 1
+	ImportType_External ImportType = 2
+	ImportType_Pb       ImportType = 3
+	ImportType_Html     ImportType = 4
+	ImportType_Txt      ImportType = 5
+	ImportType_Csv      ImportType = 6
+)
+
+var ImportType_name = map[int32]string{
+	0: "Notion",
+	1: "Markdown",
+	2: "External",
+	3: "Pb",
+	4: "Html",
+	5: "Txt",
+	6: "Csv",
+}
+
+var ImportType_value = map[string]int32{
+	"Notion":   0,
+	"Markdown": 1,
+	"External": 2,
+	"Pb":       3,
+	"Html":     4,
+	"Txt":      5,
+	"Csv":      6,
+}
+
+func (x ImportType) String() string {
+	return proto.EnumName(ImportType_name, int32(x))
+}
+
+func (ImportType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{4}
+}
+
 type BlockPosition int32
 
 const (
@@ -1550,46 +1590,6 @@ func (x NotificationImportCode) String() string {
 
 func (NotificationImportCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98a910b73321e591, []int{19, 0, 0}
-}
-
-type NotificationImportType int32
-
-const (
-	NotificationImport_Notion   NotificationImportType = 0
-	NotificationImport_Markdown NotificationImportType = 1
-	NotificationImport_External NotificationImportType = 2
-	NotificationImport_Pb       NotificationImportType = 3
-	NotificationImport_Html     NotificationImportType = 4
-	NotificationImport_Txt      NotificationImportType = 5
-	NotificationImport_Csv      NotificationImportType = 6
-)
-
-var NotificationImportType_name = map[int32]string{
-	0: "Notion",
-	1: "Markdown",
-	2: "External",
-	3: "Pb",
-	4: "Html",
-	5: "Txt",
-	6: "Csv",
-}
-
-var NotificationImportType_value = map[string]int32{
-	"Notion":   0,
-	"Markdown": 1,
-	"External": 2,
-	"Pb":       3,
-	"Html":     4,
-	"Txt":      5,
-	"Csv":      6,
-}
-
-func (x NotificationImportType) String() string {
-	return proto.EnumName(NotificationImportType_name, int32(x))
-}
-
-func (NotificationImportType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{19, 0, 1}
 }
 
 type SmartBlockSnapshotBase struct {
@@ -6261,7 +6261,7 @@ func (*Notification) XXX_OneofWrappers() []interface{} {
 type NotificationImport struct {
 	ProcessId  string                 `protobuf:"bytes,1,opt,name=processId,proto3" json:"processId,omitempty"`
 	ErrorCode  NotificationImportCode `protobuf:"varint,2,opt,name=errorCode,proto3,enum=anytype.model.NotificationImportCode" json:"errorCode,omitempty"`
-	ImportType NotificationImportType `protobuf:"varint,3,opt,name=importType,proto3,enum=anytype.model.NotificationImportType" json:"importType,omitempty"`
+	ImportType ImportType             `protobuf:"varint,3,opt,name=importType,proto3,enum=anytype.model.ImportType" json:"importType,omitempty"`
 	SpaceId    string                 `protobuf:"bytes,4,opt,name=spaceId,proto3" json:"spaceId,omitempty"`
 	Name       string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 }
@@ -6313,11 +6313,11 @@ func (m *NotificationImport) GetErrorCode() NotificationImportCode {
 	return NotificationImport_NULL
 }
 
-func (m *NotificationImport) GetImportType() NotificationImportType {
+func (m *NotificationImport) GetImportType() ImportType {
 	if m != nil {
 		return m.ImportType
 	}
-	return NotificationImport_Notion
+	return ImportType_Notion
 }
 
 func (m *NotificationImport) GetSpaceId() string {
@@ -6339,6 +6339,7 @@ func init() {
 	proto.RegisterEnum("anytype.model.RelationFormat", RelationFormat_name, RelationFormat_value)
 	proto.RegisterEnum("anytype.model.ObjectOrigin", ObjectOrigin_name, ObjectOrigin_value)
 	proto.RegisterEnum("anytype.model.SpaceStatus", SpaceStatus_name, SpaceStatus_value)
+	proto.RegisterEnum("anytype.model.ImportType", ImportType_name, ImportType_value)
 	proto.RegisterEnum("anytype.model.BlockPosition", BlockPosition_name, BlockPosition_value)
 	proto.RegisterEnum("anytype.model.BlockAlign", BlockAlign_name, BlockAlign_value)
 	proto.RegisterEnum("anytype.model.BlockVerticalAlign", BlockVerticalAlign_name, BlockVerticalAlign_value)
@@ -6374,7 +6375,6 @@ func init() {
 	proto.RegisterEnum("anytype.model.NotificationStatus", NotificationStatus_name, NotificationStatus_value)
 	proto.RegisterEnum("anytype.model.NotificationActionType", NotificationActionType_name, NotificationActionType_value)
 	proto.RegisterEnum("anytype.model.NotificationImportCode", NotificationImportCode_name, NotificationImportCode_value)
-	proto.RegisterEnum("anytype.model.NotificationImportType", NotificationImportType_name, NotificationImportType_value)
 	proto.RegisterType((*SmartBlockSnapshotBase)(nil), "anytype.model.SmartBlockSnapshotBase")
 	proto.RegisterType((*Block)(nil), "anytype.model.Block")
 	proto.RegisterType((*BlockRestrictions)(nil), "anytype.model.Block.Restrictions")
@@ -23647,7 +23647,7 @@ func (m *NotificationImport) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ImportType |= NotificationImportType(b&0x7F) << shift
+				m.ImportType |= ImportType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

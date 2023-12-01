@@ -63,7 +63,7 @@ func (ce *ConvertError) Error() error {
 	return fmt.Errorf(errorString.String())
 }
 
-func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) error {
+func (ce *ConvertError) GetResultError(importType model.ImportType) error {
 	if ce.IsEmpty() {
 		return nil
 	}
@@ -101,7 +101,7 @@ func (ce *ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
 	}
 	return importPathsCount == countNoObjectsToImport
 }
-func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType pb.RpcObjectImportRequestType) bool {
+func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType model.ImportType) bool {
 	return !ce.IsEmpty() && ce.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING ||
 		ce.IsNoObjectToImportError(pathsCount) ||
 		errors.Is(ce.GetResultError(importType), ErrLimitExceeded) ||
