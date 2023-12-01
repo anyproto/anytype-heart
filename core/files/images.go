@@ -75,7 +75,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, err
 	}
 
-	node, keys, err := s.fileAddNodeFromDirs(ctx, spaceId, &storage.DirectoryList{Items: []*storage.Directory{dir}})
+	node, keys, err := s.fileAddNodeFromDir(ctx, spaceId, dir)
 	if err != nil {
 		return nil, err
 	}
