@@ -38,7 +38,6 @@ message FileInfo {
 
 message ImageResizeSchema {
     string name                        = 1;
-    bool plaintext                     = 3;
     string mill                        = 4;
     map<string, string> opts           = 5;
     google.protobuf.Struct json_schema = 6;
@@ -47,7 +46,6 @@ message ImageResizeSchema {
 
 message Link {
     string name = 1;
-    bool plaintext                     = 3;
     string mill                        = 4;
     map<string, string> opts           = 5;
     google.protobuf.Struct json_schema = 6;

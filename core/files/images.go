@@ -73,7 +73,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, err
 	}
 
-	dirEntries, err := s.addImageNodes(ctx, spaceId, opts.Reader, opts.Name, opts.Plaintext)
+	dirEntries, err := s.addImageNodes(ctx, spaceId, opts.Reader, opts.Name)
 	if errors.Is(err, errFileExists) {
 		return s.newExisingImageResult(spaceId, dirEntries)
 	}
@@ -118,7 +118,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}, nil
 }
 
-func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool) ([]dirEntry, error) {
+func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string) ([]dirEntry, error) {
 	sch := schema.ImageResizeSchema
 	if len(sch.Links) == 0 {
 		return nil, schema.ErrEmptySchema
@@ -132,11 +132,10 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 			return nil, err
 		}
 		opts := &AddOptions{
-			Reader:    reader,
-			Use:       "",
-			Media:     "",
-			Name:      filename,
-			Plaintext: link.Plaintext || plaintext,
+			Reader: reader,
+			Use:    "",
+			Media:  "",
+			Name:   filename,
 		}
 		err = s.normalizeOptions(ctx, spaceID, opts)
 		if err != nil {
@@ -144,9 +143,18 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 		}
 		added, fileNode, err := s.addFileNode(ctx, spaceID, stepMill, *opts)
 		if errors.Is(err, errFileExists) {
-			// Check only original file
+			// If we found out that original variant is already exists, so we are trying to add the same file
 			if link.Name == "original" {
 				isExisting = true
+			} else {
+				// If we have multiple variants with the same hash, for example "original" and "large",
+				// we need to find the previously added file node
+				for _, entry := range dirEntries {
+					if entry.fileInfo.Hash == added.Hash {
+						fileNode = entry.fileNode
+						break
+					}
+				}
 			}
 		} else if err != nil {
 			return nil, err

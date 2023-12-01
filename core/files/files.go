@@ -517,7 +517,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		source = conf.Use
 	} else {
 		var err error
-		source, err = checksum(conf.Reader, conf.Plaintext)
+		source, err = checksum(conf.Reader, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to calculate checksum: %w", err)
 		}
@@ -528,7 +528,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	opts, err := mill.Options(map[string]interface{}{
-		"plaintext": conf.Plaintext,
+		"plaintext": false,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -545,7 +545,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 
 	// count the result size after the applied mill
 	readerWithCounter := datacounter.NewReaderCounter(res.File)
-	check, err := checksum(readerWithCounter, conf.Plaintext)
+	check, err := checksum(readerWithCounter, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -578,50 +578,37 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		Size_:            int64(readerWithCounter.Count()),
 	}
 
-	var (
-		contentReader io.Reader
-		encryptor     symmetric.EncryptorDecryptor
-	)
-	if mill.Encrypt() && !conf.Plaintext {
-		key, err := symmetric.NewRandom()
-		if err != nil {
-			return nil, nil, err
-		}
-		encryptor = cfb.New(key, [aes.BlockSize]byte{})
+	key, err := symmetric.NewRandom()
+	if err != nil {
+		return nil, nil, err
+	}
+	encryptor := cfb.New(key, [aes.BlockSize]byte{})
 
-		contentReader, err = encryptor.EncryptReader(res.File)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		fileInfo.Key = key.String()
-		fileInfo.EncMode = storage.FileInfo_AES_CFB
-	} else {
-		contentReader = res.File
+	contentReader, err := encryptor.EncryptReader(res.File)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	contentNode, err := s.addFile(ctx, spaceID, contentReader)
+	fileInfo.Key = key.String()
+	fileInfo.EncMode = storage.FileInfo_AES_CFB
+
+	contentNode, err := s.addFileData(ctx, spaceID, contentReader)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	fileInfo.Hash = contentNode.Cid().String()
-	plaintext, err := proto.Marshal(fileInfo)
+	rawMeta, err := proto.Marshal(fileInfo)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var metaReader io.Reader
-	if encryptor != nil {
-		metaReader, err = encryptor.EncryptReader(bytes.NewReader(plaintext))
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		metaReader = bytes.NewReader(plaintext)
+	metaReader, err := encryptor.EncryptReader(bytes.NewReader(rawMeta))
+	if err != nil {
+		return nil, nil, err
 	}
 
-	metaNode, err := s.addFile(ctx, spaceID, metaReader)
+	metaNode, err := s.addFileData(ctx, spaceID, metaReader)
 	if err != nil {
 		return nil, nil, err
 	}

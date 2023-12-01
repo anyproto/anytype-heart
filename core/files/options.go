@@ -23,7 +23,6 @@ type AddOptions struct {
 	Media            string
 	Name             string
 	LastModifiedDate int64
-	Plaintext        bool
 	Origin           model.ObjectOrigin
 }
 
