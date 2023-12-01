@@ -127,7 +127,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 
-	fileInfo, err := s.addFileContentAndMetaNodes(ctx, spaceId, &m.Blob{}, opts)
+	fileInfo, fileNode, err := s.addFileNode(ctx, spaceId, &m.Blob{}, opts)
 	if errors.Is(err, errFileExists) {
 		return s.newExistingFileResult(spaceId, fileInfo)
 	}
@@ -135,7 +135,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 
-	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, fileInfo)
+	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, fileInfo, fileNode)
 	if err != nil {
 		return nil, err
 	}
@@ -265,13 +265,13 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 		- content
 	...
 */
-func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo *storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
+func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo *storage.FileInfo, fileNode ipld.Node) (ipld.Node, *storage.FileKeys, error) {
 	dagService := s.dagServiceForSpace(spaceID)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(dagService)
 	outer.SetCidBuilder(cidBuilder)
 
-	err := s.addFilePairNode(ctx, spaceID, fileInfo, outer, fileLinkName)
+	err := helpers.AddLinkToDirectory(ctx, dagService, outer, fileLinkName, fileNode.Cid().String())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -505,7 +505,13 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 
 var errFileExists = errors.New("file exists")
 
-func (s *service) addFileContentAndMetaNodes(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+// addFileNode adds a file node to the DAG. This node has structure:
+/*
+- dir (file pair):
+	- meta
+	- content
+*/
+func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, ipld.Node, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -513,11 +519,11 @@ func (s *service) addFileContentAndMetaNodes(ctx context.Context, spaceID string
 		var err error
 		source, err = checksum(conf.Reader, conf.Plaintext)
 		if err != nil {
-			return nil, fmt.Errorf("failed to calculate checksum: %w", err)
+			return nil, nil, fmt.Errorf("failed to calculate checksum: %w", err)
 		}
 		_, err = conf.Reader.Seek(0, io.SeekStart)
 		if err != nil {
-			return nil, fmt.Errorf("failed to seek reader: %w", err)
+			return nil, nil, fmt.Errorf("failed to seek reader: %w", err)
 		}
 	}
 
@@ -525,38 +531,38 @@ func (s *service) addFileContentAndMetaNodes(ctx context.Context, spaceID string
 		"plaintext": conf.Plaintext,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if efile, _ := s.fileStore.GetChildBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
-		return efile, errFileExists
+		return efile, nil, errFileExists
 	}
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// count the result size after the applied mill
 	readerWithCounter := datacounter.NewReaderCounter(res.File)
 	check, err := checksum(readerWithCounter, conf.Plaintext)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if efile, _ := s.fileStore.GetChildByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
-		return efile, errFileExists
+		return efile, nil, errFileExists
 	}
 
 	_, err = conf.Reader.Seek(0, io.SeekStart)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// because mill result reader doesn't support seek we need to do the mill again
 	res, err = mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	fileInfo := &storage.FileInfo{
@@ -579,13 +585,13 @@ func (s *service) addFileContentAndMetaNodes(ctx context.Context, spaceID string
 	if mill.Encrypt() && !conf.Plaintext {
 		key, err := symmetric.NewRandom()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		encryptor = cfb.New(key, [aes.BlockSize]byte{})
 
 		contentReader, err = encryptor.EncryptReader(res.File)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		fileInfo.Key = key.String()
@@ -596,20 +602,20 @@ func (s *service) addFileContentAndMetaNodes(ctx context.Context, spaceID string
 
 	contentNode, err := s.addFile(ctx, spaceID, contentReader)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	fileInfo.Hash = contentNode.Cid().String()
 	plaintext, err := proto.Marshal(fileInfo)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var metaReader io.Reader
 	if encryptor != nil {
 		metaReader, err = encryptor.EncryptReader(bytes.NewReader(plaintext))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		metaReader = bytes.NewReader(plaintext)
@@ -617,64 +623,61 @@ func (s *service) addFileContentAndMetaNodes(ctx context.Context, spaceID string
 
 	metaNode, err := s.addFile(ctx, spaceID, metaReader)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
 	fileInfo.MetaHash = metaNode.Cid().String()
 
 	err = s.fileStore.Add(fileInfo)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return fileInfo, nil
+	pairNode, err := s.addFilePairNode(ctx, spaceID, fileInfo)
+	if err != nil {
+		return nil, nil, fmt.Errorf("add file pair node: %w", err)
+	}
+	return fileInfo, pairNode, nil
 }
 
 // addFilePairNode has structure:
 /*
-- dir (outer)
-  	- dir
-  		- meta
-  		- content
+- dir (pair)
+	- meta
+	- content
 */
-func (s *service) addFilePairNode(ctx context.Context, spaceID string, file *storage.FileInfo, outerDir uio.Directory, link string) error {
-	file, err := s.fileStore.GetChild(domain.ChildFileId(file.Hash))
-	if err != nil {
-		return err
-	}
-
+func (s *service) addFilePairNode(ctx context.Context, spaceID string, file *storage.FileInfo) (ipld.Node, error) {
 	dagService := s.dagServiceForSpace(spaceID)
 	pair := uio.NewDirectory(dagService)
 	pair.SetCidBuilder(cidBuilder)
 
 	if file.MetaHash == "" {
-		return fmt.Errorf("metaHash is empty")
+		return nil, fmt.Errorf("metaHash is empty")
 	}
 
-	err = helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
+	err := helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
 	if err != nil {
-		return fmt.Errorf("add meta link: %w", err)
+		return nil, fmt.Errorf("add meta link: %w", err)
 	}
 	err = helpers.AddLinkToDirectory(ctx, dagService, pair, ContentLinkName, file.Hash)
 	if err != nil {
-		return fmt.Errorf("add content link: %w", err)
+		return nil, fmt.Errorf("add content link: %w", err)
 	}
 
-	node, err := pair.GetNode()
+	pairNode, err := pair.GetNode()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = dagService.Add(ctx, node)
+	err = dagService.Add(ctx, pairNode)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return helpers.AddLinkToDirectory(ctx, dagService, outerDir, link, node.Cid().String())
+	return pairNode, nil
 }
 
 type dirEntry struct {
 	name     string
 	fileInfo *storage.FileInfo
+	fileNode ipld.Node
 }
 
 func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updateIfExists bool) ([]*storage.FileInfo, error) {

@@ -142,7 +142,7 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 		if err != nil {
 			return nil, err
 		}
-		added, err := s.addFileContentAndMetaNodes(ctx, spaceID, stepMill, *opts)
+		added, fileNode, err := s.addFileNode(ctx, spaceID, stepMill, *opts)
 		if errors.Is(err, errFileExists) {
 			// Check only original file
 			if link.Name == "original" {
@@ -154,6 +154,7 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 		dirEntries = append(dirEntries, dirEntry{
 			name:     link.Name,
 			fileInfo: added,
+			fileNode: fileNode,
 		})
 		reader.Seek(0, 0)
 	}
@@ -168,10 +169,10 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 /*
 - dir (outer)
 	- dir (0)
-		- dir (file1)
+		- dir (original)
 			- meta
 			- content
-		- dir (file2)
+		- dir (large)
 			- meta
 			- content
 	...
@@ -187,7 +188,7 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 	inner.SetCidBuilder(cidBuilder)
 
 	for _, entry := range dirEntries {
-		err := s.addFilePairNode(ctx, spaceID, entry.fileInfo, inner, entry.name)
+		err := helpers.AddLinkToDirectory(ctx, dagService, inner, entry.name, entry.fileNode.Cid().String())
 		if err != nil {
 			return nil, nil, err
 		}
