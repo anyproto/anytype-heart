@@ -901,7 +901,7 @@ message Notification {
   message Import {
     string processId = 1;
     Code errorCode = 2;
-    Type importType = 3;
+    ImportType importType = 3;
     string spaceId = 4;
     string name = 5;
     enum Code {
@@ -914,15 +914,6 @@ message Notification {
       LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
       FILE_LOAD_ERROR = 8;
     }
-    enum Type {
-      Notion = 0;
-      Markdown = 1;
-      External = 2; // external developers use it
-      Pb = 3;
-      Html = 4;
-      Txt = 5;
-      Csv = 6;
-    };
   }
   enum Status {
     Created = 0;
@@ -938,3 +929,13 @@ message Notification {
     CLOSE = 4;
   }
 }
+
+enum ImportType {
+  Notion = 0;
+  Markdown = 1;
+  External = 2; // external developers use it
+  Pb = 3;
+  Html = 4;
+  Txt = 5;
+  Csv = 6;
+};

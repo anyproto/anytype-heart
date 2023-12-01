@@ -89,7 +89,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations)
 		if err != nil {
 			convertError.Add(err)
-			if convertError.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+			if convertError.ShouldAbortImport(0, model.ImportType_Notion) {
 				return nil, nil, convertError
 			}
 			continue

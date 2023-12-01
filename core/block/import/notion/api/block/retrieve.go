@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var log = logging.Logger("notion-get-blocks")
@@ -53,7 +54,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
 		converterError.Add(err)
-		if converterError.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+		if converterError.ShouldAbortImport(0, model.ImportType_Notion) {
 			return nil, converterError
 		}
 	}
@@ -71,7 +72,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 			children, childErr = s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
 			if !childErr.IsEmpty() {
 				converterError.Merge(childErr)
-				if childErr.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+				if childErr.ShouldAbortImport(0, model.ImportType_Notion) {
 					return nil, childErr
 				}
 			}

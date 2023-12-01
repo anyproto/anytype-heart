@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -46,7 +45,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Markdown) {
+		if allErrors.ShouldAbortImport(0, model.ImportType_Markdown) {
 			return nil
 		}
 	}
@@ -69,7 +68,7 @@ func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := m.fillFilesInfo(fileInfo, fileName, fileReader); err != nil {
 			allErrors.Add(err)
-			if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Markdown) {
+			if allErrors.ShouldAbortImport(0, model.ImportType_Markdown) {
 				return false
 			}
 		}
