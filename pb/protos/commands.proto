@@ -1878,7 +1878,7 @@ message Rpc {
                 // ids of documents for export, when empty - will export all available docs
                 repeated string objectIds = 2;
                 // export format
-                Format format = 3;
+                anytype.model.Export.Format format = 3;
                 // save as zip file
                 bool zip = 4;
                 // include all nested
@@ -1910,14 +1910,6 @@ message Rpc {
                 }
             }
 
-            enum Format {
-                Markdown = 0;
-                Protobuf = 1;
-                JSON = 2;
-                DOT = 3;
-                SVG = 4;
-                GRAPH_JSON = 5;
-            }
         }
 
         message Import {

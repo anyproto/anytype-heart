@@ -896,6 +896,7 @@ message Notification {
   bool isLocal = 5;
   oneof payload {
     Import import = 6;
+    Export export = 8;
   }
   string space = 7;
   message Import {
@@ -913,6 +914,15 @@ message Notification {
       IMPORT_IS_CANCELED = 6;
       LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
       FILE_LOAD_ERROR = 8;
+    }
+  }
+  message Export {
+    Code errorCode = 2;
+    model.Export.Format exportType = 3;
+    enum Code {
+      NULL = 0;
+      UNKNOWN_ERROR = 1;
+      BAD_INPUT = 2;
     }
   }
   enum Status {
@@ -938,4 +948,15 @@ enum ImportType {
   Html = 4;
   Txt = 5;
   Csv = 6;
-};
+}
+
+message Export {
+  enum Format {
+    Markdown = 0;
+    Protobuf = 1;
+    JSON = 2;
+    DOT = 3;
+    SVG = 4;
+    GRAPH_JSON = 5;
+  }
+}

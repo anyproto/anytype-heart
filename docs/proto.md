@@ -1118,7 +1118,6 @@
     - [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
-    - [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format)
     - [Rpc.Object.ListExport.Response.Error.Code](#anytype-Rpc-Object-ListExport-Response-Error-Code)
     - [Rpc.Object.ListSetIsArchived.Response.Error.Code](#anytype-Rpc-Object-ListSetIsArchived-Response-Error-Code)
     - [Rpc.Object.ListSetIsFavorite.Response.Error.Code](#anytype-Rpc-Object-ListSetIsFavorite-Response-Error-Code)
@@ -1425,6 +1424,7 @@
     - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [Export](#anytype-model-Export)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
@@ -1432,6 +1432,7 @@
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Notification](#anytype-model-Notification)
+    - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.Import](#anytype-model-Notification-Import)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
@@ -1477,10 +1478,12 @@
     - [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
+    - [Export.Format](#anytype-model-Export-Format)
     - [ImportType](#anytype-model-ImportType)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
+    - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
     - [Notification.Import.Code](#anytype-model-Notification-Import-Code)
     - [Notification.Status](#anytype-model-Notification-Status)
     - [ObjectOrigin](#anytype-model-ObjectOrigin)
@@ -11887,7 +11890,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | spaceId | [string](#string) |  |  |
 | path | [string](#string) |  | the path where export files will place |
 | objectIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
-| format | [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format) |  | export format |
+| format | [model.Export.Format](#anytype-model-Export-Format) |  | export format |
 | zip | [bool](#bool) |  | save as zip file |
 | includeNested | [bool](#bool) |  | include all nested |
 | includeFiles | [bool](#bool) |  | include all files |
@@ -17740,22 +17743,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Object-ListExport-Format"></a>
-
-### Rpc.Object.ListExport.Format
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Markdown | 0 |  |
-| Protobuf | 1 |  |
-| JSON | 2 |  |
-| DOT | 3 |  |
-| SVG | 4 |  |
-| GRAPH_JSON | 5 |  |
-
-
-
 <a name="anytype-Rpc-Object-ListExport-Response-Error-Code"></a>
 
 ### Rpc.Object.ListExport.Response.Error.Code
@@ -22449,6 +22436,16 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Export"></a>
+
+### Export
+
+
+
+
+
+
+
 <a name="anytype-model-InternalFlag"></a>
 
 ### InternalFlag
@@ -22554,7 +22551,24 @@ Used to decode block meta only, without the content itself
 | status | [Notification.Status](#anytype-model-Notification-Status) |  |  |
 | isLocal | [bool](#bool) |  |  |
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
+| export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
 | space | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-Export"></a>
+
+### Notification.Export
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| errorCode | [Notification.Export.Code](#anytype-model-Notification-Export-Code) |  |  |
+| exportType | [Export.Format](#anytype-model-Export-Format) |  |  |
 
 
 
@@ -23295,6 +23309,22 @@ stored |
 
 
 
+<a name="anytype-model-Export-Format"></a>
+
+### Export.Format
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Markdown | 0 |  |
+| Protobuf | 1 |  |
+| JSON | 2 |  |
+| DOT | 3 |  |
+| SVG | 4 |  |
+| GRAPH_JSON | 5 |  |
+
+
+
 <a name="anytype-model-ImportType"></a>
 
 ### ImportType
@@ -23353,6 +23383,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | OPEN_OBJECT | 2 |  |
 | OPEN_SPACE | 3 |  |
 | CLOSE | 4 |  |
+
+
+
+<a name="anytype-model-Notification-Export-Code"></a>
+
+### Notification.Export.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
