@@ -5,8 +5,12 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/peer"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 
@@ -31,6 +35,9 @@ type Notifications interface {
 }
 
 type notificationService struct {
+	notificationID    string
+	notificationCh    chan struct{}
+	notificationErr   chan error
 	eventSender       event.Sender
 	notificationStore NotificationStore
 	spaceService      space.Service
@@ -38,7 +45,10 @@ type notificationService struct {
 }
 
 func New() Notifications {
-	return &notificationService{}
+	return &notificationService{
+		notificationCh:  make(chan struct{}),
+		notificationErr: make(chan error),
+	}
 }
 
 func (n *notificationService) Init(a *app.App) (err error) {
@@ -54,17 +64,29 @@ func (n *notificationService) Name() (name string) {
 }
 
 func (n *notificationService) Run(ctx context.Context) (err error) {
+	go n.loadNotificationObject(ctx)
 	go n.indexNotifications(ctx)
 	return nil
 }
 
 func (n *notificationService) indexNotifications(ctx context.Context) {
-	personalSpace, err := n.spaceService.GetPersonalSpace(ctx)
-	if err != nil {
-		log.Errorf("failed to get notification object: %s", err)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Errorf("failed to index notifications: %v", ctx.Err())
+			return
+		case err := <-n.notificationErr:
+			log.Errorf("failed to get notification object: %v", err)
+			return
+		case <-n.notificationCh:
+			n.updateNotificationsInLocalStore()
+		}
 	}
+}
+
+func (n *notificationService) updateNotificationsInLocalStore() {
 	var notifications map[string]*model.Notification
-	err = block.DoState(n.picker, personalSpace.DerivedIDs().Notification, func(s *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoState(n.picker, n.notificationID, func(s *state.State, sb smartblock.SmartBlock) error {
 		notifications = s.ListNotifications()
 		return nil
 	})
@@ -103,12 +125,8 @@ func (n *notificationService) CreateAndSendLocal(notification *model.Notificatio
 }
 
 func (n *notificationService) CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error {
-	spc, err := n.spaceService.GetPersonalSpace(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get space for notification: %w", err)
-	}
 	var exist bool
-	err = block.DoState(n.picker, spc.DerivedIDs().Notification, func(s *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoState(n.picker, n.notificationID, func(s *state.State, sb smartblock.SmartBlock) error {
 		stateNotification := s.GetNotificationByID(notification.Id)
 		if stateNotification != nil {
 			exist = true
@@ -167,11 +185,7 @@ func (n *notificationService) Reply(notificationIDs []string, notificationAction
 		}
 
 		if !notification.IsLocal {
-			spc, err := n.spaceService.GetPersonalSpace(context.Background())
-			if err != nil {
-				return err
-			}
-			err = block.DoState(n.picker, spc.DerivedIDs().Notification, func(s *state.State, sb smartblock.SmartBlock) error {
+			err = block.DoState(n.picker, n.notificationID, func(s *state.State, sb smartblock.SmartBlock) error {
 				s.AddNotification(notification)
 				return nil
 			})
@@ -208,4 +222,44 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 
 func (n *notificationService) isNotificationRead(notification *model.Notification) bool {
 	return notification.GetStatus() == model.Notification_Read || notification.GetStatus() == model.Notification_Replied
+}
+
+func (n *notificationService) loadNotificationObject(ctx context.Context) {
+	defer func() {
+		close(n.notificationCh)
+		close(n.notificationErr)
+	}()
+	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeNotificationObject, "")
+	if err != nil {
+		n.notificationErr <- err
+		return
+	}
+	spc, err := n.spaceService.GetPersonalSpace(ctx)
+	if err != nil {
+		n.notificationErr <- err
+		return
+	}
+	n.notificationID, err = spc.DeriveObjectID(ctx, uk)
+	if err != nil {
+		n.notificationErr <- err
+		return
+	}
+	ctxWithPeer := peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	_, err = spc.GetObject(ctxWithPeer, n.notificationID)
+	if err != nil {
+		_, dErr := spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+			Key: uk,
+			InitFunc: func(id string) *smartblock.InitContext {
+				return &smartblock.InitContext{
+					Ctx:     ctx,
+					SpaceID: spc.Id(),
+					State:   state.NewDoc(id, nil).(*state.State),
+				}
+			},
+		})
+		if dErr != nil {
+			n.notificationErr <- dErr
+			return
+		}
+	}
 }
