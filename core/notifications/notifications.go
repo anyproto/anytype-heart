@@ -35,19 +35,19 @@ type Notifications interface {
 }
 
 type notificationService struct {
-	notificationID    string
-	notificationCh    chan struct{}
-	notificationErr   chan error
-	eventSender       event.Sender
-	notificationStore NotificationStore
-	spaceService      space.Service
-	picker            block.ObjectGetter
+	notificationID     string
+	notificationCh     chan struct{}
+	notificationErr    error
+	notificationCancel context.CancelFunc
+	eventSender        event.Sender
+	notificationStore  NotificationStore
+	spaceService       space.Service
+	picker             block.ObjectGetter
 }
 
 func New() Notifications {
 	return &notificationService{
-		notificationCh:  make(chan struct{}),
-		notificationErr: make(chan error),
+		notificationCh: make(chan struct{}),
 	}
 }
 
@@ -63,9 +63,11 @@ func (n *notificationService) Name() (name string) {
 	return CName
 }
 
-func (n *notificationService) Run(ctx context.Context) (err error) {
-	go n.loadNotificationObject(ctx)
-	go n.indexNotifications(ctx)
+func (n *notificationService) Run(_ context.Context) (err error) {
+	notificationContext, notificationCancel := context.WithCancel(context.Background())
+	n.notificationCancel = notificationCancel
+	go n.loadNotificationObject(notificationContext)
+	go n.indexNotifications(notificationContext)
 	return nil
 }
 
@@ -75,11 +77,13 @@ func (n *notificationService) indexNotifications(ctx context.Context) {
 		case <-ctx.Done():
 			log.Errorf("failed to index notifications: %v", ctx.Err())
 			return
-		case err := <-n.notificationErr:
-			log.Errorf("failed to get notification object: %v", err)
-			return
 		case <-n.notificationCh:
+			if n.notificationErr != nil {
+				log.Errorf("failed to get notification object: %v", n.notificationErr)
+				return
+			}
 			n.updateNotificationsInLocalStore()
+			return
 		}
 	}
 }
@@ -101,7 +105,10 @@ func (n *notificationService) updateNotificationsInLocalStore() {
 	}
 }
 
-func (n *notificationService) Close(ctx context.Context) (err error) {
+func (n *notificationService) Close(_ context.Context) (err error) {
+	if n.notificationCancel != nil {
+		n.notificationCancel()
+	}
 	return nil
 }
 
@@ -225,23 +232,20 @@ func (n *notificationService) isNotificationRead(notification *model.Notificatio
 }
 
 func (n *notificationService) loadNotificationObject(ctx context.Context) {
-	defer func() {
-		close(n.notificationCh)
-		close(n.notificationErr)
-	}()
+	defer close(n.notificationCh)
 	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeNotificationObject, "")
 	if err != nil {
-		n.notificationErr <- err
+		n.notificationErr = err
 		return
 	}
 	spc, err := n.spaceService.GetPersonalSpace(ctx)
 	if err != nil {
-		n.notificationErr <- err
+		n.notificationErr = err
 		return
 	}
 	n.notificationID, err = spc.DeriveObjectID(ctx, uk)
 	if err != nil {
-		n.notificationErr <- err
+		n.notificationErr = err
 		return
 	}
 	ctxWithPeer := peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
@@ -258,7 +262,7 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 			},
 		})
 		if dErr != nil {
-			n.notificationErr <- dErr
+			n.notificationErr = dErr
 			return
 		}
 	}
