@@ -5724,46 +5724,48 @@ message Rpc {
         }
     }
 
-    message NotificationList {
-        message Request {
-            bool includeRead = 1;
-            int64 limit = 2;
-        }
-        message Response {
-            Error error = 1;
-            repeated anytype.model.Notification notifications = 2;
+    message Notification {
+        message List {
+            message Request {
+                bool includeRead = 1;
+                int64 limit = 2;
+            }
+            message Response {
+                Error error = 1;
+                repeated anytype.model.Notification notifications = 2;
 
-            message Error {
-                Code code = 1;
-                string description = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
 
-                enum Code {
-                    NULL = 0;
-                    UNKNOWN_ERROR = 1;
-                    BAD_INPUT = 2;
-                    INTERNAL_ERROR = 3;
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        INTERNAL_ERROR = 3;
+                    }
                 }
             }
         }
-    }
 
-    message NotificationReply {
-        message Request {
-            repeated string id = 1;
-            anytype.model.Notification.ActionType actionType = 2;
-        }
-        message Response {
-            Error error = 1;
+        message Reply {
+            message Request {
+                repeated string ids = 1;
+                anytype.model.Notification.ActionType actionType = 2;
+            }
+            message Response {
+                Error error = 1;
 
-            message Error {
-                Code code = 1;
-                string description = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
 
-                enum Code {
-                    NULL = 0;
-                    UNKNOWN_ERROR = 1;
-                    BAD_INPUT = 2;
-                    INTERNAL_ERROR = 3;
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        INTERNAL_ERROR = 3;
+                    }
                 }
             }
         }

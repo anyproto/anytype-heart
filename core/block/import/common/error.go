@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var ErrCancel = fmt.Errorf("import is canceled")
@@ -105,4 +106,22 @@ func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType pb.RpcObjec
 		ce.IsNoObjectToImportError(pathsCount) ||
 		errors.Is(ce.GetResultError(importType), ErrLimitExceeded) ||
 		errors.Is(ce.GetResultError(importType), ErrCancel)
+}
+
+func GetNotificationErrorCode(err error) model.NotificationImportCode {
+	if err == nil {
+		return model.NotificationImport_NULL
+	}
+	switch {
+	case errors.Is(err, ErrNoObjectsToImport):
+		return model.NotificationImport_NO_OBJECTS_TO_IMPORT
+	case errors.Is(err, ErrCancel):
+		return model.NotificationImport_IMPORT_IS_CANCELED
+	case errors.Is(err, ErrLimitExceeded):
+		return model.NotificationImport_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
+	case errors.Is(err, ErrFileLoad):
+		return model.NotificationImport_FILE_LOAD_ERROR
+	default:
+		return model.NotificationImport_INTERNAL_ERROR
+	}
 }

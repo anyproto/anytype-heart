@@ -603,14 +603,15 @@
     - [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request)
     - [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response)
     - [Rpc.Navigation.ListObjects.Response.Error](#anytype-Rpc-Navigation-ListObjects-Response-Error)
-    - [Rpc.NotificationList](#anytype-Rpc-NotificationList)
-    - [Rpc.NotificationList.Request](#anytype-Rpc-NotificationList-Request)
-    - [Rpc.NotificationList.Response](#anytype-Rpc-NotificationList-Response)
-    - [Rpc.NotificationList.Response.Error](#anytype-Rpc-NotificationList-Response-Error)
-    - [Rpc.NotificationReply](#anytype-Rpc-NotificationReply)
-    - [Rpc.NotificationReply.Request](#anytype-Rpc-NotificationReply-Request)
-    - [Rpc.NotificationReply.Response](#anytype-Rpc-NotificationReply-Response)
-    - [Rpc.NotificationReply.Response.Error](#anytype-Rpc-NotificationReply-Response-Error)
+    - [Rpc.Notification](#anytype-Rpc-Notification)
+    - [Rpc.Notification.List](#anytype-Rpc-Notification-List)
+    - [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request)
+    - [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response)
+    - [Rpc.Notification.List.Response.Error](#anytype-Rpc-Notification-List-Response-Error)
+    - [Rpc.Notification.Reply](#anytype-Rpc-Notification-Reply)
+    - [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request)
+    - [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response)
+    - [Rpc.Notification.Reply.Response.Error](#anytype-Rpc-Notification-Reply-Response-Error)
     - [Rpc.Object](#anytype-Rpc-Object)
     - [Rpc.Object.ApplyTemplate](#anytype-Rpc-Object-ApplyTemplate)
     - [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request)
@@ -1092,8 +1093,8 @@
     - [Rpc.Navigation.Context](#anytype-Rpc-Navigation-Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response-Error-Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
-    - [Rpc.NotificationList.Response.Error.Code](#anytype-Rpc-NotificationList-Response-Error-Code)
-    - [Rpc.NotificationReply.Response.Error.Code](#anytype-Rpc-NotificationReply-Response-Error-Code)
+    - [Rpc.Notification.List.Response.Error.Code](#anytype-Rpc-Notification-List-Response-Error-Code)
+    - [Rpc.Notification.Reply.Response.Error.Code](#anytype-Rpc-Notification-Reply-Response-Error-Code)
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
     - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
@@ -1722,8 +1723,8 @@
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
-| NotificationList | [Rpc.NotificationList.Request](#anytype-Rpc-NotificationList-Request) | [Rpc.NotificationList.Response](#anytype-Rpc-NotificationList-Response) |  |
-| NotificationReply | [Rpc.NotificationReply.Request](#anytype-Rpc-NotificationReply-Request) | [Rpc.NotificationReply.Response](#anytype-Rpc-NotificationReply-Response) |  |
+| NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
+| NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 
  
 
@@ -10460,19 +10461,29 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype-Rpc-NotificationList"></a>
+<a name="anytype-Rpc-Notification"></a>
 
-### Rpc.NotificationList
-
-
+### Rpc.Notification
 
 
 
 
 
-<a name="anytype-Rpc-NotificationList-Request"></a>
 
-### Rpc.NotificationList.Request
+
+<a name="anytype-Rpc-Notification-List"></a>
+
+### Rpc.Notification.List
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-List-Request"></a>
+
+### Rpc.Notification.List.Request
 
 
 
@@ -10486,15 +10497,15 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype-Rpc-NotificationList-Response"></a>
+<a name="anytype-Rpc-Notification-List-Response"></a>
 
-### Rpc.NotificationList.Response
+### Rpc.Notification.List.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.NotificationList.Response.Error](#anytype-Rpc-NotificationList-Response-Error) |  |  |
+| error | [Rpc.Notification.List.Response.Error](#anytype-Rpc-Notification-List-Response-Error) |  |  |
 | notifications | [model.Notification](#anytype-model-Notification) | repeated |  |
 
 
@@ -10502,15 +10513,15 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype-Rpc-NotificationList-Response-Error"></a>
+<a name="anytype-Rpc-Notification-List-Response-Error"></a>
 
-### Rpc.NotificationList.Response.Error
+### Rpc.Notification.List.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.NotificationList.Response.Error.Code](#anytype-Rpc-NotificationList-Response-Error-Code) |  |  |
+| code | [Rpc.Notification.List.Response.Error.Code](#anytype-Rpc-Notification-List-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10518,25 +10529,25 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype-Rpc-NotificationReply"></a>
+<a name="anytype-Rpc-Notification-Reply"></a>
 
-### Rpc.NotificationReply
-
-
+### Rpc.Notification.Reply
 
 
 
 
 
-<a name="anytype-Rpc-NotificationReply-Request"></a>
 
-### Rpc.NotificationReply.Request
+
+<a name="anytype-Rpc-Notification-Reply-Request"></a>
+
+### Rpc.Notification.Reply.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) | repeated |  |
+| ids | [string](#string) | repeated |  |
 | actionType | [model.Notification.ActionType](#anytype-model-Notification-ActionType) |  |  |
 
 
@@ -10544,30 +10555,30 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype-Rpc-NotificationReply-Response"></a>
+<a name="anytype-Rpc-Notification-Reply-Response"></a>
 
-### Rpc.NotificationReply.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.NotificationReply.Response.Error](#anytype-Rpc-NotificationReply-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-NotificationReply-Response-Error"></a>
-
-### Rpc.NotificationReply.Response.Error
+### Rpc.Notification.Reply.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.NotificationReply.Response.Error.Code](#anytype-Rpc-NotificationReply-Response-Error-Code) |  |  |
+| error | [Rpc.Notification.Reply.Response.Error](#anytype-Rpc-Notification-Reply-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-Reply-Response-Error"></a>
+
+### Rpc.Notification.Reply.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Notification.Reply.Response.Error.Code](#anytype-Rpc-Notification-Reply-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -17398,9 +17409,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-NotificationList-Response-Error-Code"></a>
+<a name="anytype-Rpc-Notification-List-Response-Error-Code"></a>
 
-### Rpc.NotificationList.Response.Error.Code
+### Rpc.Notification.List.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -17412,9 +17423,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-NotificationReply-Response-Error-Code"></a>
+<a name="anytype-Rpc-Notification-Reply-Response-Error-Code"></a>
 
-### Rpc.NotificationReply.Response.Error.Code
+### Rpc.Notification.Reply.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -22595,6 +22606,7 @@ Used to decode block meta only, without the content itself
 | status | [Notification.Status](#anytype-model-Notification-Status) |  |  |
 | isLocal | [bool](#bool) |  |  |
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
+| space | [string](#string) |  |  |
 
 
 

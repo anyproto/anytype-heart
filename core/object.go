@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -790,12 +792,28 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
+	rootCollectionID, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
+
+	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
+		Id:         uuid.New().String(),
+		CreateTime: time.Now().Unix(),
+		Status:     model.Notification_Created,
+		IsLocal:    true,
+		Space:      req.SpaceId,
+		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
+			ProcessId:  processID,
+			ErrorCode:  common.GetNotificationErrorCode(err),
+			ImportType: model.NotificationImport_Notion,
+			SpaceId:    req.SpaceId,
+		}},
+	})
+	if notificationSendErr != nil {
+		log.Errorf("failed to send notification: %v", notificationSendErr)
+	}
 
 	if err == nil {
 		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionID, nil)
 	}
-
 	switch {
 	case errors.Is(err, common.ErrNoObjectsToImport):
 		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)

@@ -6154,6 +6154,7 @@ type Notification struct {
 	//
 	//	*NotificationPayloadOfImport
 	Payload IsNotificationPayload `protobuf_oneof:"payload"`
+	Space   string                `protobuf:"bytes,7,opt,name=space,proto3" json:"space,omitempty"`
 }
 
 func (m *Notification) Reset()         { *m = Notification{} }
@@ -6241,6 +6242,13 @@ func (m *Notification) GetImport() *NotificationImport {
 		return x.Import
 	}
 	return nil
+}
+
+func (m *Notification) GetSpace() string {
+	if m != nil {
+		return m.Space
+	}
+	return ""
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
@@ -10800,6 +10808,13 @@ func (m *Notification) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Space) > 0 {
+		i -= len(m.Space)
+		copy(dAtA[i:], m.Space)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Space)))
+		i--
+		dAtA[i] = 0x3a
+	}
 	if m.Payload != nil {
 		{
 			size := m.Payload.Size()
@@ -12726,6 +12741,10 @@ func (m *Notification) Size() (n int) {
 	}
 	if m.Payload != nil {
 		n += m.Payload.Size()
+	}
+	l = len(m.Space)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
 	}
 	return n
 }
@@ -23480,6 +23499,38 @@ func (m *Notification) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Payload = &NotificationPayloadOfImport{v}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Space", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Space = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
