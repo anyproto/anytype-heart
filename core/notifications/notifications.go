@@ -28,7 +28,7 @@ const CName = "notificationService"
 type Notifications interface {
 	app.ComponentRunnable
 	CreateAndSendLocal(notification *model.Notification) error
-	CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error
+	CreateAndSendCrossDevice(notification *model.Notification) error
 	UpdateAndSend(notification *model.Notification) error
 	Reply(notificationID []string, notificationAction model.NotificationActionType) error
 	List(limit int64, includeRead bool) ([]*model.Notification, error)
@@ -131,7 +131,7 @@ func (n *notificationService) CreateAndSendLocal(notification *model.Notificatio
 	return nil
 }
 
-func (n *notificationService) CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error {
+func (n *notificationService) CreateAndSendCrossDevice(notification *model.Notification) error {
 	var exist bool
 	err := block.DoState(n.picker, n.notificationID, func(s *state.State, sb smartblock.SmartBlock) error {
 		stateNotification := s.GetNotificationByID(notification.Id)
