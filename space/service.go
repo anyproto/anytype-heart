@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -74,6 +75,7 @@ type service struct {
 	bundledObjectsInstaller bundledObjectsInstaller
 	accountService          accountservice.Service
 	objectFactory           objectcache.ObjectFactory
+	sourceService           source.Service
 	storageService          storage.ClientStorage
 	offloader               fileOffloader
 
@@ -90,7 +92,8 @@ type service struct {
 	offloaded          map[string]struct{}
 	loaded             map[string]Space
 
-	mu sync.Mutex
+	virtualSpaceService VirtualSpaceService
+	mu                  sync.Mutex
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -104,6 +107,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
+	s.sourceService = app.MustComponent[source.Service](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.storageService = app.MustComponent[storage.ClientStorage](a)
 	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
@@ -117,7 +121,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.offloading = map[string]*offloadingSpace{}
 	s.loaded = map[string]Space{}
 	s.offloaded = map[string]struct{}{}
-
+	s.virtualSpaceService = app.MustComponent[VirtualSpaceService](a)
 	return err
 }
 
