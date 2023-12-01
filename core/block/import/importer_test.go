@@ -289,7 +289,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		Params:                nil,
 		Snapshots:             snapshots,
 		UpdateExistingObjects: false,
-		Type:                  pb.RpcObjectImportRequest_External,
+		Type:                  model.ImportType_External,
 		Mode:                  2,
 		SpaceId:               "space1",
 	}, model.ObjectOrigin_import, nil)
@@ -314,7 +314,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		Params:                nil,
 		Snapshots:             nil,
 		UpdateExistingObjects: false,
-		Type:                  pb.RpcObjectImportRequest_External,
+		Type:                  model.ImportType_External,
 		Mode:                  2,
 		SpaceId:               "space1",
 	}, model.ObjectOrigin_import, nil)
