@@ -28,7 +28,7 @@ const (
 )
 
 const amplEndpoint = "https://amplitude.anytype.io/2/httpapi"
-const inhouseEndpoint = "https://inhouse.anytype.io/2/httpapi" //todo change to inhouse
+const inhouseEndpoint = "https://metrics.anytype.io/2/httpapi"
 
 type SamplableEvent interface {
 	amplitude.Event

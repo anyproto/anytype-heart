@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -68,7 +69,7 @@ func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 		ctx = mb.CtxWithTimeLimit(ctx, time.Minute)
 		msgs, err := b.NewCond().WithMin(10).WithMax(100).Wait(ctx)
 
-		if err == mb.ErrClosed {
+		if errors.Is(err, mb.ErrClosed) {
 			close(c.closeChannel)
 			return
 		}
@@ -119,7 +120,7 @@ func (c *client) sendNextBatch(info amplitude.AppInfoProvider, b *mb.MB[amplitud
 			With("unsent messages", len(msgs)+c.batcher.Len()).
 			Error("failed to send messages")
 		if b != nil {
-			b.Add(c.ctx, msgs...)
+			b.Add(c.ctx, msgs...) //nolint:errcheck
 		}
 	} else {
 		clientMetricsLog.
@@ -160,5 +161,5 @@ func (c *client) send(e amplitude.Event) {
 	if b == nil {
 		return
 	}
-	b.Add(c.ctx, e)
+	_ = b.Add(c.ctx, e) //nolint:errcheck
 }

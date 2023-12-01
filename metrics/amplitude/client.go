@@ -80,7 +80,7 @@ func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer func() {
 		cancel()
-		//flush arena
+		// flush arena
 		arena.Reset()
 		c.arenaPool.Put(arena)
 	}()

@@ -400,10 +400,3 @@ func (c MethodEvent) MarshalFastJson(arena *fastjson.Arena) amplitude.JsonEvent 
 	properties.Set("description", arena.NewString(c.description))
 	return event
 }
-
-type MethodSuccessEvent struct {
-	baseInfo
-	methodName  string
-	errorCode   int64
-	description string
-}
