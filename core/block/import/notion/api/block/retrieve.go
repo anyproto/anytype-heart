@@ -54,7 +54,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
 		converterError.Add(err)
-		if converterError.ShouldAbortImport(0, model.ImportType_Notion) {
+		if converterError.ShouldAbortImport(0, model.Import_Notion) {
 			return nil, converterError
 		}
 	}
@@ -72,7 +72,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 			children, childErr = s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
 			if !childErr.IsEmpty() {
 				converterError.Merge(childErr)
-				if childErr.ShouldAbortImport(0, model.ImportType_Notion) {
+				if childErr.ShouldAbortImport(0, model.Import_Notion) {
 					return nil, childErr
 				}
 			}

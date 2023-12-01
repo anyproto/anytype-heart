@@ -111,7 +111,7 @@ func (p *Pb) getSnapshots(
 			return nil, nil, nil
 		}
 		snapshots, widget, workspace := p.handleImportPath(len(path), path, allErrors, isMigration, params.GetImportType())
-		if allErrors.ShouldAbortImport(len(params.GetPath()), model.ImportType_Pb) {
+		if allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Pb) {
 			return nil, nil, nil
 		}
 		allSnapshots = append(allSnapshots, snapshots...)
@@ -133,7 +133,7 @@ func (p *Pb) handleImportPath(
 	err := p.extractFiles(path, importSource)
 	if err != nil {
 		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(pathCount, model.ImportType_Pb) {
+		if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
 			return nil, nil, nil
 		}
 	}
@@ -144,7 +144,7 @@ func (p *Pb) handleImportPath(
 	profile, err := p.getProfileFromFiles(importSource)
 	if err != nil {
 		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(pathCount, model.ImportType_Pb) {
+		if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
 			return nil, nil, nil
 		}
 	}
@@ -152,7 +152,7 @@ func (p *Pb) handleImportPath(
 		pr, e := p.accountService.LocalProfile()
 		if e != nil {
 			allErrors.Add(e)
-			if allErrors.ShouldAbortImport(pathCount, model.ImportType_Pb) {
+			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
 				return nil, nil, nil
 			}
 		}
@@ -224,7 +224,7 @@ func (p *Pb) getSnapshotsFromProvidedFiles(
 		snapshot, err := p.makeSnapshot(fileName, profileID, path, fileReader, isMigration)
 		if err != nil {
 			allErrors.Add(err)
-			if allErrors.ShouldAbortImport(pathCount, model.ImportType_Pb) {
+			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
 				return false
 			}
 		}
@@ -426,7 +426,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot, allErrors *commo
 		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID, fileIDs)
 		if err != nil {
 			allErrors.Add(err)
-			if allErrors.ShouldAbortImport(pathCount, model.ImportType_Pb) {
+			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
 				return nil
 			}
 			continue
