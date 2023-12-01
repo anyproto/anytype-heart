@@ -117,17 +117,17 @@ func (i *Import) Import(ctx context.Context,
 	}
 	var (
 		returnedErr error
-		importID    = uuid.New().String()
+		importId    = uuid.New().String()
 	)
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
-		i.recordEvent(&metrics.ImportFinishedEvent{ID: importID, ImportType: req.Type.String()})
+		i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
 	}()
 	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
-	i.recordEvent(&metrics.ImportStartedEvent{ID: importID, ImportType: req.Type.String()})
+	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: req.Type.String()})
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
 		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
