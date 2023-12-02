@@ -61,8 +61,13 @@ func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
 	req.Set("api_key", arena.NewString(c.key))
 
 	events := arena.NewArray()
-	for i, ev := range amplEvents {
-		ampEvent := *ev.MarshalFastJson(arena)
+	amIndex := 0
+	for _, ev := range amplEvents {
+		tryEvent := ev.MarshalFastJson(arena)
+		if tryEvent == nil {
+			continue
+		}
+		ampEvent := *tryEvent
 		ampEvent.Set("app_version", appVersion)
 		ampEvent.Set("device_id", deviceId)
 		ampEvent.Set("platform", platform)
@@ -70,7 +75,8 @@ func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
 		ampEvent.Set("user_id", userId)
 		ampEvent.Set("time", arena.NewNumberInt(int(ev.GetTimestamp())))
 
-		events.SetArrayItem(i, &ampEvent)
+		events.SetArrayItem(amIndex, &ampEvent)
+		amIndex++
 	}
 
 	req.Set("events", events)
