@@ -445,6 +445,10 @@ func (mw *marksWriter) writeMarks(buf writer, pos int) {
 			}
 		case model.BlockContentTextMark_Keyboard:
 			buf.WriteString("`")
+		case model.BlockContentTextMark_Emoji:
+			if start {
+				buf.WriteString(m.Param)
+			}
 		}
 	}
 
