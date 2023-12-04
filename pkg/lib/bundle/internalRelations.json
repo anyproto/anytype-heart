@@ -24,5 +24,7 @@
   "spaceId",
   "links",
   "internalFlags",
-  "restrictions"
+  "restrictions",
+  "fileId",
+  "sizeInBytes"
 ]

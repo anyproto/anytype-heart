@@ -34,7 +34,6 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyRecommendedLayout,
 	RelationKeyFileExt,
 	RelationKeyFileMimeType,
-	RelationKeySizeInBytes,
 	RelationKeyOldAnytypeID,
 	RelationKeySpaceDashboardId,
 	RelationKeyRecommendedRelations,
@@ -43,7 +42,6 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyWidthInPixels,
 	RelationKeyHeightInPixels,
 	RelationKeyFileExt,
-	RelationKeySizeInBytes,
 	RelationKeySourceFilePath,
 	RelationKeyFileSyncStatus,
 	RelationKeyDefaultTemplateId,
@@ -51,6 +49,5 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyBacklinks,
 	RelationKeyProfileOwnerIdentity,
 	RelationKeyFileBackupStatus,
-	RelationKeyFileId,
 	RelationKeyOrigin,
 }...)

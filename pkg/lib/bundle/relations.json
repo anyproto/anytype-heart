@@ -1524,11 +1524,11 @@
   },
   {
     "format": "shorttext",
-    "hidden": false,
+    "hidden": true,
     "key": "fileId",
     "maxCount": 0,
     "name": "Underlying file id",
-    "readonly": false,
+    "readonly": true,
     "source": "details"
   },
   {
