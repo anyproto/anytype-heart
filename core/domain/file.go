@@ -1,6 +1,6 @@
 package domain
 
-// FileId is a CID of the root of file's IPLD tree
+// FileId is a CID of the root of file's DAG
 type FileId string
 
 func (h FileId) String() string {

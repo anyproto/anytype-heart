@@ -96,9 +96,11 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 
 	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
-	err = s.fileIndexData(ctx, rootNode, id, s.isImported(opts.Origin))
-	if err != nil {
-		return nil, err
+	for _, variant := range dirEntries {
+		err = s.fileStore.LinkFileVariantToFile(id.FileId, domain.FileContentId(variant.fileInfo.Hash))
+		if err != nil {
+			return nil, fmt.Errorf("failed to link file variant to file: %w", err)
+		}
 	}
 
 	err = s.storeFileSize(spaceId, fileId)

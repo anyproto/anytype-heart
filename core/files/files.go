@@ -140,8 +140,9 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 	fileId := domain.FileId(rootNode.Cid().String())
-	if err = s.fileIndexData(ctx, rootNode, domain.FullFileId{SpaceId: spaceId, FileId: fileId}, s.isImported(opts.Origin)); err != nil {
-		return nil, err
+	err = s.fileStore.LinkFileVariantToFile(fileId, domain.FileContentId(fileInfo.Hash))
+	if err != nil {
+		return nil, fmt.Errorf("link file variant to file: %w", err)
 	}
 
 	fileKeys := domain.FileEncryptionKeys{
@@ -343,58 +344,6 @@ func (s *service) FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys,
 		FileId:         id.FileId,
 		EncryptionKeys: fileKeysRestored,
 	}, nil
-}
-
-// fileIndexData walks a file data node, indexing file links
-func (s *service) fileIndexData(ctx context.Context, outerDirNode ipld.Node, id domain.FullFileId, imported bool) error {
-	dagService := s.dagServiceForSpace(id.SpaceId)
-	dirNode, _, err := s.getInnerDirNode(ctx, dagService, outerDirNode.Links())
-	if err != nil {
-		return fmt.Errorf("get inner dir node: %w", err)
-	}
-	err = s.fileIndexNode(ctx, dirNode, id)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// fileIndexNode walks a file node, indexing file links
-func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.FullFileId) error {
-	if looksLikeFileNode(inode) {
-		err := s.fileIndexLink(inode, id)
-		if err != nil {
-			return fmt.Errorf("index file %s link: %w", id.FileId.String(), err)
-		}
-		return nil
-	}
-	dagService := s.dagServiceForSpace(id.SpaceId)
-	links := inode.Links()
-	for _, link := range links {
-		n, err := helpers.NodeAtLink(ctx, dagService, link)
-		if err != nil {
-			return err
-		}
-
-		err = s.fileIndexLink(n, id)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// fileIndexLink indexes a file link
-func (s *service) fileIndexLink(fileNode ipld.Node, id domain.FullFileId) error {
-	contentLink := schema.LinkByName(fileNode.Links(), ValidContentLinkNames)
-	if contentLink == nil {
-		return ErrMissingContentLink
-	}
-	linkID := contentLink.Cid.String()
-	if err := s.fileStore.LinkFileVariantToFile(id.FileId, domain.FileContentId(linkID)); err != nil {
-		return fmt.Errorf("add target to %s: %w", linkID, err)
-	}
-	return nil
 }
 
 func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId domain.FileId, path string, key string) (*storage.FileInfo, error) {
