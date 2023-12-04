@@ -5073,2588 +5073,1017 @@ func CommandMobile(cmd string, data []byte, callback MessageHandler) {
 }
 
 type ClientCommandsHandlerProxy struct {
-	client       ClientCommandsHandler
-	interceptors []func(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error)
+	client      ClientCommandsHandler
+	interceptor func(ctx context.Context, methodName string, actualCall func(ctx context.Context, req any) any) any
 }
 
 func (h *ClientCommandsHandlerProxy) AppGetVersion(ctx context.Context, req *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AppGetVersion(ctx, req.(*pb.RpcAppGetVersionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AppGetVersion", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAppGetVersionResponse)
+	return h.interceptor(ctx, "AppGetVersion", func(ctx context.Context, req any) any {
+		return h.client.AppGetVersion(ctx, req.(*pb.RpcAppGetVersionRequest))
+	}).(*pb.RpcAppGetVersionResponse)
 }
 func (h *ClientCommandsHandlerProxy) AppSetDeviceState(ctx context.Context, req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AppSetDeviceState(ctx, req.(*pb.RpcAppSetDeviceStateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AppSetDeviceState", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAppSetDeviceStateResponse)
+	return h.interceptor(ctx, "AppSetDeviceState", func(ctx context.Context, req any) any {
+		return h.client.AppSetDeviceState(ctx, req.(*pb.RpcAppSetDeviceStateRequest))
+	}).(*pb.RpcAppSetDeviceStateResponse)
 }
 func (h *ClientCommandsHandlerProxy) AppShutdown(ctx context.Context, req *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AppShutdown(ctx, req.(*pb.RpcAppShutdownRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AppShutdown", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAppShutdownResponse)
+	return h.interceptor(ctx, "AppShutdown", func(ctx context.Context, req any) any {
+		return h.client.AppShutdown(ctx, req.(*pb.RpcAppShutdownRequest))
+	}).(*pb.RpcAppShutdownResponse)
 }
 func (h *ClientCommandsHandlerProxy) WalletCreate(ctx context.Context, req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WalletCreate(ctx, req.(*pb.RpcWalletCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "WalletCreate", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWalletCreateResponse)
+	return h.interceptor(ctx, "WalletCreate", func(ctx context.Context, req any) any {
+		return h.client.WalletCreate(ctx, req.(*pb.RpcWalletCreateRequest))
+	}).(*pb.RpcWalletCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) WalletRecover(ctx context.Context, req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WalletRecover(ctx, req.(*pb.RpcWalletRecoverRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "WalletRecover", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWalletRecoverResponse)
+	return h.interceptor(ctx, "WalletRecover", func(ctx context.Context, req any) any {
+		return h.client.WalletRecover(ctx, req.(*pb.RpcWalletRecoverRequest))
+	}).(*pb.RpcWalletRecoverResponse)
 }
 func (h *ClientCommandsHandlerProxy) WalletConvert(ctx context.Context, req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WalletConvert(ctx, req.(*pb.RpcWalletConvertRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "WalletConvert", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWalletConvertResponse)
+	return h.interceptor(ctx, "WalletConvert", func(ctx context.Context, req any) any {
+		return h.client.WalletConvert(ctx, req.(*pb.RpcWalletConvertRequest))
+	}).(*pb.RpcWalletConvertResponse)
 }
 func (h *ClientCommandsHandlerProxy) WalletCreateSession(ctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WalletCreateSession(ctx, req.(*pb.RpcWalletCreateSessionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WalletCreateSession", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWalletCreateSessionResponse)
+	return h.interceptor(ctx, "WalletCreateSession", func(ctx context.Context, req any) any {
+		return h.client.WalletCreateSession(ctx, req.(*pb.RpcWalletCreateSessionRequest))
+	}).(*pb.RpcWalletCreateSessionResponse)
 }
 func (h *ClientCommandsHandlerProxy) WalletCloseSession(ctx context.Context, req *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WalletCloseSession(ctx, req.(*pb.RpcWalletCloseSessionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WalletCloseSession", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWalletCloseSessionResponse)
+	return h.interceptor(ctx, "WalletCloseSession", func(ctx context.Context, req any) any {
+		return h.client.WalletCloseSession(ctx, req.(*pb.RpcWalletCloseSessionRequest))
+	}).(*pb.RpcWalletCloseSessionResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceCreate(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceCreate(ctx, req.(*pb.RpcWorkspaceCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceCreate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceCreateResponse)
+	return h.interceptor(ctx, "WorkspaceCreate", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceCreate(ctx, req.(*pb.RpcWorkspaceCreateRequest))
+	}).(*pb.RpcWorkspaceCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceOpen(ctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceOpen(ctx, req.(*pb.RpcWorkspaceOpenRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "WorkspaceOpen", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceOpenResponse)
+	return h.interceptor(ctx, "WorkspaceOpen", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceOpen(ctx, req.(*pb.RpcWorkspaceOpenRequest))
+	}).(*pb.RpcWorkspaceOpenResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceObjectAdd(ctx context.Context, req *pb.RpcWorkspaceObjectAddRequest) *pb.RpcWorkspaceObjectAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceObjectAdd(ctx, req.(*pb.RpcWorkspaceObjectAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceObjectAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceObjectAddResponse)
+	return h.interceptor(ctx, "WorkspaceObjectAdd", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceObjectAdd(ctx, req.(*pb.RpcWorkspaceObjectAddRequest))
+	}).(*pb.RpcWorkspaceObjectAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceObjectListAdd(ctx context.Context, req *pb.RpcWorkspaceObjectListAddRequest) *pb.RpcWorkspaceObjectListAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceObjectListAdd(ctx, req.(*pb.RpcWorkspaceObjectListAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceObjectListAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceObjectListAddResponse)
+	return h.interceptor(ctx, "WorkspaceObjectListAdd", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceObjectListAdd(ctx, req.(*pb.RpcWorkspaceObjectListAddRequest))
+	}).(*pb.RpcWorkspaceObjectListAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceObjectListRemove(ctx context.Context, req *pb.RpcWorkspaceObjectListRemoveRequest) *pb.RpcWorkspaceObjectListRemoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceObjectListRemove(ctx, req.(*pb.RpcWorkspaceObjectListRemoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceObjectListRemove", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceObjectListRemoveResponse)
+	return h.interceptor(ctx, "WorkspaceObjectListRemove", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceObjectListRemove(ctx, req.(*pb.RpcWorkspaceObjectListRemoveRequest))
+	}).(*pb.RpcWorkspaceObjectListRemoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceSelect(ctx context.Context, req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceSelect(ctx, req.(*pb.RpcWorkspaceSelectRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceSelect", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceSelectResponse)
+	return h.interceptor(ctx, "WorkspaceSelect", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceSelect(ctx, req.(*pb.RpcWorkspaceSelectRequest))
+	}).(*pb.RpcWorkspaceSelectResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceGetCurrent(ctx context.Context, req *pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceGetCurrent(ctx, req.(*pb.RpcWorkspaceGetCurrentRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceGetCurrent", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceGetCurrentResponse)
+	return h.interceptor(ctx, "WorkspaceGetCurrent", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceGetCurrent(ctx, req.(*pb.RpcWorkspaceGetCurrentRequest))
+	}).(*pb.RpcWorkspaceGetCurrentResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceGetAll(ctx context.Context, req *pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceGetAll(ctx, req.(*pb.RpcWorkspaceGetAllRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceGetAll", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceGetAllResponse)
+	return h.interceptor(ctx, "WorkspaceGetAll", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceGetAll(ctx, req.(*pb.RpcWorkspaceGetAllRequest))
+	}).(*pb.RpcWorkspaceGetAllResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceSetInfo(ctx context.Context, req *pb.RpcWorkspaceSetInfoRequest) *pb.RpcWorkspaceSetInfoResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceSetInfo(ctx, req.(*pb.RpcWorkspaceSetInfoRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceSetInfo", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceSetInfoResponse)
+	return h.interceptor(ctx, "WorkspaceSetInfo", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceSetInfo(ctx, req.(*pb.RpcWorkspaceSetInfoRequest))
+	}).(*pb.RpcWorkspaceSetInfoResponse)
 }
 func (h *ClientCommandsHandlerProxy) WorkspaceExport(ctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.WorkspaceExport(ctx, req.(*pb.RpcWorkspaceExportRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceExport", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcWorkspaceExportResponse)
+	return h.interceptor(ctx, "WorkspaceExport", func(ctx context.Context, req any) any {
+		return h.client.WorkspaceExport(ctx, req.(*pb.RpcWorkspaceExportRequest))
+	}).(*pb.RpcWorkspaceExportResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountRecover(ctx context.Context, req *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountRecover(ctx, req.(*pb.RpcAccountRecoverRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountRecover", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountRecoverResponse)
+	return h.interceptor(ctx, "AccountRecover", func(ctx context.Context, req any) any {
+		return h.client.AccountRecover(ctx, req.(*pb.RpcAccountRecoverRequest))
+	}).(*pb.RpcAccountRecoverResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountCreate(ctx, req.(*pb.RpcAccountCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountCreate", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountCreateResponse)
+	return h.interceptor(ctx, "AccountCreate", func(ctx context.Context, req any) any {
+		return h.client.AccountCreate(ctx, req.(*pb.RpcAccountCreateRequest))
+	}).(*pb.RpcAccountCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountDelete(ctx, req.(*pb.RpcAccountDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountDelete", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountDeleteResponse)
+	return h.interceptor(ctx, "AccountDelete", func(ctx context.Context, req any) any {
+		return h.client.AccountDelete(ctx, req.(*pb.RpcAccountDeleteRequest))
+	}).(*pb.RpcAccountDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountRevertDeletion(ctx context.Context, req *pb.RpcAccountRevertDeletionRequest) *pb.RpcAccountRevertDeletionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountRevertDeletion(ctx, req.(*pb.RpcAccountRevertDeletionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountRevertDeletion", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountRevertDeletionResponse)
+	return h.interceptor(ctx, "AccountRevertDeletion", func(ctx context.Context, req any) any {
+		return h.client.AccountRevertDeletion(ctx, req.(*pb.RpcAccountRevertDeletionRequest))
+	}).(*pb.RpcAccountRevertDeletionResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountSelect(ctx, req.(*pb.RpcAccountSelectRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountSelect", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountSelectResponse)
+	return h.interceptor(ctx, "AccountSelect", func(ctx context.Context, req any) any {
+		return h.client.AccountSelect(ctx, req.(*pb.RpcAccountSelectRequest))
+	}).(*pb.RpcAccountSelectResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountEnableLocalNetworkSync(ctx context.Context, req *pb.RpcAccountEnableLocalNetworkSyncRequest) *pb.RpcAccountEnableLocalNetworkSyncResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountEnableLocalNetworkSync(ctx, req.(*pb.RpcAccountEnableLocalNetworkSyncRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountEnableLocalNetworkSync", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountEnableLocalNetworkSyncResponse)
+	return h.interceptor(ctx, "AccountEnableLocalNetworkSync", func(ctx context.Context, req any) any {
+		return h.client.AccountEnableLocalNetworkSync(ctx, req.(*pb.RpcAccountEnableLocalNetworkSyncRequest))
+	}).(*pb.RpcAccountEnableLocalNetworkSyncResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountStop(ctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountStop(ctx, req.(*pb.RpcAccountStopRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountStop", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountStopResponse)
+	return h.interceptor(ctx, "AccountStop", func(ctx context.Context, req any) any {
+		return h.client.AccountStop(ctx, req.(*pb.RpcAccountStopRequest))
+	}).(*pb.RpcAccountStopResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountMove(ctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountMove(ctx, req.(*pb.RpcAccountMoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountMove", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountMoveResponse)
+	return h.interceptor(ctx, "AccountMove", func(ctx context.Context, req any) any {
+		return h.client.AccountMove(ctx, req.(*pb.RpcAccountMoveRequest))
+	}).(*pb.RpcAccountMoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountConfigUpdate(ctx context.Context, req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountConfigUpdate(ctx, req.(*pb.RpcAccountConfigUpdateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountConfigUpdate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountConfigUpdateResponse)
+	return h.interceptor(ctx, "AccountConfigUpdate", func(ctx context.Context, req any) any {
+		return h.client.AccountConfigUpdate(ctx, req.(*pb.RpcAccountConfigUpdateRequest))
+	}).(*pb.RpcAccountConfigUpdateResponse)
 }
 func (h *ClientCommandsHandlerProxy) AccountRecoverFromLegacyExport(ctx context.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountRecoverFromLegacyExport(ctx, req.(*pb.RpcAccountRecoverFromLegacyExportRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountRecoverFromLegacyExport", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountRecoverFromLegacyExportResponse)
-}
-func (h *ClientCommandsHandlerProxy) AccountChangeNetworkConfigAndRestart(ctx context.Context, req *pb.RpcAccountChangeNetworkConfigAndRestartRequest) *pb.RpcAccountChangeNetworkConfigAndRestartResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.AccountChangeNetworkConfigAndRestart(ctx, req.(*pb.RpcAccountChangeNetworkConfigAndRestartRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountChangeNetworkConfigAndRestart", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcAccountChangeNetworkConfigAndRestartResponse)
+	return h.interceptor(ctx, "AccountRecoverFromLegacyExport", func(ctx context.Context, req any) any {
+		return h.client.AccountRecoverFromLegacyExport(ctx, req.(*pb.RpcAccountRecoverFromLegacyExportRequest))
+	}).(*pb.RpcAccountRecoverFromLegacyExportResponse)
 }
 func (h *ClientCommandsHandlerProxy) SpaceDelete(ctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.SpaceDelete(ctx, req.(*pb.RpcSpaceDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "SpaceDelete", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcSpaceDeleteResponse)
+	return h.interceptor(ctx, "SpaceDelete", func(ctx context.Context, req any) any {
+		return h.client.SpaceDelete(ctx, req.(*pb.RpcSpaceDeleteRequest))
+	}).(*pb.RpcSpaceDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectOpen(ctx context.Context, req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectOpen(ctx, req.(*pb.RpcObjectOpenRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectOpen", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectOpenResponse)
+	return h.interceptor(ctx, "ObjectOpen", func(ctx context.Context, req any) any {
+		return h.client.ObjectOpen(ctx, req.(*pb.RpcObjectOpenRequest))
+	}).(*pb.RpcObjectOpenResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectClose(ctx context.Context, req *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectClose(ctx, req.(*pb.RpcObjectCloseRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectClose", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCloseResponse)
+	return h.interceptor(ctx, "ObjectClose", func(ctx context.Context, req any) any {
+		return h.client.ObjectClose(ctx, req.(*pb.RpcObjectCloseRequest))
+	}).(*pb.RpcObjectCloseResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectShow(ctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectShow(ctx, req.(*pb.RpcObjectShowRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectShow", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectShowResponse)
+	return h.interceptor(ctx, "ObjectShow", func(ctx context.Context, req any) any {
+		return h.client.ObjectShow(ctx, req.(*pb.RpcObjectShowRequest))
+	}).(*pb.RpcObjectShowResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCreate(ctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCreate(ctx, req.(*pb.RpcObjectCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectCreate", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCreateResponse)
+	return h.interceptor(ctx, "ObjectCreate", func(ctx context.Context, req any) any {
+		return h.client.ObjectCreate(ctx, req.(*pb.RpcObjectCreateRequest))
+	}).(*pb.RpcObjectCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCreateBookmark(ctx, req.(*pb.RpcObjectCreateBookmarkRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateBookmark", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCreateBookmarkResponse)
+	return h.interceptor(ctx, "ObjectCreateBookmark", func(ctx context.Context, req any) any {
+		return h.client.ObjectCreateBookmark(ctx, req.(*pb.RpcObjectCreateBookmarkRequest))
+	}).(*pb.RpcObjectCreateBookmarkResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCreateSet(ctx, req.(*pb.RpcObjectCreateSetRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateSet", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCreateSetResponse)
+	return h.interceptor(ctx, "ObjectCreateSet", func(ctx context.Context, req any) any {
+		return h.client.ObjectCreateSet(ctx, req.(*pb.RpcObjectCreateSetRequest))
+	}).(*pb.RpcObjectCreateSetResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectGraph(ctx context.Context, req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectGraph(ctx, req.(*pb.RpcObjectGraphRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectGraph", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectGraphResponse)
+	return h.interceptor(ctx, "ObjectGraph", func(ctx context.Context, req any) any {
+		return h.client.ObjectGraph(ctx, req.(*pb.RpcObjectGraphRequest))
+	}).(*pb.RpcObjectGraphResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSearch(ctx context.Context, req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSearch(ctx, req.(*pb.RpcObjectSearchRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectSearch", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSearchResponse)
+	return h.interceptor(ctx, "ObjectSearch", func(ctx context.Context, req any) any {
+		return h.client.ObjectSearch(ctx, req.(*pb.RpcObjectSearchRequest))
+	}).(*pb.RpcObjectSearchResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSearchSubscribe(ctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSearchSubscribe(ctx, req.(*pb.RpcObjectSearchSubscribeRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSearchSubscribe", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSearchSubscribeResponse)
+	return h.interceptor(ctx, "ObjectSearchSubscribe", func(ctx context.Context, req any) any {
+		return h.client.ObjectSearchSubscribe(ctx, req.(*pb.RpcObjectSearchSubscribeRequest))
+	}).(*pb.RpcObjectSearchSubscribeResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSubscribeIds(ctx context.Context, req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSubscribeIds(ctx, req.(*pb.RpcObjectSubscribeIdsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSubscribeIds", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSubscribeIdsResponse)
+	return h.interceptor(ctx, "ObjectSubscribeIds", func(ctx context.Context, req any) any {
+		return h.client.ObjectSubscribeIds(ctx, req.(*pb.RpcObjectSubscribeIdsRequest))
+	}).(*pb.RpcObjectSubscribeIdsResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectGroupsSubscribe(ctx context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectGroupsSubscribe(ctx, req.(*pb.RpcObjectGroupsSubscribeRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectGroupsSubscribe", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectGroupsSubscribeResponse)
+	return h.interceptor(ctx, "ObjectGroupsSubscribe", func(ctx context.Context, req any) any {
+		return h.client.ObjectGroupsSubscribe(ctx, req.(*pb.RpcObjectGroupsSubscribeRequest))
+	}).(*pb.RpcObjectGroupsSubscribeResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSearchUnsubscribe(ctx context.Context, req *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSearchUnsubscribe(ctx, req.(*pb.RpcObjectSearchUnsubscribeRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSearchUnsubscribe", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSearchUnsubscribeResponse)
+	return h.interceptor(ctx, "ObjectSearchUnsubscribe", func(ctx context.Context, req any) any {
+		return h.client.ObjectSearchUnsubscribe(ctx, req.(*pb.RpcObjectSearchUnsubscribeRequest))
+	}).(*pb.RpcObjectSearchUnsubscribeResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSetDetails(ctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSetDetails(ctx, req.(*pb.RpcObjectSetDetailsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetDetails", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSetDetailsResponse)
+	return h.interceptor(ctx, "ObjectSetDetails", func(ctx context.Context, req any) any {
+		return h.client.ObjectSetDetails(ctx, req.(*pb.RpcObjectSetDetailsRequest))
+	}).(*pb.RpcObjectSetDetailsResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectDuplicate(ctx context.Context, req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectDuplicate(ctx, req.(*pb.RpcObjectDuplicateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectDuplicate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectDuplicateResponse)
+	return h.interceptor(ctx, "ObjectDuplicate", func(ctx context.Context, req any) any {
+		return h.client.ObjectDuplicate(ctx, req.(*pb.RpcObjectDuplicateRequest))
+	}).(*pb.RpcObjectDuplicateResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSetObjectType(ctx context.Context, req *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSetObjectType(ctx, req.(*pb.RpcObjectSetObjectTypeRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetObjectType", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSetObjectTypeResponse)
+	return h.interceptor(ctx, "ObjectSetObjectType", func(ctx context.Context, req any) any {
+		return h.client.ObjectSetObjectType(ctx, req.(*pb.RpcObjectSetObjectTypeRequest))
+	}).(*pb.RpcObjectSetObjectTypeResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSetLayout(ctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSetLayout(ctx, req.(*pb.RpcObjectSetLayoutRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetLayout", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSetLayoutResponse)
+	return h.interceptor(ctx, "ObjectSetLayout", func(ctx context.Context, req any) any {
+		return h.client.ObjectSetLayout(ctx, req.(*pb.RpcObjectSetLayoutRequest))
+	}).(*pb.RpcObjectSetLayoutResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSetInternalFlags(ctx context.Context, req *pb.RpcObjectSetInternalFlagsRequest) *pb.RpcObjectSetInternalFlagsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSetInternalFlags(ctx, req.(*pb.RpcObjectSetInternalFlagsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetInternalFlags", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSetInternalFlagsResponse)
+	return h.interceptor(ctx, "ObjectSetInternalFlags", func(ctx context.Context, req any) any {
+		return h.client.ObjectSetInternalFlags(ctx, req.(*pb.RpcObjectSetInternalFlagsRequest))
+	}).(*pb.RpcObjectSetInternalFlagsResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSetIsFavorite(ctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSetIsFavorite(ctx, req.(*pb.RpcObjectSetIsFavoriteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetIsFavorite", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSetIsFavoriteResponse)
+	return h.interceptor(ctx, "ObjectSetIsFavorite", func(ctx context.Context, req any) any {
+		return h.client.ObjectSetIsFavorite(ctx, req.(*pb.RpcObjectSetIsFavoriteRequest))
+	}).(*pb.RpcObjectSetIsFavoriteResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSetIsArchived(ctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSetIsArchived(ctx, req.(*pb.RpcObjectSetIsArchivedRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetIsArchived", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSetIsArchivedResponse)
+	return h.interceptor(ctx, "ObjectSetIsArchived", func(ctx context.Context, req any) any {
+		return h.client.ObjectSetIsArchived(ctx, req.(*pb.RpcObjectSetIsArchivedRequest))
+	}).(*pb.RpcObjectSetIsArchivedResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectSetSource(ctx context.Context, req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectSetSource(ctx, req.(*pb.RpcObjectSetSourceRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetSource", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectSetSourceResponse)
+	return h.interceptor(ctx, "ObjectSetSource", func(ctx context.Context, req any) any {
+		return h.client.ObjectSetSource(ctx, req.(*pb.RpcObjectSetSourceRequest))
+	}).(*pb.RpcObjectSetSourceResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectWorkspaceSetDashboard(ctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectWorkspaceSetDashboard(ctx, req.(*pb.RpcObjectWorkspaceSetDashboardRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectWorkspaceSetDashboard", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectWorkspaceSetDashboardResponse)
+	return h.interceptor(ctx, "ObjectWorkspaceSetDashboard", func(ctx context.Context, req any) any {
+		return h.client.ObjectWorkspaceSetDashboard(ctx, req.(*pb.RpcObjectWorkspaceSetDashboardRequest))
+	}).(*pb.RpcObjectWorkspaceSetDashboardResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectListDuplicate(ctx context.Context, req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectListDuplicate(ctx, req.(*pb.RpcObjectListDuplicateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListDuplicate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectListDuplicateResponse)
+	return h.interceptor(ctx, "ObjectListDuplicate", func(ctx context.Context, req any) any {
+		return h.client.ObjectListDuplicate(ctx, req.(*pb.RpcObjectListDuplicateRequest))
+	}).(*pb.RpcObjectListDuplicateResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectListDelete(ctx context.Context, req *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectListDelete(ctx, req.(*pb.RpcObjectListDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListDelete", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectListDeleteResponse)
+	return h.interceptor(ctx, "ObjectListDelete", func(ctx context.Context, req any) any {
+		return h.client.ObjectListDelete(ctx, req.(*pb.RpcObjectListDeleteRequest))
+	}).(*pb.RpcObjectListDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectListSetIsArchived(ctx context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectListSetIsArchived(ctx, req.(*pb.RpcObjectListSetIsArchivedRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListSetIsArchived", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectListSetIsArchivedResponse)
+	return h.interceptor(ctx, "ObjectListSetIsArchived", func(ctx context.Context, req any) any {
+		return h.client.ObjectListSetIsArchived(ctx, req.(*pb.RpcObjectListSetIsArchivedRequest))
+	}).(*pb.RpcObjectListSetIsArchivedResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectListSetIsFavorite(ctx context.Context, req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectListSetIsFavorite(ctx, req.(*pb.RpcObjectListSetIsFavoriteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListSetIsFavorite", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectListSetIsFavoriteResponse)
+	return h.interceptor(ctx, "ObjectListSetIsFavorite", func(ctx context.Context, req any) any {
+		return h.client.ObjectListSetIsFavorite(ctx, req.(*pb.RpcObjectListSetIsFavoriteRequest))
+	}).(*pb.RpcObjectListSetIsFavoriteResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectListSetObjectType(ctx context.Context, req *pb.RpcObjectListSetObjectTypeRequest) *pb.RpcObjectListSetObjectTypeResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectListSetObjectType(ctx, req.(*pb.RpcObjectListSetObjectTypeRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListSetObjectType", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectListSetObjectTypeResponse)
+	return h.interceptor(ctx, "ObjectListSetObjectType", func(ctx context.Context, req any) any {
+		return h.client.ObjectListSetObjectType(ctx, req.(*pb.RpcObjectListSetObjectTypeRequest))
+	}).(*pb.RpcObjectListSetObjectTypeResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectApplyTemplate(ctx context.Context, req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectApplyTemplate(ctx, req.(*pb.RpcObjectApplyTemplateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectApplyTemplate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectApplyTemplateResponse)
+	return h.interceptor(ctx, "ObjectApplyTemplate", func(ctx context.Context, req any) any {
+		return h.client.ObjectApplyTemplate(ctx, req.(*pb.RpcObjectApplyTemplateRequest))
+	}).(*pb.RpcObjectApplyTemplateResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectToSet(ctx context.Context, req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectToSet(ctx, req.(*pb.RpcObjectToSetRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectToSet", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectToSetResponse)
+	return h.interceptor(ctx, "ObjectToSet", func(ctx context.Context, req any) any {
+		return h.client.ObjectToSet(ctx, req.(*pb.RpcObjectToSetRequest))
+	}).(*pb.RpcObjectToSetResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectToCollection(ctx context.Context, req *pb.RpcObjectToCollectionRequest) *pb.RpcObjectToCollectionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectToCollection(ctx, req.(*pb.RpcObjectToCollectionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectToCollection", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectToCollectionResponse)
+	return h.interceptor(ctx, "ObjectToCollection", func(ctx context.Context, req any) any {
+		return h.client.ObjectToCollection(ctx, req.(*pb.RpcObjectToCollectionRequest))
+	}).(*pb.RpcObjectToCollectionResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectShareByLink(ctx context.Context, req *pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectShareByLink(ctx, req.(*pb.RpcObjectShareByLinkRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectShareByLink", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectShareByLinkResponse)
+	return h.interceptor(ctx, "ObjectShareByLink", func(ctx context.Context, req any) any {
+		return h.client.ObjectShareByLink(ctx, req.(*pb.RpcObjectShareByLinkRequest))
+	}).(*pb.RpcObjectShareByLinkResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectUndo(ctx context.Context, req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectUndo(ctx, req.(*pb.RpcObjectUndoRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectUndo", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectUndoResponse)
+	return h.interceptor(ctx, "ObjectUndo", func(ctx context.Context, req any) any {
+		return h.client.ObjectUndo(ctx, req.(*pb.RpcObjectUndoRequest))
+	}).(*pb.RpcObjectUndoResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectRedo(ctx context.Context, req *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectRedo(ctx, req.(*pb.RpcObjectRedoRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectRedo", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectRedoResponse)
+	return h.interceptor(ctx, "ObjectRedo", func(ctx context.Context, req any) any {
+		return h.client.ObjectRedo(ctx, req.(*pb.RpcObjectRedoRequest))
+	}).(*pb.RpcObjectRedoResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectListExport(ctx context.Context, req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectListExport(ctx, req.(*pb.RpcObjectListExportRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListExport", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectListExportResponse)
+	return h.interceptor(ctx, "ObjectListExport", func(ctx context.Context, req any) any {
+		return h.client.ObjectListExport(ctx, req.(*pb.RpcObjectListExportRequest))
+	}).(*pb.RpcObjectListExportResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectBookmarkFetch(ctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectBookmarkFetch(ctx, req.(*pb.RpcObjectBookmarkFetchRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectBookmarkFetch", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectBookmarkFetchResponse)
+	return h.interceptor(ctx, "ObjectBookmarkFetch", func(ctx context.Context, req any) any {
+		return h.client.ObjectBookmarkFetch(ctx, req.(*pb.RpcObjectBookmarkFetchRequest))
+	}).(*pb.RpcObjectBookmarkFetchResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectToBookmark(ctx context.Context, req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectToBookmark(ctx, req.(*pb.RpcObjectToBookmarkRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectToBookmark", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectToBookmarkResponse)
+	return h.interceptor(ctx, "ObjectToBookmark", func(ctx context.Context, req any) any {
+		return h.client.ObjectToBookmark(ctx, req.(*pb.RpcObjectToBookmarkRequest))
+	}).(*pb.RpcObjectToBookmarkResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectImport(ctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectImport(ctx, req.(*pb.RpcObjectImportRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectImport", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectImportResponse)
+	return h.interceptor(ctx, "ObjectImport", func(ctx context.Context, req any) any {
+		return h.client.ObjectImport(ctx, req.(*pb.RpcObjectImportRequest))
+	}).(*pb.RpcObjectImportResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectImportList(ctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectImportList(ctx, req.(*pb.RpcObjectImportListRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectImportList", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectImportListResponse)
+	return h.interceptor(ctx, "ObjectImportList", func(ctx context.Context, req any) any {
+		return h.client.ObjectImportList(ctx, req.(*pb.RpcObjectImportListRequest))
+	}).(*pb.RpcObjectImportListResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectImportNotionValidateToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) *pb.RpcObjectImportNotionValidateTokenResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectImportNotionValidateToken(ctx, req.(*pb.RpcObjectImportNotionValidateTokenRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectImportNotionValidateToken", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectImportNotionValidateTokenResponse)
+	return h.interceptor(ctx, "ObjectImportNotionValidateToken", func(ctx context.Context, req any) any {
+		return h.client.ObjectImportNotionValidateToken(ctx, req.(*pb.RpcObjectImportNotionValidateTokenRequest))
+	}).(*pb.RpcObjectImportNotionValidateTokenResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectImportUseCase(ctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectImportUseCase(ctx, req.(*pb.RpcObjectImportUseCaseRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectImportUseCase", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectImportUseCaseResponse)
+	return h.interceptor(ctx, "ObjectImportUseCase", func(ctx context.Context, req any) any {
+		return h.client.ObjectImportUseCase(ctx, req.(*pb.RpcObjectImportUseCaseRequest))
+	}).(*pb.RpcObjectImportUseCaseResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectImportExperience(ctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectImportExperience(ctx, req.(*pb.RpcObjectImportExperienceRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectImportExperience", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectImportExperienceResponse)
+	return h.interceptor(ctx, "ObjectImportExperience", func(ctx context.Context, req any) any {
+		return h.client.ObjectImportExperience(ctx, req.(*pb.RpcObjectImportExperienceRequest))
+	}).(*pb.RpcObjectImportExperienceResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCollectionAdd(ctx context.Context, req *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCollectionAdd(ctx, req.(*pb.RpcObjectCollectionAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCollectionAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCollectionAddResponse)
+	return h.interceptor(ctx, "ObjectCollectionAdd", func(ctx context.Context, req any) any {
+		return h.client.ObjectCollectionAdd(ctx, req.(*pb.RpcObjectCollectionAddRequest))
+	}).(*pb.RpcObjectCollectionAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCollectionRemove(ctx context.Context, req *pb.RpcObjectCollectionRemoveRequest) *pb.RpcObjectCollectionRemoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCollectionRemove(ctx, req.(*pb.RpcObjectCollectionRemoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCollectionRemove", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCollectionRemoveResponse)
+	return h.interceptor(ctx, "ObjectCollectionRemove", func(ctx context.Context, req any) any {
+		return h.client.ObjectCollectionRemove(ctx, req.(*pb.RpcObjectCollectionRemoveRequest))
+	}).(*pb.RpcObjectCollectionRemoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCollectionSort(ctx context.Context, req *pb.RpcObjectCollectionSortRequest) *pb.RpcObjectCollectionSortResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCollectionSort(ctx, req.(*pb.RpcObjectCollectionSortRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCollectionSort", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCollectionSortResponse)
+	return h.interceptor(ctx, "ObjectCollectionSort", func(ctx context.Context, req any) any {
+		return h.client.ObjectCollectionSort(ctx, req.(*pb.RpcObjectCollectionSortRequest))
+	}).(*pb.RpcObjectCollectionSortResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCreateRelation(ctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCreateRelation(ctx, req.(*pb.RpcObjectCreateRelationRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateRelation", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCreateRelationResponse)
+	return h.interceptor(ctx, "ObjectCreateRelation", func(ctx context.Context, req any) any {
+		return h.client.ObjectCreateRelation(ctx, req.(*pb.RpcObjectCreateRelationRequest))
+	}).(*pb.RpcObjectCreateRelationResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCreateRelationOption(ctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCreateRelationOption(ctx, req.(*pb.RpcObjectCreateRelationOptionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateRelationOption", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCreateRelationOptionResponse)
+	return h.interceptor(ctx, "ObjectCreateRelationOption", func(ctx context.Context, req any) any {
+		return h.client.ObjectCreateRelationOption(ctx, req.(*pb.RpcObjectCreateRelationOptionRequest))
+	}).(*pb.RpcObjectCreateRelationOptionResponse)
 }
 func (h *ClientCommandsHandlerProxy) RelationListRemoveOption(ctx context.Context, req *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.RelationListRemoveOption(ctx, req.(*pb.RpcRelationListRemoveOptionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "RelationListRemoveOption", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcRelationListRemoveOptionResponse)
+	return h.interceptor(ctx, "RelationListRemoveOption", func(ctx context.Context, req any) any {
+		return h.client.RelationListRemoveOption(ctx, req.(*pb.RpcRelationListRemoveOptionRequest))
+	}).(*pb.RpcRelationListRemoveOptionResponse)
 }
 func (h *ClientCommandsHandlerProxy) RelationOptions(ctx context.Context, req *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.RelationOptions(ctx, req.(*pb.RpcRelationOptionsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "RelationOptions", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcRelationOptionsResponse)
+	return h.interceptor(ctx, "RelationOptions", func(ctx context.Context, req any) any {
+		return h.client.RelationOptions(ctx, req.(*pb.RpcRelationOptionsRequest))
+	}).(*pb.RpcRelationOptionsResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectRelationAdd(ctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectRelationAdd(ctx, req.(*pb.RpcObjectRelationAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectRelationAddResponse)
+	return h.interceptor(ctx, "ObjectRelationAdd", func(ctx context.Context, req any) any {
+		return h.client.ObjectRelationAdd(ctx, req.(*pb.RpcObjectRelationAddRequest))
+	}).(*pb.RpcObjectRelationAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectRelationDelete(ctx context.Context, req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectRelationDelete(ctx, req.(*pb.RpcObjectRelationDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationDelete", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectRelationDeleteResponse)
+	return h.interceptor(ctx, "ObjectRelationDelete", func(ctx context.Context, req any) any {
+		return h.client.ObjectRelationDelete(ctx, req.(*pb.RpcObjectRelationDeleteRequest))
+	}).(*pb.RpcObjectRelationDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectRelationAddFeatured(ctx context.Context, req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectRelationAddFeatured(ctx, req.(*pb.RpcObjectRelationAddFeaturedRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationAddFeatured", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectRelationAddFeaturedResponse)
+	return h.interceptor(ctx, "ObjectRelationAddFeatured", func(ctx context.Context, req any) any {
+		return h.client.ObjectRelationAddFeatured(ctx, req.(*pb.RpcObjectRelationAddFeaturedRequest))
+	}).(*pb.RpcObjectRelationAddFeaturedResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectRelationRemoveFeatured(ctx context.Context, req *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectRelationRemoveFeatured(ctx, req.(*pb.RpcObjectRelationRemoveFeaturedRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationRemoveFeatured", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectRelationRemoveFeaturedResponse)
+	return h.interceptor(ctx, "ObjectRelationRemoveFeatured", func(ctx context.Context, req any) any {
+		return h.client.ObjectRelationRemoveFeatured(ctx, req.(*pb.RpcObjectRelationRemoveFeaturedRequest))
+	}).(*pb.RpcObjectRelationRemoveFeaturedResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectRelationListAvailable(ctx context.Context, req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectRelationListAvailable(ctx, req.(*pb.RpcObjectRelationListAvailableRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationListAvailable", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectRelationListAvailableResponse)
+	return h.interceptor(ctx, "ObjectRelationListAvailable", func(ctx context.Context, req any) any {
+		return h.client.ObjectRelationListAvailable(ctx, req.(*pb.RpcObjectRelationListAvailableRequest))
+	}).(*pb.RpcObjectRelationListAvailableResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectCreateObjectType(ctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectCreateObjectType(ctx, req.(*pb.RpcObjectCreateObjectTypeRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateObjectType", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectCreateObjectTypeResponse)
+	return h.interceptor(ctx, "ObjectCreateObjectType", func(ctx context.Context, req any) any {
+		return h.client.ObjectCreateObjectType(ctx, req.(*pb.RpcObjectCreateObjectTypeRequest))
+	}).(*pb.RpcObjectCreateObjectTypeResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectTypeRelationAdd(ctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectTypeRelationAdd(ctx, req.(*pb.RpcObjectTypeRelationAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectTypeRelationAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectTypeRelationAddResponse)
+	return h.interceptor(ctx, "ObjectTypeRelationAdd", func(ctx context.Context, req any) any {
+		return h.client.ObjectTypeRelationAdd(ctx, req.(*pb.RpcObjectTypeRelationAddRequest))
+	}).(*pb.RpcObjectTypeRelationAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) ObjectTypeRelationRemove(ctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ObjectTypeRelationRemove(ctx, req.(*pb.RpcObjectTypeRelationRemoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectTypeRelationRemove", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcObjectTypeRelationRemoveResponse)
+	return h.interceptor(ctx, "ObjectTypeRelationRemove", func(ctx context.Context, req any) any {
+		return h.client.ObjectTypeRelationRemove(ctx, req.(*pb.RpcObjectTypeRelationRemoveRequest))
+	}).(*pb.RpcObjectTypeRelationRemoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) HistoryShowVersion(ctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.HistoryShowVersion(ctx, req.(*pb.RpcHistoryShowVersionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "HistoryShowVersion", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcHistoryShowVersionResponse)
+	return h.interceptor(ctx, "HistoryShowVersion", func(ctx context.Context, req any) any {
+		return h.client.HistoryShowVersion(ctx, req.(*pb.RpcHistoryShowVersionRequest))
+	}).(*pb.RpcHistoryShowVersionResponse)
 }
 func (h *ClientCommandsHandlerProxy) HistoryGetVersions(ctx context.Context, req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.HistoryGetVersions(ctx, req.(*pb.RpcHistoryGetVersionsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "HistoryGetVersions", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcHistoryGetVersionsResponse)
+	return h.interceptor(ctx, "HistoryGetVersions", func(ctx context.Context, req any) any {
+		return h.client.HistoryGetVersions(ctx, req.(*pb.RpcHistoryGetVersionsRequest))
+	}).(*pb.RpcHistoryGetVersionsResponse)
 }
 func (h *ClientCommandsHandlerProxy) HistorySetVersion(ctx context.Context, req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.HistorySetVersion(ctx, req.(*pb.RpcHistorySetVersionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "HistorySetVersion", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcHistorySetVersionResponse)
+	return h.interceptor(ctx, "HistorySetVersion", func(ctx context.Context, req any) any {
+		return h.client.HistorySetVersion(ctx, req.(*pb.RpcHistorySetVersionRequest))
+	}).(*pb.RpcHistorySetVersionResponse)
 }
 func (h *ClientCommandsHandlerProxy) FileOffload(ctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.FileOffload(ctx, req.(*pb.RpcFileOffloadRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileOffload", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcFileOffloadResponse)
+	return h.interceptor(ctx, "FileOffload", func(ctx context.Context, req any) any {
+		return h.client.FileOffload(ctx, req.(*pb.RpcFileOffloadRequest))
+	}).(*pb.RpcFileOffloadResponse)
 }
 func (h *ClientCommandsHandlerProxy) FileListOffload(ctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.FileListOffload(ctx, req.(*pb.RpcFileListOffloadRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "FileListOffload", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcFileListOffloadResponse)
+	return h.interceptor(ctx, "FileListOffload", func(ctx context.Context, req any) any {
+		return h.client.FileListOffload(ctx, req.(*pb.RpcFileListOffloadRequest))
+	}).(*pb.RpcFileListOffloadResponse)
 }
 func (h *ClientCommandsHandlerProxy) FileUpload(ctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.FileUpload(ctx, req.(*pb.RpcFileUploadRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileUpload", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcFileUploadResponse)
+	return h.interceptor(ctx, "FileUpload", func(ctx context.Context, req any) any {
+		return h.client.FileUpload(ctx, req.(*pb.RpcFileUploadRequest))
+	}).(*pb.RpcFileUploadResponse)
 }
 func (h *ClientCommandsHandlerProxy) FileDownload(ctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.FileDownload(ctx, req.(*pb.RpcFileDownloadRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileDownload", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcFileDownloadResponse)
+	return h.interceptor(ctx, "FileDownload", func(ctx context.Context, req any) any {
+		return h.client.FileDownload(ctx, req.(*pb.RpcFileDownloadRequest))
+	}).(*pb.RpcFileDownloadResponse)
 }
 func (h *ClientCommandsHandlerProxy) FileDrop(ctx context.Context, req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.FileDrop(ctx, req.(*pb.RpcFileDropRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileDrop", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcFileDropResponse)
+	return h.interceptor(ctx, "FileDrop", func(ctx context.Context, req any) any {
+		return h.client.FileDrop(ctx, req.(*pb.RpcFileDropRequest))
+	}).(*pb.RpcFileDropResponse)
 }
 func (h *ClientCommandsHandlerProxy) FileSpaceUsage(ctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.FileSpaceUsage(ctx, req.(*pb.RpcFileSpaceUsageRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "FileSpaceUsage", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcFileSpaceUsageResponse)
+	return h.interceptor(ctx, "FileSpaceUsage", func(ctx context.Context, req any) any {
+		return h.client.FileSpaceUsage(ctx, req.(*pb.RpcFileSpaceUsageRequest))
+	}).(*pb.RpcFileSpaceUsageResponse)
 }
 func (h *ClientCommandsHandlerProxy) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.FileNodeUsage(ctx, req.(*pb.RpcFileNodeUsageRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileNodeUsage", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcFileNodeUsageResponse)
+	return h.interceptor(ctx, "FileNodeUsage", func(ctx context.Context, req any) any {
+		return h.client.FileNodeUsage(ctx, req.(*pb.RpcFileNodeUsageRequest))
+	}).(*pb.RpcFileNodeUsageResponse)
 }
 func (h *ClientCommandsHandlerProxy) NavigationListObjects(ctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.NavigationListObjects(ctx, req.(*pb.RpcNavigationListObjectsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "NavigationListObjects", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcNavigationListObjectsResponse)
+	return h.interceptor(ctx, "NavigationListObjects", func(ctx context.Context, req any) any {
+		return h.client.NavigationListObjects(ctx, req.(*pb.RpcNavigationListObjectsRequest))
+	}).(*pb.RpcNavigationListObjectsResponse)
 }
 func (h *ClientCommandsHandlerProxy) NavigationGetObjectInfoWithLinks(ctx context.Context, req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.NavigationGetObjectInfoWithLinks(ctx, req.(*pb.RpcNavigationGetObjectInfoWithLinksRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "NavigationGetObjectInfoWithLinks", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcNavigationGetObjectInfoWithLinksResponse)
+	return h.interceptor(ctx, "NavigationGetObjectInfoWithLinks", func(ctx context.Context, req any) any {
+		return h.client.NavigationGetObjectInfoWithLinks(ctx, req.(*pb.RpcNavigationGetObjectInfoWithLinksRequest))
+	}).(*pb.RpcNavigationGetObjectInfoWithLinksResponse)
 }
 func (h *ClientCommandsHandlerProxy) TemplateCreateFromObject(ctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.TemplateCreateFromObject(ctx, req.(*pb.RpcTemplateCreateFromObjectRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "TemplateCreateFromObject", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcTemplateCreateFromObjectResponse)
+	return h.interceptor(ctx, "TemplateCreateFromObject", func(ctx context.Context, req any) any {
+		return h.client.TemplateCreateFromObject(ctx, req.(*pb.RpcTemplateCreateFromObjectRequest))
+	}).(*pb.RpcTemplateCreateFromObjectResponse)
 }
 func (h *ClientCommandsHandlerProxy) TemplateClone(ctx context.Context, req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.TemplateClone(ctx, req.(*pb.RpcTemplateCloneRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "TemplateClone", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcTemplateCloneResponse)
+	return h.interceptor(ctx, "TemplateClone", func(ctx context.Context, req any) any {
+		return h.client.TemplateClone(ctx, req.(*pb.RpcTemplateCloneRequest))
+	}).(*pb.RpcTemplateCloneResponse)
 }
 func (h *ClientCommandsHandlerProxy) TemplateExportAll(ctx context.Context, req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.TemplateExportAll(ctx, req.(*pb.RpcTemplateExportAllRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "TemplateExportAll", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcTemplateExportAllResponse)
+	return h.interceptor(ctx, "TemplateExportAll", func(ctx context.Context, req any) any {
+		return h.client.TemplateExportAll(ctx, req.(*pb.RpcTemplateExportAllRequest))
+	}).(*pb.RpcTemplateExportAllResponse)
 }
 func (h *ClientCommandsHandlerProxy) LinkPreview(ctx context.Context, req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.LinkPreview(ctx, req.(*pb.RpcLinkPreviewRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "LinkPreview", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcLinkPreviewResponse)
+	return h.interceptor(ctx, "LinkPreview", func(ctx context.Context, req any) any {
+		return h.client.LinkPreview(ctx, req.(*pb.RpcLinkPreviewRequest))
+	}).(*pb.RpcLinkPreviewResponse)
 }
 func (h *ClientCommandsHandlerProxy) UnsplashSearch(ctx context.Context, req *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.UnsplashSearch(ctx, req.(*pb.RpcUnsplashSearchRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "UnsplashSearch", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcUnsplashSearchResponse)
+	return h.interceptor(ctx, "UnsplashSearch", func(ctx context.Context, req any) any {
+		return h.client.UnsplashSearch(ctx, req.(*pb.RpcUnsplashSearchRequest))
+	}).(*pb.RpcUnsplashSearchResponse)
 }
 func (h *ClientCommandsHandlerProxy) UnsplashDownload(ctx context.Context, req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.UnsplashDownload(ctx, req.(*pb.RpcUnsplashDownloadRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "UnsplashDownload", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcUnsplashDownloadResponse)
+	return h.interceptor(ctx, "UnsplashDownload", func(ctx context.Context, req any) any {
+		return h.client.UnsplashDownload(ctx, req.(*pb.RpcUnsplashDownloadRequest))
+	}).(*pb.RpcUnsplashDownloadResponse)
 }
 func (h *ClientCommandsHandlerProxy) DownloadManifest(ctx context.Context, req *pb.RpcDownloadManifestRequest) *pb.RpcDownloadManifestResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DownloadManifest(ctx, req.(*pb.RpcDownloadManifestRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DownloadManifest", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDownloadManifestResponse)
+	return h.interceptor(ctx, "DownloadManifest", func(ctx context.Context, req any) any {
+		return h.client.DownloadManifest(ctx, req.(*pb.RpcDownloadManifestRequest))
+	}).(*pb.RpcDownloadManifestResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockUpload(ctx context.Context, req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockUpload(ctx, req.(*pb.RpcBlockUploadRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockUpload", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockUploadResponse)
+	return h.interceptor(ctx, "BlockUpload", func(ctx context.Context, req any) any {
+		return h.client.BlockUpload(ctx, req.(*pb.RpcBlockUploadRequest))
+	}).(*pb.RpcBlockUploadResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockReplace(ctx context.Context, req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockReplace(ctx, req.(*pb.RpcBlockReplaceRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockReplace", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockReplaceResponse)
+	return h.interceptor(ctx, "BlockReplace", func(ctx context.Context, req any) any {
+		return h.client.BlockReplace(ctx, req.(*pb.RpcBlockReplaceRequest))
+	}).(*pb.RpcBlockReplaceResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockCreate(ctx context.Context, req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockCreate(ctx, req.(*pb.RpcBlockCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockCreate", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockCreateResponse)
+	return h.interceptor(ctx, "BlockCreate", func(ctx context.Context, req any) any {
+		return h.client.BlockCreate(ctx, req.(*pb.RpcBlockCreateRequest))
+	}).(*pb.RpcBlockCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockSplit(ctx context.Context, req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockSplit(ctx, req.(*pb.RpcBlockSplitRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockSplit", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockSplitResponse)
+	return h.interceptor(ctx, "BlockSplit", func(ctx context.Context, req any) any {
+		return h.client.BlockSplit(ctx, req.(*pb.RpcBlockSplitRequest))
+	}).(*pb.RpcBlockSplitResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockMerge(ctx context.Context, req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockMerge(ctx, req.(*pb.RpcBlockMergeRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockMerge", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockMergeResponse)
+	return h.interceptor(ctx, "BlockMerge", func(ctx context.Context, req any) any {
+		return h.client.BlockMerge(ctx, req.(*pb.RpcBlockMergeRequest))
+	}).(*pb.RpcBlockMergeResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockCopy(ctx context.Context, req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockCopy(ctx, req.(*pb.RpcBlockCopyRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockCopy", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockCopyResponse)
+	return h.interceptor(ctx, "BlockCopy", func(ctx context.Context, req any) any {
+		return h.client.BlockCopy(ctx, req.(*pb.RpcBlockCopyRequest))
+	}).(*pb.RpcBlockCopyResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockPaste(ctx context.Context, req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockPaste(ctx, req.(*pb.RpcBlockPasteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockPaste", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockPasteResponse)
+	return h.interceptor(ctx, "BlockPaste", func(ctx context.Context, req any) any {
+		return h.client.BlockPaste(ctx, req.(*pb.RpcBlockPasteRequest))
+	}).(*pb.RpcBlockPasteResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockCut(ctx context.Context, req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockCut(ctx, req.(*pb.RpcBlockCutRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockCut", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockCutResponse)
+	return h.interceptor(ctx, "BlockCut", func(ctx context.Context, req any) any {
+		return h.client.BlockCut(ctx, req.(*pb.RpcBlockCutRequest))
+	}).(*pb.RpcBlockCutResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockSetFields(ctx context.Context, req *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockSetFields(ctx, req.(*pb.RpcBlockSetFieldsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockSetFields", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockSetFieldsResponse)
+	return h.interceptor(ctx, "BlockSetFields", func(ctx context.Context, req any) any {
+		return h.client.BlockSetFields(ctx, req.(*pb.RpcBlockSetFieldsRequest))
+	}).(*pb.RpcBlockSetFieldsResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockExport(ctx context.Context, req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockExport(ctx, req.(*pb.RpcBlockExportRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockExport", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockExportResponse)
+	return h.interceptor(ctx, "BlockExport", func(ctx context.Context, req any) any {
+		return h.client.BlockExport(ctx, req.(*pb.RpcBlockExportRequest))
+	}).(*pb.RpcBlockExportResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockSetCarriage(ctx context.Context, req *pb.RpcBlockSetCarriageRequest) *pb.RpcBlockSetCarriageResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockSetCarriage(ctx, req.(*pb.RpcBlockSetCarriageRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockSetCarriage", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockSetCarriageResponse)
+	return h.interceptor(ctx, "BlockSetCarriage", func(ctx context.Context, req any) any {
+		return h.client.BlockSetCarriage(ctx, req.(*pb.RpcBlockSetCarriageRequest))
+	}).(*pb.RpcBlockSetCarriageResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListDelete(ctx context.Context, req *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListDelete(ctx, req.(*pb.RpcBlockListDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListDelete", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListDeleteResponse)
+	return h.interceptor(ctx, "BlockListDelete", func(ctx context.Context, req any) any {
+		return h.client.BlockListDelete(ctx, req.(*pb.RpcBlockListDeleteRequest))
+	}).(*pb.RpcBlockListDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListMoveToExistingObject(ctx context.Context, req *pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListMoveToExistingObject(ctx, req.(*pb.RpcBlockListMoveToExistingObjectRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListMoveToExistingObject", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListMoveToExistingObjectResponse)
+	return h.interceptor(ctx, "BlockListMoveToExistingObject", func(ctx context.Context, req any) any {
+		return h.client.BlockListMoveToExistingObject(ctx, req.(*pb.RpcBlockListMoveToExistingObjectRequest))
+	}).(*pb.RpcBlockListMoveToExistingObjectResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListMoveToNewObject(ctx context.Context, req *pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListMoveToNewObject(ctx, req.(*pb.RpcBlockListMoveToNewObjectRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListMoveToNewObject", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListMoveToNewObjectResponse)
+	return h.interceptor(ctx, "BlockListMoveToNewObject", func(ctx context.Context, req any) any {
+		return h.client.BlockListMoveToNewObject(ctx, req.(*pb.RpcBlockListMoveToNewObjectRequest))
+	}).(*pb.RpcBlockListMoveToNewObjectResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListConvertToObjects(ctx context.Context, req *pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListConvertToObjects(ctx, req.(*pb.RpcBlockListConvertToObjectsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListConvertToObjects", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListConvertToObjectsResponse)
+	return h.interceptor(ctx, "BlockListConvertToObjects", func(ctx context.Context, req any) any {
+		return h.client.BlockListConvertToObjects(ctx, req.(*pb.RpcBlockListConvertToObjectsRequest))
+	}).(*pb.RpcBlockListConvertToObjectsResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListSetFields(ctx context.Context, req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListSetFields(ctx, req.(*pb.RpcBlockListSetFieldsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListSetFields", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListSetFieldsResponse)
+	return h.interceptor(ctx, "BlockListSetFields", func(ctx context.Context, req any) any {
+		return h.client.BlockListSetFields(ctx, req.(*pb.RpcBlockListSetFieldsRequest))
+	}).(*pb.RpcBlockListSetFieldsResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListDuplicate(ctx context.Context, req *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListDuplicate(ctx, req.(*pb.RpcBlockListDuplicateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListDuplicate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListDuplicateResponse)
+	return h.interceptor(ctx, "BlockListDuplicate", func(ctx context.Context, req any) any {
+		return h.client.BlockListDuplicate(ctx, req.(*pb.RpcBlockListDuplicateRequest))
+	}).(*pb.RpcBlockListDuplicateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListSetBackgroundColor(ctx context.Context, req *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListSetBackgroundColor(ctx, req.(*pb.RpcBlockListSetBackgroundColorRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListSetBackgroundColor", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListSetBackgroundColorResponse)
+	return h.interceptor(ctx, "BlockListSetBackgroundColor", func(ctx context.Context, req any) any {
+		return h.client.BlockListSetBackgroundColor(ctx, req.(*pb.RpcBlockListSetBackgroundColorRequest))
+	}).(*pb.RpcBlockListSetBackgroundColorResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListSetAlign(ctx context.Context, req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListSetAlign(ctx, req.(*pb.RpcBlockListSetAlignRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListSetAlign", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListSetAlignResponse)
+	return h.interceptor(ctx, "BlockListSetAlign", func(ctx context.Context, req any) any {
+		return h.client.BlockListSetAlign(ctx, req.(*pb.RpcBlockListSetAlignRequest))
+	}).(*pb.RpcBlockListSetAlignResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListSetVerticalAlign(ctx context.Context, req *pb.RpcBlockListSetVerticalAlignRequest) *pb.RpcBlockListSetVerticalAlignResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListSetVerticalAlign(ctx, req.(*pb.RpcBlockListSetVerticalAlignRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListSetVerticalAlign", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListSetVerticalAlignResponse)
+	return h.interceptor(ctx, "BlockListSetVerticalAlign", func(ctx context.Context, req any) any {
+		return h.client.BlockListSetVerticalAlign(ctx, req.(*pb.RpcBlockListSetVerticalAlignRequest))
+	}).(*pb.RpcBlockListSetVerticalAlignResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockListTurnInto(ctx context.Context, req *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockListTurnInto(ctx, req.(*pb.RpcBlockListTurnIntoRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListTurnInto", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockListTurnIntoResponse)
+	return h.interceptor(ctx, "BlockListTurnInto", func(ctx context.Context, req any) any {
+		return h.client.BlockListTurnInto(ctx, req.(*pb.RpcBlockListTurnIntoRequest))
+	}).(*pb.RpcBlockListTurnIntoResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextSetText(ctx context.Context, req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextSetText(ctx, req.(*pb.RpcBlockTextSetTextRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetText", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextSetTextResponse)
+	return h.interceptor(ctx, "BlockTextSetText", func(ctx context.Context, req any) any {
+		return h.client.BlockTextSetText(ctx, req.(*pb.RpcBlockTextSetTextRequest))
+	}).(*pb.RpcBlockTextSetTextResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextSetColor(ctx context.Context, req *pb.RpcBlockTextSetColorRequest) *pb.RpcBlockTextSetColorResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextSetColor(ctx, req.(*pb.RpcBlockTextSetColorRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetColor", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextSetColorResponse)
+	return h.interceptor(ctx, "BlockTextSetColor", func(ctx context.Context, req any) any {
+		return h.client.BlockTextSetColor(ctx, req.(*pb.RpcBlockTextSetColorRequest))
+	}).(*pb.RpcBlockTextSetColorResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextSetStyle(ctx context.Context, req *pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextSetStyle(ctx, req.(*pb.RpcBlockTextSetStyleRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetStyle", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextSetStyleResponse)
+	return h.interceptor(ctx, "BlockTextSetStyle", func(ctx context.Context, req any) any {
+		return h.client.BlockTextSetStyle(ctx, req.(*pb.RpcBlockTextSetStyleRequest))
+	}).(*pb.RpcBlockTextSetStyleResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextSetChecked(ctx context.Context, req *pb.RpcBlockTextSetCheckedRequest) *pb.RpcBlockTextSetCheckedResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextSetChecked(ctx, req.(*pb.RpcBlockTextSetCheckedRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetChecked", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextSetCheckedResponse)
+	return h.interceptor(ctx, "BlockTextSetChecked", func(ctx context.Context, req any) any {
+		return h.client.BlockTextSetChecked(ctx, req.(*pb.RpcBlockTextSetCheckedRequest))
+	}).(*pb.RpcBlockTextSetCheckedResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextSetIcon(ctx context.Context, req *pb.RpcBlockTextSetIconRequest) *pb.RpcBlockTextSetIconResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextSetIcon(ctx, req.(*pb.RpcBlockTextSetIconRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetIcon", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextSetIconResponse)
+	return h.interceptor(ctx, "BlockTextSetIcon", func(ctx context.Context, req any) any {
+		return h.client.BlockTextSetIcon(ctx, req.(*pb.RpcBlockTextSetIconRequest))
+	}).(*pb.RpcBlockTextSetIconResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextListSetColor(ctx context.Context, req *pb.RpcBlockTextListSetColorRequest) *pb.RpcBlockTextListSetColorResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextListSetColor(ctx, req.(*pb.RpcBlockTextListSetColorRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListSetColor", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextListSetColorResponse)
+	return h.interceptor(ctx, "BlockTextListSetColor", func(ctx context.Context, req any) any {
+		return h.client.BlockTextListSetColor(ctx, req.(*pb.RpcBlockTextListSetColorRequest))
+	}).(*pb.RpcBlockTextListSetColorResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextListSetMark(ctx context.Context, req *pb.RpcBlockTextListSetMarkRequest) *pb.RpcBlockTextListSetMarkResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextListSetMark(ctx, req.(*pb.RpcBlockTextListSetMarkRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListSetMark", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextListSetMarkResponse)
+	return h.interceptor(ctx, "BlockTextListSetMark", func(ctx context.Context, req any) any {
+		return h.client.BlockTextListSetMark(ctx, req.(*pb.RpcBlockTextListSetMarkRequest))
+	}).(*pb.RpcBlockTextListSetMarkResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextListSetStyle(ctx context.Context, req *pb.RpcBlockTextListSetStyleRequest) *pb.RpcBlockTextListSetStyleResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextListSetStyle(ctx, req.(*pb.RpcBlockTextListSetStyleRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListSetStyle", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextListSetStyleResponse)
+	return h.interceptor(ctx, "BlockTextListSetStyle", func(ctx context.Context, req any) any {
+		return h.client.BlockTextListSetStyle(ctx, req.(*pb.RpcBlockTextListSetStyleRequest))
+	}).(*pb.RpcBlockTextListSetStyleResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextListClearStyle(ctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextListClearStyle(ctx, req.(*pb.RpcBlockTextListClearStyleRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListClearStyle", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextListClearStyleResponse)
+	return h.interceptor(ctx, "BlockTextListClearStyle", func(ctx context.Context, req any) any {
+		return h.client.BlockTextListClearStyle(ctx, req.(*pb.RpcBlockTextListClearStyleRequest))
+	}).(*pb.RpcBlockTextListClearStyleResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTextListClearContent(ctx context.Context, req *pb.RpcBlockTextListClearContentRequest) *pb.RpcBlockTextListClearContentResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTextListClearContent(ctx, req.(*pb.RpcBlockTextListClearContentRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListClearContent", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTextListClearContentResponse)
+	return h.interceptor(ctx, "BlockTextListClearContent", func(ctx context.Context, req any) any {
+		return h.client.BlockTextListClearContent(ctx, req.(*pb.RpcBlockTextListClearContentRequest))
+	}).(*pb.RpcBlockTextListClearContentResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockFileSetName(ctx context.Context, req *pb.RpcBlockFileSetNameRequest) *pb.RpcBlockFileSetNameResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockFileSetName(ctx, req.(*pb.RpcBlockFileSetNameRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockFileSetName", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockFileSetNameResponse)
+	return h.interceptor(ctx, "BlockFileSetName", func(ctx context.Context, req any) any {
+		return h.client.BlockFileSetName(ctx, req.(*pb.RpcBlockFileSetNameRequest))
+	}).(*pb.RpcBlockFileSetNameResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockImageSetName(ctx context.Context, req *pb.RpcBlockImageSetNameRequest) *pb.RpcBlockImageSetNameResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockImageSetName(ctx, req.(*pb.RpcBlockImageSetNameRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockImageSetName", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockImageSetNameResponse)
+	return h.interceptor(ctx, "BlockImageSetName", func(ctx context.Context, req any) any {
+		return h.client.BlockImageSetName(ctx, req.(*pb.RpcBlockImageSetNameRequest))
+	}).(*pb.RpcBlockImageSetNameResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockVideoSetName(ctx context.Context, req *pb.RpcBlockVideoSetNameRequest) *pb.RpcBlockVideoSetNameResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockVideoSetName(ctx, req.(*pb.RpcBlockVideoSetNameRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockVideoSetName", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockVideoSetNameResponse)
+	return h.interceptor(ctx, "BlockVideoSetName", func(ctx context.Context, req any) any {
+		return h.client.BlockVideoSetName(ctx, req.(*pb.RpcBlockVideoSetNameRequest))
+	}).(*pb.RpcBlockVideoSetNameResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockFileCreateAndUpload(ctx context.Context, req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockFileCreateAndUpload(ctx, req.(*pb.RpcBlockFileCreateAndUploadRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockFileCreateAndUpload", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockFileCreateAndUploadResponse)
+	return h.interceptor(ctx, "BlockFileCreateAndUpload", func(ctx context.Context, req any) any {
+		return h.client.BlockFileCreateAndUpload(ctx, req.(*pb.RpcBlockFileCreateAndUploadRequest))
+	}).(*pb.RpcBlockFileCreateAndUploadResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockFileListSetStyle(ctx context.Context, req *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockFileListSetStyle(ctx, req.(*pb.RpcBlockFileListSetStyleRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockFileListSetStyle", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockFileListSetStyleResponse)
+	return h.interceptor(ctx, "BlockFileListSetStyle", func(ctx context.Context, req any) any {
+		return h.client.BlockFileListSetStyle(ctx, req.(*pb.RpcBlockFileListSetStyleRequest))
+	}).(*pb.RpcBlockFileListSetStyleResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewCreate(ctx context.Context, req *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewCreate(ctx, req.(*pb.RpcBlockDataviewViewCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewCreate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewCreateResponse)
+	return h.interceptor(ctx, "BlockDataviewViewCreate", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewCreate(ctx, req.(*pb.RpcBlockDataviewViewCreateRequest))
+	}).(*pb.RpcBlockDataviewViewCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewDelete(ctx context.Context, req *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewDelete(ctx, req.(*pb.RpcBlockDataviewViewDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewDelete", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewDeleteResponse)
+	return h.interceptor(ctx, "BlockDataviewViewDelete", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewDelete(ctx, req.(*pb.RpcBlockDataviewViewDeleteRequest))
+	}).(*pb.RpcBlockDataviewViewDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewUpdate(ctx context.Context, req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewUpdate(ctx, req.(*pb.RpcBlockDataviewViewUpdateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewUpdate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewUpdateResponse)
+	return h.interceptor(ctx, "BlockDataviewViewUpdate", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewUpdate(ctx, req.(*pb.RpcBlockDataviewViewUpdateRequest))
+	}).(*pb.RpcBlockDataviewViewUpdateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewSetActive(ctx context.Context, req *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewSetActive(ctx, req.(*pb.RpcBlockDataviewViewSetActiveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewSetActive", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewSetActiveResponse)
+	return h.interceptor(ctx, "BlockDataviewViewSetActive", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewSetActive(ctx, req.(*pb.RpcBlockDataviewViewSetActiveRequest))
+	}).(*pb.RpcBlockDataviewViewSetActiveResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewSetPosition(ctx context.Context, req *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewSetPosition(ctx, req.(*pb.RpcBlockDataviewViewSetPositionRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewSetPosition", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewSetPositionResponse)
+	return h.interceptor(ctx, "BlockDataviewViewSetPosition", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewSetPosition(ctx, req.(*pb.RpcBlockDataviewViewSetPositionRequest))
+	}).(*pb.RpcBlockDataviewViewSetPositionResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewSetSource(ctx context.Context, req *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewSetSource(ctx, req.(*pb.RpcBlockDataviewSetSourceRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSetSource", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewSetSourceResponse)
+	return h.interceptor(ctx, "BlockDataviewSetSource", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewSetSource(ctx, req.(*pb.RpcBlockDataviewSetSourceRequest))
+	}).(*pb.RpcBlockDataviewSetSourceResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewRelationAdd(ctx context.Context, req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewRelationAdd(ctx, req.(*pb.RpcBlockDataviewRelationAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewRelationAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewRelationAddResponse)
+	return h.interceptor(ctx, "BlockDataviewRelationAdd", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewRelationAdd(ctx, req.(*pb.RpcBlockDataviewRelationAddRequest))
+	}).(*pb.RpcBlockDataviewRelationAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewRelationDelete(ctx context.Context, req *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewRelationDelete(ctx, req.(*pb.RpcBlockDataviewRelationDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewRelationDelete", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewRelationDeleteResponse)
+	return h.interceptor(ctx, "BlockDataviewRelationDelete", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewRelationDelete(ctx, req.(*pb.RpcBlockDataviewRelationDeleteRequest))
+	}).(*pb.RpcBlockDataviewRelationDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewRelationListAvailable(ctx context.Context, req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewRelationListAvailable(ctx, req.(*pb.RpcBlockDataviewRelationListAvailableRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewRelationListAvailable", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewRelationListAvailableResponse)
+	return h.interceptor(ctx, "BlockDataviewRelationListAvailable", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewRelationListAvailable(ctx, req.(*pb.RpcBlockDataviewRelationListAvailableRequest))
+	}).(*pb.RpcBlockDataviewRelationListAvailableResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewGroupOrderUpdate(ctx context.Context, req *pb.RpcBlockDataviewGroupOrderUpdateRequest) *pb.RpcBlockDataviewGroupOrderUpdateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewGroupOrderUpdate(ctx, req.(*pb.RpcBlockDataviewGroupOrderUpdateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewGroupOrderUpdate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewGroupOrderUpdateResponse)
+	return h.interceptor(ctx, "BlockDataviewGroupOrderUpdate", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewGroupOrderUpdate(ctx, req.(*pb.RpcBlockDataviewGroupOrderUpdateRequest))
+	}).(*pb.RpcBlockDataviewGroupOrderUpdateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewObjectOrderUpdate(ctx context.Context, req *pb.RpcBlockDataviewObjectOrderUpdateRequest) *pb.RpcBlockDataviewObjectOrderUpdateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewObjectOrderUpdate(ctx, req.(*pb.RpcBlockDataviewObjectOrderUpdateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewObjectOrderUpdate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewObjectOrderUpdateResponse)
+	return h.interceptor(ctx, "BlockDataviewObjectOrderUpdate", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewObjectOrderUpdate(ctx, req.(*pb.RpcBlockDataviewObjectOrderUpdateRequest))
+	}).(*pb.RpcBlockDataviewObjectOrderUpdateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewObjectOrderMove(ctx context.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) *pb.RpcBlockDataviewObjectOrderMoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewObjectOrderMove(ctx, req.(*pb.RpcBlockDataviewObjectOrderMoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewObjectOrderMove", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewObjectOrderMoveResponse)
+	return h.interceptor(ctx, "BlockDataviewObjectOrderMove", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewObjectOrderMove(ctx, req.(*pb.RpcBlockDataviewObjectOrderMoveRequest))
+	}).(*pb.RpcBlockDataviewObjectOrderMoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewCreateFromExistingObject(ctx context.Context, req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) *pb.RpcBlockDataviewCreateFromExistingObjectResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewCreateFromExistingObject(ctx, req.(*pb.RpcBlockDataviewCreateFromExistingObjectRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewCreateFromExistingObject", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewCreateFromExistingObjectResponse)
+	return h.interceptor(ctx, "BlockDataviewCreateFromExistingObject", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewCreateFromExistingObject(ctx, req.(*pb.RpcBlockDataviewCreateFromExistingObjectRequest))
+	}).(*pb.RpcBlockDataviewCreateFromExistingObjectResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewFilterAdd(ctx context.Context, req *pb.RpcBlockDataviewFilterAddRequest) *pb.RpcBlockDataviewFilterAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewFilterAdd(ctx, req.(*pb.RpcBlockDataviewFilterAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewFilterAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewFilterAddResponse)
+	return h.interceptor(ctx, "BlockDataviewFilterAdd", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewFilterAdd(ctx, req.(*pb.RpcBlockDataviewFilterAddRequest))
+	}).(*pb.RpcBlockDataviewFilterAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewFilterRemove(ctx context.Context, req *pb.RpcBlockDataviewFilterRemoveRequest) *pb.RpcBlockDataviewFilterRemoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewFilterRemove(ctx, req.(*pb.RpcBlockDataviewFilterRemoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewFilterRemove", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewFilterRemoveResponse)
+	return h.interceptor(ctx, "BlockDataviewFilterRemove", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewFilterRemove(ctx, req.(*pb.RpcBlockDataviewFilterRemoveRequest))
+	}).(*pb.RpcBlockDataviewFilterRemoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewFilterReplace(ctx context.Context, req *pb.RpcBlockDataviewFilterReplaceRequest) *pb.RpcBlockDataviewFilterReplaceResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewFilterReplace(ctx, req.(*pb.RpcBlockDataviewFilterReplaceRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewFilterReplace", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewFilterReplaceResponse)
+	return h.interceptor(ctx, "BlockDataviewFilterReplace", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewFilterReplace(ctx, req.(*pb.RpcBlockDataviewFilterReplaceRequest))
+	}).(*pb.RpcBlockDataviewFilterReplaceResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewFilterSort(ctx context.Context, req *pb.RpcBlockDataviewFilterSortRequest) *pb.RpcBlockDataviewFilterSortResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewFilterSort(ctx, req.(*pb.RpcBlockDataviewFilterSortRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewFilterSort", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewFilterSortResponse)
+	return h.interceptor(ctx, "BlockDataviewFilterSort", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewFilterSort(ctx, req.(*pb.RpcBlockDataviewFilterSortRequest))
+	}).(*pb.RpcBlockDataviewFilterSortResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewSortAdd(ctx context.Context, req *pb.RpcBlockDataviewSortAddRequest) *pb.RpcBlockDataviewSortAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewSortAdd(ctx, req.(*pb.RpcBlockDataviewSortAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSortAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewSortAddResponse)
+	return h.interceptor(ctx, "BlockDataviewSortAdd", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewSortAdd(ctx, req.(*pb.RpcBlockDataviewSortAddRequest))
+	}).(*pb.RpcBlockDataviewSortAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewSortRemove(ctx context.Context, req *pb.RpcBlockDataviewSortRemoveRequest) *pb.RpcBlockDataviewSortRemoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewSortRemove(ctx, req.(*pb.RpcBlockDataviewSortRemoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSortRemove", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewSortRemoveResponse)
+	return h.interceptor(ctx, "BlockDataviewSortRemove", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewSortRemove(ctx, req.(*pb.RpcBlockDataviewSortRemoveRequest))
+	}).(*pb.RpcBlockDataviewSortRemoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewSortReplace(ctx context.Context, req *pb.RpcBlockDataviewSortReplaceRequest) *pb.RpcBlockDataviewSortReplaceResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewSortReplace(ctx, req.(*pb.RpcBlockDataviewSortReplaceRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSortReplace", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewSortReplaceResponse)
+	return h.interceptor(ctx, "BlockDataviewSortReplace", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewSortReplace(ctx, req.(*pb.RpcBlockDataviewSortReplaceRequest))
+	}).(*pb.RpcBlockDataviewSortReplaceResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewSortSort(ctx context.Context, req *pb.RpcBlockDataviewSortSortRequest) *pb.RpcBlockDataviewSortSortResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewSortSort(ctx, req.(*pb.RpcBlockDataviewSortSortRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSortSort", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewSortSortResponse)
+	return h.interceptor(ctx, "BlockDataviewSortSort", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewSortSort(ctx, req.(*pb.RpcBlockDataviewSortSortRequest))
+	}).(*pb.RpcBlockDataviewSortSortResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationAdd(ctx context.Context, req *pb.RpcBlockDataviewViewRelationAddRequest) *pb.RpcBlockDataviewViewRelationAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewRelationAdd(ctx, req.(*pb.RpcBlockDataviewViewRelationAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewRelationAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewRelationAddResponse)
+	return h.interceptor(ctx, "BlockDataviewViewRelationAdd", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewRelationAdd(ctx, req.(*pb.RpcBlockDataviewViewRelationAddRequest))
+	}).(*pb.RpcBlockDataviewViewRelationAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationRemove(ctx context.Context, req *pb.RpcBlockDataviewViewRelationRemoveRequest) *pb.RpcBlockDataviewViewRelationRemoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewRelationRemove(ctx, req.(*pb.RpcBlockDataviewViewRelationRemoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewRelationRemove", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewRelationRemoveResponse)
+	return h.interceptor(ctx, "BlockDataviewViewRelationRemove", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewRelationRemove(ctx, req.(*pb.RpcBlockDataviewViewRelationRemoveRequest))
+	}).(*pb.RpcBlockDataviewViewRelationRemoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationReplace(ctx context.Context, req *pb.RpcBlockDataviewViewRelationReplaceRequest) *pb.RpcBlockDataviewViewRelationReplaceResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewRelationReplace(ctx, req.(*pb.RpcBlockDataviewViewRelationReplaceRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewRelationReplace", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewRelationReplaceResponse)
+	return h.interceptor(ctx, "BlockDataviewViewRelationReplace", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewRelationReplace(ctx, req.(*pb.RpcBlockDataviewViewRelationReplaceRequest))
+	}).(*pb.RpcBlockDataviewViewRelationReplaceResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationSort(ctx context.Context, req *pb.RpcBlockDataviewViewRelationSortRequest) *pb.RpcBlockDataviewViewRelationSortResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDataviewViewRelationSort(ctx, req.(*pb.RpcBlockDataviewViewRelationSortRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewRelationSort", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDataviewViewRelationSortResponse)
+	return h.interceptor(ctx, "BlockDataviewViewRelationSort", func(ctx context.Context, req any) any {
+		return h.client.BlockDataviewViewRelationSort(ctx, req.(*pb.RpcBlockDataviewViewRelationSortRequest))
+	}).(*pb.RpcBlockDataviewViewRelationSortResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableCreate(ctx context.Context, req *pb.RpcBlockTableCreateRequest) *pb.RpcBlockTableCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableCreate(ctx, req.(*pb.RpcBlockTableCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableCreate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableCreateResponse)
+	return h.interceptor(ctx, "BlockTableCreate", func(ctx context.Context, req any) any {
+		return h.client.BlockTableCreate(ctx, req.(*pb.RpcBlockTableCreateRequest))
+	}).(*pb.RpcBlockTableCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableExpand(ctx context.Context, req *pb.RpcBlockTableExpandRequest) *pb.RpcBlockTableExpandResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableExpand(ctx, req.(*pb.RpcBlockTableExpandRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableExpand", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableExpandResponse)
+	return h.interceptor(ctx, "BlockTableExpand", func(ctx context.Context, req any) any {
+		return h.client.BlockTableExpand(ctx, req.(*pb.RpcBlockTableExpandRequest))
+	}).(*pb.RpcBlockTableExpandResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableRowCreate(ctx context.Context, req *pb.RpcBlockTableRowCreateRequest) *pb.RpcBlockTableRowCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableRowCreate(ctx, req.(*pb.RpcBlockTableRowCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowCreate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableRowCreateResponse)
+	return h.interceptor(ctx, "BlockTableRowCreate", func(ctx context.Context, req any) any {
+		return h.client.BlockTableRowCreate(ctx, req.(*pb.RpcBlockTableRowCreateRequest))
+	}).(*pb.RpcBlockTableRowCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableRowDelete(ctx context.Context, req *pb.RpcBlockTableRowDeleteRequest) *pb.RpcBlockTableRowDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableRowDelete(ctx, req.(*pb.RpcBlockTableRowDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowDelete", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableRowDeleteResponse)
+	return h.interceptor(ctx, "BlockTableRowDelete", func(ctx context.Context, req any) any {
+		return h.client.BlockTableRowDelete(ctx, req.(*pb.RpcBlockTableRowDeleteRequest))
+	}).(*pb.RpcBlockTableRowDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableRowDuplicate(ctx context.Context, req *pb.RpcBlockTableRowDuplicateRequest) *pb.RpcBlockTableRowDuplicateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableRowDuplicate(ctx, req.(*pb.RpcBlockTableRowDuplicateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowDuplicate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableRowDuplicateResponse)
+	return h.interceptor(ctx, "BlockTableRowDuplicate", func(ctx context.Context, req any) any {
+		return h.client.BlockTableRowDuplicate(ctx, req.(*pb.RpcBlockTableRowDuplicateRequest))
+	}).(*pb.RpcBlockTableRowDuplicateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableRowSetHeader(ctx context.Context, req *pb.RpcBlockTableRowSetHeaderRequest) *pb.RpcBlockTableRowSetHeaderResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableRowSetHeader(ctx, req.(*pb.RpcBlockTableRowSetHeaderRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowSetHeader", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableRowSetHeaderResponse)
+	return h.interceptor(ctx, "BlockTableRowSetHeader", func(ctx context.Context, req any) any {
+		return h.client.BlockTableRowSetHeader(ctx, req.(*pb.RpcBlockTableRowSetHeaderRequest))
+	}).(*pb.RpcBlockTableRowSetHeaderResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableColumnCreate(ctx context.Context, req *pb.RpcBlockTableColumnCreateRequest) *pb.RpcBlockTableColumnCreateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableColumnCreate(ctx, req.(*pb.RpcBlockTableColumnCreateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnCreate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableColumnCreateResponse)
+	return h.interceptor(ctx, "BlockTableColumnCreate", func(ctx context.Context, req any) any {
+		return h.client.BlockTableColumnCreate(ctx, req.(*pb.RpcBlockTableColumnCreateRequest))
+	}).(*pb.RpcBlockTableColumnCreateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableColumnMove(ctx context.Context, req *pb.RpcBlockTableColumnMoveRequest) *pb.RpcBlockTableColumnMoveResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableColumnMove(ctx, req.(*pb.RpcBlockTableColumnMoveRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnMove", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableColumnMoveResponse)
+	return h.interceptor(ctx, "BlockTableColumnMove", func(ctx context.Context, req any) any {
+		return h.client.BlockTableColumnMove(ctx, req.(*pb.RpcBlockTableColumnMoveRequest))
+	}).(*pb.RpcBlockTableColumnMoveResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableColumnDelete(ctx context.Context, req *pb.RpcBlockTableColumnDeleteRequest) *pb.RpcBlockTableColumnDeleteResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableColumnDelete(ctx, req.(*pb.RpcBlockTableColumnDeleteRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnDelete", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableColumnDeleteResponse)
+	return h.interceptor(ctx, "BlockTableColumnDelete", func(ctx context.Context, req any) any {
+		return h.client.BlockTableColumnDelete(ctx, req.(*pb.RpcBlockTableColumnDeleteRequest))
+	}).(*pb.RpcBlockTableColumnDeleteResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableColumnDuplicate(ctx context.Context, req *pb.RpcBlockTableColumnDuplicateRequest) *pb.RpcBlockTableColumnDuplicateResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableColumnDuplicate(ctx, req.(*pb.RpcBlockTableColumnDuplicateRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnDuplicate", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableColumnDuplicateResponse)
+	return h.interceptor(ctx, "BlockTableColumnDuplicate", func(ctx context.Context, req any) any {
+		return h.client.BlockTableColumnDuplicate(ctx, req.(*pb.RpcBlockTableColumnDuplicateRequest))
+	}).(*pb.RpcBlockTableColumnDuplicateResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableRowListFill(ctx context.Context, req *pb.RpcBlockTableRowListFillRequest) *pb.RpcBlockTableRowListFillResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableRowListFill(ctx, req.(*pb.RpcBlockTableRowListFillRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowListFill", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableRowListFillResponse)
+	return h.interceptor(ctx, "BlockTableRowListFill", func(ctx context.Context, req any) any {
+		return h.client.BlockTableRowListFill(ctx, req.(*pb.RpcBlockTableRowListFillRequest))
+	}).(*pb.RpcBlockTableRowListFillResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableRowListClean(ctx context.Context, req *pb.RpcBlockTableRowListCleanRequest) *pb.RpcBlockTableRowListCleanResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableRowListClean(ctx, req.(*pb.RpcBlockTableRowListCleanRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowListClean", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableRowListCleanResponse)
+	return h.interceptor(ctx, "BlockTableRowListClean", func(ctx context.Context, req any) any {
+		return h.client.BlockTableRowListClean(ctx, req.(*pb.RpcBlockTableRowListCleanRequest))
+	}).(*pb.RpcBlockTableRowListCleanResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableColumnListFill(ctx context.Context, req *pb.RpcBlockTableColumnListFillRequest) *pb.RpcBlockTableColumnListFillResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableColumnListFill(ctx, req.(*pb.RpcBlockTableColumnListFillRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnListFill", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableColumnListFillResponse)
+	return h.interceptor(ctx, "BlockTableColumnListFill", func(ctx context.Context, req any) any {
+		return h.client.BlockTableColumnListFill(ctx, req.(*pb.RpcBlockTableColumnListFillRequest))
+	}).(*pb.RpcBlockTableColumnListFillResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockTableSort(ctx context.Context, req *pb.RpcBlockTableSortRequest) *pb.RpcBlockTableSortResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockTableSort(ctx, req.(*pb.RpcBlockTableSortRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableSort", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockTableSortResponse)
+	return h.interceptor(ctx, "BlockTableSort", func(ctx context.Context, req any) any {
+		return h.client.BlockTableSort(ctx, req.(*pb.RpcBlockTableSortRequest))
+	}).(*pb.RpcBlockTableSortResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockCreateWidget(ctx context.Context, req *pb.RpcBlockCreateWidgetRequest) *pb.RpcBlockCreateWidgetResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockCreateWidget(ctx, req.(*pb.RpcBlockCreateWidgetRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockCreateWidget", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockCreateWidgetResponse)
+	return h.interceptor(ctx, "BlockCreateWidget", func(ctx context.Context, req any) any {
+		return h.client.BlockCreateWidget(ctx, req.(*pb.RpcBlockCreateWidgetRequest))
+	}).(*pb.RpcBlockCreateWidgetResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockWidgetSetTargetId(ctx context.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) *pb.RpcBlockWidgetSetTargetIdResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockWidgetSetTargetId(ctx, req.(*pb.RpcBlockWidgetSetTargetIdRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockWidgetSetTargetId", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockWidgetSetTargetIdResponse)
+	return h.interceptor(ctx, "BlockWidgetSetTargetId", func(ctx context.Context, req any) any {
+		return h.client.BlockWidgetSetTargetId(ctx, req.(*pb.RpcBlockWidgetSetTargetIdRequest))
+	}).(*pb.RpcBlockWidgetSetTargetIdResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockWidgetSetLayout(ctx context.Context, req *pb.RpcBlockWidgetSetLayoutRequest) *pb.RpcBlockWidgetSetLayoutResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockWidgetSetLayout(ctx, req.(*pb.RpcBlockWidgetSetLayoutRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockWidgetSetLayout", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockWidgetSetLayoutResponse)
+	return h.interceptor(ctx, "BlockWidgetSetLayout", func(ctx context.Context, req any) any {
+		return h.client.BlockWidgetSetLayout(ctx, req.(*pb.RpcBlockWidgetSetLayoutRequest))
+	}).(*pb.RpcBlockWidgetSetLayoutResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockWidgetSetLimit(ctx context.Context, req *pb.RpcBlockWidgetSetLimitRequest) *pb.RpcBlockWidgetSetLimitResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockWidgetSetLimit(ctx, req.(*pb.RpcBlockWidgetSetLimitRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockWidgetSetLimit", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockWidgetSetLimitResponse)
+	return h.interceptor(ctx, "BlockWidgetSetLimit", func(ctx context.Context, req any) any {
+		return h.client.BlockWidgetSetLimit(ctx, req.(*pb.RpcBlockWidgetSetLimitRequest))
+	}).(*pb.RpcBlockWidgetSetLimitResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockWidgetSetViewId(ctx context.Context, req *pb.RpcBlockWidgetSetViewIdRequest) *pb.RpcBlockWidgetSetViewIdResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockWidgetSetViewId(ctx, req.(*pb.RpcBlockWidgetSetViewIdRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockWidgetSetViewId", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockWidgetSetViewIdResponse)
+	return h.interceptor(ctx, "BlockWidgetSetViewId", func(ctx context.Context, req any) any {
+		return h.client.BlockWidgetSetViewId(ctx, req.(*pb.RpcBlockWidgetSetViewIdRequest))
+	}).(*pb.RpcBlockWidgetSetViewIdResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockLinkCreateWithObject(ctx context.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockLinkCreateWithObject(ctx, req.(*pb.RpcBlockLinkCreateWithObjectRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockLinkCreateWithObject", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockLinkCreateWithObjectResponse)
+	return h.interceptor(ctx, "BlockLinkCreateWithObject", func(ctx context.Context, req any) any {
+		return h.client.BlockLinkCreateWithObject(ctx, req.(*pb.RpcBlockLinkCreateWithObjectRequest))
+	}).(*pb.RpcBlockLinkCreateWithObjectResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockLinkListSetAppearance(ctx context.Context, req *pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockLinkListSetAppearance(ctx, req.(*pb.RpcBlockLinkListSetAppearanceRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockLinkListSetAppearance", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockLinkListSetAppearanceResponse)
+	return h.interceptor(ctx, "BlockLinkListSetAppearance", func(ctx context.Context, req any) any {
+		return h.client.BlockLinkListSetAppearance(ctx, req.(*pb.RpcBlockLinkListSetAppearanceRequest))
+	}).(*pb.RpcBlockLinkListSetAppearanceResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockBookmarkFetch(ctx context.Context, req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockBookmarkFetch(ctx, req.(*pb.RpcBlockBookmarkFetchRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockBookmarkFetch", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockBookmarkFetchResponse)
+	return h.interceptor(ctx, "BlockBookmarkFetch", func(ctx context.Context, req any) any {
+		return h.client.BlockBookmarkFetch(ctx, req.(*pb.RpcBlockBookmarkFetchRequest))
+	}).(*pb.RpcBlockBookmarkFetchResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockBookmarkCreateAndFetch(ctx context.Context, req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockBookmarkCreateAndFetch(ctx, req.(*pb.RpcBlockBookmarkCreateAndFetchRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockBookmarkCreateAndFetch", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockBookmarkCreateAndFetchResponse)
+	return h.interceptor(ctx, "BlockBookmarkCreateAndFetch", func(ctx context.Context, req any) any {
+		return h.client.BlockBookmarkCreateAndFetch(ctx, req.(*pb.RpcBlockBookmarkCreateAndFetchRequest))
+	}).(*pb.RpcBlockBookmarkCreateAndFetchResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockRelationSetKey(ctx context.Context, req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockRelationSetKey(ctx, req.(*pb.RpcBlockRelationSetKeyRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockRelationSetKey", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockRelationSetKeyResponse)
+	return h.interceptor(ctx, "BlockRelationSetKey", func(ctx context.Context, req any) any {
+		return h.client.BlockRelationSetKey(ctx, req.(*pb.RpcBlockRelationSetKeyRequest))
+	}).(*pb.RpcBlockRelationSetKeyResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockRelationAdd(ctx context.Context, req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockRelationAdd(ctx, req.(*pb.RpcBlockRelationAddRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockRelationAdd", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockRelationAddResponse)
+	return h.interceptor(ctx, "BlockRelationAdd", func(ctx context.Context, req any) any {
+		return h.client.BlockRelationAdd(ctx, req.(*pb.RpcBlockRelationAddRequest))
+	}).(*pb.RpcBlockRelationAddResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockDivListSetStyle(ctx context.Context, req *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockDivListSetStyle(ctx, req.(*pb.RpcBlockDivListSetStyleRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDivListSetStyle", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockDivListSetStyleResponse)
+	return h.interceptor(ctx, "BlockDivListSetStyle", func(ctx context.Context, req any) any {
+		return h.client.BlockDivListSetStyle(ctx, req.(*pb.RpcBlockDivListSetStyleRequest))
+	}).(*pb.RpcBlockDivListSetStyleResponse)
 }
 func (h *ClientCommandsHandlerProxy) BlockLatexSetText(ctx context.Context, req *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.BlockLatexSetText(ctx, req.(*pb.RpcBlockLatexSetTextRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockLatexSetText", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcBlockLatexSetTextResponse)
+	return h.interceptor(ctx, "BlockLatexSetText", func(ctx context.Context, req any) any {
+		return h.client.BlockLatexSetText(ctx, req.(*pb.RpcBlockLatexSetTextRequest))
+	}).(*pb.RpcBlockLatexSetTextResponse)
 }
 func (h *ClientCommandsHandlerProxy) ProcessCancel(ctx context.Context, req *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.ProcessCancel(ctx, req.(*pb.RpcProcessCancelRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ProcessCancel", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcProcessCancelResponse)
+	return h.interceptor(ctx, "ProcessCancel", func(ctx context.Context, req any) any {
+		return h.client.ProcessCancel(ctx, req.(*pb.RpcProcessCancelRequest))
+	}).(*pb.RpcProcessCancelResponse)
 }
 func (h *ClientCommandsHandlerProxy) LogSend(ctx context.Context, req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.LogSend(ctx, req.(*pb.RpcLogSendRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "LogSend", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcLogSendResponse)
+	return h.interceptor(ctx, "LogSend", func(ctx context.Context, req any) any {
+		return h.client.LogSend(ctx, req.(*pb.RpcLogSendRequest))
+	}).(*pb.RpcLogSendResponse)
 }
 func (h *ClientCommandsHandlerProxy) DebugTree(ctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DebugTree(ctx, req.(*pb.RpcDebugTreeRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "DebugTree", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDebugTreeResponse)
+	return h.interceptor(ctx, "DebugTree", func(ctx context.Context, req any) any {
+		return h.client.DebugTree(ctx, req.(*pb.RpcDebugTreeRequest))
+	}).(*pb.RpcDebugTreeResponse)
 }
 func (h *ClientCommandsHandlerProxy) DebugTreeHeads(ctx context.Context, req *pb.RpcDebugTreeHeadsRequest) *pb.RpcDebugTreeHeadsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DebugTreeHeads(ctx, req.(*pb.RpcDebugTreeHeadsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugTreeHeads", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDebugTreeHeadsResponse)
+	return h.interceptor(ctx, "DebugTreeHeads", func(ctx context.Context, req any) any {
+		return h.client.DebugTreeHeads(ctx, req.(*pb.RpcDebugTreeHeadsRequest))
+	}).(*pb.RpcDebugTreeHeadsResponse)
 }
 func (h *ClientCommandsHandlerProxy) DebugSpaceSummary(ctx context.Context, req *pb.RpcDebugSpaceSummaryRequest) *pb.RpcDebugSpaceSummaryResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DebugSpaceSummary(ctx, req.(*pb.RpcDebugSpaceSummaryRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugSpaceSummary", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDebugSpaceSummaryResponse)
+	return h.interceptor(ctx, "DebugSpaceSummary", func(ctx context.Context, req any) any {
+		return h.client.DebugSpaceSummary(ctx, req.(*pb.RpcDebugSpaceSummaryRequest))
+	}).(*pb.RpcDebugSpaceSummaryResponse)
 }
 func (h *ClientCommandsHandlerProxy) DebugStackGoroutines(ctx context.Context, req *pb.RpcDebugStackGoroutinesRequest) *pb.RpcDebugStackGoroutinesResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DebugStackGoroutines(ctx, req.(*pb.RpcDebugStackGoroutinesRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugStackGoroutines", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDebugStackGoroutinesResponse)
+	return h.interceptor(ctx, "DebugStackGoroutines", func(ctx context.Context, req any) any {
+		return h.client.DebugStackGoroutines(ctx, req.(*pb.RpcDebugStackGoroutinesRequest))
+	}).(*pb.RpcDebugStackGoroutinesResponse)
 }
 func (h *ClientCommandsHandlerProxy) DebugExportLocalstore(ctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DebugExportLocalstore(ctx, req.(*pb.RpcDebugExportLocalstoreRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugExportLocalstore", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDebugExportLocalstoreResponse)
+	return h.interceptor(ctx, "DebugExportLocalstore", func(ctx context.Context, req any) any {
+		return h.client.DebugExportLocalstore(ctx, req.(*pb.RpcDebugExportLocalstoreRequest))
+	}).(*pb.RpcDebugExportLocalstoreResponse)
 }
 func (h *ClientCommandsHandlerProxy) DebugPing(ctx context.Context, req *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DebugPing(ctx, req.(*pb.RpcDebugPingRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "DebugPing", toCall) }
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDebugPingResponse)
+	return h.interceptor(ctx, "DebugPing", func(ctx context.Context, req any) any {
+		return h.client.DebugPing(ctx, req.(*pb.RpcDebugPingRequest))
+	}).(*pb.RpcDebugPingResponse)
 }
 func (h *ClientCommandsHandlerProxy) DebugSubscriptions(ctx context.Context, req *pb.RpcDebugSubscriptionsRequest) *pb.RpcDebugSubscriptionsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DebugSubscriptions(ctx, req.(*pb.RpcDebugSubscriptionsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugSubscriptions", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDebugSubscriptionsResponse)
+	return h.interceptor(ctx, "DebugSubscriptions", func(ctx context.Context, req any) any {
+		return h.client.DebugSubscriptions(ctx, req.(*pb.RpcDebugSubscriptionsRequest))
+	}).(*pb.RpcDebugSubscriptionsResponse)
 }
 func (h *ClientCommandsHandlerProxy) DebugOpenedObjects(ctx context.Context, req *pb.RpcDebugOpenedObjectsRequest) *pb.RpcDebugOpenedObjectsResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.DebugOpenedObjects(ctx, req.(*pb.RpcDebugOpenedObjectsRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugOpenedObjects", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcDebugOpenedObjectsResponse)
+	return h.interceptor(ctx, "DebugOpenedObjects", func(ctx context.Context, req any) any {
+		return h.client.DebugOpenedObjects(ctx, req.(*pb.RpcDebugOpenedObjectsRequest))
+	}).(*pb.RpcDebugOpenedObjectsResponse)
 }
 func (h *ClientCommandsHandlerProxy) MetricsSetParameters(ctx context.Context, req *pb.RpcMetricsSetParametersRequest) *pb.RpcMetricsSetParametersResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.MetricsSetParameters(ctx, req.(*pb.RpcMetricsSetParametersRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "MetricsSetParameters", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcMetricsSetParametersResponse)
-}
-func (h *ClientCommandsHandlerProxy) NotificationList(ctx context.Context, req *pb.RpcNotificationListRequest) *pb.RpcNotificationListResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.NotificationList(ctx, req.(*pb.RpcNotificationListRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "NotificationList", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcNotificationListResponse)
-}
-func (h *ClientCommandsHandlerProxy) NotificationReply(ctx context.Context, req *pb.RpcNotificationReplyRequest) *pb.RpcNotificationReplyResponse {
-	actualCall := func(ctx context.Context, req any) (any, error) {
-		return h.client.NotificationReply(ctx, req.(*pb.RpcNotificationReplyRequest)), nil
-	}
-	for _, interceptor := range h.interceptors {
-		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "NotificationReply", toCall)
-		}
-	}
-	call, _ := actualCall(ctx, req)
-	return call.(*pb.RpcNotificationReplyResponse)
+	return h.interceptor(ctx, "MetricsSetParameters", func(ctx context.Context, req any) any {
+		return h.client.MetricsSetParameters(ctx, req.(*pb.RpcMetricsSetParametersRequest))
+	}).(*pb.RpcMetricsSetParametersResponse)
 }

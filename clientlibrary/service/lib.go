@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -24,9 +26,20 @@ func init() {
 	fixTZ()
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
 
-	registerClientCommandsHandler(mw)
+
 	PanicHandler = mw.OnPanic
 	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
+	registerClientCommandsHandler(
+		&ClientCommandsHandlerProxy{
+			client: mw,
+			interceptor: func(ctx context.Context, methodName string, actualCall func(ctx context.Context, req any) any) any {
+				start := time.Now().UnixMilli()
+				resp := actualCall(ctx, methodName)
+				delta := time.Now().UnixMilli() - start
+				metrics.SendMethodEvent(methodName, nil, resp, delta)
+				return resp
+			},
+		})
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {
 			http.ListenAndServe(debug, nil)

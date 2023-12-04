@@ -15,7 +15,6 @@ const (
 	BlockSetCarriage      = "BlockSetCarriage"
 	BlockTextSetText      = "BlockTextSetText"
 	ObjectSearchSubscribe = "ObjectSearchSubscribe"
-	fastEventsLimit       = 100
 	unexpectedErrorCode   = -1
 	parsingErrorCode      = -2
 )
@@ -44,21 +43,25 @@ func UnaryTraceInterceptor() func(
 
 		// it looks like that, we need the last part /anytype.ClientCommands/FileNodeUsage
 		method := strings.Split(info.FullMethod, "/")[2]
-		if !lo.Contains(excludedMethods, method) || delta > fastEventsLimit {
-			if err != nil {
-				sendUnexpectedError(method, err.Error())
-			}
-			errorCode, description, err := reflection.GetError(resp)
-			if err != nil {
-				sendErrorParsingError(method)
-			}
-			if errorCode > 0 {
-				sendExpectedError(method, errorCode, description)
-			}
-			sendSuccess(method, delta)
-		}
+		SendMethodEvent(method, err, resp, delta)
 
 		return resp, err
+	}
+}
+
+func SendMethodEvent(method string, err error, resp any, delta int64) {
+	if !lo.Contains(excludedMethods, method) {
+		if err != nil {
+			sendUnexpectedError(method, err.Error())
+		}
+		errorCode, description, err := reflection.GetError(resp)
+		if err != nil {
+			sendErrorParsingError(method)
+		}
+		if errorCode > 0 {
+			sendExpectedError(method, errorCode, description)
+		}
+		sendSuccess(method, delta)
 	}
 }
 
