@@ -1251,9 +1251,9 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 	if len(keys) == 0 {
 		return
 	}
-	fileKeys := make([]domain.FileKeys, len(keys))
+	fileKeys := make([]domain.FileEncryptionKeys, len(keys))
 	for i, k := range keys {
-		fileKeys[i] = domain.FileKeys{
+		fileKeys[i] = domain.FileEncryptionKeys{
 			FileId:         domain.FileId(k.Hash),
 			EncryptionKeys: k.Keys,
 		}
@@ -1450,7 +1450,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
-		err := sb.fileService.StoreFileKeys(domain.FileKeys{
+		err := sb.fileService.StoreFileKeys(domain.FileEncryptionKeys{
 			FileId:         info.FileId,
 			EncryptionKeys: info.EncryptionKeys,
 		})

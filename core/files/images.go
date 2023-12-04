@@ -58,7 +58,7 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 type ImageAddResult struct {
 	FileId         domain.FileId
 	Image          Image
-	EncryptionKeys *domain.FileKeys
+	EncryptionKeys *domain.FileEncryptionKeys
 	IsExisting     bool
 }
 
@@ -86,7 +86,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, err
 	}
 	fileId := domain.FileId(rootNode.Cid().String())
-	fileKeys := domain.FileKeys{
+	fileKeys := domain.FileEncryptionKeys{
 		FileId:         fileId,
 		EncryptionKeys: keys.KeysByPath,
 	}

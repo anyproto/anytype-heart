@@ -72,7 +72,7 @@ func (mr *MockFileStoreMockRecorder) AddChildId(arg0, arg1 any) *gomock.Call {
 }
 
 // AddFileKeys mocks base method.
-func (m *MockFileStore) AddFileKeys(arg0 ...domain.FileKeys) error {
+func (m *MockFileStore) AddFileKeys(arg0 ...domain.FileEncryptionKeys) error {
 	m.ctrl.T.Helper()
 	varargs := []any{}
 	for _, a := range arg0 {

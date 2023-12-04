@@ -466,7 +466,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 
 type addToStorageResult struct {
 	fileId     domain.FileId
-	fileKeys   *domain.FileKeys
+	fileKeys   *domain.FileEncryptionKeys
 	fileExists bool
 	mime       string
 	size       int64

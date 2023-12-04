@@ -58,13 +58,13 @@ var _ Service = (*service)(nil)
 type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*FileAddResult, error)
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
-	FileGetKeys(id domain.FullFileId) (*domain.FileKeys, error)
+	FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error)
 	FileOffload(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*ImageAddResult, error)
 	ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error)
-	StoreFileKeys(fileKeys ...domain.FileKeys) error
+	StoreFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 
 	app.Component
 }
@@ -112,7 +112,7 @@ var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 type FileAddResult struct {
 	FileId         domain.FileId
 	File           File
-	EncryptionKeys *domain.FileKeys
+	EncryptionKeys *domain.FileEncryptionKeys
 	IsExisting     bool // Is file already added by user?
 }
 
@@ -144,7 +144,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 
-	fileKeys := domain.FileKeys{
+	fileKeys := domain.FileEncryptionKeys{
 		FileId:         fileId,
 		EncryptionKeys: keys.KeysByPath,
 	}
@@ -182,7 +182,7 @@ func (s *service) newExistingFileResult(spaceId string, fileInfo *storage.FileIn
 	}, nil
 }
 
-func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo) (domain.FileId, *domain.FileKeys, error) {
+func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo) (domain.FileId, *domain.FileEncryptionKeys, error) {
 	if len(fileInfo.Targets) == 0 {
 		return "", nil, fmt.Errorf("file exists but has no root")
 	}
@@ -191,7 +191,7 @@ func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo)
 	if err != nil {
 		return "", nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
 	}
-	return fileId, &domain.FileKeys{
+	return fileId, &domain.FileEncryptionKeys{
 		FileId:         fileId,
 		EncryptionKeys: keys,
 	}, nil
@@ -214,7 +214,7 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 		return nil, fmt.Errorf("get inner dir node: %w", err)
 	}
 
-	fileKeys := domain.FileKeys{
+	fileKeys := domain.FileEncryptionKeys{
 		FileId:         id.FileId,
 		EncryptionKeys: make(map[string]string),
 	}
@@ -317,14 +317,14 @@ func (s *service) fileGetInfoForPath(ctx context.Context, spaceID string, pth st
 	return nil, fmt.Errorf("key not found")
 }
 
-func (s *service) FileGetKeys(id domain.FullFileId) (*domain.FileKeys, error) {
+func (s *service) FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error) {
 	m, err := s.fileStore.GetFileKeys(id.FileId)
 	if err != nil {
 		if err != localstore.ErrNotFound {
 			return nil, err
 		}
 	} else {
-		return &domain.FileKeys{
+		return &domain.FileEncryptionKeys{
 			FileId:         id.FileId,
 			EncryptionKeys: m,
 		}, nil
@@ -339,7 +339,7 @@ func (s *service) FileGetKeys(id domain.FullFileId) (*domain.FileKeys, error) {
 		return nil, fmt.Errorf("failed to restore file keys: %w", err)
 	}
 
-	return &domain.FileKeys{
+	return &domain.FileEncryptionKeys{
 		FileId:         id.FileId,
 		EncryptionKeys: fileKeysRestored,
 	}, nil
@@ -763,7 +763,7 @@ func getEncryptorDecryptor(key symmetric.Key, mode storage.FileInfoEncryptionMod
 	}
 }
 
-func (s *service) StoreFileKeys(fileKeys ...domain.FileKeys) error {
+func (s *service) StoreFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
 	return s.fileStore.AddFileKeys(fileKeys...)
 }
 

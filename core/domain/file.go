@@ -12,7 +12,7 @@ type FullFileId struct {
 	FileId  FileId
 }
 
-type FileKeys struct {
+type FileEncryptionKeys struct {
 	FileId         FileId
 	EncryptionKeys map[string]string
 }

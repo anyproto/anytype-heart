@@ -100,7 +100,7 @@ type FileStore interface {
 
 	DeleteFile(fileId domain.FileId) error
 
-	AddFileKeys(fileKeys ...domain.FileKeys) error
+	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 	GetFileKeys(fileId domain.FileId) (map[string]string, error)
 	RemoveEmptyFileKeys() error
 
@@ -210,7 +210,7 @@ func (m *dsFileStore) AddFileVariants(upsert bool, files ...*storage.FileInfo) e
 	})
 }
 
-func (m *dsFileStore) AddFileKeys(fileKeys ...domain.FileKeys) error {
+func (m *dsFileStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
 	return m.updateTxn(func(txn *badger.Txn) error {
 		for _, fk := range fileKeys {
 			if len(fk.EncryptionKeys) == 0 {
@@ -270,7 +270,7 @@ func (m *dsFileStore) deleteFileKeys(fileId domain.FileId) error {
 	})
 }
 
-func (m *dsFileStore) addSingleFileKeys(txn *badger.Txn, fileKeys domain.FileKeys) error {
+func (m *dsFileStore) addSingleFileKeys(txn *badger.Txn, fileKeys domain.FileEncryptionKeys) error {
 	fileKeysKey := filesKeysBase.ChildString(fileKeys.FileId.String())
 
 	exists, err := badgerhelper.Has(txn, fileKeysKey.Bytes())

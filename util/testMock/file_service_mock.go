@@ -47,7 +47,7 @@ func (m *MockFileService) EXPECT() *MockFileServiceMockRecorder {
 }
 
 // FileAdd mocks base method.
-func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (files.File, *domain.FileKeys, error) {
+func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (files.File, *domain.FileEncryptionKeys, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {
@@ -55,7 +55,7 @@ func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...fil
 	}
 	ret := m.ctrl.Call(m, "FileAdd", varargs...)
 	ret0, _ := ret[0].(files.File)
-	ret1, _ := ret[1].(*domain.FileKeys)
+	ret1, _ := ret[1].(*domain.FileEncryptionKeys)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -83,10 +83,10 @@ func (mr *MockFileServiceMockRecorder) FileByHash(arg0, arg1 any) *gomock.Call {
 }
 
 // FileGetKeys mocks base method.
-func (m *MockFileService) FileGetKeys(arg0 domain.FullFileId) (*domain.FileKeys, error) {
+func (m *MockFileService) FileGetKeys(arg0 domain.FullFileId) (*domain.FileEncryptionKeys, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FileGetKeys", arg0)
-	ret0, _ := ret[0].(*domain.FileKeys)
+	ret0, _ := ret[0].(*domain.FileEncryptionKeys)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -173,7 +173,7 @@ func (mr *MockFileServiceMockRecorder) GetSpaceUsage(arg0, arg1 any) *gomock.Cal
 }
 
 // ImageAdd mocks base method.
-func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (files.Image, *domain.FileKeys, error) {
+func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (files.Image, *domain.FileEncryptionKeys, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {
@@ -181,7 +181,7 @@ func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...fi
 	}
 	ret := m.ctrl.Call(m, "ImageAdd", varargs...)
 	ret0, _ := ret[0].(files.Image)
-	ret1, _ := ret[1].(*domain.FileKeys)
+	ret1, _ := ret[1].(*domain.FileEncryptionKeys)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -237,7 +237,7 @@ func (mr *MockFileServiceMockRecorder) Name() *gomock.Call {
 }
 
 // StoreFileKeys mocks base method.
-func (m *MockFileService) StoreFileKeys(arg0 ...domain.FileKeys) error {
+func (m *MockFileService) StoreFileKeys(arg0 ...domain.FileEncryptionKeys) error {
 	m.ctrl.T.Helper()
 	varargs := []any{}
 	for _, a := range arg0 {
