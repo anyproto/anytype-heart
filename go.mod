@@ -72,7 +72,7 @@ require (
 	github.com/prometheus/client_golang v1.17.0
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
-	github.com/samber/lo v1.38.1
+	github.com/samber/lo v1.39.0
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shirou/gopsutil/v3 v3.23.10
 	github.com/stretchr/testify v1.8.4
