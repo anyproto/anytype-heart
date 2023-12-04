@@ -126,44 +126,18 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	}
 
 	queue.SetMessage("export docs")
+	if req.Format == model.Export_Protobuf && len(req.ObjectIds) == 0 {
+		if err = e.createProfileFile(req.SpaceId, wr); err != nil {
+			log.Errorf("failed to create profile file: %s", err)
+		}
+	}
 	if req.Format == model.Export_DOT || req.Format == model.Export_SVG {
-		var format = dot.ExportFormatDOT
-		if req.Format == model.Export_SVG {
-			format = dot.ExportFormatSVG
-		}
-		mc := dot.NewMultiConverter(format, e.sbtProvider)
-		mc.SetKnownDocs(docs)
-		var werr error
-		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
-			log.Warnf("can't export docs: %v", werr)
-		}
+		succeed = e.exportDotAndSVG(ctx, req, docs, succeed, wr, queue)
 	} else if req.Format == model.Export_GRAPH_JSON {
-		mc := graphjson.NewMultiConverter(e.sbtProvider)
-		mc.SetKnownDocs(docs)
-		var werr error
-		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
-			log.Warnf("can't export docs: %v", werr)
-		}
+		succeed = e.exportGraphJson(ctx, req, docs, succeed, wr, queue)
 	} else {
-		if req.Format == model.Export_Protobuf {
-			if len(req.ObjectIds) == 0 {
-				if err = e.createProfileFile(req.SpaceId, wr); err != nil {
-					log.Errorf("failed to create profile file: %s", err)
-				}
-			}
-		}
 		tasks := make([]process.Task, 0, len(docs))
-		for docId := range docs {
-			did := docId
-			task := func() {
-				if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
-					log.With("objectID", did).Warnf("can't export doc: %v", werr)
-				} else {
-					succeed++
-				}
-			}
-			tasks = append(tasks, task)
-		}
+		succeed, tasks = e.exportDocs(ctx, req, docs, wr, queue, succeed, tasks)
 		err := queue.Wait(tasks...)
 		if err != nil {
 			e.cleanupFile(wr)
@@ -179,6 +153,45 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		return e.renameZipArchive(req, wr, succeed)
 	}
 	return wr.Path(), succeed, nil
+}
+
+func (e *export) exportDocs(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, wr writer, queue process.Queue, succeed int, tasks []process.Task) (int, []process.Task) {
+	for docId := range docs {
+		did := docId
+		task := func() {
+			if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
+				log.With("objectID", did).Warnf("can't export doc: %v", werr)
+			} else {
+				succeed++
+			}
+		}
+		tasks = append(tasks, task)
+	}
+	return succeed, tasks
+}
+
+func (e *export) exportGraphJson(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, succeed int, wr writer, queue process.Queue) int {
+	mc := graphjson.NewMultiConverter(e.sbtProvider)
+	mc.SetKnownDocs(docs)
+	var werr error
+	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
+		log.Warnf("can't export docs: %v", werr)
+	}
+	return succeed
+}
+
+func (e *export) exportDotAndSVG(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, succeed int, wr writer, queue process.Queue) int {
+	var format = dot.ExportFormatDOT
+	if req.Format == model.Export_SVG {
+		format = dot.ExportFormatSVG
+	}
+	mc := dot.NewMultiConverter(format, e.sbtProvider)
+	mc.SetKnownDocs(docs)
+	var werr error
+	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
+		log.Warnf("can't export docs: %v", werr)
+	}
+	return succeed
 }
 
 func (e *export) sendNotification(err error, req pb.RpcObjectListExportRequest) {
