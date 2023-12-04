@@ -19,8 +19,6 @@ import (
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/ico"
-	"github.com/anyproto/anytype-heart/pkg/lib/mill/svg"
-
 	// Import for image.DecodeConfig to support .webp format
 	_ "golang.org/x/image/webp"
 )
@@ -30,7 +28,7 @@ type Format string
 
 func init() {
 	image.RegisterFormat("ico", string([]byte{0x00, 0x00, 0x01, 0x00}), ico.Decode, ico.DecodeConfig)
-	image.RegisterFormat("svg+xml", "<svg", svg.Decode, svg.DecodeConfig)
+	//image.RegisterFormat("svg+xml", "<svg", svg.Decode, svg.DecodeConfig)
 }
 
 const (
@@ -40,7 +38,7 @@ const (
 	ICO  Format = "ico"
 	WEBP Format = "webp"
 	HEIC Format = "heic"
-	SVG  Format = "svg+xml"
+	//SVG  Format = "svg+xml"
 )
 
 func IsImage(mime string) bool {
@@ -55,7 +53,7 @@ func IsImage(mime string) bool {
 
 func isImageFormatSupported(format Format) bool {
 	switch format {
-	case JPEG, PNG, GIF, ICO, WEBP, HEIC, SVG:
+	case JPEG, PNG, GIF, ICO, WEBP, HEIC:
 		return true
 	}
 	return false
@@ -118,7 +116,7 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	switch format {
 	case JPEG:
 		return m.resizeJPEG(&imgConfig, r)
-	case ICO, PNG, SVG:
+	case ICO, PNG:
 		return m.resizePNG(&imgConfig, r)
 	case WEBP:
 		return m.resizeWEBP(&imgConfig, r)
