@@ -152,12 +152,12 @@ func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		collectionID, snapshots, err := str.CreateObjects(fileName, csvTable, params, progress)
+		collectionId, snapshots, err := str.CreateObjects(fileName, csvTable, params, progress)
 		if err != nil {
 			allErrors.Add(err)
 			return !allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Csv)
 		}
-		allObjectsIds = append(allObjectsIds, collectionID)
+		allObjectsIds = append(allObjectsIds, collectionId)
 		allSnapshots = append(allSnapshots, snapshots...)
 		return true
 	}); iterateErr != nil {
