@@ -27,10 +27,17 @@ func NewRootCollection(service *collection.Service) *RootCollection {
 	return &RootCollection{service: service}
 }
 
-func (r *RootCollection) MakeRootCollection(collectionName string, targetObjects []string) (*Snapshot, error) {
-	importDate := time.Now().Format(time.RFC3339)
-	nameWithDate := fmt.Sprintf("%s %s", collectionName, importDate)
-	detailsStruct := r.getCreateCollectionRequest(nameWithDate)
+func (r *RootCollection) MakeRootCollection(collectionName string,
+	targetObjects []string,
+	icon string,
+	fileKeys []*pb.ChangeFileKeys,
+	needToAddDate bool,
+) (*Snapshot, error) {
+	if needToAddDate {
+		importDate := time.Now().Format(time.RFC3339)
+		collectionName = fmt.Sprintf("%s %s", collectionName, importDate)
+	}
+	detailsStruct := r.getCreateCollectionRequest(collectionName, icon)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
 		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
@@ -46,10 +53,15 @@ func (r *RootCollection) MakeRootCollection(collectionName string, targetObjects
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	st.UpdateStoreSlice(template.CollectionStoreKey, targetObjects)
 
-	return r.getRootCollectionSnapshot(nameWithDate, st, detailsStruct), nil
+	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct, fileKeys), nil
 }
 
-func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *state.State, detailsStruct *types.Struct) *Snapshot {
+func (r *RootCollection) getRootCollectionSnapshot(
+	collectionName string,
+	st *state.State,
+	detailsStruct *types.Struct,
+	fileKeys []*pb.ChangeFileKeys,
+) *Snapshot {
 	if detailsStruct.GetFields() == nil {
 		detailsStruct = &types.Struct{Fields: map[string]*types.Value{}}
 	}
@@ -66,6 +78,7 @@ func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *st
 				RelationLinks: st.GetRelationLinks(),
 				Collections:   st.Store(),
 			},
+			FileKeys: fileKeys,
 		},
 	}
 }
@@ -89,12 +102,13 @@ func (r *RootCollection) addRelations(st *state.State) error {
 	return nil
 }
 
-func (r *RootCollection) getCreateCollectionRequest(collectionName string) *types.Struct {
+func (r *RootCollection) getCreateCollectionRequest(collectionName string, icon string) *types.Struct {
 	details := make(map[string]*types.Value, 0)
 	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(collectionName)
 	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+	details[bundle.RelationKeyIconImage.String()] = pbtypes.String(icon)
 
 	detailsStruct := &types.Struct{Fields: details}
 	return detailsStruct

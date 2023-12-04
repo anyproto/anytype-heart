@@ -1,13 +1,12 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-
-	_ "embed"
 )
 
 //go:embed excluded.json
@@ -26,7 +25,6 @@ var (
 	shouldRelationsBeExcluded   = false
 
 	sbTypesToBeExcluded = map[model.SmartBlockType]struct{}{
-		model.SmartBlockType_Workspace:   {},
 		model.SmartBlockType_Widget:      {},
 		model.SmartBlockType_ProfilePage: {},
 		model.SmartBlockType_Template:    {},

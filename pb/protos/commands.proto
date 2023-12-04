@@ -1939,6 +1939,7 @@ message Rpc {
                 Mode mode = 11;
                 bool noProgress = 12;
                 bool isMigration = 13;
+                bool isNewSpace = 15;
 
                 message NotionParams {
                     string apiKey = 1;
@@ -1963,6 +1964,12 @@ message Rpc {
                 message PbParams {
                     repeated string path = 1;
                     bool noCollection = 2;
+                    string collectionTitle = 3;
+                    Type importType = 4;
+                    enum Type {
+                        SPACE = 0;
+                        EXPERIENCE = 1;
+                    };
                 }
 
                 message CsvParams {
@@ -2114,8 +2121,9 @@ message Rpc {
         message ImportExperience {
             message Request {
                 string spaceId = 1;
-                string source = 2;
-                bool isLocal = 3;
+                string url = 2;
+                string title = 3;
+                bool isNewSpace = 4;
             }
 
             message Response {

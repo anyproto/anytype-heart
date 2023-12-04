@@ -151,9 +151,6 @@ func (t *TextObject) handleUserMention(rt api.RichText, text *strings.Builder) [
 func (t *TextObject) handleDatabaseMention(rt api.RichText,
 	text *strings.Builder,
 	notionDatabaseIdsToAnytype, databaseNameToID map[string]string) []*model.BlockContentTextMark {
-	if notionDatabaseIdsToAnytype == nil {
-		return nil
-	}
 	from := textUtil.UTF16RuneCountString(text.String())
 	if p, ok := databaseNameToID[rt.Mention.Database.ID]; ok {
 		text.WriteString(p)
@@ -161,6 +158,8 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 		text.WriteString(rt.PlainText)
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+	} else if rt.Href != "" {
+		return t.writeLink(rt, text, from)
 	} else {
 		text.WriteString(notExistingObjectMessage)
 		to := textUtil.UTF16RuneCountString(text.String())
@@ -168,13 +167,17 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 	}
 	to := textUtil.UTF16RuneCountString(text.String())
 	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+	var dbID string
+	if notionDatabaseIdsToAnytype != nil {
+		dbID = notionDatabaseIdsToAnytype[rt.Mention.Database.ID]
+	}
 	marks = append(marks, &model.BlockContentTextMark{
 		Range: &model.Range{
 			From: int32(from),
 			To:   int32(to),
 		},
 		Type:  model.BlockContentTextMark_Mention,
-		Param: notionDatabaseIdsToAnytype[rt.Mention.Database.ID],
+		Param: dbID,
 	})
 	return marks
 }
@@ -182,9 +185,6 @@ func (t *TextObject) handleDatabaseMention(rt api.RichText,
 func (t *TextObject) handlePageMention(rt api.RichText,
 	text *strings.Builder,
 	notionPageIdsToAnytype, pageNameToID map[string]string) []*model.BlockContentTextMark {
-	if notionPageIdsToAnytype == nil {
-		return nil
-	}
 	from := textUtil.UTF16RuneCountString(text.String())
 	if p, ok := pageNameToID[rt.Mention.Page.ID]; ok {
 		text.WriteString(p)
@@ -192,6 +192,8 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 		text.WriteString(rt.PlainText)
 		to := textUtil.UTF16RuneCountString(text.String())
 		return rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+	} else if rt.Href != "" {
+		return t.writeLink(rt, text, from)
 	} else {
 		text.WriteString(notExistingObjectMessage)
 		to := textUtil.UTF16RuneCountString(text.String())
@@ -199,13 +201,32 @@ func (t *TextObject) handlePageMention(rt api.RichText,
 	}
 	to := textUtil.UTF16RuneCountString(text.String())
 	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+	var pageID string
+	if notionPageIdsToAnytype != nil {
+		pageID = notionPageIdsToAnytype[rt.Mention.Page.ID]
+	}
 	marks = append(marks, &model.BlockContentTextMark{
 		Range: &model.Range{
 			From: int32(from),
 			To:   int32(to),
 		},
 		Type:  model.BlockContentTextMark_Mention,
-		Param: notionPageIdsToAnytype[rt.Mention.Page.ID],
+		Param: pageID,
+	})
+	return marks
+}
+
+func (t *TextObject) writeLink(rt api.RichText, text *strings.Builder, from int) []*model.BlockContentTextMark {
+	text.WriteString(rt.Href)
+	to := textUtil.UTF16RuneCountString(text.String())
+	marks := rt.BuildMarkdownFromAnnotations(int32(from), int32(to))
+	marks = append(marks, &model.BlockContentTextMark{
+		Range: &model.Range{
+			From: int32(from),
+			To:   int32(to),
+		},
+		Type:  model.BlockContentTextMark_Link,
+		Param: rt.Href,
 	})
 	return marks
 }

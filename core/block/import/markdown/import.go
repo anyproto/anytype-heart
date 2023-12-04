@@ -100,7 +100,7 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot) ([]*common.Snapshot, string, error) {
 	targetObjects := m.getObjectIDs(allSnapshots)
 	rootCollection := common.NewRootCollection(m.service)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true)
 	if err != nil {
 		return nil, "", err
 	}
