@@ -74,7 +74,6 @@ func IsInWhitelist(url string) bool {
 	if len(whitelist) == 0 {
 		return true
 	}
-	// nolint:errcheck
 	parsedURL, err := uri.ParseURI(url)
 	if err != nil {
 		return false
@@ -122,7 +121,7 @@ func validateSchema(schemaResp schemaResponse, info *pb.RpcDownloadManifestRespo
 		return err
 	}
 	if !result.Valid() {
-		return fmt.Errorf("manifest does not correspond provided schema")
+		return buildResultError(result)
 	}
 	info.Schema = schemaResp.Schema
 	return nil
@@ -133,4 +132,18 @@ func stripTags(str string) string {
 		return str
 	}
 	return strip.StripTags(str)
+}
+
+func buildResultError(result *gojsonschema.Result) error {
+	var description strings.Builder
+	n := len(result.Errors()) - 1
+	for i, e := range result.Errors() {
+		description.WriteString(e.Context().String())
+		description.WriteString(" - ")
+		description.WriteString(e.Description())
+		if i < n {
+			description.WriteString("; ")
+		}
+	}
+	return fmt.Errorf("manifest does not correspond provided schema: %s", description.String())
 }

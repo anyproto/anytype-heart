@@ -2965,6 +2965,7 @@ message Rpc {
                 string downloadLink = 9;
                 int32 fileSize = 10;
                 repeated string categories = 11;
+                string language = 12;
             }
         }
     }
