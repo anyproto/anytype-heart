@@ -10,12 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -189,10 +187,8 @@ func (e *export) sendNotification(err error, req pb.RpcObjectListExportRequest) 
 		errCode = model.NotificationExport_UNKNOWN_ERROR
 	}
 	notificationSendErr := e.notificationService.CreateAndSendLocal(&model.Notification{
-		Id:         uuid.New().String(),
-		CreateTime: time.Now().Unix(),
-		Status:     model.Notification_Created,
-		IsLocal:    true,
+		Status:  model.Notification_Created,
+		IsLocal: true,
 		Payload: &model.NotificationPayloadOfExport{Export: &model.NotificationExport{
 			ErrorCode:  errCode,
 			ExportType: req.Format,
