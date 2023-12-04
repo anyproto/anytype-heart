@@ -753,7 +753,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		// given
 		i := Import{}
 		expectedRootCollectionID := "id"
-		originalRootCollectionID := "rootCollectionID"
+		originalRootCollectionID := "rootCollectionId"
 
 		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
@@ -781,7 +781,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.fileSync = fileSync
 
 		// when
-		rootCollectionID, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+		rootCollectionId, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 			UpdateExistingObjects: false,
 			Type:                  0,
@@ -791,22 +791,22 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, expectedRootCollectionID, rootCollectionID)
+		assert.Equal(t, expectedRootCollectionID, rootCollectionId)
 	})
 
 	t.Run("return empty root collection id in case of error", func(t *testing.T) {
 		// given
 		i := Import{}
-		expectedRootCollectionID := ""
-		originalRootCollectionID := "rootCollectionID"
+		expectedRootCollectionId := ""
+		originalRootCollectionId := "rootCollectionId"
 		creatorError := errors.New("creator error")
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &pb.ChangeSnapshot{},
-					Id:       originalRootCollectionID,
+					Id:       originalRootCollectionId,
 					SbType:   smartblock.SmartBlockTypePage,
 				},
 			},
@@ -827,7 +827,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.fileSync = fileSync
 
 		// when
-		rootCollectionID, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+		rootCollectionId, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 			UpdateExistingObjects: false,
 			Type:                  0,
@@ -837,22 +837,22 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 		// then
 		assert.NotNil(t, err)
-		assert.Equal(t, expectedRootCollectionID, rootCollectionID)
+		assert.Equal(t, expectedRootCollectionId, rootCollectionId)
 	})
 
 	t.Run("return empty root collection id in case of error from import converter", func(t *testing.T) {
 		// given
 		i := Import{}
-		expectedRootCollectionID := ""
-		originalRootCollectionID := "rootCollectionID"
+		expectedRootCollectionId := ""
+		originalRootCollectionId := "rootCollectionId"
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &pb.ChangeSnapshot{},
-					Id:       originalRootCollectionID,
+					Id:       originalRootCollectionId,
 					SbType:   smartblock.SmartBlockTypePage,
 				},
 			},
@@ -865,7 +865,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.fileSync = fileSync
 
 		// when
-		rootCollectionID, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+		rootCollectionId, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 			UpdateExistingObjects: false,
 			Type:                  0,
@@ -875,22 +875,22 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 		// then
 		assert.NotNil(t, err)
-		assert.Equal(t, expectedRootCollectionID, rootCollectionID)
+		assert.Equal(t, expectedRootCollectionId, rootCollectionId)
 	})
 
 	t.Run("return empty root collection id in case of error with Ignore_Error mode", func(t *testing.T) {
 		// given
 		i := Import{}
-		expectedRootCollectionID := ""
-		originalRootCollectionID := "rootCollectionID"
+		expectedRootCollectionId := ""
+		originalRootCollectionId := "rootCollectionId"
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &pb.ChangeSnapshot{},
-					Id:       originalRootCollectionID,
+					Id:       originalRootCollectionId,
 					SbType:   smartblock.SmartBlockTypePage,
 				},
 			},
@@ -911,7 +911,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.fileSync = fileSync
 
 		// when
-		rootCollectionID, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+		rootCollectionId, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 			UpdateExistingObjects: false,
 			Type:                  0,
@@ -921,6 +921,6 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 		// then
 		assert.NotNil(t, err)
-		assert.Equal(t, expectedRootCollectionID, rootCollectionID)
+		assert.Equal(t, expectedRootCollectionId, rootCollectionId)
 	})
 }
