@@ -277,6 +277,7 @@ message Rpc {
                 string storePath = 3; // Path to local storage
                 int64 icon = 4; // Option of pre-installed icon
                 bool disableLocalNetworkSync = 5; // Disable local network discovery
+                string networkConfigFilePath = 6; // optional, any-sync network config file path
             }
 
             /**
@@ -391,6 +392,7 @@ message Rpc {
                 string id = 1; // Id of a selected account
                 string rootPath = 2; // Root path is optional, set if this is a first request
                 bool disableLocalNetworkSync = 3; // Disable local network discovery
+                string networkConfigFilePath = 4; // optional, any-sync network config file path
             }
 
             /**
@@ -486,8 +488,8 @@ message Rpc {
 
         message ConfigUpdate {
             message Request {
-                string timeZone = 1;
                 string IPFSStorageAddr = 2;
+                string networkConfigFilepath = 3;
             }
 
             message Response {
@@ -595,6 +597,29 @@ message Rpc {
             }
 
         }
+
+        message Restart {
+            message Request {
+            }
+            message Response {
+                Error error = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        ACCOUNT_IS_NOT_RUNNING = 4;
+                    }
+                }
+            }
+
+        }
+
+
     }
 
     message Workspace {

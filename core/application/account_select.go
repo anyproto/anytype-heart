@@ -87,6 +87,9 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	if req.DisableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
+	if req.NetworkConfigFilePath != "" {
+		cfg.NetworkConfigFilePath = req.NetworkConfigFilePath
+	}
 	comps := []app.Component{
 		cfg,
 		anytype.BootstrapWallet(s.rootPath, res),

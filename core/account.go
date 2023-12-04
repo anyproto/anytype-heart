@@ -79,6 +79,19 @@ func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopReque
 	}
 }
 
+func (mw *Middleware) AccountRestart(ctx context.Context, req *pb.RpcAccountRestartRequest) *pb.RpcAccountRestartResponse {
+	err := mw.applicationService.AccountRestart(ctx)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountRestartResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountRestartResponse{
+		Error: &pb.RpcAccountRestartResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
 	err := mw.applicationService.AccountMove(req)
 	code := mapErrorCode(err,

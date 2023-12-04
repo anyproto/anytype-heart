@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -34,6 +35,26 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 			return ErrFailedToStopApplication
 		}
 	}
+	return nil
+}
+
+func (s *Service) AccountRestart(ctx context.Context) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if s.app == nil {
+		return ErrApplicationIsNotRunning
+	}
+
+	accountId := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
+	rootPath := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).RootPath()
+
+	s.stop()
+
+	s.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
+		Id:       accountId,
+		RootPath: rootPath,
+	})
 	return nil
 }
 

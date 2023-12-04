@@ -41,7 +41,6 @@ type FileConfig interface {
 type ConfigRequired struct {
 	HostAddr            string `json:",omitempty"`
 	CustomFileStorePath string `json:",omitempty"`
-	TimeZone            string `json:",omitempty"`
 	LegacyFileStorePath string `json:",omitempty"`
 }
 
@@ -50,6 +49,7 @@ type Config struct {
 	NewAccount                             bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
+	NetworkConfigFilePath                  string `json:",omitempty"` // not saved to config
 
 	RepoPath    string
 	AnalyticsId string
@@ -286,8 +286,17 @@ func (c *Config) GetDebugServer() debugserver.Config {
 }
 
 func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
-	if networkConfigPath := loadenv.Get("ANY_SYNC_NETWORK"); networkConfigPath != "" {
+	networkConfigPath := loadenv.Get("ANY_SYNC_NETWORK")
+	if networkConfigPath != "" {
+		if c.NetworkConfigFilePath != "" {
+			log.Fatalf("Ambiguous network config path: exists in both env ANY_SYNC_NETWORK(%s) and in RPC request(%s)", networkConfigPath, c.NetworkConfigFilePath)
+		}
 		log.Warnf("any sync network nodes configuration is overridden by the env var ANY_SYNC_NETWORK")
+	} else if c.NetworkConfigFilePath != "" {
+		networkConfigPath = c.NetworkConfigFilePath
+	}
+
+	if networkConfigPath != "" {
 		var err error
 		if nodesConfYmlBytes, err = os.ReadFile(networkConfigPath); err != nil {
 			panic(fmt.Errorf("load network configuration failed: %w", err))

@@ -155,7 +155,6 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		SpaceViewId:            spaceViewId,
 		GatewayUrl:             gwAddr,
 		LocalStoragePath:       cfg.CustomFileStorePath,
-		TimeZone:               cfg.TimeZone,
 		AnalyticsId:            analyticsId,
 		NetworkId:              s.getNetworkID(),
 		TechSpaceId:            techSpaceId,

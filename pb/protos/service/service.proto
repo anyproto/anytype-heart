@@ -43,6 +43,7 @@ service ClientCommands {
     rpc AccountMove (anytype.Rpc.Account.Move.Request) returns (anytype.Rpc.Account.Move.Response);
     rpc AccountConfigUpdate (anytype.Rpc.Account.ConfigUpdate.Request) returns (anytype.Rpc.Account.ConfigUpdate.Response);
     rpc AccountRecoverFromLegacyExport(anytype.Rpc.Account.RecoverFromLegacyExport.Request) returns (anytype.Rpc.Account.RecoverFromLegacyExport.Response);
+    rpc AccountRestart (anytype.Rpc.Account.Restart.Request) returns (anytype.Rpc.Account.Restart.Response);
 
     // Space
     // ***
