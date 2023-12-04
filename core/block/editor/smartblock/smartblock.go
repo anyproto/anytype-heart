@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -34,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -88,7 +88,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 func New(
 	space Space,
 	currentProfileId string,
-	fileService files.Service,
+	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
@@ -102,7 +102,7 @@ func New(
 		Locker:           &sync.Mutex{},
 		sessions:         map[string]session.Context{},
 
-		fileService:        fileService,
+		fileStore:          fileStore,
 		restrictionService: restrictionService,
 		objectStore:        objectStore,
 		indexer:            indexer,
@@ -235,7 +235,7 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileService        files.Service
+	fileStore          filestore.FileStore
 	restrictionService restriction.Service
 	objectStore        objectstore.ObjectStore
 	indexer            Indexer
@@ -1258,7 +1258,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 			EncryptionKeys: k.Keys,
 		}
 	}
-	if err := sb.fileService.StoreFileKeys(fileKeys...); err != nil {
+	if err := sb.fileStore.AddFileKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }
@@ -1450,7 +1450,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
-		err := sb.fileService.StoreFileKeys(domain.FileEncryptionKeys{
+		err := sb.fileStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         info.FileId,
 			EncryptionKeys: info.EncryptionKeys,
 		})

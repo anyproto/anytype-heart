@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -40,6 +41,7 @@ type ObjectFactory struct {
 	objectStore         objectstore.ObjectStore
 	sourceService       source.Service
 	tempDirProvider     core.TempDirProvider
+	fileStore           filestore.FileStore
 	fileService         files.Service
 	config              *config.Config
 	picker              getblock.ObjectGetter
@@ -64,6 +66,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.fileService = app.MustComponent[files.Service](a)
+	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.config = app.MustComponent[*config.Config](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
@@ -126,7 +129,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.Sma
 	return smartblock.New(
 		space,
 		f.accountService.IdentityObjectId(),
-		f.fileService,
+		f.fileStore,
 		f.restrictionService,
 		f.objectStore,
 		f.indexer,

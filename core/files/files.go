@@ -64,7 +64,6 @@ type Service interface {
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*ImageAddResult, error)
 	ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error)
-	StoreFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 
 	app.Component
 }
@@ -627,6 +626,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updat
 		return nil, fmt.Errorf("get inner dir node: %w", err)
 	}
 
+	// File keys should be available at this moment
 	keys, err := s.fileStore.GetFileKeys(id.FileId)
 	if err != nil {
 		// no keys means file is not encrypted or keys are missing
@@ -710,10 +710,6 @@ func getEncryptorDecryptor(key symmetric.Key, mode storage.FileInfoEncryptionMod
 	default:
 		return nil, fmt.Errorf("unsupported encryption mode")
 	}
-}
-
-func (s *service) StoreFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
-	return s.fileStore.AddFileKeys(fileKeys...)
 }
 
 func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, error) {
