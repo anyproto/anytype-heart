@@ -195,12 +195,12 @@ func (e *export) docsForExport(spaceID string, reqIds []string, includeNested bo
 	}
 
 	if len(reqIds) > 0 {
-		return e.getObjectsByIDs(spaceID, reqIds, includeNested)
+		return e.getObjectsByIDs(spaceID, reqIds, includeNested, isProtobuf)
 	}
 	return
 }
 
-func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
+func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested bool, isProtobuf bool) (map[string]*types.Struct, error) {
 	docs := make(map[string]*types.Struct)
 	res, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -234,6 +234,10 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 		for _, id := range ids {
 			e.getNested(spaceID, id, docs)
 		}
+	}
+
+	if !isProtobuf {
+		return docs, nil
 	}
 
 	derivedObjects, err := e.getRelatedDerivedObjects(res)

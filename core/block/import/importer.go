@@ -129,7 +129,7 @@ func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, ori
 		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
 		return rootCollectionID, "", returnedErr
 	}
-	if req.Type == model.ImportType_External {
+	if req.Type == model.Import_External {
 		returnedErr = i.importFromExternalSource(ctx, req, progress)
 		return rootCollectionID, "", returnedErr
 	}

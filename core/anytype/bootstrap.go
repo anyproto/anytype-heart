@@ -249,7 +249,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(profiler.New()).
 		Register(identity.New()).
 		Register(templateservice.New()).
-		Register(notifications.NewNotificationStore()).
 		Register(notifications.New())
 }
 
