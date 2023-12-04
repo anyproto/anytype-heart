@@ -594,7 +594,6 @@ message Account {
     string timeZone = 104; // time zone from config
     string analyticsId = 105;
     string networkId = 106; // network id to which anytype is connected
-    string notificationId = 107; // network id to which anytype is connected
   }
 
 }
