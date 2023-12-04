@@ -34,7 +34,7 @@ type Notifications interface {
 }
 
 type notificationService struct {
-	notificationID     string
+	notificationId     string
 	notificationCh     chan struct{}
 	notificationErr    error
 	notificationCancel context.CancelFunc
@@ -89,7 +89,7 @@ func (n *notificationService) indexNotifications(ctx context.Context) {
 
 func (n *notificationService) updateNotificationsInLocalStore() {
 	var notifications map[string]*model.Notification
-	err := block.DoState(n.picker, n.notificationID, func(s *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 		notifications = s.ListNotifications()
 		return nil
 	})
@@ -114,8 +114,8 @@ func (n *notificationService) Close(_ context.Context) (err error) {
 func (n *notificationService) CreateAndSend(notification *model.Notification) error {
 	if !notification.IsLocal {
 		var exist bool
-		err := block.DoState(n.picker, n.notificationID, func(s *state.State, sb smartblock.SmartBlock) error {
-			stateNotification := s.GetNotificationByID(notification.Id)
+		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
+			stateNotification := s.GetNotificationById(notification.Id)
 			if stateNotification != nil {
 				exist = true
 				return nil
@@ -185,7 +185,7 @@ func (n *notificationService) Reply(notificationIDs []string, notificationAction
 		}
 
 		if !notification.IsLocal {
-			err = block.DoState(n.picker, n.notificationID, func(s *state.State, sb smartblock.SmartBlock) error {
+			err = block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 				s.AddNotification(notification)
 				return nil
 			})
@@ -236,13 +236,13 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 		n.notificationErr = err
 		return
 	}
-	n.notificationID, err = spc.DeriveObjectID(ctx, uk)
+	n.notificationId, err = spc.DeriveObjectID(ctx, uk)
 	if err != nil {
 		n.notificationErr = err
 		return
 	}
 	ctxWithPeer := peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
-	_, err = spc.GetObject(ctxWithPeer, n.notificationID)
+	_, err = spc.GetObject(ctxWithPeer, n.notificationId)
 	if err != nil {
 		_, dErr := spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 			Key: uk,

@@ -1813,12 +1813,12 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 	s.AddRelationLinks(links...)
 }
 
-func (s *State) GetNotificationByID(id string) *model.Notification {
+func (s *State) GetNotificationById(id string) *model.Notification {
 	if s.notifications != nil {
 		return s.notifications[id]
 	}
 	if s.parent != nil {
-		return s.parent.GetNotificationByID(id)
+		return s.parent.GetNotificationById(id)
 	}
 	return nil
 }
