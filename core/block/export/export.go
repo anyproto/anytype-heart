@@ -236,7 +236,7 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 		}
 	}
 
-	if isProtobuf {
+	if !isProtobuf {
 		return docs, nil
 	}
 
