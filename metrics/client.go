@@ -60,14 +60,12 @@ func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 	ctx := c.ctx
 	attempt := 0
 	for {
-		c.lock.Lock()
-		b := c.batcher
-		c.lock.Unlock()
-		if b == nil {
+		batcher := c.batcher
+		if batcher == nil {
 			return
 		}
 		ctx = mb.CtxWithTimeLimit(ctx, time.Minute)
-		msgs, err := b.NewCond().WithMin(10).WithMax(100).Wait(ctx)
+		msgs, err := batcher.NewCond().WithMin(10).WithMax(100).Wait(ctx)
 
 		if errors.Is(err, mb.ErrClosed) {
 			close(c.closeChannel)
@@ -75,7 +73,7 @@ func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 		}
 
 		timeout := time.Second * 2
-		err = c.sendNextBatch(info, b, msgs)
+		err = c.sendNextBatch(info, batcher, msgs)
 		if err != nil {
 			timeout = time.Second * 5 * time.Duration(attempt+1)
 			if timeout > maxTimeout {
@@ -109,7 +107,7 @@ func (c *client) Close() {
 	c.batcher = nil
 }
 
-func (c *client) sendNextBatch(info amplitude.AppInfoProvider, b *mb.MB[amplitude.Event], msgs []amplitude.Event) (err error) {
+func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[amplitude.Event], msgs []amplitude.Event) (err error) {
 	if len(msgs) == 0 {
 		return
 	}
@@ -119,8 +117,8 @@ func (c *client) sendNextBatch(info amplitude.AppInfoProvider, b *mb.MB[amplitud
 		clientMetricsLog.
 			With("unsent messages", len(msgs)+c.batcher.Len()).
 			Error("failed to send messages")
-		if b != nil {
-			b.Add(c.ctx, msgs...) //nolint:errcheck
+		if batcher != nil {
+			_ = batcher.TryAdd(msgs...) //nolint:errcheck
 		}
 	} else {
 		clientMetricsLog.
@@ -150,16 +148,13 @@ func (c *client) sendSampled(ev SamplableEvent) {
 }
 
 func (c *client) send(e amplitude.Event) {
-	c.lock.RLock()
 	if e == nil {
-		c.lock.RUnlock()
 		return
 	}
 	e.SetTimestamp()
-	b := c.batcher
-	c.lock.RUnlock()
-	if b == nil {
+	batcher := c.batcher
+	if batcher == nil {
 		return
 	}
-	_ = b.Add(c.ctx, e) //nolint:errcheck
+	_ = batcher.TryAdd(e) //nolint:errcheck
 }

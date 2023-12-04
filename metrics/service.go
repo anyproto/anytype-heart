@@ -28,7 +28,7 @@ const (
 )
 
 const amplEndpoint = "https://amplitude.anytype.io/2/httpapi"
-const inhouseEndpoint = "https://telemetry.anytype.io/2/httpapi"
+const inHouseEndpoint = "https://telemetry.anytype.io/2/httpapi"
 
 type SamplableEvent interface {
 	amplitude.Event
@@ -38,7 +38,7 @@ type SamplableEvent interface {
 }
 
 type MetricsService interface {
-	InitAmplWithKey(k string)
+	InitWithKeys(amplKey string, inHouseKey string)
 	SetAppVersion(v string)
 	SetStartVersion(v string)
 	SetDeviceId(t string)
@@ -85,16 +85,16 @@ func NewService() MetricsService {
 				aggregatableChan: make(chan SamplableEvent, bufferSize),
 				ctx:              ctx,
 				cancel:           cancel,
-				amplitude:        amplitude.New(inhouseEndpoint, ""),
 			},
 		},
 	}
 }
 
-func (s *service) InitAmplWithKey(key string) {
+func (s *service) InitWithKeys(amplKey string, inHouseKey string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.clients[ampl].amplitude = amplitude.New(amplEndpoint, key)
+	s.clients[ampl].amplitude = amplitude.New(amplEndpoint, amplKey)
+	s.clients[inhouse].amplitude = amplitude.New(inHouseEndpoint, inHouseKey)
 }
 
 func (s *service) SetDeviceId(t string) {

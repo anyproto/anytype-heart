@@ -26,7 +26,7 @@ func init() {
 
 	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
-	metrics.Service.InitAmplWithKey(metrics.DefaultAmplitudeKey)
+	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {
 			http.ListenAndServe(debug, nil)
