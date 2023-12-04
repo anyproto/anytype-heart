@@ -271,15 +271,15 @@ message Rpc {
                 option (no_auth) = true;
 
                 string name = 1; // Account name
-                oneof avatar { //TODO: Remove if not needed, GO-1926
+                oneof avatar {//TODO: Remove if not needed, GO-1926
                     string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
                 }
                 string storePath = 3; // Path to local storage
                 int64 icon = 4; // Option of pre-installed icon
                 bool disableLocalNetworkSync = 5; // Disable local network discovery
-                string networkConfigFilePath = 6; // optional, any-sync network config file path
+                NetworkMode networkMode = 6; // optional, default is DefaultConfig
+                string networkCustomConfigFilePath = 7; // config path for the custom network mode            }
             }
-
             /**
             * Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
             */
@@ -392,7 +392,8 @@ message Rpc {
                 string id = 1; // Id of a selected account
                 string rootPath = 2; // Root path is optional, set if this is a first request
                 bool disableLocalNetworkSync = 3; // Disable local network discovery
-                string networkConfigFilePath = 4; // optional, any-sync network config file path
+                NetworkMode networkMode = 4; // optional, default is DefaultConfig
+                string networkCustomConfigFilePath = 5; // config path for the custom network mode
             }
 
             /**
@@ -599,7 +600,8 @@ message Rpc {
 
         message ChangeNetworkConfigAndRestart {
             message Request {
-                string networkConfigFilepath = 3;
+                NetworkMode networkMode = 1;
+                string networkCustomConfigFilePath = 2;
             }
             message Response {
                 Error error = 2;
@@ -624,7 +626,11 @@ message Rpc {
 
         }
 
-
+        enum NetworkMode {
+            DefaultConfig = 0; // use network config that embedded in binary
+            LocalOnly = 1;  // disable any-sync network and use only local p2p nodes
+            CustomConfig = 2; // use config provided in networkConfigFilePath
+        }
     }
 
     message Workspace {

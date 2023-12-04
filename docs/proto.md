@@ -962,6 +962,7 @@
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
+    - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
@@ -2193,7 +2194,8 @@ Response – message from a middleware.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| networkConfigFilepath | [string](#string) |  |  |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  |  |
+| networkCustomConfigFilePath | [string](#string) |  |  |
 
 
 
@@ -2329,7 +2331,8 @@ Front end to middleware request-to-create-an account
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
-| networkConfigFilePath | [string](#string) |  | optional, any-sync network config file path |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
+| networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
 
 
 
@@ -2744,7 +2747,8 @@ User can select an account from those, that came with an AccountAdd events
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  | Root path is optional, set if this is a first request |
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
-| networkConfigFilePath | [string](#string) |  | optional, any-sync network config file path |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
+| networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 
 
 
@@ -15667,6 +15671,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_CREATE_LOCAL_REPO | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_GET_CONFIG | 106 |  |
+
+
+
+<a name="anytype-Rpc-Account-NetworkMode"></a>
+
+### Rpc.Account.NetworkMode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DefaultConfig | 0 | use network config that embedded in binary |
+| LocalOnly | 1 | disable any-sync network and use only local p2p nodes |
+| CustomConfig | 2 | use config provided in networkConfigFilePath |
 
 
 

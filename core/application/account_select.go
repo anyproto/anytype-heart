@@ -66,10 +66,10 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, errors.Join(ErrFailedToStopApplication, err)
 	}
 
-	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.NetworkConfigFilePath)
+	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.NetworkMode, req.NetworkCustomConfigFilePath)
 }
 
-func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, networkConfigFilePath string) (*model.Account, error) {
+func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
 	if rootPath != "" {
 		s.rootPath = rootPath
 	}
@@ -92,8 +92,9 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
-	if networkConfigFilePath != "" {
-		cfg.NetworkConfigFilePath = networkConfigFilePath
+	if networkMode > 0 {
+		cfg.NetworkMode = networkMode
+		cfg.NetworkCustomConfigFilePath = networkConfigFilePath
 	}
 	comps := []app.Component{
 		cfg,

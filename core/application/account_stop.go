@@ -16,9 +16,10 @@ import (
 )
 
 var (
-	ErrFailedToRemoveAccountData     = errors.New("failed to remove account data")
-	ErrNetworkConfigFileDoesNotExist = errors.New("network config file does not exist")
-	ErrNetworkConfigFileInvalid      = errors.New("network config file invalid")
+	ErrFailedToRemoveAccountData      = errors.New("failed to remove account data")
+	ErrNetworkConfigFileDoesNotExist  = errors.New("network config file does not exist")
+	ErrNetworkConfigFileInvalid       = errors.New("network config file invalid")
+	ErrNetworkConfigNetworkIdMismatch = errors.New("network id mismatch")
 )
 
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
@@ -54,14 +55,19 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 	accountId := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
 	conf := s.app.MustComponent(config.CName).(*config.Config)
 
-	// check if file exists at path
-	if b, err := os.ReadFile(req.NetworkConfigFilepath); os.IsNotExist(err) {
-		return ErrNetworkConfigFileDoesNotExist
-	} else {
-		var cfg nodeconf.Configuration
-		err = yaml.Unmarshal(b, &cfg)
-		if err != nil {
-			return ErrNetworkConfigFileInvalid
+	if req.NetworkMode == pb.RpcAccount_CustomConfig {
+		// check if file exists at path
+		if b, err := os.ReadFile(req.NetworkCustomConfigFilePath); os.IsNotExist(err) {
+			return ErrNetworkConfigFileDoesNotExist
+		} else {
+			var cfg nodeconf.Configuration
+			err = yaml.Unmarshal(b, &cfg)
+			if err != nil {
+				return ErrNetworkConfigFileInvalid
+			}
+			if conf.NetworkId != "" && conf.NetworkId != cfg.NetworkId {
+				return ErrNetworkConfigNetworkIdMismatch
+			}
 		}
 	}
 
@@ -70,7 +76,7 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 		return ErrFailedToStopApplication
 	}
 
-	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, req.NetworkConfigFilepath)
+	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, req.NetworkMode, req.NetworkCustomConfigFilePath)
 	return err
 }
 
