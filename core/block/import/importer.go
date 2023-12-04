@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -110,16 +111,19 @@ func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, ori
 		progress = i.setupProgressBar(req)
 		isNewProgress = true
 	}
-	var returnedErr error
+	var (
+		returnedErr error
+		importId    = uuid.New().String()
+	)
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
-		i.recordEvent(&metrics.ImportFinishedEvent{ID: progress.Id(), ImportType: req.Type.String()})
+		i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
 	}()
 	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
-	i.recordEvent(&metrics.ImportStartedEvent{ID: progress.Id(), ImportType: req.Type.String()})
+	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: req.Type.String()})
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
 		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
