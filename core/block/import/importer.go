@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -99,8 +100,7 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(
-	ctx context.Context,
+func (i *Import) Import(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	origin model.ObjectOrigin,
 	progress process.Progress,
@@ -115,16 +115,19 @@ func (i *Import) Import(
 		progress = i.setupProgressBar(req)
 		isNewProgress = true
 	}
-	var returnedErr error
+	var (
+		returnedErr error
+		importId    = uuid.New().String()
+	)
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
-		i.recordEvent(&metrics.ImportFinishedEvent{ID: progress.Id(), ImportType: req.Type.String()})
+		i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
 	}()
 	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
-	i.recordEvent(&metrics.ImportStartedEvent{ID: progress.Id(), ImportType: req.Type.String()})
+	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: req.Type.String()})
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
 		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
@@ -145,8 +148,7 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(
-	ctx context.Context,
+func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c common.Converter,
 	progress process.Progress,

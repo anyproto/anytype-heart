@@ -11260,6 +11260,7 @@ DEPRECATED, GO-1926 |
 | mode | [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode) |  |  |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
+| isNewSpace | [bool](#bool) |  |  |
 
 
 
@@ -11447,6 +11448,7 @@ DEPRECATED, GO-1926 |
 | spaceId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 | title | [string](#string) |  |  |
+| isNewSpace | [bool](#bool) |  |  |
 
 
 
