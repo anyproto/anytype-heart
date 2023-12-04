@@ -36,6 +36,10 @@
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
     - [Rpc.Account](#anytype-Rpc-Account)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error)
     - [Rpc.Account.Config](#anytype-Rpc-Account-Config)
     - [Rpc.Account.ConfigUpdate](#anytype-Rpc-Account-ConfigUpdate)
     - [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request)
@@ -68,10 +72,6 @@
     - [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request)
     - [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error)
-    - [Rpc.Account.Restart](#anytype-Rpc-Account-Restart)
-    - [Rpc.Account.Restart.Request](#anytype-Rpc-Account-Restart-Request)
-    - [Rpc.Account.Restart.Response](#anytype-Rpc-Account-Restart-Response)
-    - [Rpc.Account.Restart.Response.Error](#anytype-Rpc-Account-Restart-Response-Error)
     - [Rpc.Account.RevertDeletion](#anytype-Rpc-Account-RevertDeletion)
     - [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request)
     - [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response)
@@ -955,6 +955,7 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
@@ -963,7 +964,6 @@
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
-    - [Rpc.Account.Restart.Response.Error.Code](#anytype-Rpc-Account-Restart-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code)
@@ -1537,7 +1537,7 @@
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
 | AccountRecoverFromLegacyExport | [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request) | [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response) |  |
-| AccountRestart | [Rpc.Account.Restart.Request](#anytype-Rpc-Account-Restart-Request) | [Rpc.Account.Restart.Response](#anytype-Rpc-Account-Restart-Response) |  |
+| AccountChangeNetworkConfigAndRestart | [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request) | [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response) |  |
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
@@ -2175,6 +2175,62 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| networkConfigFilepath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-Config"></a>
 
 ### Rpc.Account.Config
@@ -2213,7 +2269,6 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | IPFSStorageAddr | [string](#string) |  |  |
-| networkConfigFilepath | [string](#string) |  |  |
 
 
 
@@ -2608,57 +2663,6 @@ Middleware-to-front-end response to an account recover request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Account-Restart"></a>
-
-### Rpc.Account.Restart
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Account-Restart-Request"></a>
-
-### Rpc.Account.Restart.Request
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Account-Restart-Response"></a>
-
-### Rpc.Account.Restart.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Account.Restart.Response.Error](#anytype-Rpc-Account-Restart-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Account-Restart-Response-Error"></a>
-
-### Rpc.Account.Restart.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Account.Restart.Response.Error.Code](#anytype-Rpc-Account-Restart-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -15530,6 +15534,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 4 |  |
+| CONFIG_FILE_NOT_FOUND | 100 |  |
+| CONFIG_FILE_INVALID | 101 |  |
+| ACCOUNT_FAILED_TO_STOP | 102 |  |
+
+
+
 <a name="anytype-Rpc-Account-ConfigUpdate-Response-Error-Code"></a>
 
 ### Rpc.Account.ConfigUpdate.Response.Error.Code
@@ -15674,20 +15695,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | DIFFERENT_ACCOUNT | 3 |  |
-
-
-
-<a name="anytype-Rpc-Account-Restart-Response-Error-Code"></a>
-
-### Rpc.Account.Restart.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| ACCOUNT_IS_NOT_RUNNING | 4 |  |
 
 
 

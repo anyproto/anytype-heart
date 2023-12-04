@@ -489,7 +489,6 @@ message Rpc {
         message ConfigUpdate {
             message Request {
                 string IPFSStorageAddr = 2;
-                string networkConfigFilepath = 3;
             }
 
             message Response {
@@ -598,8 +597,9 @@ message Rpc {
 
         }
 
-        message Restart {
+        message ChangeNetworkConfigAndRestart {
             message Request {
+                string networkConfigFilepath = 3;
             }
             message Response {
                 Error error = 2;
@@ -613,6 +613,11 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         ACCOUNT_IS_NOT_RUNNING = 4;
+
+                        CONFIG_FILE_NOT_FOUND = 100;
+                        CONFIG_FILE_INVALID = 101;
+                        ACCOUNT_FAILED_TO_STOP = 102;
+
                     }
                 }
             }

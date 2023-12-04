@@ -6,6 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/anyproto/any-sync/nodeconf"
+	"gopkg.in/yaml.v3"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -13,7 +16,9 @@ import (
 )
 
 var (
-	ErrFailedToRemoveAccountData = errors.New("failed to remove account data")
+	ErrFailedToRemoveAccountData     = errors.New("failed to remove account data")
+	ErrNetworkConfigFileDoesNotExist = errors.New("network config file does not exist")
+	ErrNetworkConfigFileInvalid      = errors.New("network config file invalid")
 )
 
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
@@ -38,24 +43,35 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 	return nil
 }
 
-func (s *Service) AccountRestart(ctx context.Context) error {
+func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req *pb.RpcAccountChangeNetworkConfigAndRestartRequest) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
 	if s.app == nil {
 		return ErrApplicationIsNotRunning
 	}
 
-	accountId := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
 	rootPath := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).RootPath()
+	accountId := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
+	conf := s.app.MustComponent(config.CName).(*config.Config)
 
-	s.stop()
+	// check if file exists at path
+	if b, err := os.ReadFile(req.NetworkConfigFilepath); os.IsNotExist(err) {
+		return ErrNetworkConfigFileDoesNotExist
+	} else {
+		var cfg nodeconf.Configuration
+		err = yaml.Unmarshal(b, &cfg)
+		if err != nil {
+			return ErrNetworkConfigFileInvalid
+		}
+	}
 
-	s.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
-		Id:       accountId,
-		RootPath: rootPath,
-	})
-	return nil
+	err := s.stop()
+	if err != nil {
+		return ErrFailedToStopApplication
+	}
+
+	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, req.NetworkConfigFilepath)
+	return err
 }
 
 func (s *Service) accountRemoveLocalData() error {

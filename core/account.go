@@ -79,13 +79,16 @@ func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopReque
 	}
 }
 
-func (mw *Middleware) AccountRestart(ctx context.Context, req *pb.RpcAccountRestartRequest) *pb.RpcAccountRestartResponse {
-	err := mw.applicationService.AccountRestart(ctx)
+func (mw *Middleware) AccountChangeNetworkConfigAndRestart(ctx context.Context, req *pb.RpcAccountChangeNetworkConfigAndRestartRequest) *pb.RpcAccountChangeNetworkConfigAndRestartResponse {
+	err := mw.applicationService.AccountChangeNetworkConfigAndRestart(ctx, req)
 	code := mapErrorCode(err,
-		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountRestartResponseError_ACCOUNT_IS_NOT_RUNNING),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_ACCOUNT_IS_NOT_RUNNING),
+		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_ACCOUNT_FAILED_TO_STOP),
+		errToCode(application.ErrNetworkConfigFileDoesNotExist, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(application.ErrNetworkConfigFileInvalid, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_INVALID),
 	)
-	return &pb.RpcAccountRestartResponse{
-		Error: &pb.RpcAccountRestartResponseError{
+	return &pb.RpcAccountChangeNetworkConfigAndRestartResponse{
+		Error: &pb.RpcAccountChangeNetworkConfigAndRestartResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
