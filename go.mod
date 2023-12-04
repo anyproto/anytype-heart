@@ -75,8 +75,6 @@ require (
 	github.com/samber/lo v1.38.1
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shirou/gopsutil/v3 v3.23.10
-	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
-	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	github.com/stretchr/testify v1.8.4
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/vektra/mockery/v2 v2.38.0

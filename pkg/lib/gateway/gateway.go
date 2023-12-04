@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,6 +32,8 @@ const (
 	defaultPort    = 47800
 	getFileTimeout = 1 * time.Minute
 	requestLimit   = 32
+
+	svgExt = ".svg"
 )
 
 var log = logging.Logger("anytype-gateway")
@@ -300,9 +303,6 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	meta := file.Meta()
-	if meta.Media == "" && strings.HasSuffix(file.Info().Name, ".svg") {
-		meta.Media = "image/svg+xml"
-	}
 	w.Header().Set("Content-Type", meta.Media)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
 
@@ -325,20 +325,15 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 		ObjectID: imageHash,
 	}
 	image, err := g.fileService.ImageByHash(ctx, id)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get image by hash: %w", err)
+	}
 	var file files.File
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
 		file, err = image.GetOriginalFile(ctx)
-		if err != nil {
-			file, fErr := g.fileService.FileByHash(ctx, id)
-			if fErr != nil {
-				return nil, nil, fmt.Errorf("get image by hash: %w", err)
-			}
-			if strings.HasSuffix(file.Info().Name, ".svg") {
-				reader, err := file.Reader(ctx)
-				return file, reader, err
-			}
-			return nil, nil, fmt.Errorf("get image by hash: file is not an image")
+		if err != nil && errors.Is(err, domain.ErrFileNotFound) {
+			return g.handleSVGFile(ctx, id, err)
 		}
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
@@ -346,21 +341,26 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 			return nil, nil, fmt.Errorf("parse width: %w", err)
 		}
 		file, err = image.GetFileForWidth(ctx, wantWidth)
-		if err != nil {
-			file, fErr := g.fileService.FileByHash(ctx, id)
-			if fErr != nil {
-				return nil, nil, fmt.Errorf("get image by hash: %w", err)
-			}
-			if strings.HasSuffix(file.Info().Name, ".svg") {
-				reader, err := file.Reader(ctx)
-				return file, reader, err
-			}
-			return nil, nil, fmt.Errorf("get image by hash: file is not an image")
+		if err != nil && errors.Is(err, domain.ErrFileNotFound) {
+			return g.handleSVGFile(ctx, id, err)
 		}
 	}
 
 	reader, err := file.Reader(ctx)
 	return file, reader, err
+}
+
+func (g *gateway) handleSVGFile(ctx context.Context, id domain.FullID, err error) (files.File, io.ReadSeeker, error) {
+	file, fErr := g.fileService.FileByHash(ctx, id)
+	if fErr != nil {
+		return nil, nil, fmt.Errorf("get image by hash: %w", err)
+	}
+	if filepath.Ext(file.Info().Name) == svgExt {
+		reader, err := file.Reader(ctx)
+		file.Info().Media = "image/svg+xml"
+		return file, reader, err
+	}
+	return nil, nil, fmt.Errorf("get image by hash: file is not an image")
 }
 
 func cleanUpPathForLogging(input string) string {
