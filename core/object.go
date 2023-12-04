@@ -792,7 +792,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionID, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
+	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
 
 	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
 		Id:         uuid.New().String(),
@@ -812,7 +812,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	}
 
 	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionID, nil)
+		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
 	}
 	switch {
 	case errors.Is(err, common.ErrNoObjectsToImport):
