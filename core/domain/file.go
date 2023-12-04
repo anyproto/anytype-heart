@@ -17,8 +17,9 @@ type FileKeys struct {
 	EncryptionKeys map[string]string
 }
 
-type ChildFileId string
+// FileContentId is a CID of file variant's content node
+type FileContentId string
 
-func (id ChildFileId) String() string {
+func (id FileContentId) String() string {
 	return string(id)
 }

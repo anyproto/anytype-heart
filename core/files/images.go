@@ -17,7 +17,7 @@ import (
 )
 
 func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error) {
-	files, err := s.fileStore.ListChildrenByFileId(id.FileId)
+	files, err := s.fileStore.ListFileVariants(id.FileId)
 	if err != nil {
 		return nil, err
 	}

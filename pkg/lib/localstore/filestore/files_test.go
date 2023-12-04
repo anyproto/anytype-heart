@@ -34,7 +34,7 @@ func TestConflictResolution(t *testing.T) {
 		assert.Equal(t, numberOfTimes-1, alreadyExists)
 	})
 
-	t.Run("add same file via AddMulti concurrently", func(t *testing.T) {
+	t.Run("add same file via AddFileVariants concurrently", func(t *testing.T) {
 		store := newFixture(t)
 		fileInfo := givenEmptyFileInfo()
 		numberOfTimes := 20
@@ -138,7 +138,7 @@ func (fx *fixture) addSameFileConcurrently(n int, fileInfo *storage.FileInfo) []
 		go func(i int) {
 			defer wg.Done()
 
-			errs[i] = fx.Add(fileInfo)
+			errs[i] = fx.AddFileVariant(fileInfo)
 		}(i)
 	}
 	wg.Wait()
@@ -152,7 +152,7 @@ func (fx *fixture) addMultiSameFileConcurrently(t *testing.T, n int, fileInfo *s
 		go func(i int) {
 			defer wg.Done()
 
-			err := fx.AddMulti(false, fileInfo)
+			err := fx.AddFileVariants(false, fileInfo)
 			assert.NoError(t, err)
 		}(i)
 	}
@@ -193,7 +193,7 @@ func newFixture(t *testing.T) *fixture {
 func (fx *fixture) givenEmptyInfoAddedToStore(t *testing.T) *storage.FileInfo {
 	fileInfo := givenEmptyFileInfo()
 
-	err := fx.Add(fileInfo)
+	err := fx.AddFileVariant(fileInfo)
 	require.NoError(t, err)
 
 	return fileInfo
@@ -222,7 +222,7 @@ func (fx *fixture) givenFileWithTargets(t *testing.T, numberOfTargets int) *stor
 		Targets: targets,
 	}
 
-	err := fx.Add(fileInfo)
+	err := fx.AddFileVariant(fileInfo)
 	require.NoError(t, err)
 
 	return fileInfo

@@ -221,7 +221,7 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 
 	if looksLikeFileNode(dirNode) {
 		l := schema.LinkByName(dirNode.Links(), ValidContentLinkNames)
-		info, err := s.fileStore.GetChild(domain.ChildFileId(l.Cid.String()))
+		info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
 		if err == nil {
 			fileKeys.EncryptionKeys[encryptionKeyPath(fileLinkName)] = info.Key
 		} else {
@@ -239,7 +239,7 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 				continue
 			}
 
-			info, err := s.fileStore.GetChild(domain.ChildFileId(l.Cid.String()))
+			info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
 
 			if err == nil {
 				fileKeys.EncryptionKeys[encryptionKeyPath(link.Name)] = info.Key
@@ -385,13 +385,13 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(inode ipld.Node, id domain.FullFileId) error {
-	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
-	if dlink == nil {
+func (s *service) fileIndexLink(fileNode ipld.Node, id domain.FullFileId) error {
+	contentLink := schema.LinkByName(fileNode.Links(), ValidContentLinkNames)
+	if contentLink == nil {
 		return ErrMissingContentLink
 	}
-	linkID := dlink.Cid.String()
-	if err := s.fileStore.AddChildId(id.FileId, domain.ChildFileId(linkID)); err != nil {
+	linkID := contentLink.Cid.String()
+	if err := s.fileStore.LinkFileVariantToFile(id.FileId, domain.FileContentId(linkID)); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
 	}
 	return nil
@@ -465,11 +465,11 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 	return &file, nil
 }
 
-func (s *service) fileContent(ctx context.Context, spaceId string, childId domain.ChildFileId) (io.ReadSeeker, *storage.FileInfo, error) {
+func (s *service) fileContent(ctx context.Context, spaceId string, childId domain.FileContentId) (io.ReadSeeker, *storage.FileInfo, error) {
 	var err error
 	var file *storage.FileInfo
 	var reader io.ReadSeeker
-	file, err = s.fileStore.GetChild(childId)
+	file, err = s.fileStore.GetFileVariant(childId)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -534,7 +534,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, nil, err
 	}
 
-	if efile, _ := s.fileStore.GetChildBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
+	if efile, _ := s.fileStore.GetFileVariantBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
 		return efile, nil, errFileExists
 	}
 
@@ -550,7 +550,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, nil, err
 	}
 
-	if efile, _ := s.fileStore.GetChildByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
+	if efile, _ := s.fileStore.GetFileVariantByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
 		return efile, nil, errFileExists
 	}
 
@@ -614,7 +614,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 	fileInfo.MetaHash = metaNode.Cid().String()
 
-	err = s.fileStore.Add(fileInfo)
+	err = s.fileStore.AddFileVariant(fileInfo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -711,7 +711,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updat
 		}
 	}
 
-	err = s.fileStore.AddMulti(updateIfExists, files...)
+	err = s.fileStore.AddFileVariants(updateIfExists, files...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add files to store: %w", err)
 	}
@@ -768,7 +768,7 @@ func (s *service) StoreFileKeys(fileKeys ...domain.FileKeys) error {
 }
 
 func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, error) {
-	fileList, err := s.fileStore.ListChildrenByFileId(id.FileId)
+	fileList, err := s.fileStore.ListFileVariants(id.FileId)
 	if err != nil {
 		return nil, err
 	}

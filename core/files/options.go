@@ -60,7 +60,7 @@ func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *Ad
 		hash := parts[len(parts)-1]
 		var file *storage.FileInfo
 
-		opts.Reader, file, err = s.fileContent(ctx, spaceID, domain.ChildFileId(hash))
+		opts.Reader, file, err = s.fileContent(ctx, spaceID, domain.FileContentId(hash))
 		if err != nil {
 			/*if err == localstore.ErrNotFound{
 				// just cat the data from dagService

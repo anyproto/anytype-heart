@@ -18,12 +18,12 @@ func (s *dsFileStore) DebugRouter(r chi.Router) {
 }
 
 func (s *dsFileStore) debugList(_ *http.Request) ([]*storage.FileInfo, error) {
-	return sanitizeFileInfos(s.ListChildren())
+	return sanitizeFileInfos(s.ListAllFileVariants())
 }
 
 func (s *dsFileStore) debugListByTarget(req *http.Request) ([]*storage.FileInfo, error) {
 	id := chi.URLParam(req, "targetID")
-	return sanitizeFileInfos(s.ListChildrenByFileId(domain.FileId(id)))
+	return sanitizeFileInfos(s.ListFileVariants(domain.FileId(id)))
 }
 
 func sanitizeFileInfos(infos []*storage.FileInfo, err error) ([]*storage.FileInfo, error) {
