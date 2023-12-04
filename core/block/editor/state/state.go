@@ -1817,8 +1817,8 @@ func (s *State) GetNotificationByID(id string) *model.Notification {
 	if s.notifications != nil {
 		return s.notifications[id]
 	}
-	if s.parent != nil && s.parent.notifications != nil {
-		return s.parent.notifications[id]
+	if s.parent != nil {
+		return s.parent.GetNotificationByID(id)
 	}
 	return nil
 }
@@ -1843,7 +1843,7 @@ func (s *State) ListNotifications() map[string]*model.Notification {
 		return s.notifications
 	}
 	if s.parent != nil {
-		return s.parent.notifications
+		return s.parent.ListNotifications()
 	}
 	return nil
 }
