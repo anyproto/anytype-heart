@@ -10,16 +10,11 @@ import (
 	"github.com/anyproto/any-sync/util/slice"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
-	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -239,9 +234,6 @@ func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
 	}
-
-	go i.updateBundledObjects()
-
 	if flags.bundledObjects {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
@@ -489,68 +481,4 @@ func (i *indexer) RemoveIndexes(spaceId string) error {
 	var flags reindexFlags
 	flags.enableAll()
 	return i.removeCommonIndexes(spaceId, flags)
-}
-
-func (i *indexer) updateBundledObjects() error {
-	marketRels, err := i.store.ListAllRelations(addr.AnytypeMarketplaceWorkspace)
-	if err != nil {
-		return err
-	}
-
-	spaceIds, err := i.storageService.AllSpaceIds()
-	if err != nil {
-		return err
-	}
-
-	for _, spaceId := range spaceIds {
-		rels, err := i.store.ListAllRelations(spaceId)
-		if err != nil {
-			return err
-		}
-
-		for _, rel := range rels.Models() {
-			marketRel := marketRels.GetModelByKey(rel.Key)
-			if marketRel == nil || !lo.Contains(bundle.SystemRelations, domain.RelationKey(rel.Key)) {
-				continue
-			}
-			details := buildDiffDetails(marketRel, rel)
-			if len(details) != 0 {
-				if err = block.Do(i.picker, rel.Id, func(sb basic.DetailsSettable) error {
-
-					//TODO: we need to add analysis on whether relation was modified by user
-
-					return sb.SetDetails(nil, details, false)
-				}); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func buildDiffDetails(origin, custom *model.Relation) (details []*pb.RpcObjectSetDetailsDetail) {
-	if origin.Description != custom.Description {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeyDescription.String(),
-			Value: pbtypes.String(origin.Description),
-		})
-	}
-
-	if origin.Name != custom.Name {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeyName.String(),
-			Value: pbtypes.String(origin.Name),
-		})
-	}
-
-	if origin.Hidden != custom.Hidden {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   bundle.RelationKeyIsHidden.String(),
-			Value: pbtypes.Bool(origin.Hidden),
-		})
-	}
-
-	return
 }

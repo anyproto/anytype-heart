@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
+	"github.com/anyproto/anytype-heart/core/block/object/systemobjectupdate"
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -247,7 +248,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(account.New()).
 		Register(profiler.New()).
 		Register(identity.New()).
-		Register(templateservice.New())
+		Register(templateservice.New()).
+		Register(systemobjectupdate.New())
 }
 
 func MiddlewareVersion() string {
