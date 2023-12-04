@@ -11,15 +11,20 @@ import (
 	"github.com/anyproto/anytype-heart/metrics/amplitude"
 )
 
+var (
+	sendingTimeLimit     = time.Minute
+	sendingQueueLimitMin = 10
+	sendingQueueLimitMax = 100
+)
+
 type client struct {
 	lock             sync.RWMutex
-	amplitude        *amplitude.Client
+	telemetry        amplitude.Service
 	aggregatableMap  map[string]SamplableEvent
 	aggregatableChan chan SamplableEvent
 	ctx              context.Context
 	cancel           context.CancelFunc
 	batcher          *mb.MB[amplitude.Event]
-	closeChannel     chan struct{}
 }
 
 func (c *client) startAggregating() {
@@ -64,28 +69,30 @@ func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 		if batcher == nil {
 			return
 		}
-		ctx = mb.CtxWithTimeLimit(ctx, time.Minute)
-		msgs, err := batcher.NewCond().WithMin(10).WithMax(100).Wait(ctx)
+		ctx = mb.CtxWithTimeLimit(ctx, sendingTimeLimit)
+		msgs, err := batcher.NewCond().
+			WithMin(sendingQueueLimitMin).
+			WithMax(sendingQueueLimitMax).
+			Wait(ctx)
 
 		if errors.Is(err, mb.ErrClosed) {
-			close(c.closeChannel)
 			return
 		}
 
-		timeout := time.Second * 2
 		err = c.sendNextBatch(info, batcher, msgs)
-		if err != nil {
+		timeout := time.Second * 2
+		if err == nil {
+			attempt = 0
+		} else {
 			timeout = time.Second * 5 * time.Duration(attempt+1)
 			if timeout > maxTimeout {
 				timeout = maxTimeout
 			}
 			attempt++
-		} else {
-			attempt = 0
 		}
 		select {
-		// this is needed for early continue
-		case <-ctx.Done():
+		case <-c.ctx.Done():
+			return
 		case <-time.After(timeout):
 		}
 	}
@@ -100,8 +107,6 @@ func (c *client) Close() {
 	c.lock.Unlock()
 	c.cancel()
 
-	<-c.closeChannel
-
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.batcher = nil
@@ -112,7 +117,7 @@ func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[am
 		return
 	}
 
-	err = c.amplitude.SendEvents(msgs, info)
+	err = c.telemetry.SendEvents(msgs, info)
 	if err != nil {
 		clientMetricsLog.
 			With("unsent messages", len(msgs)+c.batcher.Len()).
@@ -124,7 +129,7 @@ func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[am
 		clientMetricsLog.
 			With("user-id", info.GetUserId()).
 			With("messages sent", len(msgs)).
-			Debug("events sent to amplitude")
+			Debug("events sent to telemetry")
 	}
 	return
 }

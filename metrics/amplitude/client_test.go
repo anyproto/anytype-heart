@@ -1,33 +1,77 @@
 package amplitude
 
 import (
-	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/valyala/fastjson"
 )
 
-func mockServer(msgKey string) (chan []byte, chan []byte, *httptest.Server) {
-	key, body := make(chan []byte, 1), make(chan []byte, 1)
+type testEvent struct{}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
-		k := r.FormValue("api_key")
-		id := r.FormValue(msgKey)
+func (t testEvent) GetBackend() MetricsBackend {
+	return 0
+}
 
-		var v interface{}
-		err := json.Unmarshal([]byte(id), &v)
-		if err != nil {
-			panic(err)
-		}
+func (t testEvent) MarshalFastJson(arena *fastjson.Arena) JsonEvent {
+	event := arena.NewObject()
+	event.Set("event_type", arena.NewString("TestEvent"))
+	return event
+}
 
-		b, err := json.MarshalIndent(v, "", "  ")
-		if err != nil {
-			panic(err)
-		}
+func (t testEvent) SetTimestamp() {}
 
-		key <- []byte(k)
-		body <- b
+func (t testEvent) GetTimestamp() int64 {
+	return 3
+}
+
+type testAppInfoProvider struct {
+}
+
+func (t testAppInfoProvider) GetAppVersion() string {
+	return "AppVersion"
+}
+
+func (t testAppInfoProvider) GetStartVersion() string {
+	return "StartVersion"
+}
+
+func (t testAppInfoProvider) GetDeviceId() string {
+	return "DeviceId"
+}
+
+func (t testAppInfoProvider) GetPlatform() string {
+	return "Platform"
+}
+
+func (t testAppInfoProvider) GetUserId() string {
+	return "UserId"
+}
+
+func TestClient_SendEvents(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		bodyBytes, _ := io.ReadAll(req.Body)
+		value, _ := fastjson.Parse(string(bodyBytes))
+		assert.Equal(t, []byte("api_key"), value.GetStringBytes("api_key"))
+		event := value.GetArray("events")[0]
+		assert.Equal(t, []byte("TestEvent"), event.GetStringBytes("event_type"))
+		assert.Equal(t, []byte("AppVersion"), event.GetStringBytes("app_version"))
+		assert.Equal(t, []byte("StartVersion"), event.GetStringBytes("start_version"))
+		assert.Equal(t, []byte("DeviceId"), event.GetStringBytes("device_id"))
+		assert.Equal(t, []byte("Platform"), event.GetStringBytes("platform"))
+		assert.Equal(t, []byte("UserId"), event.GetStringBytes("user_id"))
+		assert.Equal(t, int64(3), event.GetInt64("time"))
 	}))
+	// Close the server when test finishes
+	defer server.Close()
 
-	return key, body, server
+	client := New("", "api_key").(*Client)
+	client.client = server.Client()
+	client.eventEndpoint = server.URL
+
+	err := client.SendEvents([]Event{&testEvent{}}, &testAppInfoProvider{})
+	assert.NoError(t, err)
 }

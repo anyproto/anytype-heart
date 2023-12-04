@@ -371,11 +371,11 @@ type baseInfo struct {
 	time int64
 }
 
-func (b baseInfo) SetTimestamp() {
+func (b *baseInfo) SetTimestamp() {
 	b.time = time.Now().UnixMilli()
 }
 
-func (b baseInfo) GetTimestamp() int64 {
+func (b *baseInfo) GetTimestamp() int64 {
 	return b.time
 }
 

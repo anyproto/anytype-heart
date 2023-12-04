@@ -10,7 +10,13 @@ import (
 )
 
 // Client manages the communication to the Amplitude API
+
+type Service interface {
+	SendEvents(amplEvents []Event, info AppInfoProvider) error
+}
+
 type Client struct {
+	Service
 	eventEndpoint string
 	key           string
 	client        *http.Client
@@ -36,17 +42,13 @@ type MetricsBackend int
 type JsonEvent *fastjson.Value
 
 // New client with API key
-func New(eventEndpoint string, key string) *Client {
+func New(eventEndpoint string, key string) Service {
 	return &Client{
 		eventEndpoint: eventEndpoint,
 		key:           key,
 		client:        new(http.Client),
 		arenaPool:     &fastjson.ArenaPool{},
 	}
-}
-
-func (c *Client) SetClient(client *http.Client) {
-	c.client = client
 }
 
 func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {

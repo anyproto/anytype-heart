@@ -93,8 +93,8 @@ func NewService() MetricsService {
 func (s *service) InitWithKeys(amplKey string, inHouseKey string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.clients[ampl].amplitude = amplitude.New(amplEndpoint, amplKey)
-	s.clients[inhouse].amplitude = amplitude.New(inHouseEndpoint, inHouseKey)
+	s.clients[ampl].telemetry = amplitude.New(amplEndpoint, amplKey)
+	s.clients[inhouse].telemetry = amplitude.New(inHouseEndpoint, inHouseKey)
 }
 
 func (s *service) SetDeviceId(t string) {
@@ -164,7 +164,6 @@ func (s *service) Run() {
 	for _, c := range s.clients {
 		c.ctx, c.cancel = context.WithCancel(context.Background())
 		c.batcher = mb.New[amplitude.Event](0)
-		c.closeChannel = make(chan struct{})
 		go c.startAggregating()
 		go c.startSendingBatchMessages(s)
 	}
