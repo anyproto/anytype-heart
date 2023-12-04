@@ -95,7 +95,8 @@ func (n *notificationService) indexNotifications(ctx context.Context) {
 
 func (n *notificationService) updateNotificationsInLocalStore() {
 	var notifications map[string]*model.Notification
-	err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
+	err := block.Do(n.picker, n.notificationId, func(sb smartblock.SmartBlock) error {
+		s := sb.NewState()
 		notifications = s.ListNotifications()
 		return nil
 	})
