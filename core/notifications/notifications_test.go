@@ -129,7 +129,7 @@ func TestNotificationService_Reply(t *testing.T) {
 		// when
 		err = notifications.Reply([]string{"id"}, model.Notification_CLOSE)
 		assert.Nil(t, err)
-		notification, err := storeFixture.GetNotificationByID("id")
+		notification, err := storeFixture.GetNotificationById("id")
 		assert.Nil(t, err)
 
 		// then
@@ -152,7 +152,7 @@ func TestNotificationService_Reply(t *testing.T) {
 		// when
 		err = notifications.Reply([]string{"id"}, model.Notification_REPORT)
 		assert.Nil(t, err)
-		notification, err := storeFixture.GetNotificationByID("id")
+		notification, err := storeFixture.GetNotificationById("id")
 		assert.Nil(t, err)
 
 		// then
@@ -180,11 +180,11 @@ func TestNotificationService_Reply(t *testing.T) {
 		assert.Nil(t, err)
 
 		// then
-		notification, err := storeFixture.GetNotificationByID("id")
+		notification, err := storeFixture.GetNotificationById("id")
 		assert.Nil(t, err)
 		assert.Equal(t, model.Notification_Replied, notification.Status)
 
-		notification, err = storeFixture.GetNotificationByID("id1")
+		notification, err = storeFixture.GetNotificationById("id1")
 		assert.Nil(t, err)
 		assert.Equal(t, model.Notification_Replied, notification.Status)
 	})

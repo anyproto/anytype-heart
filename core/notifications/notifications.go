@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -16,7 +17,7 @@ type Notifications interface {
 	app.Component
 	CreateAndSendLocal(notification *model.Notification) error
 	UpdateAndSend(notification *model.Notification) error
-	Reply(notificationID []string, notificationAction model.NotificationActionType) error
+	Reply(notificationIds []string, notificationAction model.NotificationActionType) error
 	List(limit int64, includeRead bool) ([]*model.Notification, error)
 }
 
@@ -30,7 +31,12 @@ func New() Notifications {
 }
 
 func (n *notificationService) Init(a *app.App) (err error) {
-	n.notificationStore = app.MustComponent[NotificationStore](a)
+	datastoreService := app.MustComponent[datastore.Datastore](a)
+	db, err := datastoreService.LocalStorage()
+	if err != nil {
+		return fmt.Errorf("failed to initialize notification store %w", err)
+	}
+	n.notificationStore = NewNotificationStore(db)
 	n.eventSender = app.MustComponent[event.Sender](a)
 	return nil
 }
@@ -77,14 +83,14 @@ func (n *notificationService) UpdateAndSend(notification *model.Notification) er
 	return nil
 }
 
-func (n *notificationService) Reply(notificationIDs []string, notificationAction model.NotificationActionType) error {
-	for _, id := range notificationIDs {
+func (n *notificationService) Reply(notificationIds []string, notificationAction model.NotificationActionType) error {
+	for _, id := range notificationIds {
 		status := model.Notification_Replied
 		if notificationAction == model.Notification_CLOSE {
 			status = model.Notification_Read
 		}
 
-		notification, err := n.notificationStore.GetNotificationByID(id)
+		notification, err := n.notificationStore.GetNotificationById(id)
 		if err != nil {
 			return err
 		}
@@ -112,7 +118,7 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 		if addCount == limit {
 			break
 		}
-		if n.isNotificationRead(notification) && !includeRead {
+		if !includeRead && n.isNotificationRead(notification) {
 			continue
 		}
 		result = append(result, notification)
