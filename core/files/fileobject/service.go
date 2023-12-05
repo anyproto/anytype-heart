@@ -134,25 +134,19 @@ func (s *service) createInSpace(ctx context.Context, space space.Space, req Crea
 	return id, object, nil
 }
 
-func (s *service) migrateDeriveObject(ctx context.Context, space space.Space, req CreateRequest) (id string, err error) {
+func (s *service) migrateDeriveObject(ctx context.Context, space space.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
 	if req.FileId == "" {
-		return "", fmt.Errorf("file hash is empty")
+		return fmt.Errorf("file hash is empty")
 	}
 	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
 		SpaceId: space.Id(),
 		FileId:  req.FileId,
 	})
 	if err != nil {
-		return "", fmt.Errorf("get details for file or image: %w", err)
+		return fmt.Errorf("get details for file or image: %w", err)
 	}
 	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
 	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
-
-	// Add fileId as uniqueKey to avoid migration of the same file
-	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeFileObject, req.FileId.String())
-	if err != nil {
-		return "", fmt.Errorf("create unique key: %w", err)
-	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(details)
@@ -161,19 +155,11 @@ func (s *service) migrateDeriveObject(ctx context.Context, space space.Space, re
 		EncryptionKeys: req.EncryptionKeys,
 	})
 
-	id, _, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
+	_, _, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
 	if errors.Is(err, treestorage.ErrTreeExists) {
-		id, err := space.DeriveObjectID(ctx, uniqueKey)
-		if err != nil {
-			return "", fmt.Errorf("derive object id: %w", err)
-		}
-		return id, nil
+		return nil
 	}
-
-	if err != nil {
-		return id, fmt.Errorf("create object: %w", err)
-	}
-	return id, nil
+	return err
 }
 
 func (s *service) getDetailsForFileOrImage(ctx context.Context, id domain.FullFileId) (*types.Struct, domain.TypeKey, error) {
@@ -270,7 +256,9 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId s
 			fileKeys = k.Keys
 		}
 	}
-	_, err := s.getFileIdFromObjectInSpace(space, fileId)
+	err := space.Do(fileId, func(sb smartblock.SmartBlock) error {
+		return nil
+	})
 	//Already migrated
 	if err == nil {
 		return fileId
@@ -285,19 +273,25 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId s
 	if len(fileKeys) == 0 {
 		log.Warnf("no encryption keys for fileId %s", fileId)
 	}
-
-	fileObjectId, err = s.migrateDeriveObject(context.Background(), space, CreateRequest{
+	// Add fileId as uniqueKey to avoid migration of the same file
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeFileObject, fileId)
+	if err != nil {
+		return fileId
+	}
+	fileObjectId, err = space.DeriveObjectID(context.Background(), uniqueKey)
+	if err != nil {
+		log.Errorf("can't derive object id for fileId %s: %v", fileId, err)
+		return fileId
+	}
+	err = s.migrateDeriveObject(context.Background(), space, CreateRequest{
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: fileKeys,
 		IsImported:     false, // TODO what to do? Probably need to copy origin detail
-	})
+	}, uniqueKey)
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", fileId, err)
-		return fileId
 	}
-
 	fmt.Println("MIGRATED FILE OBJECT ID", fileId, "->", fileObjectId)
-
 	return fileObjectId
 }
 
