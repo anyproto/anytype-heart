@@ -1429,7 +1429,7 @@
     "maxCount": 1,
     "hidden": false,
     "name": "Links to object",
-    "readonly": false,
+    "readonly": true,
     "source": "local"
   },
   {
