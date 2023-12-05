@@ -445,6 +445,13 @@ func (mw *marksWriter) writeMarks(buf writer, pos int) {
 			}
 		case model.BlockContentTextMark_Keyboard:
 			buf.WriteString("`")
+		case model.BlockContentTextMark_Emoji:
+			if start {
+				_, err := buf.WriteString(m.Param)
+				if err != nil {
+					log.Errorf("failed to write emoji: %s, %v", m.Param, err)
+				}
+			}
 		}
 	}
 

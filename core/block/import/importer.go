@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -99,13 +100,9 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context,
-	req *pb.RpcObjectImportRequest,
-	origin model.ObjectOrigin,
-	progress process.Progress,
-) (string, error) {
+func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin, progress process.Progress) (string, string, error) {
 	if req.SpaceId == "" {
-		return "", fmt.Errorf("spaceId is empty")
+		return "", "", fmt.Errorf("spaceId is empty")
 	}
 	i.Lock()
 	defer i.Unlock()
@@ -114,27 +111,30 @@ func (i *Import) Import(ctx context.Context,
 		progress = i.setupProgressBar(req)
 		isNewProgress = true
 	}
-	var returnedErr error
+	var (
+		returnedErr error
+		importId    = uuid.New().String()
+	)
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
-		i.recordEvent(&metrics.ImportFinishedEvent{ID: progress.Id(), ImportType: req.Type.String()})
+		i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
 	}()
 	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
-	i.recordEvent(&metrics.ImportStartedEvent{ID: progress.Id(), ImportType: req.Type.String()})
-	var rootCollectionID string
+	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: req.Type.String()})
+	var rootCollectionId string
 	if c, ok := i.converters[req.Type.String()]; ok {
-		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
-		return rootCollectionID, returnedErr
+		rootCollectionId, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
+		return rootCollectionId, "", returnedErr
 	}
-	if req.Type == pb.RpcObjectImportRequest_External {
+	if req.Type == model.Import_External {
 		returnedErr = i.importFromExternalSource(ctx, req, progress)
-		return rootCollectionID, returnedErr
+		return rootCollectionId, "", returnedErr
 	}
 	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
-	return rootCollectionID, returnedErr
+	return rootCollectionId, progress.Id(), returnedErr
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -414,7 +414,6 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	}
 	return details
 }
-
 func (i *Import) recordEvent(event metrics.EventRepresentable) {
 	metrics.SharedClient.RecordEvent(event)
 }

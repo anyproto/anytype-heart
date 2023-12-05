@@ -269,10 +269,10 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 }
 
 func (b *builtinObjects) importArchive(ctx context.Context, spaceID, path, title string, importType pb.RpcObjectImportRequestPbParamsType, progress process.Progress, isNewSpace bool) (err error) {
-	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
-		Type:                  pb.RpcObjectImportRequest_Pb,
+		Type:                  model.Import_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		NoProgress:            progress == nil,
 		IsMigration:           false,

@@ -776,8 +776,8 @@ enum RelationFormat {
   longtext = 0; // string
   shorttext = 1; // string, usually short enough. May be truncated in the future
   number = 2; // double
-  status = 3; // string or list of string(len==1)
-  tag = 11; // list of string (choose multiple from a list)
+  select = 3; // string or list of string(len==1)
+  multiselect = 11; // list of string (choose multiple from a list)
   date = 4; // float64(pb.Value doesn't have int64) or the string
   file = 5; // relation can has objects of specific types: file, image, audio, video
   checkbox = 6; // boolean
@@ -891,5 +891,78 @@ message Metadata {
     message IdentityPayload {
       bytes profileSymKey = 1;
     }
+  }
+}
+
+message Notification {
+  string id = 1;
+  int64 createTime = 2;
+  Status status = 4;
+  bool isLocal = 5;
+  oneof payload {
+    Import import = 6;
+    Export export = 8;
+  }
+  string space = 7;
+  message Import {
+    string processId = 1;
+    Code errorCode = 2;
+    model.Import.Type importType = 3;
+    string spaceId = 4;
+    string name = 5;
+    enum Code {
+      NULL = 0;
+      UNKNOWN_ERROR = 1;
+      BAD_INPUT = 2;
+      INTERNAL_ERROR = 3;
+      NO_OBJECTS_TO_IMPORT = 5;
+      IMPORT_IS_CANCELED = 6;
+      LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
+      FILE_LOAD_ERROR = 8;
+    }
+  }
+  message Export {
+    Code errorCode = 2;
+    model.Export.Format exportType = 3;
+    enum Code {
+      NULL = 0;
+      UNKNOWN_ERROR = 1;
+      BAD_INPUT = 2;
+    }
+  }
+  enum Status {
+    Created = 0;
+    Shown = 1;
+    Read = 2;
+    Replied = 3;
+  }
+  enum ActionType {
+    RETRY = 0;
+    REPORT = 1;
+    OPEN_OBJECT = 2;
+    OPEN_SPACE = 3;
+    CLOSE = 4;
+  }
+}
+
+message Export {
+  enum Format {
+    Markdown = 0;
+    Protobuf = 1;
+    JSON = 2;
+    DOT = 3;
+    SVG = 4;
+    GRAPH_JSON = 5;
+  }
+}
+message Import{
+  enum Type {
+    Notion = 0;
+    Markdown = 1;
+    External = 2; // external developers use it
+    Pb = 3;
+    Html = 4;
+    Txt = 5;
+    Csv = 6;
   }
 }
