@@ -215,8 +215,8 @@ func Test_GetTextBlocksEquation(t *testing.T) {
 
 	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &api.NotionImportContext{})
 	assert.Len(t, bl.Blocks, 1)
-	assert.NotNil(t, bl.Blocks[0].GetEmbed())
-	assert.Equal(t, bl.Blocks[0].GetEmbed().Text, "Equation")
+	assert.NotNil(t, bl.Blocks[0].GetLatex())
+	assert.Equal(t, bl.Blocks[0].GetLatex().Text, "Equation")
 }
 
 func Test_GetCodeBlocksSuccess(t *testing.T) {
