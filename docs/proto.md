@@ -23529,8 +23529,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | longtext | 0 | string |
 | shorttext | 1 | string, usually short enough. May be truncated in the future |
 | number | 2 | double |
-| status | 3 | string or list of string(len==1) |
-| tag | 11 | list of string (choose multiple from a list) |
+| select | 3 | string or list of string(len==1) |
+| multiselect | 11 | list of string (choose multiple from a list) |
 | date | 4 | float64(pb.Value doesn&#39;t have int64) or the string |
 | file | 5 | relation can has objects of specific types: file, image, audio, video |
 | checkbox | 6 | boolean |

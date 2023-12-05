@@ -109,28 +109,28 @@ func (SmartBlockType) EnumDescriptor() ([]byte, []int) {
 type RelationFormat int32
 
 const (
-	RelationFormat_longtext  RelationFormat = 0
-	RelationFormat_shorttext RelationFormat = 1
-	RelationFormat_number    RelationFormat = 2
-	RelationFormat_status    RelationFormat = 3
-	RelationFormat_tag       RelationFormat = 11
-	RelationFormat_date      RelationFormat = 4
-	RelationFormat_file      RelationFormat = 5
-	RelationFormat_checkbox  RelationFormat = 6
-	RelationFormat_url       RelationFormat = 7
-	RelationFormat_email     RelationFormat = 8
-	RelationFormat_phone     RelationFormat = 9
-	RelationFormat_emoji     RelationFormat = 10
-	RelationFormat_object    RelationFormat = 100
-	RelationFormat_relations RelationFormat = 101
+	RelationFormat_longtext    RelationFormat = 0
+	RelationFormat_shorttext   RelationFormat = 1
+	RelationFormat_number      RelationFormat = 2
+	RelationFormat_select      RelationFormat = 3
+	RelationFormat_multiselect RelationFormat = 11
+	RelationFormat_date        RelationFormat = 4
+	RelationFormat_file        RelationFormat = 5
+	RelationFormat_checkbox    RelationFormat = 6
+	RelationFormat_url         RelationFormat = 7
+	RelationFormat_email       RelationFormat = 8
+	RelationFormat_phone       RelationFormat = 9
+	RelationFormat_emoji       RelationFormat = 10
+	RelationFormat_object      RelationFormat = 100
+	RelationFormat_relations   RelationFormat = 101
 )
 
 var RelationFormat_name = map[int32]string{
 	0:   "longtext",
 	1:   "shorttext",
 	2:   "number",
-	3:   "status",
-	11:  "tag",
+	3:   "select",
+	11:  "multiselect",
 	4:   "date",
 	5:   "file",
 	6:   "checkbox",
@@ -143,20 +143,20 @@ var RelationFormat_name = map[int32]string{
 }
 
 var RelationFormat_value = map[string]int32{
-	"longtext":  0,
-	"shorttext": 1,
-	"number":    2,
-	"status":    3,
-	"tag":       11,
-	"date":      4,
-	"file":      5,
-	"checkbox":  6,
-	"url":       7,
-	"email":     8,
-	"phone":     9,
-	"emoji":     10,
-	"object":    100,
-	"relations": 101,
+	"longtext":    0,
+	"shorttext":   1,
+	"number":      2,
+	"select":      3,
+	"multiselect": 11,
+	"date":        4,
+	"file":        5,
+	"checkbox":    6,
+	"url":         7,
+	"email":       8,
+	"phone":       9,
+	"emoji":       10,
+	"object":      100,
+	"relations":   101,
 }
 
 func (x RelationFormat) String() string {

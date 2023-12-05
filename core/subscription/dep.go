@@ -121,7 +121,7 @@ func (ds *dependencyService) isRelationObject(key string) bool {
 		log.Errorf("can't get relation %s: %v", key, err)
 		return false
 	}
-	isObj := rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status
+	isObj := rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_multiselect || rel.Format == model.RelationFormat_select
 	ds.isRelationObjMap[key] = isObj
 	return isObj
 }

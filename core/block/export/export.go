@@ -661,7 +661,7 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 func (e *export) addRelationAndOptions(relation *database.Record, value *types.Value, derivedObjects []database.Record) ([]database.Record, error) {
 	derivedObjects = e.addRelation(relation, derivedObjects)
 	format := pbtypes.GetInt64(relation.Details, bundle.RelationKeyRelationFormat.String())
-	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
+	if format == int64(model.RelationFormat_multiselect) || format == int64(model.RelationFormat_select) {
 		relationOptions, err := e.getRelationOptions(value)
 		if err != nil {
 			return nil, err
