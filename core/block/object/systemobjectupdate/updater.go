@@ -181,6 +181,13 @@ func buildRelationDiffDetails(origin, current *model.Relation) (details []*pb.Rp
 		})
 	}
 
+	if origin.ReadOnly != current.ReadOnly {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyIsReadonly.String(),
+			Value: pbtypes.Bool(origin.ReadOnly),
+		})
+	}
+
 	return
 }
 
