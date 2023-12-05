@@ -730,19 +730,19 @@ type BlockContentFileStyle int32
 const (
 	BlockContentFile_Auto  BlockContentFileStyle = 0
 	BlockContentFile_Link  BlockContentFileStyle = 1
-	BlockContentFile_Embed BlockContentFileStyle = 2
+	BlockContentFile_Latex BlockContentFileStyle = 2
 )
 
 var BlockContentFileStyle_name = map[int32]string{
 	0: "Auto",
 	1: "Link",
-	2: "Embed",
+	2: "Latex",
 }
 
 var BlockContentFileStyle_value = map[string]int32{
 	"Auto":  0,
 	"Link":  1,
-	"Embed": 2,
+	"Latex": 2,
 }
 
 func (x BlockContentFileStyle) String() string {
@@ -1086,28 +1086,28 @@ func (BlockContentDataviewFilterQuickOption) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98a910b73321e591, []int{1, 1, 9, 3, 2}
 }
 
-type BlockContentEmbedProcessor int32
+type BlockContentLatexProcessor int32
 
 const (
-	BlockContentEmbed_Latex   BlockContentEmbedProcessor = 0
-	BlockContentEmbed_Mermaid BlockContentEmbedProcessor = 1
+	BlockContentLatex_Latex   BlockContentLatexProcessor = 0
+	BlockContentLatex_Mermaid BlockContentLatexProcessor = 1
 )
 
-var BlockContentEmbedProcessor_name = map[int32]string{
+var BlockContentLatexProcessor_name = map[int32]string{
 	0: "Latex",
 	1: "Mermaid",
 }
 
-var BlockContentEmbedProcessor_value = map[string]int32{
+var BlockContentLatexProcessor_value = map[string]int32{
 	"Latex":   0,
 	"Mermaid": 1,
 }
 
-func (x BlockContentEmbedProcessor) String() string {
-	return proto.EnumName(BlockContentEmbedProcessor_name, int32(x))
+func (x BlockContentLatexProcessor) String() string {
+	return proto.EnumName(BlockContentLatexProcessor_name, int32(x))
 }
 
-func (BlockContentEmbedProcessor) EnumDescriptor() ([]byte, []int) {
+func (BlockContentLatexProcessor) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98a910b73321e591, []int{1, 1, 11, 0}
 }
 
@@ -1899,7 +1899,7 @@ type BlockContentOfFeaturedRelations struct {
 	FeaturedRelations *BlockContentFeaturedRelations `protobuf:"bytes,23,opt,name=featuredRelations,proto3,oneof" json:"featuredRelations,omitempty"`
 }
 type BlockContentOfLatex struct {
-	Latex *BlockContentEmbed `protobuf:"bytes,24,opt,name=latex,proto3,oneof" json:"latex,omitempty"`
+	Latex *BlockContentLatex `protobuf:"bytes,24,opt,name=latex,proto3,oneof" json:"latex,omitempty"`
 }
 type BlockContentOfTableOfContents struct {
 	TableOfContents *BlockContentTableOfContents `protobuf:"bytes,25,opt,name=tableOfContents,proto3,oneof" json:"tableOfContents,omitempty"`
@@ -2068,7 +2068,7 @@ func (m *Block) GetFeaturedRelations() *BlockContentFeaturedRelations {
 	return nil
 }
 
-func (m *Block) GetLatex() *BlockContentEmbed {
+func (m *Block) GetLatex() *BlockContentLatex {
 	if x, ok := m.GetContent().(*BlockContentOfLatex); ok {
 		return x.Latex
 	}
@@ -3999,23 +3999,23 @@ func (m *BlockContentRelation) GetKey() string {
 	return ""
 }
 
-type BlockContentEmbed struct {
+type BlockContentLatex struct {
 	Text      string                     `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	Processor BlockContentEmbedProcessor `protobuf:"varint,2,opt,name=processor,proto3,enum=anytype.model.BlockContentEmbedProcessor" json:"processor,omitempty"`
+	Processor BlockContentLatexProcessor `protobuf:"varint,2,opt,name=processor,proto3,enum=anytype.model.BlockContentLatexProcessor" json:"processor,omitempty"`
 }
 
-func (m *BlockContentEmbed) Reset()         { *m = BlockContentEmbed{} }
-func (m *BlockContentEmbed) String() string { return proto.CompactTextString(m) }
-func (*BlockContentEmbed) ProtoMessage()    {}
-func (*BlockContentEmbed) Descriptor() ([]byte, []int) {
+func (m *BlockContentLatex) Reset()         { *m = BlockContentLatex{} }
+func (m *BlockContentLatex) String() string { return proto.CompactTextString(m) }
+func (*BlockContentLatex) ProtoMessage()    {}
+func (*BlockContentLatex) Descriptor() ([]byte, []int) {
 	return fileDescriptor_98a910b73321e591, []int{1, 1, 11}
 }
-func (m *BlockContentEmbed) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentLatex) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockContentEmbed) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentLatex) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockContentEmbed.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentLatex.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -4025,30 +4025,30 @@ func (m *BlockContentEmbed) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *BlockContentEmbed) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockContentEmbed.Merge(m, src)
+func (m *BlockContentLatex) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentLatex.Merge(m, src)
 }
-func (m *BlockContentEmbed) XXX_Size() int {
+func (m *BlockContentLatex) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockContentEmbed) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockContentEmbed.DiscardUnknown(m)
+func (m *BlockContentLatex) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentLatex.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockContentEmbed proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentLatex proto.InternalMessageInfo
 
-func (m *BlockContentEmbed) GetText() string {
+func (m *BlockContentLatex) GetText() string {
 	if m != nil {
 		return m.Text
 	}
 	return ""
 }
 
-func (m *BlockContentEmbed) GetProcessor() BlockContentEmbedProcessor {
+func (m *BlockContentLatex) GetProcessor() BlockContentLatexProcessor {
 	if m != nil {
 		return m.Processor
 	}
-	return BlockContentEmbed_Latex
+	return BlockContentLatex_Latex
 }
 
 type BlockContentTableOfContents struct {
@@ -6586,7 +6586,7 @@ func init() {
 	proto.RegisterEnum("anytype.model.BlockContentDataviewFilterOperator", BlockContentDataviewFilterOperator_name, BlockContentDataviewFilterOperator_value)
 	proto.RegisterEnum("anytype.model.BlockContentDataviewFilterCondition", BlockContentDataviewFilterCondition_name, BlockContentDataviewFilterCondition_value)
 	proto.RegisterEnum("anytype.model.BlockContentDataviewFilterQuickOption", BlockContentDataviewFilterQuickOption_name, BlockContentDataviewFilterQuickOption_value)
-	proto.RegisterEnum("anytype.model.BlockContentEmbedProcessor", BlockContentEmbedProcessor_name, BlockContentEmbedProcessor_value)
+	proto.RegisterEnum("anytype.model.BlockContentLatexProcessor", BlockContentLatexProcessor_name, BlockContentLatexProcessor_value)
 	proto.RegisterEnum("anytype.model.BlockContentWidgetLayout", BlockContentWidgetLayout_name, BlockContentWidgetLayout_value)
 	proto.RegisterEnum("anytype.model.AccountStatusType", AccountStatusType_name, AccountStatusType_value)
 	proto.RegisterEnum("anytype.model.LinkPreviewType", LinkPreviewType_name, LinkPreviewType_value)
@@ -6631,7 +6631,7 @@ func init() {
 	proto.RegisterType((*BlockContentDataviewCheckbox)(nil), "anytype.model.Block.Content.Dataview.Checkbox")
 	proto.RegisterType((*BlockContentDataviewDate)(nil), "anytype.model.Block.Content.Dataview.Date")
 	proto.RegisterType((*BlockContentRelation)(nil), "anytype.model.Block.Content.Relation")
-	proto.RegisterType((*BlockContentEmbed)(nil), "anytype.model.Block.Content.Embed")
+	proto.RegisterType((*BlockContentLatex)(nil), "anytype.model.Block.Content.Latex")
 	proto.RegisterType((*BlockContentTableOfContents)(nil), "anytype.model.Block.Content.TableOfContents")
 	proto.RegisterType((*BlockContentTable)(nil), "anytype.model.Block.Content.Table")
 	proto.RegisterType((*BlockContentTableColumn)(nil), "anytype.model.Block.Content.TableColumn")
@@ -9189,7 +9189,7 @@ func (m *BlockContentRelation) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockContentEmbed) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentLatex) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -9199,12 +9199,12 @@ func (m *BlockContentEmbed) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockContentEmbed) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentLatex) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockContentEmbed) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentLatex) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -12260,7 +12260,7 @@ func (m *BlockContentRelation) Size() (n int) {
 	return n
 }
 
-func (m *BlockContentEmbed) Size() (n int) {
+func (m *BlockContentLatex) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -14196,7 +14196,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockContentEmbed{}
+			v := &BlockContentLatex{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -18602,7 +18602,7 @@ func (m *BlockContentRelation) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockContentEmbed) Unmarshal(dAtA []byte) error {
+func (m *BlockContentLatex) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -18625,10 +18625,10 @@ func (m *BlockContentEmbed) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Embed: wiretype end group for non-group")
+			return fmt.Errorf("proto: Latex: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Embed: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Latex: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -18677,7 +18677,7 @@ func (m *BlockContentEmbed) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Processor |= BlockContentEmbedProcessor(b&0x7F) << shift
+				m.Processor |= BlockContentLatexProcessor(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

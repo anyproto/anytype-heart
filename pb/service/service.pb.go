@@ -519,7 +519,7 @@ type ClientCommandsClient interface {
 	BlockRelationSetKey(ctx context.Context, in *pb.RpcBlockRelationSetKeyRequest, opts ...grpc.CallOption) (*pb.RpcBlockRelationSetKeyResponse, error)
 	BlockRelationAdd(ctx context.Context, in *pb.RpcBlockRelationAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockRelationAddResponse, error)
 	BlockDivListSetStyle(ctx context.Context, in *pb.RpcBlockDivListSetStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockDivListSetStyleResponse, error)
-	BlockEmbedSetText(ctx context.Context, in *pb.RpcBlockEmbedSetTextRequest, opts ...grpc.CallOption) (*pb.RpcBlockEmbedSetTextResponse, error)
+	BlockLatexSetText(ctx context.Context, in *pb.RpcBlockLatexSetTextRequest, opts ...grpc.CallOption) (*pb.RpcBlockLatexSetTextResponse, error)
 	ProcessCancel(ctx context.Context, in *pb.RpcProcessCancelRequest, opts ...grpc.CallOption) (*pb.RpcProcessCancelResponse, error)
 	LogSend(ctx context.Context, in *pb.RpcLogSendRequest, opts ...grpc.CallOption) (*pb.RpcLogSendResponse, error)
 	DebugTree(ctx context.Context, in *pb.RpcDebugTreeRequest, opts ...grpc.CallOption) (*pb.RpcDebugTreeResponse, error)
@@ -2255,9 +2255,9 @@ func (c *clientCommandsClient) BlockDivListSetStyle(ctx context.Context, in *pb.
 	return out, nil
 }
 
-func (c *clientCommandsClient) BlockEmbedSetText(ctx context.Context, in *pb.RpcBlockEmbedSetTextRequest, opts ...grpc.CallOption) (*pb.RpcBlockEmbedSetTextResponse, error) {
-	out := new(pb.RpcBlockEmbedSetTextResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockEmbedSetText", in, out, opts...)
+func (c *clientCommandsClient) BlockLatexSetText(ctx context.Context, in *pb.RpcBlockLatexSetTextRequest, opts ...grpc.CallOption) (*pb.RpcBlockLatexSetTextResponse, error) {
+	out := new(pb.RpcBlockLatexSetTextResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockLatexSetText", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2645,7 +2645,7 @@ type ClientCommandsServer interface {
 	BlockRelationSetKey(context.Context, *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse
 	BlockRelationAdd(context.Context, *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse
 	BlockDivListSetStyle(context.Context, *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse
-	BlockEmbedSetText(context.Context, *pb.RpcBlockEmbedSetTextRequest) *pb.RpcBlockEmbedSetTextResponse
+	BlockLatexSetText(context.Context, *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse
 	ProcessCancel(context.Context, *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
 	LogSend(context.Context, *pb.RpcLogSendRequest) *pb.RpcLogSendResponse
 	DebugTree(context.Context, *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse
@@ -3237,7 +3237,7 @@ func (*UnimplementedClientCommandsServer) BlockRelationAdd(ctx context.Context, 
 func (*UnimplementedClientCommandsServer) BlockDivListSetStyle(ctx context.Context, req *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockEmbedSetText(ctx context.Context, req *pb.RpcBlockEmbedSetTextRequest) *pb.RpcBlockEmbedSetTextResponse {
+func (*UnimplementedClientCommandsServer) BlockLatexSetText(ctx context.Context, req *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse {
 	return nil
 }
 func (*UnimplementedClientCommandsServer) ProcessCancel(ctx context.Context, req *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse {
@@ -6707,20 +6707,20 @@ func _ClientCommands_BlockDivListSetStyle_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ClientCommands_BlockEmbedSetText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockEmbedSetTextRequest)
+func _ClientCommands_BlockLatexSetText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockLatexSetTextRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockEmbedSetText(ctx, in), nil
+		return srv.(ClientCommandsServer).BlockLatexSetText(ctx, in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockEmbedSetText",
+		FullMethod: "/anytype.ClientCommands/BlockLatexSetText",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockEmbedSetText(ctx, req.(*pb.RpcBlockEmbedSetTextRequest)), nil
+		return srv.(ClientCommandsServer).BlockLatexSetText(ctx, req.(*pb.RpcBlockLatexSetTextRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -7746,8 +7746,8 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_BlockDivListSetStyle_Handler,
 		},
 		{
-			MethodName: "BlockEmbedSetText",
-			Handler:    _ClientCommands_BlockEmbedSetText_Handler,
+			MethodName: "BlockLatexSetText",
+			Handler:    _ClientCommands_BlockLatexSetText_Handler,
 		},
 		{
 			MethodName: "ProcessCancel",

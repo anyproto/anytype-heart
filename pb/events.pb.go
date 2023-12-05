@@ -268,7 +268,7 @@ type EventMessage struct {
 	//	*EventMessageValueOfBlockSetAlign
 	//	*EventMessageValueOfBlockSetDiv
 	//	*EventMessageValueOfBlockSetRelation
-	//	*EventMessageValueOfBlockSetEmbed
+	//	*EventMessageValueOfBlockSetLatex
 	//	*EventMessageValueOfBlockSetVerticalAlign
 	//	*EventMessageValueOfBlockSetTableRow
 	//	*EventMessageValueOfBlockSetWidget
@@ -434,8 +434,8 @@ type EventMessageValueOfBlockSetDiv struct {
 type EventMessageValueOfBlockSetRelation struct {
 	BlockSetRelation *EventBlockSetRelation `protobuf:"bytes,21,opt,name=blockSetRelation,proto3,oneof" json:"blockSetRelation,omitempty"`
 }
-type EventMessageValueOfBlockSetEmbed struct {
-	BlockSetEmbed *EventBlockSetEmbed `protobuf:"bytes,25,opt,name=blockSetEmbed,proto3,oneof" json:"blockSetEmbed,omitempty"`
+type EventMessageValueOfBlockSetLatex struct {
+	BlockSetLatex *EventBlockSetLatex `protobuf:"bytes,25,opt,name=blockSetLatex,proto3,oneof" json:"blockSetLatex,omitempty"`
 }
 type EventMessageValueOfBlockSetVerticalAlign struct {
 	BlockSetVerticalAlign *EventBlockSetVerticalAlign `protobuf:"bytes,36,opt,name=blockSetVerticalAlign,proto3,oneof" json:"blockSetVerticalAlign,omitempty"`
@@ -559,7 +559,7 @@ func (*EventMessageValueOfBlockSetBookmark) IsEventMessageValue()               
 func (*EventMessageValueOfBlockSetAlign) IsEventMessageValue()                  {}
 func (*EventMessageValueOfBlockSetDiv) IsEventMessageValue()                    {}
 func (*EventMessageValueOfBlockSetRelation) IsEventMessageValue()               {}
-func (*EventMessageValueOfBlockSetEmbed) IsEventMessageValue()                  {}
+func (*EventMessageValueOfBlockSetLatex) IsEventMessageValue()                  {}
 func (*EventMessageValueOfBlockSetVerticalAlign) IsEventMessageValue()          {}
 func (*EventMessageValueOfBlockSetTableRow) IsEventMessageValue()               {}
 func (*EventMessageValueOfBlockSetWidget) IsEventMessageValue()                 {}
@@ -815,9 +815,9 @@ func (m *EventMessage) GetBlockSetRelation() *EventBlockSetRelation {
 	return nil
 }
 
-func (m *EventMessage) GetBlockSetEmbed() *EventBlockSetEmbed {
-	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetEmbed); ok {
-		return x.BlockSetEmbed
+func (m *EventMessage) GetBlockSetLatex() *EventBlockSetLatex {
+	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetLatex); ok {
+		return x.BlockSetLatex
 	}
 	return nil
 }
@@ -1066,7 +1066,7 @@ func (*EventMessage) XXX_OneofWrappers() []interface{} {
 		(*EventMessageValueOfBlockSetAlign)(nil),
 		(*EventMessageValueOfBlockSetDiv)(nil),
 		(*EventMessageValueOfBlockSetRelation)(nil),
-		(*EventMessageValueOfBlockSetEmbed)(nil),
+		(*EventMessageValueOfBlockSetLatex)(nil),
 		(*EventMessageValueOfBlockSetVerticalAlign)(nil),
 		(*EventMessageValueOfBlockSetTableRow)(nil),
 		(*EventMessageValueOfBlockSetWidget)(nil),
@@ -3391,24 +3391,24 @@ func (m *EventBlockSetTextIconImage) GetValue() string {
 	return ""
 }
 
-type EventBlockSetEmbed struct {
+type EventBlockSetLatex struct {
 	Id        string                       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Text      *EventBlockSetEmbedText      `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	Processor *EventBlockSetEmbedProcessor `protobuf:"bytes,3,opt,name=processor,proto3" json:"processor,omitempty"`
+	Text      *EventBlockSetLatexText      `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Processor *EventBlockSetLatexProcessor `protobuf:"bytes,3,opt,name=processor,proto3" json:"processor,omitempty"`
 }
 
-func (m *EventBlockSetEmbed) Reset()         { *m = EventBlockSetEmbed{} }
-func (m *EventBlockSetEmbed) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetEmbed) ProtoMessage()    {}
-func (*EventBlockSetEmbed) Descriptor() ([]byte, []int) {
+func (m *EventBlockSetLatex) Reset()         { *m = EventBlockSetLatex{} }
+func (m *EventBlockSetLatex) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetLatex) ProtoMessage()    {}
+func (*EventBlockSetLatex) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{0, 3, 4, 8}
 }
-func (m *EventBlockSetEmbed) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockSetLatex) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *EventBlockSetEmbed) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockSetLatex) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_EventBlockSetEmbed.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockSetLatex.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3418,55 +3418,55 @@ func (m *EventBlockSetEmbed) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *EventBlockSetEmbed) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetEmbed.Merge(m, src)
+func (m *EventBlockSetLatex) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetLatex.Merge(m, src)
 }
-func (m *EventBlockSetEmbed) XXX_Size() int {
+func (m *EventBlockSetLatex) XXX_Size() int {
 	return m.Size()
 }
-func (m *EventBlockSetEmbed) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetEmbed.DiscardUnknown(m)
+func (m *EventBlockSetLatex) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetLatex.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_EventBlockSetEmbed proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockSetLatex proto.InternalMessageInfo
 
-func (m *EventBlockSetEmbed) GetId() string {
+func (m *EventBlockSetLatex) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *EventBlockSetEmbed) GetText() *EventBlockSetEmbedText {
+func (m *EventBlockSetLatex) GetText() *EventBlockSetLatexText {
 	if m != nil {
 		return m.Text
 	}
 	return nil
 }
 
-func (m *EventBlockSetEmbed) GetProcessor() *EventBlockSetEmbedProcessor {
+func (m *EventBlockSetLatex) GetProcessor() *EventBlockSetLatexProcessor {
 	if m != nil {
 		return m.Processor
 	}
 	return nil
 }
 
-type EventBlockSetEmbedText struct {
+type EventBlockSetLatexText struct {
 	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
 }
 
-func (m *EventBlockSetEmbedText) Reset()         { *m = EventBlockSetEmbedText{} }
-func (m *EventBlockSetEmbedText) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetEmbedText) ProtoMessage()    {}
-func (*EventBlockSetEmbedText) Descriptor() ([]byte, []int) {
+func (m *EventBlockSetLatexText) Reset()         { *m = EventBlockSetLatexText{} }
+func (m *EventBlockSetLatexText) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetLatexText) ProtoMessage()    {}
+func (*EventBlockSetLatexText) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{0, 3, 4, 8, 0}
 }
-func (m *EventBlockSetEmbedText) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockSetLatexText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *EventBlockSetEmbedText) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockSetLatexText) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_EventBlockSetEmbedText.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockSetLatexText.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3476,41 +3476,41 @@ func (m *EventBlockSetEmbedText) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *EventBlockSetEmbedText) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetEmbedText.Merge(m, src)
+func (m *EventBlockSetLatexText) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetLatexText.Merge(m, src)
 }
-func (m *EventBlockSetEmbedText) XXX_Size() int {
+func (m *EventBlockSetLatexText) XXX_Size() int {
 	return m.Size()
 }
-func (m *EventBlockSetEmbedText) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetEmbedText.DiscardUnknown(m)
+func (m *EventBlockSetLatexText) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetLatexText.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_EventBlockSetEmbedText proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockSetLatexText proto.InternalMessageInfo
 
-func (m *EventBlockSetEmbedText) GetValue() string {
+func (m *EventBlockSetLatexText) GetValue() string {
 	if m != nil {
 		return m.Value
 	}
 	return ""
 }
 
-type EventBlockSetEmbedProcessor struct {
-	Value model.BlockContentEmbedProcessor `protobuf:"varint,1,opt,name=value,proto3,enum=anytype.model.BlockContentEmbedProcessor" json:"value,omitempty"`
+type EventBlockSetLatexProcessor struct {
+	Value model.BlockContentLatexProcessor `protobuf:"varint,1,opt,name=value,proto3,enum=anytype.model.BlockContentLatexProcessor" json:"value,omitempty"`
 }
 
-func (m *EventBlockSetEmbedProcessor) Reset()         { *m = EventBlockSetEmbedProcessor{} }
-func (m *EventBlockSetEmbedProcessor) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetEmbedProcessor) ProtoMessage()    {}
-func (*EventBlockSetEmbedProcessor) Descriptor() ([]byte, []int) {
+func (m *EventBlockSetLatexProcessor) Reset()         { *m = EventBlockSetLatexProcessor{} }
+func (m *EventBlockSetLatexProcessor) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetLatexProcessor) ProtoMessage()    {}
+func (*EventBlockSetLatexProcessor) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{0, 3, 4, 8, 1}
 }
-func (m *EventBlockSetEmbedProcessor) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockSetLatexProcessor) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *EventBlockSetEmbedProcessor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockSetLatexProcessor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_EventBlockSetEmbedProcessor.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockSetLatexProcessor.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3520,23 +3520,23 @@ func (m *EventBlockSetEmbedProcessor) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *EventBlockSetEmbedProcessor) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetEmbedProcessor.Merge(m, src)
+func (m *EventBlockSetLatexProcessor) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetLatexProcessor.Merge(m, src)
 }
-func (m *EventBlockSetEmbedProcessor) XXX_Size() int {
+func (m *EventBlockSetLatexProcessor) XXX_Size() int {
 	return m.Size()
 }
-func (m *EventBlockSetEmbedProcessor) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetEmbedProcessor.DiscardUnknown(m)
+func (m *EventBlockSetLatexProcessor) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetLatexProcessor.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_EventBlockSetEmbedProcessor proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockSetLatexProcessor proto.InternalMessageInfo
 
-func (m *EventBlockSetEmbedProcessor) GetValue() model.BlockContentEmbedProcessor {
+func (m *EventBlockSetLatexProcessor) GetValue() model.BlockContentLatexProcessor {
 	if m != nil {
 		return m.Value
 	}
-	return model.BlockContentEmbed_Latex
+	return model.BlockContentLatex_Latex
 }
 
 type EventBlockSetDiv struct {
@@ -10573,9 +10573,9 @@ func init() {
 	proto.RegisterType((*EventBlockSetTextColor)(nil), "anytype.Event.Block.Set.Text.Color")
 	proto.RegisterType((*EventBlockSetTextIconEmoji)(nil), "anytype.Event.Block.Set.Text.IconEmoji")
 	proto.RegisterType((*EventBlockSetTextIconImage)(nil), "anytype.Event.Block.Set.Text.IconImage")
-	proto.RegisterType((*EventBlockSetEmbed)(nil), "anytype.Event.Block.Set.Embed")
-	proto.RegisterType((*EventBlockSetEmbedText)(nil), "anytype.Event.Block.Set.Embed.Text")
-	proto.RegisterType((*EventBlockSetEmbedProcessor)(nil), "anytype.Event.Block.Set.Embed.Processor")
+	proto.RegisterType((*EventBlockSetLatex)(nil), "anytype.Event.Block.Set.Latex")
+	proto.RegisterType((*EventBlockSetLatexText)(nil), "anytype.Event.Block.Set.Latex.Text")
+	proto.RegisterType((*EventBlockSetLatexProcessor)(nil), "anytype.Event.Block.Set.Latex.Processor")
 	proto.RegisterType((*EventBlockSetDiv)(nil), "anytype.Event.Block.Set.Div")
 	proto.RegisterType((*EventBlockSetDivStyle)(nil), "anytype.Event.Block.Set.Div.Style")
 	proto.RegisterType((*EventBlockSetFile)(nil), "anytype.Event.Block.Set.File")
@@ -11593,16 +11593,16 @@ func (m *EventMessageValueOfBlockDataviewOldRelationDelete) MarshalToSizedBuffer
 	}
 	return len(dAtA) - i, nil
 }
-func (m *EventMessageValueOfBlockSetEmbed) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageValueOfBlockSetLatex) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventMessageValueOfBlockSetEmbed) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageValueOfBlockSetLatex) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.BlockSetEmbed != nil {
+	if m.BlockSetLatex != nil {
 		{
-			size, err := m.BlockSetEmbed.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.BlockSetLatex.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -14273,7 +14273,7 @@ func (m *EventBlockSetTextIconImage) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *EventBlockSetEmbed) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockSetLatex) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -14283,12 +14283,12 @@ func (m *EventBlockSetEmbed) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *EventBlockSetEmbed) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockSetLatex) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventBlockSetEmbed) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockSetLatex) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -14327,7 +14327,7 @@ func (m *EventBlockSetEmbed) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *EventBlockSetEmbedText) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockSetLatexText) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -14337,12 +14337,12 @@ func (m *EventBlockSetEmbedText) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *EventBlockSetEmbedText) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockSetLatexText) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventBlockSetEmbedText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockSetLatexText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -14357,7 +14357,7 @@ func (m *EventBlockSetEmbedText) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *EventBlockSetEmbedProcessor) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockSetLatexProcessor) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -14367,12 +14367,12 @@ func (m *EventBlockSetEmbedProcessor) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *EventBlockSetEmbedProcessor) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockSetLatexProcessor) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventBlockSetEmbedProcessor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockSetLatexProcessor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -20138,14 +20138,14 @@ func (m *EventMessageValueOfBlockDataviewOldRelationDelete) Size() (n int) {
 	}
 	return n
 }
-func (m *EventMessageValueOfBlockSetEmbed) Size() (n int) {
+func (m *EventMessageValueOfBlockSetLatex) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.BlockSetEmbed != nil {
-		l = m.BlockSetEmbed.Size()
+	if m.BlockSetLatex != nil {
+		l = m.BlockSetLatex.Size()
 		n += 2 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -21366,7 +21366,7 @@ func (m *EventBlockSetTextIconImage) Size() (n int) {
 	return n
 }
 
-func (m *EventBlockSetEmbed) Size() (n int) {
+func (m *EventBlockSetLatex) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -21387,7 +21387,7 @@ func (m *EventBlockSetEmbed) Size() (n int) {
 	return n
 }
 
-func (m *EventBlockSetEmbedText) Size() (n int) {
+func (m *EventBlockSetLatexText) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -21400,7 +21400,7 @@ func (m *EventBlockSetEmbedText) Size() (n int) {
 	return n
 }
 
-func (m *EventBlockSetEmbedProcessor) Size() (n int) {
+func (m *EventBlockSetLatexProcessor) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -24683,7 +24683,7 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 25:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockSetEmbed", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockSetLatex", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -24710,11 +24710,11 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &EventBlockSetEmbed{}
+			v := &EventBlockSetLatex{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Value = &EventMessageValueOfBlockSetEmbed{v}
+			m.Value = &EventMessageValueOfBlockSetLatex{v}
 			iNdEx = postIndex
 		case 29:
 			if wireType != 2 {
@@ -30881,7 +30881,7 @@ func (m *EventBlockSetTextIconImage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *EventBlockSetEmbed) Unmarshal(dAtA []byte) error {
+func (m *EventBlockSetLatex) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -30904,10 +30904,10 @@ func (m *EventBlockSetEmbed) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Embed: wiretype end group for non-group")
+			return fmt.Errorf("proto: Latex: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Embed: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Latex: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -30972,7 +30972,7 @@ func (m *EventBlockSetEmbed) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Text == nil {
-				m.Text = &EventBlockSetEmbedText{}
+				m.Text = &EventBlockSetLatexText{}
 			}
 			if err := m.Text.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -31008,7 +31008,7 @@ func (m *EventBlockSetEmbed) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Processor == nil {
-				m.Processor = &EventBlockSetEmbedProcessor{}
+				m.Processor = &EventBlockSetLatexProcessor{}
 			}
 			if err := m.Processor.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -31035,7 +31035,7 @@ func (m *EventBlockSetEmbed) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *EventBlockSetEmbedText) Unmarshal(dAtA []byte) error {
+func (m *EventBlockSetLatexText) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -31117,7 +31117,7 @@ func (m *EventBlockSetEmbedText) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *EventBlockSetEmbedProcessor) Unmarshal(dAtA []byte) error {
+func (m *EventBlockSetLatexProcessor) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -31160,7 +31160,7 @@ func (m *EventBlockSetEmbedProcessor) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Value |= model.BlockContentEmbedProcessor(b&0x7F) << shift
+				m.Value |= model.BlockContentLatexProcessor(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

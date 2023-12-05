@@ -12,12 +12,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func TestEmbed_Diff(t *testing.T) {
-	testBlock := func() *Embed {
-		return NewEmbed(&model.Block{
+func TestLatex_Diff(t *testing.T) {
+	testBlock := func() *Latex {
+		return NewLatex(&model.Block{
 			Restrictions: &model.BlockRestrictions{},
-			Content:      &model.BlockContentOfEmbed{Embed: &model.BlockContentEmbed{}},
-		}).(*Embed)
+			Content:      &model.BlockContentOfLatex{Latex: &model.BlockContentLatex{}},
+		}).(*Latex)
 	}
 	t.Run("type error", func(t *testing.T) {
 		b1 := testBlock()
@@ -50,26 +50,26 @@ func TestEmbed_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetEmbed{
-			BlockSetEmbed: &pb.EventBlockSetEmbed{
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLatex{
+			BlockSetLatex: &pb.EventBlockSetLatex{
 				Id:   b1.Id,
-				Text: &pb.EventBlockSetEmbedText{Value: "42"},
+				Text: &pb.EventBlockSetLatexText{Value: "42"},
 			},
 		}), diff)
 	})
 	t.Run("content diff processor", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.content.Processor = model.BlockContentEmbed_Mermaid
+		b2.content.Processor = model.BlockContentLatex_Mermaid
 
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetEmbed{
-			BlockSetEmbed: &pb.EventBlockSetEmbed{
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLatex{
+			BlockSetLatex: &pb.EventBlockSetLatex{
 				Id: b1.Id,
-				Processor: &pb.EventBlockSetEmbedProcessor{
-					Value: model.BlockContentEmbed_Mermaid,
+				Processor: &pb.EventBlockSetLatexProcessor{
+					Value: model.BlockContentLatex_Mermaid,
 				},
 			},
 		}), diff)

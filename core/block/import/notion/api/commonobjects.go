@@ -47,7 +47,7 @@ func (e *EquationObject) HandleEquation() *model.Block {
 		Id:          id,
 		ChildrenIds: []string{},
 		Content: &model.BlockContentOfLatex{
-			Latex: &model.BlockContentEmbed{
+			Latex: &model.BlockContentLatex{
 				Text: e.Expression,
 			},
 		},

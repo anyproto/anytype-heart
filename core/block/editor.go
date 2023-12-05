@@ -307,15 +307,15 @@ func (s *Service) SetTextText(ctx session.Context, req pb.RpcBlockTextSetTextReq
 	})
 }
 
-func (s *Service) SetEmbedText(ctx session.Context, req pb.RpcBlockEmbedSetTextRequest) error {
+func (s *Service) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return b.SetEmbedText(ctx, req)
+		return b.SetLatexText(ctx, req)
 	})
 }
 
-func (s *Service) SetEmbedProcessor(ctx session.Context, req pb.RpcBlockEmbedSetTextRequest) error {
+func (s *Service) SetLatexProcessor(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return b.SetEmbedText(ctx, req)
+		return b.SetLatexText(ctx, req)
 	})
 }
 

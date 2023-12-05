@@ -43,7 +43,7 @@ type CommonOperations interface {
 
 	SetFields(ctx session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	SetDivStyle(ctx session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
-	SetEmbedText(ctx session.Context, req pb.RpcBlockEmbedSetTextRequest) error
+	SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) error
 
 	SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationAddRequest) error
@@ -350,7 +350,7 @@ func (bs *basic) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetK
 	return bs.Apply(s)
 }
 
-func (bs *basic) SetEmbedText(ctx session.Context, req pb.RpcBlockEmbedSetTextRequest) (err error) {
+func (bs *basic) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {

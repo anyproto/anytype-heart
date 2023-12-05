@@ -3625,13 +3625,13 @@ message Rpc {
         }
     }
 
-    message BlockEmbed {
+    message BlockLatex {
         message SetText {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
                 string text = 3;
-                model.Block.Content.Embed.Processor processor = 4;
+                model.Block.Content.Latex.Processor processor = 4;
             }
 
             message Response {
@@ -3655,7 +3655,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                model.Block.Content.Embed.Processor processor = 3;
+                model.Block.Content.Latex.Processor processor = 3;
             }
 
             message Response {

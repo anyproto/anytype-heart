@@ -513,7 +513,7 @@ type ClientCommandsHandler interface {
 	BlockRelationSetKey(context.Context, *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse
 	BlockRelationAdd(context.Context, *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse
 	BlockDivListSetStyle(context.Context, *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse
-	BlockEmbedSetText(context.Context, *pb.RpcBlockEmbedSetTextRequest) *pb.RpcBlockEmbedSetTextResponse
+	BlockLatexSetText(context.Context, *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse
 	ProcessCancel(context.Context, *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
 	LogSend(context.Context, *pb.RpcLogSendRequest) *pb.RpcLogSendResponse
 	DebugTree(context.Context, *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse
@@ -4335,23 +4335,23 @@ func BlockDivListSetStyle(b []byte) (resp []byte) {
 	return resp
 }
 
-func BlockEmbedSetText(b []byte) (resp []byte) {
+func BlockLatexSetText(b []byte) (resp []byte) {
 	defer func() {
 		if PanicHandler != nil {
 			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockEmbedSetTextResponse{Error: &pb.RpcBlockEmbedSetTextResponseError{Code: pb.RpcBlockEmbedSetTextResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
+				resp, _ = (&pb.RpcBlockLatexSetTextResponse{Error: &pb.RpcBlockLatexSetTextResponseError{Code: pb.RpcBlockLatexSetTextResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
 				PanicHandler(r)
 			}
 		}
 	}()
 
-	in := new(pb.RpcBlockEmbedSetTextRequest)
+	in := new(pb.RpcBlockLatexSetTextRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockEmbedSetTextResponse{Error: &pb.RpcBlockEmbedSetTextResponseError{Code: pb.RpcBlockEmbedSetTextResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ = (&pb.RpcBlockLatexSetTextResponse{Error: &pb.RpcBlockLatexSetTextResponseError{Code: pb.RpcBlockLatexSetTextResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 
-	resp, _ = clientCommandsHandler.BlockEmbedSetText(context.Background(), in).Marshal()
+	resp, _ = clientCommandsHandler.BlockLatexSetText(context.Background(), in).Marshal()
 	return resp
 }
 
@@ -5001,8 +5001,8 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = BlockRelationAdd(data)
 		case "BlockDivListSetStyle":
 			cd = BlockDivListSetStyle(data)
-		case "BlockEmbedSetText":
-			cd = BlockEmbedSetText(data)
+		case "BlockLatexSetText":
+			cd = BlockLatexSetText(data)
 		case "ProcessCancel":
 			cd = ProcessCancel(data)
 		case "LogSend":

@@ -804,10 +804,10 @@ func (mw *Middleware) BlockTextSetText(cctx context.Context, req *pb.RpcBlockTex
 	return response(pb.RpcBlockTextSetTextResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockEmbedSetText(cctx context.Context, req *pb.RpcBlockEmbedSetTextRequest) *pb.RpcBlockEmbedSetTextResponse {
+func (mw *Middleware) BlockLatexSetText(cctx context.Context, req *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcBlockEmbedSetTextResponseErrorCode, err error) *pb.RpcBlockEmbedSetTextResponse {
-		m := &pb.RpcBlockEmbedSetTextResponse{Error: &pb.RpcBlockEmbedSetTextResponseError{Code: code}}
+	response := func(code pb.RpcBlockLatexSetTextResponseErrorCode, err error) *pb.RpcBlockLatexSetTextResponse {
+		m := &pb.RpcBlockLatexSetTextResponse{Error: &pb.RpcBlockLatexSetTextResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -816,12 +816,12 @@ func (mw *Middleware) BlockEmbedSetText(cctx context.Context, req *pb.RpcBlockEm
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetEmbedText(ctx, *req)
+		return bs.SetLatexText(ctx, *req)
 	})
 	if err != nil {
-		return response(pb.RpcBlockEmbedSetTextResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcBlockLatexSetTextResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockEmbedSetTextResponseError_NULL, nil)
+	return response(pb.RpcBlockLatexSetTextResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockTextSetStyle(cctx context.Context, req *pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse {

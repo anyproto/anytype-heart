@@ -225,10 +225,10 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockSetEmbed:
-		if err = apply(o.BlockSetEmbed.Id, func(b simple.Block) error {
+	case *pb.EventMessageValueOfBlockSetLatex:
+		if err = apply(o.BlockSetLatex.Id, func(b simple.Block) error {
 			if f, ok := b.(embed.Block); ok {
-				return f.ApplyEvent(o.BlockSetEmbed)
+				return f.ApplyEvent(o.BlockSetLatex)
 			}
 			return fmt.Errorf("not an embed block")
 		}); err != nil {
