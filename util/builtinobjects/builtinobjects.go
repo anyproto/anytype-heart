@@ -21,8 +21,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/gallery"
+	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -146,6 +148,7 @@ type builtinObjects struct {
 	tempDirService core.TempDirProvider
 	spaceService   space.Service
 	progress       process.Service
+	notifications  notifications.Notifications
 }
 
 func New() BuiltinObjects {
@@ -159,6 +162,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	b.spaceService = app.MustComponent[space.Service](a)
 	b.progress = a.MustComponent(process.CName).(process.Service)
+	b.notifications = app.MustComponent[notifications.Notifications](a)
 	return
 }
 
@@ -214,13 +218,24 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}()
 	}
 
-	if err = b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace); err != nil {
-		return err
+	err = b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
+
+	notifErr := b.notifications.CreateAndSendLocal(&model.Notification{
+		Status:  model.Notification_Created,
+		IsLocal: true,
+		Space:   spaceID,
+		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
+			ProcessId: progress.Id(),
+			ErrorCode: common.GetImportErrorCode(err),
+			SpaceId:   spaceID,
+			Name:      title,
+		}},
+	})
+	if notifErr != nil {
+		log.Errorf("failed to send notification: %v", notifErr)
 	}
 
-	// TODO: handleMyHomepage support
-
-	return nil
+	return err
 }
 
 func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {

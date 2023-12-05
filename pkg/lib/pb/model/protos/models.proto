@@ -897,24 +897,15 @@ message Notification {
   oneof payload {
     Import import = 6;
     Export export = 8;
+    GalleryImport galleryImport = 9;
   }
   string space = 7;
   message Import {
     string processId = 1;
-    Code errorCode = 2;
+    model.Import.Code errorCode = 2;
     model.Import.Type importType = 3;
     string spaceId = 4;
     string name = 5;
-    enum Code {
-      NULL = 0;
-      UNKNOWN_ERROR = 1;
-      BAD_INPUT = 2;
-      INTERNAL_ERROR = 3;
-      NO_OBJECTS_TO_IMPORT = 5;
-      IMPORT_IS_CANCELED = 6;
-      LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
-      FILE_LOAD_ERROR = 8;
-    }
   }
   message Export {
     Code errorCode = 2;
@@ -924,6 +915,12 @@ message Notification {
       UNKNOWN_ERROR = 1;
       BAD_INPUT = 2;
     }
+  }
+  message GalleryImport {
+    string processId = 1;
+    model.Import.Code errorCode = 2;
+    string spaceId = 3;
+    string name = 4;
   }
   enum Status {
     Created = 0;
@@ -959,5 +956,15 @@ message Import{
     Html = 4;
     Txt = 5;
     Csv = 6;
+  }
+  enum Code {
+    NULL = 0;
+    UNKNOWN_ERROR = 1;
+    BAD_INPUT = 2;
+    INTERNAL_ERROR = 3;
+    NO_OBJECTS_TO_IMPORT = 5;
+    IMPORT_IS_CANCELED = 6;
+    LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
+    FILE_LOAD_ERROR = 8;
   }
 }
