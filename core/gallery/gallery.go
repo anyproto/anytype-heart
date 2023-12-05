@@ -33,11 +33,11 @@ var whitelist = map[string]*regexp.Regexp{
 	"gallery.any.coop":          regexp.MustCompile(`.*`),
 }
 
-func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
+func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
-	if !IsInWhitelist(url) {
+	if checkWhitelist && !IsInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
 	raw, err := getRawManifest(url)

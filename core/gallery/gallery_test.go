@@ -1,12 +1,20 @@
 package gallery
 
 import (
+	_ "embed"
+	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
+
+const port = ":7070"
+
+//go:embed testdata/schema.json
+var schemaJSON []byte
 
 func TestStripTags(t *testing.T) {
 	bareString := `Links:FooBarBaz`
@@ -26,24 +34,22 @@ func TestIsInWhitelist(t *testing.T) {
 	assert.True(t, IsInWhitelist("anytype://gallery.any.coop/"))
 }
 
-func TestDownloadManifest(t *testing.T) {
+func TestDownloadManifestAndValidateSchema(t *testing.T) {
+	schema := schemaResponse{Schema: "http://localhost" + port + "/schema.json"}
+	server := startHttpServer()
+	defer server.Shutdown(nil)
+
 	t.Run("download knowledge base manifest", func(t *testing.T) {
 		// given
-		url := "https://raw.githubusercontent.com/anyproto/gallery/main/experiences/knowledge_base/manifest.json"
+		url := "http://localhost" + port + "/manifest.json"
 
 		// when
-		info, err := DownloadManifest(url)
+		info, err := DownloadManifest(url, false)
 
 		// then
 		assert.NoError(t, err)
 		assert.NotNil(t, info)
 	})
-}
-
-// TODO: This bunch of tests depends on Schema content, so whether versioning must be supported or tests disabled
-func TestValidateSchema(t *testing.T) {
-	schema := schemaResponse{Schema: "https://gallery.any.coop/experience.schema.json"}
-
 	t.Run("provided info corresponds schema", func(t *testing.T) {
 		// given
 		info := buildInfo()
@@ -108,6 +114,23 @@ func TestValidateSchema(t *testing.T) {
 	})
 }
 
+func startHttpServer() *http.Server {
+	handler := http.NewServeMux()
+	handler.HandleFunc("/manifest.json", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		info := buildInfo()
+		rawInfo, _ := json.Marshal(info)
+		_, _ = w.Write(rawInfo)
+	})
+	handler.HandleFunc("/schema.json", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(schemaJSON)
+	})
+	server := &http.Server{Addr: port, Handler: handler}
+	go server.ListenAndServe()
+	return server
+}
+
 func buildInfo() *pb.RpcDownloadManifestResponseManifestInfo {
 	return &pb.RpcDownloadManifestResponseManifestInfo{
 		Id:           "id",
@@ -119,7 +142,7 @@ func buildInfo() *pb.RpcDownloadManifestResponseManifestInfo {
 		Screenshots:  []string{"https://anytype.io/assets/usecases/Knowledge%20base.jpg", "https://anytype.io/assets/usecases/Knowledge%20base_movie.jpg"},
 		DownloadLink: "https://github.com/anyproto/gallery/raw/main/experiences/knowledge_base/knowledge_base.zip",
 		FileSize:     42,
-		Categories:   []string{"Education", "Hobbies"},
+		Categories:   []string{"Education", "Work"},
 		Language:     "hi-IN",
 	}
 }
