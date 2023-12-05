@@ -317,15 +317,6 @@
     - [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request)
     - [Rpc.BlockDiv.ListSetStyle.Response](#anytype-Rpc-BlockDiv-ListSetStyle-Response)
     - [Rpc.BlockDiv.ListSetStyle.Response.Error](#anytype-Rpc-BlockDiv-ListSetStyle-Response-Error)
-    - [Rpc.BlockLatex](#anytype-Rpc-BlockLatex)
-    - [Rpc.BlockLatex.SetProcessor](#anytype-Rpc-BlockLatex-SetProcessor)
-    - [Rpc.BlockLatex.SetProcessor.Request](#anytype-Rpc-BlockLatex-SetProcessor-Request)
-    - [Rpc.BlockLatex.SetProcessor.Response](#anytype-Rpc-BlockLatex-SetProcessor-Response)
-    - [Rpc.BlockLatex.SetProcessor.Response.Error](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error)
-    - [Rpc.BlockLatex.SetText](#anytype-Rpc-BlockLatex-SetText)
-    - [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request)
-    - [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response)
-    - [Rpc.BlockLatex.SetText.Response.Error](#anytype-Rpc-BlockLatex-SetText-Response-Error)
     - [Rpc.BlockFile](#anytype-Rpc-BlockFile)
     - [Rpc.BlockFile.CreateAndUpload](#anytype-Rpc-BlockFile-CreateAndUpload)
     - [Rpc.BlockFile.CreateAndUpload.Request](#anytype-Rpc-BlockFile-CreateAndUpload-Request)
@@ -348,6 +339,15 @@
     - [Rpc.BlockImage.SetWidth.Request](#anytype-Rpc-BlockImage-SetWidth-Request)
     - [Rpc.BlockImage.SetWidth.Response](#anytype-Rpc-BlockImage-SetWidth-Response)
     - [Rpc.BlockImage.SetWidth.Response.Error](#anytype-Rpc-BlockImage-SetWidth-Response-Error)
+    - [Rpc.BlockLatex](#anytype-Rpc-BlockLatex)
+    - [Rpc.BlockLatex.SetProcessor](#anytype-Rpc-BlockLatex-SetProcessor)
+    - [Rpc.BlockLatex.SetProcessor.Request](#anytype-Rpc-BlockLatex-SetProcessor-Request)
+    - [Rpc.BlockLatex.SetProcessor.Response](#anytype-Rpc-BlockLatex-SetProcessor-Response)
+    - [Rpc.BlockLatex.SetProcessor.Response.Error](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error)
+    - [Rpc.BlockLatex.SetText](#anytype-Rpc-BlockLatex-SetText)
+    - [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request)
+    - [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response)
+    - [Rpc.BlockLatex.SetText.Response.Error](#anytype-Rpc-BlockLatex-SetText-Response-Error)
     - [Rpc.BlockLink](#anytype-Rpc-BlockLink)
     - [Rpc.BlockLink.CreateWithObject](#anytype-Rpc-BlockLink-CreateWithObject)
     - [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request)
@@ -1027,13 +1027,13 @@
     - [Rpc.BlockDataview.ViewRelation.Replace.Response.Error.Code](#anytype-Rpc-BlockDataview-ViewRelation-Replace-Response-Error-Code)
     - [Rpc.BlockDataview.ViewRelation.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-ViewRelation-Sort-Response-Error-Code)
     - [Rpc.BlockDiv.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockDiv-ListSetStyle-Response-Error-Code)
-    - [Rpc.BlockLatex.SetProcessor.Response.Error.Code](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error-Code)
-    - [Rpc.BlockLatex.SetText.Response.Error.Code](#anytype-Rpc-BlockLatex-SetText-Response-Error-Code)
     - [Rpc.BlockFile.CreateAndUpload.Response.Error.Code](#anytype-Rpc-BlockFile-CreateAndUpload-Response-Error-Code)
     - [Rpc.BlockFile.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockFile-ListSetStyle-Response-Error-Code)
     - [Rpc.BlockFile.SetName.Response.Error.Code](#anytype-Rpc-BlockFile-SetName-Response-Error-Code)
     - [Rpc.BlockImage.SetName.Response.Error.Code](#anytype-Rpc-BlockImage-SetName-Response-Error-Code)
     - [Rpc.BlockImage.SetWidth.Response.Error.Code](#anytype-Rpc-BlockImage-SetWidth-Response-Error-Code)
+    - [Rpc.BlockLatex.SetProcessor.Response.Error.Code](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error-Code)
+    - [Rpc.BlockLatex.SetText.Response.Error.Code](#anytype-Rpc-BlockLatex-SetText-Response-Error-Code)
     - [Rpc.BlockLink.CreateWithObject.Response.Error.Code](#anytype-Rpc-BlockLink-CreateWithObject-Response-Error-Code)
     - [Rpc.BlockLink.ListSetAppearance.Response.Error.Code](#anytype-Rpc-BlockLink-ListSetAppearance-Response-Error-Code)
     - [Rpc.BlockRelation.Add.Response.Error.Code](#anytype-Rpc-BlockRelation-Add-Response-Error-Code)
@@ -1282,9 +1282,6 @@
     - [Event.Block.Set.ChildrenIds](#anytype-Event-Block-Set-ChildrenIds)
     - [Event.Block.Set.Div](#anytype-Event-Block-Set-Div)
     - [Event.Block.Set.Div.Style](#anytype-Event-Block-Set-Div-Style)
-    - [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex)
-    - [Event.Block.Set.Latex.Processor](#anytype-Event-Block-Set-Latex-Processor)
-    - [Event.Block.Set.Latex.Text](#anytype-Event-Block-Set-Latex-Text)
     - [Event.Block.Set.Fields](#anytype-Event-Block-Set-Fields)
     - [Event.Block.Set.File](#anytype-Event-Block-Set-File)
     - [Event.Block.Set.File.Hash](#anytype-Event-Block-Set-File-Hash)
@@ -1295,6 +1292,9 @@
     - [Event.Block.Set.File.Style](#anytype-Event-Block-Set-File-Style)
     - [Event.Block.Set.File.Type](#anytype-Event-Block-Set-File-Type)
     - [Event.Block.Set.File.Width](#anytype-Event-Block-Set-File-Width)
+    - [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex)
+    - [Event.Block.Set.Latex.Processor](#anytype-Event-Block-Set-Latex-Processor)
+    - [Event.Block.Set.Latex.Text](#anytype-Event-Block-Set-Latex-Text)
     - [Event.Block.Set.Link](#anytype-Event-Block-Set-Link)
     - [Event.Block.Set.Link.CardStyle](#anytype-Event-Block-Set-Link-CardStyle)
     - [Event.Block.Set.Link.Description](#anytype-Event-Block-Set-Link-Description)
@@ -1412,10 +1412,10 @@
     - [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View)
     - [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup)
     - [Block.Content.Div](#anytype-model-Block-Content-Div)
-    - [Block.Content.Latex](#anytype-model-Block-Content-Latex)
     - [Block.Content.FeaturedRelations](#anytype-model-Block-Content-FeaturedRelations)
     - [Block.Content.File](#anytype-model-Block-Content-File)
     - [Block.Content.Icon](#anytype-model-Block-Content-Icon)
+    - [Block.Content.Latex](#anytype-model-Block-Content-Latex)
     - [Block.Content.Layout](#anytype-model-Block-Content-Layout)
     - [Block.Content.Link](#anytype-model-Block-Content-Link)
     - [Block.Content.Relation](#anytype-model-Block-Content-Relation)
@@ -1472,10 +1472,10 @@
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
     - [Block.Content.Dataview.View.Type](#anytype-model-Block-Content-Dataview-View-Type)
     - [Block.Content.Div.Style](#anytype-model-Block-Content-Div-Style)
-    - [Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor)
     - [Block.Content.File.State](#anytype-model-Block-Content-File-State)
     - [Block.Content.File.Style](#anytype-model-Block-Content-File-Style)
     - [Block.Content.File.Type](#anytype-model-Block-Content-File-Type)
+    - [Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor)
     - [Block.Content.Layout.Style](#anytype-model-Block-Content-Layout-Style)
     - [Block.Content.Link.CardStyle](#anytype-model-Block-Content-Link-CardStyle)
     - [Block.Content.Link.Description](#anytype-model-Block-Content-Link-Description)
@@ -6305,135 +6305,6 @@ set the current active view (persisted only within a session)
 
 
 
-<a name="anytype-Rpc-BlockLatex"></a>
-
-### Rpc.BlockLatex
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetProcessor"></a>
-
-### Rpc.BlockLatex.SetProcessor
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetProcessor-Request"></a>
-
-### Rpc.BlockLatex.SetProcessor.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| processor | [model.Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetProcessor-Response"></a>
-
-### Rpc.BlockLatex.SetProcessor.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockLatex.SetProcessor.Response.Error](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetProcessor-Response-Error"></a>
-
-### Rpc.BlockLatex.SetProcessor.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockLatex.SetProcessor.Response.Error.Code](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText"></a>
-
-### Rpc.BlockLatex.SetText
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText-Request"></a>
-
-### Rpc.BlockLatex.SetText.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| text | [string](#string) |  |  |
-| processor | [model.Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText-Response"></a>
-
-### Rpc.BlockLatex.SetText.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockLatex.SetText.Response.Error](#anytype-Rpc-BlockLatex-SetText-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText-Response-Error"></a>
-
-### Rpc.BlockLatex.SetText.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockLatex.SetText.Response.Error.Code](#anytype-Rpc-BlockLatex-SetText-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-BlockFile"></a>
 
 ### Rpc.BlockFile
@@ -6744,6 +6615,135 @@ set the current active view (persisted only within a session)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockImage.SetWidth.Response.Error.Code](#anytype-Rpc-BlockImage-SetWidth-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex"></a>
+
+### Rpc.BlockLatex
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetProcessor"></a>
+
+### Rpc.BlockLatex.SetProcessor
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetProcessor-Request"></a>
+
+### Rpc.BlockLatex.SetProcessor.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| processor | [model.Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetProcessor-Response"></a>
+
+### Rpc.BlockLatex.SetProcessor.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockLatex.SetProcessor.Response.Error](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetProcessor-Response-Error"></a>
+
+### Rpc.BlockLatex.SetProcessor.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockLatex.SetProcessor.Response.Error.Code](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetText"></a>
+
+### Rpc.BlockLatex.SetText
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetText-Request"></a>
+
+### Rpc.BlockLatex.SetText.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| text | [string](#string) |  |  |
+| processor | [model.Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetText-Response"></a>
+
+### Rpc.BlockLatex.SetText.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockLatex.SetText.Response.Error](#anytype-Rpc-BlockLatex-SetText-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetText-Response-Error"></a>
+
+### Rpc.BlockLatex.SetText.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockLatex.SetText.Response.Error.Code](#anytype-Rpc-BlockLatex-SetText-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -16557,32 +16557,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockLatex-SetProcessor-Response-Error-Code"></a>
-
-### Rpc.BlockLatex.SetProcessor.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText-Response-Error-Code"></a>
-
-### Rpc.BlockLatex.SetText.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype-Rpc-BlockFile-CreateAndUpload-Response-Error-Code"></a>
 
 ### Rpc.BlockFile.CreateAndUpload.Response.Error.Code
@@ -16638,6 +16612,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockImage-SetWidth-Response-Error-Code"></a>
 
 ### Rpc.BlockImage.SetWidth.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetProcessor-Response-Error-Code"></a>
+
+### Rpc.BlockLatex.SetProcessor.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockLatex-SetText-Response-Error-Code"></a>
+
+### Rpc.BlockLatex.SetText.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -20149,53 +20149,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype-Event-Block-Set-Latex"></a>
-
-### Event.Block.Set.Latex
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| text | [Event.Block.Set.Latex.Text](#anytype-Event-Block-Set-Latex-Text) |  |  |
-| processor | [Event.Block.Set.Latex.Processor](#anytype-Event-Block-Set-Latex-Processor) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Block-Set-Latex-Processor"></a>
-
-### Event.Block.Set.Latex.Processor
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [model.Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Block-Set-Latex-Text"></a>
-
-### Event.Block.Set.Latex.Text
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Event-Block-Set-Fields"></a>
 
 ### Event.Block.Set.Fields
@@ -20348,6 +20301,53 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Latex"></a>
+
+### Event.Block.Set.Latex
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| text | [Event.Block.Set.Latex.Text](#anytype-Event-Block-Set-Latex-Text) |  |  |
+| processor | [Event.Block.Set.Latex.Processor](#anytype-Event-Block-Set-Latex-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Latex-Processor"></a>
+
+### Event.Block.Set.Latex.Processor
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Latex-Text"></a>
+
+### Event.Block.Set.Latex.Text
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
 
 
 
@@ -22259,22 +22259,6 @@ Divider: block, that contains only one horizontal thin line
 
 
 
-<a name="anytype-model-Block-Content-Latex"></a>
-
-### Block.Content.Latex
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| text | [string](#string) |  |  |
-| processor | [Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
-
-
-
-
-
-
 <a name="anytype-model-Block-Content-FeaturedRelations"></a>
 
 ### Block.Content.FeaturedRelations
@@ -22316,6 +22300,22 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Latex"></a>
+
+### Block.Content.Latex
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
+| processor | [Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
 
 
 
@@ -23215,18 +23215,6 @@ stored |
 
 
 
-<a name="anytype-model-Block-Content-Latex-Processor"></a>
-
-### Block.Content.Latex.Processor
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Latex | 0 |  |
-| Mermaid | 1 |  |
-
-
-
 <a name="anytype-model-Block-Content-File-State"></a>
 
 ### Block.Content.File.State
@@ -23248,9 +23236,9 @@ stored |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Auto | 0 | all types expect File and None has Latex style by default |
+| Auto | 0 | all types expect File and None has Embed style by default |
 | Link | 1 |  |
-| Latex | 2 |  |
+| Embed | 2 |  |
 
 
 
@@ -23267,6 +23255,24 @@ stored |
 | Video | 3 |  |
 | Audio | 4 |  |
 | PDF | 5 |  |
+
+
+
+<a name="anytype-model-Block-Content-Latex-Processor"></a>
+
+### Block.Content.Latex.Processor
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Latex | 0 |  |
+| Mermaid | 1 |  |
+| Chart | 2 |  |
+| Youtube | 3 |  |
+| Vimeo | 4 |  |
+| Soundcloud | 5 |  |
+| GoogleMaps | 6 |  |
+| Miro | 7 |  |
 
 
 

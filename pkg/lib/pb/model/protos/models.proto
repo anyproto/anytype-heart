@@ -497,7 +497,14 @@ message Block {
       enum Processor {
         Latex = 0;
         Mermaid = 1;
+        Chart = 2;
+        Youtube = 3;
+        Vimeo = 4;
+        Soundcloud = 5;
+        GoogleMaps = 6;
+        Miro = 7;
       }
+
     }
 
     message TableOfContents {
@@ -792,14 +799,14 @@ enum RelationFormat {
 }
 
 enum ObjectOrigin {
-    none = 0;
-    clipboard = 1;
-    dragAndDrop = 2;
-    import = 3;
-    webclipper = 4;
-    sharingExtension = 5;
-    usecase = 6;
-    builtin = 7;
+  none = 0;
+  clipboard = 1;
+  dragAndDrop = 2;
+  import = 3;
+  webclipper = 4;
+  sharingExtension = 5;
+  usecase = 6;
+  builtin = 7;
 }
 
 message RelationLink {
