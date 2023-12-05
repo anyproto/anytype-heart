@@ -62,19 +62,19 @@ func (u *SystemObjectUpdater) Close(_ context.Context) error {
 func (u *SystemObjectUpdater) updateSystemObjects() {
 	marketRels, err := u.store.ListAllRelations(addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
-		log.Errorf("failed to get relations from marketplace space")
+		log.Errorf("failed to get relations from marketplace space: %v", err)
 		return
 	}
 
 	marketTypes, err := u.listAllObjectTypes(addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
-		log.Errorf("failed to get object types from marketplace space")
+		log.Errorf("failed to get object types from marketplace space: %v", err)
 		return
 	}
 
 	spaceIds, err := u.storage.AllSpaceIds()
 	if err != nil {
-		log.Errorf("failed to get spaces ids from the storage")
+		log.Errorf("failed to get spaces ids from the storage: %v", err)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (u *SystemObjectUpdater) listAllObjectTypes(spaceId string) (map[string]*ty
 func (u *SystemObjectUpdater) updateSystemRelations(spaceId string, marketRels relationutils.Relations) {
 	rels, err := u.store.ListAllRelations(spaceId)
 	if err != nil {
-		log.Errorf("failed to get relations for space %s", spaceId)
+		log.Errorf("failed to get relations for space %s: %v", spaceId, err)
 		return
 	}
 
@@ -128,7 +128,7 @@ func (u *SystemObjectUpdater) updateSystemRelations(spaceId string, marketRels r
 			if err = getblock.Do(u.picker, rel.Id, func(sb basic.DetailsSettable) error {
 				return sb.SetDetails(nil, details, false)
 			}); err != nil {
-				log.Errorf("failed to update system relation %s in space %s", rel.Key, spaceId)
+				log.Errorf("failed to update system relation %s in space %s: %v", rel.Key, spaceId, err)
 			}
 		}
 	}
@@ -137,7 +137,7 @@ func (u *SystemObjectUpdater) updateSystemRelations(spaceId string, marketRels r
 func (u *SystemObjectUpdater) updateSystemObjectTypes(spaceId string, marketTypes map[string]*types.Struct) {
 	objectTypes, err := u.listAllObjectTypes(spaceId)
 	if err != nil {
-		log.Errorf("failed to get object types for space %s", spaceId)
+		log.Errorf("failed to get object types for space %s: %v", spaceId, err)
 		return
 	}
 
@@ -153,7 +153,7 @@ func (u *SystemObjectUpdater) updateSystemObjectTypes(spaceId string, marketType
 			if err = getblock.Do(u.picker, id, func(sb basic.DetailsSettable) error {
 				return sb.SetDetails(nil, details, false)
 			}); err != nil {
-				log.Errorf("failed to update system type %s in space %s", uk.InternalKey(), spaceId)
+				log.Errorf("failed to update system type %s in space %s: %v", uk.InternalKey(), spaceId, err)
 			}
 		}
 	}
