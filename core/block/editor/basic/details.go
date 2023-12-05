@@ -136,7 +136,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value
 			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
 		}
 		return nil
-	case model.RelationFormat_status:
+	case model.RelationFormat_select:
 		if _, ok := v.Kind.(*types.Value_StringValue); ok {
 
 		} else if _, ok := v.Kind.(*types.Value_ListValue); !ok {
@@ -149,7 +149,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value
 		}
 		return bs.validateOptions(r, vals)
 
-	case model.RelationFormat_tag:
+	case model.RelationFormat_multiselect:
 		if _, ok := v.Kind.(*types.Value_ListValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of list", v.Kind)
 		}
