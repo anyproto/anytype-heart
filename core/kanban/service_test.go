@@ -34,7 +34,7 @@ func Test_GrouperTags(t *testing.T) {
 		{
 			bundle.RelationKeyId:             pbtypes.String("tag1"),
 			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-tag"),
-			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_multiselect)),
+			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
 			bundle.RelationKeySpaceId:        pbtypes.String(""),
 		},
 	})
@@ -50,7 +50,7 @@ func Test_GrouperTags(t *testing.T) {
 		Fields: map[string]*types.Value{
 			"id":             pbtypes.String("rel-tag"),
 			"relationKey":    pbtypes.String("tag"),
-			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_multiselect)),
+			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_tag)),
 			"type":           pbtypes.String(bundle.TypeKeyRelation.URL()),
 			"layout":         pbtypes.Int64(int64(model.ObjectType_relation)),
 		},

@@ -92,7 +92,7 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 }
 
 func (ko *KeyOrder) handleTag(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
-	if ko.RelationFormat == model.RelationFormat_multiselect || ko.RelationFormat == model.RelationFormat_select {
+	if ko.RelationFormat == model.RelationFormat_tag || ko.RelationFormat == model.RelationFormat_status {
 		av = ko.GetOptionValue(av)
 		bv = ko.GetOptionValue(bv)
 	}
