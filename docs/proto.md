@@ -21960,7 +21960,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | dataview | [Block.Content.Dataview](#anytype-model-Block-Content-Dataview) |  |  |
 | relation | [Block.Content.Relation](#anytype-model-Block-Content-Relation) |  |  |
 | featuredRelations | [Block.Content.FeaturedRelations](#anytype-model-Block-Content-FeaturedRelations) |  |  |
-| Embed | [Block.Content.Embed](#anytype-model-Block-Content-Embed) |  |  |
+| latex | [Block.Content.Embed](#anytype-model-Block-Content-Embed) |  | todo: rename to embed |
 | tableOfContents | [Block.Content.TableOfContents](#anytype-model-Block-Content-TableOfContents) |  |  |
 | table | [Block.Content.Table](#anytype-model-Block-Content-Table) |  |  |
 | tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |

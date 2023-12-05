@@ -106,8 +106,8 @@ func (h *MD) render(buf writer, in *renderState, b *model.Block) {
 		h.renderLayout(buf, in, b)
 	case *model.BlockContentOfLink:
 		h.renderLink(buf, in, b)
-	case *model.BlockContentOfEmbed:
-		h.renderLatex(buf, in, b)
+	case *model.BlockContentOfLatex:
+		h.renderEmbed(buf, in, b)
 	case *model.BlockContentOfTable:
 		h.renderTable(buf, in, b)
 	default:
@@ -272,8 +272,8 @@ func (h *MD) renderLink(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderLatex(buf writer, in *renderState, b *model.Block) {
-	l := b.GetEmbed()
+func (h *MD) renderEmbed(buf writer, in *renderState, b *model.Block) {
+	l := b.GetLatex()
 	if l != nil {
 		buf.WriteString(in.indent)
 		fmt.Fprintf(buf, "\n$$\n%s\n$$\n", l.Text)

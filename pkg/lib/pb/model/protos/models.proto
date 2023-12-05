@@ -69,7 +69,7 @@ message Block {
     Content.Dataview dataview = 21;
     Content.Relation relation = 22;
     Content.FeaturedRelations featuredRelations = 23;
-    Content.Embed Embed = 24;
+    Content.Embed latex = 24; // todo: rename to embed
     Content.TableOfContents tableOfContents = 25;
     Content.Table table = 26;
     Content.TableColumn tableColumn = 27;

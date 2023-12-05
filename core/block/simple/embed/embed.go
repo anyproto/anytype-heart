@@ -15,7 +15,7 @@ func init() {
 }
 
 func NewEmbed(m *model.Block) simple.Block {
-	if embed := m.GetEmbed(); embed != nil {
+	if embed := m.GetLatex(); embed != nil {
 		return &Embed{
 			Base:    base.NewBase(m).(*base.Base),
 			content: embed,
@@ -41,7 +41,7 @@ func (l *Embed) Copy() simple.Block {
 	copy := pbtypes.CopyBlock(l.Model())
 	return &Embed{
 		Base:    base.NewBase(copy).(*base.Base),
-		content: copy.GetEmbed(),
+		content: copy.GetLatex(),
 	}
 }
 
