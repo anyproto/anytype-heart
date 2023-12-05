@@ -67,7 +67,7 @@ func TestRelations_New_Account(t *testing.T) {
 
 	relName := "test_str"
 	relDesc := "test_str_desc"
-	relFormat := model.RelationFormat_tag
+	relFormat := model.RelationFormat_multiselect
 	respRelationCreate := mw.ObjectCreateRelation(context.Background(), &pb.RpcObjectCreateRelationRequest{
 		Details: &types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyRelationFormat.String(): pbtypes.Float64(float64(relFormat)),

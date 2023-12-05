@@ -139,11 +139,11 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 		},
 		{
 			Key:    "relation2",
-			Format: model.RelationFormat_tag,
+			Format: model.RelationFormat_multiselect,
 		},
 		{
 			Key:    "relation3",
-			Format: model.RelationFormat_status,
+			Format: model.RelationFormat_select,
 		},
 		{
 			Key:    "relation4",
@@ -215,11 +215,11 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 		},
 		{
 			Key:    "relation2",
-			Format: model.RelationFormat_tag,
+			Format: model.RelationFormat_multiselect,
 		},
 		{
 			Key:    "relation3",
-			Format: model.RelationFormat_status,
+			Format: model.RelationFormat_select,
 		},
 		{
 			Key:    "relation4",

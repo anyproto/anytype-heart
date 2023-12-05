@@ -394,7 +394,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brcategory",
 			Key:              "category",
 			Name:             "Category",
@@ -418,7 +418,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brclassType",
 			Key:              "classType",
 			Name:             "Class type",
@@ -777,7 +777,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_status,
+			Format:           model.RelationFormat_select,
 			Id:               "_brgender",
 			Key:              "gender",
 			MaxCount:         1,
@@ -790,7 +790,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brgenre",
 			Key:              "genre",
 			Name:             "Genre",
@@ -1289,7 +1289,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brmood",
 			Key:              "mood",
 			Name:             "Mood",
@@ -1956,7 +1956,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Task status",
-			Format:           model.RelationFormat_status,
+			Format:           model.RelationFormat_select,
 			Id:               "_brstatus",
 			Key:              "status",
 			MaxCount:         1,
@@ -1969,7 +1969,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brtag",
 			Key:              "tag",
 			Name:             "Tag",

@@ -271,7 +271,7 @@ message Rpc {
                 option (no_auth) = true;
 
                 string name = 1; // Account name
-                oneof avatar { //TODO: Remove if not needed, GO-1926
+                oneof avatar {//TODO: Remove if not needed, GO-1926
                     string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
                 }
                 string storePath = 3; // Path to local storage
@@ -540,7 +540,7 @@ message Rpc {
             }
         }
 
-        message GetConfig { //TODO: Remove this request if we do not need it, GO-1926
+        message GetConfig {//TODO: Remove this request if we do not need it, GO-1926
             message Get {
                 message Request {
                 }
@@ -1878,7 +1878,7 @@ message Rpc {
                 // ids of documents for export, when empty - will export all available docs
                 repeated string objectIds = 2;
                 // export format
-                Format format = 3;
+                anytype.model.Export.Format format = 3;
                 // save as zip file
                 bool zip = 4;
                 // include all nested
@@ -1910,14 +1910,6 @@ message Rpc {
                 }
             }
 
-            enum Format {
-                Markdown = 0;
-                Protobuf = 1;
-                JSON = 2;
-                DOT = 3;
-                SVG = 4;
-                GRAPH_JSON = 5;
-            }
         }
 
         message Import {
@@ -1935,7 +1927,7 @@ message Rpc {
                 }
                 repeated Snapshot snapshots = 8; // optional, for external developers usage
                 bool updateExistingObjects = 9;
-                Type type = 10;
+                anytype.model.Import.Type type = 10;
                 Mode mode = 11;
                 bool noProgress = 12;
                 bool isMigration = 13;
@@ -1990,19 +1982,9 @@ message Rpc {
                 };
 
                 message Snapshot {
-                    string id = 1; 
+                    string id = 1;
                     anytype.model.SmartBlockSnapshotBase snapshot = 2;
                 };
-                enum Type {
-                    Notion = 0;
-                    Markdown = 1; 
-                    External = 2; // external developers use it
-                    Pb = 3;
-                    Html = 4;
-                    Txt = 5;
-                    Csv = 6;
-                };
-
             }
 
             message Response {
@@ -2012,7 +1994,7 @@ message Rpc {
                 message Error {
                     Code code = 1;
                     string description = 2;
-                    
+
                     enum Code {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
@@ -2065,7 +2047,7 @@ message Rpc {
                 message Error {
                     Code code = 1;
                     string description = 2;
-                    
+
                     enum Code {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
@@ -2073,10 +2055,10 @@ message Rpc {
                         INTERNAL_ERROR = 3;
                     }
                 }
-                
+
             }
             message ImportResponse {
-                Type type = 1; 
+                Type type = 1;
                 enum Type {
                     Notion = 0;
                     Markdown = 1;
@@ -2383,7 +2365,7 @@ message Rpc {
     }
 
     message Relation {
-         message ListRemoveOption {
+        message ListRemoveOption {
             message Request {
                 repeated string optionIds = 1;
                 bool checkInObjects = 2;
@@ -2653,7 +2635,7 @@ message Rpc {
 
                 message Usage {
                     uint64 filesCount = 1;
-                    uint64 cidsCount  = 2;
+                    uint64 cidsCount = 2;
                     uint64 bytesUsage = 3;
                     uint64 bytesLeft = 4;
                     uint64 bytesLimit = 5;
@@ -2684,7 +2666,7 @@ message Rpc {
 
                 message Usage {
                     uint64 filesCount = 1;
-                    uint64 cidsCount  = 2;
+                    uint64 cidsCount = 2;
                     uint64 bytesUsage = 3;
                     uint64 bytesLeft = 4;
                     uint64 bytesLimit = 5;
@@ -2694,7 +2676,7 @@ message Rpc {
                 message Space {
                     string spaceId = 1;
                     uint64 filesCount = 2;
-                    uint64 cidsCount  = 3;
+                    uint64 cidsCount = 3;
                     uint64 bytesUsage = 4;
                 }
 
@@ -5727,12 +5709,35 @@ message Rpc {
         }
     }
 
-    message UserData {
-        message Dump {
+    message Notification {
+        message List {
             message Request {
-                string path = 1;
+                bool includeRead = 1;
+                int64 limit = 2;
             }
+            message Response {
+                Error error = 1;
+                repeated anytype.model.Notification notifications = 2;
 
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        INTERNAL_ERROR = 3;
+                    }
+                }
+            }
+        }
+
+        message Reply {
+            message Request {
+                repeated string ids = 1;
+                anytype.model.Notification.ActionType actionType = 2;
+            }
             message Response {
                 Error error = 1;
 
@@ -5744,6 +5749,7 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+                        INTERNAL_ERROR = 3;
                     }
                 }
             }
