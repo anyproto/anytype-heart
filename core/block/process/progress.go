@@ -13,6 +13,7 @@ import (
 type Progress interface {
 	Process
 	SetTotal(total int64)
+	SetTotalPreservingRatio(total int64)
 	SetDone(done int64)
 	AddDone(delta int64)
 	SetProgressMessage(msg string)
@@ -45,6 +46,19 @@ type progress struct {
 }
 
 func (p *progress) SetTotal(total int64) {
+	atomic.StoreInt64(&p.totalCount, total)
+}
+
+// SetTotalPreservingRatio sets total in case current done is 0. Otherwise, it increases total and done the way
+// 1. Their ratio is kept the same.   2. newTotal - newDone = total (function argument)
+func (p *progress) SetTotalPreservingRatio(total int64) {
+	done := atomic.LoadInt64(&p.doneCount)
+	currentTotal := atomic.LoadInt64(&p.totalCount)
+	if done != 0 && done < currentTotal {
+		left := currentTotal - done
+		atomic.StoreInt64(&p.doneCount, done*total/left)
+		total = currentTotal * total / left
+	}
 	atomic.StoreInt64(&p.totalCount, total)
 }
 

@@ -41,6 +41,9 @@ func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, spa
 
 func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.State) {
 	for _, rel := range s.GetRelationLinks() {
+		if rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+			continue
+		}
 		if rel.Key == bundle.RelationKeySourceObject.String() {
 			// migrate broken sourceObject after v0.29.11
 			// todo: remove this
@@ -213,8 +216,8 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockCo
 func (m *subObjectsAndProfileLinksMigration) canRelationContainObjectValues(format model.RelationFormat) bool {
 	switch format {
 	case
-		model.RelationFormat_status,
-		model.RelationFormat_tag,
+		model.RelationFormat_select,
+		model.RelationFormat_multiselect,
 		model.RelationFormat_object:
 		return true
 	default:

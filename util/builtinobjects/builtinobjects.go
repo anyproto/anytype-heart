@@ -10,14 +10,19 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -30,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 const (
@@ -38,6 +44,10 @@ const (
 
 	migrationUseCase       = -1
 	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
+
+	contentLengthHeader        = "Content-Length"
+	archiveDownloadingPercents = 30
+	archiveCopyingPercents     = 10
 )
 
 type widgetParameters struct {
@@ -125,7 +135,7 @@ type BuiltinObjects interface {
 	app.Component
 
 	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-	CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error)
+	CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, newSpace bool) (err error)
 	InjectMigrationDashboard(spaceID string) error
 }
 
@@ -135,6 +145,7 @@ type builtinObjects struct {
 	store          objectstore.ObjectStore
 	tempDirService core.TempDirProvider
 	spaceService   space.Service
+	progress       process.Service
 }
 
 func New() BuiltinObjects {
@@ -147,6 +158,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	b.spaceService = app.MustComponent[space.Service](a)
+	b.progress = a.MustComponent(process.CName).(process.Service)
 	return
 }
 
@@ -181,43 +193,28 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error) {
-	if isLocal {
-		return b.importArchive(ctx, spaceID, source)
-	}
-	// nolint: gosec
-	resp, err := http.Get(source)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch experience: not OK status code: %s", resp.Status)
-	}
-	defer func() {
-		if err = resp.Body.Close(); err != nil {
-			log.Errorf("failed to close response bode while downloading experience from '%s': %v", source, err)
+func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, isNewSpace bool) (err error) {
+	var (
+		path     string
+		progress process.Progress
+	)
+	if _, err = os.Stat(url); err == nil {
+		path = url
+	} else {
+		if progress, err = b.setupProgress(); err != nil {
+			return err
 		}
-	}()
-
-	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-	out, err := os.Create(path)
-	if err != nil {
-		return oserror.TransformError(err)
-	}
-	defer func() {
-		if err = out.Close(); err != nil {
-			log.Errorf("failed to close temporary file while downloading experience from '%s': %v", source, err)
+		if path, err = b.downloadZipToFile(url, progress); err != nil {
+			return err
 		}
-		if err = os.Remove(path); err != nil {
-			log.Errorf("failed to remove temporary file: %v", oserror.TransformError(err))
-		}
-	}()
-
-	if _, err = io.Copy(out, resp.Body); err != nil {
-		return err
+		defer func() {
+			if rmErr := os.Remove(path); rmErr != nil {
+				log.Errorf("failed to remove temporary file: %v", oserror.TransformError(rmErr))
+			}
+		}()
 	}
 
-	if err = b.importArchive(ctx, spaceID, path); err != nil {
+	if err = b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace); err != nil {
 		return err
 	}
 
@@ -236,7 +233,13 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		return fmt.Errorf("failed to save use case archive to temporary file: %w", err)
 	}
 
-	if err = b.importArchive(context.Background(), spaceID, path); err != nil {
+	defer func() {
+		if rmErr := os.Remove(path); rmErr != nil {
+			log.Errorf("failed to remove temporary file: %v", oserror.TransformError(rmErr))
+		}
+	}()
+
+	if err = b.importArchive(context.Background(), spaceID, path, "", pb.RpcObjectImportRequestPbParams_SPACE, nil, false); err != nil {
 		return err
 	}
 
@@ -265,28 +268,25 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string) (err error) {
-	if _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+func (b *builtinObjects) importArchive(ctx context.Context, spaceID, path, title string, importType pb.RpcObjectImportRequestPbParamsType, progress process.Progress, isNewSpace bool) (err error) {
+	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
-		NoProgress:            true,
+		NoProgress:            progress == nil,
 		IsMigration:           false,
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
 			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path:         []string{path},
-				NoCollection: true,
+				Path:            []string{path},
+				NoCollection:    true,
+				CollectionTitle: title,
+				ImportType:      importType,
 			}},
-	}, model.ObjectOrigin_usecase); err != nil {
-		return err
-	}
+		IsNewSpace: isNewSpace,
+	}, model.ObjectOrigin_usecase, progress)
 
-	if err = os.Remove(path); err != nil {
-		log.Errorf("failed to remove temporary file: %s", err)
-	}
-
-	return nil
+	return err
 }
 
 func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err error) {
@@ -422,4 +422,98 @@ func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string
 		return ids[0], nil
 	}
 	return "", err
+}
+
+func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress) (path string, err error) {
+	if err = uri.ValidateURI(url); err != nil {
+		return "", fmt.Errorf("provided URL is not valid: %w", err)
+	}
+	if !gallery.IsInWhitelist(url) {
+		return "", fmt.Errorf("provided URL is not in whitelist")
+	}
+
+	var (
+		countReader *datacounter.ReaderCounter
+		size        int64
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	readerMutex := sync.Mutex{}
+	defer cancel()
+	go func() {
+		counter := int64(0)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-progress.Canceled():
+				cancel()
+			case <-time.After(time.Second):
+				readerMutex.Lock()
+				if countReader != nil && size != 0 {
+					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*countReader.Count())/size)
+				} else if counter < archiveDownloadingPercents {
+					counter++
+					progress.SetDone(counter)
+				}
+				readerMutex.Unlock()
+			}
+		}
+	}()
+
+	var reader io.ReadCloser
+	reader, size, err = getArchiveReaderAndSize(url)
+	if err != nil {
+		return "", err
+	}
+	defer reader.Close()
+	readerMutex.Lock()
+	countReader = datacounter.NewReaderCounter(reader)
+	readerMutex.Unlock()
+
+	path = filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	var out *os.File
+	out, err = os.Create(path)
+	if err != nil {
+		return "", oserror.TransformError(err)
+	}
+	defer out.Close()
+
+	if _, err = io.Copy(out, countReader); err != nil {
+		return "", err
+	}
+
+	progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents)
+	return path, nil
+}
+
+func (b *builtinObjects) setupProgress() (process.Progress, error) {
+	progress := process.NewProgress(pb.ModelProcess_Import)
+	if err := b.progress.Add(progress); err != nil {
+		return nil, fmt.Errorf("failed to add progress bar: %w", err)
+	}
+	progress.SetProgressMessage("downloading archive")
+	progress.SetTotal(100)
+	return progress, nil
+}
+
+func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err error) {
+	// nolint: gosec
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, 0, fmt.Errorf("failed to fetch zip file: not OK status code: %s", resp.Status)
+	}
+
+	contentLengthStr := resp.Header.Get(contentLengthHeader)
+	if size, err = strconv.ParseInt(contentLengthStr, 10, 64); err != nil {
+		resp.Body.Close()
+		return nil, 0, fmt.Errorf("failed to get zip size from Content-Length: %w", err)
+	}
+
+	return resp.Body, size, nil
 }

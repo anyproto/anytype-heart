@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -33,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -98,21 +100,34 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin) (string, error) {
+func (i *Import) Import(ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	origin model.ObjectOrigin,
+	progress process.Progress,
+) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
 	}
 	i.Lock()
 	defer i.Unlock()
-	progress := i.setupProgressBar(req)
-	var returnedErr error
+	isNewProgress := false
+	if progress == nil {
+		progress = i.setupProgressBar(req)
+		isNewProgress = true
+	}
+	var (
+		returnedErr error
+		importId    = uuid.New().String()
+	)
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
+		i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
 	}()
-	if i.s != nil && !req.GetNoProgress() {
+	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
+	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: req.Type.String()})
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
 		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
@@ -402,6 +417,10 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 		details[res.NewID] = res.Details
 	}
 	return details
+}
+
+func (i *Import) recordEvent(event metrics.EventRepresentable) {
+	metrics.SharedClient.RecordEvent(event)
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

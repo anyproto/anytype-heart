@@ -1103,6 +1103,7 @@
     - [Rpc.Object.Import.Notion.ValidateToken.Response.Error.Code](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error-Code)
     - [Rpc.Object.Import.Request.CsvParams.Mode](#anytype-Rpc-Object-Import-Request-CsvParams-Mode)
     - [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode)
+    - [Rpc.Object.Import.Request.PbParams.Type](#anytype-Rpc-Object-Import-Request-PbParams-Type)
     - [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type)
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
     - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
@@ -11259,6 +11260,7 @@ DEPRECATED, GO-1926 |
 | mode | [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode) |  |  |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
+| isNewSpace | [bool](#bool) |  |  |
 
 
 
@@ -11354,6 +11356,8 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
 | noCollection | [bool](#bool) |  |  |
+| collectionTitle | [string](#string) |  |  |
+| importType | [Rpc.Object.Import.Request.PbParams.Type](#anytype-Rpc-Object-Import-Request-PbParams-Type) |  |  |
 
 
 
@@ -11442,8 +11446,9 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| source | [string](#string) |  |  |
-| isLocal | [bool](#bool) |  |  |
+| url | [string](#string) |  |  |
+| title | [string](#string) |  |  |
+| isNewSpace | [bool](#bool) |  |  |
 
 
 
@@ -17507,6 +17512,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-Import-Request-PbParams-Type"></a>
+
+### Rpc.Object.Import.Request.PbParams.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SPACE | 0 |  |
+| EXPERIENCE | 1 |  |
+
+
+
 <a name="anytype-Rpc-Object-Import-Request-Type"></a>
 
 ### Rpc.Object.Import.Request.Type
@@ -17538,6 +17555,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_OBJECTS_TO_IMPORT | 5 |  |
 | IMPORT_IS_CANCELED | 6 |  |
 | LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| FILE_LOAD_ERROR | 8 |  |
 
 
 
@@ -22715,7 +22733,7 @@ stored |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
-| originalCreatedTimestamp | [int64](#int64) |  | original user-side object creation timestamp, e.g. from the file stat |
+| originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
 
 
 
@@ -23240,8 +23258,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | longtext | 0 | string |
 | shorttext | 1 | string, usually short enough. May be truncated in the future |
 | number | 2 | double |
-| status | 3 | string or list of string(len==1) |
-| tag | 11 | list of string (choose multiple from a list) |
+| select | 3 | string or list of string(len==1) |
+| multiselect | 11 | list of string (choose multiple from a list) |
 | date | 4 | float64(pb.Value doesn&#39;t have int64) or the string |
 | file | 5 | relation can has objects of specific types: file, image, audio, video |
 | checkbox | 6 | boolean |

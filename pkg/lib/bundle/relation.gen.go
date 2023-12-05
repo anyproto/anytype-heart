@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "d9bac6d7e7ac3918a327e29c65c2587817ac04a02098b4440e337d93a7ee5038"
+const RelationChecksum = "01bada97b5e9f3c9e0699a39689c79061ed668cc293e1aa3a255adb13ad16c9d"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -163,6 +163,7 @@ const (
 	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
+	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
 )
 
 var (
@@ -393,7 +394,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brcategory",
 			Key:              "category",
 			Name:             "Category",
@@ -417,7 +418,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brclassType",
 			Key:              "classType",
 			Name:             "Class type",
@@ -776,7 +777,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_status,
+			Format:           model.RelationFormat_select,
 			Id:               "_brgender",
 			Key:              "gender",
 			MaxCount:         1,
@@ -789,7 +790,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brgenre",
 			Key:              "genre",
 			Name:             "Genre",
@@ -1137,6 +1138,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyLastUsedDate: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Last time object type was used",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brlastUsedDate",
+			Key:              "lastUsedDate",
+			MaxCount:         1,
+			Name:             "Last Used date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyLayout: {
 
 			DataSource:       model.Relation_details,
@@ -1274,7 +1289,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brmood",
 			Key:              "mood",
 			Name:             "Mood",
@@ -1941,7 +1956,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Task status",
-			Format:           model.RelationFormat_status,
+			Format:           model.RelationFormat_select,
 			Id:               "_brstatus",
 			Key:              "status",
 			MaxCount:         1,
@@ -1954,7 +1969,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_multiselect,
 			Id:               "_brtag",
 			Key:              "tag",
 			Name:             "Tag",
