@@ -82,8 +82,8 @@ github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxB
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/andybalholm/cascadia v1.3.2 h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=
 github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6lUvCFb+h7KvU=
-github.com/anyproto/any-sync v0.3.11 h1:Y++bHerO8nAh1b1z/xUAoFFXXJ5UI7duSa0LRvmmFXc=
-github.com/anyproto/any-sync v0.3.11/go.mod h1:ZM/hfNni7fdzSYzDqSg8QyO1iIxWskWjYiykT1qaceo=
+github.com/anyproto/any-sync v0.3.14 h1:nOE9b1WdyY4+iDA6lZxPbn0dJKU103ota0cJ0ZEfQN8=
+github.com/anyproto/any-sync v0.3.14/go.mod h1:ZM/hfNni7fdzSYzDqSg8QyO1iIxWskWjYiykT1qaceo=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=
 github.com/anyproto/go-chash v0.1.0/go.mod h1:0UjNQi3PDazP0fINpFYu6VKhuna+W/V+1vpXHAfNgLY=
 github.com/anyproto/go-gelf v0.0.0-20210418191311-774bd5b016e7 h1:SyEu5uxZ5nKHEJ6TPKQqjM+T00SYi0MW1VaLzqZtZ9E=
