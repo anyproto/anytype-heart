@@ -896,6 +896,7 @@ message Notification {
   bool isLocal = 5;
   oneof payload {
     Import import = 6;
+    Export export = 8;
   }
   string space = 7;
   message Import {
@@ -915,6 +916,15 @@ message Notification {
       FILE_LOAD_ERROR = 8;
     }
   }
+  message Export {
+    Code errorCode = 2;
+    model.Export.Format exportType = 3;
+    enum Code {
+      NULL = 0;
+      UNKNOWN_ERROR = 1;
+      BAD_INPUT = 2;
+    }
+  }
   enum Status {
     Created = 0;
     Shown = 1;
@@ -930,6 +940,16 @@ message Notification {
   }
 }
 
+message Export {
+  enum Format {
+    Markdown = 0;
+    Protobuf = 1;
+    JSON = 2;
+    DOT = 3;
+    SVG = 4;
+    GRAPH_JSON = 5;
+  }
+}
 message Import{
   enum Type {
     Notion = 0;

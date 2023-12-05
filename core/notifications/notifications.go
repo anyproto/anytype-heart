@@ -2,8 +2,10 @@ package notifications
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,6 +48,9 @@ func (n *notificationService) Name() (name string) {
 }
 
 func (n *notificationService) CreateAndSendLocal(notification *model.Notification) error {
+	notification.Id = uuid.New().String()
+	notification.CreateTime = time.Now().Unix()
+
 	n.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{

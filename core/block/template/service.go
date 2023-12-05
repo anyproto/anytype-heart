@@ -287,7 +287,7 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	path, _, err = s.exporter.Export(ctx, pb.RpcObjectListExportRequest{
 		Path:      path,
 		ObjectIds: docIds,
-		Format:    pb.RpcObjectListExport_Protobuf,
+		Format:    model.Export_Protobuf,
 		Zip:       true,
 	})
 	return path, err
