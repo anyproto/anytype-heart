@@ -25,7 +25,10 @@ import (
 
 const CName = "systemobjectupdater"
 
-var log = logging.Logger("system-objects-updater")
+var (
+	log        = logging.Logger("system-objects-updater")
+	versionKey = bundle.RelationKeyVersion.String()
+)
 
 type SystemObjectUpdater struct {
 	app.ComponentRunnable
@@ -120,7 +123,7 @@ func (u *SystemObjectUpdater) updateSystemRelations(spaceId string, marketRels r
 
 	for _, rel := range rels.Models() {
 		marketRel := marketRels.GetModelByKey(rel.Key)
-		if marketRel == nil || !lo.Contains(bundle.SystemRelations, domain.RelationKey(rel.Key)) {
+		if marketRel == nil || !lo.Contains(bundle.SystemRelations, domain.RelationKey(rel.Key)) || marketRel.Version <= rel.Version {
 			continue
 		}
 		details := buildRelationDiffDetails(marketRel, rel)
@@ -145,7 +148,8 @@ func (u *SystemObjectUpdater) updateSystemObjectTypes(spaceId string, marketType
 		marketType, found := marketTypes[pbtypes.GetString(objectType, bundle.RelationKeySourceObject.String())]
 		rawKey := pbtypes.GetString(objectType, bundle.RelationKeyUniqueKey.String())
 		uk, err := domain.UnmarshalUniqueKey(rawKey)
-		if !found || err != nil || !lo.Contains(bundle.SystemTypes, domain.TypeKey(uk.InternalKey())) {
+		if !found || err != nil || !lo.Contains(bundle.SystemTypes, domain.TypeKey(uk.InternalKey())) ||
+			pbtypes.GetInt64(marketType, versionKey) <= pbtypes.GetInt64(objectType, versionKey) {
 			continue
 		}
 		details := buildTypeDiffDetails(marketType, objectType)
@@ -160,6 +164,11 @@ func (u *SystemObjectUpdater) updateSystemObjectTypes(spaceId string, marketType
 }
 
 func buildRelationDiffDetails(origin, current *model.Relation) (details []*pb.RpcObjectSetDetailsDetail) {
+	details = []*pb.RpcObjectSetDetailsDetail{{
+		Key:   bundle.RelationKeyVersion.String(),
+		Value: pbtypes.Int64(origin.Version),
+	}}
+
 	if origin.Name != current.Name {
 		details = append(details, &pb.RpcObjectSetDetailsDetail{
 			Key:   bundle.RelationKeyName.String(),
@@ -194,7 +203,8 @@ func buildRelationDiffDetails(origin, current *model.Relation) (details []*pb.Rp
 func buildTypeDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjectSetDetailsDetail) {
 	diff := pbtypes.StructDiff(current, origin)
 	diff = pbtypes.StructFilterKeys(diff, []string{
-		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(), bundle.RelationKeyIsHidden.String(),
+		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),
+		bundle.RelationKeyIsHidden.String(), bundle.RelationKeyVersion.String(),
 	})
 
 	for key, value := range diff.Fields {

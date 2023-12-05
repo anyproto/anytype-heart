@@ -22474,6 +22474,7 @@ Used to decode block meta only, without the content itself
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
 | installedByDefault | [bool](#bool) |  |  |
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
+| version | [int64](#int64) |  | version of system objectType. Used to check if we should change type content or not |
 
 
 
@@ -22596,6 +22597,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 scope from which this relation have been aggregated |
 | creator | [string](#string) |  | creator profile id |
+| version | [int64](#int64) |  | version of system relation. Used to check if we should change relation content or not |
 
 
 

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b010aba2f412a884cc7933757a3b560744674e19c7b316b97a6bc6db6c72639b"
+const RelationChecksum = "c283977a90e194fe2ad63c03dbb3de51fd3d8a23005553822dfedec3ad5e8938"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -164,6 +164,7 @@ const (
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
 	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
+	RelationKeyVersion                   domain.RelationKey = "version"
 )
 
 var (
@@ -349,6 +350,7 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
+			Version:          1,
 		},
 		RelationKeyBudget: {
 
@@ -1215,6 +1217,7 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
+			Version:          1,
 		},
 		RelationKeyLogic: {
 
@@ -2174,6 +2177,20 @@ var (
 			MaxCount:         1,
 			Name:             "User stories",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyVersion: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Version of system object",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brversion",
+			Key:              "version",
+			MaxCount:         1,
+			Name:             "Version",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

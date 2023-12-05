@@ -29,6 +29,7 @@ func RelationFromStruct(st *types.Struct) *Relation {
 			Description:      pbtypes.GetString(st, bundle.RelationKeyDescription.String()),
 			Scope:            model.RelationScope(pbtypes.GetFloat64(st, bundle.RelationKeyScope.String())),
 			Creator:          pbtypes.GetString(st, bundle.RelationKeyCreator.String()),
+			Version:          pbtypes.GetInt64(st, bundle.RelationKeyVersion.String()),
 		},
 	}
 }
@@ -64,6 +65,7 @@ func (r *Relation) ToStruct() *types.Struct {
 			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.BundledURL()),
 			// TODO Is it ok?
 			bundle.RelationKeyUniqueKey.String(): pbtypes.String(domain.RelationKey(r.GetKey()).URL()),
+			bundle.RelationKeyVersion.String():   pbtypes.Int64(r.GetVersion()),
 		},
 	}
 }
