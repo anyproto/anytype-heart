@@ -369,7 +369,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
 			u.fileStyle = model.BlockContentFile_Link
 		} else {
-			u.fileStyle = model.BlockContentFile_Latex
+			u.fileStyle = model.BlockContentFile_Embed
 		}
 	}
 	var opts = []files.AddOption{

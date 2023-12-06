@@ -78,7 +78,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: imagePath,
 				Type:      model.BlockContentFile_Image,
-				Style:     model.BlockContentFile_Latex,
+				Style:     model.BlockContentFile_Embed,
 			},
 		})
 		if err != nil {
