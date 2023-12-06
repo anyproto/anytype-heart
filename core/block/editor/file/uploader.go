@@ -383,7 +383,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		opts = append(opts, u.opts...)
 	}
 
-	if u.fileType == model.BlockContentFile_Image {
+	if u.fileType == model.BlockContentFile_Image && !(filepath.Ext(u.name) == files.SvgExt) {
 		im, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			e = nil
@@ -440,7 +440,7 @@ func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
 		return model.BlockContentFile_File
 	}
 	tp, _ := filetype.Match(b)
-	return file.DetectTypeByMIME(tp.MIME.Value)
+	return file.DetectTypeByMIME(u.name, tp.MIME.Value)
 }
 
 func (u *uploader) updateBlock() {

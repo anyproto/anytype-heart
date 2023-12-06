@@ -2,11 +2,13 @@ package file
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -170,7 +172,11 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	if e.Type != nil {
 		f.content.Type = e.Type.GetValue()
 		if f.content.Type == model.BlockContentFile_File {
-			f.content.Type = DetectTypeByMIME(f.content.GetMime())
+			name := f.content.Name
+			if e.Name != nil {
+				name = e.Name.GetValue()
+			}
+			f.content.Type = DetectTypeByMIME(name, f.content.GetMime())
 		}
 	}
 	if e.State != nil {
@@ -201,7 +207,10 @@ func (f *File) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
-func DetectTypeByMIME(mime string) model.BlockContentFileType {
+func DetectTypeByMIME(name, mime string) model.BlockContentFileType {
+	if filepath.Ext(name) == files.SvgExt {
+		return model.BlockContentFile_Image
+	}
 	if mill.IsImage(mime) {
 		return model.BlockContentFile_Image
 	}

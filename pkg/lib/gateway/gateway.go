@@ -32,8 +32,6 @@ const (
 	defaultPort    = 47800
 	getFileTimeout = 1 * time.Minute
 	requestLimit   = 32
-
-	svgExt = ".svg"
 )
 
 var log = logging.Logger("anytype-gateway")
@@ -355,7 +353,7 @@ func (g *gateway) handleSVGFile(ctx context.Context, id domain.FullID, err error
 	if fErr != nil {
 		return nil, nil, fmt.Errorf("get image by hash: %w", err)
 	}
-	if filepath.Ext(file.Info().Name) == svgExt {
+	if filepath.Ext(file.Info().Name) == files.SvgExt {
 		reader, err := file.Reader(ctx)
 		file.Info().Media = "image/svg+xml"
 		return file, reader, err
