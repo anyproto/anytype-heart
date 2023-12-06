@@ -3,9 +3,12 @@ package amplitude
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"time"
 
+	"github.com/klauspost/compress/gzhttp"
+	"github.com/klauspost/compress/gzip"
 	"github.com/valyala/fastjson"
 )
 
@@ -21,6 +24,7 @@ type Client struct {
 	key           string
 	client        *http.Client
 	arenaPool     *fastjson.ArenaPool
+	isCompressed  bool
 }
 
 type AppInfoProvider interface {
@@ -42,11 +46,19 @@ type MetricsBackend int
 type JsonEvent *fastjson.Value
 
 // New client with API key
-func New(eventEndpoint string, key string) Service {
+func New(eventEndpoint string, key string, isCompressed bool) Service {
+	var httpClient *http.Client
+	if isCompressed {
+		httpClient = &http.Client{
+			Transport: gzhttp.Transport(http.DefaultTransport),
+		}
+	} else {
+		httpClient = &http.Client{}
+	}
 	return &Client{
 		eventEndpoint: eventEndpoint,
 		key:           key,
-		client:        new(http.Client),
+		client:        httpClient,
 		arenaPool:     &fastjson.ArenaPool{},
 	}
 }
@@ -59,8 +71,8 @@ func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
 	startVersion := arena.NewString(info.GetStartVersion())
 	userId := arena.NewString(info.GetUserId())
 
-	req := arena.NewObject()
-	req.Set("api_key", arena.NewString(c.key))
+	reqJSON := arena.NewObject()
+	reqJSON.Set("api_key", arena.NewString(c.key))
 
 	events := arena.NewArray()
 	amIndex := 0
@@ -81,10 +93,9 @@ func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
 		amIndex++
 	}
 
-	req.Set("events", events)
+	reqJSON.Set("events", events)
 
-	evJSON := req.MarshalTo(nil)
-
+	evJSON := reqJSON.MarshalTo(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer func() {
 		cancel()
@@ -92,16 +103,44 @@ func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
 		arena.Reset()
 		c.arenaPool.Put(arena)
 	}()
-	r, err := http.NewRequestWithContext(ctx, "POST", c.eventEndpoint, bytes.NewReader(evJSON))
+
+	reader, err := c.getBody(evJSON)
 	if err != nil {
 		return err
 	}
-
-	r.Header.Set("content-type", "application/json")
-	resp, err := c.client.Do(r)
+	req, err := http.NewRequestWithContext(ctx, "POST", c.eventEndpoint, reader)
+	if err != nil {
+		return err
+	}
+	if c.isCompressed {
+		req.Header.Set("Content-Encoding", "gzip")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.client.Do(req)
 	if err == nil {
 		return resp.Body.Close()
 	}
 
 	return err
+}
+
+func (c *Client) getBody(evJSON []byte) (io.Reader, error) {
+	if !c.isCompressed {
+		return bytes.NewReader(evJSON), nil
+	}
+
+	var buf *bytes.Buffer
+	gzipWriter := gzip.NewWriter(buf)
+
+	_, err := gzipWriter.Write(evJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	err = gzipWriter.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
 }

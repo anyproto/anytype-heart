@@ -735,7 +735,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	afterApplyHookTime := time.Now()
 
-	metrics.Service.Send(metrics.StateApply{
+	metrics.Service.Send(&metrics.StateApply{
 		BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
 		StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
 		PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),

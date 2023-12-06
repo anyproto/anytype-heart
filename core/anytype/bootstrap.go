@@ -121,7 +121,7 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	totalSpent := time.Since(startTime)
 	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
 	stat := a.StartStat()
-	event := metrics.AppStart{
+	event := &metrics.AppStart{
 		TotalMs:   stat.SpentMsTotal,
 		PerCompMs: stat.SpentMsPerComp,
 		Extra:     map[string]interface{}{},

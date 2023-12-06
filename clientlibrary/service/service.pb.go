@@ -5217,6 +5217,11 @@ func (h *ClientCommandsHandlerProxy) AccountRecoverFromLegacyExport(ctx context.
 		return h.client.AccountRecoverFromLegacyExport(ctx, req.(*pb.RpcAccountRecoverFromLegacyExportRequest))
 	}).(*pb.RpcAccountRecoverFromLegacyExportResponse)
 }
+func (h *ClientCommandsHandlerProxy) AccountChangeNetworkConfigAndRestart(ctx context.Context, req *pb.RpcAccountChangeNetworkConfigAndRestartRequest) *pb.RpcAccountChangeNetworkConfigAndRestartResponse {
+	return h.interceptor(ctx, "AccountChangeNetworkConfigAndRestart", func(ctx context.Context, req any) any {
+		return h.client.AccountChangeNetworkConfigAndRestart(ctx, req.(*pb.RpcAccountChangeNetworkConfigAndRestartRequest))
+	}).(*pb.RpcAccountChangeNetworkConfigAndRestartResponse)
+}
 func (h *ClientCommandsHandlerProxy) SpaceDelete(ctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
 	return h.interceptor(ctx, "SpaceDelete", func(ctx context.Context, req any) any {
 		return h.client.SpaceDelete(ctx, req.(*pb.RpcSpaceDeleteRequest))
@@ -6086,4 +6091,14 @@ func (h *ClientCommandsHandlerProxy) MetricsSetParameters(ctx context.Context, r
 	return h.interceptor(ctx, "MetricsSetParameters", func(ctx context.Context, req any) any {
 		return h.client.MetricsSetParameters(ctx, req.(*pb.RpcMetricsSetParametersRequest))
 	}).(*pb.RpcMetricsSetParametersResponse)
+}
+func (h *ClientCommandsHandlerProxy) NotificationList(ctx context.Context, req *pb.RpcNotificationListRequest) *pb.RpcNotificationListResponse {
+	return h.interceptor(ctx, "NotificationList", func(ctx context.Context, req any) any {
+		return h.client.NotificationList(ctx, req.(*pb.RpcNotificationListRequest))
+	}).(*pb.RpcNotificationListResponse)
+}
+func (h *ClientCommandsHandlerProxy) NotificationReply(ctx context.Context, req *pb.RpcNotificationReplyRequest) *pb.RpcNotificationReplyResponse {
+	return h.interceptor(ctx, "NotificationReply", func(ctx context.Context, req any) any {
+		return h.client.NotificationReply(ctx, req.(*pb.RpcNotificationReplyRequest))
+	}).(*pb.RpcNotificationReplyResponse)
 }

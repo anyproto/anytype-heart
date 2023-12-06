@@ -68,7 +68,7 @@ func TestClient_SendEvents(t *testing.T) {
 	// Close the server when test finishes
 	defer server.Close()
 
-	client := New("", "api_key").(*Client)
+	client := New("", "api_key", false).(*Client)
 	client.client = server.Client()
 	client.eventEndpoint = server.URL
 

@@ -93,8 +93,8 @@ func NewService() MetricsService {
 func (s *service) InitWithKeys(amplKey string, inHouseKey string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.clients[ampl].telemetry = amplitude.New(amplEndpoint, amplKey)
-	s.clients[inhouse].telemetry = amplitude.New(inHouseEndpoint, inHouseKey)
+	s.clients[ampl].telemetry = amplitude.New(amplEndpoint, amplKey, false)
+	s.clients[inhouse].telemetry = amplitude.New(inHouseEndpoint, inHouseKey, true)
 }
 
 func (s *service) SetDeviceId(t string) {
