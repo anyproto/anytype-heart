@@ -182,7 +182,7 @@ func (sp *DatabaseSelect) SetDetail(key string, details map[string]*types.Value)
 }
 
 func (sp *DatabaseSelect) GetFormat() model.RelationFormat {
-	return model.RelationFormat_multiselect
+	return model.RelationFormat_tag
 }
 
 type DatabaseMultiSelect struct {
@@ -198,7 +198,7 @@ func (ms *DatabaseMultiSelect) SetDetail(key string, details map[string]*types.V
 }
 
 func (ms *DatabaseMultiSelect) GetFormat() model.RelationFormat {
-	return model.RelationFormat_multiselect
+	return model.RelationFormat_tag
 }
 
 type DatabaseDate struct {
@@ -246,7 +246,7 @@ func (p *DatabasePeople) SetDetail(key string, details map[string]*types.Value) 
 }
 
 func (p *DatabasePeople) GetFormat() model.RelationFormat {
-	return model.RelationFormat_multiselect
+	return model.RelationFormat_tag
 }
 
 type DatabaseFile struct {
@@ -398,7 +398,7 @@ func (sp *DatabaseStatus) SetDetail(key string, details map[string]*types.Value)
 }
 
 func (sp *DatabaseStatus) GetFormat() model.RelationFormat {
-	return model.RelationFormat_select
+	return model.RelationFormat_status
 }
 
 type DatabasePhoneNumber struct {

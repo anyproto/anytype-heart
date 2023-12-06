@@ -159,7 +159,7 @@ func TestCustomOrder_Compare(t *testing.T) {
 
 func TestTagStatusOrder_Compare(t *testing.T) {
 
-	for _, relation := range []model.RelationFormat{model.RelationFormat_multiselect, model.RelationFormat_select} {
+	for _, relation := range []model.RelationFormat{model.RelationFormat_tag, model.RelationFormat_status} {
 		t.Run("eq", func(t *testing.T) {
 			a := testGetter{"k": pbtypes.String("a")}
 			b := testGetter{"k": pbtypes.String("a")}

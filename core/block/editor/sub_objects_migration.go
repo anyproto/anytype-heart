@@ -65,7 +65,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 			switch info.Type {
 			case bundle.TypeKeyRelation:
 				format := pbtypes.GetInt64(info.Details, bundle.RelationKeyRelationFormat.String())
-				if format == int64(model.RelationFormat_multiselect) || format == int64(model.RelationFormat_select) {
+				if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
 					// tags and statuses relations values are become readonly
 					st.SetInStore(append(path, bundle.RelationKeyRelationReadonlyValue.String()), pbtypes.Bool(true))
 				}
