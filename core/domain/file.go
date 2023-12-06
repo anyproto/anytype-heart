@@ -13,7 +13,10 @@ type FullFileId struct {
 }
 
 type FileEncryptionKeys struct {
-	FileId         FileId
+	FileId FileId
+	// Encryption key per file variant:
+	// "/0/" for ordinary files (only one variant)
+	// "/0/original", "/0/large", "/0/small", "/0/thumbnail", "/0/exif" for images
 	EncryptionKeys map[string]string
 }
 

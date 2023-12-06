@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
@@ -41,16 +42,16 @@ func TestConflictResolution(t *testing.T) {
 
 		store.addMultiSameFileConcurrently(t, numberOfTimes, fileInfo)
 
-		got, err := store.GetByFileId(fileInfo.Hash)
+		got, err := store.GetFileVariant(domain.FileContentId(fileInfo.Hash))
 		assert.NoError(t, err)
 		assert.Equal(t, fileInfo, got)
 	})
 
 	t.Run("add same file key concurrently", func(t *testing.T) {
 		store := newFixture(t)
-		fileKeys := FileKeys{
+		fileKeys := domain.FileEncryptionKeys{
 			FileId: "target",
-			Keys: map[string]string{
+			EncryptionKeys: map[string]string{
 				"foo": "bar",
 			},
 		}
@@ -60,51 +61,51 @@ func TestConflictResolution(t *testing.T) {
 
 		got, err := store.GetFileKeys(fileKeys.FileId)
 		assert.NoError(t, err)
-		assert.Equal(t, fileKeys.Keys, got)
+		assert.Equal(t, fileKeys.EncryptionKeys, got)
 	})
 
-	t.Run("add multiple targets concurrently", func(t *testing.T) {
+	t.Run("add multiple files concurrently", func(t *testing.T) {
 		store := newFixture(t)
 		fileInfo := store.givenEmptyInfoAddedToStore(t)
 
 		wantTargets := givenTargets(100)
 		store.addTargetsConcurrently(t, fileInfo, wantTargets)
 
-		got, err := store.GetByFileId(fileInfo.Hash)
+		got, err := store.GetFileVariant(domain.FileContentId(fileInfo.Hash))
 		require.NoError(t, err)
 		assert.ElementsMatch(t, wantTargets, got.Targets)
 	})
 
-	t.Run("delete all targets concurrently", func(t *testing.T) {
+	t.Run("delete all files concurrently", func(t *testing.T) {
 		store := newFixture(t)
 		fileInfo := store.givenFileWithTargets(t, 100)
 
 		store.deleteTargetsConcurrently(t, fileInfo.Targets)
 
-		_, err := store.GetByFileId(fileInfo.Hash)
+		_, err := store.GetFileVariant(domain.FileContentId(fileInfo.Hash))
 		assert.Equal(t, localstore.ErrNotFound, err)
 	})
 
-	t.Run("delete some targets concurrently", func(t *testing.T) {
+	t.Run("delete some files concurrently", func(t *testing.T) {
 		store := newFixture(t)
 		fileInfo := store.givenFileWithTargets(t, 100)
 
-		var targetsToDelete, targetsToKeep []string
-		for i, targetID := range fileInfo.Targets {
+		var fileIdsToDelete, fileIdsToKeep []string
+		for i, fileId := range fileInfo.Targets {
 			if i%2 == 0 {
-				targetsToDelete = append(targetsToDelete, targetID)
+				fileIdsToDelete = append(fileIdsToDelete, fileId)
 			} else {
-				targetsToKeep = append(targetsToKeep, targetID)
+				fileIdsToKeep = append(fileIdsToKeep, fileId)
 			}
 		}
-		store.deleteTargetsConcurrently(t, targetsToDelete)
+		store.deleteTargetsConcurrently(t, fileIdsToDelete)
 
-		got, err := store.GetByFileId(fileInfo.Hash)
+		got, err := store.GetFileVariant(domain.FileContentId(fileInfo.Hash))
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, targetsToKeep, got.Targets)
+		assert.ElementsMatch(t, fileIdsToKeep, got.Targets)
 	})
 
-	t.Run("add targets and get info concurrently", func(t *testing.T) {
+	t.Run("add files and get info concurrently", func(t *testing.T) {
 		store := newFixture(t)
 		fileInfo := store.givenEmptyInfoAddedToStore(t)
 
@@ -122,7 +123,7 @@ func TestConflictResolution(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err := store.GetByFileId(fileInfo.Hash)
+				_, err := store.GetFileVariant(domain.FileContentId(fileInfo.Hash))
 				assert.NoError(t, err)
 			}()
 		}
@@ -159,7 +160,7 @@ func (fx *fixture) addMultiSameFileConcurrently(t *testing.T, n int, fileInfo *s
 	wg.Wait()
 }
 
-func (fx *fixture) addSameFileKeyConcurrently(t *testing.T, n int, fileKeys FileKeys) {
+func (fx *fixture) addSameFileKeyConcurrently(t *testing.T, n int, fileKeys domain.FileEncryptionKeys) {
 	var wg sync.WaitGroup
 	for i := 0; i < n; i++ {
 		wg.Add(1)
@@ -209,17 +210,17 @@ func givenEmptyFileInfo() *storage.FileInfo {
 }
 
 func (fx *fixture) givenFileWithTargets(t *testing.T, numberOfTargets int) *storage.FileInfo {
-	targets := givenTargets(numberOfTargets)
+	fileIds := givenTargets(numberOfTargets)
 
-	for _, targetID := range targets {
-		err := fx.AddFileKeys(FileKeys{FileId: targetID, Keys: map[string]string{"foo": "bar"}})
+	for _, fileId := range fileIds {
+		err := fx.AddFileKeys(domain.FileEncryptionKeys{FileId: domain.FileId(fileId), EncryptionKeys: map[string]string{"foo": "bar"}})
 		assert.NoError(t, err)
 	}
 
 	fileInfo := &storage.FileInfo{
 		Hash:    "fileId1",
 		Key:     "secret1",
-		Targets: targets,
+		Targets: fileIds,
 	}
 
 	err := fx.AddFileVariant(fileInfo)
@@ -228,40 +229,40 @@ func (fx *fixture) givenFileWithTargets(t *testing.T, numberOfTargets int) *stor
 	return fileInfo
 }
 
-func (fx *fixture) addTargetsConcurrently(t *testing.T, fileInfo *storage.FileInfo, targets []string) {
+func (fx *fixture) addTargetsConcurrently(t *testing.T, fileInfo *storage.FileInfo, fileIds []string) {
 	var wg sync.WaitGroup
-	for _, targetID := range targets {
+	for _, fileId := range fileIds {
 		wg.Add(1)
-		go func(targetID string) {
+		go func(fileId string) {
 			defer wg.Done()
-			err := fx.AddFileKeys(FileKeys{FileId: targetID})
+			err := fx.AddFileKeys(domain.FileEncryptionKeys{FileId: domain.FileId(fileId)})
 			assert.NoError(t, err)
 
-			err = fx.AddTarget(fileInfo.Hash, targetID)
+			err = fx.LinkFileVariantToFile(domain.FileId(fileId), domain.FileContentId(fileInfo.Hash))
 			assert.NoError(t, err)
-		}(targetID)
+		}(fileId)
 	}
 	wg.Wait()
 }
 
-func (fx *fixture) deleteTargetsConcurrently(t *testing.T, targets []string) {
+func (fx *fixture) deleteTargetsConcurrently(t *testing.T, fileIds []string) {
 	var wg sync.WaitGroup
-	for _, targetID := range targets {
+	for _, fileId := range fileIds {
 		wg.Add(1)
-		go func(targetID string) {
+		go func(fileId string) {
 			defer wg.Done()
 
-			err := fx.DeleteFile(targetID)
+			err := fx.DeleteFile(domain.FileId(fileId))
 			assert.NoError(t, err)
-		}(targetID)
+		}(fileId)
 	}
 	wg.Wait()
 }
 
 func givenTargets(n int) []string {
-	var targets []string
+	var fileIds []string
 	for i := 0; i < n; i++ {
-		targets = append(targets, fmt.Sprintf("target%d", i))
+		fileIds = append(fileIds, fmt.Sprintf("target%d", i))
 	}
-	return targets
+	return fileIds
 }
