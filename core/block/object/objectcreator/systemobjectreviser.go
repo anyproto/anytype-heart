@@ -21,7 +21,7 @@ import (
 
 var revisionKey = bundle.RelationKeyRevision.String()
 
-func (s *service) updateSystemObjects(space space.Space, objects map[string]*types.Struct) {
+func (s *service) reviseSystemObjects(space space.Space, objects map[string]*types.Struct) {
 	marketRels, err := s.objectStore.ListAllRelations(addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		log.Errorf("failed to get relations from marketplace space: %v", err)
@@ -36,9 +36,9 @@ func (s *service) updateSystemObjects(space space.Space, objects map[string]*typ
 
 	for source, details := range objects {
 		if strings.HasPrefix(source, addr.BundledRelationURLPrefix) {
-			updateSystemRelation(space, relationutils.RelationFromStruct(details), marketRels)
+			reviseSystemRelation(space, relationutils.RelationFromStruct(details), marketRels)
 		} else if strings.HasPrefix(source, addr.BundledObjectTypeURLPrefix) {
-			updateSystemObjectType(space, details, marketTypes)
+			reviseSystemObjectType(space, details, marketTypes)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func (s *service) listAllObjectTypes(spaceId string) (map[string]*types.Struct, 
 	return details, nil
 }
 
-func updateSystemRelation(space space.Space, rel *relationutils.Relation, marketRels relationutils.Relations) {
+func reviseSystemRelation(space space.Space, rel *relationutils.Relation, marketRels relationutils.Relations) {
 	marketRel := marketRels.GetModelByKey(rel.Key)
 	if marketRel == nil || !lo.Contains(bundle.SystemRelations, domain.RelationKey(rel.Key)) || marketRel.Revision <= rel.Revision {
 		return
@@ -88,7 +88,7 @@ func updateSystemRelation(space space.Space, rel *relationutils.Relation, market
 	}
 }
 
-func updateSystemObjectType(space space.Space, objectType *types.Struct, marketTypes map[string]*types.Struct) {
+func reviseSystemObjectType(space space.Space, objectType *types.Struct, marketTypes map[string]*types.Struct) {
 	marketType, found := marketTypes[pbtypes.GetString(objectType, bundle.RelationKeySourceObject.String())]
 	rawKey := pbtypes.GetString(objectType, bundle.RelationKeyUniqueKey.String())
 	uk, err := domain.UnmarshalUniqueKey(rawKey)
@@ -156,6 +156,5 @@ func buildTypeDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjec
 	for key, value := range diff.Fields {
 		details = append(details, &pb.RpcObjectSetDetailsDetail{Key: key, Value: value})
 	}
-
 	return
 }

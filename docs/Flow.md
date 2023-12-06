@@ -81,6 +81,6 @@ Anytype will update system objects only if `Revision` of object from marketplace
 1. Update description of system object, that is stored in `pkg/lib/bundle`
 2. Increase `revision` field of system type/relation or put `"revision":1` if it was empty
 3. Generate go-level variables for new version of types and relations using `pkg/lib/bundle/generator`
-4. Make sure that new fields are taken into account in system_object_updater `core/block/object/objectcreator/systemobjectupdate.go`
+4. Make sure that new fields are taken into account in [System Object Reviser](../core/block/object/objectcreator/systemobjectreviser.go).
    (Right now only these fields are checked: **Revision**, **Name**, **Description**, **IsHidden**, **IsReadonly**)
 5. Build and run Anytype. All system objects with lower `Revision` should be updated according your changes in all spaces

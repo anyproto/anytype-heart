@@ -59,8 +59,7 @@ func (s *service) InstallBundledObjects(
 		}
 	}
 
-	s.updateSystemObjects(space, existingObjectMap)
-
+	s.reviseSystemObjects(space, existingObjectMap)
 	return
 }
 

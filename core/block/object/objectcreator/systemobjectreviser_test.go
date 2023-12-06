@@ -26,7 +26,7 @@ func TestUpdateSystemRelation(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		updateSystemRelation(space, rel, marketRels)
+		reviseSystemRelation(space, rel, marketRels)
 	})
 
 	t.Run("system relation is updated if no revision is set", func(t *testing.T) {
@@ -34,28 +34,28 @@ func TestUpdateSystemRelation(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		updateSystemRelation(space, rel, marketRels)
+		reviseSystemRelation(space, rel, marketRels)
 	})
 
 	t.Run("custom relation is not updated", func(t *testing.T) {
 		rel := &relationutils.Relation{Relation: &model.Relation{Key: "custom"}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		updateSystemRelation(space, rel, marketRels)
+		reviseSystemRelation(space, rel, marketRels)
 	})
 
 	t.Run("non system relation is not updated", func(t *testing.T) {
 		rel := &relationutils.Relation{Relation: &model.Relation{Key: "lyrics"}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		updateSystemRelation(space, rel, marketRels)
+		reviseSystemRelation(space, rel, marketRels)
 	})
 
 	t.Run("system relation with same revision is not updated", func(t *testing.T) {
 		rel := &relationutils.Relation{Relation: &model.Relation{Key: "isReadonly", Revision: 3}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		updateSystemRelation(space, rel, marketRels)
+		reviseSystemRelation(space, rel, marketRels)
 	})
 }
 
@@ -75,7 +75,7 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		updateSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObjectType(space, objectType, marketTypes)
 	})
 
 	t.Run("system object type is updated if no revision is set", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		updateSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObjectType(space, objectType, marketTypes)
 	})
 
 	t.Run("custom object type is not updated", func(t *testing.T) {
@@ -95,7 +95,7 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		updateSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObjectType(space, objectType, marketTypes)
 	})
 
 	t.Run("non system object type is not updated", func(t *testing.T) {
@@ -105,7 +105,7 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		updateSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObjectType(space, objectType, marketTypes)
 	})
 
 	t.Run("system object type with same revision is not updated", func(t *testing.T) {
@@ -116,6 +116,6 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		updateSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObjectType(space, objectType, marketTypes)
 	})
 }
