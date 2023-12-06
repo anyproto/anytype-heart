@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "c283977a90e194fe2ad63c03dbb3de51fd3d8a23005553822dfedec3ad5e8938"
+const RelationChecksum = "d0dd6cb34ebb2790c1ece96722a701cfe434e67d726871749b7e3b01e7659def"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -164,7 +164,7 @@ const (
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
 	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
-	RelationKeyVersion                   domain.RelationKey = "version"
+	RelationKeyRevision                  domain.RelationKey = "revision"
 )
 
 var (
@@ -349,8 +349,8 @@ var (
 			Name:             "Links to object",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
-			Version:          1,
 		},
 		RelationKeyBudget: {
 
@@ -1216,8 +1216,8 @@ var (
 			Name:             "Links from object",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
-			Version:          1,
 		},
 		RelationKeyLogic: {
 
@@ -1670,6 +1670,20 @@ var (
 			MaxCount:         1,
 			Name:             "Result",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRevision: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Revision of system object",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brrevision",
+			Key:              "revision",
+			MaxCount:         1,
+			Name:             "Revision",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -2177,20 +2191,6 @@ var (
 			MaxCount:         1,
 			Name:             "User stories",
 			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyVersion: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Version of system object",
-			Format:           model.RelationFormat_number,
-			Hidden:           true,
-			Id:               "_brversion",
-			Key:              "version",
-			MaxCount:         1,
-			Name:             "Version",
-			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

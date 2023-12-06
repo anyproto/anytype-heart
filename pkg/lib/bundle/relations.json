@@ -1126,7 +1126,7 @@
     "name": "Links from object",
     "readonly": true,
     "source": "derived",
-    "version": 1
+    "revision": 1
   },
   {
     "format": "number",
@@ -1432,7 +1432,7 @@
     "name": "Links to object",
     "readonly": true,
     "source": "local",
-    "version": 1
+    "revision": 1
   },
   {
     "description": "Relation that indicates document has been uninstalled",
@@ -1525,12 +1525,12 @@
     "source": "local"
   },
   {
-    "description": "Version of system object",
+    "description": "Revision of system object",
     "format": "number",
     "hidden": true,
-    "key": "version",
+    "key": "revision",
     "maxCount": 1,
-    "name": "Version",
+    "name": "Revision",
     "readonly": true,
     "source": "details"
   }

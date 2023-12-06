@@ -48,7 +48,7 @@ type Relation struct {
 	Readonly    bool     `json:"readonly"`
 	Source      string   `json:"source"`
 	Description string   `json:"description"`
-	Version     int      `json:"version"`
+	Revision    int      `json:"revision"`
 }
 
 type ObjectType struct {
@@ -60,7 +60,7 @@ type ObjectType struct {
 	Layout      string   `json:"layout"`
 	Relations   []string `json:"relations"`
 	Description string   `json:"description"`
-	Version     int      `json:"version"`
+	Revision    int      `json:"revision"`
 }
 
 type Layout struct {
@@ -215,8 +215,8 @@ func generateRelations() error {
 				}
 				map[Code]Code(dictS)[Id("ObjectTypes")] = Index().String().Values(t...)
 			}
-			if relation.Version != 0 {
-				dictS[Id("Version")] = Lit(relation.Version)
+			if relation.Revision != 0 {
+				dictS[Id("Revision")] = Lit(relation.Revision)
 			}
 
 			dict[Id(relConst(relation.Key))] = Block(dictS)
@@ -301,8 +301,8 @@ func generateTypes() error {
 				}
 				dictS[Id("Types")] = Index().Qual(relPbPkg, "SmartBlockType").Values(t...)
 			}
-			if ot.Version != 0 {
-				dictS[Id("Version")] = Lit(ot.Version)
+			if ot.Revision != 0 {
+				dictS[Id("Revision")] = Lit(ot.Revision)
 			}
 
 			dict[Id(typeConst(ot.ID))] = Block(dictS)
