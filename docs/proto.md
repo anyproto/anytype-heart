@@ -23428,11 +23428,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| RETRY | 0 |  |
-| REPORT | 1 |  |
-| OPEN_OBJECT | 2 |  |
-| OPEN_SPACE | 3 |  |
-| CLOSE | 4 |  |
+| CLOSE | 0 |  |
 
 
 
