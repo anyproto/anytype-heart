@@ -163,10 +163,10 @@ func TestRelationsDiff(t *testing.T) {
 		{"complex",
 			args{
 				[]*model.Relation{{Key: "k0", Format: model.RelationFormat_longtext}, {Key: "k1", Format: model.RelationFormat_longtext}, {Key: "k2", Format: model.RelationFormat_longtext}},
-				[]*model.Relation{{Key: "k1", Format: model.RelationFormat_longtext}, {Key: "k2", Format: model.RelationFormat_tag}, {Key: "k3", Format: model.RelationFormat_object}},
+				[]*model.Relation{{Key: "k1", Format: model.RelationFormat_longtext}, {Key: "k2", Format: model.RelationFormat_multiselect}, {Key: "k3", Format: model.RelationFormat_object}},
 			},
 			[]*model.Relation{{Key: "k3", Format: model.RelationFormat_object}},
-			[]*model.Relation{{Key: "k2", Format: model.RelationFormat_tag}},
+			[]*model.Relation{{Key: "k2", Format: model.RelationFormat_multiselect}},
 			[]string{"k0"},
 		},
 		{"both empty",
