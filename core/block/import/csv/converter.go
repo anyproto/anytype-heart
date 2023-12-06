@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -127,17 +128,17 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	progress.SetTotal(int64(numberOfFiles) * numberOfProgressSteps)
-	return c.getSnapshotsAndObjectsIDs(importSource, params, str, allErrors, progress)
+	return c.getSnapshotsAndObjectsIds(importSource, params, str, allErrors, progress)
 }
 
-func (c *CSV) getSnapshotsAndObjectsIDs(importSource source.Source,
+func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
 	allErrors *common.ConvertError,
 	progress process.Progress,
 ) *Result {
 	allSnapshots := make([]*common.Snapshot, 0)
-	allObjectsIDs := make([]string, 0)
+	allObjectsIds := make([]string, 0)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
@@ -146,23 +147,23 @@ func (c *CSV) getSnapshotsAndObjectsIDs(importSource source.Source,
 		csvTable, err := c.getCSVTable(fileReader, params.GetDelimiter())
 		if err != nil {
 			allErrors.Add(err)
-			return !allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Csv)
+			return !allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Csv)
 		}
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		collectionID, snapshots, err := str.CreateObjects(fileName, csvTable, params, progress)
+		collectionId, snapshots, err := str.CreateObjects(fileName, csvTable, params, progress)
 		if err != nil {
 			allErrors.Add(err)
-			return !allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Csv)
+			return !allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Csv)
 		}
-		allObjectsIDs = append(allObjectsIDs, collectionID)
+		allObjectsIds = append(allObjectsIds, collectionId)
 		allSnapshots = append(allSnapshots, snapshots...)
 		return true
 	}); iterateErr != nil {
 		allErrors.Add(iterateErr)
 	}
-	return &Result{allObjectsIDs, allSnapshots}
+	return &Result{allObjectsIds, allSnapshots}
 }
 
 func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error) {

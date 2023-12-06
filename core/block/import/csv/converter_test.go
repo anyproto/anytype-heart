@@ -27,7 +27,7 @@ func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/test.csv"}},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -54,7 +54,7 @@ func TestCsv_GetSnapshots(t *testing.T) {
 				Path:                    []string{"testdata/Journal.csv"},
 				UseFirstRowForRelations: true},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -88,7 +88,7 @@ func TestCsv_GetSnapshotsTable(t *testing.T) {
 				Mode: pb.RpcObjectImportRequestCsvParams_TABLE,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -118,7 +118,7 @@ func TestCsv_GetSnapshotsTableUseFirstColumnForRelationsOn(t *testing.T) {
 				UseFirstRowForRelations: true,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -155,7 +155,7 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/semicolon.csv"}, Delimiter: ";", UseFirstRowForRelations: true},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -179,7 +179,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 				UseFirstRowForRelations: true,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -219,7 +219,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 				UseFirstRowForRelations: false,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -246,7 +246,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 				UseFirstRowForRelations: true,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -292,7 +292,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 				Delimiter: ",",
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -350,7 +350,7 @@ func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 				Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -369,12 +369,12 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 				UseFirstRowForRelations: true,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Csv), common.ErrLimitExceeded))
+	assert.True(t, errors.Is(err.GetResultError(model.Import_Csv), common.ErrLimitExceeded))
 	assert.Nil(t, sn)
 }
 
@@ -390,7 +390,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T
 				UseFirstRowForRelations: true,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -418,7 +418,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.
 				UseFirstRowForRelations: false,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -465,7 +465,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 				UseFirstRowForRelations: false,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -491,7 +491,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 				UseFirstRowForRelations: true,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -570,7 +570,7 @@ func Test_findUniqueRelationWithSpaces(t *testing.T) {
 				UseFirstRowForRelations: true,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -613,7 +613,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 				UseFirstRowForRelations: false,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -644,7 +644,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 				UseFirstRowForRelations: true,
 			},
 		},
-		Type: pb.RpcObjectImportRequest_Csv,
+		Type: model.Import_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -683,7 +683,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 					Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
 				},
 			},
-			Type: pb.RpcObjectImportRequest_Csv,
+			Type: model.Import_Csv,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		}, p)
 
@@ -721,7 +721,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 					Mode:                    pb.RpcObjectImportRequestCsvParams_COLLECTION,
 				},
 			},
-			Type: pb.RpcObjectImportRequest_Csv,
+			Type: model.Import_Csv,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		}, p)
 

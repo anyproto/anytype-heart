@@ -152,7 +152,7 @@ func (m *Markdown) processImportStep(pathCount int,
 	callback func(map[string]*FileInfo, process.Progress, map[string]*types.Struct, *common.ConvertError),
 ) (abortImport bool) {
 	callback(files, progress, details, allErrors)
-	return allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Markdown)
+	return allErrors.ShouldAbortImport(pathCount, model.Import_Markdown)
 }
 
 func (m *Markdown) convertCsvToLinks(csvFileName string, files map[string]*FileInfo) (blocks []*model.Block) {
