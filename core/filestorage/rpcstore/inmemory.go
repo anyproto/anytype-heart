@@ -200,7 +200,41 @@ func (t *inMemoryStore) isWithinLimits(bytesToUpload int) bool {
 }
 
 func (t *inMemoryStore) FilesInfo(ctx context.Context, spaceId string, fileIds ...domain.FileId) ([]*fileproto.FileInfo, error) {
-	panic("not implemented")
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	var infos []*fileproto.FileInfo
+	for _, fileId := range fileIds {
+		info, err := t.fileInfo(spaceId, fileId)
+		if err != nil {
+			return nil, fmt.Errorf("file info: %w", err)
+		}
+		infos = append(infos, info)
+	}
+	return infos, nil
+}
+
+func (t *inMemoryStore) fileInfo(spaceId string, fileId domain.FileId) (*fileproto.FileInfo, error) {
+	fileChunkCids, ok := t.files[fileId]
+	if !ok {
+		return nil, fmt.Errorf("file not found")
+	}
+	if _, ok := t.spaceFiles[spaceId][fileId]; !ok {
+		return nil, fmt.Errorf("file not found in space")
+	}
+
+	info := fileproto.FileInfo{
+		FileId: fileId.String(),
+	}
+	for cId := range fileChunkCids {
+		block, ok := t.store[cId]
+		if !ok {
+			return nil, fmt.Errorf("block not found")
+		}
+		info.CidsCount++
+		info.UsageBytes += uint64(len(block.RawData()))
+	}
+	return &info, nil
 }
 
 func (t *inMemoryStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
