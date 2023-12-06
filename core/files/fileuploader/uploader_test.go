@@ -12,11 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/getblock/mock_getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	file2 "github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/testMock"
@@ -37,7 +38,10 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		im := fx.newImage("123")
-		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(im, nil)
+		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.ImageAddResult{
+			FileId: "123",
+			Image:  im,
+		}, nil)
 
 		im.EXPECT().GetOriginalFile(gomock.Any()).Return(fx.file, nil)
 		b := newBlock(model.BlockContentFile_Image)
@@ -167,32 +171,30 @@ func newFixture(t *testing.T) *uplFixture {
 		picker: picker,
 	}
 	fx.fileService = testMock.NewMockFileService(fx.ctrl)
-	fx.blockService = NewMockBlockService(fx.ctrl)
 
-	fx.Uploader = file.NewUploader("space1", fx.blockService, fx.fileService, core.NewTempDirService(), picker)
+	fx.Uploader = fileuploader.NewUploader("space1", nil, core.NewTempDirService(), picker, nil)
 	fx.file = testMock.NewMockFile(fx.ctrl)
-	fx.file.EXPECT().Hash().Return("123").AnyTimes()
+	fx.file.EXPECT().FileId().Return(domain.FileId("123")).AnyTimes()
 	return fx
 }
 
 type uplFixture struct {
-	file.Uploader
-	blockService *MockBlockService
-	file         *testMock.MockFile
-	fileService  *testMock.MockFileService
-	ctrl         *gomock.Controller
-	picker       *mock_getblock.MockObjectGetter
+	fileuploader.Uploader
+	file        *testMock.MockFile
+	fileService *testMock.MockFileService
+	ctrl        *gomock.Controller
+	picker      *mock_getblock.MockObjectGetter
 }
 
-func (fx *uplFixture) newImage(hash string) *testMock.MockImage {
+func (fx *uplFixture) newImage(fileId domain.FileId) *testMock.MockImage {
 	im := testMock.NewMockImage(fx.ctrl)
-	im.EXPECT().Hash().Return(hash).AnyTimes()
+	im.EXPECT().FileId().Return(fileId).AnyTimes()
 	return im
 }
 
-func (fx *uplFixture) newFile(hash string, meta *files.FileMeta) *testMock.MockFile {
+func (fx *uplFixture) newFile(fileId domain.FileId, meta *files.FileMeta) *testMock.MockFile {
 	f := testMock.NewMockFile(fx.ctrl)
-	f.EXPECT().Hash().Return(hash).AnyTimes()
+	f.EXPECT().FileId().Return(fileId).AnyTimes()
 	f.EXPECT().Meta().Return(meta).AnyTimes()
 	return f
 }

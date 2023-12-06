@@ -8,6 +8,8 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func TestFileSyncStore_QueueUpload(t *testing.T) {
@@ -20,7 +22,7 @@ func TestFileSyncStore_QueueUpload(t *testing.T) {
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId1", it.SpaceId)
-	assert.Equal(t, "fileId1", it.FileID)
+	assert.Equal(t, domain.FileId("fileId1"), it.FileId)
 	assert.True(t, it.AddedByUser)
 }
 
@@ -34,7 +36,7 @@ func TestFileSyncStore_QueueRemove(t *testing.T) {
 	it, err := fx.GetRemove()
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId1", it.SpaceId)
-	assert.Equal(t, "fileId1", it.FileID)
+	assert.Equal(t, domain.FileId("fileId1"), it.FileId)
 }
 
 func TestFileSyncStore_DoneUpload(t *testing.T) {
@@ -64,8 +66,8 @@ func TestFileSyncStore_GetUpload(t *testing.T) {
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId1", it.SpaceId)
-	assert.Equal(t, "fileId1", it.FileID)
-	require.NoError(t, fx.DoneUpload(it.SpaceId, it.FileID))
+	assert.Equal(t, domain.FileId("fileId1"), it.FileId)
+	require.NoError(t, fx.DoneUpload(it.SpaceId, it.FileId))
 	_, err = fx.GetUpload()
 	assert.EqualError(t, err, errQueueIsEmpty.Error())
 }
@@ -81,7 +83,7 @@ func TestFileSyncStore_PushBackToQueue(t *testing.T) {
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId1", it.SpaceId)
-	assert.Equal(t, "fileId1", it.FileID)
+	assert.Equal(t, domain.FileId("fileId1"), it.FileId)
 	assert.False(t, it.AddedByUser)
 
 	time.Sleep(2 * time.Millisecond)
@@ -90,7 +92,7 @@ func TestFileSyncStore_PushBackToQueue(t *testing.T) {
 	it, err = fx.GetUpload()
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId2", it.SpaceId)
-	assert.Equal(t, "fileId2", it.FileID)
+	assert.Equal(t, domain.FileId("fileId2"), it.FileId)
 	assert.False(t, it.AddedByUser)
 }
 
@@ -105,7 +107,7 @@ func TestFileSyncStore_CheckSorting(t *testing.T) {
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId1", it.SpaceId)
-	assert.Equal(t, "fileId1", it.FileID)
+	assert.Equal(t, domain.FileId("fileId1"), it.FileId)
 	assert.False(t, it.AddedByUser)
 }
 
@@ -128,31 +130,31 @@ func TestMigration(t *testing.T) {
 
 	wantUploadItem := &QueueItem{
 		SpaceId:     "spaceId1",
-		FileID:      "fileId1",
+		FileId:      "fileId1",
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: false,
 	}
 	wantDiscardedItem := &QueueItem{
 		SpaceId:     "spaceId1",
-		FileID:      "fileId2",
+		FileId:      "fileId2",
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: false,
 	}
 	wantRemoveItem := &QueueItem{
 		SpaceId:   "spaceId1",
-		FileID:    "fileId3",
+		FileId:    "fileId3",
 		Timestamp: time.Now().UnixMilli(),
 	}
 
 	t.Run("with old schema", func(t *testing.T) {
 		err := fx.db.Update(func(txn *badger.Txn) error {
-			if err := txn.Set(uploadKey(wantUploadItem.SpaceId, wantUploadItem.FileID), binTime(wantUploadItem.Timestamp)); err != nil {
+			if err := txn.Set(uploadKey(wantUploadItem.SpaceId, wantUploadItem.FileId), binTime(wantUploadItem.Timestamp)); err != nil {
 				return err
 			}
-			if err := txn.Set(discardedKey(wantDiscardedItem.SpaceId, wantDiscardedItem.FileID), binTime(wantDiscardedItem.Timestamp)); err != nil {
+			if err := txn.Set(discardedKey(wantDiscardedItem.SpaceId, wantDiscardedItem.FileId), binTime(wantDiscardedItem.Timestamp)); err != nil {
 				return err
 			}
-			if err := txn.Set(removeKey(wantRemoveItem.SpaceId, wantRemoveItem.FileID), binTime(wantRemoveItem.Timestamp)); err != nil {
+			if err := txn.Set(removeKey(wantRemoveItem.SpaceId, wantRemoveItem.FileId), binTime(wantRemoveItem.Timestamp)); err != nil {
 				return err
 			}
 			return nil
