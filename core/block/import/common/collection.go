@@ -87,7 +87,7 @@ func (r *RootCollection) addRelations(st *state.State) error {
 	for _, relation := range []*model.RelationLink{
 		{
 			Key:    bundle.RelationKeyTag.String(),
-			Format: model.RelationFormat_multiselect,
+			Format: model.RelationFormat_tag,
 		},
 		{
 			Key:    bundle.RelationKeyCreatedDate.String(),

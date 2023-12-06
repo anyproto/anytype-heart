@@ -177,7 +177,7 @@ func (sp *SelectItem) GetID() string {
 }
 
 func (sp *SelectItem) GetFormat() model.RelationFormat {
-	return model.RelationFormat_multiselect
+	return model.RelationFormat_tag
 }
 
 type MultiSelectItem struct {
@@ -204,7 +204,7 @@ func (ms *MultiSelectItem) GetID() string {
 }
 
 func (ms *MultiSelectItem) GetFormat() model.RelationFormat {
-	return model.RelationFormat_multiselect
+	return model.RelationFormat_tag
 }
 
 type DateItem struct {
@@ -339,7 +339,7 @@ func (p *PeopleItem) GetID() string {
 }
 
 func (p *PeopleItem) GetFormat() model.RelationFormat {
-	return model.RelationFormat_multiselect
+	return model.RelationFormat_tag
 }
 
 type FileItem struct {
@@ -598,7 +598,7 @@ func (sp *StatusItem) GetID() string {
 }
 
 func (sp *StatusItem) GetFormat() model.RelationFormat {
-	return model.RelationFormat_select
+	return model.RelationFormat_status
 }
 
 type rollupType string
@@ -678,7 +678,7 @@ func (r *RollupItem) GetFormat() model.RelationFormat {
 	case rollupDate:
 		return model.RelationFormat_date
 	case rollupArray:
-		return model.RelationFormat_multiselect
+		return model.RelationFormat_tag
 	}
 	return model.RelationFormat_longtext
 }

@@ -675,7 +675,7 @@ func TestService_Search(t *testing.T) {
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
 				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_multiselect)),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 			{
@@ -750,7 +750,7 @@ func TestService_Search(t *testing.T) {
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
 				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_multiselect)),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 			{
@@ -800,7 +800,7 @@ func TestService_Search(t *testing.T) {
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
 				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_select)),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 			{
@@ -868,7 +868,7 @@ func TestService_Search(t *testing.T) {
 				bundle.RelationKeyId:             pbtypes.String(relationKey),
 				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
 				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_select)),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
 				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 			{
