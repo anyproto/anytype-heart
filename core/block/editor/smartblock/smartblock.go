@@ -1171,8 +1171,8 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 		}
 		for k, after := range act.Details.After.Fields {
 			rel := relations.Get(k)
-			if rel != nil && (rel.Format == model.RelationFormat_select ||
-				rel.Format == model.RelationFormat_multiselect ||
+			if rel != nil && (rel.Format == model.RelationFormat_status ||
+				rel.Format == model.RelationFormat_tag ||
 				rel.Format == model.RelationFormat_object ||
 				rel.Format == model.RelationFormat_file ||
 				isCoverId(rel)) {
