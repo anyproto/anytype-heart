@@ -8,10 +8,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -208,7 +208,7 @@ func (f *File) FillFileHashes(hashes []string) []string {
 }
 
 func DetectTypeByMIME(name, mime string) model.BlockContentFileType {
-	if filepath.Ext(name) == files.SvgExt {
+	if filepath.Ext(name) == constant.SvgExt {
 		return model.BlockContentFile_Image
 	}
 	if mill.IsImage(mime) {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
@@ -383,32 +385,15 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		opts = append(opts, u.opts...)
 	}
 
-	if u.fileType == model.BlockContentFile_Image && !(filepath.Ext(u.name) == files.SvgExt) {
-		im, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
-		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
-			e = nil
-			return u.SetType(model.BlockContentFile_File).Upload(ctx)
-		}
-		if e != nil {
-			err = e
+	if u.fileType == model.BlockContentFile_Image && !(filepath.Ext(u.name) == constant.SvgExt) {
+		err = u.addImage(ctx, opts, &result)
+		if err != nil {
 			return
-		}
-		result.Hash = im.Hash()
-		orig, _ := im.GetOriginalFile(ctx)
-		if orig != nil {
-			result.MIME = orig.Meta().Media
-			result.Size = orig.Meta().Size
 		}
 	} else {
-		fl, e := u.fileService.FileAdd(ctx, u.spaceID, opts...)
-		if e != nil {
-			err = e
+		err = u.addFile(ctx, opts, &result)
+		if err != nil {
 			return
-		}
-		result.Hash = fl.Hash()
-		if meta := fl.Meta(); meta != nil {
-			result.MIME = meta.Media
-			result.Size = meta.Size
 		}
 	}
 
@@ -432,6 +417,39 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		u.updateBlock()
 	}
 	return
+}
+
+func (u *uploader) addFile(ctx context.Context, opts []files.AddOption, result *UploadResult) error {
+	fl, err := u.fileService.FileAdd(ctx, u.spaceID, opts...)
+	if err != nil {
+		return err
+	}
+	result.Hash = fl.Hash()
+	if meta := fl.Meta(); meta != nil {
+		result.MIME = meta.Media
+		result.Size = meta.Size
+	}
+	return nil
+}
+
+func (u *uploader) addImage(ctx context.Context, opts []files.AddOption, result *UploadResult) error {
+	im, err := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
+	if errors.Is(err, image.ErrFormat) || errors.Is(err, mill.ErrFormatSupportNotEnabled) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	result.Hash = im.Hash()
+	orig, err := im.GetOriginalFile(ctx)
+	if err != nil {
+		log.Errorf("failed to get original image: %v", err)
+	}
+	if orig != nil {
+		result.MIME = orig.Meta().Media
+		result.Size = orig.Meta().Size
+	}
+	return nil
 }
 
 func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {

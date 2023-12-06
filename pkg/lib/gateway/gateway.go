@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/netutil"
 )
 
@@ -353,7 +354,7 @@ func (g *gateway) handleSVGFile(ctx context.Context, id domain.FullID, err error
 	if fErr != nil {
 		return nil, nil, fmt.Errorf("get image by hash: %w", err)
 	}
-	if filepath.Ext(file.Info().Name) == files.SvgExt {
+	if filepath.Ext(file.Info().Name) == constant.SvgExt {
 		reader, err := file.Reader(ctx)
 		file.Info().Media = "image/svg+xml"
 		return file, reader, err
