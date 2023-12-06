@@ -2004,18 +2004,16 @@ message Rpc {
                         IMPORT_IS_CANCELED = 6;
 
                         NOTION_NO_OBJECTS_IN_INTEGRATION= 5;
-                        NOTION_SERVER_IS_UNAVAILABLE = 13;
-                        NOTION_RATE_LIMIT_EXCEEDED= 15;
+                        NOTION_SERVER_IS_UNAVAILABLE = 12;
+                        NOTION_RATE_LIMIT_EXCEEDED= 13;
 
-                        FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE = 16;
+                        FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE = 14;
                         FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY = 9;
-                        FILE_IMPORT_SOURCE_FILE_OPEN_ERROR = 17;
+                        FILE_IMPORT_SOURCE_FILE_OPEN_ERROR = 15;
 
-                        MD_WRONG_MARKDOWN_SYNTAX = 10;
+                        HTML_WRONG_HTML_STRUCTURE = 10;
 
-                        HTML_WRONG_HTML_STRUCTURE = 11;
-
-                        PB_NOT_ANYBLOCK_FORMAT = 12;
+                        PB_NOT_ANYBLOCK_FORMAT = 11;
 
                         CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
                     }

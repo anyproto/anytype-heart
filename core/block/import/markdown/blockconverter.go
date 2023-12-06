@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -50,7 +51,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 		}
 	}
 	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.GetNoObjectErrorBySourceType(importSource))
 		return nil
 	}
 	fileInfo := m.getFileInfo(importSource, allErrors)
@@ -74,7 +75,7 @@ func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.
 		}
 		return true
 	}); iterateErr != nil {
-		allErrors.Add(iterateErr)
+		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
 	}
 	return fileInfo
 }

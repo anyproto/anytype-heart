@@ -808,21 +808,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		log.Errorf("failed to send notification: %v", notificationSendErr)
 	}
 
-	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
-	}
-	switch {
-	case errors.Is(err, common.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)
-	case errors.Is(err, common.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
-	case errors.Is(err, common.ErrCsvLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
-	case errors.Is(err, common.ErrFileLoad):
-		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, "", err)
-	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
-	}
+	return response(common.GetImportPbCode(err), rootCollectionId, err)
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {

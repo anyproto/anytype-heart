@@ -168,7 +168,7 @@ func (p *Pb) extractFiles(importPath string, importSource source.Source) error {
 		return err
 	}
 	if importSource.CountFilesWithGivenExtensions([]string{".pb", ".json"}) == 0 {
-		return common.ErrNoObjectsToImport
+		return common.GetNoObjectErrorBySourceType(importSource)
 	}
 	return nil
 }
@@ -186,7 +186,7 @@ func (p *Pb) getProfileFromFiles(importSource source.Source) (*pb.Profile, error
 		return true
 	})
 	if iterateError != nil {
-		return nil, iterateError
+		return nil, fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateError.Error())
 	}
 	return profile, err
 }
@@ -241,7 +241,7 @@ func (p *Pb) getSnapshotsFromProvidedFiles(
 		}
 		return true
 	}); iterateErr != nil {
-		allErrors.Add(iterateErr)
+		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
 	}
 	return allSnapshots, widgetSnapshot, workspaceSnapshot
 }
@@ -259,7 +259,7 @@ func (p *Pb) makeSnapshot(name, profileID, path string, file io.ReadCloser, isMi
 		return nil, errGS
 	}
 	if valid := p.isSnapshotValid(snapshot); !valid {
-		return nil, fmt.Errorf("snapshot is not valid")
+		return nil, fmt.Errorf("%w: snapshot is not valid", common.ErrPbNotAnyBlockFormat)
 	}
 	id := uuid.New().String()
 	id, err := p.normalizeSnapshot(snapshot, id, profileID, isMigration)
@@ -281,7 +281,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
+			return nil, fmt.Errorf("PB:GetSnapshot %w: %s", common.ErrPbNotAnyBlockFormat, uErr.Error())
 		}
 		return snapshot, nil
 	}
@@ -292,7 +292,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
+			return nil, fmt.Errorf("PB:GetSnapshot %w: %s", common.ErrPbNotAnyBlockFormat, err.Error())
 		}
 		return snapshot, nil
 	}

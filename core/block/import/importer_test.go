@@ -319,7 +319,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		SpaceId:               "space1",
 	}, model.ObjectOrigin_import, nil)
 	assert.NotNil(t, res)
-	assert.Contains(t, res.Error(), common.ErrNoObjectsToImport.Error())
+	assert.Contains(t, res.Error(), common.ErrNoSnapshotToImport.Error())
 }
 
 func Test_ListImports(t *testing.T) {
@@ -492,7 +492,7 @@ func Test_ImportCancelError(t *testing.T) {
 func Test_ImportNoObjectToImportError(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
+	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
 	i.converters["Notion"] = converter
@@ -510,13 +510,13 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res, common.ErrNoObjectInIntegration))
 }
 
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -549,12 +549,12 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res, common.ErrNoObjectInIntegration))
 }
 
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i := Import{}
-	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
+	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -596,7 +596,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(res, common.ErrNoObjectInIntegration))
 }
 
 func Test_ImportErrLimitExceeded(t *testing.T) {

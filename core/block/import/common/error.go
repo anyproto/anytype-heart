@@ -5,42 +5,29 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-/*
-NOTION_NO_OBJECTS_IN_INTEGRATION= 5;
-
-	NOTION_SERVER_IS_UNAVAILABLE = 13;
-	NOTION_RATE_LIMIT_EXCEEDED= 15;
-
-	FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE = 16;
-	FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY = 9;
-	FILE_IMPORT_SOURCE_FILE_OPEN_ERROR = 17;
-
-	MD_WRONG_MARKDOWN_SYNTAX = 10;
-
-	HTML_WRONG_HTML_STRUCTURE = 11;
-
-	PB_NOT_ANYBLOCK_FORMAT = 12;
-
-	CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
-*/
 var (
-	ErrCancel                          = fmt.Errorf("import is canceled")
-	ErrFailedToReceiveListOfObjects    = fmt.Errorf("failed to receive the list of objects")
-	ErrNoObjectsToImport               = fmt.Errorf("source path doesn't contain objects to import")
-	ErrCsvLimitExceeded                = fmt.Errorf("Limit of relations or objects are exceeded ")
-	ErrFileLoad                        = fmt.Errorf("file was not synced")
-	ErrNoObjectInIntegration           = fmt.Errorf("no objects added to Notion integration")
-	ErrNotionServerIsUnavailable       = fmt.Errorf("notion server is unavailable")
-	ErrNotionServerExceedRateLimit     = fmt.Errorf("rate limit exceeded")
+	ErrCancel           = fmt.Errorf("import is canceled")
+	ErrCsvLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
+	ErrFileLoad         = fmt.Errorf("file was not synced")
+
+	ErrNoObjectInIntegration       = fmt.Errorf("no objects added to Notion integration")
+	ErrNotionServerIsUnavailable   = fmt.Errorf("notion server is unavailable")
+	ErrNotionServerExceedRateLimit = fmt.Errorf("rate limit exceeded")
+
 	ErrFileImportNoObjectsInZipArchive = fmt.Errorf("no objects in zip archive")
 	ErrFileImportNoObjectsInDirectory  = fmt.Errorf("no objects in directory")
 	ErrFileImportSourceFileOpenError   = fmt.Errorf("failed to open imported file")
-	ErrMdWrongMarkdownSyntax           = fmt.Errorf("markdown file has wrong syntax")
-	ErrPbNotAnyblockFormat             = fmt.Errorf("file doesn't match Anyblock format ")
+
+	ErrPbNotAnyBlockFormat = fmt.Errorf("file doesn't match Anyblock format ")
+
+	ErrWrongHTMLFormat = fmt.Errorf("html file has wrong structure")
+
+	ErrNoSnapshotToImport = fmt.Errorf("no snapshot to import") // for external import
 )
 
 type ConvertError struct {
@@ -98,21 +85,15 @@ func (ce *ConvertError) GetResultError(importType model.ImportType) error {
 	var countNoObjectsToImport int
 	for _, e := range ce.errors {
 		switch {
-		case errors.Is(e, ErrCancel):
-			return fmt.Errorf("import type: %s: %w", importType.String(), ErrCancel)
-		case errors.Is(e, ErrCsvLimitExceeded):
-			return fmt.Errorf("import type: %s: %w", importType.String(), ErrCsvLimitExceeded)
-		case errors.Is(e, ErrFailedToReceiveListOfObjects):
-			return ErrFailedToReceiveListOfObjects
-		case errors.Is(e, ErrFileLoad):
-			return e
-		case errors.Is(e, ErrNoObjectsToImport):
+		case isDefinedError(e):
+			return fmt.Errorf("import type: %s: %w", importType.String(), e)
+		case IsNoObjectError(e):
 			countNoObjectsToImport++
 		}
 	}
 	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
 	if countNoObjectsToImport == len(ce.errors) {
-		return fmt.Errorf("import type: %s: %w", importType.String(), ErrNoObjectsToImport)
+		return fmt.Errorf("import type: %s: %w", importType.String(), ce.errors[0])
 	}
 	return fmt.Errorf("import type: %s: %w", importType.String(), ce.Error())
 }
@@ -123,7 +104,7 @@ func (ce *ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
 	}
 	var countNoObjectsToImport int
 	for _, err := range ce.errors {
-		if errors.Is(err, ErrNoObjectsToImport) {
+		if IsNoObjectError(err) {
 			countNoObjectsToImport++
 		}
 	}
@@ -141,15 +122,83 @@ func GetNotificationErrorCode(err error) model.NotificationImportCode {
 		return model.NotificationImport_NULL
 	}
 	switch {
-	case errors.Is(err, ErrNoObjectsToImport):
-		return model.NotificationImport_NO_OBJECTS_TO_IMPORT
+	case errors.Is(err, ErrNoObjectInIntegration):
+		return model.NotificationImport_NOTION_NO_OBJECTS_IN_INTEGRATION
+	case errors.Is(err, ErrNotionServerIsUnavailable):
+		return model.NotificationImport_NOTION_SERVER_IS_UNAVAILABLE
+	case errors.Is(err, ErrNotionServerExceedRateLimit):
+		return model.NotificationImport_NOTION_RATE_LIMIT_EXCEEDED
+	case errors.Is(err, ErrFileImportNoObjectsInDirectory):
+		return model.NotificationImport_FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY
+	case errors.Is(err, ErrFileImportNoObjectsInZipArchive):
+		return model.NotificationImport_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE
+	case errors.Is(err, ErrFileImportSourceFileOpenError):
+		return model.NotificationImport_FILE_IMPORT_SOURCE_FILE_OPEN_ERROR
+	case errors.Is(err, ErrPbNotAnyBlockFormat):
+		return model.NotificationImport_PB_NOT_ANYBLOCK_FORMAT
 	case errors.Is(err, ErrCancel):
 		return model.NotificationImport_IMPORT_IS_CANCELED
 	case errors.Is(err, ErrCsvLimitExceeded):
-		return model.NotificationImport_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
+		return model.NotificationImport_CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
 	case errors.Is(err, ErrFileLoad):
 		return model.NotificationImport_FILE_LOAD_ERROR
+	case errors.Is(err, ErrWrongHTMLFormat):
+		return model.NotificationImport_HTML_WRONG_HTML_STRUCTURE
 	default:
 		return model.NotificationImport_INTERNAL_ERROR
 	}
+}
+
+func GetImportPbCode(err error) pb.RpcObjectImportResponseErrorCode {
+	if err == nil {
+		return pb.RpcObjectImportResponseError_NULL
+	}
+	switch {
+	case errors.Is(err, ErrNoObjectInIntegration):
+		return pb.RpcObjectImportResponseError_NOTION_NO_OBJECTS_IN_INTEGRATION
+	case errors.Is(err, ErrNotionServerIsUnavailable):
+		return pb.RpcObjectImportResponseError_NOTION_SERVER_IS_UNAVAILABLE
+	case errors.Is(err, ErrNotionServerExceedRateLimit):
+		return pb.RpcObjectImportResponseError_NOTION_RATE_LIMIT_EXCEEDED
+	case errors.Is(err, ErrFileImportNoObjectsInDirectory):
+		return pb.RpcObjectImportResponseError_FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY
+	case errors.Is(err, ErrFileImportNoObjectsInZipArchive):
+		return pb.RpcObjectImportResponseError_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE
+	case errors.Is(err, ErrFileImportSourceFileOpenError):
+		return pb.RpcObjectImportResponseError_FILE_IMPORT_SOURCE_FILE_OPEN_ERROR
+	case errors.Is(err, ErrPbNotAnyBlockFormat):
+		return pb.RpcObjectImportResponseError_PB_NOT_ANYBLOCK_FORMAT
+	case errors.Is(err, ErrCancel):
+		return pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED
+	case errors.Is(err, ErrCsvLimitExceeded):
+		return pb.RpcObjectImportResponseError_CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
+	case errors.Is(err, ErrFileLoad):
+		return pb.RpcObjectImportResponseError_FILE_LOAD_ERROR
+	case errors.Is(err, ErrWrongHTMLFormat):
+		return pb.RpcObjectImportResponseError_HTML_WRONG_HTML_STRUCTURE
+	default:
+		return pb.RpcObjectImportResponseError_INTERNAL_ERROR
+	}
+}
+
+func GetNoObjectErrorBySourceType(s source.Source) error {
+	if _, ok := s.(*source.Directory); ok {
+		return ErrFileImportNoObjectsInDirectory
+	}
+	if _, ok := s.(*source.Zip); ok {
+		return ErrFileImportNoObjectsInZipArchive
+	}
+	return nil
+}
+
+func IsNoObjectError(err error) bool {
+	return errors.Is(err, ErrNoObjectInIntegration) ||
+		errors.Is(err, ErrFileImportNoObjectsInDirectory) ||
+		errors.Is(err, ErrFileImportNoObjectsInZipArchive)
+}
+
+func isDefinedError(err error) bool {
+	return errors.Is(err, ErrCancel) || errors.Is(err, ErrCsvLimitExceeded) || errors.Is(err, ErrNotionServerExceedRateLimit) ||
+		errors.Is(err, ErrNotionServerIsUnavailable) || errors.Is(err, ErrFileLoad) || errors.Is(err, ErrPbNotAnyBlockFormat) ||
+		errors.Is(err, ErrWrongHTMLFormat) || errors.Is(err, ErrFileImportSourceFileOpenError)
 }

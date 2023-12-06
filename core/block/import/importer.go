@@ -197,7 +197,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		}
 		return nil
 	}
-	return common.ErrNoObjectsToImport
+	return common.ErrNoSnapshotToImport
 }
 
 func (i *Import) finishImportProcess(returnedErr error, progress process.Progress) {
@@ -206,8 +206,8 @@ func (i *Import) finishImportProcess(returnedErr error, progress process.Progres
 
 func shouldReturnError(e error, res *common.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		errors.Is(e, common.ErrFailedToReceiveListOfObjects) || errors.Is(e, common.ErrCsvLimitExceeded) ||
-		(errors.Is(e, common.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
+		errors.Is(e, common.ErrNotionServerExceedRateLimit) || errors.Is(e, common.ErrCsvLimitExceeded) ||
+		(common.IsNoObjectError(e) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
 		errors.Is(e, common.ErrCancel)
 }
 

@@ -34,7 +34,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
 			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
 		},
-		Type: model.Import_Txt,
+		Type: model.Import_Html,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
@@ -49,7 +49,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 
 	assert.NotEmpty(t, err)
-	assert.True(t, errors.Is(err.GetResultError(model.Import_Html), common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(err.GetResultError(model.Import_Html), common.ErrFileImportNoObjectsInDirectory))
 }
 
 func TestHTML_provideFileName(t *testing.T) {
