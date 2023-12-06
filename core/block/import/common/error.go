@@ -9,11 +9,39 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-var ErrCancel = fmt.Errorf("import is canceled")
-var ErrFailedToReceiveListOfObjects = fmt.Errorf("failed to receive the list of objects")
-var ErrNoObjectsToImport = fmt.Errorf("source path doesn't contain objects to import")
-var ErrLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
-var ErrFileLoad = fmt.Errorf("file was not synced")
+/*
+NOTION_NO_OBJECTS_IN_INTEGRATION= 5;
+
+	NOTION_SERVER_IS_UNAVAILABLE = 13;
+	NOTION_RATE_LIMIT_EXCEEDED= 15;
+
+	FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE = 16;
+	FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY = 9;
+	FILE_IMPORT_SOURCE_FILE_OPEN_ERROR = 17;
+
+	MD_WRONG_MARKDOWN_SYNTAX = 10;
+
+	HTML_WRONG_HTML_STRUCTURE = 11;
+
+	PB_NOT_ANYBLOCK_FORMAT = 12;
+
+	CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
+*/
+var (
+	ErrCancel                          = fmt.Errorf("import is canceled")
+	ErrFailedToReceiveListOfObjects    = fmt.Errorf("failed to receive the list of objects")
+	ErrNoObjectsToImport               = fmt.Errorf("source path doesn't contain objects to import")
+	ErrCsvLimitExceeded                = fmt.Errorf("Limit of relations or objects are exceeded ")
+	ErrFileLoad                        = fmt.Errorf("file was not synced")
+	ErrNoObjectInIntegration           = fmt.Errorf("no objects added to Notion integration")
+	ErrNotionServerIsUnavailable       = fmt.Errorf("notion server is unavailable")
+	ErrNotionServerExceedRateLimit     = fmt.Errorf("rate limit exceeded")
+	ErrFileImportNoObjectsInZipArchive = fmt.Errorf("no objects in zip archive")
+	ErrFileImportNoObjectsInDirectory  = fmt.Errorf("no objects in directory")
+	ErrFileImportSourceFileOpenError   = fmt.Errorf("failed to open imported file")
+	ErrMdWrongMarkdownSyntax           = fmt.Errorf("markdown file has wrong syntax")
+	ErrPbNotAnyblockFormat             = fmt.Errorf("file doesn't match Anyblock format ")
+)
 
 type ConvertError struct {
 	errors []error
@@ -72,8 +100,8 @@ func (ce *ConvertError) GetResultError(importType model.ImportType) error {
 		switch {
 		case errors.Is(e, ErrCancel):
 			return fmt.Errorf("import type: %s: %w", importType.String(), ErrCancel)
-		case errors.Is(e, ErrLimitExceeded):
-			return fmt.Errorf("import type: %s: %w", importType.String(), ErrLimitExceeded)
+		case errors.Is(e, ErrCsvLimitExceeded):
+			return fmt.Errorf("import type: %s: %w", importType.String(), ErrCsvLimitExceeded)
 		case errors.Is(e, ErrFailedToReceiveListOfObjects):
 			return ErrFailedToReceiveListOfObjects
 		case errors.Is(e, ErrFileLoad):
@@ -104,7 +132,7 @@ func (ce *ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
 func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType model.ImportType) bool {
 	return !ce.IsEmpty() && ce.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING ||
 		ce.IsNoObjectToImportError(pathsCount) ||
-		errors.Is(ce.GetResultError(importType), ErrLimitExceeded) ||
+		errors.Is(ce.GetResultError(importType), ErrCsvLimitExceeded) ||
 		errors.Is(ce.GetResultError(importType), ErrCancel)
 }
 
@@ -117,7 +145,7 @@ func GetNotificationErrorCode(err error) model.NotificationImportCode {
 		return model.NotificationImport_NO_OBJECTS_TO_IMPORT
 	case errors.Is(err, ErrCancel):
 		return model.NotificationImport_IMPORT_IS_CANCELED
-	case errors.Is(err, ErrLimitExceeded):
+	case errors.Is(err, ErrCsvLimitExceeded):
 		return model.NotificationImport_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
 	case errors.Is(err, ErrFileLoad):
 		return model.NotificationImport_FILE_LOAD_ERROR

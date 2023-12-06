@@ -374,7 +374,7 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 	}, p)
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.Is(err.GetResultError(model.Import_Csv), common.ErrLimitExceeded))
+	assert.True(t, errors.Is(err.GetResultError(model.Import_Csv), common.ErrCsvLimitExceeded))
 	assert.Nil(t, sn)
 }
 

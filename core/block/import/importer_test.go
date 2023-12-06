@@ -602,7 +602,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 func Test_ImportErrLimitExceeded(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	e := common.NewFromError(common.ErrCsvLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -636,13 +636,13 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrLimitExceeded))
+	assert.True(t, errors.Is(res, common.ErrCsvLimitExceeded))
 }
 
 func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	i := Import{}
 	converter := mock_common.NewMockConverter(t)
-	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	e := common.NewFromError(common.ErrCsvLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -676,7 +676,7 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrLimitExceeded))
+	assert.True(t, errors.Is(res, common.ErrCsvLimitExceeded))
 }
 
 func TestImport_replaceRelationKeyWithNew(t *testing.T) {

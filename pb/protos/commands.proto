@@ -2000,10 +2000,24 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         INTERNAL_ERROR = 3;
-                        NO_OBJECTS_TO_IMPORT = 5;
-                        IMPORT_IS_CANCELED = 6;
-                        LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
                         FILE_LOAD_ERROR = 8;
+                        IMPORT_IS_CANCELED = 6;
+
+                        NOTION_NO_OBJECTS_IN_INTEGRATION= 5;
+                        NOTION_SERVER_IS_UNAVAILABLE = 13;
+                        NOTION_RATE_LIMIT_EXCEEDED= 15;
+
+                        FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE = 16;
+                        FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY = 9;
+                        FILE_IMPORT_SOURCE_FILE_OPEN_ERROR = 17;
+
+                        MD_WRONG_MARKDOWN_SYNTAX = 10;
+
+                        HTML_WRONG_HTML_STRUCTURE = 11;
+
+                        PB_NOT_ANYBLOCK_FORMAT = 12;
+
+                        CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
                     }
                 }
             }
