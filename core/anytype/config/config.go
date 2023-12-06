@@ -308,7 +308,10 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 			return nodeconf.Configuration{}, fmt.Errorf("network config path is set in both env ANY_SYNC_NETWORK(%s) and in RPC request(%s)", networkConfigPath, c.NetworkCustomConfigFilePath)
 		}
 		log.Warnf("Network config set via os env ANY_SYNC_NETWORK is deprecated")
-	} else if c.NetworkCustomConfigFilePath != "" && c.NetworkMode == pb.RpcAccount_CustomConfig {
+	} else if c.NetworkMode == pb.RpcAccount_CustomConfig {
+		if c.NetworkCustomConfigFilePath == "" {
+			return nodeconf.Configuration{}, fmt.Errorf("CustomConfig network node set but NetworkCustomConfigFilePath is empty")
+		}
 		networkConfigPath = c.NetworkCustomConfigFilePath
 	}
 
