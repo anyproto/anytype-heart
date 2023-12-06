@@ -88,7 +88,7 @@ func (s *service) installObject(ctx context.Context, space space.Space, installi
 	return id, newDetails, nil
 }
 
-func (s *service) listInstalledObjects(space space.Space, sourceObjectIds []string) (map[string]struct{}, error) {
+func (s *service) listInstalledObjects(space space.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
 	existingObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -106,9 +106,9 @@ func (s *service) listInstalledObjects(space space.Space, sourceObjectIds []stri
 	if err != nil {
 		return nil, fmt.Errorf("query existing objects: %w", err)
 	}
-	existingObjectMap := make(map[string]struct{}, len(existingObjects))
+	existingObjectMap := make(map[string]*types.Struct, len(existingObjects))
 	for _, existingObject := range existingObjects {
-		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = struct{}{}
+		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = existingObject.Details
 	}
 	return existingObjectMap, nil
 }

@@ -1,8 +1,6 @@
 package systemobjectupdate
 
 import (
-	"context"
-
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
@@ -23,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const CName = "systemobjectupdater"
+const CName = "system_object_updater"
 
 var (
 	log        = logging.Logger("system-objects-updater")
@@ -31,7 +29,7 @@ var (
 )
 
 type SystemObjectUpdater struct {
-	app.ComponentRunnable
+	app.Component
 
 	store   objectstore.ObjectStore
 	storage storage.ClientStorage
@@ -53,16 +51,7 @@ func (u *SystemObjectUpdater) Name() string {
 	return CName
 }
 
-func (u *SystemObjectUpdater) Run(_ context.Context) error {
-	go u.updateSystemObjects()
-	return nil
-}
-
-func (u *SystemObjectUpdater) Close(_ context.Context) error {
-	return nil
-}
-
-func (u *SystemObjectUpdater) updateSystemObjects() {
+func (u *SystemObjectUpdater) UpdateSystemObjects() {
 	marketRels, err := u.store.ListAllRelations(addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		log.Errorf("failed to get relations from marketplace space: %v", err)
