@@ -1481,7 +1481,7 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [Export.Format](#anytype-model-Export-Format)
-    - [Import.Code](#anytype-model-Import-Code)
+    - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
@@ -22598,7 +22598,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | processId | [string](#string) |  |  |
-| errorCode | [Import.Code](#anytype-model-Import-Code) |  |  |
+| errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 
@@ -22616,7 +22616,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | processId | [string](#string) |  |  |
-| errorCode | [Import.Code](#anytype-model-Import-Code) |  |  |
+| errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
@@ -23357,9 +23357,9 @@ stored |
 
 
 
-<a name="anytype-model-Import-Code"></a>
+<a name="anytype-model-Import-ErrorCode"></a>
 
-### Import.Code
+### Import.ErrorCode
 
 
 | Name | Number | Description |

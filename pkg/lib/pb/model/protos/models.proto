@@ -903,7 +903,7 @@ message Notification {
 
     message Import {
         string processId = 1;
-        model.Import.Code errorCode = 2;
+        model.Import.ErrorCode errorCode = 2;
         model.Import.Type importType = 3;
         string spaceId = 4;
         string name = 5;
@@ -921,7 +921,7 @@ message Notification {
 
     message GalleryImport {
         string processId = 1;
-        model.Import.Code errorCode = 2;
+        model.Import.ErrorCode errorCode = 2;
         string spaceId = 3;
         string name = 4;
     }
@@ -960,7 +960,7 @@ message Import {
         Csv = 6;
     }
 
-    enum Code {
+    enum ErrorCode {
         NULL = 0;
         UNKNOWN_ERROR = 1;
         BAD_INPUT = 2;

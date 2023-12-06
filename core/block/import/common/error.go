@@ -108,7 +108,7 @@ func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType model.Impor
 		errors.Is(ce.GetResultError(importType), ErrCancel)
 }
 
-func GetImportErrorCode(err error) model.ImportCode {
+func GetImportErrorCode(err error) model.ImportErrorCode {
 	if err == nil {
 		return model.Import_NULL
 	}
