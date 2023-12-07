@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/any-sync/net"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -12,14 +13,14 @@ import (
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	newAccount, err := mw.applicationService.AccountCreate(cctx, req)
 	code := mapErrorCode(err,
+		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountCreateResponseError_CONFIG_FILE_INVALID),
+		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountCreateResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountCreateResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE),
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE),
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO),
 		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG),
 		errToCode(application.ErrSetDetails, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME),
-		errToCode(application.ErrNetworkConfigFileDoesNotExist, pb.RpcAccountCreateResponseError_CONFIG_FILE_NOT_FOUND),
-		errToCode(application.ErrNetworkConfigFileInvalid, pb.RpcAccountCreateResponseError_CONFIG_FILE_INVALID),
-		errToCode(application.ErrNetworkConfigNetworkIdMismatch, pb.RpcAccountCreateResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 	)
 	return &pb.RpcAccountCreateResponse{
 		Config:  nil,
@@ -48,6 +49,9 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	account, err := mw.applicationService.AccountSelect(cctx, req)
 	code := mapErrorCode(err,
+		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountSelectResponseError_CONFIG_FILE_INVALID),
+		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountSelectResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountSelectResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 		errToCode(application.ErrEmptyAccountID, pb.RpcAccountSelectResponseError_BAD_INPUT),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
 		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
@@ -56,9 +60,6 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 		errToCode(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
-		errToCode(application.ErrNetworkConfigFileDoesNotExist, pb.RpcAccountSelectResponseError_CONFIG_FILE_NOT_FOUND),
-		errToCode(application.ErrNetworkConfigFileInvalid, pb.RpcAccountSelectResponseError_CONFIG_FILE_INVALID),
-		errToCode(application.ErrNetworkConfigNetworkIdMismatch, pb.RpcAccountSelectResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 	)
 	return &pb.RpcAccountSelectResponse{
 		Config:  nil,
@@ -90,9 +91,9 @@ func (mw *Middleware) AccountChangeNetworkConfigAndRestart(ctx context.Context, 
 	code := mapErrorCode(err,
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_ACCOUNT_IS_NOT_RUNNING),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_ACCOUNT_FAILED_TO_STOP),
-		errToCode(application.ErrNetworkConfigFileDoesNotExist, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NOT_FOUND),
-		errToCode(application.ErrNetworkConfigFileInvalid, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_INVALID),
-		errToCode(application.ErrNetworkConfigNetworkIdMismatch, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
+		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_INVALID),
+		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 	)
 	return &pb.RpcAccountChangeNetworkConfigAndRestartResponse{
 		Error: &pb.RpcAccountChangeNetworkConfigAndRestartResponseError{

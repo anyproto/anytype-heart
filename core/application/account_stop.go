@@ -16,10 +16,7 @@ import (
 )
 
 var (
-	ErrFailedToRemoveAccountData      = errors.New("failed to remove account data")
-	ErrNetworkConfigFileDoesNotExist  = errors.New("network config file does not exist")
-	ErrNetworkConfigFileInvalid       = errors.New("network config file invalid")
-	ErrNetworkConfigNetworkIdMismatch = errors.New("network id mismatch")
+	ErrFailedToRemoveAccountData = errors.New("failed to remove account data")
 )
 
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
@@ -59,19 +56,19 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 		// check if file exists at path
 		b, err := os.ReadFile(req.NetworkCustomConfigFilePath)
 		if os.IsNotExist(err) {
-			return ErrNetworkConfigFileDoesNotExist
+			return config.ErrNetworkFileNotFound
 		}
 		if err != nil {
-			return errors.Join(ErrNetworkConfigFileInvalid, err)
+			return errors.Join(config.ErrNetworkFileFailedToRead, err)
 		}
 		var cfg nodeconf.Configuration
 		err = yaml.Unmarshal(b, &cfg)
 		if err != nil {
 			// wrap errors into each other
-			return errors.Join(ErrNetworkConfigFileInvalid, err)
+			return errors.Join(config.ErrNetworkFileFailedToRead, err)
 		}
 		if conf.NetworkId != "" && conf.NetworkId != cfg.NetworkId {
-			return ErrNetworkConfigNetworkIdMismatch
+			return config.ErrNetworkIdMismatch
 		}
 	}
 

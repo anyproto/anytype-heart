@@ -36,9 +36,9 @@ const (
 )
 
 var (
-	ErrNetworkIdMismatch        = fmt.Errorf("network id mismatch")
-	ErrNetworkFailedToRead      = fmt.Errorf("failed to read network configuration")
-	ErrNetworkFailedToUnmarshal = fmt.Errorf("failed to unmarshal network configuration")
+	ErrNetworkIdMismatch       = fmt.Errorf("network id mismatch")
+	ErrNetworkFileNotFound     = fmt.Errorf("network configuration file not found")
+	ErrNetworkFileFailedToRead = fmt.Errorf("failed to read network configuration")
 )
 
 type FileConfig interface {
@@ -304,6 +304,8 @@ func (c *Config) GetDebugServer() debugserver.Config {
 func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error) {
 	// todo: remvoe set via os env
 	networkConfigPath := loadenv.Get("ANY_SYNC_NETWORK")
+	confBytes := nodesConfYmlBytes
+
 	if networkConfigPath != "" {
 		if c.NetworkMode != pb.RpcAccount_CustomConfig && c.NetworkCustomConfigFilePath != "" {
 			return nodeconf.Configuration{}, fmt.Errorf("network config path is set in both env ANY_SYNC_NETWORK(%s) and in RPC request(%s)", networkConfigPath, c.NetworkCustomConfigFilePath)
@@ -311,24 +313,26 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 		log.Warnf("Network config set via os env ANY_SYNC_NETWORK is deprecated")
 	} else if c.NetworkMode == pb.RpcAccount_CustomConfig {
 		if c.NetworkCustomConfigFilePath == "" {
-			return nodeconf.Configuration{}, errors.Join(ErrNetworkFailedToRead, fmt.Errorf("CustomConfig network mode is set but NetworkCustomConfigFilePath is empty"))
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, fmt.Errorf("CustomConfig network mode is set but NetworkCustomConfigFilePath is empty"))
 		}
 		networkConfigPath = c.NetworkCustomConfigFilePath
 	}
 
 	// save the reference to no override the original pointer to the slice
-	confBytes := nodesConfYmlBytes
 	if networkConfigPath != "" {
 		var err error
 		if confBytes, err = os.ReadFile(networkConfigPath); err != nil {
-			return nodeconf.Configuration{}, errors.Join(ErrNetworkFailedToRead, err)
+			if os.IsNotExist(err) {
+				return nodeconf.Configuration{}, errors.Join(ErrNetworkFileNotFound, err)
+			}
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, err)
 		}
 	}
 
 	switch c.NetworkMode {
 	case pb.RpcAccount_CustomConfig, pb.RpcAccount_DefaultConfig:
 		if err := yaml.Unmarshal(confBytes, &conf); err != nil {
-			return nodeconf.Configuration{}, errors.Join(ErrNetworkFailedToRead, err)
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, err)
 		}
 		if c.NetworkId != "" && c.NetworkId != conf.NetworkId {
 			log.Warnf("Network id mismatch: %s != %s", c.NetworkId, conf.NetworkId)
