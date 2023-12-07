@@ -2,6 +2,7 @@ package txt
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -112,7 +113,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".txt"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.GetNoObjectErrorBySourceType(importSource))
 		return nil, nil
 	}
 	snapshots := make([]*common.Snapshot, 0, numberOfFiles)
@@ -135,7 +136,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 		return true
 	})
 	if iterateErr != nil {
-		allErrors.Add(iterateErr)
+		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
 	}
 	return snapshots, targetObjects
 }

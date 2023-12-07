@@ -27,7 +27,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 	}, p)
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.Is(err.GetResultError(model.Import_Txt), common.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(err.GetResultError(model.Import_Txt), common.ErrFileImportNoObjectsInDirectory))
 	assert.NotNil(t, sn)
 	assert.Len(t, sn.Snapshots, 2)
 	assert.Contains(t, sn.Snapshots[0].FileName, "test.txt")

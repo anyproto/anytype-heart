@@ -2,6 +2,7 @@ package html
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -118,7 +119,7 @@ func (h *HTML) handleImportPath(path string, allErrors *common.ConvertError) ([]
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".html"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.GetNoObjectErrorBySourceType(importSource))
 		return nil, nil
 	}
 	return h.getSnapshotsAndRootObjects(path, allErrors, numberOfFiles, importSource)
@@ -147,7 +148,7 @@ func (h *HTML) getSnapshotsAndRootObjects(path string,
 		rootObjects = append(rootObjects, id)
 		return true
 	}); iterateErr != nil {
-		allErrors.Add(iterateErr)
+		allErrors.Add(fmt.Errorf("%w: %s", common.ErrFileImportSourceFileOpenError, iterateErr.Error()))
 	}
 	return snapshots, rootObjects
 }
@@ -158,6 +159,9 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, filesSource source.Source,
 		return nil, err
 	}
 	blocks, _, err := anymark.HTMLToBlocks(b)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", common.ErrWrongHTMLFormat, err.Error())
+	}
 	for _, block := range blocks {
 		if block.GetFile() != nil {
 			if newFileName, _, err := common.ProvideFileName(block.GetFile().GetName(), filesSource, path, h.tempDirProvider); err == nil {
