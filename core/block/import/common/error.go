@@ -117,9 +117,9 @@ func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType model.Impor
 		errors.Is(ce.GetResultError(importType), ErrCancel)
 }
 
-func GetNotificationErrorCode(err error) model.NotificationImportCode {
+func GetImportErrorCode(err error) model.ImportErrorCode {
 	if err == nil {
-		return model.NotificationImport_NULL
+		return model.Import_NULL
 	}
 	switch {
 	case errors.Is(err, ErrNoObjectInIntegration):
@@ -145,7 +145,7 @@ func GetNotificationErrorCode(err error) model.NotificationImportCode {
 	case errors.Is(err, ErrWrongHTMLFormat):
 		return model.NotificationImport_HTML_WRONG_HTML_STRUCTURE
 	default:
-		return model.NotificationImport_INTERNAL_ERROR
+		return model.Import_INTERNAL_ERROR
 	}
 }
 

@@ -209,8 +209,8 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 			continue
 		}
 		if relLink.Format != model.RelationFormat_object &&
-			relLink.Format != model.RelationFormat_multiselect &&
-			relLink.Format != model.RelationFormat_select {
+			relLink.Format != model.RelationFormat_tag &&
+			relLink.Format != model.RelationFormat_status {
 			continue
 		}
 		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {

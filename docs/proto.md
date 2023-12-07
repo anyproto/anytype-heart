@@ -1434,6 +1434,7 @@
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Notification](#anytype-model-Notification)
     - [Notification.Export](#anytype-model-Notification-Export)
+    - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
@@ -1480,12 +1481,12 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [Export.Format](#anytype-model-Export-Format)
+    - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
-    - [Notification.Import.Code](#anytype-model-Notification-Import-Code)
     - [Notification.Status](#anytype-model-Notification-Status)
     - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
@@ -22571,6 +22572,7 @@ Used to decode block meta only, without the content itself
 | isLocal | [bool](#bool) |  |  |
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
 | export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
+| galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
 | space | [string](#string) |  |  |
 
 
@@ -22594,6 +22596,24 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Notification-GalleryImport"></a>
+
+### Notification.GalleryImport
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processId | [string](#string) |  |  |
+| errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
+| spaceId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Notification-Import"></a>
 
 ### Notification.Import
@@ -22603,7 +22623,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | processId | [string](#string) |  |  |
-| errorCode | [Notification.Import.Code](#anytype-model-Notification-Import-Code) |  |  |
+| errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
@@ -23344,6 +23364,24 @@ stored |
 
 
 
+<a name="anytype-model-Import-ErrorCode"></a>
+
+### Import.ErrorCode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
+| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| FILE_LOAD_ERROR | 8 |  |
+
+
+
 <a name="anytype-model-Import-Type"></a>
 
 ### Import.Type
@@ -23397,11 +23435,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| RETRY | 0 |  |
-| REPORT | 1 |  |
-| OPEN_OBJECT | 2 |  |
-| OPEN_SPACE | 3 |  |
-| CLOSE | 4 |  |
+| CLOSE | 0 |  |
 
 
 
@@ -23544,8 +23578,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | longtext | 0 | string |
 | shorttext | 1 | string, usually short enough. May be truncated in the future |
 | number | 2 | double |
-| select | 3 | string or list of string(len==1) |
-| multiselect | 11 | list of string (choose multiple from a list) |
+| status | 3 | string or list of string(len==1) |
+| tag | 11 | list of string (choose multiple from a list) |
 | date | 4 | float64(pb.Value doesn&#39;t have int64) or the string |
 | file | 5 | relation can has objects of specific types: file, image, audio, video |
 | checkbox | 6 | boolean |
