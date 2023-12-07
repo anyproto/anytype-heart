@@ -226,7 +226,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		Space:   spaceID,
 		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
 			ProcessId: progress.Id(),
-			ErrorCode: common.GetImportErrorCode(err),
+			ErrorCode: common.GetImportNotificationErrorCode(err),
 			SpaceId:   spaceID,
 			Name:      title,
 		}},

@@ -117,33 +117,33 @@ func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType model.Impor
 		errors.Is(ce.GetResultError(importType), ErrCancel)
 }
 
-func GetImportErrorCode(err error) model.ImportErrorCode {
+func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 	if err == nil {
 		return model.Import_NULL
 	}
 	switch {
 	case errors.Is(err, ErrNoObjectInIntegration):
-		return model.NotificationImport_NOTION_NO_OBJECTS_IN_INTEGRATION
+		return model.Import_NOTION_NO_OBJECTS_IN_INTEGRATION
 	case errors.Is(err, ErrNotionServerIsUnavailable):
-		return model.NotificationImport_NOTION_SERVER_IS_UNAVAILABLE
+		return model.Import_NOTION_SERVER_IS_UNAVAILABLE
 	case errors.Is(err, ErrNotionServerExceedRateLimit):
-		return model.NotificationImport_NOTION_RATE_LIMIT_EXCEEDED
+		return model.Import_NOTION_RATE_LIMIT_EXCEEDED
 	case errors.Is(err, ErrFileImportNoObjectsInDirectory):
-		return model.NotificationImport_FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY
+		return model.Import_FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY
 	case errors.Is(err, ErrFileImportNoObjectsInZipArchive):
-		return model.NotificationImport_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE
+		return model.Import_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE
 	case errors.Is(err, ErrFileImportSourceFileOpenError):
-		return model.NotificationImport_FILE_IMPORT_SOURCE_FILE_OPEN_ERROR
+		return model.Import_FILE_IMPORT_SOURCE_FILE_OPEN_ERROR
 	case errors.Is(err, ErrPbNotAnyBlockFormat):
-		return model.NotificationImport_PB_NOT_ANYBLOCK_FORMAT
+		return model.Import_PB_NOT_ANYBLOCK_FORMAT
 	case errors.Is(err, ErrCancel):
-		return model.NotificationImport_IMPORT_IS_CANCELED
+		return model.Import_IMPORT_IS_CANCELED
 	case errors.Is(err, ErrCsvLimitExceeded):
-		return model.NotificationImport_CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
+		return model.Import_CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
 	case errors.Is(err, ErrFileLoad):
-		return model.NotificationImport_FILE_LOAD_ERROR
+		return model.Import_FILE_LOAD_ERROR
 	case errors.Is(err, ErrWrongHTMLFormat):
-		return model.NotificationImport_HTML_WRONG_HTML_STRUCTURE
+		return model.Import_HTML_WRONG_HTML_STRUCTURE
 	default:
 		return model.Import_INTERNAL_ERROR
 	}
