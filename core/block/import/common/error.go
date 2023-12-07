@@ -28,6 +28,7 @@ var (
 	ErrWrongHTMLFormat = fmt.Errorf("html file has wrong structure")
 
 	ErrNoSnapshotToImport = fmt.Errorf("no snapshot to import") // for external import
+	ErrCSVFileFormat      = fmt.Errorf("csv file has wrong structure")
 )
 
 type ConvertError struct {
@@ -144,6 +145,8 @@ func GetImportNotificationErrorCode(err error) model.ImportErrorCode {
 		return model.Import_FILE_LOAD_ERROR
 	case errors.Is(err, ErrWrongHTMLFormat):
 		return model.Import_HTML_WRONG_HTML_STRUCTURE
+	case errors.Is(err, ErrCSVFileFormat):
+		return model.Import_CSV_WRONG_CSV_STRUCTURE
 	default:
 		return model.Import_INTERNAL_ERROR
 	}
@@ -176,6 +179,8 @@ func GetImportPbCode(err error) pb.RpcObjectImportResponseErrorCode {
 		return pb.RpcObjectImportResponseError_FILE_LOAD_ERROR
 	case errors.Is(err, ErrWrongHTMLFormat):
 		return pb.RpcObjectImportResponseError_HTML_WRONG_HTML_STRUCTURE
+	case errors.Is(err, ErrCSVFileFormat):
+		return pb.RpcObjectImportResponseError_CSV_WRONG_CSV_STRUCTURE
 	default:
 		return pb.RpcObjectImportResponseError_INTERNAL_ERROR
 	}
@@ -200,5 +205,5 @@ func IsNoObjectError(err error) bool {
 func isDefinedError(err error) bool {
 	return errors.Is(err, ErrCancel) || errors.Is(err, ErrCsvLimitExceeded) || errors.Is(err, ErrNotionServerExceedRateLimit) ||
 		errors.Is(err, ErrNotionServerIsUnavailable) || errors.Is(err, ErrFileLoad) || errors.Is(err, ErrPbNotAnyBlockFormat) ||
-		errors.Is(err, ErrWrongHTMLFormat) || errors.Is(err, ErrFileImportSourceFileOpenError)
+		errors.Is(err, ErrWrongHTMLFormat) || errors.Is(err, ErrFileImportSourceFileOpenError) || errors.Is(err, ErrCSVFileFormat)
 }

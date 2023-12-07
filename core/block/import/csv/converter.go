@@ -146,7 +146,7 @@ func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 		}
 		csvTable, err := c.getCSVTable(fileReader, params.GetDelimiter())
 		if err != nil {
-			allErrors.Add(err)
+			allErrors.Add(fmt.Errorf("%w, %s", common.ErrCSVFileFormat, err.Error()))
 			return !allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Csv)
 		}
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {

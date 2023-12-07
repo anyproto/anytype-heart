@@ -17654,6 +17654,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | HTML_WRONG_HTML_STRUCTURE | 10 |  |
 | PB_NOT_ANYBLOCK_FORMAT | 11 |  |
 | CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| CSV_WRONG_CSV_STRUCTURE | 16 |  |
 
 
 
@@ -23386,6 +23387,7 @@ stored |
 | HTML_WRONG_HTML_STRUCTURE | 10 |  |
 | PB_NOT_ANYBLOCK_FORMAT | 11 |  |
 | CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| CSV_WRONG_CSV_STRUCTURE | 16 |  |
 
 
 
