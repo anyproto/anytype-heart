@@ -57,17 +57,21 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 
 	if req.NetworkMode == pb.RpcAccount_CustomConfig {
 		// check if file exists at path
-		if b, err := os.ReadFile(req.NetworkCustomConfigFilePath); os.IsNotExist(err) {
+		b, err := os.ReadFile(req.NetworkCustomConfigFilePath)
+		if os.IsNotExist(err) {
 			return ErrNetworkConfigFileDoesNotExist
-		} else {
-			var cfg nodeconf.Configuration
-			err = yaml.Unmarshal(b, &cfg)
-			if err != nil {
-				return ErrNetworkConfigFileInvalid
-			}
-			if conf.NetworkId != "" && conf.NetworkId != cfg.NetworkId {
-				return ErrNetworkConfigNetworkIdMismatch
-			}
+		}
+		if err != nil {
+			return errors.Join(ErrNetworkConfigFileInvalid, err)
+		}
+		var cfg nodeconf.Configuration
+		err = yaml.Unmarshal(b, &cfg)
+		if err != nil {
+			// wrap errors into each other
+			return errors.Join(ErrNetworkConfigFileInvalid, err)
+		}
+		if conf.NetworkId != "" && conf.NetworkId != cfg.NetworkId {
+			return ErrNetworkConfigNetworkIdMismatch
 		}
 	}
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -310,7 +311,7 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 		log.Warnf("Network config set via os env ANY_SYNC_NETWORK is deprecated")
 	} else if c.NetworkMode == pb.RpcAccount_CustomConfig {
 		if c.NetworkCustomConfigFilePath == "" {
-			return nodeconf.Configuration{}, fmt.Errorf("CustomConfig network node set but NetworkCustomConfigFilePath is empty")
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFailedToRead, fmt.Errorf("CustomConfig network mode is set but NetworkCustomConfigFilePath is empty"))
 		}
 		networkConfigPath = c.NetworkCustomConfigFilePath
 	}
@@ -320,25 +321,25 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 	if networkConfigPath != "" {
 		var err error
 		if confBytes, err = os.ReadFile(networkConfigPath); err != nil {
-			return nodeconf.Configuration{}, ErrNetworkFailedToRead
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFailedToRead, err)
 		}
 	}
 
 	switch c.NetworkMode {
 	case pb.RpcAccount_CustomConfig, pb.RpcAccount_DefaultConfig:
 		if err := yaml.Unmarshal(confBytes, &conf); err != nil {
-			return nodeconf.Configuration{}, ErrNetworkFailedToUnmarshal
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkFailedToRead, err)
 		}
 		if c.NetworkId != "" && c.NetworkId != conf.NetworkId {
 			log.Warnf("Network id mismatch: %s != %s", c.NetworkId, conf.NetworkId)
-			return nodeconf.Configuration{}, fmt.Errorf("%w: expected to have config for %s but got %s instead", ErrNetworkIdMismatch, c.NetworkId, conf.NetworkId)
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkIdMismatch, fmt.Errorf("network id mismatch: %s != %s", c.NetworkId, conf.NetworkId))
 		}
 	case pb.RpcAccount_LocalOnly:
 		confBytes = []byte{}
 	}
 
 	if conf.NetworkId != "" && c.NetworkId == "" {
-		log.Warnf("Network id is not set in config; set to %s", conf.NetworkId)
+		log.Infof("Network id is not set in config; set to %s", conf.NetworkId)
 		c.NetworkId = conf.NetworkId
 		WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 	}

@@ -17,6 +17,9 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO),
 		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG),
 		errToCode(application.ErrSetDetails, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME),
+		errToCode(application.ErrNetworkConfigFileDoesNotExist, pb.RpcAccountCreateResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(application.ErrNetworkConfigFileInvalid, pb.RpcAccountCreateResponseError_CONFIG_FILE_INVALID),
+		errToCode(application.ErrNetworkConfigNetworkIdMismatch, pb.RpcAccountCreateResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 	)
 	return &pb.RpcAccountCreateResponse{
 		Config:  nil,
@@ -53,6 +56,9 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 		errToCode(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
+		errToCode(application.ErrNetworkConfigFileDoesNotExist, pb.RpcAccountSelectResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(application.ErrNetworkConfigFileInvalid, pb.RpcAccountSelectResponseError_CONFIG_FILE_INVALID),
+		errToCode(application.ErrNetworkConfigNetworkIdMismatch, pb.RpcAccountSelectResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 	)
 	return &pb.RpcAccountSelectResponse{
 		Config:  nil,
@@ -86,6 +92,7 @@ func (mw *Middleware) AccountChangeNetworkConfigAndRestart(ctx context.Context, 
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_ACCOUNT_FAILED_TO_STOP),
 		errToCode(application.ErrNetworkConfigFileDoesNotExist, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NOT_FOUND),
 		errToCode(application.ErrNetworkConfigFileInvalid, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_INVALID),
+		errToCode(application.ErrNetworkConfigNetworkIdMismatch, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 	)
 	return &pb.RpcAccountChangeNetworkConfigAndRestartResponse{
 		Error: &pb.RpcAccountChangeNetworkConfigAndRestartResponseError{
