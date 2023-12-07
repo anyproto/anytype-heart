@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/any-sync/net"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -12,6 +13,9 @@ import (
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	newAccount, err := mw.applicationService.AccountCreate(cctx, req)
 	code := mapErrorCode(err,
+		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountCreateResponseError_CONFIG_FILE_INVALID),
+		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountCreateResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountCreateResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE),
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE),
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO),
@@ -45,6 +49,9 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	account, err := mw.applicationService.AccountSelect(cctx, req)
 	code := mapErrorCode(err,
+		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountSelectResponseError_CONFIG_FILE_INVALID),
+		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountSelectResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountSelectResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 		errToCode(application.ErrEmptyAccountID, pb.RpcAccountSelectResponseError_BAD_INPUT),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
 		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
@@ -73,6 +80,23 @@ func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopReque
 	)
 	return &pb.RpcAccountStopResponse{
 		Error: &pb.RpcAccountStopResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountChangeNetworkConfigAndRestart(ctx context.Context, req *pb.RpcAccountChangeNetworkConfigAndRestartRequest) *pb.RpcAccountChangeNetworkConfigAndRestartResponse {
+	err := mw.applicationService.AccountChangeNetworkConfigAndRestart(ctx, req)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_ACCOUNT_IS_NOT_RUNNING),
+		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_ACCOUNT_FAILED_TO_STOP),
+		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_INVALID),
+		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NOT_FOUND),
+		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountChangeNetworkConfigAndRestartResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
+	)
+	return &pb.RpcAccountChangeNetworkConfigAndRestartResponse{
+		Error: &pb.RpcAccountChangeNetworkConfigAndRestartResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

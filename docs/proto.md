@@ -36,6 +36,10 @@
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
     - [Rpc.Account](#anytype-Rpc-Account)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error)
     - [Rpc.Account.Config](#anytype-Rpc-Account-Config)
     - [Rpc.Account.ConfigUpdate](#anytype-Rpc-Account-ConfigUpdate)
     - [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request)
@@ -955,12 +959,14 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
+    - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
@@ -1550,6 +1556,7 @@
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
 | AccountRecoverFromLegacyExport | [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request) | [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response) |  |
+| AccountChangeNetworkConfigAndRestart | [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request) | [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response) |  |
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
@@ -2189,6 +2196,63 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  |  |
+| networkCustomConfigFilePath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-Config"></a>
 
 ### Rpc.Account.Config
@@ -2226,7 +2290,6 @@ Response – message from a middleware.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| timeZone | [string](#string) |  |  |
 | IPFSStorageAddr | [string](#string) |  |  |
 
 
@@ -2288,6 +2351,8 @@ Front end to middleware request-to-create-an account
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
+| networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
 
 
 
@@ -2702,6 +2767,8 @@ User can select an account from those, that came with an AccountAdd events
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  | Root path is optional, set if this is a first request |
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
+| networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 
 
 
@@ -15551,6 +15618,24 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 4 |  |
+| ACCOUNT_FAILED_TO_STOP | 100 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
+
+
+
 <a name="anytype-Rpc-Account-ConfigUpdate-Response-Error-Code"></a>
 
 ### Rpc.Account.ConfigUpdate.Response.Error.Code
@@ -15619,6 +15704,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
 
 
 
@@ -15667,6 +15755,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_CREATE_LOCAL_REPO | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_GET_CONFIG | 106 |  |
+
+
+
+<a name="anytype-Rpc-Account-NetworkMode"></a>
+
+### Rpc.Account.NetworkMode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DefaultConfig | 0 | use network config that embedded in binary |
+| LocalOnly | 1 | disable any-sync network and use only local p2p nodes |
+| CustomConfig | 2 | use config provided in networkConfigFilePath |
 
 
 
@@ -15732,6 +15833,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 | FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 | ACCOUNT_IS_DELETED | 111 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
 
 
 
