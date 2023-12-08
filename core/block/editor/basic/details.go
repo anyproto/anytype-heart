@@ -40,7 +40,9 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
-	removeInternalFlags(s, updates)
+	flags := internalflag.NewFromState(s.ParentState())
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
 
 	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
 		return
@@ -61,26 +63,6 @@ func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s
 		}
 	}
 	return updates
-}
-
-func removeInternalFlags(s *state.State, updates []*detailUpdate) {
-	flags := internalflag.NewFromState(s.ParentState())
-	if flags.IsEmpty() {
-		return
-	}
-	flags.Remove(model.InternalFlag_editorDeleteEmpty)
-	shouldRemoveFlags := true
-	for _, update := range updates {
-		if update.key == bundle.RelationKeyName.String() || update.key == bundle.RelationKeyDescription.String() {
-			shouldRemoveFlags = false
-			break
-		}
-	}
-	if shouldRemoveFlags {
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorSelectTemplate)
-	}
-	flags.AddToState(s)
 }
 
 func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
