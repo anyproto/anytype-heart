@@ -278,7 +278,7 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId s
 	if err != nil {
 		return fileId
 	}
-	fileObjectId, err = space.DeriveObjectID(context.Background(), uniqueKey)
+	fileObjectId, err = space.DeriveObjectIdWithAccountSignature(context.Background(), uniqueKey)
 	if err != nil {
 		log.Errorf("can't derive object id for fileId %s: %v", fileId, err)
 		return fileId

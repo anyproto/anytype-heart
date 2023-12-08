@@ -181,13 +181,24 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 		if err != nil {
 			return "", nil, err
 		}
-		sb, err = spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-			Key:      uk,
-			InitFunc: initFunc,
-		})
-		if err != nil {
-			return "", nil, err
+		if sbType == coresb.SmartBlockTypeFileObject {
+			sb, err = spc.DeriveTreeObjectWithAccountSignature(ctx, objectcache.TreeDerivationParams{
+				Key:      uk,
+				InitFunc: initFunc,
+			})
+			if err != nil {
+				return "", nil, err
+			}
+		} else {
+			sb, err = spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+				Key:      uk,
+				InitFunc: initFunc,
+			})
+			if err != nil {
+				return "", nil, err
+			}
 		}
+
 	} else {
 		sb, err = spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
 			Time:           time.Now(),
