@@ -10,7 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -60,6 +60,7 @@ type service struct {
 	creator      objectcreator.Service
 	resolver     idresolver.Resolver
 	exporter     export.Export
+	converter    converter.LayoutConverter
 }
 
 func New() Service {
@@ -77,6 +78,7 @@ func (s *service) Init(a *app.App) error {
 	s.creator = app.MustComponent[objectcreator.Service](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.exporter = a.MustComponent(export.CName).(export.Export)
+	s.converter = app.MustComponent[converter.LayoutConverter](a)
 	return nil
 }
 
@@ -87,7 +89,8 @@ func (s *service) CreateTemplateStateWithDetails(
 	details *types.Struct,
 ) (targetState *state.State, err error) {
 	if templateId == BlankTemplateId || templateId == "" {
-		targetState = s.createBlankTemplateState()
+		layout := pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())
+		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
 	} else {
 		targetState, err = s.createCustomTemplateState(templateId)
 		if err != nil {
@@ -102,13 +105,18 @@ func (s *service) CreateTemplateStateWithDetails(
 }
 
 func extractTargetDetails(addedDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
+	templateIsPreferableRelationKeys := []domain.RelationKey{bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout}
 	targetDetails := pbtypes.CopyStruct(addedDetails)
+	if templateDetails == nil {
+		return targetDetails
+	}
 	for key := range addedDetails.GetFields() {
 		_, exists := templateDetails.Fields[key]
 		if exists {
 			inTemplateEmpty := pbtypes.IsEmptyValueOrAbsent(templateDetails, key)
 			inAddedEmpty := pbtypes.IsEmptyValueOrAbsent(addedDetails, key)
-			if !inTemplateEmpty && inAddedEmpty {
+			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, domain.RelationKey(key))
+			if !inTemplateEmpty && (inAddedEmpty || templateValueShouldBePreferred) {
 				delete(targetDetails.Fields, key)
 			}
 		}
@@ -123,6 +131,10 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		}
 		targetState = sb.NewState().Copy()
 
+		if pbtypes.GetBool(targetState.LocalDetails(), bundle.RelationKeyIsArchived.String()) {
+			return spacestorage.ErrTreeStorageAlreadyDeleted
+		}
+
 		innerErr = s.updateTypeKey(targetState)
 		if innerErr != nil {
 			return
@@ -135,7 +147,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 	})
 	if err != nil {
 		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-			targetState = s.createBlankTemplateState()
+			targetState = s.createBlankTemplateState(model.ObjectType_basic)
 			err = nil
 		} else {
 			err = fmt.Errorf("can't apply template: %w", err)
@@ -153,15 +165,6 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		}
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
-
-		layout, found := orig.Layout()
-		if found {
-			if commonOperations, ok := b.(basic.CommonOperations); ok {
-				if err = commonOperations.SetLayoutInStateAndIgnoreRestriction(ts, layout); err != nil {
-					return fmt.Errorf("convert layout: %w", err)
-				}
-			}
-		}
 
 		ts.BlocksInit(ts)
 
@@ -284,21 +287,21 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	path, _, err = s.exporter.Export(ctx, pb.RpcObjectListExportRequest{
 		Path:      path,
 		ObjectIds: docIds,
-		Format:    pb.RpcObjectListExport_Protobuf,
+		Format:    model.Export_Protobuf,
 		Zip:       true,
 	})
 	return path, err
 }
 
-func (s *service) createBlankTemplateState() (st *state.State) {
+func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *state.State) {
 	st = state.NewDoc(BlankTemplateId, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
 		template.WithFeaturedRelations,
 		template.WithRequiredRelations(),
 		template.WithTitle,
-		template.WithDescription,
 	)
+	_ = s.converter.Convert(nil, st, model.ObjectType_basic, layout)
 	return
 }
 

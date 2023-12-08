@@ -49,6 +49,10 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	if req.DisableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
+	if req.NetworkMode > 0 {
+		cfg.NetworkMode = req.NetworkMode
+		cfg.NetworkCustomConfigFilePath = req.NetworkCustomConfigFilePath
+	}
 	comps := []app.Component{
 		cfg,
 		anytype.BootstrapWallet(s.rootPath, derivationResult),

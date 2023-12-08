@@ -20,6 +20,7 @@
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
     - [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd)
     - [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove)
+    - [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet)
     - [Change.RelationAdd](#anytype-Change-RelationAdd)
     - [Change.RelationRemove](#anytype-Change-RelationRemove)
     - [Change.Snapshot](#anytype-Change-Snapshot)
@@ -35,6 +36,10 @@
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
     - [Rpc.Account](#anytype-Rpc-Account)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error)
     - [Rpc.Account.Config](#anytype-Rpc-Account-Config)
     - [Rpc.Account.ConfigUpdate](#anytype-Rpc-Account-ConfigUpdate)
     - [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request)
@@ -600,6 +605,15 @@
     - [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request)
     - [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response)
     - [Rpc.Navigation.ListObjects.Response.Error](#anytype-Rpc-Navigation-ListObjects-Response-Error)
+    - [Rpc.Notification](#anytype-Rpc-Notification)
+    - [Rpc.Notification.List](#anytype-Rpc-Notification-List)
+    - [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request)
+    - [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response)
+    - [Rpc.Notification.List.Response.Error](#anytype-Rpc-Notification-List-Response-Error)
+    - [Rpc.Notification.Reply](#anytype-Rpc-Notification-Reply)
+    - [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request)
+    - [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response)
+    - [Rpc.Notification.Reply.Response.Error](#anytype-Rpc-Notification-Reply-Response-Error)
     - [Rpc.Object](#anytype-Rpc-Object)
     - [Rpc.Object.ApplyTemplate](#anytype-Rpc-Object-ApplyTemplate)
     - [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request)
@@ -880,11 +894,6 @@
     - [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response)
     - [Rpc.Unsplash.Search.Response.Error](#anytype-Rpc-Unsplash-Search-Response-Error)
     - [Rpc.Unsplash.Search.Response.Picture](#anytype-Rpc-Unsplash-Search-Response-Picture)
-    - [Rpc.UserData](#anytype-Rpc-UserData)
-    - [Rpc.UserData.Dump](#anytype-Rpc-UserData-Dump)
-    - [Rpc.UserData.Dump.Request](#anytype-Rpc-UserData-Dump-Request)
-    - [Rpc.UserData.Dump.Response](#anytype-Rpc-UserData-Dump-Response)
-    - [Rpc.UserData.Dump.Response.Error](#anytype-Rpc-UserData-Dump-Response-Error)
     - [Rpc.Wallet](#anytype-Rpc-Wallet)
     - [Rpc.Wallet.CloseSession](#anytype-Rpc-Wallet-CloseSession)
     - [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request)
@@ -950,12 +959,14 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
+    - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
@@ -1086,6 +1097,8 @@
     - [Rpc.Navigation.Context](#anytype-Rpc-Navigation-Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response-Error-Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
+    - [Rpc.Notification.List.Response.Error.Code](#anytype-Rpc-Notification-List-Response-Error-Code)
+    - [Rpc.Notification.Reply.Response.Error.Code](#anytype-Rpc-Notification-Reply-Response-Error-Code)
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
     - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
@@ -1102,7 +1115,7 @@
     - [Rpc.Object.Import.Notion.ValidateToken.Response.Error.Code](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error-Code)
     - [Rpc.Object.Import.Request.CsvParams.Mode](#anytype-Rpc-Object-Import-Request-CsvParams-Mode)
     - [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode)
-    - [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type)
+    - [Rpc.Object.Import.Request.PbParams.Type](#anytype-Rpc-Object-Import-Request-PbParams-Type)
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
     - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
@@ -1111,7 +1124,6 @@
     - [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
-    - [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format)
     - [Rpc.Object.ListExport.Response.Error.Code](#anytype-Rpc-Object-ListExport-Response-Error-Code)
     - [Rpc.Object.ListSetIsArchived.Response.Error.Code](#anytype-Rpc-Object-ListSetIsArchived-Response-Error-Code)
     - [Rpc.Object.ListSetIsFavorite.Response.Error.Code](#anytype-Rpc-Object-ListSetIsFavorite-Response-Error-Code)
@@ -1157,7 +1169,6 @@
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
     - [Rpc.Unsplash.Download.Response.Error.Code](#anytype-Rpc-Unsplash-Download-Response-Error-Code)
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype-Rpc-Unsplash-Search-Response-Error-Code)
-    - [Rpc.UserData.Dump.Response.Error.Code](#anytype-Rpc-UserData-Dump-Response-Error-Code)
     - [Rpc.Wallet.CloseSession.Response.Error.Code](#anytype-Rpc-Wallet-CloseSession-Response-Error-Code)
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype-Rpc-Wallet-Convert-Response-Error-Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype-Rpc-Wallet-Create-Response-Error-Code)
@@ -1315,6 +1326,9 @@
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Message](#anytype-Event-Message)
+    - [Event.Notification](#anytype-Event-Notification)
+    - [Event.Notification.Send](#anytype-Event-Notification-Send)
+    - [Event.Notification.Update](#anytype-Event-Notification-Update)
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
@@ -1416,12 +1430,18 @@
     - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [Export](#anytype-model-Export)
+    - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
+    - [Notification](#anytype-model-Notification)
+    - [Notification.Export](#anytype-model-Notification-Export)
+    - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
+    - [Notification.Import](#anytype-model-Notification-Import)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1466,8 +1486,14 @@
     - [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
+    - [Export.Format](#anytype-model-Export-Format)
+    - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
+    - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [Notification.ActionType](#anytype-model-Notification-ActionType)
+    - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
+    - [Notification.Status](#anytype-model-Notification-Status)
     - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
@@ -1530,6 +1556,7 @@
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
 | AccountRecoverFromLegacyExport | [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request) | [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response) |  |
+| AccountChangeNetworkConfigAndRestart | [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request) | [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response) |  |
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
@@ -1705,6 +1732,8 @@
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
+| NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
+| NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 
  
 
@@ -1842,6 +1871,7 @@ the element of change tree used to store and internal apply smartBlock history
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
 | storeKeyUnset | [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset) |  |  |
 | storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
+| originalCreatedTimestampSet | [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet) |  |  |
 
 
 
@@ -1937,6 +1967,21 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
 | key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-OriginalCreatedTimestampSet"></a>
+
+### Change.OriginalCreatedTimestampSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ts | [int64](#int64) |  |  |
 
 
 
@@ -2151,6 +2196,63 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  |  |
+| networkCustomConfigFilePath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-Config"></a>
 
 ### Rpc.Account.Config
@@ -2188,7 +2290,6 @@ Response – message from a middleware.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| timeZone | [string](#string) |  |  |
 | IPFSStorageAddr | [string](#string) |  |  |
 
 
@@ -2250,6 +2351,8 @@ Front end to middleware request-to-create-an account
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
+| networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
 
 
 
@@ -2664,6 +2767,8 @@ User can select an account from those, that came with an AccountAdd events
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  | Root path is optional, set if this is a first request |
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
+| networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 
 
 
@@ -9354,6 +9459,7 @@ Get marks list in the selected range in text block.
 | downloadLink | [string](#string) |  |  |
 | fileSize | [int32](#int32) |  |  |
 | categories | [string](#string) | repeated |  |
+| language | [string](#string) |  |  |
 
 
 
@@ -10392,6 +10498,131 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Notification"></a>
+
+### Rpc.Notification
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-List"></a>
+
+### Rpc.Notification.List
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-List-Request"></a>
+
+### Rpc.Notification.List.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| includeRead | [bool](#bool) |  |  |
+| limit | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-List-Response"></a>
+
+### Rpc.Notification.List.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Notification.List.Response.Error](#anytype-Rpc-Notification-List-Response-Error) |  |  |
+| notifications | [model.Notification](#anytype-model-Notification) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-List-Response-Error"></a>
+
+### Rpc.Notification.List.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Notification.List.Response.Error.Code](#anytype-Rpc-Notification-List-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-Reply"></a>
+
+### Rpc.Notification.Reply
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-Reply-Request"></a>
+
+### Rpc.Notification.Reply.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+| actionType | [model.Notification.ActionType](#anytype-model-Notification-ActionType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-Reply-Response"></a>
+
+### Rpc.Notification.Reply.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Notification.Reply.Response.Error](#anytype-Rpc-Notification-Reply-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-Reply-Response-Error"></a>
+
+### Rpc.Notification.Reply.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Notification.Reply.Response.Error.Code](#anytype-Rpc-Notification-Reply-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object"></a>
 
 ### Rpc.Object
@@ -11238,10 +11469,11 @@ DEPRECATED, GO-1926 |
 | csvParams | [Rpc.Object.Import.Request.CsvParams](#anytype-Rpc-Object-Import-Request-CsvParams) |  |  |
 | snapshots | [Rpc.Object.Import.Request.Snapshot](#anytype-Rpc-Object-Import-Request-Snapshot) | repeated | optional, for external developers usage |
 | updateExistingObjects | [bool](#bool) |  |  |
-| type | [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type) |  |  |
+| type | [model.Import.Type](#anytype-model-Import-Type) |  |  |
 | mode | [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode) |  |  |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
+| isNewSpace | [bool](#bool) |  |  |
 
 
 
@@ -11337,6 +11569,8 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
 | noCollection | [bool](#bool) |  |  |
+| collectionTitle | [string](#string) |  |  |
+| importType | [Rpc.Object.Import.Request.PbParams.Type](#anytype-Rpc-Object-Import-Request-PbParams-Type) |  |  |
 
 
 
@@ -11425,8 +11659,9 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| source | [string](#string) |  |  |
-| isLocal | [bool](#bool) |  |  |
+| url | [string](#string) |  |  |
+| title | [string](#string) |  |  |
+| isNewSpace | [bool](#bool) |  |  |
 
 
 
@@ -11725,7 +11960,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | spaceId | [string](#string) |  |  |
 | path | [string](#string) |  | the path where export files will place |
 | objectIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
-| format | [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format) |  | export format |
+| format | [model.Export.Format](#anytype-model-Export-Format) |  | export format |
 | zip | [bool](#bool) |  | save as zip file |
 | includeNested | [bool](#bool) |  | include all nested |
 | includeFiles | [bool](#bool) |  | include all files |
@@ -14485,72 +14720,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-UserData"></a>
-
-### Rpc.UserData
-
-
-
-
-
-
-
-<a name="anytype-Rpc-UserData-Dump"></a>
-
-### Rpc.UserData.Dump
-
-
-
-
-
-
-
-<a name="anytype-Rpc-UserData-Dump-Request"></a>
-
-### Rpc.UserData.Dump.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| path | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-UserData-Dump-Response"></a>
-
-### Rpc.UserData.Dump.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.UserData.Dump.Response.Error](#anytype-Rpc-UserData-Dump-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-UserData-Dump-Response-Error"></a>
-
-### Rpc.UserData.Dump.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.UserData.Dump.Response.Error.Code](#anytype-Rpc-UserData-Dump-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Wallet"></a>
 
 ### Rpc.Wallet
@@ -15449,6 +15618,24 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 4 |  |
+| ACCOUNT_FAILED_TO_STOP | 100 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
+
+
+
 <a name="anytype-Rpc-Account-ConfigUpdate-Response-Error-Code"></a>
 
 ### Rpc.Account.ConfigUpdate.Response.Error.Code
@@ -15517,6 +15704,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
 
 
 
@@ -15565,6 +15755,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_CREATE_LOCAL_REPO | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_GET_CONFIG | 106 |  |
+
+
+
+<a name="anytype-Rpc-Account-NetworkMode"></a>
+
+### Rpc.Account.NetworkMode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DefaultConfig | 0 | use network config that embedded in binary |
+| LocalOnly | 1 | disable any-sync network and use only local p2p nodes |
+| CustomConfig | 2 | use config provided in networkConfigFilePath |
 
 
 
@@ -15630,6 +15833,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 | FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 | ACCOUNT_IS_DELETED | 111 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
 
 
 
@@ -17279,6 +17485,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Notification-List-Response-Error-Code"></a>
+
+### Rpc.Notification.List.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
+<a name="anytype-Rpc-Notification-Reply-Response-Error-Code"></a>
+
+### Rpc.Notification.Reply.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
 <a name="anytype-Rpc-Object-ApplyTemplate-Response-Error-Code"></a>
 
 ### Rpc.Object.ApplyTemplate.Response.Error.Code
@@ -17490,20 +17724,15 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Object-Import-Request-Type"></a>
+<a name="anytype-Rpc-Object-Import-Request-PbParams-Type"></a>
 
-### Rpc.Object.Import.Request.Type
+### Rpc.Object.Import.Request.PbParams.Type
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Notion | 0 |  |
-| Markdown | 1 |  |
-| External | 2 | external developers use it |
-| Pb | 3 |  |
-| Html | 4 |  |
-| Txt | 5 |  |
-| Csv | 6 |  |
+| SPACE | 0 |  |
+| EXPERIENCE | 1 |  |
 
 
 
@@ -17521,6 +17750,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_OBJECTS_TO_IMPORT | 5 |  |
 | IMPORT_IS_CANCELED | 6 |  |
 | LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| FILE_LOAD_ERROR | 8 |  |
 
 
 
@@ -17617,22 +17847,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-Object-ListExport-Format"></a>
-
-### Rpc.Object.ListExport.Format
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Markdown | 0 |  |
-| Protobuf | 1 |  |
-| JSON | 2 |  |
-| DOT | 3 |  |
-| SVG | 4 |  |
-| GRAPH_JSON | 5 |  |
 
 
 
@@ -18231,19 +18445,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | RATE_LIMIT_EXCEEDED | 100 | ... |
-
-
-
-<a name="anytype-Rpc-UserData-Dump-Response-Error-Code"></a>
-
-### Rpc.UserData.Dump.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
 
 
 
@@ -20699,6 +20900,48 @@ Precondition: user A opened a block
 | fileLimitReached | [Event.File.LimitReached](#anytype-Event-File-LimitReached) |  |  |
 | fileSpaceUsage | [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage) |  |  |
 | fileLocalUsage | [Event.File.LocalUsage](#anytype-Event-File-LocalUsage) |  |  |
+| notificationSend | [Event.Notification.Send](#anytype-Event-Notification-Send) |  |  |
+| notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Notification"></a>
+
+### Event.Notification
+
+
+
+
+
+
+
+<a name="anytype-Event-Notification-Send"></a>
+
+### Event.Notification.Send
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| notification | [model.Notification](#anytype-model-Notification) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Notification-Update"></a>
+
+### Event.Notification.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| notification | [model.Notification](#anytype-model-Notification) |  |  |
 
 
 
@@ -22300,6 +22543,26 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Export"></a>
+
+### Export
+
+
+
+
+
+
+
+<a name="anytype-model-Import"></a>
+
+### Import
+
+
+
+
+
+
+
 <a name="anytype-model-InternalFlag"></a>
 
 ### InternalFlag
@@ -22392,6 +22655,81 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Notification"></a>
+
+### Notification
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| createTime | [int64](#int64) |  |  |
+| status | [Notification.Status](#anytype-model-Notification-Status) |  |  |
+| isLocal | [bool](#bool) |  |  |
+| import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
+| export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
+| galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
+| space | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-Export"></a>
+
+### Notification.Export
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| errorCode | [Notification.Export.Code](#anytype-model-Notification-Export-Code) |  |  |
+| exportType | [Export.Format](#anytype-model-Export-Format) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-GalleryImport"></a>
+
+### Notification.GalleryImport
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processId | [string](#string) |  |  |
+| errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
+| spaceId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-Import"></a>
+
+### Notification.Import
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processId | [string](#string) |  |  |
+| errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
+| importType | [Import.Type](#anytype-model-Import-Type) |  |  |
+| spaceId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Object"></a>
 
 ### Object
@@ -22439,6 +22777,7 @@ Used to decode block meta only, without the content itself
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
 | installedByDefault | [bool](#bool) |  |  |
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
+| revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
 
 
 
@@ -22561,6 +22900,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 scope from which this relation have been aggregated |
 | creator | [string](#string) |  | creator profile id |
+| revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
 
 
 
@@ -22697,7 +23037,8 @@ stored |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
-| key | [string](#string) |  | this field is not passing to the crdt changes and can be only set in the snapshot |
+| key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
+| originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
 
 
 
@@ -23106,6 +23447,57 @@ stored |
 
 
 
+<a name="anytype-model-Export-Format"></a>
+
+### Export.Format
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Markdown | 0 |  |
+| Protobuf | 1 |  |
+| JSON | 2 |  |
+| DOT | 3 |  |
+| SVG | 4 |  |
+| GRAPH_JSON | 5 |  |
+
+
+
+<a name="anytype-model-Import-ErrorCode"></a>
+
+### Import.ErrorCode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
+| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| FILE_LOAD_ERROR | 8 |  |
+
+
+
+<a name="anytype-model-Import-Type"></a>
+
+### Import.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Notion | 0 |  |
+| Markdown | 1 |  |
+| External | 2 | external developers use it |
+| Pb | 3 |  |
+| Html | 4 |  |
+| Txt | 5 |  |
+| Csv | 6 |  |
+
+
+
 <a name="anytype-model-InternalFlag-Value"></a>
 
 ### InternalFlag.Value
@@ -23132,6 +23524,44 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype-model-Notification-ActionType"></a>
+
+### Notification.ActionType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CLOSE | 0 |  |
+
+
+
+<a name="anytype-model-Notification-Export-Code"></a>
+
+### Notification.Export.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-model-Notification-Status"></a>
+
+### Notification.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Created | 0 |  |
+| Shown | 1 |  |
+| Read | 2 |  |
+| Replied | 3 |  |
 
 
 

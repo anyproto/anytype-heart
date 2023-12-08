@@ -11,11 +11,12 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var log = logging.Logger("notion-get-blocks")
@@ -47,13 +48,13 @@ type Response struct {
 func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	pageID, apiKey string,
 	pageSize int64,
-	mode pb.RpcObjectImportRequestMode) ([]interface{}, *converter.ConvertError) {
-	converterError := converter.NewError(mode)
+	mode pb.RpcObjectImportRequestMode) ([]interface{}, *common.ConvertError) {
+	converterError := common.NewError(mode)
 	allBlocks := make([]interface{}, 0)
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
 		converterError.Add(err)
-		if converterError.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+		if converterError.ShouldAbortImport(0, model.Import_Notion) {
 			return nil, converterError
 		}
 	}
@@ -65,13 +66,13 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 		}
 		var (
 			children []interface{}
-			childErr *converter.ConvertError
+			childErr *common.ConvertError
 		)
 		if cs.HasChild() {
 			children, childErr = s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
 			if !childErr.IsEmpty() {
 				converterError.Merge(childErr)
-				if childErr.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+				if childErr.ShouldAbortImport(0, model.Import_Notion) {
 					return nil, childErr
 				}
 			}

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -24,30 +25,33 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const deletedTemplateId = "iamdeleted"
+const (
+	deletedTemplateId  = "iamdeleted"
+	archivedTemplateId = "iamarchived"
+)
 
 type testPicker struct {
 	sb smartblock.SmartBlock
 }
 
-func (t *testPicker) GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
+func (t *testPicker) GetObject(_ context.Context, id string) (sb smartblock.SmartBlock, err error) {
 	if id == deletedTemplateId {
 		return nil, spacestorage.ErrTreeStorageAlreadyDeleted
 	}
 	return t.sb, nil
 }
 
-func (t *testPicker) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (t *testPicker) GetObjectByFullID(_ context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	return t.sb, nil
 }
 
-func (t *testPicker) Init(a *app.App) error { return nil }
+func (t *testPicker) Init(_ *app.App) error { return nil }
 
 func (t *testPicker) Name() string { return "" }
 
 func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 	sb := smarttest.New(templateName)
-	_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
+	details := []*pb.RpcObjectSetDetailsDetail{
 		{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(templateName),
@@ -56,7 +60,14 @@ func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 			Key:   bundle.RelationKeyDescription.String(),
 			Value: pbtypes.String(templateName),
 		},
-	}, false)
+	}
+	if templateName == archivedTemplateId {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyIsArchived.String(),
+			Value: pbtypes.Bool(true),
+		})
+	}
+	_ = sb.SetDetails(nil, details, false)
 	sb.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, domain.TypeKey(typeKey)})
 	sb.AddBlock(simple.New(&model.Block{Id: templateName, ChildrenIds: []string{template.TitleBlockId, template.DescriptionBlockId}}))
 	sb.AddBlock(text.NewDetails(&model.Block{
@@ -90,7 +101,7 @@ func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 	return sb
 }
 
-func TestService_StateFromTemplate(t *testing.T) {
+func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -119,7 +130,7 @@ func TestService_StateFromTemplate(t *testing.T) {
 				"when template is %s and target detail is %s", templateName, addedDetail), func(t *testing.T) {
 				// given
 				tmpl := NewTemplateTest(templateName, "")
-				s := service{picker: &testPicker{sb: tmpl}}
+				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 				details := &types.Struct{Fields: map[string]*types.Value{}}
 				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(addedDetail)
 				details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(addedDetail)
@@ -132,49 +143,29 @@ func TestService_StateFromTemplate(t *testing.T) {
 				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyName.String()].GetStringValue())
 				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyDescription.String()].GetStringValue())
 				assert.Equal(t, expected[templateIndex], st.Get(template.TitleBlockId).Model().GetText().Text)
-				assert.Equal(t, expected[templateIndex], st.Get(template.DescriptionBlockId).Model().GetText().Text)
 			})
 		}
 	}
 
-	t.Run("empty templateId", func(t *testing.T) {
-		// given
-		tmpl := NewTemplateTest(templateName, "")
-		s := service{picker: &testPicker{sb: tmpl}}
+	for _, testCase := range [][]string{
+		{"templateId is empty", ""},
+		{"templateId is blank", BlankTemplateId},
+		{"target template is deleted", deletedTemplateId},
+		{"target template is archived", archivedTemplateId},
+	} {
+		t.Run("create blank template in case "+testCase[0], func(t *testing.T) {
+			// given
+			tmpl := NewTemplateTest(testCase[1], "")
+			s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 
-		// when
-		st, err := s.CreateTemplateStateWithDetails("", nil)
+			// when
+			st, err := s.CreateTemplateStateWithDetails(testCase[1], nil)
 
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateId)
-	})
-
-	t.Run("blank templateId", func(t *testing.T) {
-		// given
-		tmpl := NewTemplateTest(templateName, "")
-		s := service{picker: &testPicker{sb: tmpl}}
-
-		// when
-		st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, nil)
-
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateId)
-	})
-
-	t.Run("create blank template in case template object is deleted", func(t *testing.T) {
-		// given
-		s := service{picker: &testPicker{}}
-
-		// when
-		st, err := s.CreateTemplateStateWithDetails(deletedTemplateId, nil)
-
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateId)
-
-	})
+			// then
+			assert.NoError(t, err)
+			assert.Equal(t, BlankTemplateId, st.RootId())
+		})
+	}
 
 	t.Run("requested smartblock is not a template", func(t *testing.T) {
 		// given
@@ -199,6 +190,77 @@ func TestService_StateFromTemplate(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, st.ObjectTypeKey(), bundle.TypeKeyWeeklyPlan)
+		assert.Equal(t, bundle.TypeKeyWeeklyPlan, st.ObjectTypeKey())
 	})
+
+	for _, layout := range []model.ObjectTypeLayout{
+		model.ObjectType_note,
+		model.ObjectType_basic,
+		model.ObjectType_profile,
+		model.ObjectType_todo,
+		model.ObjectType_date,
+		model.ObjectType_bookmark,
+	} {
+		t.Run("blank template should correspond "+model.ObjectTypeLayout_name[int32(layout)]+" layout", func(t *testing.T) {
+			// given
+			s := service{converter: converter.NewLayoutConverter()}
+			details := &types.Struct{Fields: map[string]*types.Value{}}
+			details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(layout))
+
+			// when
+			st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, details)
+
+			// then
+			assert.NoError(t, err)
+			assert.Equal(t, layout, model.ObjectTypeLayout(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())))
+			assertLayoutBlocks(t, st, layout)
+		})
+	}
+}
+
+func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLayout) {
+	switch layout {
+	case model.ObjectType_bookmark:
+		foundDescription, foundTag, foundSource := false, false, false
+		st.Iterate(func(b simple.Block) (isContinue bool) {
+			switch b.Model().Id {
+			case template.DescriptionBlockId:
+				foundDescription = true
+			case bundle.RelationKeyTag.String():
+				foundTag = true
+			case bundle.RelationKeySource.String():
+				foundSource = true
+			}
+			return true
+		})
+		assert.True(t, foundDescription && foundTag && foundSource)
+	case model.ObjectType_note:
+		foundTitle, foundDescription := false, false
+		st.Iterate(func(b simple.Block) (isContinue bool) {
+			switch b.Model().Id {
+			case template.DescriptionBlockId:
+				foundDescription = true
+				return false
+			case template.TitleBlockId:
+				foundTitle = true
+				return false
+			}
+			return true
+		})
+		assert.False(t, foundTitle || foundDescription)
+	default:
+		foundTitle, foundDescription := false, false
+		st.Iterate(func(b simple.Block) (isContinue bool) {
+			switch b.Model().Id {
+			case template.DescriptionBlockId:
+				foundDescription = true
+				return false
+			case template.TitleBlockId:
+				foundTitle = true
+			}
+			return true
+		})
+		assert.True(t, foundTitle)
+		assert.False(t, foundDescription)
+	}
 }

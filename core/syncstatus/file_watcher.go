@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"

@@ -1,0 +1,66 @@
+{
+  "description": "This is a schema build up for unit tests. For real manifest JSON schema refer to https://gallery.any.coop/experience.schema.json",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "author": {
+      "$ref": "#/$defs/githubLink",
+      "title": "Author"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 16
+    },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/link"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "downloadLink": {
+      "$ref": "#/$defs/link",
+      "title": "Download link",
+      "description": "The link to the experience's download file."
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/category"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "language": {
+      "type": "string",
+      "default": "en-US",
+      "enum": ["de-DE", "en-US", "sc-IT", "es-PR", "es-US", "hi-IN"]
+    }
+  },
+  "required": [ "id", "author", "description", "categories", "screenshots", "downloadLink" ],
+  "$defs": {
+    "link": {
+      "type": "string",
+      "pattern": "^(http(s?):\\/\\/)?(www\\.)?[a-z0-9]+([\\-\\.]{1}[a-z0-9]+)*\\.[a-z]{2,5}(:[0-9]{1,5})?(\\/.*)?$",
+      "maxLength": 255,
+      "minLength": 2
+    },
+    "githubLink": {
+      "type": "string",
+      "pattern": "^(http(s?):\\/\\/)?(www\\.)?github\\.([a-z])+\\/([A-Za-z0-9]{1,})+\\/?$",
+      "maxLength": 75,
+      "minLength": 2
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Dashboard",
+        "Work",
+        "Education"
+      ]
+    }
+  }
+}

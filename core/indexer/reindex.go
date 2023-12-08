@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/util/slice"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
 	"go.uber.org/zap"
 
@@ -26,7 +26,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 9
+	ForceObjectsReindexCounter int32 = 13
 
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
 	ForceFilesReindexCounter int32 = 11 //
@@ -234,7 +234,6 @@ func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
 	}
-
 	if flags.bundledObjects {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId, addr.MissingObject}

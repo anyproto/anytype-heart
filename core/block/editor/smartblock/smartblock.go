@@ -347,6 +347,9 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 	}
 	ctx.State.AddBundledRelations(relKeys...)
+	if ctx.IsNewObject && ctx.State != nil {
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentProfileId, sb.objectStore).Migrate(ctx.State)
+	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
@@ -683,7 +686,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			lastModified = time.Unix(lastModifiedFromState, 0)
 		}
 		s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
-		s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
+
+		if existingCreatedDate := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()); existingCreatedDate == 0 || existingCreatedDate > lastModified.Unix() {
+			// this can happen if we don't have creation date in the root change
+			s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
+		}
 	}
 
 	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentProfileId))
@@ -821,6 +828,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentProfileId, sb.objectStore).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -979,13 +987,13 @@ func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails
 	return details, hasPendingLocalDetails
 }
 
-func (sb *smartBlock) getCreationInfo() (creatorObjectId string, createdTS int64, err error) {
-	creatorObjectId, createdTS, err = sb.source.GetCreationInfo()
+func (sb *smartBlock) getCreationInfo() (creatorObjectId string, treeCreatedDate int64, err error) {
+	creatorObjectId, treeCreatedDate, err = sb.source.GetCreationInfo()
 	if err != nil {
 		return
 	}
 
-	return creatorObjectId, createdTS, nil
+	return creatorObjectId, treeCreatedDate, nil
 }
 
 func (sb *smartBlock) injectCreationInfo(s *state.State) error {
@@ -1008,7 +1016,7 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		return nil
 	}
 
-	creatorIdentityObjectId, createdDate, err := sb.getCreationInfo()
+	creatorIdentityObjectId, treeCreatedDate, err := sb.getCreationInfo()
 	if err != nil {
 		return err
 	}
@@ -1017,8 +1025,12 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
 	}
 
-	if createdDate != 0 {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
+	if originalCreated := s.OriginalCreatedTimestamp(); originalCreated > 0 {
+		// means we have imported object, so we need to set original created date
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(originalCreated)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
+	} else {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(treeCreatedDate)))
 	}
 
 	return nil

@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -28,7 +28,7 @@ type TXT struct {
 	service *collection.Service
 }
 
-func New(service *collection.Service) converter.Converter {
+func New(service *collection.Service) common.Converter {
 	return &TXT{service: service}
 }
 
@@ -44,19 +44,19 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
-	allErrors := converter.NewError(req.Mode)
+	allErrors := common.NewError(req.Mode)
 	snapshots, targetObjects := t.getSnapshots(req, progress, paths, allErrors)
 	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
 	}
-	rootCollection := converter.NewRootCollection(t.service)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
+	rootCollection := common.NewRootCollection(t.service)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -70,9 +70,9 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
+		return &common.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
 	}
-	return &converter.Response{
+	return &common.Response{
 		Snapshots:        snapshots,
 		RootCollectionID: rootCollectionID,
 	}, allErrors
@@ -81,13 +81,13 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	paths []string,
-	allErrors *converter.ConvertError,
-) ([]*converter.Snapshot, []string) {
-	snapshots := make([]*converter.Snapshot, 0)
+	allErrors *common.ConvertError,
+) ([]*common.Snapshot, []string) {
+	snapshots := make([]*common.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range paths {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(converter.ErrCancel)
+			allErrors.Add(common.ErrCancel)
 			return nil, nil
 		}
 		sn, to := t.handleImportPath(p, len(paths), allErrors)
@@ -100,22 +100,22 @@ func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 	return snapshots, targetObjects
 }
 
-func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
+func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.ConvertError) ([]*common.Snapshot, []string) {
 	importSource := source.GetSource(p)
 	defer importSource.Close()
 	err := importSource.Initialize(p)
 	if err != nil {
 		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(pathsCount, pb.RpcObjectImportRequest_Txt) {
+		if allErrors.ShouldAbortImport(pathsCount, model.Import_Txt) {
 			return nil, nil
 		}
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".txt"}); numberOfFiles == 0 {
-		allErrors.Add(converter.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrNoObjectsToImport)
 		return nil, nil
 	}
-	snapshots := make([]*converter.Snapshot, 0, numberOfFiles)
+	snapshots := make([]*common.Snapshot, 0, numberOfFiles)
 	targetObjects := make([]string, 0, numberOfFiles)
 	iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if filepath.Ext(fileName) != ".txt" {
@@ -125,7 +125,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *converter.Co
 		blocks, err = t.getBlocksForSnapshot(fileReader)
 		if err != nil {
 			allErrors.Add(err)
-			if allErrors.ShouldAbortImport(pathsCount, pb.RpcObjectImportRequest_Txt) {
+			if allErrors.ShouldAbortImport(pathsCount, model.Import_Txt) {
 				return false
 			}
 		}
@@ -153,14 +153,14 @@ func (t *TXT) getBlocksForSnapshot(rc io.ReadCloser) ([]*model.Block, error) {
 	return blocks, nil
 }
 
-func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
+func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetCommonDetails(p, "", "", model.ObjectType_basic),
+		Details:     common.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.String()},
 	}
 
-	snapshot := &converter.Snapshot{
+	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
