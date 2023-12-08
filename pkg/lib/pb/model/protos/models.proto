@@ -676,6 +676,7 @@ message ObjectType {
     bool isArchived = 9; // sets locally to hide object type from set and some other places
     bool installedByDefault = 11;
     string key = 12; // name of objectType (can be localized for bundled types)
+    int64 revision = 13; // revision of system objectType. Used to check if we should change type content or not
 
     enum Layout {
         basic = 0;
@@ -741,6 +742,7 @@ message Relation {
     // on-store fields, injected only locally
     Scope scope = 20; // scope from which this relation have been aggregated
     string creator = 21; // creator profile id
+    int64 revision = 22; // revision of system relation. Used to check if we should change relation content or not
 
     message Option {
         string id = 1; // id generated automatically if omitted
