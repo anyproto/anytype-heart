@@ -95,7 +95,36 @@ func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 			return closedBlockChan
 		}
 	}
-	return dataCh
+	var resultCh = make(chan blocks.Block)
+	go func() {
+		defer close(resultCh)
+		for i := 0; i < len(ks); i++ {
+			// wait ready signal
+			select {
+			case <-ctx.Done():
+				return
+			case res := <-ready:
+				if res.err != nil {
+					log.Info("get many got task error", zap.Error(res.err))
+					continue
+				}
+			}
+			// wait block
+			var b blocks.Block
+			select {
+			case <-ctx.Done():
+				return
+			case b = <-dataCh:
+			}
+			// send block
+			select {
+			case <-ctx.Done():
+				return
+			case resultCh <- b:
+			}
+		}
+	}()
+	return resultCh
 }
 
 func (s *store) Add(ctx context.Context, bs []blocks.Block) error {
