@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -36,15 +35,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import")
@@ -312,15 +308,9 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	allErrors *common.ConvertError,
 	req *pb.RpcObjectImportRequest,
 ) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
-	relationOptions := make([]*common.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
 	for _, snapshot := range res.Snapshots {
-		// we will get id of relation options after we figure out according relations keys
-		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.String()) {
-			relationOptions = append(relationOptions, snapshot)
-			continue
-		}
 		err := i.getObjectID(ctx, req.SpaceId, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects)
 		if err != nil {
 			allErrors.Add(err)
@@ -330,29 +320,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 			log.With(zap.String("object name", snapshot.Id)).Error(err)
 		}
 	}
-	for _, option := range relationOptions {
-		i.replaceRelationKeyWithNew(option, oldIDToNew)
-		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects)
-		if err != nil {
-			allErrors.Add(err)
-			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
-				return nil, nil, err
-			}
-			log.With(zap.String("object name", option.Id)).Error(err)
-		}
-	}
 	return oldIDToNew, createPayloads, nil
-}
-
-func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew map[string]string) {
-	if option.Snapshot.Data.Details == nil || len(option.Snapshot.Data.Details.Fields) == 0 {
-		return
-	}
-	key := pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-	if newRelationID, ok := oldIDToNew[key]; ok {
-		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
-	}
-	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 }
 
 func (i *Import) getObjectID(
