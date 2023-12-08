@@ -19,7 +19,7 @@ func TestDirWriter_WriteFile(t *testing.T) {
 
 	wr, err := newDirWriter(path, false)
 	require.NoError(t, err)
-	require.NoError(t, wr.WriteFile("some.test", strings.NewReader("some string")))
+	require.NoError(t, wr.WriteFile("some.test", strings.NewReader("some string"), 0))
 	require.NoError(t, wr.Close())
 
 	assert.True(t, strings.HasPrefix(wr.Path(), path))
@@ -35,7 +35,7 @@ func TestZipWriter_WriteFile(t *testing.T) {
 
 	wr, err := newZipWriter(path, uniqName()+".zip")
 	require.NoError(t, err)
-	require.NoError(t, wr.WriteFile("some.test", strings.NewReader("some string")))
+	require.NoError(t, wr.WriteFile("some.test", strings.NewReader("some string"), 0))
 	require.NoError(t, wr.Close())
 
 	assert.True(t, strings.HasPrefix(wr.Path(), path))
