@@ -36,6 +36,10 @@
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
     - [Rpc.Account](#anytype-Rpc-Account)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response)
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error)
     - [Rpc.Account.Config](#anytype-Rpc-Account-Config)
     - [Rpc.Account.ConfigUpdate](#anytype-Rpc-Account-ConfigUpdate)
     - [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request)
@@ -959,12 +963,14 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
+    - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
@@ -1440,6 +1446,7 @@
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Notification](#anytype-model-Notification)
     - [Notification.Export](#anytype-model-Notification-Export)
+    - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
@@ -1487,12 +1494,12 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [Export.Format](#anytype-model-Export-Format)
+    - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
-    - [Notification.Import.Code](#anytype-model-Notification-Import-Code)
     - [Notification.Status](#anytype-model-Notification-Status)
     - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
@@ -1556,6 +1563,7 @@
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
 | AccountRecoverFromLegacyExport | [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request) | [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response) |  |
+| AccountChangeNetworkConfigAndRestart | [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request) | [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response) |  |
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
@@ -2195,6 +2203,63 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  |  |
+| networkCustomConfigFilePath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-Config"></a>
 
 ### Rpc.Account.Config
@@ -2232,7 +2297,6 @@ Response – message from a middleware.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| timeZone | [string](#string) |  |  |
 | IPFSStorageAddr | [string](#string) |  |  |
 
 
@@ -2294,6 +2358,8 @@ Front end to middleware request-to-create-an account
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
+| networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
 
 
 
@@ -2708,6 +2774,8 @@ User can select an account from those, that came with an AccountAdd events
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  | Root path is optional, set if this is a first request |
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
+| networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
+| networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 
 
 
@@ -15617,6 +15685,24 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code"></a>
+
+### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 4 |  |
+| ACCOUNT_FAILED_TO_STOP | 100 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
+
+
+
 <a name="anytype-Rpc-Account-ConfigUpdate-Response-Error-Code"></a>
 
 ### Rpc.Account.ConfigUpdate.Response.Error.Code
@@ -15685,6 +15771,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
 
 
 
@@ -15733,6 +15822,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_CREATE_LOCAL_REPO | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_GET_CONFIG | 106 |  |
+
+
+
+<a name="anytype-Rpc-Account-NetworkMode"></a>
+
+### Rpc.Account.NetworkMode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DefaultConfig | 0 | use network config that embedded in binary |
+| LocalOnly | 1 | disable any-sync network and use only local p2p nodes |
+| CustomConfig | 2 | use config provided in networkConfigFilePath |
 
 
 
@@ -15798,6 +15900,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 | FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 | ACCOUNT_IS_DELETED | 111 |  |
+| CONFIG_FILE_NOT_FOUND | 200 |  |
+| CONFIG_FILE_INVALID | 201 |  |
+| CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
 
 
 
@@ -21961,7 +22066,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | dataview | [Block.Content.Dataview](#anytype-model-Block-Content-Dataview) |  |  |
 | relation | [Block.Content.Relation](#anytype-model-Block-Content-Relation) |  |  |
 | featuredRelations | [Block.Content.FeaturedRelations](#anytype-model-Block-Content-FeaturedRelations) |  |  |
-| latex | [Block.Content.Latex](#anytype-model-Block-Content-Latex) |  | todo: rename to embed |
+| latex | [Block.Content.Latex](#anytype-model-Block-Content-Latex) |  |  |
 | tableOfContents | [Block.Content.TableOfContents](#anytype-model-Block-Content-TableOfContents) |  |  |
 | table | [Block.Content.Table](#anytype-model-Block-Content-Table) |  |  |
 | tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |
@@ -22661,6 +22766,7 @@ Used to decode block meta only, without the content itself
 | isLocal | [bool](#bool) |  |  |
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
 | export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
+| galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
 | space | [string](#string) |  |  |
 
 
@@ -22684,6 +22790,24 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Notification-GalleryImport"></a>
+
+### Notification.GalleryImport
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processId | [string](#string) |  |  |
+| errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
+| spaceId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Notification-Import"></a>
 
 ### Notification.Import
@@ -22693,7 +22817,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | processId | [string](#string) |  |  |
-| errorCode | [Notification.Import.Code](#anytype-model-Notification-Import-Code) |  |  |
+| errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
@@ -22750,6 +22874,7 @@ Used to decode block meta only, without the content itself
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
 | installedByDefault | [bool](#bool) |  |  |
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
+| revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
 
 
 
@@ -22872,6 +22997,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 scope from which this relation have been aggregated |
 | creator | [string](#string) |  | creator profile id |
+| revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
 
 
 
@@ -23452,6 +23578,24 @@ stored |
 
 
 
+<a name="anytype-model-Import-ErrorCode"></a>
+
+### Import.ErrorCode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
+| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| FILE_LOAD_ERROR | 8 |  |
+
+
+
 <a name="anytype-model-Import-Type"></a>
 
 ### Import.Type
@@ -23505,11 +23649,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| RETRY | 0 |  |
-| REPORT | 1 |  |
-| OPEN_OBJECT | 2 |  |
-| OPEN_SPACE | 3 |  |
-| CLOSE | 4 |  |
+| CLOSE | 0 |  |
 
 
 
@@ -23523,24 +23663,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-model-Notification-Import-Code"></a>
-
-### Notification.Import.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| INTERNAL_ERROR | 3 |  |
-| NO_OBJECTS_TO_IMPORT | 5 |  |
-| IMPORT_IS_CANCELED | 6 |  |
-| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
-| FILE_LOAD_ERROR | 8 |  |
 
 
 

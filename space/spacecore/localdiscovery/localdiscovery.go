@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/libp2p/zeroconf/v2"
 	"go.uber.org/zap"
@@ -35,6 +36,7 @@ type localDiscovery struct {
 	interfacesAddrs addrs.InterfacesAddrs
 	periodicCheck   periodicsync.PeriodicSync
 	drpcServer      clientserver.ClientServer
+	nodeConf        nodeconf.Configuration
 
 	ipv4        []string
 	ipv6        []string
@@ -54,6 +56,7 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
+	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
 	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.ClientServer)
@@ -61,7 +64,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
-	if l.manualStart {
+	if l.manualStart && len(l.nodeConf.Nodes) > 0 {
 		// let's wait for the explicit command to enable local discovery
 		return
 	}
