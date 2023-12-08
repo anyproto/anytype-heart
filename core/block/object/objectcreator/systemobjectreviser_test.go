@@ -6,64 +6,20 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func TestUpdateSystemRelation(t *testing.T) {
-	marketRels := relationutils.Relations{
-		{&model.Relation{Key: "id", Revision: 1}},
-		{&model.Relation{Key: "description", Revision: 2}},
-		{&model.Relation{Key: "lyrics", Revision: 1}},
-		{&model.Relation{Key: "isReadonly", Revision: 3}},
-	}
-
-	t.Run("system relation is updated if revision is higher", func(t *testing.T) {
-		rel := &relationutils.Relation{Relation: &model.Relation{Id: "1", Key: "description", Revision: 1}}
-		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
-
-		reviseSystemRelation(space, rel, marketRels)
-	})
-
-	t.Run("system relation is updated if no revision is set", func(t *testing.T) {
-		rel := &relationutils.Relation{Relation: &model.Relation{Id: "id", Key: "id"}}
-		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
-
-		reviseSystemRelation(space, rel, marketRels)
-	})
-
-	t.Run("custom relation is not updated", func(t *testing.T) {
-		rel := &relationutils.Relation{Relation: &model.Relation{Key: "custom"}}
-		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
-
-		reviseSystemRelation(space, rel, marketRels)
-	})
-
-	t.Run("non system relation is not updated", func(t *testing.T) {
-		rel := &relationutils.Relation{Relation: &model.Relation{Key: "lyrics"}}
-		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
-
-		reviseSystemRelation(space, rel, marketRels)
-	})
-
-	t.Run("system relation with same revision is not updated", func(t *testing.T) {
-		rel := &relationutils.Relation{Relation: &model.Relation{Key: "isReadonly", Revision: 3}}
-		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
-
-		reviseSystemRelation(space, rel, marketRels)
-	})
-}
-
-func TestUpdateSystemObjectType(t *testing.T) {
-	marketTypes := map[string]*types.Struct{
-		"_otnote":    {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(3)}},
-		"_otpage":    {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(2)}},
-		"_otcontact": {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(1)}},
+func TestUpdateSystemObject(t *testing.T) {
+	marketObjects := map[string]*types.Struct{
+		"_otnote":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(3)}},
+		"_otpage":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(2)}},
+		"_otcontact":     {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(1)}},
+		"_brid":          {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(1)}},
+		"_brdescription": {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(2)}},
+		"_brlyrics":      {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(1)}},
+		"_brisReadonly":  {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(3)}},
 	}
 
 	t.Run("system object type is updated if revision is higher", func(t *testing.T) {
@@ -75,7 +31,7 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		reviseSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObject(space, objectType, marketObjects)
 	})
 
 	t.Run("system object type is updated if no revision is set", func(t *testing.T) {
@@ -86,7 +42,7 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		reviseSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObject(space, objectType, marketObjects)
 	})
 
 	t.Run("custom object type is not updated", func(t *testing.T) {
@@ -95,7 +51,7 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		reviseSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObject(space, objectType, marketObjects)
 	})
 
 	t.Run("non system object type is not updated", func(t *testing.T) {
@@ -105,7 +61,7 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		reviseSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObject(space, objectType, marketObjects)
 	})
 
 	t.Run("system object type with same revision is not updated", func(t *testing.T) {
@@ -116,6 +72,60 @@ func TestUpdateSystemObjectType(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
-		reviseSystemObjectType(space, objectType, marketTypes)
+		reviseSystemObject(space, objectType, marketObjects)
+	})
+
+	t.Run("system relation is updated if revision is higher", func(t *testing.T) {
+		rel := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRevision.String():     pbtypes.Int64(1),
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_brdescription"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-description"),
+		}}
+		space := mock_space.NewMockSpace(t)
+		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
+
+		reviseSystemObject(space, rel, marketObjects)
+	})
+
+	t.Run("system relation is updated if no revision is set", func(t *testing.T) {
+		rel := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_brid"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-id"),
+		}}
+		space := mock_space.NewMockSpace(t)
+		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
+
+		reviseSystemObject(space, rel, marketObjects)
+	})
+
+	t.Run("custom relation is not updated", func(t *testing.T) {
+		rel := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyUniqueKey.String(): pbtypes.String("rel-custom"),
+		}}
+		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
+
+		reviseSystemObject(space, rel, marketObjects)
+	})
+
+	t.Run("non system relation is not updated", func(t *testing.T) {
+		rel := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRevision.String():     pbtypes.Int64(1),
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_brlyrics"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-lyrics"),
+		}}
+		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
+
+		reviseSystemObject(space, rel, marketObjects)
+	})
+
+	t.Run("system relation with same revision is not updated", func(t *testing.T) {
+		rel := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRevision.String():     pbtypes.Int64(3),
+			bundle.RelationKeySourceObject.String(): pbtypes.String("_brisReadonly"),
+			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-isReadonly"),
+		}}
+		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
+
+		reviseSystemObject(space, rel, marketObjects)
 	})
 }
