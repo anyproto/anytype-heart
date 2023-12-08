@@ -15129,7 +15129,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  | cold auth |
-| appToken | [string](#string) |  | persistent token, that can be used to restore session |
+| appKey | [string](#string) |  | persistent app key, that can be used to restore session |
 
 
 

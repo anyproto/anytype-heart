@@ -212,7 +212,7 @@ message Rpc {
                 option (no_auth) = true;
                 oneof auth {
                     string mnemonic = 1; // cold auth
-                    string appToken = 2; // persistent token, that can be used to restore session
+                    string appKey = 2; // persistent app key, that can be used to restore session
                 }
             }
 
