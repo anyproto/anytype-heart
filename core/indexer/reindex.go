@@ -234,7 +234,6 @@ func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
 	}
-
 	if flags.bundledObjects {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
