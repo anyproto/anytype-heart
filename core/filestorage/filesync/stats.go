@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
-	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/samber/lo"

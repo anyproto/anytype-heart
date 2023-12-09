@@ -16,7 +16,7 @@ require (
 	github.com/cheggaaa/mb/v3 v3.0.2
 	github.com/dave/jennifer v1.7.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/dgraph-io/badger/v4 v4.2.0
+	github.com/dgraph-io/badger/v3 v3.2103.5
 	github.com/dgraph-io/ristretto v0.1.1
 	github.com/dgtony/collections v0.1.6
 	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/samber/lo"

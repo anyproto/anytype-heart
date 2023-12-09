@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/dgraph-io/badger/v4"
-	"github.com/dgraph-io/badger/v4/options"
+	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
 	"go.uber.org/zap"

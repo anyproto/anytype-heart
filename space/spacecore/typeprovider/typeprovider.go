@@ -11,7 +11,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"

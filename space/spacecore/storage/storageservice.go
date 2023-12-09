@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v3"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"

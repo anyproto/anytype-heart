@@ -3,7 +3,7 @@ package clientserver
 import (
 	"encoding/binary"
 
-	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v3"
 )
 
 const portKey = "drpc/server/port"

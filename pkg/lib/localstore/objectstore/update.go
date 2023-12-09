@@ -3,7 +3,7 @@ package objectstore
 import (
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 

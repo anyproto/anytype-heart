@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v3"
 )
 
 func hasDB(db *badger.DB, key []byte) bool {
