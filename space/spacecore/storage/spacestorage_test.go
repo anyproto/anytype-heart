@@ -99,7 +99,7 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 	})
 }
 
-func TestSpaceStorage_StoredIds(t *testing.T) {
+func TestSpaceStorage_StoredIds_BigTxn(t *testing.T) {
 	fx := newFixture(t)
 	fx.open(t)
 	defer fx.stop(t)
@@ -111,7 +111,7 @@ func TestSpaceStorage_StoredIds(t *testing.T) {
 		require.NoError(t, store.Close(ctx))
 	}()
 
-	n := 5
+	n := 50000
 	var ids []string
 	for i := 0; i < n; i++ {
 		treePayload := treeTestPayload()
@@ -127,4 +127,10 @@ func TestSpaceStorage_StoredIds(t *testing.T) {
 	require.NoError(t, err)
 	sort.Strings(storedIds)
 	require.Equal(t, ids, storedIds)
+
+	err = deleteSpace(store.Id(), fx.db)
+	require.NoError(t, err)
+	storedIds, err = store.StoredIds()
+	require.NoError(t, err)
+	require.Len(t, storedIds, 0)
 }
