@@ -93,7 +93,7 @@ func validateObjectDetails(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 			}
 
 		}
-		if rel.GetFormat() != model.RelationFormat_object && rel.GetFormat() != model.RelationFormat_multiselect && rel.GetFormat() != model.RelationFormat_select {
+		if rel.GetFormat() != model.RelationFormat_object && rel.GetFormat() != model.RelationFormat_tag && rel.GetFormat() != model.RelationFormat_status {
 			continue
 		}
 

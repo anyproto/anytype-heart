@@ -234,11 +234,11 @@ var WithDefaultFeaturedRelations = func(s *state.State) {
 		layout, _ := s.Layout()
 		switch layout {
 		case model.ObjectType_basic, model.ObjectType_note:
-			fr = []string{bundle.RelationKeyType.String()}
+			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyBacklinks.String()}
 		case model.ObjectType_set:
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String()}
+			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyBacklinks.String()}
 		case model.ObjectType_collection:
-			fr = []string{bundle.RelationKeyType.String()}
+			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyBacklinks.String()}
 		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}

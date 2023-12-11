@@ -64,5 +64,6 @@
   "uniqueKey",
   "backlinks",
   "profileOwnerIdentity",
-  "origin"
+  "origin",
+  "revision"
 ]

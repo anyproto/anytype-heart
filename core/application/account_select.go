@@ -65,8 +65,13 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	if err := s.stop(); err != nil {
 		return nil, errors.Join(ErrFailedToStopApplication, err)
 	}
-	if req.RootPath != "" {
-		s.rootPath = req.RootPath
+
+	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.NetworkMode, req.NetworkCustomConfigFilePath)
+}
+
+func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
+	if rootPath != "" {
+		s.rootPath = rootPath
 	}
 	if s.mnemonic == "" {
 		return nil, ErrNoMnemonicProvided
@@ -76,7 +81,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, err
 	}
 	var repoWasMissing bool
-	if _, err := os.Stat(filepath.Join(s.rootPath, req.Id)); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(s.rootPath, id)); os.IsNotExist(err) {
 		repoWasMissing = true
 		if err = core.WalletInitRepo(s.rootPath, res.Identity); err != nil {
 			return nil, errors.Join(ErrFailedToCreateLocalRepo, err)
@@ -84,8 +89,12 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	}
 
 	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
-	if req.DisableLocalNetworkSync {
+	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
+	}
+	if networkMode > 0 {
+		cfg.NetworkMode = networkMode
+		cfg.NetworkCustomConfigFilePath = networkConfigFilePath
 	}
 	comps := []app.Component{
 		cfg,
@@ -120,8 +129,8 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, errors.Join(ErrFailedToStartApplication, err)
 	}
 
-	acc := &model.Account{Id: req.Id}
+	acc := &model.Account{Id: id}
 	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
-	return acc, nil
+	return acc, err
 }

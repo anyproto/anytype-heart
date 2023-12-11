@@ -277,8 +277,9 @@ message Rpc {
                 string storePath = 3; // Path to local storage
                 int64 icon = 4; // Option of pre-installed icon
                 bool disableLocalNetworkSync = 5; // Disable local network discovery
+                NetworkMode networkMode = 6; // optional, default is DefaultConfig
+                string networkCustomConfigFilePath = 7; // config path for the custom network mode            }
             }
-
             /**
             * Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
             */
@@ -300,6 +301,10 @@ message Rpc {
                         FAILED_TO_STOP_RUNNING_NODE = 104;
                         FAILED_TO_WRITE_CONFIG = 105;
                         FAILED_TO_CREATE_LOCAL_REPO = 106;
+
+                        CONFIG_FILE_NOT_FOUND = 200;
+                        CONFIG_FILE_INVALID = 201;
+                        CONFIG_FILE_NETWORK_ID_MISMATCH = 202;
                     }
                 }
             }
@@ -391,6 +396,8 @@ message Rpc {
                 string id = 1; // Id of a selected account
                 string rootPath = 2; // Root path is optional, set if this is a first request
                 bool disableLocalNetworkSync = 3; // Disable local network discovery
+                NetworkMode networkMode = 4; // optional, default is DefaultConfig
+                string networkCustomConfigFilePath = 5; // config path for the custom network mode
             }
 
             /**
@@ -418,6 +425,10 @@ message Rpc {
                         ANOTHER_ANYTYPE_PROCESS_IS_RUNNING = 108;
                         FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION = 110;
                         ACCOUNT_IS_DELETED = 111;
+
+                        CONFIG_FILE_NOT_FOUND = 200;
+                        CONFIG_FILE_INVALID = 201;
+                        CONFIG_FILE_NETWORK_ID_MISMATCH = 202;
                     }
                 }
             }
@@ -486,7 +497,6 @@ message Rpc {
 
         message ConfigUpdate {
             message Request {
-                string timeZone = 1;
                 string IPFSStorageAddr = 2;
             }
 
@@ -594,6 +604,41 @@ message Rpc {
                 }
             }
 
+        }
+
+        message ChangeNetworkConfigAndRestart {
+            message Request {
+                NetworkMode networkMode = 1;
+                string networkCustomConfigFilePath = 2;
+            }
+            message Response {
+                Error error = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        ACCOUNT_IS_NOT_RUNNING = 4;
+
+                        ACCOUNT_FAILED_TO_STOP = 100;
+                        CONFIG_FILE_NOT_FOUND = 200;
+                        CONFIG_FILE_INVALID = 201;
+                        CONFIG_FILE_NETWORK_ID_MISMATCH = 202;
+
+                    }
+                }
+            }
+
+        }
+
+        enum NetworkMode {
+            DefaultConfig = 0; // use network config that embedded in binary
+            LocalOnly = 1;  // disable any-sync network and use only local p2p nodes
+            CustomConfig = 2; // use config provided in networkConfigFilePath
         }
     }
 
@@ -3632,6 +3677,7 @@ message Rpc {
                 string contextId = 1;
                 string blockId = 2;
                 string text = 3;
+                model.Block.Content.Latex.Processor processor = 4;
             }
 
             message Response {
@@ -3651,6 +3697,31 @@ message Rpc {
                 }
             }
         }
+        message SetProcessor {
+            message Request {
+                string contextId = 1;
+                string blockId = 2;
+                model.Block.Content.Latex.Processor processor = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
     }
 
     message BlockText {

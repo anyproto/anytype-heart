@@ -263,6 +263,8 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
+replace github.com/dgraph-io/ristretto => github.com/anyproto/ristretto v0.1.2-0.20231209140254-b0fde22c72ec
+
 replace github.com/libp2p/zeroconf/v2 => github.com/anyproto/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941
 
 replace github.com/elastic/gosigar => github.com/anyproto/gosigar v0.0.0-20220811145612-92bd3366198a

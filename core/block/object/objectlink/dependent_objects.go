@@ -118,8 +118,8 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 
 		if rel.Format != model.RelationFormat_object &&
 			rel.Format != model.RelationFormat_file &&
-			rel.Format != model.RelationFormat_select &&
-			rel.Format != model.RelationFormat_multiselect {
+			rel.Format != model.RelationFormat_status &&
+			rel.Format != model.RelationFormat_tag {
 			continue
 		}
 
