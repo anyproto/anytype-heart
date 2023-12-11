@@ -16,10 +16,24 @@ func (s *dsObjectStore) removeFromIndexQueue(id string) error {
 	return badgerhelper.DeleteValue(s.db, indexQueueBase.ChildString(id).Bytes())
 }
 
+func (s *dsObjectStore) BatchProcessFullTextQueue(limit int, processIds func(ids []string) error) error {
+	return iterateKeysByPrefixBatched(s.db, indexQueueBase.Bytes(), limit, func(keys [][]byte) error {
+		var ids []string
+		for id := range keys {
+			ids = append(ids, extractIdFromKey(string(keys[id])))
+		}
+		err := processIds(ids)
+		if err == nil {
+			s.RemoveIDsFromFullTextQueue(ids)
+		}
+		return err
+	})
+}
+
 func (s *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
 	var ids []string
 	err := iterateKeysByPrefix(s.db, indexQueueBase.Bytes(), func(key []byte) {
-		ids = append(ids, extractIDFromKey(string(key)))
+		ids = append(ids, extractIdFromKey(string(key)))
 	})
 	return ids, err
 }
