@@ -33,7 +33,7 @@ Client passes `internalFlags` value on object creation, and then the content of 
 
 1. ObjectApplyTemplate
 2. ObjectSetObjectType - deletes only `DeleteEmpty` and `SelectType`
-3. ObjectSetDetails - if one of details is `Name`
+3. ObjectSetDetails - deletes only `DeleteEmpty`
 4. ObjectOpen
 5. ObjectClose
 6. BlockTextSetText - if no changes in block were made OR it is **title** or **description** block

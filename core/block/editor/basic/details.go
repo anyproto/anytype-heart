@@ -37,15 +37,14 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
 	updates := bs.collectDetailUpdates(details, s)
-
-	applyFlags := []smartblock.ApplyFlag{smartblock.NoRestrictions}
-	if shouldKeepInternalFlags(updates) {
-		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
-	}
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
-	if err = bs.Apply(s, applyFlags...); err != nil {
+	flags := internalflag.NewFromState(s.ParentState())
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
+
+	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
 		return
 	}
 
@@ -64,17 +63,6 @@ func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s
 		}
 	}
 	return updates
-}
-
-// shouldKeepInternalFlags is used to keep internal flags in case we update name or description
-// We keep internal flags because we allow user to change object type and apply some template further
-func shouldKeepInternalFlags(updates []*detailUpdate) bool {
-	for _, update := range updates {
-		if update.key == bundle.RelationKeyName.String() || update.key == bundle.RelationKeyDescription.String() {
-			return true
-		}
-	}
-	return false
 }
 
 func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
