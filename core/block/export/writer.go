@@ -67,6 +67,9 @@ func (d *dirWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int
 	if _, err = io.Copy(f, r); err != nil {
 		return
 	}
+	if lastModifiedDate == 0 {
+		lastModifiedDate = time.Now().Unix()
+	}
 	lastModifiedDateUnix := time.Unix(lastModifiedDate, 0)
 	err = os.Chtimes(filename, time.Now(), lastModifiedDateUnix)
 	if err != nil {
@@ -116,6 +119,9 @@ func (d *zipWriter) Path() string {
 func (d *zipWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error) {
 	d.m.Lock()
 	defer d.m.Unlock()
+	if lastModifiedDate == 0 {
+		lastModifiedDate = time.Now().Unix()
+	}
 	zf, err := d.zw.CreateHeader(&zip.FileHeader{
 		Name:     filename,
 		Method:   zip.Deflate,
