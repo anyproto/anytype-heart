@@ -95,8 +95,9 @@ func isSystemObject(details *types.Struct) bool {
 func buildDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjectSetDetailsDetail) {
 	diff := pbtypes.StructDiff(current, origin)
 	diff = pbtypes.StructFilterKeys(diff, []string{
-		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(), bundle.RelationKeyIsReadonly.String(),
-		bundle.RelationKeyIsHidden.String(), bundle.RelationKeyRevision.String(),
+		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),
+		bundle.RelationKeyIsReadonly.String(), bundle.RelationKeyIsHidden.String(),
+		bundle.RelationKeyRevision.String(), bundle.RelationKeyRelationReadonlyValue.String(),
 	})
 
 	for key, value := range diff.Fields {
