@@ -1,4 +1,4 @@
-package latex
+package embed
 
 import (
 	"fmt"
@@ -15,10 +15,10 @@ func init() {
 }
 
 func NewLatex(m *model.Block) simple.Block {
-	if latex := m.GetLatex(); latex != nil {
+	if embed := m.GetLatex(); embed != nil {
 		return &Latex{
 			Base:    base.NewBase(m).(*base.Base),
-			content: latex,
+			content: embed,
 		}
 	}
 	return nil
@@ -51,21 +51,26 @@ func (l *Latex) Validate() error {
 }
 
 func (l *Latex) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
-	latex, ok := b.(*Latex)
+	embed, ok := b.(*Latex)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = l.Base.Diff(latex); err != nil {
+	if msgs, err = l.Base.Diff(embed); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetLatex{
-		Id: latex.Id,
+		Id: embed.Id,
 	}
 	hasChanges := false
 
-	if l.content.Text != latex.content.Text {
+	if l.content.Text != embed.content.Text {
 		hasChanges = true
-		changes.Text = &pb.EventBlockSetLatexText{Value: latex.content.Text}
+		changes.Text = &pb.EventBlockSetLatexText{Value: embed.content.Text}
+	}
+
+	if l.content.Processor != embed.content.Processor {
+		hasChanges = true
+		changes.Processor = &pb.EventBlockSetLatexProcessor{Value: embed.content.Processor}
 	}
 
 	if hasChanges {
@@ -78,9 +83,16 @@ func (r *Latex) SetText(text string) {
 	r.content.Text = text
 }
 
+func (r *Latex) SetProcessor(processor model.BlockContentLatexProcessor) {
+	r.content.Processor = processor
+}
+
 func (l *Latex) ApplyEvent(e *pb.EventBlockSetLatex) error {
 	if e.Text != nil {
 		l.content.Text = e.Text.GetValue()
+	}
+	if e.Processor != nil {
+		l.content.Processor = e.Processor.GetValue()
 	}
 	return nil
 }

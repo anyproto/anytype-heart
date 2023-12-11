@@ -96,11 +96,7 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	if storeErr != nil {
 		log.Error("can't open legacy file store", zap.Error(storeErr))
 	}
-	ps := &proxyStore{
-		localStore: localStore,
-		origin:     f.rpcStore.NewStore(),
-		oldStore:   oldStore,
-	}
+	ps := newProxyStore(localStore, f.rpcStore.NewStore(), oldStore)
 	f.proxy = ps
 	return
 }

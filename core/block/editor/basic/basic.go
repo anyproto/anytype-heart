@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/block/simple/latex"
+	"github.com/anyproto/anytype-heart/core/block/simple/embed"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
@@ -357,10 +357,10 @@ func (bs *basic) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRe
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	if rel, ok := b.(latex.Block); ok {
+	if rel, ok := b.(embed.Block); ok {
 		rel.SetText(req.Text)
 	} else {
-		return fmt.Errorf("unexpected block type: %T (want latex)", b)
+		return fmt.Errorf("unexpected block type: %T (want embed)", b)
 	}
 	return bs.Apply(s, smartblock.NoEvent)
 }
