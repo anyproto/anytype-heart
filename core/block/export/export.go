@@ -379,7 +379,7 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0)), 0); err != nil {
 		return 0, err
 	}
 	err = nil
@@ -403,8 +403,8 @@ func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr wri
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert(b.Type().ToProto())
 		filename := docID + conv.Ext()
+		s := b.NewState()
 		if format == model.Export_Markdown {
-			s := b.NewState()
 			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 			if name == "" {
 				name = s.Snippet()
@@ -414,7 +414,8 @@ func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr wri
 		if docID == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		}
-		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
+		lastModifiedDate := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
 		if !exportFiles {
@@ -464,7 +465,7 @@ func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err erro
 	if err != nil {
 		return
 	}
-	return wr.WriteFile(filename, rd)
+	return wr.WriteFile(filename, rd, file.Info().LastModifiedDate)
 }
 
 func (e *export) createProfileFile(spaceID string, wr writer) error {
@@ -496,7 +497,7 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	if err != nil {
 		return err
 	}
-	err = wr.WriteFile(constant.ProfileFile, bytes.NewReader(data))
+	err = wr.WriteFile(constant.ProfileFile, bytes.NewReader(data), 0)
 	if err != nil {
 		return err
 	}
