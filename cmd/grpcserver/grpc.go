@@ -128,6 +128,8 @@ func main() {
 				case <-doneCh:
 				case <-time.After(defaultUnaryWarningAfter):
 					l.With("in_progress", true).With("goroutines", debug.StackCompact(true)).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
+				case <-time.After(time.Second * 30):
+					panic(debug.StackCompact(true))
 				}
 			}()
 			ctx = context.WithValue(ctx, metrics.CtxKeyRPC, info.FullMethod)
