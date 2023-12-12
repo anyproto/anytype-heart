@@ -20,11 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const spaceName = "space1"
-
 type StoreFixture struct {
 	*dsObjectStore
 }
+
+var spaceName = "space1"
 
 func NewStoreFixture(t *testing.T) *StoreFixture {
 	walletService := mock_wallet.NewMockWallet(t)

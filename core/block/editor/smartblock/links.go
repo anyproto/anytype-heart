@@ -94,16 +94,19 @@ func (sb *smartBlock) addBacklinkToObjects(added, removed []string) {
 	}
 }
 
-func (sb *smartBlock) navigationalLinks(s *state.State) []string {
-	includeRelations := sb.includeRelationObjectsAsDependents
-
-	var ids []string
-
+func (sb *smartBlock) navigationalLinks(s *state.State) (ids []string) {
 	if !internalflag.NewFromState(s).Has(model.InternalFlag_collectionDontIndexLinks) {
 		// flag used when importing a large set of objects
 		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
 	}
 
+	ids = append(ids, collectBlockLinks(s)...)
+	ids = append(ids, sb.collectRelationLinks(s)...)
+
+	return lo.Uniq(ids)
+}
+
+func collectBlockLinks(s *state.State) (ids []string) {
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
 			if f.Hash != "" && f.Type != model.BlockContentFile_Image {
@@ -128,8 +131,12 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 	if err != nil {
 		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 	}
+	return
+}
 
+func (sb *smartBlock) collectRelationLinks(s *state.State) (ids []string) {
 	det := s.CombinedDetails()
+	includeRelations := sb.includeRelationObjectsAsDependents
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
@@ -141,13 +148,8 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 			ids = append(ids, relId)
 		}
 
-		// handle corner cases first for specific formats
-
-		if rel.Format != model.RelationFormat_object {
-			continue
-		}
-
-		if bundle.IsSystemRelation(domain.RelationKey(rel.Key)) {
+		// handle corner cases: first for specific formats and system relations
+		if rel.Format != model.RelationFormat_object || bundle.IsSystemRelation(domain.RelationKey(rel.Key)) {
 			continue
 		}
 
@@ -164,6 +166,5 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 			}
 		}
 	}
-
-	return lo.Uniq(ids)
+	return
 }
