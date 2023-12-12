@@ -24,7 +24,8 @@ type StoreFixture struct {
 	*dsObjectStore
 }
 
-var spaceName = "space1"
+// nolint: unused
+const spaceName = "space1"
 
 func NewStoreFixture(t *testing.T) *StoreFixture {
 	walletService := mock_wallet.NewMockWallet(t)
