@@ -77,8 +77,11 @@ func (sb *smartBlock) addBacklinkToObjects(added, removed []string) {
 			err := sb.Space().DoLockedIfNotExists(id, func() error {
 				return sb.objectStore.ModifyObjectDetails(id, modification.modifier)
 			})
-			if err != nil && !errors.Is(err, ocache.ErrExists) {
-				log.With("objectID", sb.Id()).Errorf("failed to update backlinks for object %s: %v", id, err)
+			if err == nil {
+				continue
+			}
+			if !errors.Is(err, ocache.ErrExists) {
+				log.With("objectID", sb.Id()).Errorf("failed to update backlinks for not cached object %s: %v", id, err)
 			}
 			if err = sb.Space().Do(id, func(b SmartBlock) error {
 				details, err := modification.modifier(b.CombinedDetails())
