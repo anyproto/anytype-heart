@@ -547,6 +547,20 @@ func (mr *MockObjectStoreMockRecorder) ListVirtualSpaces() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVirtualSpaces", reflect.TypeOf((*MockObjectStore)(nil).ListVirtualSpaces))
 }
 
+// ModifyObjectDetails mocks base method.
+func (m *MockObjectStore) ModifyObjectDetails(arg0 string, arg1 func(*types.Struct) (*types.Struct, error)) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ModifyObjectDetails", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ModifyObjectDetails indicates an expected call of ModifyObjectDetails.
+func (mr *MockObjectStoreMockRecorder) ModifyObjectDetails(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModifyObjectDetails", reflect.TypeOf((*MockObjectStore)(nil).ModifyObjectDetails), arg0, arg1)
+}
+
 // Name mocks base method.
 func (m *MockObjectStore) Name() string {
 	m.ctrl.T.Helper()

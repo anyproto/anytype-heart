@@ -51,14 +51,6 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	return nil
 }
 
-func (s *dsObjectStore) extractDetailsByKey(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
-	it, err := txn.Get(key)
-	if err != nil {
-		return nil, fmt.Errorf("get item: %w", err)
-	}
-	return s.unmarshalDetailsFromItem(it)
-}
-
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 	return s.updateTxn(func(txn *badger.Txn) error {
 		return s.updateObjectLinks(txn, id, links)
@@ -104,6 +96,58 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		}
 		return nil
 	})
+}
+
+func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+	if proc == nil {
+		return nil
+	}
+	var payload *model.ObjectDetails
+	key := pagesDetailsBase.ChildString(id).Bytes()
+
+	if err := s.updateTxn(func(txn *badger.Txn) error {
+		objDetails, err := s.extractDetailsByKey(txn, key)
+		if err != nil && !badgerhelper.IsNotFound(err) {
+			return fmt.Errorf("get existing details: %w", err)
+		}
+
+		oldDetails := objDetails.GetDetails()
+		if oldDetails == nil || oldDetails.Fields == nil {
+			oldDetails = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+		newDetails, err := proc(oldDetails)
+		if err != nil {
+			return fmt.Errorf("run a modifier: %w", err)
+		}
+
+		if newDetails == nil {
+			newDetails = &types.Struct{}
+		}
+		if newDetails.Fields == nil {
+			newDetails.Fields = map[string]*types.Value{}
+		}
+		// Ensure ID is set
+		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+		s.sendUpdatesToSubscriptions(id, newDetails)
+		payload = &model.ObjectDetails{Details: newDetails}
+		err = badgerhelper.SetValueTxn(txn, key, payload)
+		if err != nil {
+			return fmt.Errorf("put details: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	s.cache.Set(key, payload, int64(payload.Size()))
+	return nil
+}
+
+func (s *dsObjectStore) extractDetailsByKey(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
+	it, err := txn.Get(key)
+	if err != nil {
+		return nil, fmt.Errorf("get item: %w", err)
+	}
+	return s.unmarshalDetailsFromItem(it)
 }
 
 func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {

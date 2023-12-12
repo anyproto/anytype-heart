@@ -20,6 +20,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const spaceName = "space1"
+
 type StoreFixture struct {
 	*dsObjectStore
 }
@@ -77,7 +79,7 @@ func makeObjectWithName(id string, name string) TestObject {
 	return TestObject{
 		bundle.RelationKeyId:      pbtypes.String(id),
 		bundle.RelationKeyName:    pbtypes.String(name),
-		bundle.RelationKeySpaceId: pbtypes.String("space1"),
+		bundle.RelationKeySpaceId: pbtypes.String(spaceName),
 	}
 }
 
@@ -86,7 +88,7 @@ func makeObjectWithNameAndDescription(id string, name string, description string
 		bundle.RelationKeyId:          pbtypes.String(id),
 		bundle.RelationKeyName:        pbtypes.String(name),
 		bundle.RelationKeyDescription: pbtypes.String(description),
-		bundle.RelationKeySpaceId:     pbtypes.String("space1"),
+		bundle.RelationKeySpaceId:     pbtypes.String(spaceName),
 	}
 }
 
