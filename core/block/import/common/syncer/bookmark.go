@@ -17,7 +17,7 @@ func NewBookmarkSyncer(service *block.Service) *BookmarkSyncer {
 	return &BookmarkSyncer{service: service}
 }
 
-func (bs *BookmarkSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin) error {
+func (bs *BookmarkSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin, importType model.ImportType) error {
 	if b.Model().GetBookmark().TargetObjectId != "" {
 		return nil
 	}
@@ -31,7 +31,8 @@ func (bs *BookmarkSyncer) Sync(id string, b simple.Block, origin model.ObjectOri
 			BlockId:   b.Model().GetId(),
 			Url:       b.Model().GetBookmark().Url,
 		},
-		Origin: origin,
+		Origin:     origin,
+		ImportType: importType,
 	}
 	err := bs.service.BookmarkFetch(nil, dto)
 	if err != nil {

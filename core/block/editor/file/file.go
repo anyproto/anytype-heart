@@ -63,12 +63,13 @@ type File interface {
 }
 
 type FileSource struct {
-	Path    string
-	Url     string // nolint:revive
-	Bytes   []byte
-	Name    string
-	GroupID string
-	Origin  model.ObjectOrigin
+	Path       string
+	Url        string // nolint:revive
+	Bytes      []byte
+	Name       string
+	GroupID    string
+	Origin     model.ObjectOrigin
+	ImportType model.ImportType
 }
 
 type sfile struct {
@@ -149,7 +150,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if !ok {
 		return UploadResult{Err: fmt.Errorf("not a file block")}
 	}
-	upl := sf.newUploader().SetBlock(f).SetOrigin(source.Origin)
+	upl := sf.newUploader().SetBlock(f).SetOrigin(source.Origin).SetImportType(source.ImportType)
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {

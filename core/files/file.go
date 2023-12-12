@@ -28,11 +28,12 @@ type File interface {
 var _ File = (*file)(nil)
 
 type file struct {
-	spaceID string
-	hash    string
-	info    *storage.FileInfo
-	node    *service
-	origin  model.ObjectOrigin
+	spaceID    string
+	hash       string
+	info       *storage.FileInfo
+	node       *service
+	origin     model.ObjectOrigin
+	importType model.ImportType
 }
 
 type FileMeta struct {
@@ -95,6 +96,9 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 
 	if f.origin != 0 {
 		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(f.origin))
+		if f.origin == model.ObjectOrigin_import {
+			commonDetails[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(f.importType))
+		}
 	}
 
 	t := &types.Struct{

@@ -33,17 +33,20 @@ var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
-	Origin model.ObjectOrigin
+	Origin     model.ObjectOrigin
+	ImportType model.ImportType
 }
 
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
-	Origin model.ObjectOrigin
+	Origin     model.ObjectOrigin
+	ImportType model.ImportType
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
-	Origin model.ObjectOrigin
+	Origin     model.ObjectOrigin
+	ImportType model.ImportType
 }
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
@@ -503,6 +506,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUpload
 
 	upl.SetOrigin(req.Origin)
 	upl.SetStyle(req.Style)
+	upl.SetImportType(req.ImportType)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	} else {
@@ -539,10 +543,11 @@ func (s *Service) UploadFileBlockWithHash(
 ) (hash string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
 		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
-			Path:    req.FilePath,
-			Url:     req.Url,
-			GroupID: "",
-			Origin:  req.Origin,
+			Path:       req.FilePath,
+			Url:        req.Url,
+			GroupID:    "",
+			Origin:     req.Origin,
+			ImportType: req.ImportType,
 		})
 		if err != nil {
 			return err
@@ -576,7 +581,7 @@ func (s *Service) Redo(
 
 func (s *Service) BookmarkFetch(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, req.Origin)
+		return b.Fetch(ctx, req.BlockId, req.Url, req.Origin, req.ImportType)
 	})
 }
 

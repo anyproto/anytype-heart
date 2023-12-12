@@ -6,5 +6,5 @@ import (
 )
 
 type Syncer interface {
-	Sync(id string, b simple.Block, origin model.ObjectOrigin) error
+	Sync(id string, b simple.Block, origin model.ObjectOrigin, importType model.ImportType) error
 }

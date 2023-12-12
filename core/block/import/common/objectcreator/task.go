@@ -17,6 +17,7 @@ type DataObject struct {
 	ctx            context.Context
 	origin         model.ObjectOrigin
 	spaceID        string
+	importType     model.ImportType
 }
 
 type Result struct {
@@ -31,6 +32,7 @@ func NewDataObject(ctx context.Context,
 	filesIDs []string,
 	origin model.ObjectOrigin,
 	spaceID string,
+	importType model.ImportType,
 ) *DataObject {
 	return &DataObject{
 		oldIDtoNew:     oldIDtoNew,
@@ -39,6 +41,7 @@ func NewDataObject(ctx context.Context,
 		ctx:            ctx,
 		origin:         origin,
 		spaceID:        spaceID,
+		importType:     importType,
 	}
 }
 

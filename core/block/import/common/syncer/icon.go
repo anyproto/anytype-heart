@@ -30,7 +30,7 @@ func NewIconSyncer(service *block.Service, resolver idresolver.Resolver) *IconSy
 	return &IconSyncer{service: service, resolver: resolver}
 }
 
-func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin) error {
+func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin, importType model.ImportType) error {
 	icon := b.Model().GetText().GetIconImage()
 	_, err := cid.Decode(icon)
 	if err == nil {
@@ -47,6 +47,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: req,
 		Origin:               origin,
+		ImportType:           importType,
 	}
 	hash, err := is.service.UploadFile(context.Background(), spaceID, dto)
 	if err != nil {

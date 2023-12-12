@@ -288,7 +288,7 @@ func (i *Import) createObjects(ctx context.Context,
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := creator.NewDataObject(ctx, oldIDToNew, createPayloads, filesIDs, origin, req.SpaceId)
+	do := creator.NewDataObject(ctx, oldIDToNew, createPayloads, filesIDs, origin, req.SpaceId, req.Type)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(req.SpaceId, res, pool)
