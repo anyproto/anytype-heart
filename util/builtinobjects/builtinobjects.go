@@ -220,7 +220,15 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 
 	err = b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
 
-	notifErr := b.notifications.CreateAndSendLocal(&model.Notification{
+	if notificationableProcess, ok := progress.(process.Notificationable); ok {
+		notificationableProcess.SetNotification(b.provideNotification(spaceID, progress, err, title))
+	}
+
+	return err
+}
+
+func (b *builtinObjects) provideNotification(spaceID string, progress process.Progress, err error, title string) *model.Notification {
+	return &model.Notification{
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Space:   spaceID,
@@ -230,12 +238,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			SpaceId:   spaceID,
 			Name:      title,
 		}},
-	})
-	if notifErr != nil {
-		log.Errorf("failed to send notification: %v", notifErr)
 	}
-
-	return err
 }
 
 func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
@@ -284,7 +287,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 }
 
 func (b *builtinObjects) importArchive(ctx context.Context, spaceID, path, title string, importType pb.RpcObjectImportRequestPbParamsType, progress process.Progress, isNewSpace bool) (err error) {
-	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  model.Import_Pb,
@@ -299,7 +302,7 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID, path, title
 				ImportType:      importType,
 			}},
 		IsNewSpace: isNewSpace,
-	}, model.ObjectOrigin_usecase, progress)
+	}, model.ObjectOrigin_usecase, progress, false)
 
 	return err
 }
@@ -503,7 +506,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 }
 
 func (b *builtinObjects) setupProgress() (process.Progress, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
+	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}

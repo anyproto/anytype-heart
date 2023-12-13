@@ -22,7 +22,8 @@ type Importer interface {
 		req *pb.RpcObjectImportRequest,
 		origin model.ObjectOrigin,
 		progress process.Progress,
-	) (rootCollectionId string, processId string, err error)
+		sendNotification bool,
+	) (rootCollectionId string, err error)
 
 	ListImports(req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
 	ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)

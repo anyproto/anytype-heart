@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -791,22 +790,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
-
-	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
-		Status:  model.Notification_Created,
-		IsLocal: true,
-		Space:   req.SpaceId,
-		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
-			ProcessId:  processID,
-			ErrorCode:  common.GetImportErrorCode(err),
-			ImportType: req.Type,
-			SpaceId:    req.SpaceId,
-		}},
-	})
-	if notificationSendErr != nil {
-		log.Errorf("failed to send notification: %v", notificationSendErr)
-	}
+	rootCollectionId, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil, true)
 
 	if err == nil {
 		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
