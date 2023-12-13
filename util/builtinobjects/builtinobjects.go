@@ -200,7 +200,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, isNewSpace bool) (err error) {
 	var (
 		path     string
-		progress process.Progress
+		progress process.Notificationable
 	)
 	if _, err = os.Stat(url); err == nil {
 		path = url
@@ -219,10 +219,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	err = b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-
-	if notificationableProcess, ok := progress.(process.Notificationable); ok {
-		notificationableProcess.SetNotification(b.provideNotification(spaceID, progress, err, title))
-	}
+	progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
 
 	return err
 }
@@ -302,7 +299,7 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID, path, title
 				ImportType:      importType,
 			}},
 		IsNewSpace: isNewSpace,
-	}, model.ObjectOrigin_usecase, progress, false)
+	}, model.ObjectOrigin_usecase, progress, false, true)
 
 	return err
 }
@@ -505,7 +502,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	return path, nil
 }
 
-func (b *builtinObjects) setupProgress() (process.Progress, error) {
+func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
 	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)

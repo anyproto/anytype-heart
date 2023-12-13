@@ -23,6 +23,7 @@ type Importer interface {
 		origin model.ObjectOrigin,
 		progress process.Progress,
 		sendNotification bool,
+		isSync bool,
 	) (rootCollectionId string, err error)
 
 	ListImports(req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)

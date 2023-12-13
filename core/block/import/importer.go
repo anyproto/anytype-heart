@@ -110,7 +110,25 @@ func (i *Import) Import(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	origin model.ObjectOrigin,
 	progress process.Progress,
-	sendNotification bool,
+	sendNotification, isSync bool,
+) (string, error) {
+	if isSync {
+		return i.importObjects(ctx, req, origin, progress, sendNotification, isSync)
+	}
+	go func() {
+		_, err := i.importObjects(context.Background(), req, origin, progress, sendNotification, isSync)
+		if err != nil {
+			log.Errorf("import from %s failed with error: %s", req.Type.String(), err)
+		}
+	}()
+	return "", nil
+}
+
+func (i *Import) importObjects(ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	origin model.ObjectOrigin,
+	progress process.Progress,
+	sendNotification bool, isSync bool,
 ) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
@@ -128,7 +146,7 @@ func (i *Import) Import(ctx context.Context,
 		rootCollectionId string
 	)
 	defer func() {
-		i.onImportFinish(returnedErr, progress, req, importId, rootCollectionId)
+		i.onImportFinish(returnedErr, progress, req, importId, rootCollectionId, isSync)
 	}()
 	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
@@ -146,11 +164,11 @@ func (i *Import) Import(ctx context.Context,
 	return rootCollectionId, returnedErr
 }
 
-func (i *Import) onImportFinish(returnedErr error, progress process.Progress, req *pb.RpcObjectImportRequest, importId string, rootCollectionId string) {
+func (i *Import) onImportFinish(returnedErr error, progress process.Progress, req *pb.RpcObjectImportRequest, importId string, rootCollectionId string, isSync bool) {
 	i.finishImportProcess(returnedErr, progress, req)
 	i.sendFileEvents(returnedErr)
 	i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
-	i.sendImportFinishEventToClient(rootCollectionId)
+	i.sendImportFinishEventToClient(rootCollectionId, isSync)
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -218,9 +236,10 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 
 func (i *Import) finishImportProcess(returnedErr error, progress process.Progress, req *pb.RpcObjectImportRequest) {
 	if notificationProgress, ok := progress.(process.Notificationable); ok {
-		notificationProgress.SetNotification(i.provideNotification(returnedErr, progress, req))
+		notificationProgress.FinishWithNotification(i.provideNotification(returnedErr, progress, req), returnedErr)
+	} else {
+		progress.Finish(returnedErr)
 	}
-	progress.Finish(returnedErr)
 }
 
 func (i *Import) provideNotification(returnedErr error, progress process.Progress, req *pb.RpcObjectImportRequest) *model.Notification {
@@ -454,7 +473,10 @@ func (i *Import) recordEvent(event metrics.EventRepresentable) {
 	metrics.SharedClient.RecordEvent(event)
 }
 
-func (i *Import) sendImportFinishEventToClient(rootCollectionID string) {
+func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync bool) {
+	if isSync {
+		return
+	}
 	i.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
