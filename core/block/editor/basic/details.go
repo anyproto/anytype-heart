@@ -314,8 +314,8 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 
-	if err = objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys); err != nil {
-		return err
+	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == 0 {
+		objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys)
 	}
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
