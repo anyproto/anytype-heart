@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -64,7 +63,6 @@ type Import struct {
 	fileSync            filesync.FileSync
 	notificationService notifications.Notifications
 	eventSender         event.Sender
-	sync.Mutex
 }
 
 func New() Importer {
@@ -133,8 +131,6 @@ func (i *Import) importObjects(ctx context.Context,
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
 	}
-	i.Lock()
-	defer i.Unlock()
 	isNewProgress := false
 	if progress == nil {
 		progress = i.setupProgressBar(req, sendNotification)
