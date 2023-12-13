@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/samber/lo"
 
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -398,7 +399,9 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 
 func (sb *smartBlock) Show() (*model.ObjectView, error) {
 	sb.updateRestrictions()
-	sb.updateBackLinks(sb.LocalDetails())
+
+	// TODO: check if it really updates backlinks
+	sb.updateBackLinks(sb.Doc.NewState())
 
 	details, err := sb.fetchMeta()
 	if err != nil {
@@ -722,7 +725,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if hasDepIds(sb.GetRelationLinks(), &act) {
+	if hasDepIds(sb.GetRelationLinks(), &act) || isBacklinksChanged(msgs) {
 		sb.CheckSubscriptions()
 	}
 	afterReportChangeTime := time.Now()
@@ -762,13 +765,14 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
-	changed = sb.setDependentIDs(depIDs)
+	removed, added := sb.setDependentIDs(depIDs)
+	changed = len(removed)+len(added) > 0
 
 	if sb.recordsSub == nil {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryByID(newIDs)
+	records, err := sb.objectStore.QueryByID(lo.Uniq(append(added, newIDs...)))
 	if err != nil {
 		log.Errorf("queryById error: %v", err)
 	}
@@ -778,18 +782,14 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	return true
 }
 
-func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
+func (sb *smartBlock) setDependentIDs(depIDs []string) (removed, added []string) {
 	sort.Strings(depIDs)
-	if slice.SortedEquals(sb.depIds, depIDs) {
-		return false
-	}
-	// TODO Use algo for sorted strings
-	removed, _ := slice.DifferenceRemovedAdded(sb.depIds, depIDs)
+	removed, added = slice.DifferenceRemovedAdded(sb.depIds, depIDs)
 	for _, id := range removed {
 		delete(sb.lastDepDetails, id)
 	}
 	sb.depIds = depIDs
-	return true
+	return
 }
 
 func (sb *smartBlock) NewState() *state.State {
@@ -845,8 +845,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
-	sb.updateBackLinks(localDetailsFromStore)
-
 	localDetailsFromState := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
 	if pbtypes.StructEqualIgnore(localDetailsFromState, localDetailsFromStore, nil) {
 		return nil
@@ -1340,7 +1338,7 @@ func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 	o.SkipFullTextIfHeadsNotChanged = true
 }
 
-// injectDerivedDetails injects the local deta
+// injectDerivedDetails injects the local data
 func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt smartblock.SmartBlockType) {
 	id := s.RootId()
 	if id != "" {
@@ -1392,6 +1390,8 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		}
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
 	}
+
+	sb.updateBackLinks(s)
 }
 
 type InitFunc = func(id string) *InitContext

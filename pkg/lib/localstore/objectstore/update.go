@@ -98,6 +98,8 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	})
 }
 
+// ModifyObjectDetails updates existing details in store using modification function `proc`
+// `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
 func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
 	if proc == nil {
 		return nil
@@ -106,25 +108,18 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 	key := pagesDetailsBase.ChildString(id).Bytes()
 
 	if err := s.updateTxn(func(txn *badger.Txn) error {
-		objDetails, err := s.extractDetailsByKey(txn, key)
+		oldDetails, err := s.extractDetailsByKey(txn, key)
 		if err != nil && !badgerhelper.IsNotFound(err) {
 			return fmt.Errorf("get existing details: %w", err)
 		}
 
-		oldDetails := objDetails.GetDetails()
-		if oldDetails == nil || oldDetails.Fields == nil {
-			oldDetails = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-		newDetails, err := proc(oldDetails)
+		newDetails, err := proc(oldDetails.GetDetails())
 		if err != nil {
 			return fmt.Errorf("run a modifier: %w", err)
 		}
 
-		if newDetails == nil {
-			newDetails = &types.Struct{}
-		}
-		if newDetails.Fields == nil {
-			newDetails.Fields = map[string]*types.Value{}
+		if newDetails == nil || newDetails.Fields == nil {
+			newDetails = &types.Struct{Fields: map[string]*types.Value{}}
 		}
 		// Ensure ID is set
 		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
@@ -179,6 +174,14 @@ func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []st
 			if err := txn.Delete(k.Bytes()); err != nil {
 				return err
 			}
+		}
+	}
+
+	if len(addedLinks)+len(removedLinks) > 0 {
+		s.backlinksUpdateCh <- BacklinksUpdateInfo{
+			Id:      id,
+			Added:   addedLinks,
+			Removed: removedLinks,
 		}
 	}
 
