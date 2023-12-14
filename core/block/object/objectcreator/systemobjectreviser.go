@@ -61,7 +61,7 @@ func (s *service) listAllTypesAndRelations(spaceId string) (map[string]*types.St
 func reviseSystemObject(space space.Space, localObject *types.Struct, marketObjects map[string]*types.Struct) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
-	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
+	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) < pbtypes.GetInt64(localObject, revisionKey) {
 		return
 	}
 	details := buildDiffDetails(marketObject, localObject)
