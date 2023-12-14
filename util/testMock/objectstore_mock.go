@@ -18,6 +18,7 @@ import (
 	relationutils "github.com/anyproto/anytype-heart/core/relationutils"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	objectstore "github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
 	types "github.com/gogo/protobuf/types"
@@ -733,6 +734,20 @@ func (m *MockObjectStore) SaveVirtualSpace(arg0 string) error {
 func (mr *MockObjectStoreMockRecorder) SaveVirtualSpace(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).SaveVirtualSpace), arg0)
+}
+
+// SubscribeBacklinksUpdate mocks base method.
+func (m *MockObjectStore) SubscribeBacklinksUpdate() <-chan objectstore.BacklinksUpdateInfo {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeBacklinksUpdate")
+	ret0, _ := ret[0].(<-chan objectstore.BacklinksUpdateInfo)
+	return ret0
+}
+
+// SubscribeBacklinksUpdate indicates an expected call of SubscribeBacklinksUpdate.
+func (mr *MockObjectStoreMockRecorder) SubscribeBacklinksUpdate() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeBacklinksUpdate", reflect.TypeOf((*MockObjectStore)(nil).SubscribeBacklinksUpdate))
 }
 
 // SubscribeForAll mocks base method.

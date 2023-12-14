@@ -55,14 +55,15 @@ func (uw *UpdateWatcher) Close(_ context.Context) error {
 
 func (uw *UpdateWatcher) Run(ctx context.Context) error {
 	ch := uw.store.SubscribeBacklinksUpdate()
+	uw.closeCh = make(chan struct{})
 
 	go func() {
 		for {
 			select {
-			case info := <-ch:
-				uw.updateBackLinksInObjects(ctx, info)
 			case <-uw.closeCh:
 				return
+			case info := <-ch:
+				uw.updateBackLinksInObjects(ctx, info)
 			}
 		}
 	}()
@@ -102,7 +103,7 @@ func (uw *UpdateWatcher) updateBackLinksInObjects(ctx context.Context, info obje
 		if len(backlinks) == len(newBacklinks) {
 			return nil, objectstore.ErrDetailsNotChanged
 		}
-		current.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backlinks)
+		current.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(newBacklinks)
 		return current, nil
 	}
 

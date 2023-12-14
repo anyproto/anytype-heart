@@ -19,6 +19,8 @@ import (
 
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
+	objectstore "github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
 
 	relationutils "github.com/anyproto/anytype-heart/core/relationutils"
@@ -2568,6 +2570,53 @@ func (_c *MockObjectStore_SaveVirtualSpace_Call) Return(_a0 error) *MockObjectSt
 }
 
 func (_c *MockObjectStore_SaveVirtualSpace_Call) RunAndReturn(run func(string) error) *MockObjectStore_SaveVirtualSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SubscribeBacklinksUpdate provides a mock function with given fields:
+func (_m *MockObjectStore) SubscribeBacklinksUpdate() <-chan objectstore.BacklinksUpdateInfo {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubscribeBacklinksUpdate")
+	}
+
+	var r0 <-chan objectstore.BacklinksUpdateInfo
+	if rf, ok := ret.Get(0).(func() <-chan objectstore.BacklinksUpdateInfo); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(<-chan objectstore.BacklinksUpdateInfo)
+		}
+	}
+
+	return r0
+}
+
+// MockObjectStore_SubscribeBacklinksUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeBacklinksUpdate'
+type MockObjectStore_SubscribeBacklinksUpdate_Call struct {
+	*mock.Call
+}
+
+// SubscribeBacklinksUpdate is a helper method to define mock.On call
+func (_e *MockObjectStore_Expecter) SubscribeBacklinksUpdate() *MockObjectStore_SubscribeBacklinksUpdate_Call {
+	return &MockObjectStore_SubscribeBacklinksUpdate_Call{Call: _e.mock.On("SubscribeBacklinksUpdate")}
+}
+
+func (_c *MockObjectStore_SubscribeBacklinksUpdate_Call) Run(run func()) *MockObjectStore_SubscribeBacklinksUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_SubscribeBacklinksUpdate_Call) Return(_a0 <-chan objectstore.BacklinksUpdateInfo) *MockObjectStore_SubscribeBacklinksUpdate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_SubscribeBacklinksUpdate_Call) RunAndReturn(run func() <-chan objectstore.BacklinksUpdateInfo) *MockObjectStore_SubscribeBacklinksUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -177,7 +177,7 @@ func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []st
 		}
 	}
 
-	if len(addedLinks)+len(removedLinks) > 0 {
+	if s.backlinksUpdateCh != nil && len(addedLinks)+len(removedLinks) > 0 {
 		s.backlinksUpdateCh <- BacklinksUpdateInfo{
 			Id:      id,
 			Added:   addedLinks,

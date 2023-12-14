@@ -10,8 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/samber/lo"
-
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
@@ -400,9 +398,6 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 func (sb *smartBlock) Show() (*model.ObjectView, error) {
 	sb.updateRestrictions()
 
-	// TODO: check if it really updates backlinks
-	sb.updateBackLinks(sb.Doc.NewState())
-
 	details, err := sb.fetchMeta()
 	if err != nil {
 		return nil, err
@@ -765,14 +760,13 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
-	removed, added := sb.setDependentIDs(depIDs)
-	changed = len(removed)+len(added) > 0
+	changed = sb.setDependentIDs(depIDs)
 
 	if sb.recordsSub == nil {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryByID(lo.Uniq(append(added, newIDs...)))
+	records, err := sb.objectStore.QueryByID(newIDs)
 	if err != nil {
 		log.Errorf("queryById error: %v", err)
 	}
@@ -782,14 +776,18 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	return true
 }
 
-func (sb *smartBlock) setDependentIDs(depIDs []string) (removed, added []string) {
+func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
 	sort.Strings(depIDs)
-	removed, added = slice.DifferenceRemovedAdded(sb.depIds, depIDs)
+	if slice.SortedEquals(sb.depIds, depIDs) {
+		return false
+	}
+	// TODO Use algo for sorted strings
+	removed, _ := slice.DifferenceRemovedAdded(sb.depIds, depIDs)
 	for _, id := range removed {
 		delete(sb.lastDepDetails, id)
 	}
 	sb.depIds = depIDs
-	return
+	return true
 }
 
 func (sb *smartBlock) NewState() *state.State {
