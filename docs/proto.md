@@ -23695,6 +23695,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | sharingExtension | 5 |  |
 | usecase | 6 |  |
 | builtin | 7 |  |
+| bookmark | 8 |  |
 
 
 
