@@ -16,7 +16,7 @@ func (s *dsObjectStore) SaveVirtualSpace(id string) (err error) {
 func (s *dsObjectStore) ListVirtualSpaces() ([]string, error) {
 	var ids []string
 	err := iterateKeysByPrefix(s.db, virtualSpaces.Bytes(), func(key []byte) {
-		ids = append(ids, extractIDFromKey(string(key)))
+		ids = append(ids, extractIdFromKey(string(key)))
 	})
 	return ids, err
 }

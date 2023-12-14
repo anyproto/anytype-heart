@@ -155,6 +155,7 @@ type ObjectStore interface {
 	GetRelationByKey(key string) (*model.Relation, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
+	BatchProcessFullTextQueue(limit int, processIds func(processIds []string) error) error
 }
 
 type IndexerStore interface {
@@ -515,7 +516,7 @@ func listIDsByPrefix(txn *badger.Txn, prefix []byte) ([]string, error) {
 	return ids, err
 }
 
-func extractIDFromKey(key string) (id string) {
+func extractIdFromKey(key string) (id string) {
 	i := strings.LastIndexByte(key, '/')
 	if i == -1 || len(key)-1 == i {
 		return

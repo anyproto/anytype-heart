@@ -16,6 +16,7 @@ import (
 var (
 	ftIndexInterval         = 10 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
+	ftBatchLimit            = 100
 )
 
 func (i *indexer) ForceFTIndex() {
@@ -46,29 +47,29 @@ func (i *indexer) ftLoop() {
 
 // TODO maybe use two queues? One for objects, one for files
 func (i *indexer) runFullTextIndexer() {
-	ids, err := i.store.ListIDsFromFullTextQueue()
+	docs := make([]ftsearch.SearchDoc, 0, ftBatchLimit)
+	err := i.store.BatchProcessFullTextQueue(ftBatchLimit, func(ids []string) error {
+		for _, id := range ids {
+			doc, err := i.prepareSearchDocument(id)
+			if err != nil {
+				log.With("id", id).Errorf("prepare document for full-text indexing: %s", err)
+				continue
+			}
+			docs = append(docs, doc)
+		}
+
+		err := i.ftsearch.BatchIndex(docs)
+		docs = docs[:0]
+		if err != nil {
+			log.Errorf("full-text indexing: %v", err)
+		}
+		return err
+	})
+
 	if err != nil {
 		log.Errorf("list ids from full-text queue: %v", err)
 		return
 	}
-
-	var docs []ftsearch.SearchDoc
-	for _, id := range ids {
-		doc, err := i.prepareSearchDocument(id)
-		if err != nil {
-			log.With("id", id).Errorf("prepare document for full-text indexing: %s", err)
-			continue
-		}
-		docs = append(docs, doc)
-	}
-
-	err = i.ftsearch.BatchIndex(docs)
-	if err != nil {
-		log.Errorf("full-text indexing: %v", err)
-		return
-	}
-
-	i.store.RemoveIDsFromFullTextQueue(ids)
 }
 
 func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, err error) {

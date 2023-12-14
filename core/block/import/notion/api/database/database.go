@@ -225,7 +225,7 @@ func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty prop
 		Key:         relationKey,
 	}
 	snapshot := &common.Snapshot{
-		Id: relationKey,
+		Id: pbtypes.GetString(relationDetails, bundle.RelationKeyId.String()),
 		Snapshot: &pb.ChangeSnapshot{
 			Data: relationSnapshot,
 		},
