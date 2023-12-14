@@ -287,12 +287,6 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.Typ
 		return
 	}
 
-	flags := internalflag.NewFromState(s)
-	flags.Remove(model.InternalFlag_editorSelectType)
-	flags.Remove(model.InternalFlag_editorDeleteEmpty)
-	flags.AddToState(s)
-
-	// send event here to send updated details to client
 	// KeepInternalFlags is set because we allow to choose template further
 	return bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
@@ -313,6 +307,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)
+	removeInternalFlags(s)
 
 	if err = objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys); err != nil {
 		return err
@@ -351,4 +346,11 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil
+}
+
+func removeInternalFlags(s *state.State) {
+	flags := internalflag.NewFromState(s)
+	flags.Remove(model.InternalFlag_editorSelectType)
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
 }
