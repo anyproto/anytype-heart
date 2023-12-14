@@ -7,6 +7,7 @@ import (
 
 	mock_ppclient "github.com/anyproto/any-pp-node/drpcclient/mock"
 	"github.com/anyproto/any-pp-node/pb/anypp_api"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 
@@ -134,6 +135,10 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
 		w.EXPECT().Account().Return(&ak)
 
+		w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		//ethPrivateKey := ecdsa.PrivateKey{}
+		//w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
+
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
 			RequestedTier: pb.RpcPaymentsSubscription_Tier_Patron1Year,
@@ -176,6 +181,9 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 
 		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
 		w.EXPECT().Account().Return(&ak)
+		w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		//ethPrivateKey := ecdsa.PrivateKey{}
+		//w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{

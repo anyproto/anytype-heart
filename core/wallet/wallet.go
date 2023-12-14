@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -19,6 +21,9 @@ const (
 	keyFileDevice = "device.key"
 )
 
+type EthPrivateKey = *ecdsa.PrivateKey
+type EthAddress = common.Address
+
 type wallet struct {
 	rootPath      string
 	repoPath      string // other components will init their files/dirs inside
@@ -28,6 +33,11 @@ type wallet struct {
 	deviceKey     crypto.PrivKey
 	masterKey     crypto.PrivKey
 	oldAccountKey crypto.PrivKey
+
+	// this key is used to sign ethereum transactions
+	// and use Any Naming Service
+	ethereumKey ecdsa.PrivateKey
+
 	// this is needed for any-sync
 	accountData *accountdata.AccountKeys
 }
@@ -46,6 +56,19 @@ func (r *wallet) GetOldAccountKey() crypto.PrivKey {
 
 func (r *wallet) GetMasterKey() crypto.PrivKey {
 	return r.masterKey
+}
+
+func (r *wallet) GetAccountEthPrivkey() *ecdsa.PrivateKey {
+	return &r.ethereumKey
+}
+
+func (r *wallet) GetAccountEthAddress() EthAddress {
+	/*
+		publicKey := r.ethereumKey.Public()
+		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+		ethAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	*/
+	return common.HexToAddress(r.ethereumKey.PublicKey.X.String())
 }
 
 func (r *wallet) Init(a *app.App) (err error) {
@@ -107,6 +130,7 @@ func NewWithAccountRepo(rootPath string, derivationResult crypto.DerivationResul
 		oldAccountKey: derivationResult.OldAccountKey,
 		accountKey:    derivationResult.Identity,
 		deviceKeyPath: filepath.Join(repoPath, keyFileDevice),
+		ethereumKey:   derivationResult.EthereumIdentity,
 	}
 }
 
@@ -131,6 +155,10 @@ type Wallet interface {
 	GetDevicePrivkey() crypto.PrivKey
 	GetOldAccountKey() crypto.PrivKey
 	GetMasterKey() crypto.PrivKey
+
+	GetAccountEthPrivkey() EthPrivateKey
+	GetAccountEthAddress() EthAddress
+
 	accountservice.Service
 	app.Component
 }

@@ -144,9 +144,8 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: w.Account().PeerId,
 
-		// TODO: use real address
-		// for now we just use something that looks real
-		OwnerEthAddress: "0xc0B11AaB5184700b91a75e5f0C12D692922A079c",
+		// including 0x
+		OwnerEthAddress: w.GetAccountEthAddress().Hex(),
 
 		RequestedTier: aa.SubscriptionTier(req.RequestedTier),
 		PaymentMethod: aa.PaymentMethod(req.PaymentMethod),
