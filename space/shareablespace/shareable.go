@@ -47,8 +47,14 @@ func (s *spaceController) SpaceId() string {
 }
 
 func (s *spaceController) Start(ctx context.Context) error {
-	_, err := s.sm.ChangeMode(modechanger.ModeLoading)
-	return err
+	switch s.status.AccountStatus {
+	case spaceinfo.AccountStatusDeleted:
+		_, err := s.sm.ChangeMode(modechanger.ModeOffloading)
+		return err
+	default:
+		_, err := s.sm.ChangeMode(modechanger.ModeLoading)
+		return err
+	}
 }
 
 func (s *spaceController) Mode() modechanger.Mode {
@@ -77,6 +83,12 @@ func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.Acc
 	default:
 		return modechanger.ErrInvalidTransition
 	}
+}
+
+func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+	s.status.Lock()
+	defer s.status.Unlock()
+	return s.status.SetRemoteStatus(ctx, status)
 }
 
 func (s *spaceController) Delete(ctx context.Context) error {

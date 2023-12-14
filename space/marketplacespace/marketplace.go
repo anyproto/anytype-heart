@@ -79,6 +79,10 @@ func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.Acc
 	return nil
 }
 
+func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+	return nil
+}
+
 func (s *spaceController) Close(ctx context.Context) error {
 	return nil
 }

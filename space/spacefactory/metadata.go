@@ -1,4 +1,4 @@
-package space
+package spacefactory
 
 import (
 	"github.com/anyproto/any-sync/util/crypto"

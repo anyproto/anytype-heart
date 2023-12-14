@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/gogo/protobuf/types"
@@ -30,6 +31,7 @@ var (
 )
 
 type TechSpace interface {
+	app.Component
 	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error)
 	Close(ctx context.Context) (err error)
 
@@ -67,6 +69,14 @@ type techSpace struct {
 	ctxCancel  context.CancelFunc
 	idsWakedUp chan struct{}
 	viewIds    map[string]string
+}
+
+func (s *techSpace) Init(a *app.App) (err error) {
+	return nil
+}
+
+func (s *techSpace) Name() (name string) {
+	return CName
 }
 
 func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error) {

@@ -53,7 +53,7 @@ func (s *SpaceStatus) UpdatePersistentStatus(ctx context.Context, status spacein
 	s.AccountStatus = status
 }
 
-func (s *SpaceStatus) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+func (s *SpaceStatus) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
 	s.RemoteStatus = status
 	return s.setCurrentLocalInfo(ctx)
 }

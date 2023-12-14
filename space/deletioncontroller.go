@@ -18,8 +18,7 @@ const (
 )
 
 type localDeleter interface {
-	startDelete(ctx context.Context, id string) error
-	updateRemoteStatusLocked(ctx context.Context, spaceID string, remoteStatus spaceinfo.RemoteStatus) (err error)
+	updateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus) error
 	allIDs() (ids []string)
 }
 
@@ -73,7 +72,7 @@ func (d *deletionController) updateStatuses(ctx context.Context) {
 	}
 	for idx, nodeStatus := range remoteStatuses {
 		remoteStatus := convStatus(nodeStatus.Status)
-		err := d.deleter.updateRemoteStatusLocked(ctx, ids[idx], remoteStatus)
+		err := d.deleter.updateRemoteStatus(ctx, ids[idx], remoteStatus)
 		if err != nil {
 			log.Warn("remote status update error", zap.Error(err), zap.String("spaceId", ids[idx]))
 			return

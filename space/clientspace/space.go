@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -17,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 )
 
@@ -43,25 +43,35 @@ type Space interface {
 	Close(ctx context.Context) error
 }
 
+type spaceIndexer interface {
+	ReindexMarketplaceSpace(space Space) error
+	ReindexSpace(space Space) error
+	RemoveIndexes(spaceID string) (err error)
+}
+
+type bundledObjectsInstaller interface {
+	InstallBundledObjects(ctx context.Context, spc Space, ids []string) ([]string, []*types.Struct, error)
+}
+
 var log = logger.NewNamed("client.space")
 
 type space struct {
 	objectcache.Cache
 	objectprovider.ObjectProvider
 
-	indexer    dependencies.SpaceIndexer
+	indexer    spaceIndexer
 	derivedIDs threads.DerivedSmartblockIds
-	installer  dependencies.BundledObjectsInstaller
+	installer  bundledObjectsInstaller
 
-	commonspace.Space
+	common commonspace.Space
 
 	loadMandatoryObjectsCh  chan struct{}
 	loadMandatoryObjectsErr error
 }
 
 type SpaceDeps struct {
-	Indexer         dependencies.SpaceIndexer
-	Installer       dependencies.BundledObjectsInstaller
+	Indexer         spaceIndexer
+	Installer       bundledObjectsInstaller
 	CommonSpace     commonspace.Space
 	ObjectFactory   objectcache.ObjectFactory
 	AccountService  accountservice.Service
@@ -74,7 +84,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 	sp := &space{
 		indexer:                deps.Indexer,
 		installer:              deps.Installer,
-		Space:                  deps.CommonSpace,
+		common:                 deps.CommonSpace,
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
@@ -108,7 +118,31 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.TreeSyncer().StartSync()
+	s.common.TreeSyncer().StartSync()
+}
+
+func (s *space) Id() string {
+	return s.common.Id()
+}
+
+func (s *space) TreeBuilder() objecttreebuilder.TreeBuilder {
+	return s.common.TreeBuilder()
+}
+
+func (s *space) DebugAllHeads() []headsync.TreeHeads {
+	return s.common.DebugAllHeads()
+}
+
+func (s *space) DeleteTree(ctx context.Context, id string) (err error) {
+	return s.common.DeleteTree(ctx, id)
+}
+
+func (s *space) StoredIds() []string {
+	return s.common.StoredIds()
+}
+
+func (s *space) Storage() spacestorage.SpaceStorage {
+	return s.common.Storage()
 }
 
 func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
@@ -159,7 +193,7 @@ func (s *space) Close(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return s.Space.Close()
+	return s.common.Close()
 }
 
 func (s *space) InstallBundledObjects(ctx context.Context) error {

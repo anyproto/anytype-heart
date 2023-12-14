@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/space/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
@@ -24,8 +23,8 @@ type TechSpaceDeps struct {
 	ObjectFactory   objectcache.ObjectFactory
 	AccountService  accountservice.Service
 	PersonalSpaceId string
-	Indexer         dependencies.SpaceIndexer
-	Installer       dependencies.BundledObjectsInstaller
+	Indexer         spaceIndexer
+	Installer       bundledObjectsInstaller
 	TechSpace       techspace.TechSpace
 }
 
@@ -34,7 +33,7 @@ func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 		space: &space{
 			indexer:                deps.Indexer,
 			installer:              deps.Installer,
-			Space:                  deps.CommonSpace,
+			common:                 deps.CommonSpace,
 			loadMandatoryObjectsCh: make(chan struct{}),
 		},
 		TechSpace: deps.TechSpace,

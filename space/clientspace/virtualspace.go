@@ -18,15 +18,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/space/components/dependencies"
 )
 
 type VirtualSpaceDeps struct {
 	ObjectFactory   objectcache.ObjectFactory
 	AccountService  accountservice.Service
 	PersonalSpaceId string
-	Indexer         dependencies.SpaceIndexer
-	Installer       dependencies.BundledObjectsInstaller
+	Indexer         spaceIndexer
+	Installer       bundledObjectsInstaller
 	Prefix          string
 }
 
@@ -40,7 +39,7 @@ func NewVirtualSpace(spaceId string, deps VirtualSpaceDeps) *VirtualSpace {
 		space: &space{
 			indexer:                deps.Indexer,
 			installer:              deps.Installer,
-			Space:                  newVirtualCommonSpace(spaceId),
+			common:                 newVirtualCommonSpace(spaceId),
 			loadMandatoryObjectsCh: make(chan struct{}),
 		},
 		Prefix: deps.Prefix,

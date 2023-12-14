@@ -2,47 +2,21 @@ package space
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
-type marketplaceSpace struct {
-	*VirtualSpace
-}
-
-type builtinTemplateService interface {
-	RegisterBuiltinTemplates(space Space) error
-}
-
-func (s *service) initMarketplaceSpace() error {
-	vs := NewVirtualSpace(s, addr.AnytypeMarketplaceWorkspace)
-	marketplace := &marketplaceSpace{vs}
-	marketplace.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, marketplace)
-	s.preLoad(marketplace)
-
-	err := s.virtualSpaceService.RegisterVirtualSpace(addr.AnytypeMarketplaceWorkspace)
+func (s *service) initMarketplaceSpace(ctx context.Context) error {
+	ctrl, err := s.factory.CreateMarketplaceSpace(ctx)
 	if err != nil {
-		return fmt.Errorf("register virtual space: %w", err)
+		return err
 	}
-	err = s.builtinTemplateService.RegisterBuiltinTemplates(marketplace)
+	err = ctrl.Start(ctx)
 	if err != nil {
-		return fmt.Errorf("register builtin templates: %w", err)
+		return err
 	}
-	err = s.indexer.ReindexMarketplaceSpace(marketplace)
-	if err != nil {
-		return fmt.Errorf("reindex marketplace space: %w", err)
-	}
-	s.marketplaceSpace = marketplace
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.spaceControllers[addr.AnytypeMarketplaceWorkspace] = ctrl
 	return nil
-}
-
-func (s *marketplaceSpace) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
-	return addr.BundledRelationURLPrefix + key.String(), nil
-}
-
-func (s *marketplaceSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
-	return addr.BundledObjectTypeURLPrefix + key.String(), nil
 }

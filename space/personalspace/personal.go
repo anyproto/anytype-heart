@@ -41,6 +41,10 @@ type spaceController struct {
 	techSpace techspace.TechSpace
 }
 
+func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+	return nil
+}
+
 func (s *spaceController) Start(ctx context.Context) (err error) {
 	// Check that space exists. If not, probably user is migrating from legacy version
 	_, err = s.spaceCore.Get(ctx, s.spaceId)
