@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -36,12 +37,12 @@ const eventCreate eventKey = 0
 
 type Service interface {
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
-	CreateObjectInSpace(ctx context.Context, space space.Space, req CreateObjectRequest) (id string, details *types.Struct, err error)
+	CreateObjectInSpace(ctx context.Context, space clientspace.Space, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromStateInSpace(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 
-	InstallBundledObjects(ctx context.Context, space space.Space, sourceObjectIds []string) (ids []string, objects []*types.Struct, err error)
+	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string) (ids []string, objects []*types.Struct, err error)
 	app.Component
 }
 
@@ -60,7 +61,7 @@ type CollectionService interface {
 
 type TemplateService interface {
 	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
-	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
+	TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
 }
 
 func NewCreator() Service {
@@ -85,7 +86,7 @@ func (s *service) Name() (name string) {
 
 func (s *service) createSmartBlockFromTemplate(
 	ctx context.Context,
-	space space.Space,
+	space clientspace.Space,
 	objectTypeKeys []domain.TypeKey,
 	details *types.Struct,
 	templateId string,
@@ -127,7 +128,7 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	return s.CreateSmartBlockFromStateInSpace(ctx, spc, objectTypeKeys, createState)
 }
 
-func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc space.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -231,7 +232,7 @@ func (s *service) CreateObject(ctx context.Context, spaceID string, req CreateOb
 }
 
 // CreateObjectInSpace is high-level method for creating new objects
-func (s *service) CreateObjectInSpace(ctx context.Context, space space.Space, req CreateObjectRequest) (id string, details *types.Struct, err error) {
+func (s *service) CreateObjectInSpace(ctx context.Context, space clientspace.Space, req CreateObjectRequest) (id string, details *types.Struct, err error) {
 	details = req.Details
 	if details.GetFields() == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}

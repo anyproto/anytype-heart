@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -105,7 +105,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	return flags, nil
 }
 
-func (i *indexer) ReindexSpace(space space.Space) (err error) {
+func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	flags, err := i.buildFlags(space.Id())
 	if err != nil {
 		return
@@ -211,7 +211,7 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 	return i.saveLatestChecksums(space.Id())
 }
 
-func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
+func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	flags, err := i.buildFlags(space.Id())
 	if err != nil {
 		return err
@@ -364,7 +364,7 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 	return nil
 }
 
-func (i *indexer) reindexOutdatedObjects(ctx context.Context, space space.Space) (toReindex, success int, err error) {
+func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
 	tids := space.StoredIds()
 	var idsToReindex []string
 	for _, tid := range tids {

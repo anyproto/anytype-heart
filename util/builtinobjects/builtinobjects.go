@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -360,7 +361,7 @@ func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (i
 	return "", err
 }
 
-func (b *builtinObjects) handleSpaceDashboard(spc space.Space, id string) {
+func (b *builtinObjects) handleSpaceDashboard(spc clientspace.Space, id string) {
 	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: spc.DerivedIDs().Workspace,
 		Details: []*pb.RpcObjectSetDetailsDetail{
@@ -374,7 +375,7 @@ func (b *builtinObjects) handleSpaceDashboard(spc space.Space, id string) {
 	}
 }
 
-func (b *builtinObjects) createWidgets(ctx session.Context, spc space.Space, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+func (b *builtinObjects) createWidgets(ctx session.Context, spc clientspace.Space, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
 	widgetObjectID := spc.DerivedIDs().Widgets
 

@@ -54,6 +54,6 @@ func (v *virtualSpaceService) RegisterVirtualSpace(spaceID string) (err error) {
 	return v.objectStore.SaveVirtualSpace(spaceID)
 }
 
-func NewVirtualSpaceService() VirtualSpaceService {
+func New() VirtualSpaceService {
 	return &virtualSpaceService{}
 }
