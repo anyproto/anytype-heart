@@ -71,7 +71,7 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 	}
 
 	if l, ok := req.Block.GetContent().(*model.BlockContentOfLink); ok {
-		// substitute identity object with profile object as links sre treated differently in personal and private spaces
+		// substitute identity object with profile object as links are treated differently in personal and private spaces
 		if l.Link.TargetBlockId == w.accountService.IdentityObjectId() && w.Space().Id() == w.accountService.PersonalSpaceID() {
 			l.Link.TargetBlockId = w.Space().DerivedIDs().Profile
 		}

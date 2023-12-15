@@ -134,7 +134,7 @@ func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id s
 		return
 	}
 	if l, ok := req.Block.GetContent().(*model.BlockContentOfLink); ok {
-		// substitute identity object with profile object as links sre treated differently in personal and private spaces
+		// substitute identity object with profile object as links are treated differently in personal and private spaces
 		if l.Link.TargetBlockId == bs.accountService.IdentityObjectId() && bs.Space().Id() == bs.accountService.PersonalSpaceID() {
 			l.Link.TargetBlockId = bs.Space().DerivedIDs().Profile
 		}
