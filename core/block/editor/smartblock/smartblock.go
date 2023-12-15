@@ -720,7 +720,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if hasDepIds(sb.GetRelationLinks(), &act) || isBacklinksChanged(msgs) {
+	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
 	afterReportChangeTime := time.Now()
@@ -974,7 +974,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		})
 	}
 	sb.storeFileKeys(s)
-	if hasDepIds(sb.GetRelationLinks(), &act) {
+	if hasDepIds(sb.GetRelationLinks(), &act) || isBacklinksChanged(msgs) {
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)

@@ -10,7 +10,10 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -125,6 +128,11 @@ func (uw *UpdateWatcher) updateBackLinksInObjects(ctx context.Context, info obje
 				log.With("objectID", info.Id).Errorf("failed to update backlinks for not cached object %s: %v", id, err)
 			}
 			if err = spc.Do(id, func(b smartblock.SmartBlock) error {
+				if cr, ok := b.(source.ChangeReceiver); ok {
+					return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
+						return d.NewState(), nil, nil
+					})
+				}
 				return b.Apply(b.NewState(), smartblock.KeepInternalFlags)
 			}); err != nil {
 				log.With("objectID", info.Id).Errorf("failed to update backlinks for object %s: %v", id, err)
