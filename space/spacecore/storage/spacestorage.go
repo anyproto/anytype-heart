@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
@@ -9,7 +11,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
+	"golang.org/x/exp/slices"
 )
 
 type spaceStorage struct {
@@ -244,4 +247,42 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 func (s *spaceStorage) Close(_ context.Context) (err error) {
 	s.service.unlockSpaceStorage(s.spaceId)
 	return nil
+}
+
+func deleteSpace(spaceId string, db *badger.DB) (err error) {
+	keys := newSpaceKeys(spaceId)
+	var toBeDeleted [][]byte
+	if db.IsClosed() {
+		return badger.ErrDBClosed
+	}
+	txn := db.NewTransaction(true)
+	defer txn.Discard()
+
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = false
+	opts.Prefix = keys.TreePrefix()
+
+	it := txn.NewIterator(opts)
+	for it.Rewind(); it.Valid(); it.Next() {
+		key := slices.Clone(it.Item().Key())
+		toBeDeleted = append(toBeDeleted, key)
+	}
+	it.Close()
+	toBeDeleted = append(toBeDeleted, keys.HeaderKey())
+	toBeDeleted = append(toBeDeleted, keys.SpaceHash())
+	for _, key := range toBeDeleted {
+		err := txn.Delete(key)
+		if errors.Is(err, badger.ErrTxnTooBig) {
+			err = txn.Commit()
+			if err != nil {
+				return fmt.Errorf("commit big transaction: %w", err)
+			}
+			txn = db.NewTransaction(true)
+			err = txn.Delete(key)
+		}
+		if err != nil {
+			return fmt.Errorf("delete key %s: %w", key, err)
+		}
+	}
+	return txn.Commit()
 }

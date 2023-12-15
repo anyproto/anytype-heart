@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -58,14 +59,15 @@ type Export interface {
 }
 
 type export struct {
-	blockService   *block.Service
-	picker         getblock.ObjectGetter
-	objectStore    objectstore.ObjectStore
-	sbtProvider    typeprovider.SmartBlockTypeProvider
-	fileService    files.Service
-	resolver       idresolver.Resolver
-	spaceService   space.Service
-	accountService account.Service
+	blockService        *block.Service
+	picker              getblock.ObjectGetter
+	objectStore         objectstore.ObjectStore
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	fileService         files.Service
+	resolver            idresolver.Resolver
+	spaceService        space.Service
+	accountService      account.Service
+	notificationService notifications.Notifications
 }
 
 func New() Export {
@@ -81,6 +83,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
+	e.notificationService = app.MustComponent[notifications.Notifications](a)
 	return
 }
 
@@ -99,7 +102,10 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	if err = queue.Start(); err != nil {
 		return
 	}
-	defer queue.Stop(err)
+	defer func() {
+		queue.Stop(err)
+		e.sendNotification(err, req)
+	}()
 
 	docs, err := e.docsForExport(req.SpaceId, req.ObjectIds, req.IncludeNested, req.IncludeArchived, isAnyblockExport(req.Format))
 	if err != nil {
@@ -120,48 +126,24 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	}
 
 	queue.SetMessage("export docs")
-	if req.Format == pb.RpcObjectListExport_DOT || req.Format == pb.RpcObjectListExport_SVG {
-		var format = dot.ExportFormatDOT
-		if req.Format == pb.RpcObjectListExport_SVG {
-			format = dot.ExportFormatSVG
-		}
-		mc := dot.NewMultiConverter(format, e.sbtProvider)
-		mc.SetKnownDocs(docs)
-		var werr error
-		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
-			log.Warnf("can't export docs: %v", werr)
-		}
-	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
-		mc := graphjson.NewMultiConverter(e.sbtProvider)
-		mc.SetKnownDocs(docs)
-		var werr error
-		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
-			log.Warnf("can't export docs: %v", werr)
-		}
-	} else {
-		if req.Format == pb.RpcObjectListExport_Protobuf {
-			if len(req.ObjectIds) == 0 {
-				if err = e.createProfileFile(req.SpaceId, wr); err != nil {
-					log.Errorf("failed to create profile file: %s", err)
-				}
-			}
-		}
-		for docId := range docs {
-			did := docId
-			if err = queue.Wait(func() {
-				log.With("objectID", did).Debugf("write doc")
-				if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
-					log.With("objectID", did).Warnf("can't export doc: %v", werr)
-				} else {
-					succeed++
-				}
-			}); err != nil {
-				e.cleanupFile(wr)
-				return "", 0, nil
-			}
+	if req.Format == model.Export_Protobuf && len(req.ObjectIds) == 0 {
+		if err = e.createProfileFile(req.SpaceId, wr); err != nil {
+			log.Errorf("failed to create profile file: %s", err)
 		}
 	}
-	queue.SetMessage("export files")
+	if req.Format == model.Export_DOT || req.Format == model.Export_SVG {
+		succeed = e.exportDotAndSVG(ctx, req, docs, succeed, wr, queue)
+	} else if req.Format == model.Export_GRAPH_JSON {
+		succeed = e.exportGraphJson(ctx, req, docs, succeed, wr, queue)
+	} else {
+		tasks := make([]process.Task, 0, len(docs))
+		succeed, tasks = e.exportDocs(ctx, req, docs, wr, queue, succeed, tasks)
+		err := queue.Wait(tasks...)
+		if err != nil {
+			e.cleanupFile(wr)
+			return "", 0, err
+		}
+	}
 	if err = queue.Finalize(); err != nil {
 		e.cleanupFile(wr)
 		return "", 0, nil
@@ -171,6 +153,64 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		return e.renameZipArchive(req, wr, succeed)
 	}
 	return wr.Path(), succeed, nil
+}
+
+func (e *export) exportDocs(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, wr writer, queue process.Queue, succeed int, tasks []process.Task) (int, []process.Task) {
+	for docId := range docs {
+		did := docId
+		task := func() {
+			if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
+				log.With("objectID", did).Warnf("can't export doc: %v", werr)
+			} else {
+				succeed++
+			}
+		}
+		tasks = append(tasks, task)
+	}
+	return succeed, tasks
+}
+
+func (e *export) exportGraphJson(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, succeed int, wr writer, queue process.Queue) int {
+	mc := graphjson.NewMultiConverter(e.sbtProvider)
+	mc.SetKnownDocs(docs)
+	var werr error
+	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
+		log.Warnf("can't export docs: %v", werr)
+	}
+	return succeed
+}
+
+func (e *export) exportDotAndSVG(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, succeed int, wr writer, queue process.Queue) int {
+	var format = dot.ExportFormatDOT
+	if req.Format == model.Export_SVG {
+		format = dot.ExportFormatSVG
+	}
+	mc := dot.NewMultiConverter(format, e.sbtProvider)
+	mc.SetKnownDocs(docs)
+	var werr error
+	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
+		log.Warnf("can't export docs: %v", werr)
+	}
+	return succeed
+}
+
+func (e *export) sendNotification(err error, req pb.RpcObjectListExportRequest) {
+	errCode := model.NotificationExport_NULL
+	if err != nil {
+		errCode = model.NotificationExport_UNKNOWN_ERROR
+	}
+	notificationSendErr := e.notificationService.CreateAndSendLocal(&model.Notification{
+		Status:  model.Notification_Created,
+		IsLocal: true,
+		Payload: &model.NotificationPayloadOfExport{Export: &model.NotificationExport{
+			ErrorCode:  errCode,
+			ExportType: req.Format,
+		}},
+		Space: req.SpaceId,
+	})
+	if notificationSendErr != nil {
+		log.Errorf("failed to send notification: %v", notificationSendErr)
+	}
 }
 
 func (e *export) renameZipArchive(req pb.RpcObjectListExportRequest, wr writer, succeed int) (string, int, error) {
@@ -183,8 +223,8 @@ func (e *export) renameZipArchive(req pb.RpcObjectListExportRequest, wr writer, 
 	return zipName, succeed, nil
 }
 
-func isAnyblockExport(format pb.RpcObjectListExportFormat) bool {
-	return format == pb.RpcObjectListExport_Protobuf || format == pb.RpcObjectListExport_JSON
+func isAnyblockExport(format model.ExportFormat) bool {
+	return format == model.Export_Protobuf || format == model.Export_JSON
 }
 
 func (e *export) docsForExport(spaceID string, reqIds []string, includeNested bool, includeArchived bool, isProtobuf bool) (docs map[string]*types.Struct, err error) {
@@ -193,12 +233,12 @@ func (e *export) docsForExport(spaceID string, reqIds []string, includeNested bo
 	}
 
 	if len(reqIds) > 0 {
-		return e.getObjectsByIDs(spaceID, reqIds, includeNested)
+		return e.getObjectsByIDs(spaceID, reqIds, includeNested, isProtobuf)
 	}
 	return
 }
 
-func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
+func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested bool, isProtobuf bool) (map[string]*types.Struct, error) {
 	docs := make(map[string]*types.Struct)
 	res, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -232,6 +272,10 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 		for _, id := range ids {
 			e.getNested(spaceID, id, docs)
 		}
+	}
+
+	if !isProtobuf {
+		return docs, nil
 	}
 
 	derivedObjects, err := e.getRelatedDerivedObjects(res)
@@ -335,32 +379,32 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0)), 0); err != nil {
 		return 0, err
 	}
 	err = nil
 	return
 }
 
-func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
+func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
 	return getblock.Do(e.picker, docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
 		var conv converter.Converter
 		switch format {
-		case pb.RpcObjectListExport_Markdown:
+		case model.Export_Markdown:
 			conv = md.NewMDConverter(b.NewState(), wr.Namer())
-		case pb.RpcObjectListExport_Protobuf:
+		case model.Export_Protobuf:
 			conv = pbc.NewConverter(b, isJSON)
-		case pb.RpcObjectListExport_JSON:
+		case model.Export_JSON:
 			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert(b.Type().ToProto())
 		filename := docID + conv.Ext()
-		if format == pb.RpcObjectListExport_Markdown {
-			s := b.NewState()
+		s := b.NewState()
+		if format == model.Export_Markdown {
 			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 			if name == "" {
 				name = s.Snippet()
@@ -370,7 +414,8 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 		if docID == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		}
-		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
+		lastModifiedDate := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
 		if !exportFiles {
@@ -385,12 +430,8 @@ func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, queue process.Q
 	fileHashes := b.GetAndUnsetFileKeys()
 	for _, fh := range fileHashes {
 		fh := fh
-		if err := queue.Add(func() {
-			if werr := e.saveFile(ctx, wr, fh.Hash); werr != nil {
-				log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
-			}
-		}); err != nil {
-			log.With("objectID", docID).Warnf("couldn't save object files: %v", err)
+		if werr := e.saveFile(ctx, wr, fh.Hash); werr != nil {
+			log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
 		}
 	}
 }
@@ -424,7 +465,7 @@ func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err erro
 	if err != nil {
 		return
 	}
-	return wr.WriteFile(filename, rd)
+	return wr.WriteFile(filename, rd, file.Info().LastModifiedDate)
 }
 
 func (e *export) createProfileFile(spaceID string, wr writer) error {
@@ -456,7 +497,7 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	if err != nil {
 		return err
 	}
-	err = wr.WriteFile(constant.ProfileFile, bytes.NewReader(data))
+	err = wr.WriteFile(constant.ProfileFile, bytes.NewReader(data), 0)
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,7 @@
 package filestore
 
 import (
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	dsCtx "github.com/ipfs/go-datastore"
 

@@ -101,7 +101,7 @@ func (s *service) Name() (name string) {
 
 func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error) {
 	deviceKey := s.wallet.GetDevicePrivkey()
-	deviceId := deviceKey.GetPublic().Account()
+	deviceId := deviceKey.GetPublic().PeerId()
 
 	analyticsId, err := s.getAnalyticsID(ctx)
 	if err != nil {
@@ -155,7 +155,6 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		SpaceViewId:            spaceViewId,
 		GatewayUrl:             gwAddr,
 		LocalStoragePath:       cfg.CustomFileStorePath,
-		TimeZone:               cfg.TimeZone,
 		AnalyticsId:            analyticsId,
 		NetworkId:              s.getNetworkID(),
 		TechSpaceId:            techSpaceId,

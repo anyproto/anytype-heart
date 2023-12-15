@@ -74,7 +74,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc: func(s *state.State) {
 			layout, ok := ctx.State.Layout()
 			if !ok {
@@ -127,6 +127,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithDescription,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+					template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 					template.WithBookmarkBlocks,
 				)
 			case model.ObjectType_relation:
@@ -152,7 +153,12 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 2,
+			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
+		},
+	})
 }
 
 func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {

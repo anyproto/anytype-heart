@@ -89,7 +89,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations)
 		if err != nil {
 			convertError.Add(err)
-			if convertError.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+			if convertError.ShouldAbortImport(0, model.Import_Notion) {
 				return nil, nil, convertError
 			}
 			continue
@@ -225,7 +225,7 @@ func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty prop
 		Key:         relationKey,
 	}
 	snapshot := &common.Snapshot{
-		Id: relationKey,
+		Id: pbtypes.GetString(relationDetails, bundle.RelationKeyId.String()),
 		Snapshot: &pb.ChangeSnapshot{
 			Data: relationSnapshot,
 		},
@@ -338,7 +338,7 @@ func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportC
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
 	rootCollection := common.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects, "", nil, true)
 	if err != nil {
 		return nil, err
 	}

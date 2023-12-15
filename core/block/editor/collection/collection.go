@@ -138,7 +138,7 @@ func (p *objectLinksCollection) ModifyLocalDetails(
 			return err
 		}
 
-		return b.Apply(b.NewState().SetDetails(dets))
+		return b.Apply(b.NewState().SetDetails(dets), smartblock.KeepInternalFlags)
 	})
 	// that means that we will apply the change later as soon as the block is loaded by thread queue
 	if errors.Is(err, source.ErrObjectNotFound) {

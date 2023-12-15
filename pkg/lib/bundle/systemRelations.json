@@ -63,5 +63,7 @@
   "defaultTemplateId",
   "uniqueKey",
   "backlinks",
-  "profileOwnerIdentity"
+  "profileOwnerIdentity",
+  "origin",
+  "revision"
 ]

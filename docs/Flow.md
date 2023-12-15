@@ -33,7 +33,7 @@ Client passes `internalFlags` value on object creation, and then the content of 
 
 1. ObjectApplyTemplate
 2. ObjectSetObjectType - deletes only `DeleteEmpty` and `SelectType`
-3. ObjectSetDetails - if one of details is `Name`
+3. ObjectSetDetails - deletes only `DeleteEmpty`
 4. ObjectOpen
 5. ObjectClose
 6. BlockTextSetText - if no changes in block were made OR it is **title** or **description** block
@@ -62,3 +62,25 @@ Blank template is a virtual template for all kinds of objects, that could be cho
 If `blank` is chosen as `templateId` in one of first three commands, Middleware acts as no template was chosen at all and creates new object regarding remaining parameters of request.
 
 If `blank` is chosen as `templateId` in ObjectApplyTemplate, Middleware creates applies new state, leaving only **Type** and **Layout** of previous state.
+
+## System Objects Update
+Some Object types and Relations are recognized as **System** ones, because application business logic depends on their content.
+
+Examples of system types are **Note**, **Task** and **Bookmark**. Non-system - **Contact**, **Goal** and **Feature**.
+
+Examples of system relations are **Id**, **Name** and **Done**. Non-system - **FocalRatio**, **Instagram** and **HowToReproduce**.
+
+System types and relations could not be modified by the users or deleted from spaces.
+However, sometimes developers need to modify system objects to support some new features.
+
+To handle system object update and save backward compatibility each system object type and relation has its own `Revision`.
+Anytype will update system objects only if `Revision` of object from marketplace is higher than `Revision` of object from user's space.
+
+### How to update system objects
+
+1. Update description of system object, that is stored in `pkg/lib/bundle`
+2. Increase `revision` field of system type/relation or put `"revision":1` if it was empty
+3. Generate go-level variables for new version of types and relations using `pkg/lib/bundle/generator`
+4. Make sure that new fields are taken into account in [System Object Reviser](../core/block/object/objectcreator/systemobjectreviser.go).
+   (Right now only these fields are checked: **Revision**, **Name**, **Description**, **IsHidden**, **IsReadonly**)
+5. Build and run Anytype. All system objects with lower `Revision` should be updated according your changes in all spaces

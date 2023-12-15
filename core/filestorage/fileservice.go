@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/rpc/server"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
@@ -96,11 +96,7 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	if storeErr != nil {
 		log.Error("can't open legacy file store", zap.Error(storeErr))
 	}
-	ps := &proxyStore{
-		localStore: localStore,
-		origin:     f.rpcStore.NewStore(),
-		oldStore:   oldStore,
-	}
+	ps := newProxyStore(localStore, f.rpcStore.NewStore(), oldStore)
 	f.proxy = ps
 	return
 }

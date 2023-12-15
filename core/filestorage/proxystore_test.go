@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
@@ -151,6 +151,8 @@ type psFixture struct {
 	tmpDir    string
 	flatfsDir string
 	db        *badger.DB
+
+	proxyCancel func()
 }
 
 func newPSFixture(t *testing.T) *psFixture {
@@ -167,9 +169,13 @@ func newPSFixture(t *testing.T) *psFixture {
 	cache, err := newFlatStore(fx.flatfsDir, sender, time.Second)
 	require.NoError(t, err)
 
+	proxyCtx, proxyCancel := context.WithCancel(context.Background())
+	fx.proxyCancel = proxyCancel
 	fx.proxyStore = &proxyStore{
-		localStore: cache,
-		origin:     rpcstore.NewInMemoryStore(1024 * 1024),
+		backgroundCtx:    proxyCtx,
+		backgroundCancel: proxyCancel,
+		localStore:       cache,
+		origin:           rpcstore.NewInMemoryStore(1024 * 1024),
 	}
 	return fx
 }
@@ -177,6 +183,7 @@ func newPSFixture(t *testing.T) *psFixture {
 func (fx *psFixture) Finish(t *testing.T) {
 	assert.NoError(t, fx.db.Close())
 	_ = os.RemoveAll(fx.tmpDir)
+	fx.proxyCancel()
 }
 
 func newTestBocks(ids ...string) (bs []blocks.Block) {

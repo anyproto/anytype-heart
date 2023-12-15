@@ -52,10 +52,7 @@ func (s *service) Name() (name string) {
 
 func (s *service) NewStore() RpcStore {
 	cm := newClientManager(s, s.peerUpdateCh)
-	return &store{
-		s:  s,
-		cm: cm,
-	}
+	return newStore(s, cm)
 }
 
 func (s *service) fileNodePeers() []string {
