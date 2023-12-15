@@ -3,6 +3,7 @@ package widget
 import (
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -23,6 +24,7 @@ type Widget interface {
 
 type widget struct {
 	smartblock.SmartBlock
+	accountService basic.AccountService
 }
 
 type ImportWidgetFlags struct {
@@ -56,9 +58,10 @@ func IsPredefinedWidgetTargetId(targetID string) bool {
 	}
 }
 
-func NewWidget(sb smartblock.SmartBlock) Widget {
+func NewWidget(sb smartblock.SmartBlock, accountService basic.AccountService) Widget {
 	return &widget{
-		SmartBlock: sb,
+		SmartBlock:     sb,
+		accountService: accountService,
 	}
 }
 
@@ -67,10 +70,12 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		return "", fmt.Errorf("block has no content")
 	}
 
-	switch req.Block.Content.(type) {
-	case *model.BlockContentOfLink:
-		// Add block<->widget layout validation when new cases are added
-	default:
+	if l, ok := req.Block.GetContent().(*model.BlockContentOfLink); ok {
+		// substitute identity object with profile object as links sre treated differently in personal and private spaces
+		if l.Link.TargetBlockId == w.accountService.IdentityObjectId() && w.Space().Id() == w.accountService.PersonalSpaceID() {
+			l.Link.TargetBlockId = w.Space().DerivedIDs().Profile
+		}
+	} else {
 		return "", fmt.Errorf("unsupported widget content: %T", req.Block.Content)
 	}
 

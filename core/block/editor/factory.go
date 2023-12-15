@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
@@ -25,11 +26,6 @@ import (
 
 var log = logging.Logger("anytype-mw-editor")
 
-type accountService interface {
-	PersonalSpaceID() string
-	IdentityObjectId() string
-}
-
 type ObjectFactory struct {
 	bookmarkService    bookmark.BookmarkService
 	fileBlockService   file.BlockService
@@ -44,7 +40,7 @@ type ObjectFactory struct {
 	restrictionService restriction.Service
 	indexer            smartblock.Indexer
 	spaceService       spaceService
-	accountService     accountService
+	accountService     basic.AccountService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -65,7 +61,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
-	f.accountService = app.MustComponent[accountService](a)
+	f.accountService = app.MustComponent[basic.AccountService](a)
 
 	return nil
 }
@@ -159,7 +155,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, f.objectStore, f.layoutConverter), nil
+		return NewWidgetObject(sb, f.objectStore, f.layoutConverter, f.accountService), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	default:

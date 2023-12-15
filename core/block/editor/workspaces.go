@@ -27,13 +27,13 @@ type Workspaces struct {
 	spaceService   spaceService
 	objectStore    objectstore.ObjectStore
 	config         *config.Config
-	accountService accountService
+	accountService basic.AccountService
 }
 
 func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
 	return &Workspaces{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter, nil),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,

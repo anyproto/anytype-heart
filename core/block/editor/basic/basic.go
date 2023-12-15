@@ -92,13 +92,22 @@ type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
-var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
+type AccountService interface {
+	PersonalSpaceID() string
+	IdentityObjectId() string
+}
 
-func NewBasic(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) AllOperations {
+func NewBasic(
+	sb smartblock.SmartBlock,
+	objectStore objectstore.ObjectStore,
+	layoutConverter converter.LayoutConverter,
+	accountService AccountService,
+) AllOperations {
 	return &basic{
 		SmartBlock:      sb,
 		objectStore:     objectStore,
 		layoutConverter: layoutConverter,
+		accountService:  accountService,
 	}
 }
 
@@ -107,6 +116,7 @@ type basic struct {
 
 	objectStore     objectstore.ObjectStore
 	layoutConverter converter.LayoutConverter
+	accountService  AccountService
 }
 
 func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -123,6 +133,13 @@ func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id s
 		err = fmt.Errorf("no block content")
 		return
 	}
+	if l, ok := req.Block.GetContent().(*model.BlockContentOfLink); ok {
+		// substitute identity object with profile object as links sre treated differently in personal and private spaces
+		if l.Link.TargetBlockId == bs.accountService.IdentityObjectId() && bs.Space().Id() == bs.accountService.PersonalSpaceID() {
+			l.Link.TargetBlockId = bs.Space().DerivedIDs().Profile
+		}
+	}
+
 	req.Block.Id = ""
 	block := simple.New(req.Block)
 	block.Model().ChildrenIds = nil
