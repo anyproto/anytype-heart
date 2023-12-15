@@ -23,6 +23,10 @@ func (sb *smartBlock) updateBackLinks(s *state.State) {
 		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err)
 		return
 	}
+	if len(backLinks) != 0 && sb.space != nil && sb.Id() != sb.currentProfileId {
+		// we exclude links going to this object from widget object
+		backLinks = slice.RemoveMut(backLinks, sb.space.DerivedIDs().Widgets)
+	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, pbtypes.StringList(backLinks))
 }
 
