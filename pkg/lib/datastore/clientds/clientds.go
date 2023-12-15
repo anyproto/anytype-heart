@@ -133,6 +133,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 		return oserror.TransformError(err)
 	}
 
+	log.With("spent_ms", time.Since(start).Milliseconds()).With("spaceStoreWasMissing", r.spaceStoreWasMissing).With("localStoreWasMissing", r.localStoreWasMissing).Infof("Datastore initialized")
 	r.running = true
 	r.spentOnInit = time.Since(start)
 	return nil

@@ -98,6 +98,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		// if we have created the repo, we need to highlight that we are recovering the account
 		request = request + "_recover"
 	}
+	log.With("repoIsMissing", repoWasMissing).With("account", req.Id).Warnf("Starting new app", request)
 
 	s.app, err = anytype.StartNewApp(
 		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, request),
