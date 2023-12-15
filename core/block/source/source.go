@@ -97,7 +97,6 @@ func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, er
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
 	StateRebuild(d state.Doc) (err error)
-	sync.Locker
 }
 
 type Source interface {
