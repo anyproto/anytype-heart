@@ -31,13 +31,13 @@ func (r *RootCollection) MakeRootCollection(collectionName string,
 	targetObjects []string,
 	icon string,
 	fileKeys []*pb.ChangeFileKeys,
-	needToAddDate bool,
+	needToAddDate, shouldBeFavorite bool,
 ) (*Snapshot, error) {
 	if needToAddDate {
 		importDate := time.Now().Format(time.RFC3339)
 		collectionName = fmt.Sprintf("%s %s", collectionName, importDate)
 	}
-	detailsStruct := r.getCreateCollectionRequest(collectionName, icon)
+	detailsStruct := r.getCreateCollectionRequest(collectionName, icon, shouldBeFavorite)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
 		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
@@ -102,11 +102,11 @@ func (r *RootCollection) addRelations(st *state.State) error {
 	return nil
 }
 
-func (r *RootCollection) getCreateCollectionRequest(collectionName string, icon string) *types.Struct {
+func (r *RootCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *types.Struct {
 	details := make(map[string]*types.Value, 0)
 	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(collectionName)
 	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(shouldBeFavorite)
 	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 	details[bundle.RelationKeyIconImage.String()] = pbtypes.String(icon)
 
