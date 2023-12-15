@@ -1,26 +1,15 @@
 # Flow
-## Back links
-To handle editor navigation and support object links consistency `backlinks` built-in relation is provided by Middleware. This relation handles a list of objects that have a link to the object the relation is set to.
+## Links to this object
+To handle editor navigation and support object links consistency `Links to this object` (key=`backlinks`) built-in relation is provided by Middleware. This relation handles a list of objects that have a link to the object the relation is set to.
 
-Relation is updated on every `smartBlock.updateBackLinks` invocation that is called from `Show` and from `injectLocalDetails` methods of `smartBlock` object, so from the user perspective back links are updated on following object actions:
+Every time link from one object to another is created - besides setting `Links from this object`, new link is saved to the ObjectStore.
 
-- Object initialization
-- Object opening, as ObjectOpen gRPC request triggers `smartBlock.Show` method
-- State Rebuild of a particular object that is triggered from the any-sync side
-- Resetting of Object version that needs repetitive injection of local details
+ObjectStore provides method `SubscribeBacklinksUpdate` that generates subscription on every links changes in store.
 
-### TODO:
-The drawback of this behavior is that back links update is not triggered on every actual change of back links content.
+Special service `backlinks.UpdateWatcher` was designed to look after changes on links using backlinks subscription. On links change the service triggers `StateAppend` of target objects, that helps to:
 
-Need to redesign this approach the way to handle every possible change of object's incoming links:
-
-- Creation of link block
-- Creation of inline set or collection
-- Creation of widget (?)
-- Creation of bookmark
-- ...
-
-As now backlinks are gotten from the object store, all these changes need to be done after store redesign, so mechanism of getting links of object and saving it both to store and to backlinks relation has same enter point.
+- inject derived details of target object. Backlinks are retrieved from store on this step
+- generate necessary events to notify dependent objects about details changes
 
 ## Internal Flags
 All objects can have relation `InternalFlags` set to its details. This relation handles list of flags used mainly by client:

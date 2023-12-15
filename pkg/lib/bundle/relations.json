@@ -1123,10 +1123,10 @@
     "hidden": false,
     "key": "links",
     "maxCount": 0,
-    "name": "Links from object",
+    "name": "Links from this object",
     "readonly": true,
     "source": "derived",
-    "revision": 1
+    "revision": 2
   },
   {
     "format": "number",
@@ -1427,12 +1427,12 @@
     "description": "List of links coming to object",
     "format": "object",
     "key": "backlinks",
-    "maxCount": 1,
+    "maxCount": 0,
     "hidden": false,
-    "name": "Links to object",
+    "name": "Links to this object",
     "readonly": true,
     "source": "local",
-    "revision": 1
+    "revision": 2
   },
   {
     "description": "Relation that indicates document has been uninstalled",
