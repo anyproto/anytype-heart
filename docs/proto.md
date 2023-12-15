@@ -16335,7 +16335,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| FOREGROUND | 0 | default mode; app should work normally onResume on Android, didBecomeActiveNotification on iOS |
+| FOREGROUND | 0 | default mode – app should work normally; onResume on Android, applicationWillEnterForeground on iOS |
 | RESUMED | 1 | app is starting; onStart on Android, didBecomeActiveNotification on iOS |
 | PAUSING | 2 | app is no longer focused and active; onPause on Android, applicationWillResignActive on iOS |
 | BACKGROUND | 3 | app is no longer visible; onStop on Android, didEnterBackgroundNotification on iOS |

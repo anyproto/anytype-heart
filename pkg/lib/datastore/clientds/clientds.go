@@ -174,15 +174,26 @@ func (r *clientds) Run(context.Context) error {
 func (r *clientds) StateChange(state int) {
 	switch pb.RpcAppSetDeviceStateRequestDeviceState(state) {
 	case pb.RpcAppSetDeviceStateRequest_BACKGROUND:
+		// prioritize spacestore sync, cause it's almost safe to loose localstore
+		start := time.Now()
 		err := r.spaceDS.Sync()
 		if err != nil {
 			log.Errorf("state(Background) failed to sync spacestore: %v", err.Error())
 		}
 
+		if time.Since(start).Milliseconds() > 10 {
+			log.Warnf("state(Background) spent %d ms to sync spacestore", time.Since(start).Milliseconds())
+		}
+
+		start = time.Now()
 		err = r.localstoreDS.Sync()
 		if err != nil {
 			log.Errorf("state(Background) failed to sync localstore: %v", err.Error())
 		}
+		if time.Since(start).Milliseconds() > 10 {
+			log.Warnf("state(Background) spent %d ms to sync localstore", time.Since(start).Milliseconds())
+		}
+
 	}
 }
 
