@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -66,12 +67,14 @@ type indexer struct {
 	quit       chan struct{}
 	btHash     Hasher
 	newAccount bool
-	forceFt    chan struct{}
 
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
 
 	flags reindexFlags
+
+	forceFt  chan struct{}
+	ftPaused atomic.Bool
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
