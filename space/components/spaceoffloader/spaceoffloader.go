@@ -33,7 +33,7 @@ func New() SpaceOffloader {
 }
 
 type spaceOffloader struct {
-	status         *spacestatus.SpaceStatus
+	status         spacestatus.SpaceStatus
 	offloading     *offloadingSpace
 	fileOffloader  dependencies.FileOffloader
 	storageService storage.ClientStorage
@@ -45,7 +45,7 @@ type spaceOffloader struct {
 }
 
 func (o *spaceOffloader) Init(a *app.App) (err error) {
-	o.status = app.MustComponent[*spacestatus.SpaceStatus](a)
+	o.status = app.MustComponent[spacestatus.SpaceStatus](a)
 	o.fileOffloader = app.MustComponent[dependencies.FileOffloader](a)
 	o.storageService = app.MustComponent[storage.ClientStorage](a)
 	o.indexer = app.MustComponent[dependencies.SpaceIndexer](a)
@@ -73,15 +73,15 @@ func (o *spaceOffloader) Run(ctx context.Context) (err error) {
 	remoteStatus := o.status.GetRemoteStatus()
 	o.status.Unlock()
 	if !remoteStatus.IsDeleted() {
-		err := o.spaceCore.Delete(ctx, o.status.SpaceId)
+		err := o.spaceCore.Delete(ctx, o.status.SpaceId())
 		if err != nil {
-			log.Debug("network delete error", zap.Error(err), zap.String("spaceId", o.status.SpaceId))
+			log.Debug("network delete error", zap.Error(err), zap.String("spaceId", o.status.SpaceId()))
 		}
 	}
 	if localStatus == spaceinfo.LocalStatusMissing {
 		return nil
 	}
-	o.offloading = newOffloadingSpace(o.ctx, o.status.SpaceId, o)
+	o.offloading = newOffloadingSpace(o.ctx, o.status.SpaceId(), o)
 	return nil
 }
 
@@ -109,7 +109,7 @@ func (o *spaceOffloader) onOffload(id string, offloadErr error) {
 	}
 	o.status.Lock()
 	defer o.status.Unlock()
-	if err := o.status.UpdateLocalStatus(o.ctx, spaceinfo.LocalStatusMissing); err != nil {
+	if err := o.status.SetLocalStatus(o.ctx, spaceinfo.LocalStatusMissing); err != nil {
 		log.Debug("set status error", zap.Error(err), zap.String("spaceId", id))
 	}
 	o.offloaded.Store(true)

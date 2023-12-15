@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/anyproto/any-sync/app/logger"
+	"go.uber.org/zap"
 )
 
 type Mode int
@@ -13,6 +16,7 @@ const (
 	ModeInitial
 	ModeLoading
 	ModeOffloading
+	ModeInviting
 )
 
 type WaitResult struct {
@@ -48,9 +52,10 @@ type StateMachine struct {
 	cancel  context.CancelFunc
 	doneCh  chan struct{}
 	notify  chan struct{}
+	log     logger.CtxLogger
 }
 
-func NewStateMachine(factory ProcessFactory) (*StateMachine, error) {
+func NewStateMachine(factory ProcessFactory, log logger.CtxLogger) (*StateMachine, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	machine := &StateMachine{
 		mode:    ModeInitial,
@@ -61,13 +66,18 @@ func NewStateMachine(factory ProcessFactory) (*StateMachine, error) {
 		cancel:  cancel,
 		current: factory.Process(ModeInitial),
 		notify:  make(chan struct{}, 1),
+		log:     log,
 	}
 	err := machine.current.Start(machine.ctx)
+	if err != nil {
+		return nil, err
+	}
+	machine.Run()
 	return machine, err
 }
 
 func (s *StateMachine) Run() {
-	s.loop()
+	go s.loop()
 }
 
 func (s *StateMachine) Close() {
@@ -88,6 +98,7 @@ func (s *StateMachine) GetProcess() Process {
 }
 
 func (s *StateMachine) ChangeMode(next Mode) (proc Process, err error) {
+	s.log.Error("changing", zap.Int("next", int(next)))
 	s.Lock()
 	if s.mode == next {
 		proc = s.current
@@ -109,6 +120,7 @@ func (s *StateMachine) ChangeMode(next Mode) (proc Process, err error) {
 	wait := make(waiter)
 	s.waiters = append(s.waiters, wait)
 	s.Unlock()
+	s.log.Error("notify next", zap.Int("next", int(next)))
 	proc = <-wait
 	return
 }
@@ -127,17 +139,20 @@ func (s *StateMachine) loop() {
 			s.Lock()
 			cur := s.current
 			ch := s.doneCh
+			mode := s.mode
 			s.Unlock()
 			if cur != nil {
 				cur.Close(s.ctx)
 			}
+			s.log.Error("closed", zap.Int("mode", int(mode)))
 			close(ch)
 			return
 		case <-s.notify:
 			s.Lock()
 			cur := s.current
+			mode := s.mode
 			s.Unlock()
-
+			s.log.Error("closing", zap.Int("mode", int(mode)))
 			cur.Close(s.ctx)
 
 			s.Lock()
@@ -147,10 +162,12 @@ func (s *StateMachine) loop() {
 			cur = s.current
 			waiters := append([]waiter{}, s.waiters...)
 			s.waiters = nil
+			mode = s.mode
 			s.Unlock()
 			for _, w := range waiters {
 				w <- cur
 			}
+			s.log.Error("starting", zap.Int("mode", int(mode)))
 			err := cur.Start(s.ctx)
 			if err != nil {
 				s.Lock()

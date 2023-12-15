@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 
 	"github.com/anyproto/anytype-heart/space/components/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/components/spacestatus"
@@ -14,11 +15,14 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
+var log = logger.NewNamed("common.space.shareablespace")
+
 type spaceController struct {
-	spaceId     string
-	app         *app.App
-	justCreated bool
-	status      *spacestatus.SpaceStatus
+	spaceId           string
+	app               *app.App
+	justCreated       bool
+	status            spacestatus.SpaceStatus
+	lastUpdatedStatus spaceinfo.AccountStatus
 
 	sm *modechanger.StateMachine
 }
@@ -29,12 +33,13 @@ func NewSpaceController(
 	status spaceinfo.AccountStatus,
 	a *app.App) (spacecontroller.SpaceController, error) {
 	s := &spaceController{
-		spaceId:     spaceId,
-		justCreated: justCreated,
-		status:      spacestatus.New(spaceId, status),
-		app:         a,
+		spaceId:           spaceId,
+		justCreated:       justCreated,
+		status:            spacestatus.New(spaceId, status),
+		lastUpdatedStatus: status,
+		app:               a,
 	}
-	sm, err := modechanger.NewStateMachine(s)
+	sm, err := modechanger.NewStateMachine(s, log)
 	if err != nil {
 		return nil, err
 	}
@@ -47,9 +52,12 @@ func (s *spaceController) SpaceId() string {
 }
 
 func (s *spaceController) Start(ctx context.Context) error {
-	switch s.status.AccountStatus {
+	switch s.status.GetPersistentStatus() {
 	case spaceinfo.AccountStatusDeleted:
 		_, err := s.sm.ChangeMode(modechanger.ModeOffloading)
+		return err
+	case spaceinfo.AccountStatusInviting:
+		_, err := s.sm.ChangeMode(modechanger.ModeInviting)
 		return err
 	default:
 		_, err := s.sm.ChangeMode(modechanger.ModeLoading)
@@ -67,21 +75,26 @@ func (s *spaceController) Current() any {
 
 func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
 	s.status.Lock()
-	curStatus := s.status.GetPersistentStatus()
-	if curStatus == status {
+	if s.lastUpdatedStatus == status {
 		s.status.Unlock()
 		return nil
 	}
+	s.lastUpdatedStatus = status
 	s.status.Unlock()
-	switch status {
-	case spaceinfo.AccountStatusDeleted:
+	updateStatus := func(mode modechanger.Mode) error {
 		s.status.Lock()
 		s.status.UpdatePersistentStatus(ctx, status)
 		s.status.Unlock()
-		_, err := s.sm.ChangeMode(modechanger.ModeOffloading)
+		_, err := s.sm.ChangeMode(mode)
 		return err
+	}
+	switch status {
+	case spaceinfo.AccountStatusDeleted:
+		return updateStatus(modechanger.ModeOffloading)
+	case spaceinfo.AccountStatusInviting:
+		return updateStatus(modechanger.ModeInviting)
 	default:
-		return modechanger.ErrInvalidTransition
+		return updateStatus(modechanger.ModeLoading)
 	}
 }
 
@@ -92,6 +105,15 @@ func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spacein
 }
 
 func (s *spaceController) Delete(ctx context.Context) error {
+	offloading, err := s.sm.ChangeMode(modechanger.ModeOffloading)
+	if err != nil {
+		return err
+	}
+	of := offloading.(offloader.Offloader)
+	return of.WaitOffload(ctx)
+}
+
+func (s *spaceController) Invite(ctx context.Context) error {
 	offloading, err := s.sm.ChangeMode(modechanger.ModeOffloading)
 	if err != nil {
 		return err

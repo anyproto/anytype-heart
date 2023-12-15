@@ -35,7 +35,7 @@ type spaceBuilder struct {
 	objectFactory   objectcache.ObjectFactory
 	storageService  storage.ClientStorage
 	personalSpaceId string
-	state           *spacestatus.SpaceStatus
+	status          spacestatus.SpaceStatus
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -68,7 +68,7 @@ func (b *spaceBuilder) Close(ctx context.Context) (err error) {
 }
 
 func (b *spaceBuilder) BuildSpace(ctx context.Context, justCreated bool) (clientspace.Space, error) {
-	coreSpace, err := b.spaceCore.Get(ctx, b.state.SpaceId)
+	coreSpace, err := b.spaceCore.Get(ctx, b.status.SpaceId())
 	if err != nil {
 		return nil, err
 	}

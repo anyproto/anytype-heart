@@ -28,7 +28,7 @@ type Loader interface {
 type Params struct {
 	JustCreated bool
 	SpaceId     string
-	Status      *spacestatus.SpaceStatus
+	Status      spacestatus.SpaceStatus
 }
 
 func New(app *app.App, params Params) Loader {

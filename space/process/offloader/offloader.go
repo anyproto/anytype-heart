@@ -16,7 +16,7 @@ type Offloader interface {
 }
 
 type Params struct {
-	Status *spacestatus.SpaceStatus
+	Status spacestatus.SpaceStatus
 }
 
 type offloader struct {

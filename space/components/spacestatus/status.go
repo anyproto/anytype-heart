@@ -12,84 +12,102 @@ import (
 
 const CName = "client.common.spacestatus"
 
-type SpaceStatus struct {
+type SpaceStatus interface {
+	app.Component
+	sync.Locker
+	SpaceId() string
+	GetLocalStatus() spaceinfo.LocalStatus
+	GetRemoteStatus() spaceinfo.RemoteStatus
+	GetPersistentStatus() spaceinfo.AccountStatus
+	UpdatePersistentStatus(ctx context.Context, status spaceinfo.AccountStatus)
+	SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error
+	SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error)
+	SetLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error
+	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
+}
+
+type spaceStatus struct {
 	sync.Mutex
-	SpaceId       string
-	AccountStatus spaceinfo.AccountStatus
-	LocalStatus   spaceinfo.LocalStatus
-	RemoteStatus  spaceinfo.RemoteStatus
+	spaceId       string
+	accountStatus spaceinfo.AccountStatus
+	localStatus   spaceinfo.LocalStatus
+	remoteStatus  spaceinfo.RemoteStatus
 	techSpace     techspace.TechSpace
 }
 
-func New(spaceId string, accountStatus spaceinfo.AccountStatus) *SpaceStatus {
-	return &SpaceStatus{
-		AccountStatus: accountStatus,
-		SpaceId:       spaceId,
+func New(spaceId string, accountStatus spaceinfo.AccountStatus) SpaceStatus {
+	return &spaceStatus{
+		accountStatus: accountStatus,
+		spaceId:       spaceId,
 	}
 }
 
-func (s *SpaceStatus) Init(a *app.App) (err error) {
+func (s *spaceStatus) Init(a *app.App) (err error) {
 	s.techSpace = a.MustComponent(techspace.CName).(techspace.TechSpace)
 	return nil
 }
 
-func (s *SpaceStatus) Name() (name string) {
+func (s *spaceStatus) Name() (name string) {
 	return CName
 }
 
-func (s *SpaceStatus) GetLocalStatus() spaceinfo.LocalStatus {
-	return s.LocalStatus
+func (s *spaceStatus) SpaceId() string {
+	return s.spaceId
 }
 
-func (s *SpaceStatus) GetRemoteStatus() spaceinfo.RemoteStatus {
-	return s.RemoteStatus
+func (s *spaceStatus) GetLocalStatus() spaceinfo.LocalStatus {
+	return s.localStatus
 }
 
-func (s *SpaceStatus) GetPersistentStatus() spaceinfo.AccountStatus {
-	return s.AccountStatus
+func (s *spaceStatus) GetRemoteStatus() spaceinfo.RemoteStatus {
+	return s.remoteStatus
 }
 
-func (s *SpaceStatus) UpdatePersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) {
-	s.AccountStatus = status
+func (s *spaceStatus) GetPersistentStatus() spaceinfo.AccountStatus {
+	return s.accountStatus
 }
 
-func (s *SpaceStatus) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
-	s.RemoteStatus = status
+func (s *spaceStatus) UpdatePersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) {
+	s.accountStatus = status
+}
+
+func (s *spaceStatus) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+	s.remoteStatus = status
 	return s.setCurrentLocalInfo(ctx)
 }
 
-func (s *SpaceStatus) UpdateLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error {
-	s.LocalStatus = status
+func (s *spaceStatus) SetLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error {
+	s.localStatus = status
 	return s.setCurrentLocalInfo(ctx)
 }
 
-func (s *SpaceStatus) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
-	if s.LocalStatus == info.LocalStatus && info.RemoteStatus == s.RemoteStatus {
+func (s *spaceStatus) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
+	if s.localStatus == info.LocalStatus && info.RemoteStatus == s.remoteStatus {
 		return nil
 	}
-	s.LocalStatus = info.LocalStatus
-	s.RemoteStatus = info.RemoteStatus
+	s.localStatus = info.LocalStatus
+	s.remoteStatus = info.RemoteStatus
 	return s.setCurrentLocalInfo(ctx)
 }
 
-func (s *SpaceStatus) SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error) {
+func (s *spaceStatus) SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error) {
 	if s.GetPersistentStatus() == status {
 		return nil
 	}
 	if err = s.techSpace.SetPersistentInfo(ctx, spaceinfo.SpacePersistentInfo{
-		SpaceID:       s.SpaceId,
+		SpaceID:       s.spaceId,
 		AccountStatus: status,
 	}); err != nil {
 		return err
 	}
-	s.AccountStatus = status
+	s.accountStatus = status
 	return nil
 }
 
-func (s *SpaceStatus) setCurrentLocalInfo(ctx context.Context) (err error) {
+func (s *spaceStatus) setCurrentLocalInfo(ctx context.Context) (err error) {
 	return s.techSpace.SetLocalInfo(ctx, spaceinfo.SpaceLocalInfo{
-		SpaceID:      s.SpaceId,
-		LocalStatus:  s.LocalStatus,
-		RemoteStatus: s.RemoteStatus,
+		SpaceID:      s.spaceId,
+		LocalStatus:  s.localStatus,
+		RemoteStatus: s.remoteStatus,
 	})
 }
