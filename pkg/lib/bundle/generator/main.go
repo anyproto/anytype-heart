@@ -201,12 +201,10 @@ func generateRelations() error {
 				Id("ReadOnlyRelation"): Lit(true),
 				Id("Description"):      Lit(relation.Description),
 				Id("Scope"):            Qual(relPbPkg, "Relation_type"),
+				Id("MaxCount"):         Lit(relation.MaxCount),
 			}
 			if relation.Hidden {
 				dictS[Id("Hidden")] = Lit(relation.Hidden)
-			}
-			if relation.MaxCount != 0 {
-				dictS[Id("MaxCount")] = Lit(relation.MaxCount)
 			}
 			if len(relation.ObjectTypes) > 0 {
 				var t []Code
