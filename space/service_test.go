@@ -13,10 +13,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/space/internal/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 

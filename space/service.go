@@ -14,11 +14,11 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/components/spacecontroller"
-	"github.com/anyproto/anytype-heart/space/process/loader"
-	"github.com/anyproto/anytype-heart/space/spacefactory"
+	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spacefactory"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
+	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.space"
@@ -86,6 +86,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.delController = newDeletionController(s, coordClient)
+	s.factory = app.MustComponent[spacefactory.SpaceFactory](a)
 	return err
 }
 

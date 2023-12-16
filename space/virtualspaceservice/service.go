@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
-const virtualSpaceServiceName = "virtualSpaceService"
+const CName = "common.space.virtualspaceservice"
 
 type VirtualSpaceService interface {
 	app.ComponentRunnable
@@ -25,7 +25,7 @@ func (v *virtualSpaceService) Init(a *app.App) (err error) {
 }
 
 func (v *virtualSpaceService) Name() string {
-	return virtualSpaceServiceName
+	return CName
 }
 
 func (v *virtualSpaceService) Run(ctx context.Context) (err error) {

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/components/spacecontroller"
-	"github.com/anyproto/anytype-heart/space/process/loader"
+	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -26,10 +26,7 @@ func (s *service) startStatus(ctx context.Context, spaceID string, status spacei
 
 func (s *service) waitLoad(ctx context.Context, ctrl spacecontroller.SpaceController) (sp clientspace.Space, err error) {
 	if ld, ok := ctrl.Current().(loader.LoadWaiter); ok {
-		sp, err = ld.WaitLoad(ctx)
-		if err != nil {
-			return nil, err
-		}
+		return ld.WaitLoad(ctx)
 	}
 	return nil, fmt.Errorf("failed to load space")
 }
