@@ -15,9 +15,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
-	"github.com/anyproto/anytype-heart/space/internal/spacefactory"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
-	"github.com/anyproto/anytype-heart/space/internal/techspace"
+	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -53,7 +52,7 @@ type Service interface {
 }
 
 type service struct {
-	techSpace techspace.TechSpace
+	techSpace *clientspace.TechSpace
 	factory   spacefactory.SpaceFactory
 
 	delController *deletionController
@@ -87,6 +86,8 @@ func (s *service) Init(a *app.App) (err error) {
 	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.delController = newDeletionController(s, coordClient)
 	s.factory = app.MustComponent[spacefactory.SpaceFactory](a)
+	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	return err
 }
 
@@ -123,6 +124,9 @@ func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
+	if spaceId == s.techSpace.TechSpaceId() {
+		return s.techSpace, nil
+	}
 	ctrl, err := s.startStatus(ctx, spaceId, spaceinfo.AccountStatusUnknown)
 	if err != nil {
 		return nil, err

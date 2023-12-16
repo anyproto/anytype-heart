@@ -59,12 +59,7 @@ func (s *spaceLoader) Name() (name string) {
 }
 
 func (s *spaceLoader) Run(ctx context.Context) (err error) {
-	err = s.startLoad(ctx)
-	if err != nil {
-		return
-	}
-	_, err = s.WaitLoad(ctx)
-	return
+	return s.startLoad(ctx)
 }
 
 func (s *spaceLoader) Close(ctx context.Context) (err error) {

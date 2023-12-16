@@ -33,6 +33,7 @@ type Process interface {
 var (
 	ErrInvalidTransition   = errors.New("invalid transition")
 	ErrTransitionInProcess = errors.New("transition in process")
+	ErrFailedToStart       = errors.New("failed to start")
 )
 
 type ProcessFactory interface {
@@ -121,7 +122,11 @@ func (s *StateMachine) ChangeMode(next Mode) (proc Process, err error) {
 	s.waiters = append(s.waiters, wait)
 	s.Unlock()
 	s.log.Error("notify next", zap.Int("next", int(next)))
+	// TODO: [MR] send error to waiter
 	proc = <-wait
+	if proc == nil {
+		return nil, ErrFailedToStart
+	}
 	return
 }
 
@@ -151,33 +156,38 @@ func (s *StateMachine) loop() {
 			s.Lock()
 			cur := s.current
 			mode := s.mode
+			next := s.next
 			s.Unlock()
 			s.log.Error("closing", zap.Int("mode", int(mode)))
 			cur.Close(s.ctx)
 
-			s.Lock()
-			s.mode = s.next
-			s.next = ModeUnknown
-			s.current = s.factory.Process(s.mode)
-			cur = s.current
-			waiters := append([]waiter{}, s.waiters...)
-			s.waiters = nil
-			mode = s.mode
-			s.Unlock()
-			for _, w := range waiters {
-				w <- cur
-			}
-			s.log.Error("starting", zap.Int("mode", int(mode)))
+			cur = s.factory.Process(next)
+			s.log.Error("starting", zap.Int("mode", int(next)))
 			err := cur.Start(s.ctx)
 			if err != nil {
 				s.Lock()
-				if s.next != ModeUnknown {
-					s.Unlock()
-					continue
-				}
-				s.next = ModeInitial
+				s.next = ModeUnknown
+				s.mode = ModeInitial
+				s.current = s.factory.Process(ModeInitial)
+				// Initial should always start
+				_ = s.current.Start(s.ctx)
+				waiters := append([]waiter{}, s.waiters...)
+				s.waiters = nil
 				s.Unlock()
-				s.notifyChange()
+				for _, w := range waiters {
+					w <- nil
+				}
+				break
+			}
+			s.Lock()
+			s.mode = s.next
+			s.next = ModeUnknown
+			s.current = cur
+			waiters := append([]waiter{}, s.waiters...)
+			s.waiters = nil
+			s.Unlock()
+			for _, w := range waiters {
+				w <- cur
 			}
 		}
 	}

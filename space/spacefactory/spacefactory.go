@@ -23,6 +23,7 @@ import (
 )
 
 type SpaceFactory interface {
+	app.Component
 	CreatePersonalSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
 	NewPersonalSpace(ctx context.Context) (spacecontroller.SpaceController, error)
 	CreateShareableSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
@@ -111,7 +112,7 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 		TechSpace:       techSpace,
 	}
 	ts := clientspace.NewTechSpace(deps)
-	err = s.techSpace.Run(techCoreSpace, ts.Cache)
+	err = ts.Run(techCoreSpace, ts.Cache)
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}

@@ -78,6 +78,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
@@ -215,6 +216,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
 		Register(source.New()).
+		Register(spacefactory.New()).
 		Register(space.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
