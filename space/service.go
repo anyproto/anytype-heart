@@ -219,7 +219,7 @@ func (s *service) Close(ctx context.Context) error {
 func (s *service) allIDs() (ids []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for id, _ := range s.spaceControllers {
+	for id := range s.spaceControllers {
 		if id != addr.AnytypeMarketplaceWorkspace {
 			ids = append(ids, id)
 		}
