@@ -99,7 +99,7 @@ func (s *StateMachine) GetProcess() Process {
 }
 
 func (s *StateMachine) ChangeMode(next Mode) (proc Process, err error) {
-	s.log.Error("changing", zap.Int("next", int(next)))
+	s.log.Debug("changing", zap.Int("next", int(next)))
 	s.Lock()
 	if s.mode == next {
 		proc = s.current
@@ -121,7 +121,7 @@ func (s *StateMachine) ChangeMode(next Mode) (proc Process, err error) {
 	wait := make(waiter)
 	s.waiters = append(s.waiters, wait)
 	s.Unlock()
-	s.log.Error("notify next", zap.Int("next", int(next)))
+	s.log.Debug("notify next", zap.Int("next", int(next)))
 	// TODO: [MR] send error to waiter
 	proc = <-wait
 	if proc == nil {
@@ -149,7 +149,7 @@ func (s *StateMachine) loop() {
 			if cur != nil {
 				cur.Close(s.ctx)
 			}
-			s.log.Error("closed", zap.Int("mode", int(mode)))
+			s.log.Debug("closed", zap.Int("mode", int(mode)))
 			close(ch)
 			return
 		case <-s.notify:
@@ -158,11 +158,11 @@ func (s *StateMachine) loop() {
 			mode := s.mode
 			next := s.next
 			s.Unlock()
-			s.log.Error("closing", zap.Int("mode", int(mode)))
+			s.log.Debug("closing", zap.Int("mode", int(mode)))
 			cur.Close(s.ctx)
 
 			cur = s.factory.Process(next)
-			s.log.Error("starting", zap.Int("mode", int(next)))
+			s.log.Debug("starting", zap.Int("mode", int(next)))
 			err := cur.Start(s.ctx)
 			if err != nil {
 				s.Lock()
@@ -170,7 +170,10 @@ func (s *StateMachine) loop() {
 				s.mode = ModeInitial
 				s.current = s.factory.Process(ModeInitial)
 				// Initial should always start
-				_ = s.current.Start(s.ctx)
+				err := s.current.Start(s.ctx)
+				if err != nil {
+					s.log.Error("failed to start initial", zap.Error(err))
+				}
 				waiters := append([]waiter{}, s.waiters...)
 				s.waiters = nil
 				s.Unlock()
