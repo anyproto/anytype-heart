@@ -82,6 +82,8 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		return fmt.Errorf("get badger: %w", err)
 	}
 
+	s.backlinksUpdateCh = make(chan BacklinksUpdateInfo)
+
 	return s.initCache()
 }
 
@@ -140,7 +142,7 @@ type ObjectStore interface {
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
 
-	SubscribeBacklinksUpdate() <-chan BacklinksUpdateInfo
+	SubscribeBacklinksUpdate() (infoCh <-chan BacklinksUpdateInfo, closeFunc func())
 
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)

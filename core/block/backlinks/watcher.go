@@ -59,16 +59,17 @@ func (uw *UpdateWatcher) Close(_ context.Context) error {
 }
 
 func (uw *UpdateWatcher) Run(ctx context.Context) error {
-	ch := uw.store.SubscribeBacklinksUpdate()
+	ch, closeFunc := uw.store.SubscribeBacklinksUpdate()
 	uw.closeCh = make(chan struct{})
 
 	go func() {
 		for {
 			select {
 			case <-uw.closeCh:
+				closeFunc()
 				return
 			case info := <-ch:
-				go uw.updateBackLinksInObjects(ctx, info)
+				uw.updateBackLinksInObjects(ctx, info)
 			}
 		}
 	}()

@@ -79,9 +79,10 @@ func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 	return links, err
 }
 
-func (s *dsObjectStore) SubscribeBacklinksUpdate() <-chan BacklinksUpdateInfo {
-	s.backlinksUpdateCh = make(chan BacklinksUpdateInfo)
-	return s.backlinksUpdateCh
+func (s *dsObjectStore) SubscribeBacklinksUpdate() (infoCh <-chan BacklinksUpdateInfo, closeFunc func()) {
+	return s.backlinksUpdateCh, func() {
+		close(s.backlinksUpdateCh)
+	}
 }
 
 // Find to which IDs specified one has outbound links.
