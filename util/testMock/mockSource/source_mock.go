@@ -146,18 +146,6 @@ func (mr *MockServiceMockRecorder) RegisterStaticSource(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterStaticSource", reflect.TypeOf((*MockService)(nil).RegisterStaticSource), arg0)
 }
 
-// RemoveStaticSource mocks base method.
-func (m *MockService) RemoveStaticSource(arg0 string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RemoveStaticSource", arg0)
-}
-
-// RemoveStaticSource indicates an expected call of RemoveStaticSource.
-func (mr *MockServiceMockRecorder) RemoveStaticSource(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveStaticSource", reflect.TypeOf((*MockService)(nil).RemoveStaticSource), arg0)
-}
-
 // MockSource is a mock of Source interface.
 type MockSource struct {
 	ctrl     *gomock.Controller

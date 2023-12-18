@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -252,7 +253,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(profiler.New()).
 		Register(identity.New()).
 		Register(templateservice.New()).
-		Register(notifications.New())
+		Register(notifications.New()).
+		Register(backlinks.New())
 }
 
 func MiddlewareVersion() string {

@@ -61,7 +61,7 @@ func (s *service) listAllTypesAndRelations(spaceId string) (map[string]*types.St
 func reviseSystemObject(space clientspace.Space, localObject *types.Struct, marketObjects map[string]*types.Struct) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
-	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
+	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) < pbtypes.GetInt64(localObject, revisionKey) {
 		return
 	}
 	details := buildDiffDetails(marketObject, localObject)
@@ -95,8 +95,10 @@ func isSystemObject(details *types.Struct) bool {
 func buildDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjectSetDetailsDetail) {
 	diff := pbtypes.StructDiff(current, origin)
 	diff = pbtypes.StructFilterKeys(diff, []string{
-		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(), bundle.RelationKeyIsReadonly.String(),
-		bundle.RelationKeyIsHidden.String(), bundle.RelationKeyRevision.String(),
+		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),
+		bundle.RelationKeyIsReadonly.String(), bundle.RelationKeyIsHidden.String(),
+		bundle.RelationKeyRevision.String(), bundle.RelationKeyRelationReadonlyValue.String(),
+		bundle.RelationKeyRelationMaxCount.String(),
 	})
 
 	for key, value := range diff.Fields {

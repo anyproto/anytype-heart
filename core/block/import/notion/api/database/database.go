@@ -225,7 +225,7 @@ func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty prop
 		Key:         relationKey,
 	}
 	snapshot := &common.Snapshot{
-		Id: relationKey,
+		Id: pbtypes.GetString(relationDetails, bundle.RelationKeyId.String()),
 		Snapshot: &pb.ChangeSnapshot{
 			Data: relationSnapshot,
 		},
@@ -338,7 +338,7 @@ func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportC
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
 	rootCollection := common.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects, "", nil, true)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects, "", nil, true, true)
 	if err != nil {
 		return nil, err
 	}

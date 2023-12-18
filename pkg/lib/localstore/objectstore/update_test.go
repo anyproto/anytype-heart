@@ -317,3 +317,62 @@ func (fx *StoreFixture) givenExistingLinks(t *testing.T) {
 	fx.assertInboundLinks(t, "id2", []string{"id1"})
 	fx.assertInboundLinks(t, "id3", nil)
 }
+
+func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
+	t.Run("when nil modifier passed - nothing changes", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+
+		// when
+		err := s.ModifyObjectDetails("id", nil)
+
+		//then
+		assert.NoError(t, err)
+		got, err := s.GetDetails("id")
+		assert.NoError(t, err)
+		assert.Empty(t, got.Details.Fields)
+	})
+
+	t.Run("modifier modifies details", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
+
+		// when
+		err := s.ModifyObjectDetails("id", func(details *types.Struct) (*types.Struct, error) {
+			details.Fields[bundle.RelationKeyName.String()] = pbtypes.String("bar")
+			return details, nil
+		})
+
+		//then
+		assert.NoError(t, err)
+		want := makeDetails(TestObject{
+			bundle.RelationKeyId:      pbtypes.String("id"),
+			bundle.RelationKeyName:    pbtypes.String("bar"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceName),
+		})
+		got, err := s.GetDetails("id")
+		assert.NoError(t, err)
+		assert.Equal(t, want, got.Details)
+	})
+
+	t.Run("if modifier wipes details - id remains", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
+
+		// when
+		err := s.ModifyObjectDetails("id", func(_ *types.Struct) (*types.Struct, error) {
+			return nil, nil
+		})
+
+		//then
+		assert.NoError(t, err)
+		want := makeDetails(TestObject{
+			bundle.RelationKeyId: pbtypes.String("id"),
+		})
+		got, err := s.GetDetails("id")
+		assert.NoError(t, err)
+		assert.Equal(t, want, got.Details)
+	})
+}

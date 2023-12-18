@@ -128,4 +128,17 @@ func TestUpdateSystemObject(t *testing.T) {
 
 		reviseSystemObject(space, rel, marketObjects)
 	})
+
+	t.Run("relation with absent maxCount is updated", func(t *testing.T) {
+		rel := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRevision.String():         pbtypes.Int64(2),
+			bundle.RelationKeySourceObject.String():     pbtypes.String("_brisReadonly"),
+			bundle.RelationKeyUniqueKey.String():        pbtypes.String("rel-isReadonly"),
+			bundle.RelationKeyRelationMaxCount.String(): pbtypes.Int64(1),
+		}}
+		space := mock_space.NewMockSpace(t)
+		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
+
+		reviseSystemObject(space, rel, marketObjects)
+	})
 }
