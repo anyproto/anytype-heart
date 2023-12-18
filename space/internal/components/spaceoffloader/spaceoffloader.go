@@ -112,7 +112,6 @@ func (o *spaceOffloader) onOffload(id string, offloadErr error) {
 		log.Debug("set status error", zap.Error(err), zap.String("spaceId", id))
 	}
 	o.offloaded.Store(true)
-	o.offloading = nil
 }
 
 func (o *spaceOffloader) WaitOffload(ctx context.Context) (err error) {

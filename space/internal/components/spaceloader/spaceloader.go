@@ -63,7 +63,7 @@ func (s *spaceLoader) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) Close(ctx context.Context) (err error) {
-	return nil
+	return s.space.Close(ctx)
 }
 
 func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
