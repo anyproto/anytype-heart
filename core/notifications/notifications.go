@@ -2,10 +2,12 @@ package notifications
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/google/uuid"
 
@@ -69,6 +71,7 @@ func (n *notificationService) Init(a *app.App) (err error) {
 func (n *notificationService) Name() (name string) {
 	return CName
 }
+
 func (n *notificationService) Run(_ context.Context) (err error) {
 	notificationContext, notificationCancel := context.WithCancel(context.Background())
 	n.notificationCancel = notificationCancel
@@ -119,7 +122,7 @@ func (n *notificationService) Close(_ context.Context) (err error) {
 	return nil
 }
 
-func (n *notificationService) CreateAndSendLocal(notification *model.Notification) error {
+func (n *notificationService) CreateAndSend(notification *model.Notification) error {
 	notification.Id = uuid.New().String()
 	notification.CreateTime = time.Now().Unix()
 	if !notification.IsLocal {
@@ -253,6 +256,10 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 	}
 	ctxWithPeer := peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	_, err = spc.GetObject(ctxWithPeer, n.notificationId)
+	if err != nil && errors.Is(err, net.ErrUnableToConnect) {
+		n.notificationErr = err
+		return
+	}
 	if err != nil {
 		_, dErr := spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 			Key: uk,
