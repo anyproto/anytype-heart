@@ -3,6 +3,7 @@ package backlinks
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
@@ -27,18 +28,17 @@ const CName = "backlinks-update-watcher"
 var log = logging.Logger(CName)
 
 type backlinksUpdater interface {
-	SubscribeBacklinksUpdate() (infoCh <-chan objectstore.BacklinksUpdateInfo, closeFunc func())
+	SubscribeBacklinksUpdate(callback func(info objectstore.BacklinksUpdateInfo))
 }
 
 type UpdateWatcher struct {
 	app.ComponentRunnable
+	sync.RWMutex
 
 	updater      backlinksUpdater
 	store        objectstore.ObjectStore
 	resolver     idresolver.Resolver
 	spaceService space.Service
-
-	closeCh chan struct{}
 }
 
 func New() app.Component {
@@ -57,36 +57,26 @@ func (uw *UpdateWatcher) Init(a *app.App) error {
 	return nil
 }
 
-func (uw *UpdateWatcher) Close(_ context.Context) error {
-	close(uw.closeCh)
+func (uw *UpdateWatcher) Close(context.Context) error {
 	return nil
 }
 
-func (uw *UpdateWatcher) Run(ctx context.Context) error {
-	ch, closeFunc := uw.updater.SubscribeBacklinksUpdate()
-	uw.closeCh = make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-uw.closeCh:
-				closeFunc()
-				return
-			case info := <-ch:
-				uw.updateBackLinksInObjects(ctx, info)
-			}
-		}
-	}()
-
+func (uw *UpdateWatcher) Run(context.Context) error {
+	uw.updater.SubscribeBacklinksUpdate(func(info objectstore.BacklinksUpdateInfo) {
+		go uw.updateBackLinksInObjects(info)
+	})
 	return nil
 }
 
-func (uw *UpdateWatcher) updateBackLinksInObjects(ctx context.Context, info objectstore.BacklinksUpdateInfo) {
+func (uw *UpdateWatcher) updateBackLinksInObjects(info objectstore.BacklinksUpdateInfo) {
+	uw.RLock()
+	defer uw.RUnlock()
+
 	spaceId, err := uw.resolver.ResolveSpaceID(info.Id)
 	if err != nil {
 		log.With("objectID", info.Id).Errorf("failed to resolve space id for object %s: %v", info.Id, err)
 	}
-	spc, err := uw.spaceService.Get(ctx, spaceId)
+	spc, err := uw.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		log.With("objectID", info.Id).Errorf("failed get space %s: %v", spaceId, err)
 	}

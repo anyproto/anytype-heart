@@ -82,8 +82,6 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		return fmt.Errorf("get badger: %w", err)
 	}
 
-	s.backlinksUpdateCh = make(chan BacklinksUpdateInfo)
-
 	return s.initCache()
 }
 
@@ -196,9 +194,9 @@ type dsObjectStore struct {
 	fts ftsearch.FTSearch
 
 	sync.RWMutex
-	onChangeCallback  func(record database.Record)
-	subscriptions     []database.Subscription
-	backlinksUpdateCh chan BacklinksUpdateInfo
+	onChangeCallback          func(record database.Record)
+	subscriptions             []database.Subscription
+	onBacklinksUpdateCallback func(info BacklinksUpdateInfo)
 }
 
 func (s *dsObjectStore) EraseIndexes(spaceId string) error {
