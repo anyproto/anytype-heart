@@ -3,7 +3,6 @@ package backlinks
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
@@ -34,7 +33,6 @@ type UpdateWatcher struct {
 	resolver     idresolver.Resolver
 	spaceService space.Service
 
-	sync.RWMutex
 	closeCh chan struct{}
 }
 
@@ -78,9 +76,6 @@ func (uw *UpdateWatcher) Run(ctx context.Context) error {
 }
 
 func (uw *UpdateWatcher) updateBackLinksInObjects(ctx context.Context, info objectstore.BacklinksUpdateInfo) {
-	uw.Lock()
-	defer uw.Unlock()
-
 	spaceId, err := uw.resolver.ResolveSpaceID(info.Id)
 	if err != nil {
 		log.With("objectID", info.Id).Errorf("failed to resolve space id for object %s: %v", info.Id, err)
