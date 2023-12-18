@@ -124,17 +124,17 @@ func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, ori
 		i.s.ProcessAdd(progress)
 	}
 	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: req.Type.String()})
-	var rootCollectionID string
+	var rootCollectionId string
 	if c, ok := i.converters[req.Type.String()]; ok {
-		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
-		return rootCollectionID, "", returnedErr
+		rootCollectionId, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
+		return rootCollectionId, "", returnedErr
 	}
 	if req.Type == model.Import_External {
 		returnedErr = i.importFromExternalSource(ctx, req, progress)
-		return rootCollectionID, "", returnedErr
+		return rootCollectionId, "", returnedErr
 	}
 	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
-	return rootCollectionID, progress.Id(), returnedErr
+	return rootCollectionId, progress.Id(), returnedErr
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {

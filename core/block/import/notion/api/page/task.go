@@ -59,10 +59,10 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	if allErrors.ShouldAbortImport(0, model.Import_Notion) {
 		return &Result{ce: allErrors}
 	}
-	pageID := do.request.NotionPageIdsToAnytype[pt.p.ID]
+	pageId := do.request.NotionPageIdsToAnytype[pt.p.ID]
 	resultSnapshots := make([]*common.Snapshot, 0, 1+len(subObjectsSnapshots))
 	sn := &common.Snapshot{
-		Id:       pageID,
+		Id:       pageId,
 		FileName: pt.p.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		SbType:   smartblock.SmartBlockTypePage,

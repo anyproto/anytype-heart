@@ -1881,14 +1881,14 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateDataview(t *testing.T) {
 }
 
 func TestState_ApplyChangeIgnoreErrBlockUpdateSetLatex(t *testing.T) {
-	t.Run("apply BlockUpdate change: change latex text", func(t *testing.T) {
+	t.Run("apply BlockUpdate change: change embed text", func(t *testing.T) {
 		// given
 		st := NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{
 				Id:          "root",
-				ChildrenIds: []string{"latex"},
+				ChildrenIds: []string{"embed"},
 			}),
-			"latex": simple.New(&model.Block{Id: "latex", Restrictions: &model.BlockRestrictions{Edit: true},
+			"embed": simple.New(&model.Block{Id: "embed", Restrictions: &model.BlockRestrictions{Edit: true},
 				Content: &model.BlockContentOfLatex{
 					Latex: &model.BlockContentLatex{
 						Text: "text",
@@ -1904,7 +1904,7 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateSetLatex(t *testing.T) {
 						Value: &pb.EventMessageValueOfBlockSetLatex{
 							BlockSetLatex: &pb.EventBlockSetLatex{
 
-								Id:   "latex",
+								Id:   "embed",
 								Text: &pb.EventBlockSetLatexText{Value: "new text"},
 							},
 						},
@@ -1917,7 +1917,7 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateSetLatex(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		b := st.Get("latex")
+		b := st.Get("embed")
 		assert.NotNil(t, b)
 		assert.Equal(t, "new text", b.Model().GetLatex().Text)
 	})
@@ -1929,7 +1929,7 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateSetRelations(t *testing.T) {
 		st := NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{
 				Id:          "root",
-				ChildrenIds: []string{"latex"},
+				ChildrenIds: []string{"embed"},
 			}),
 			"relation": simple.New(&model.Block{Id: "relation", Restrictions: &model.BlockRestrictions{Edit: true},
 				Content: &model.BlockContentOfRelation{
@@ -1971,7 +1971,7 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateSetWidget(t *testing.T) {
 		st := NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{
 				Id:          "root",
-				ChildrenIds: []string{"latex"},
+				ChildrenIds: []string{"embed"},
 			}),
 			"widget": simple.New(&model.Block{Id: "widget", Restrictions: &model.BlockRestrictions{Edit: true},
 				Content: &model.BlockContentOfWidget{

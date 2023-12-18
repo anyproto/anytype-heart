@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -792,17 +791,15 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionID, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
+	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
 
 	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
-		Id:         uuid.New().String(),
-		CreateTime: time.Now().Unix(),
-		Status:     model.Notification_Created,
-		IsLocal:    true,
-		Space:      req.SpaceId,
+		Status:  model.Notification_Created,
+		IsLocal: true,
+		Space:   req.SpaceId,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
 			ProcessId:  processID,
-			ErrorCode:  common.GetNotificationErrorCode(err),
+			ErrorCode:  common.GetImportErrorCode(err),
 			ImportType: req.Type,
 			SpaceId:    req.SpaceId,
 		}},
@@ -812,7 +809,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	}
 
 	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionID, nil)
+		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
 	}
 	switch {
 	case errors.Is(err, common.ErrNoObjectsToImport):

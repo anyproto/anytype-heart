@@ -13,6 +13,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// TODO: Right now we use only CLOSE action type in protocol, so tests should be improved when we have more types
+const notCloseActionType = 1
+
 func TestNotificationService_List(t *testing.T) {
 	t.Run("no notification in store - empty result", func(t *testing.T) {
 		//given
@@ -150,7 +153,7 @@ func TestNotificationService_Reply(t *testing.T) {
 		}
 
 		// when
-		err = notifications.Reply([]string{"id"}, model.Notification_REPORT)
+		err = notifications.Reply([]string{"id"}, notCloseActionType)
 		assert.Nil(t, err)
 		notification, err := storeFixture.GetNotificationById("id")
 		assert.Nil(t, err)
@@ -176,7 +179,7 @@ func TestNotificationService_Reply(t *testing.T) {
 		}
 
 		// when
-		err = notifications.Reply([]string{"id", "id1"}, model.Notification_REPORT)
+		err = notifications.Reply([]string{"id", "id1"}, notCloseActionType)
 		assert.Nil(t, err)
 
 		// then

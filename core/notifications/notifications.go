@@ -3,9 +3,11 @@ package notifications
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -67,7 +69,6 @@ func (n *notificationService) Init(a *app.App) (err error) {
 func (n *notificationService) Name() (name string) {
 	return CName
 }
-
 func (n *notificationService) Run(_ context.Context) (err error) {
 	notificationContext, notificationCancel := context.WithCancel(context.Background())
 	n.notificationCancel = notificationCancel
@@ -118,7 +119,9 @@ func (n *notificationService) Close(_ context.Context) (err error) {
 	return nil
 }
 
-func (n *notificationService) CreateAndSend(notification *model.Notification) error {
+func (n *notificationService) CreateAndSendLocal(notification *model.Notification) error {
+	notification.Id = uuid.New().String()
+	notification.CreateTime = time.Now().Unix()
 	if !notification.IsLocal {
 		var exist bool
 		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {

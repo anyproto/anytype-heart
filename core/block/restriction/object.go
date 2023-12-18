@@ -136,6 +136,7 @@ var (
 		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
 		smartblock.SmartBlockTypeBundledTemplate:   objRestrictAll,
 		smartblock.SmartBlockTypeTemplate: {
+			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 		},
 		smartblock.SmartBlockTypeWidget: {

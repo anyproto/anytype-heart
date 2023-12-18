@@ -345,6 +345,10 @@ message Event {
                 message Text {
                     string value = 1;
                 }
+                Processor processor = 3;
+                message Processor {
+                    anytype.model.Block.Content.Latex.Processor value = 1;
+                }
             }
 
             message Div {

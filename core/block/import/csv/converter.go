@@ -67,7 +67,7 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		return nil, allErrors
 	}
 	rootCollection := common.NewRootCollection(c.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, result.objectIDs, "", nil, true)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, result.objectIDs, "", nil, true, true)
 	if err != nil {
 		allErrors.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -128,17 +128,17 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	progress.SetTotal(int64(numberOfFiles) * numberOfProgressSteps)
-	return c.getSnapshotsAndObjectsIDs(importSource, params, str, allErrors, progress)
+	return c.getSnapshotsAndObjectsIds(importSource, params, str, allErrors, progress)
 }
 
-func (c *CSV) getSnapshotsAndObjectsIDs(importSource source.Source,
+func (c *CSV) getSnapshotsAndObjectsIds(importSource source.Source,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
 	allErrors *common.ConvertError,
 	progress process.Progress,
 ) *Result {
 	allSnapshots := make([]*common.Snapshot, 0)
-	allObjectsIDs := make([]string, 0)
+	allObjectsIds := make([]string, 0)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
@@ -152,18 +152,18 @@ func (c *CSV) getSnapshotsAndObjectsIDs(importSource source.Source,
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		collectionID, snapshots, err := str.CreateObjects(fileName, csvTable, params, progress)
+		collectionId, snapshots, err := str.CreateObjects(fileName, csvTable, params, progress)
 		if err != nil {
 			allErrors.Add(err)
 			return !allErrors.ShouldAbortImport(len(params.GetPath()), model.Import_Csv)
 		}
-		allObjectsIDs = append(allObjectsIDs, collectionID)
+		allObjectsIds = append(allObjectsIds, collectionId)
 		allSnapshots = append(allSnapshots, snapshots...)
 		return true
 	}); iterateErr != nil {
 		allErrors.Add(iterateErr)
 	}
-	return &Result{allObjectsIDs, allSnapshots}
+	return &Result{allObjectsIds, allSnapshots}
 }
 
 func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error) {

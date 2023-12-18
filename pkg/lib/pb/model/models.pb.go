@@ -1089,6 +1089,49 @@ func (BlockContentDataviewFilterQuickOption) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98a910b73321e591, []int{1, 1, 9, 3, 2}
 }
 
+type BlockContentLatexProcessor int32
+
+const (
+	BlockContentLatex_Latex      BlockContentLatexProcessor = 0
+	BlockContentLatex_Mermaid    BlockContentLatexProcessor = 1
+	BlockContentLatex_Chart      BlockContentLatexProcessor = 2
+	BlockContentLatex_Youtube    BlockContentLatexProcessor = 3
+	BlockContentLatex_Vimeo      BlockContentLatexProcessor = 4
+	BlockContentLatex_Soundcloud BlockContentLatexProcessor = 5
+	BlockContentLatex_GoogleMaps BlockContentLatexProcessor = 6
+	BlockContentLatex_Miro       BlockContentLatexProcessor = 7
+)
+
+var BlockContentLatexProcessor_name = map[int32]string{
+	0: "Latex",
+	1: "Mermaid",
+	2: "Chart",
+	3: "Youtube",
+	4: "Vimeo",
+	5: "Soundcloud",
+	6: "GoogleMaps",
+	7: "Miro",
+}
+
+var BlockContentLatexProcessor_value = map[string]int32{
+	"Latex":      0,
+	"Mermaid":    1,
+	"Chart":      2,
+	"Youtube":    3,
+	"Vimeo":      4,
+	"Soundcloud": 5,
+	"GoogleMaps": 6,
+	"Miro":       7,
+}
+
+func (x BlockContentLatexProcessor) String() string {
+	return proto.EnumName(BlockContentLatexProcessor_name, int32(x))
+}
+
+func (BlockContentLatexProcessor) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{1, 1, 11, 0}
+}
+
 type BlockContentWidgetLayout int32
 
 const (
@@ -1478,27 +1521,15 @@ func (NotificationStatus) EnumDescriptor() ([]byte, []int) {
 type NotificationActionType int32
 
 const (
-	Notification_RETRY       NotificationActionType = 0
-	Notification_REPORT      NotificationActionType = 1
-	Notification_OPEN_OBJECT NotificationActionType = 2
-	Notification_OPEN_SPACE  NotificationActionType = 3
-	Notification_CLOSE       NotificationActionType = 4
+	Notification_CLOSE NotificationActionType = 0
 )
 
 var NotificationActionType_name = map[int32]string{
-	0: "RETRY",
-	1: "REPORT",
-	2: "OPEN_OBJECT",
-	3: "OPEN_SPACE",
-	4: "CLOSE",
+	0: "CLOSE",
 }
 
 var NotificationActionType_value = map[string]int32{
-	"RETRY":       0,
-	"REPORT":      1,
-	"OPEN_OBJECT": 2,
-	"OPEN_SPACE":  3,
-	"CLOSE":       4,
+	"CLOSE": 0,
 }
 
 func (x NotificationActionType) String() string {
@@ -1509,47 +1540,69 @@ func (NotificationActionType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98a910b73321e591, []int{19, 1}
 }
 
-type NotificationImportCode int32
+type NotificationExportCode int32
 
 const (
-	NotificationImport_NULL                                NotificationImportCode = 0
-	NotificationImport_UNKNOWN_ERROR                       NotificationImportCode = 1
-	NotificationImport_BAD_INPUT                           NotificationImportCode = 2
-	NotificationImport_INTERNAL_ERROR                      NotificationImportCode = 3
-	NotificationImport_NO_OBJECTS_TO_IMPORT                NotificationImportCode = 5
-	NotificationImport_IMPORT_IS_CANCELED                  NotificationImportCode = 6
-	NotificationImport_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED NotificationImportCode = 7
-	NotificationImport_FILE_LOAD_ERROR                     NotificationImportCode = 8
+	NotificationExport_NULL          NotificationExportCode = 0
+	NotificationExport_UNKNOWN_ERROR NotificationExportCode = 1
+	NotificationExport_BAD_INPUT     NotificationExportCode = 2
 )
 
-var NotificationImportCode_name = map[int32]string{
+var NotificationExportCode_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
-	3: "INTERNAL_ERROR",
-	5: "NO_OBJECTS_TO_IMPORT",
-	6: "IMPORT_IS_CANCELED",
-	7: "LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED",
-	8: "FILE_LOAD_ERROR",
 }
 
-var NotificationImportCode_value = map[string]int32{
-	"NULL":                                0,
-	"UNKNOWN_ERROR":                       1,
-	"BAD_INPUT":                           2,
-	"INTERNAL_ERROR":                      3,
-	"NO_OBJECTS_TO_IMPORT":                5,
-	"IMPORT_IS_CANCELED":                  6,
-	"LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED": 7,
-	"FILE_LOAD_ERROR":                     8,
+var NotificationExportCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
 }
 
-func (x NotificationImportCode) String() string {
-	return proto.EnumName(NotificationImportCode_name, int32(x))
+func (x NotificationExportCode) String() string {
+	return proto.EnumName(NotificationExportCode_name, int32(x))
 }
 
-func (NotificationImportCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{19, 0, 0}
+func (NotificationExportCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{19, 1, 0}
+}
+
+type ExportFormat int32
+
+const (
+	Export_Markdown   ExportFormat = 0
+	Export_Protobuf   ExportFormat = 1
+	Export_JSON       ExportFormat = 2
+	Export_DOT        ExportFormat = 3
+	Export_SVG        ExportFormat = 4
+	Export_GRAPH_JSON ExportFormat = 5
+)
+
+var ExportFormat_name = map[int32]string{
+	0: "Markdown",
+	1: "Protobuf",
+	2: "JSON",
+	3: "DOT",
+	4: "SVG",
+	5: "GRAPH_JSON",
+}
+
+var ExportFormat_value = map[string]int32{
+	"Markdown":   0,
+	"Protobuf":   1,
+	"JSON":       2,
+	"DOT":        3,
+	"SVG":        4,
+	"GRAPH_JSON": 5,
+}
+
+func (x ExportFormat) String() string {
+	return proto.EnumName(ExportFormat_name, int32(x))
+}
+
+func (ExportFormat) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{20, 0}
 }
 
 type ImportType int32
@@ -1589,7 +1642,50 @@ func (x ImportType) String() string {
 }
 
 func (ImportType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{20, 0}
+	return fileDescriptor_98a910b73321e591, []int{21, 0}
+}
+
+type ImportErrorCode int32
+
+const (
+	Import_NULL                                ImportErrorCode = 0
+	Import_UNKNOWN_ERROR                       ImportErrorCode = 1
+	Import_BAD_INPUT                           ImportErrorCode = 2
+	Import_INTERNAL_ERROR                      ImportErrorCode = 3
+	Import_NO_OBJECTS_TO_IMPORT                ImportErrorCode = 5
+	Import_IMPORT_IS_CANCELED                  ImportErrorCode = 6
+	Import_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED ImportErrorCode = 7
+	Import_FILE_LOAD_ERROR                     ImportErrorCode = 8
+)
+
+var ImportErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+	3: "INTERNAL_ERROR",
+	5: "NO_OBJECTS_TO_IMPORT",
+	6: "IMPORT_IS_CANCELED",
+	7: "LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED",
+	8: "FILE_LOAD_ERROR",
+}
+
+var ImportErrorCode_value = map[string]int32{
+	"NULL":                                0,
+	"UNKNOWN_ERROR":                       1,
+	"BAD_INPUT":                           2,
+	"INTERNAL_ERROR":                      3,
+	"NO_OBJECTS_TO_IMPORT":                5,
+	"IMPORT_IS_CANCELED":                  6,
+	"LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED": 7,
+	"FILE_LOAD_ERROR":                     8,
+}
+
+func (x ImportErrorCode) String() string {
+	return proto.EnumName(ImportErrorCode_name, int32(x))
+}
+
+func (ImportErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{21, 1}
 }
 
 type SmartBlockSnapshotBase struct {
@@ -3913,7 +4009,8 @@ func (m *BlockContentRelation) GetKey() string {
 }
 
 type BlockContentLatex struct {
-	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Text      string                     `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Processor BlockContentLatexProcessor `protobuf:"varint,2,opt,name=processor,proto3,enum=anytype.model.BlockContentLatexProcessor" json:"processor,omitempty"`
 }
 
 func (m *BlockContentLatex) Reset()         { *m = BlockContentLatex{} }
@@ -3954,6 +4051,13 @@ func (m *BlockContentLatex) GetText() string {
 		return m.Text
 	}
 	return ""
+}
+
+func (m *BlockContentLatex) GetProcessor() BlockContentLatexProcessor {
+	if m != nil {
+		return m.Processor
+	}
+	return BlockContentLatex_Latex
 }
 
 type BlockContentTableOfContents struct {
@@ -5065,6 +5169,7 @@ type ObjectType struct {
 	IsArchived         bool             `protobuf:"varint,9,opt,name=isArchived,proto3" json:"isArchived,omitempty"`
 	InstalledByDefault bool             `protobuf:"varint,11,opt,name=installedByDefault,proto3" json:"installedByDefault,omitempty"`
 	Key                string           `protobuf:"bytes,12,opt,name=key,proto3" json:"key,omitempty"`
+	Revision           int64            `protobuf:"varint,13,opt,name=revision,proto3" json:"revision,omitempty"`
 }
 
 func (m *ObjectType) Reset()         { *m = ObjectType{} }
@@ -5182,6 +5287,13 @@ func (m *ObjectType) GetKey() string {
 		return m.Key
 	}
 	return ""
+}
+
+func (m *ObjectType) GetRevision() int64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
 }
 
 type Layout struct {
@@ -5316,8 +5428,9 @@ type Relation struct {
 	MaxCount    int32             `protobuf:"varint,13,opt,name=maxCount,proto3" json:"maxCount,omitempty"`
 	Description string            `protobuf:"bytes,14,opt,name=description,proto3" json:"description,omitempty"`
 	// on-store fields, injected only locally
-	Scope   RelationScope `protobuf:"varint,20,opt,name=scope,proto3,enum=anytype.model.RelationScope" json:"scope,omitempty"`
-	Creator string        `protobuf:"bytes,21,opt,name=creator,proto3" json:"creator,omitempty"`
+	Scope    RelationScope `protobuf:"varint,20,opt,name=scope,proto3,enum=anytype.model.RelationScope" json:"scope,omitempty"`
+	Creator  string        `protobuf:"bytes,21,opt,name=creator,proto3" json:"creator,omitempty"`
+	Revision int64         `protobuf:"varint,22,opt,name=revision,proto3" json:"revision,omitempty"`
 }
 
 func (m *Relation) Reset()         { *m = Relation{} }
@@ -5463,6 +5576,13 @@ func (m *Relation) GetCreator() string {
 		return m.Creator
 	}
 	return ""
+}
+
+func (m *Relation) GetRevision() int64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
 }
 
 type RelationOption struct {
@@ -6145,6 +6265,8 @@ type Notification struct {
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*NotificationPayloadOfImport
+	//	*NotificationPayloadOfExport
+	//	*NotificationPayloadOfGalleryImport
 	Payload IsNotificationPayload `protobuf_oneof:"payload"`
 	Space   string                `protobuf:"bytes,7,opt,name=space,proto3" json:"space,omitempty"`
 }
@@ -6191,8 +6313,16 @@ type IsNotificationPayload interface {
 type NotificationPayloadOfImport struct {
 	Import *NotificationImport `protobuf:"bytes,6,opt,name=import,proto3,oneof" json:"import,omitempty"`
 }
+type NotificationPayloadOfExport struct {
+	Export *NotificationExport `protobuf:"bytes,8,opt,name=export,proto3,oneof" json:"export,omitempty"`
+}
+type NotificationPayloadOfGalleryImport struct {
+	GalleryImport *NotificationGalleryImport `protobuf:"bytes,9,opt,name=galleryImport,proto3,oneof" json:"galleryImport,omitempty"`
+}
 
-func (*NotificationPayloadOfImport) IsNotificationPayload() {}
+func (*NotificationPayloadOfImport) IsNotificationPayload()        {}
+func (*NotificationPayloadOfExport) IsNotificationPayload()        {}
+func (*NotificationPayloadOfGalleryImport) IsNotificationPayload() {}
 
 func (m *Notification) GetPayload() IsNotificationPayload {
 	if m != nil {
@@ -6236,6 +6366,20 @@ func (m *Notification) GetImport() *NotificationImport {
 	return nil
 }
 
+func (m *Notification) GetExport() *NotificationExport {
+	if x, ok := m.GetPayload().(*NotificationPayloadOfExport); ok {
+		return x.Export
+	}
+	return nil
+}
+
+func (m *Notification) GetGalleryImport() *NotificationGalleryImport {
+	if x, ok := m.GetPayload().(*NotificationPayloadOfGalleryImport); ok {
+		return x.GalleryImport
+	}
+	return nil
+}
+
 func (m *Notification) GetSpace() string {
 	if m != nil {
 		return m.Space
@@ -6247,15 +6391,17 @@ func (m *Notification) GetSpace() string {
 func (*Notification) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
 		(*NotificationPayloadOfImport)(nil),
+		(*NotificationPayloadOfExport)(nil),
+		(*NotificationPayloadOfGalleryImport)(nil),
 	}
 }
 
 type NotificationImport struct {
-	ProcessId  string                 `protobuf:"bytes,1,opt,name=processId,proto3" json:"processId,omitempty"`
-	ErrorCode  NotificationImportCode `protobuf:"varint,2,opt,name=errorCode,proto3,enum=anytype.model.NotificationImportCode" json:"errorCode,omitempty"`
-	ImportType ImportType             `protobuf:"varint,3,opt,name=importType,proto3,enum=anytype.model.ImportType" json:"importType,omitempty"`
-	SpaceId    string                 `protobuf:"bytes,4,opt,name=spaceId,proto3" json:"spaceId,omitempty"`
-	Name       string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	ProcessId  string          `protobuf:"bytes,1,opt,name=processId,proto3" json:"processId,omitempty"`
+	ErrorCode  ImportErrorCode `protobuf:"varint,2,opt,name=errorCode,proto3,enum=anytype.model.ImportErrorCode" json:"errorCode,omitempty"`
+	ImportType ImportType      `protobuf:"varint,3,opt,name=importType,proto3,enum=anytype.model.ImportType" json:"importType,omitempty"`
+	SpaceId    string          `protobuf:"bytes,4,opt,name=spaceId,proto3" json:"spaceId,omitempty"`
+	Name       string          `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 }
 
 func (m *NotificationImport) Reset()         { *m = NotificationImport{} }
@@ -6298,11 +6444,11 @@ func (m *NotificationImport) GetProcessId() string {
 	return ""
 }
 
-func (m *NotificationImport) GetErrorCode() NotificationImportCode {
+func (m *NotificationImport) GetErrorCode() ImportErrorCode {
 	if m != nil {
 		return m.ErrorCode
 	}
-	return NotificationImport_NULL
+	return Import_NULL
 }
 
 func (m *NotificationImport) GetImportType() ImportType {
@@ -6326,6 +6472,162 @@ func (m *NotificationImport) GetName() string {
 	return ""
 }
 
+type NotificationExport struct {
+	ErrorCode  NotificationExportCode `protobuf:"varint,2,opt,name=errorCode,proto3,enum=anytype.model.NotificationExportCode" json:"errorCode,omitempty"`
+	ExportType ExportFormat           `protobuf:"varint,3,opt,name=exportType,proto3,enum=anytype.model.ExportFormat" json:"exportType,omitempty"`
+}
+
+func (m *NotificationExport) Reset()         { *m = NotificationExport{} }
+func (m *NotificationExport) String() string { return proto.CompactTextString(m) }
+func (*NotificationExport) ProtoMessage()    {}
+func (*NotificationExport) Descriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{19, 1}
+}
+func (m *NotificationExport) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *NotificationExport) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_NotificationExport.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *NotificationExport) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NotificationExport.Merge(m, src)
+}
+func (m *NotificationExport) XXX_Size() int {
+	return m.Size()
+}
+func (m *NotificationExport) XXX_DiscardUnknown() {
+	xxx_messageInfo_NotificationExport.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NotificationExport proto.InternalMessageInfo
+
+func (m *NotificationExport) GetErrorCode() NotificationExportCode {
+	if m != nil {
+		return m.ErrorCode
+	}
+	return NotificationExport_NULL
+}
+
+func (m *NotificationExport) GetExportType() ExportFormat {
+	if m != nil {
+		return m.ExportType
+	}
+	return Export_Markdown
+}
+
+type NotificationGalleryImport struct {
+	ProcessId string          `protobuf:"bytes,1,opt,name=processId,proto3" json:"processId,omitempty"`
+	ErrorCode ImportErrorCode `protobuf:"varint,2,opt,name=errorCode,proto3,enum=anytype.model.ImportErrorCode" json:"errorCode,omitempty"`
+	SpaceId   string          `protobuf:"bytes,3,opt,name=spaceId,proto3" json:"spaceId,omitempty"`
+	Name      string          `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+}
+
+func (m *NotificationGalleryImport) Reset()         { *m = NotificationGalleryImport{} }
+func (m *NotificationGalleryImport) String() string { return proto.CompactTextString(m) }
+func (*NotificationGalleryImport) ProtoMessage()    {}
+func (*NotificationGalleryImport) Descriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{19, 2}
+}
+func (m *NotificationGalleryImport) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *NotificationGalleryImport) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_NotificationGalleryImport.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *NotificationGalleryImport) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NotificationGalleryImport.Merge(m, src)
+}
+func (m *NotificationGalleryImport) XXX_Size() int {
+	return m.Size()
+}
+func (m *NotificationGalleryImport) XXX_DiscardUnknown() {
+	xxx_messageInfo_NotificationGalleryImport.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NotificationGalleryImport proto.InternalMessageInfo
+
+func (m *NotificationGalleryImport) GetProcessId() string {
+	if m != nil {
+		return m.ProcessId
+	}
+	return ""
+}
+
+func (m *NotificationGalleryImport) GetErrorCode() ImportErrorCode {
+	if m != nil {
+		return m.ErrorCode
+	}
+	return Import_NULL
+}
+
+func (m *NotificationGalleryImport) GetSpaceId() string {
+	if m != nil {
+		return m.SpaceId
+	}
+	return ""
+}
+
+func (m *NotificationGalleryImport) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+type Export struct {
+}
+
+func (m *Export) Reset()         { *m = Export{} }
+func (m *Export) String() string { return proto.CompactTextString(m) }
+func (*Export) ProtoMessage()    {}
+func (*Export) Descriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{20}
+}
+func (m *Export) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Export) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Export.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Export) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Export.Merge(m, src)
+}
+func (m *Export) XXX_Size() int {
+	return m.Size()
+}
+func (m *Export) XXX_DiscardUnknown() {
+	xxx_messageInfo_Export.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Export proto.InternalMessageInfo
+
 type Import struct {
 }
 
@@ -6333,7 +6635,7 @@ func (m *Import) Reset()         { *m = Import{} }
 func (m *Import) String() string { return proto.CompactTextString(m) }
 func (*Import) ProtoMessage()    {}
 func (*Import) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{20}
+	return fileDescriptor_98a910b73321e591, []int{21}
 }
 func (m *Import) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6390,6 +6692,7 @@ func init() {
 	proto.RegisterEnum("anytype.model.BlockContentDataviewFilterOperator", BlockContentDataviewFilterOperator_name, BlockContentDataviewFilterOperator_value)
 	proto.RegisterEnum("anytype.model.BlockContentDataviewFilterCondition", BlockContentDataviewFilterCondition_name, BlockContentDataviewFilterCondition_value)
 	proto.RegisterEnum("anytype.model.BlockContentDataviewFilterQuickOption", BlockContentDataviewFilterQuickOption_name, BlockContentDataviewFilterQuickOption_value)
+	proto.RegisterEnum("anytype.model.BlockContentLatexProcessor", BlockContentLatexProcessor_name, BlockContentLatexProcessor_value)
 	proto.RegisterEnum("anytype.model.BlockContentWidgetLayout", BlockContentWidgetLayout_name, BlockContentWidgetLayout_value)
 	proto.RegisterEnum("anytype.model.AccountStatusType", AccountStatusType_name, AccountStatusType_value)
 	proto.RegisterEnum("anytype.model.LinkPreviewType", LinkPreviewType_name, LinkPreviewType_value)
@@ -6401,8 +6704,10 @@ func init() {
 	proto.RegisterEnum("anytype.model.InternalFlagValue", InternalFlagValue_name, InternalFlagValue_value)
 	proto.RegisterEnum("anytype.model.NotificationStatus", NotificationStatus_name, NotificationStatus_value)
 	proto.RegisterEnum("anytype.model.NotificationActionType", NotificationActionType_name, NotificationActionType_value)
-	proto.RegisterEnum("anytype.model.NotificationImportCode", NotificationImportCode_name, NotificationImportCode_value)
+	proto.RegisterEnum("anytype.model.NotificationExportCode", NotificationExportCode_name, NotificationExportCode_value)
+	proto.RegisterEnum("anytype.model.ExportFormat", ExportFormat_name, ExportFormat_value)
 	proto.RegisterEnum("anytype.model.ImportType", ImportType_name, ImportType_value)
+	proto.RegisterEnum("anytype.model.ImportErrorCode", ImportErrorCode_name, ImportErrorCode_value)
 	proto.RegisterType((*SmartBlockSnapshotBase)(nil), "anytype.model.SmartBlockSnapshotBase")
 	proto.RegisterType((*Block)(nil), "anytype.model.Block")
 	proto.RegisterType((*BlockRestrictions)(nil), "anytype.model.Block.Restrictions")
@@ -6469,6 +6774,9 @@ func init() {
 	proto.RegisterType((*MetadataPayloadIdentityPayload)(nil), "anytype.model.Metadata.Payload.IdentityPayload")
 	proto.RegisterType((*Notification)(nil), "anytype.model.Notification")
 	proto.RegisterType((*NotificationImport)(nil), "anytype.model.Notification.Import")
+	proto.RegisterType((*NotificationExport)(nil), "anytype.model.Notification.Export")
+	proto.RegisterType((*NotificationGalleryImport)(nil), "anytype.model.Notification.GalleryImport")
+	proto.RegisterType((*Export)(nil), "anytype.model.Export")
 	proto.RegisterType((*Import)(nil), "anytype.model.Import")
 }
 
@@ -9000,6 +9308,11 @@ func (m *BlockContentLatex) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Processor != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.Processor))
+		i--
+		dAtA[i] = 0x10
+	}
 	if len(m.Text) > 0 {
 		i -= len(m.Text)
 		copy(dAtA[i:], m.Text)
@@ -9901,6 +10214,11 @@ func (m *ObjectType) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Revision != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.Revision))
+		i--
+		dAtA[i] = 0x68
+	}
 	if len(m.Key) > 0 {
 		i -= len(m.Key)
 		copy(dAtA[i:], m.Key)
@@ -10140,6 +10458,13 @@ func (m *Relation) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		dAtA[i] = 0x6
 		i--
 		dAtA[i] = 0xa2
+	}
+	if m.Revision != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.Revision))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xb0
 	}
 	if len(m.Creator) > 0 {
 		i -= len(m.Creator)
@@ -10828,13 +11153,6 @@ func (m *Notification) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Space) > 0 {
-		i -= len(m.Space)
-		copy(dAtA[i:], m.Space)
-		i = encodeVarintModels(dAtA, i, uint64(len(m.Space)))
-		i--
-		dAtA[i] = 0x3a
-	}
 	if m.Payload != nil {
 		{
 			size := m.Payload.Size()
@@ -10843,6 +11161,13 @@ func (m *Notification) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 				return 0, err
 			}
 		}
+	}
+	if len(m.Space) > 0 {
+		i -= len(m.Space)
+		copy(dAtA[i:], m.Space)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Space)))
+		i--
+		dAtA[i] = 0x3a
 	}
 	if m.IsLocal {
 		i--
@@ -10892,6 +11217,48 @@ func (m *NotificationPayloadOfImport) MarshalToSizedBuffer(dAtA []byte) (int, er
 		}
 		i--
 		dAtA[i] = 0x32
+	}
+	return len(dAtA) - i, nil
+}
+func (m *NotificationPayloadOfExport) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *NotificationPayloadOfExport) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Export != nil {
+		{
+			size, err := m.Export.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x42
+	}
+	return len(dAtA) - i, nil
+}
+func (m *NotificationPayloadOfGalleryImport) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *NotificationPayloadOfGalleryImport) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.GalleryImport != nil {
+		{
+			size, err := m.GalleryImport.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x4a
 	}
 	return len(dAtA) - i, nil
 }
@@ -10946,6 +11313,111 @@ func (m *NotificationImport) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0xa
 	}
+	return len(dAtA) - i, nil
+}
+
+func (m *NotificationExport) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *NotificationExport) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *NotificationExport) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.ExportType != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.ExportType))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.ErrorCode != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.ErrorCode))
+		i--
+		dAtA[i] = 0x10
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *NotificationGalleryImport) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *NotificationGalleryImport) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *NotificationGalleryImport) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.SpaceId) > 0 {
+		i -= len(m.SpaceId)
+		copy(dAtA[i:], m.SpaceId)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.SpaceId)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.ErrorCode != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.ErrorCode))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.ProcessId) > 0 {
+		i -= len(m.ProcessId)
+		copy(dAtA[i:], m.ProcessId)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.ProcessId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Export) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Export) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Export) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
 	return len(dAtA) - i, nil
 }
 
@@ -11979,6 +12451,9 @@ func (m *BlockContentLatex) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovModels(uint64(l))
 	}
+	if m.Processor != 0 {
+		n += 1 + sovModels(uint64(m.Processor))
+	}
 	return n
 }
 
@@ -12414,6 +12889,9 @@ func (m *ObjectType) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovModels(uint64(l))
 	}
+	if m.Revision != 0 {
+		n += 1 + sovModels(uint64(m.Revision))
+	}
 	return n
 }
 
@@ -12517,6 +12995,9 @@ func (m *Relation) Size() (n int) {
 	l = len(m.Creator)
 	if l > 0 {
 		n += 2 + l + sovModels(uint64(l))
+	}
+	if m.Revision != 0 {
+		n += 2 + sovModels(uint64(m.Revision))
 	}
 	l = len(m.Id)
 	if l > 0 {
@@ -12800,6 +13281,30 @@ func (m *NotificationPayloadOfImport) Size() (n int) {
 	}
 	return n
 }
+func (m *NotificationPayloadOfExport) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Export != nil {
+		l = m.Export.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *NotificationPayloadOfGalleryImport) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.GalleryImport != nil {
+		l = m.GalleryImport.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
 func (m *NotificationImport) Size() (n int) {
 	if m == nil {
 		return 0
@@ -12824,6 +13329,54 @@ func (m *NotificationImport) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovModels(uint64(l))
 	}
+	return n
+}
+
+func (m *NotificationExport) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.ErrorCode != 0 {
+		n += 1 + sovModels(uint64(m.ErrorCode))
+	}
+	if m.ExportType != 0 {
+		n += 1 + sovModels(uint64(m.ExportType))
+	}
+	return n
+}
+
+func (m *NotificationGalleryImport) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ProcessId)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	if m.ErrorCode != 0 {
+		n += 1 + sovModels(uint64(m.ErrorCode))
+	}
+	l = len(m.SpaceId)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+
+func (m *Export) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
 	return n
 }
 
@@ -18333,6 +18886,25 @@ func (m *BlockContentLatex) Unmarshal(dAtA []byte) error {
 			}
 			m.Text = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Processor", wireType)
+			}
+			m.Processor = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Processor |= BlockContentLatexProcessor(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipModels(dAtA[iNdEx:])
@@ -21218,6 +21790,25 @@ func (m *ObjectType) Unmarshal(dAtA []byte) error {
 			}
 			m.Key = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 13:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Revision", wireType)
+			}
+			m.Revision = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Revision |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipModels(dAtA[iNdEx:])
@@ -21911,6 +22502,25 @@ func (m *Relation) Unmarshal(dAtA []byte) error {
 			}
 			m.Creator = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 22:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Revision", wireType)
+			}
+			m.Revision = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Revision |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		case 100:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
@@ -23548,6 +24158,76 @@ func (m *Notification) Unmarshal(dAtA []byte) error {
 			}
 			m.Space = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Export", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &NotificationExport{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Payload = &NotificationPayloadOfExport{v}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field GalleryImport", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &NotificationGalleryImport{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Payload = &NotificationPayloadOfGalleryImport{v}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipModels(dAtA[iNdEx:])
@@ -23644,7 +24324,7 @@ func (m *NotificationImport) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ErrorCode |= NotificationImportCode(b&0x7F) << shift
+				m.ErrorCode |= ImportErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -23732,6 +24412,309 @@ func (m *NotificationImport) Unmarshal(dAtA []byte) error {
 			}
 			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *NotificationExport) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Export: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Export: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ErrorCode", wireType)
+			}
+			m.ErrorCode = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ErrorCode |= NotificationExportCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExportType", wireType)
+			}
+			m.ExportType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ExportType |= ExportFormat(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *NotificationGalleryImport) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GalleryImport: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GalleryImport: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProcessId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProcessId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ErrorCode", wireType)
+			}
+			m.ErrorCode = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ErrorCode |= ImportErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpaceId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SpaceId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Export) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Export: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Export: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := skipModels(dAtA[iNdEx:])
