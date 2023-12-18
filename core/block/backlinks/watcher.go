@@ -3,10 +3,10 @@ package backlinks
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
@@ -33,12 +33,13 @@ type backlinksUpdater interface {
 
 type UpdateWatcher struct {
 	app.ComponentRunnable
-	sync.RWMutex
 
 	updater      backlinksUpdater
 	store        objectstore.ObjectStore
 	resolver     idresolver.Resolver
 	spaceService space.Service
+
+	infoBatch *mb.MB
 }
 
 func New() app.Component {
@@ -54,24 +55,45 @@ func (uw *UpdateWatcher) Init(a *app.App) error {
 	uw.store = app.MustComponent[objectstore.ObjectStore](a)
 	uw.resolver = app.MustComponent[idresolver.Resolver](a)
 	uw.spaceService = app.MustComponent[space.Service](a)
+	uw.infoBatch = mb.New(0)
 	return nil
 }
 
 func (uw *UpdateWatcher) Close(context.Context) error {
+	if err := uw.infoBatch.Close(); err != nil {
+		log.Errorf("failed to close message batch: %v", err)
+	}
 	return nil
 }
 
 func (uw *UpdateWatcher) Run(context.Context) error {
 	uw.updater.SubscribeBacklinksUpdate(func(info objectstore.BacklinksUpdateInfo) {
-		go uw.updateBackLinksInObjects(info)
+		if err := uw.infoBatch.Add(info); err != nil {
+			log.With("objectID", info.Id).Errorf("failed to add backlinks update info to message batch: %v", err)
+		}
 	})
+
+	go uw.backlinksUpdateHandler()
 	return nil
 }
 
-func (uw *UpdateWatcher) updateBackLinksInObjects(info objectstore.BacklinksUpdateInfo) {
-	uw.Lock()
-	defer uw.Unlock()
+func (uw *UpdateWatcher) backlinksUpdateHandler() {
+	for {
+		msgs := uw.infoBatch.Wait()
+		if len(msgs) == 0 {
+			return
+		}
+		for _, msg := range msgs {
+			info, ok := msg.(objectstore.BacklinksUpdateInfo)
+			if !ok {
+				continue
+			}
+			uw.updateBackLinksInObjects(info)
+		}
+	}
+}
 
+func (uw *UpdateWatcher) updateBackLinksInObjects(info objectstore.BacklinksUpdateInfo) {
 	spaceId, err := uw.resolver.ResolveSpaceID(info.Id)
 	if err != nil {
 		log.With("objectID", info.Id).Errorf("failed to resolve space id for object %s: %v", info.Id, err)
