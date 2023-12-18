@@ -61,12 +61,7 @@ packages:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/space/clientspace:
+    interfaces:
       Space:
-      bundledObjectsInstaller:
-        config:
-          dir: "{{.InterfaceDir}}"
-          inpackage: true
-      isNewAccount:
-        config:
-          dir: "{{.InterfaceDir}}"
-          inpackage: true
+

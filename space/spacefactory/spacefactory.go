@@ -41,8 +41,6 @@ type spaceFactory struct {
 	indexer         dependencies.SpaceIndexer
 	installer       dependencies.BundledObjectsInstaller
 	personalSpaceId string
-	metadataPayload []byte
-	repKey          uint64
 }
 
 func New() SpaceFactory {
