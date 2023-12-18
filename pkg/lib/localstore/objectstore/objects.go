@@ -10,7 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -48,6 +48,9 @@ var (
 
 	accountPrefix = "account"
 	accountStatus = ds.NewKey("/" + accountPrefix + "/status")
+
+	spacePrefix   = "space"
+	virtualSpaces = ds.NewKey("/" + spacePrefix + "/virtual")
 
 	ErrObjectNotFound = errors.New("object not found")
 
@@ -104,6 +107,7 @@ type ObjectStore interface {
 	app.ComponentRunnable
 	IndexerStore
 	AccountStore
+	VirtualSpacesStore
 
 	SubscribeForAll(callback func(rec database.Record))
 
@@ -125,6 +129,7 @@ type ObjectStore interface {
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
+	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 
 	DeleteObject(id string) error
 	DeleteDetails(id ...string) error
@@ -134,9 +139,11 @@ type ObjectStore interface {
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
+
+	SubscribeBacklinksUpdate() <-chan BacklinksUpdateInfo
+
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
-
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 
 	GetRelationLink(spaceID string, key string) (*model.RelationLink, error)
@@ -148,6 +155,7 @@ type ObjectStore interface {
 	GetRelationByKey(key string) (*model.Relation, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
+	BatchProcessFullTextQueue(limit int, processIds func(processIds []string) error) error
 }
 
 type IndexerStore interface {
@@ -171,6 +179,12 @@ type AccountStore interface {
 	SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error)
 }
 
+type VirtualSpacesStore interface {
+	SaveVirtualSpace(id string) error
+	ListVirtualSpaces() ([]string, error)
+	DeleteVirtualSpace(spaceID string) error
+}
+
 var ErrNotAnObject = fmt.Errorf("not an object")
 
 type dsObjectStore struct {
@@ -182,8 +196,9 @@ type dsObjectStore struct {
 	fts ftsearch.FTSearch
 
 	sync.RWMutex
-	onChangeCallback func(record database.Record)
-	subscriptions    []database.Subscription
+	onChangeCallback  func(record database.Record)
+	subscriptions     []database.Subscription
+	backlinksUpdateCh chan BacklinksUpdateInfo
 }
 
 func (s *dsObjectStore) EraseIndexes(spaceId string) error {
@@ -242,71 +257,6 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	s.Lock()
 	s.onChangeCallback = callback
 	s.Unlock()
-}
-
-func (s *dsObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
-	var res *model.ObjectInfoWithLinks
-	err := s.db.View(func(txn *badger.Txn) error {
-		pages, err := s.getObjectsInfo(txn, spaceID, []string{id})
-		if err != nil {
-			return err
-		}
-
-		if len(pages) == 0 {
-			return fmt.Errorf("page not found")
-		}
-		page := pages[0]
-
-		inboundIds, err := findInboundLinks(txn, id)
-		if err != nil {
-			return fmt.Errorf("find inbound links: %w", err)
-		}
-		outboundsIds, err := findOutboundLinks(txn, id)
-		if err != nil {
-			return fmt.Errorf("find outbound links: %w", err)
-		}
-
-		inbound, err := s.getObjectsInfo(txn, spaceID, inboundIds)
-		if err != nil {
-			return err
-		}
-
-		outbound, err := s.getObjectsInfo(txn, spaceID, outboundsIds)
-		if err != nil {
-			return err
-		}
-
-		res = &model.ObjectInfoWithLinks{
-			Id:   id,
-			Info: page,
-			Links: &model.ObjectLinksInfo{
-				Inbound:  inbound,
-				Outbound: outbound,
-			},
-		}
-		return nil
-	})
-	return res, err
-}
-
-func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
-	var links []string
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		links, err = findOutboundLinks(txn, id)
-		return err
-	})
-	return links, err
-}
-
-func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
-	var links []string
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		links, err = findInboundLinks(txn, id)
-		return err
-	})
-	return links, err
 }
 
 // GetDetails returns empty struct without errors in case details are not found
@@ -558,16 +508,6 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.Un
 	return &model.ObjectDetails{Details: records[0].Details}, nil
 }
 
-// Find to which IDs specified one has outbound links.
-func findOutboundLinks(txn *badger.Txn, id string) ([]string, error) {
-	return listIDsByPrefix(txn, pagesOutboundLinksBase.ChildString(id).Bytes())
-}
-
-// Find from which IDs specified one has inbound links.
-func findInboundLinks(txn *badger.Txn, id string) ([]string, error) {
-	return listIDsByPrefix(txn, pagesInboundLinksBase.ChildString(id).Bytes())
-}
-
 func listIDsByPrefix(txn *badger.Txn, prefix []byte) ([]string, error) {
 	var ids []string
 	err := iterateKeysByPrefixTx(txn, prefix, func(key []byte) {
@@ -576,24 +516,7 @@ func listIDsByPrefix(txn *badger.Txn, prefix []byte) ([]string, error) {
 	return ids, err
 }
 
-func pageLinkKeys(id string, out []string) []ds.Key {
-	keys := make([]ds.Key, 0, 2*len(out))
-	// links outgoing from specified node id
-	for _, to := range out {
-		keys = append(keys, outgoingLinkKey(id, to), inboundLinkKey(id, to))
-	}
-	return keys
-}
-
-func outgoingLinkKey(from, to string) ds.Key {
-	return pagesOutboundLinksBase.ChildString(from).ChildString(to)
-}
-
-func inboundLinkKey(from, to string) ds.Key {
-	return pagesInboundLinksBase.ChildString(to).ChildString(from)
-}
-
-func extractIDFromKey(key string) (id string) {
+func extractIdFromKey(key string) (id string) {
 	i := strings.LastIndexByte(key, '/')
 	if i == -1 || len(key)-1 == i {
 		return

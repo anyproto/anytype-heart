@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/block/simple/latex"
+	"github.com/anyproto/anytype-heart/core/block/simple/embed"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
@@ -54,11 +54,10 @@ type CommonOperations interface {
 	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
-	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey) (err error)
-	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey) (err error)
+	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
+	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
 	SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error)
-	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
-	SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error)
+	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout, ignoreRestriction bool) (err error)
 }
 
 type DetailsSettable interface {
@@ -358,10 +357,10 @@ func (bs *basic) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRe
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	if rel, ok := b.(latex.Block); ok {
+	if rel, ok := b.(embed.Block); ok {
 		rel.SetText(req.Text)
 	} else {
-		return fmt.Errorf("unexpected block type: %T (want latex)", b)
+		return fmt.Errorf("unexpected block type: %T (want embed)", b)
 	}
 	return bs.Apply(s, smartblock.NoEvent)
 }

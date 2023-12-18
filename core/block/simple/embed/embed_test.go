@@ -1,4 +1,4 @@
-package latex
+package embed
 
 import (
 	"testing"
@@ -54,6 +54,23 @@ func TestLatex_Diff(t *testing.T) {
 			BlockSetLatex: &pb.EventBlockSetLatex{
 				Id:   b1.Id,
 				Text: &pb.EventBlockSetLatexText{Value: "42"},
+			},
+		}), diff)
+	})
+	t.Run("content diff processor", func(t *testing.T) {
+		b1 := testBlock()
+		b2 := testBlock()
+		b2.content.Processor = model.BlockContentLatex_Mermaid
+
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLatex{
+			BlockSetLatex: &pb.EventBlockSetLatex{
+				Id: b1.Id,
+				Processor: &pb.EventBlockSetLatexProcessor{
+					Value: model.BlockContentLatex_Mermaid,
+				},
 			},
 		}), diff)
 	})

@@ -206,15 +206,14 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx := newFixture(id, t)
 		defer fx.tearDown()
 		fx.store.EXPECT().GetInboundLinksByID(id).Return(newBackLinks, nil)
-		details := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyBacklinks.String(): pbtypes.StringList(backLinks),
-		}}
+		st := state.NewDoc("", nil).NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, pbtypes.StringList(backLinks))
 
 		// when
-		fx.updateBackLinks(details)
+		fx.updateBackLinks(st)
 
 		// then
-		assert.Equal(t, newBackLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
+		assert.Equal(t, newBackLinks, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()))
 	})
 
 	t.Run("back links were found in object store", func(t *testing.T) {
@@ -222,12 +221,13 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx := newFixture(id, t)
 		defer fx.tearDown()
 		fx.store.EXPECT().GetInboundLinksByID(id).Return(backLinks, nil)
-		details := &types.Struct{Fields: make(map[string]*types.Value)}
+		st := state.NewDoc("", nil).NewState()
 
 		// when
-		fx.updateBackLinks(details)
+		fx.updateBackLinks(st)
 
 		// then
+		details := st.CombinedDetails()
 		assert.NotNil(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
 		assert.Equal(t, backLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
 	})
@@ -237,13 +237,13 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx := newFixture(id, t)
 		defer fx.tearDown()
 		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, nil)
-		details := &types.Struct{Fields: make(map[string]*types.Value)}
+		st := state.NewDoc("", nil).NewState()
 
 		// when
-		fx.updateBackLinks(details)
+		fx.updateBackLinks(st)
 
 		// then
-		assert.Len(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()), 0)
+		assert.Len(t, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()), 0)
 	})
 
 	t.Run("failure on retrieving back links from the store", func(t *testing.T) {
@@ -251,13 +251,13 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx := newFixture(id, t)
 		defer fx.tearDown()
 		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, errors.New("some error from store"))
-		details := &types.Struct{Fields: make(map[string]*types.Value)}
+		st := state.NewDoc("", nil).NewState()
 
 		// when
-		fx.updateBackLinks(details)
+		fx.updateBackLinks(st)
 
 		// then
-		assert.Zero(t, len(details.Fields))
+		assert.Len(t, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()), 0)
 	})
 }
 

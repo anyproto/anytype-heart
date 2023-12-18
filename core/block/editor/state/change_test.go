@@ -802,9 +802,8 @@ func Test_migrateObjectTypeIDToKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotNew, gotMigrated := migrateObjectTypeIDToKey(tt.args.old)
+			gotNew := migrateObjectTypeIDToKey(tt.args.old)
 			assert.Equalf(t, tt.wantNew, gotNew, "migrateObjectTypeIDToKey(%v)", tt.args.old)
-			assert.Equalf(t, tt.wantMigrated, gotMigrated, "migrateObjectTypeIDToKey(%v)", tt.args.old)
 		})
 	}
 }

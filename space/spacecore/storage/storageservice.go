@@ -7,8 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/dgraph-io/badger/v3"
-	"golang.org/x/exp/slices"
+	"github.com/dgraph-io/badger/v4"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
@@ -136,28 +135,7 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 }
 
 func (s *storageService) deleteSpace(spaceId string) (err error) {
-	keys := newSpaceKeys(spaceId)
-	var toBeDeleted [][]byte
-	return s.db.Update(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = false
-		opts.Prefix = keys.TreePrefix()
-
-		it := txn.NewIterator(opts)
-		for it.Rewind(); it.Valid(); it.Next() {
-			key := slices.Clone(it.Item().Key())
-			toBeDeleted = append(toBeDeleted, key)
-		}
-		it.Close()
-		toBeDeleted = append(toBeDeleted, keys.HeaderKey())
-		toBeDeleted = append(toBeDeleted, keys.SpaceHash())
-		for _, key := range toBeDeleted {
-			if err = txn.Delete(key); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return deleteSpace(spaceId, s.db)
 }
 
 func (s *storageService) unlockSpaceStorage(id string) {

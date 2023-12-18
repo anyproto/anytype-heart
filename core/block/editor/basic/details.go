@@ -7,6 +7,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -36,15 +37,14 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
 	updates := bs.collectDetailUpdates(details, s)
-
-	applyFlags := []smartblock.ApplyFlag{smartblock.NoRestrictions}
-	if shouldKeepInternalFlags(updates) {
-		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
-	}
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
-	if err = bs.Apply(s, applyFlags...); err != nil {
+	flags := internalflag.NewFromState(s.ParentState())
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
+
+	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
 		return
 	}
 
@@ -63,17 +63,6 @@ func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s
 		}
 	}
 	return updates
-}
-
-// shouldKeepInternalFlags is used to keep internal flags in case we update name or description
-// We keep internal flags because we allow user to change object type and apply some template further
-func shouldKeepInternalFlags(updates []*detailUpdate) bool {
-	for _, update := range updates {
-		if update.key == bundle.RelationKeyName.String() || update.key == bundle.RelationKeyDescription.String() {
-			return true
-		}
-	}
-	return false
 }
 
 func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
@@ -252,7 +241,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 	}
 	if detail.Key == bundle.RelationKeyLayout.String() {
 		// special case when client sets the layout detail directly instead of using SetLayoutInState command
-		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
+		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.GetNumberValue()), false)
 	}
 	return nil
 }
@@ -285,37 +274,24 @@ func (bs *basic) discardOwnSetDetailsEvent(ctx session.Context, showEvent bool) 
 }
 
 func (bs *basic) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error) {
-	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); err != nil {
-		return
-	}
-
 	s := bs.NewStateCtx(ctx)
-	if err = bs.SetLayoutInState(s, layout); err != nil {
+	if err = bs.SetLayoutInState(s, layout, false); err != nil {
 		return
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
-func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey) (err error) {
+func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error) {
 	s := bs.NewStateCtx(ctx)
-	if err = bs.SetObjectTypesInState(s, objectTypeKeys); err != nil {
+	if err = bs.SetObjectTypesInState(s, objectTypeKeys, ignoreRestrictions); err != nil {
 		return
 	}
 
-	flags := internalflag.NewFromState(s)
-	flags.Remove(model.InternalFlag_editorSelectType)
-	flags.Remove(model.InternalFlag_editorDeleteEmpty)
-	flags.AddToState(s)
-
-	// send event here to send updated details to client
 	// KeepInternalFlags is set because we allow to choose template further
-	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
-		return
-	}
-	return
+	return bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
-func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey) (err error) {
+func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error) {
 	if len(objectTypeKeys) == 0 {
 		return fmt.Errorf("you must provide at least 1 object type")
 	}
@@ -324,17 +300,24 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 		log.With("objectID", s.RootId()).Warnf("set object types: more than one object type, setting layout to the first one")
 	}
 
-	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
-		return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
+	if !ignoreRestrictions {
+		if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
+			return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
+		}
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)
+	removeInternalFlags(s)
+
+	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+		objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys)
+	}
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
 	}
-	return bs.SetLayoutInState(s, toLayout)
+	return bs.SetLayoutInState(s, toLayout, ignoreRestrictions)
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {
@@ -350,21 +333,24 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	return model.ObjectTypeLayout(rawLayout), nil
 }
 
-func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
-	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
-		return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
+func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
+	if !ignoreRestriction {
+		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
+			return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
+		}
 	}
 
-	return bs.SetLayoutInStateAndIgnoreRestriction(s, toLayout)
-}
-
-func (bs *basic) SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
 	fromLayout, _ := s.Layout()
-
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
-
 	if err = bs.layoutConverter.Convert(bs.Space(), s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil
+}
+
+func removeInternalFlags(s *state.State) {
+	flags := internalflag.NewFromState(s)
+	flags.Remove(model.InternalFlag_editorSelectType)
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
 }

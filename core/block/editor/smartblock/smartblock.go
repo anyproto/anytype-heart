@@ -10,12 +10,10 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
-
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -399,7 +397,6 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 
 func (sb *smartBlock) Show() (*model.ObjectView, error) {
 	sb.updateRestrictions()
-	sb.updateBackLinks(sb.LocalDetails())
 
 	details, err := sb.fetchMeta()
 	if err != nil {
@@ -524,87 +521,6 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
 	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), true, true, includeRelations, includeObjTypes, includeCreatorModifier)
-}
-
-func (sb *smartBlock) navigationalLinks(s *state.State) []string {
-	includeDetails := true
-	includeRelations := sb.includeRelationObjectsAsDependents
-
-	var ids []string
-
-	if !internalflag.NewFromState(s).Has(model.InternalFlag_collectionDontIndexLinks) {
-		// flag used when importing a large set of objects
-		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
-	}
-
-	err := s.Iterate(func(b simple.Block) (isContinue bool) {
-		if f := b.Model().GetFile(); f != nil {
-			if f.Hash != "" && f.Type != model.BlockContentFile_Image {
-				ids = append(ids, f.Hash)
-			}
-			return true
-		}
-		// Include only link to target object
-		if dv := b.Model().GetDataview(); dv != nil {
-			if dv.TargetObjectId != "" {
-				ids = append(ids, dv.TargetObjectId)
-			}
-
-			return true
-		}
-
-		if ls, ok := b.(linkSource); ok {
-			ids = ls.FillSmartIds(ids)
-		}
-		return true
-	})
-	if err != nil {
-		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
-	}
-
-	var det *types.Struct
-	if includeDetails {
-		det = s.CombinedDetails()
-	}
-
-	for _, rel := range s.GetRelationLinks() {
-		if includeRelations {
-			relId, err := sb.space.GetRelationIdByKey(context.TODO(), domain.RelationKey(rel.Key))
-			if err != nil {
-				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
-				continue
-			}
-			ids = append(ids, relId)
-		}
-		if !includeDetails {
-			continue
-		}
-
-		// handle corner cases first for specific formats
-
-		if rel.Format != model.RelationFormat_object {
-			continue
-		}
-
-		if bundle.IsSystemRelation(domain.RelationKey(rel.Key)) {
-			continue
-		}
-
-		// Do not include hidden relations. Only bundled relations can be hidden, so we don't need
-		// to request relations from object store.
-		if r, err := bundle.GetRelation(domain.RelationKey(rel.Key)); err == nil && r.Hidden {
-			continue
-		}
-
-		// Add all object relation values as dependents
-		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
-			if targetID != "" {
-				ids = append(ids, targetID)
-			}
-		}
-	}
-
-	return lo.Uniq(ids)
 }
 
 func (sb *smartBlock) RegisterSession(ctx session.Context) {
@@ -916,13 +832,6 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	return
 }
 
-func (sb *smartBlock) injectLinksDetails(s *state.State) {
-	links := sb.navigationalLinks(s)
-	links = slice.RemoveMut(links, sb.Id())
-	// todo: we need to move it to the injectDerivedDetails, but we don't call it now on apply
-	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
-}
-
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	details, err := sb.getDetailsFromStore()
 	if err != nil {
@@ -936,8 +845,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
-	sb.updateBackLinks(localDetailsFromStore)
-
 	localDetailsFromState := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
 	if pbtypes.StructEqualIgnore(localDetailsFromState, localDetailsFromStore, nil) {
 		return nil
@@ -962,15 +869,6 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 		return nil, err
 	}
 	return pbtypes.CopyStruct(storedDetails.GetDetails()), nil
-}
-
-func (sb *smartBlock) updateBackLinks(details *types.Struct) {
-	backLinks, err := sb.objectStore.GetInboundLinksByID(sb.Id())
-	if err != nil {
-		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err)
-		return
-	}
-	details.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backLinks)
 }
 
 func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
@@ -1078,7 +976,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		})
 	}
 	sb.storeFileKeys(s)
-	if hasDepIds(sb.GetRelationLinks(), &act) {
+	if hasDepIds(sb.GetRelationLinks(), &act) || isBacklinksChanged(msgs) {
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
@@ -1440,7 +1338,7 @@ func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 	o.SkipFullTextIfHeadsNotChanged = true
 }
 
-// injectDerivedDetails injects the local deta
+// injectDerivedDetails injects the local data
 func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt smartblock.SmartBlockType) {
 	id := s.RootId()
 	if id != "" {
@@ -1492,6 +1390,8 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		}
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
 	}
+
+	sb.updateBackLinks(s)
 }
 
 type InitFunc = func(id string) *InitContext

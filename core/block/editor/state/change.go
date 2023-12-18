@@ -755,7 +755,7 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) ObjectType {
 	objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeIDs))
 	for _, id := range objectTypeIDs {
 		var key domain.TypeKey
-		k, _ := migrateObjectTypeIDToKey(id)
+		k := migrateObjectTypeIDToKey(id)
 		key = domain.TypeKey(k)
 
 		objectTypeKeys = append(objectTypeKeys, key)

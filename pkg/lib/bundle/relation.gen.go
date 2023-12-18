@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "d9bac6d7e7ac3918a327e29c65c2587817ac04a02098b4440e337d93a7ee5038"
+const RelationChecksum = "9d13b57d26e1a12a93d497a0016a692457a39e7fa73797a1ba27a4957cb9b734"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -163,6 +163,8 @@ const (
 	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
+	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
+	RelationKeyRevision                  domain.RelationKey = "revision"
 )
 
 var (
@@ -339,15 +341,14 @@ var (
 		RelationKeyBacklinks: {
 
 			DataSource:       model.Relation_local,
-			Description:      "List of backlinks",
+			Description:      "List of links coming to object",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brbacklinks",
 			Key:              "backlinks",
-			MaxCount:         1,
-			Name:             "Backlinks",
-			ReadOnly:         false,
+			Name:             "Links to this object",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBudget: {
@@ -1137,6 +1138,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyLastUsedDate: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Last time object type was used",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brlastUsedDate",
+			Key:              "lastUsedDate",
+			MaxCount:         1,
+			Name:             "Last Used date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyLayout: {
 
 			DataSource:       model.Relation_details,
@@ -1195,12 +1210,12 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Outgoing links",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brlinks",
 			Key:              "links",
-			Name:             "Outgoing links",
+			Name:             "Links from this object",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLogic: {
@@ -1654,6 +1669,20 @@ var (
 			MaxCount:         1,
 			Name:             "Result",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRevision: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Revision of system object",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brrevision",
+			Key:              "revision",
+			MaxCount:         1,
+			Name:             "Revision",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

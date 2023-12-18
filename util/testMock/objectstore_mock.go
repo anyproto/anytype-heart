@@ -18,6 +18,7 @@ import (
 	relationutils "github.com/anyproto/anytype-heart/core/relationutils"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	objectstore "github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
 	types "github.com/gogo/protobuf/types"
@@ -59,6 +60,20 @@ func (m *MockObjectStore) AddToIndexQueue(arg0 string) error {
 func (mr *MockObjectStoreMockRecorder) AddToIndexQueue(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddToIndexQueue", reflect.TypeOf((*MockObjectStore)(nil).AddToIndexQueue), arg0)
+}
+
+// BatchProcessFullTextQueue mocks base method.
+func (m *MockObjectStore) BatchProcessFullTextQueue(arg0 int, arg1 func([]string) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchProcessFullTextQueue", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchProcessFullTextQueue indicates an expected call of BatchProcessFullTextQueue.
+func (mr *MockObjectStoreMockRecorder) BatchProcessFullTextQueue(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchProcessFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).BatchProcessFullTextQueue), arg0, arg1)
 }
 
 // Close mocks base method.
@@ -105,6 +120,20 @@ func (m *MockObjectStore) DeleteObject(arg0 string) error {
 func (mr *MockObjectStoreMockRecorder) DeleteObject(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteObject", reflect.TypeOf((*MockObjectStore)(nil).DeleteObject), arg0)
+}
+
+// DeleteVirtualSpace mocks base method.
+func (m *MockObjectStore) DeleteVirtualSpace(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteVirtualSpace", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteVirtualSpace indicates an expected call of DeleteVirtualSpace.
+func (mr *MockObjectStoreMockRecorder) DeleteVirtualSpace(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).DeleteVirtualSpace), arg0)
 }
 
 // EraseIndexes mocks base method.
@@ -518,6 +547,35 @@ func (mr *MockObjectStoreMockRecorder) ListIdsBySpace(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIdsBySpace", reflect.TypeOf((*MockObjectStore)(nil).ListIdsBySpace), arg0)
 }
 
+// ListVirtualSpaces mocks base method.
+func (m *MockObjectStore) ListVirtualSpaces() ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListVirtualSpaces")
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListVirtualSpaces indicates an expected call of ListVirtualSpaces.
+func (mr *MockObjectStoreMockRecorder) ListVirtualSpaces() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVirtualSpaces", reflect.TypeOf((*MockObjectStore)(nil).ListVirtualSpaces))
+}
+
+// ModifyObjectDetails mocks base method.
+func (m *MockObjectStore) ModifyObjectDetails(arg0 string, arg1 func(*types.Struct) (*types.Struct, error)) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ModifyObjectDetails", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ModifyObjectDetails indicates an expected call of ModifyObjectDetails.
+func (mr *MockObjectStoreMockRecorder) ModifyObjectDetails(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModifyObjectDetails", reflect.TypeOf((*MockObjectStore)(nil).ModifyObjectDetails), arg0, arg1)
+}
+
 // Name mocks base method.
 func (m *MockObjectStore) Name() string {
 	m.ctrl.T.Helper()
@@ -676,6 +734,34 @@ func (m *MockObjectStore) SaveLastIndexedHeadsHash(arg0, arg1 string) error {
 func (mr *MockObjectStoreMockRecorder) SaveLastIndexedHeadsHash(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).SaveLastIndexedHeadsHash), arg0, arg1)
+}
+
+// SaveVirtualSpace mocks base method.
+func (m *MockObjectStore) SaveVirtualSpace(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveVirtualSpace", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveVirtualSpace indicates an expected call of SaveVirtualSpace.
+func (mr *MockObjectStoreMockRecorder) SaveVirtualSpace(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).SaveVirtualSpace), arg0)
+}
+
+// SubscribeBacklinksUpdate mocks base method.
+func (m *MockObjectStore) SubscribeBacklinksUpdate() <-chan objectstore.BacklinksUpdateInfo {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeBacklinksUpdate")
+	ret0, _ := ret[0].(<-chan objectstore.BacklinksUpdateInfo)
+	return ret0
+}
+
+// SubscribeBacklinksUpdate indicates an expected call of SubscribeBacklinksUpdate.
+func (mr *MockObjectStoreMockRecorder) SubscribeBacklinksUpdate() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeBacklinksUpdate", reflect.TypeOf((*MockObjectStore)(nil).SubscribeBacklinksUpdate))
 }
 
 // SubscribeForAll mocks base method.

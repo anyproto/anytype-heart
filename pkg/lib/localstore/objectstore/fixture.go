@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
@@ -23,6 +23,9 @@ import (
 type StoreFixture struct {
 	*dsObjectStore
 }
+
+// nolint: unused
+const spaceName = "space1"
 
 func NewStoreFixture(t *testing.T) *StoreFixture {
 	walletService := mock_wallet.NewMockWallet(t)
@@ -77,7 +80,7 @@ func makeObjectWithName(id string, name string) TestObject {
 	return TestObject{
 		bundle.RelationKeyId:      pbtypes.String(id),
 		bundle.RelationKeyName:    pbtypes.String(name),
-		bundle.RelationKeySpaceId: pbtypes.String("space1"),
+		bundle.RelationKeySpaceId: pbtypes.String(spaceName),
 	}
 }
 
@@ -86,7 +89,7 @@ func makeObjectWithNameAndDescription(id string, name string, description string
 		bundle.RelationKeyId:          pbtypes.String(id),
 		bundle.RelationKeyName:        pbtypes.String(name),
 		bundle.RelationKeyDescription: pbtypes.String(description),
-		bundle.RelationKeySpaceId:     pbtypes.String("space1"),
+		bundle.RelationKeySpaceId:     pbtypes.String(spaceName),
 	}
 }
 

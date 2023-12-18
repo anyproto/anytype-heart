@@ -56,13 +56,13 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
 	allErrors := common.NewError(do.mode)
 	snapshot, subObjectsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
-	if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+	if allErrors.ShouldAbortImport(0, model.Import_Notion) {
 		return &Result{ce: allErrors}
 	}
-	pageID := do.request.NotionPageIdsToAnytype[pt.p.ID]
+	pageId := do.request.NotionPageIdsToAnytype[pt.p.ID]
 	resultSnapshots := make([]*common.Snapshot, 0, 1+len(subObjectsSnapshots))
 	sn := &common.Snapshot{
-		Id:       pageID,
+		Id:       pageId,
 		FileName: pt.p.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		SbType:   smartblock.SmartBlockTypePage,
@@ -84,7 +84,7 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.Conv
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
-		if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+		if allErrors.ShouldAbortImport(0, model.Import_Notion) {
 			return nil, nil
 		}
 	}

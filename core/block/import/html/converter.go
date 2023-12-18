@@ -65,7 +65,7 @@ func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest,
 		return nil, allErrors
 	}
 	rootCollection := common.NewRootCollection(h.collectionService)
-	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
+	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true, true)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(path), req.Type) {
@@ -112,7 +112,7 @@ func (h *HTML) handleImportPath(path string, allErrors *common.ConvertError) ([]
 	err := importSource.Initialize(path)
 	if err != nil {
 		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(len(path), pb.RpcObjectImportRequest_Html) {
+		if allErrors.ShouldAbortImport(len(path), model.Import_Html) {
 			return nil, nil
 		}
 	}
@@ -138,7 +138,7 @@ func (h *HTML) getSnapshotsAndRootObjects(path string,
 		blocks, err := h.getBlocksForSnapshot(fileReader, importSource, path)
 		if err != nil {
 			allErrors.Add(err)
-			if allErrors.ShouldAbortImport(len(path), pb.RpcObjectImportRequest_Html) {
+			if allErrors.ShouldAbortImport(len(path), model.Import_Html) {
 				return false
 			}
 		}
