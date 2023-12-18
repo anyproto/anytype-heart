@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -96,6 +97,9 @@ func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) [
 	err := widgetState.Iterate(func(b simple.Block) (isContinue bool) {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId != "" {
 			if widgets.IsPredefinedWidgetTargetId(link.TargetBlockId) {
+				return true
+			}
+			if link.TargetBlockId == addr.MissingObject {
 				return true
 			}
 			objectsInWidget = append(objectsInWidget, link.TargetBlockId)
