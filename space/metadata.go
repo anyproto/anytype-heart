@@ -1,6 +1,10 @@
-package spacefactory
+package space
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,4 +37,12 @@ func deriveAccountEncKey(accKey crypto.PrivKey) (crypto.SymKey, error) {
 		return nil, err
 	}
 	return crypto.DeriveSymmetricKey(raw, anytypeMetadataPath)
+}
+
+func getRepKey(spaceId string) (uint64, error) {
+	sepIdx := strings.Index(spaceId, ".")
+	if sepIdx == -1 {
+		return 0, fmt.Errorf("space id is incorrect")
+	}
+	return strconv.ParseUint(spaceId[sepIdx+1:], 36, 64)
 }

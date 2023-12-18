@@ -1,4 +1,4 @@
-package spacefactory
+package space
 
 import (
 	"testing"

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -26,7 +24,7 @@ type SpaceFactory interface {
 	app.Component
 	CreatePersonalSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
 	NewPersonalSpace(ctx context.Context) (spacecontroller.SpaceController, error)
-	CreateShareableSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
+	CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error)
 	NewShareableSpace(ctx context.Context, id string, status spaceinfo.AccountStatus) (spacecontroller.SpaceController, error)
 	CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
@@ -62,11 +60,6 @@ func (s *spaceFactory) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	s.metadataPayload, err = deriveAccountMetadata(s.accountService.Account().SignKey)
-	if err != nil {
-		return
-	}
-	s.repKey, err = getRepKey(s.personalSpaceId)
 	return
 }
 
@@ -86,12 +79,12 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context) (sp spacecontrol
 	return ctrl, err
 }
 
-func (s *spaceFactory) NewPersonalSpace(ctx context.Context) (spacecontroller.SpaceController, error) {
+func (s *spaceFactory) NewPersonalSpace(ctx context.Context) (ctrl spacecontroller.SpaceController, err error) {
 	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
 	if err != nil {
 		return nil, err
 	}
-	ctrl := personalspace.NewSpaceController(coreSpace.Id(), false, s.app)
+	ctrl = personalspace.NewSpaceController(coreSpace.Id(), false, s.app)
 	err = ctrl.Start(ctx)
 	return ctrl, err
 }
@@ -132,15 +125,15 @@ func (s *spaceFactory) NewShareableSpace(ctx context.Context, id string, status 
 	return ctrl, err
 }
 
-func (s *spaceFactory) CreateShareableSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error) {
-	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
-	if err != nil {
-		return
-	}
-	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true); err != nil {
+func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error) {
+	//coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
+	//if err != nil {
+	//	return
+	//}
+	if err := s.techSpace.SpaceViewCreate(ctx, id, true); err != nil {
 		return nil, err
 	}
-	ctrl, err := shareablespace.NewSpaceController(coreSpace.Id(), false, spaceinfo.AccountStatusUnknown, s.app)
+	ctrl, err := shareablespace.NewSpaceController(id, false, spaceinfo.AccountStatusUnknown, s.app)
 	if err != nil {
 		return nil, err
 	}
@@ -156,12 +149,4 @@ func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecont
 
 func (s *spaceFactory) Name() (name string) {
 	return CName
-}
-
-func getRepKey(spaceId string) (uint64, error) {
-	sepIdx := strings.Index(spaceId, ".")
-	if sepIdx == -1 {
-		return 0, fmt.Errorf("space id is incorrect")
-	}
-	return strconv.ParseUint(spaceId[sepIdx+1:], 36, 64)
 }

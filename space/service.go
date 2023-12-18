@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
@@ -15,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -52,14 +53,19 @@ type Service interface {
 }
 
 type service struct {
-	techSpace *clientspace.TechSpace
-	factory   spacefactory.SpaceFactory
+	techSpace      *clientspace.TechSpace
+	factory        spacefactory.SpaceFactory
+	spaceCore      spacecore.SpaceCoreService
+	accountService accountservice.Service
 
 	delController *deletionController
 
-	personalSpaceID  string
+	personalSpaceId  string
 	newAccount       bool
 	spaceControllers map[string]spacecontroller.SpaceController
+	waiting          map[string]controllerWaiter
+	metadataPayload  []byte
+	repKey           uint64
 
 	mu        sync.Mutex
 	ctx       context.Context
@@ -86,7 +92,19 @@ func (s *service) Init(a *app.App) (err error) {
 	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.delController = newDeletionController(s, coordClient)
 	s.factory = app.MustComponent[spacefactory.SpaceFactory](a)
+	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
+	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
+	s.waiting = make(map[string]controllerWaiter)
+	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	if err != nil {
+		return
+	}
+	s.metadataPayload, err = deriveAccountMetadata(s.accountService.Account().SignKey)
+	if err != nil {
+		return
+	}
+	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	return err
 }
@@ -113,14 +131,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
-	ctrl, err := s.factory.CreateShareableSpace(ctx)
-	if err != nil {
-		return nil, err
-	}
-	s.mu.Lock()
-	s.spaceControllers[ctrl.SpaceId()] = ctrl
-	s.mu.Unlock()
-	return ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
+	return s.create(ctx)
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
@@ -135,11 +146,11 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 }
 
 func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, err error) {
-	return s.Get(ctx, s.personalSpaceID)
+	return s.Get(ctx, s.personalSpaceId)
 }
 
 func (s *service) IsPersonal(id string) bool {
-	return s.personalSpaceID == id
+	return s.personalSpaceId == id
 }
 
 func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
