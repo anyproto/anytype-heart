@@ -166,8 +166,9 @@ func (s *State) RootId() string {
 
 func (s *State) NewState() *State {
 	return &State{parent: s,
-		blocks: make(map[string]simple.Block),
-		rootId: s.rootId, migrationVersion: s.migrationVersion,
+		blocks:                   make(map[string]simple.Block),
+		rootId:                   s.rootId,
+		migrationVersion:         s.migrationVersion,
 		uniqueKeyInternal:        s.uniqueKeyInternal,
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
 		ObjectType:               NewObjectTypes(nil, s.ObjectType),
