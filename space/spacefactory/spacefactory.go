@@ -126,14 +126,10 @@ func (s *spaceFactory) NewShareableSpace(ctx context.Context, id string, status 
 }
 
 func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error) {
-	//coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
-	//if err != nil {
-	//	return
-	//}
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true); err != nil {
 		return nil, err
 	}
-	ctrl, err := shareablespace.NewSpaceController(id, false, spaceinfo.AccountStatusUnknown, s.app)
+	ctrl, err := shareablespace.NewSpaceController(id, true, spaceinfo.AccountStatusUnknown, s.app)
 	if err != nil {
 		return nil, err
 	}

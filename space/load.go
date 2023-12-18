@@ -80,14 +80,10 @@ func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
 	_, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	close(wait)
 	if err != nil {
-		s.waiting[s.personalSpaceId] = controllerWaiter{
-			wait: wait,
-			err:  err,
-		}
-		return
+		return err
 	}
+	close(wait)
 	s.spaceControllers[s.personalSpaceId] = ctrl
 	return
 }
