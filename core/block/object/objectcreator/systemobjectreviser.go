@@ -98,6 +98,7 @@ func buildDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjectSet
 		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),
 		bundle.RelationKeyIsReadonly.String(), bundle.RelationKeyIsHidden.String(),
 		bundle.RelationKeyRevision.String(), bundle.RelationKeyRelationReadonlyValue.String(),
+		bundle.RelationKeyRelationMaxCount.String(),
 	})
 
 	for key, value := range diff.Fields {
