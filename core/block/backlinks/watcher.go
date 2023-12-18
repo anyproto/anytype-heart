@@ -26,9 +26,14 @@ const CName = "backlinks-update-watcher"
 
 var log = logging.Logger(CName)
 
+type backlinksUpdater interface {
+	SubscribeBacklinksUpdate() (infoCh <-chan objectstore.BacklinksUpdateInfo, closeFunc func())
+}
+
 type UpdateWatcher struct {
 	app.ComponentRunnable
 
+	updater      backlinksUpdater
 	store        objectstore.ObjectStore
 	resolver     idresolver.Resolver
 	spaceService space.Service
@@ -45,6 +50,7 @@ func (uw *UpdateWatcher) Name() string {
 }
 
 func (uw *UpdateWatcher) Init(a *app.App) error {
+	uw.updater = app.MustComponent[backlinksUpdater](a)
 	uw.store = app.MustComponent[objectstore.ObjectStore](a)
 	uw.resolver = app.MustComponent[idresolver.Resolver](a)
 	uw.spaceService = app.MustComponent[space.Service](a)
@@ -57,7 +63,7 @@ func (uw *UpdateWatcher) Close(_ context.Context) error {
 }
 
 func (uw *UpdateWatcher) Run(ctx context.Context) error {
-	ch, closeFunc := uw.store.SubscribeBacklinksUpdate()
+	ch, closeFunc := uw.updater.SubscribeBacklinksUpdate()
 	uw.closeCh = make(chan struct{})
 
 	go func() {

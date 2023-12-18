@@ -142,8 +142,6 @@ type ObjectStore interface {
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
 
-	SubscribeBacklinksUpdate() (infoCh <-chan BacklinksUpdateInfo, closeFunc func())
-
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)

@@ -81,6 +81,8 @@ func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 
 func (s *dsObjectStore) SubscribeBacklinksUpdate() (infoCh <-chan BacklinksUpdateInfo, closeFunc func()) {
 	return s.backlinksUpdateCh, func() {
+		s.Lock()
+		defer s.Unlock()
 		close(s.backlinksUpdateCh)
 	}
 }
