@@ -25,15 +25,23 @@ import (
 type subObjectsAndProfileLinksMigration struct {
 	profileID        string
 	identityObjectID string
+	personalSpaceId  string
 	sbType           smartblock.SmartBlockType
 	space            Space
 	objectStore      objectstore.ObjectStore
 }
 
-func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(
+	sbType smartblock.SmartBlockType,
+	space Space,
+	identityObjectID string,
+	personalSpaceId string,
+	objectStore objectstore.ObjectStore,
+) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
+		personalSpaceId:  personalSpaceId,
 		sbType:           sbType,
 		objectStore:      objectStore,
 	}
@@ -127,7 +135,7 @@ func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 }
 
 func (m *subObjectsAndProfileLinksMigration) migrateId(oldId string) (newId string) {
-	if m.profileID != "" && m.identityObjectID != "" && oldId == m.profileID {
+	if m.profileID != "" && m.identityObjectID != "" && oldId == m.profileID && m.space.Id() != m.personalSpaceId {
 		return m.identityObjectID
 	}
 	uniqueKey, valid := subObjectIdToUniqueKey(oldId)
