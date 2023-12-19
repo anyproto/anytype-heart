@@ -140,8 +140,6 @@ type ObjectStore interface {
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
 
-	SubscribeBacklinksUpdate() <-chan BacklinksUpdateInfo
-
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
@@ -196,9 +194,9 @@ type dsObjectStore struct {
 	fts ftsearch.FTSearch
 
 	sync.RWMutex
-	onChangeCallback  func(record database.Record)
-	subscriptions     []database.Subscription
-	backlinksUpdateCh chan BacklinksUpdateInfo
+	onChangeCallback          func(record database.Record)
+	subscriptions             []database.Subscription
+	onBacklinksUpdateCallback func(info BacklinksUpdateInfo)
 }
 
 func (s *dsObjectStore) EraseIndexes(spaceId string) error {
