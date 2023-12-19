@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -191,6 +192,8 @@ func (s *service) prepareDetailsForInstallingObject(ctx context.Context, sourceS
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+
+	objecttype.SetLastUsedDateForCrucialType(sourceId, details)
 
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	if len(bundledRelationIds) > 0 {
