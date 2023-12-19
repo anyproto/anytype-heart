@@ -12,6 +12,8 @@ import (
 
 const anytypeMetadataPath = "m/SLIP-0021/anytype/account/metadata"
 
+var deriveMetadata = deriveAccountMetadata
+
 func deriveAccountMetadata(acc crypto.PrivKey) ([]byte, error) {
 	symKey, err := deriveAccountEncKey(acc)
 	if err != nil {

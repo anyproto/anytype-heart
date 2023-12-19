@@ -58,6 +58,13 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/techspace:
     interfaces:
       TechSpace:
+  github.com/anyproto/anytype-heart/space/spacefactory:
+    interfaces:
+      SpaceFactory:
+  github.com/anyproto/anytype-heart/space/internal/spacecontroller:
+    interfaces:
+      SpaceController:
+      DeleteController:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
