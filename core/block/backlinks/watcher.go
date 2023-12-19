@@ -85,7 +85,7 @@ func (uw *UpdateWatcher) backlinksUpdateHandler() {
 		}
 		for _, msg := range msgs {
 			info, ok := msg.(objectstore.BacklinksUpdateInfo)
-			if !ok {
+			if !ok || hasSelfLinks(info) {
 				continue
 			}
 			uw.updateBackLinksInObjects(info)
@@ -97,10 +97,12 @@ func (uw *UpdateWatcher) updateBackLinksInObjects(info objectstore.BacklinksUpda
 	spaceId, err := uw.resolver.ResolveSpaceID(info.Id)
 	if err != nil {
 		log.With("objectID", info.Id).Errorf("failed to resolve space id for object %s: %v", info.Id, err)
+		return
 	}
 	spc, err := uw.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		log.With("objectID", info.Id).Errorf("failed get space %s: %v", spaceId, err)
+		return
 	}
 
 	addBacklink := func(current *types.Struct) (*types.Struct, error) {
@@ -158,4 +160,13 @@ func (uw *UpdateWatcher) updateBackLinksInObjects(info objectstore.BacklinksUpda
 			}
 		}
 	}
+}
+
+func hasSelfLinks(info objectstore.BacklinksUpdateInfo) bool {
+	for _, link := range append(info.Added, info.Removed...) {
+		if link == info.Id {
+			return true
+		}
+	}
+	return false
 }

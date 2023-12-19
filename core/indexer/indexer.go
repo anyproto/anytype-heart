@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -21,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -64,6 +66,7 @@ type indexer struct {
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 	fileService    files.Service
+	accountService account.Service
 
 	quit       chan struct{}
 	btHash     Hasher
@@ -86,6 +89,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[block.ObjectGetter](a)
 	i.fileService = app.MustComponent[files.Service](a)
+	i.accountService = app.MustComponent[account.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
@@ -162,6 +166,12 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
+		for _, link := range info.Links {
+			if strings.HasPrefix(link, addr.IdentityPrefix) && info.Space.DerivedIDs().Profile != "" {
+				info.Links = append(info.Links, info.Space.DerivedIDs().Profile)
+			}
+		}
+
 		if err = i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
