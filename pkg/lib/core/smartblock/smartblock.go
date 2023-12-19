@@ -69,8 +69,6 @@ func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 		return false, false
 	case SmartBlockTypeArchive, SmartBlockTypeHome:
 		return false, true
-	case SmartBlockTypeWidget:
-		return true, false
 	default:
 		return true, true
 	}
