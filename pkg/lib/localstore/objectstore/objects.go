@@ -133,8 +133,7 @@ type ObjectStore interface {
 
 	DeleteObject(id string) error
 	DeleteDetails(id ...string) error
-	// EraseIndexes erase all indexes for objectstore. All objects need to be reindexed
-	EraseIndexes(spaceId string) error
+	DeleteLinks(id ...string) error
 
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
@@ -197,25 +196,6 @@ type dsObjectStore struct {
 	onChangeCallback          func(record database.Record)
 	subscriptions             []database.Subscription
 	onBacklinksUpdateCallback func(info BacklinksUpdateInfo)
-}
-
-func (s *dsObjectStore) EraseIndexes(spaceId string) error {
-	ids, err := s.ListIdsBySpace(spaceId)
-	if err != nil {
-		return fmt.Errorf("list ids by space: %w", err)
-	}
-	err = badgerhelper.RetryOnConflict(func() error {
-		txn := s.db.NewTransaction(true)
-		defer txn.Discard()
-		for _, id := range ids {
-			txn, err = s.eraseLinksForObject(txn, id)
-			if err != nil {
-				return fmt.Errorf("erase links for object %s: %w", id, err)
-			}
-		}
-		return txn.Commit()
-	})
-	return err
 }
 
 func (s *dsObjectStore) Run(context.Context) (err error) {
