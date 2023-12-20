@@ -92,11 +92,6 @@ type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
-type AccountService interface {
-	PersonalSpaceID() string
-	IdentityObjectId() string
-}
-
 func NewBasic(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
