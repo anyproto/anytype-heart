@@ -136,6 +136,8 @@ func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 
 func (m *subObjectsAndProfileLinksMigration) migrateId(oldId string) (newId string) {
 	if m.profileID != "" && m.identityObjectID != "" {
+		// we substitute all links to profile object with identity object EXCEPT the case with
+		// widget to identity in Personal space, we must substitute identity with profile to show links correctly
 		if oldId == m.profileID && (m.space.Id() != m.personalSpaceId || m.sbType != smartblock.SmartBlockTypeWidget) {
 			return m.identityObjectID
 		} else if oldId == m.identityObjectID && m.space.Id() == m.personalSpaceId && m.sbType == smartblock.SmartBlockTypeWidget {
