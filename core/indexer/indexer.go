@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -163,9 +162,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
-		if info.SmartblockType == coresb.SmartBlockTypeWidget {
-			info.Links = []string{}
-		}
 		if err = i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
