@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -29,7 +30,7 @@ var (
 	ErrIncorrectSpaceID = errors.New("incorrect space id")
 	ErrSpaceNotExists   = errors.New("space not exists")
 	ErrSpaceDeleted     = errors.New("space is deleted")
-	ErrStatusUnkown     = errors.New("space status is unknown")
+	ErrSpaceIsClosing   = errors.New("space is closing")
 )
 
 func New() Service {
@@ -70,9 +71,13 @@ type service struct {
 	mu        sync.Mutex
 	ctx       context.Context
 	ctxCancel context.CancelFunc
+	isClosing atomic.Bool
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
+	if s.isClosing.Load() {
+		return ErrSpaceIsClosing
+	}
 	s.mu.Lock()
 	ctrl := s.spaceControllers[id]
 	s.mu.Unlock()
@@ -100,7 +105,7 @@ func (s *service) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	s.metadataPayload, err = deriveAccountMetadata(s.accountService.Account().SignKey)
+	s.metadataPayload, err = deriveMetadata(s.accountService.Account().SignKey)
 	if err != nil {
 		return
 	}
@@ -131,6 +136,9 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
+	if s.isClosing.Load() {
+		return nil, ErrSpaceIsClosing
+	}
 	return s.create(ctx)
 }
 
@@ -198,11 +206,15 @@ func (s *service) Close(ctx context.Context) error {
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
-
+	s.isClosing.Store(true)
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
+	var ctrls []spacecontroller.SpaceController
 	for _, ctrl := range s.spaceControllers {
+		ctrls = append(ctrls, ctrl)
+	}
+	s.mu.Unlock()
+
+	for _, ctrl := range ctrls {
 		err := ctrl.Close(ctx)
 		if err != nil {
 			log.Error("close space", zap.String("spaceId", ctrl.SpaceId()), zap.Error(err))

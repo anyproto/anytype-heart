@@ -18,7 +18,6 @@ func (s *service) createPersonalSpace(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	s.personalSpaceId = ctrl.SpaceId()
 	_, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
