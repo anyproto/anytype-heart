@@ -92,9 +92,11 @@ type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
-var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
-
-func NewBasic(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) AllOperations {
+func NewBasic(
+	sb smartblock.SmartBlock,
+	objectStore objectstore.ObjectStore,
+	layoutConverter converter.LayoutConverter,
+) AllOperations {
 	return &basic{
 		SmartBlock:      sb,
 		objectStore:     objectStore,
