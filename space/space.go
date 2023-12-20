@@ -37,6 +37,8 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
+	IsPersonal() bool
+
 	Close(ctx context.Context) error
 }
 
@@ -133,6 +135,10 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 		return "", err
 	}
 	return s.DeriveObjectID(ctx, uk)
+}
+
+func (s *space) IsPersonal() bool {
+	return s.service.IsPersonal(s.Id())
 }
 
 func (s *space) Close(ctx context.Context) error {
