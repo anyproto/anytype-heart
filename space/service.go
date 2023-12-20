@@ -208,7 +208,7 @@ func (s *service) Close(ctx context.Context) error {
 	}
 	s.isClosing.Store(true)
 	s.mu.Lock()
-	var ctrls []spacecontroller.SpaceController
+	ctrls := make([]spacecontroller.SpaceController, 0, len(s.spaceControllers))
 	for _, ctrl := range s.spaceControllers {
 		ctrls = append(ctrls, ctrl)
 	}
