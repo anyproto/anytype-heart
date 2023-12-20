@@ -1215,15 +1215,11 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 
-	links := make([]string, 0)
-	// we don't want backlinks on widget object, so do not index links of widget
-	if sb.Type() != smartblock.SmartBlockTypeWidget {
-		// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
-		links = pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
-		// so links will have this order
-		// 1. Simple blocks: links, mentions in the text
-		// 2. Relations(format==Object)
-	}
+	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
+	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
+	// so links will have this order
+	// 1. Simple blocks: links, mentions in the text
+	// 2. Relations(format==Object)
 	// todo: heads in source and the state may be inconsistent?
 	heads := sb.source.Heads()
 	if len(heads) == 0 {
