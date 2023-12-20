@@ -42,7 +42,7 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
-		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.accountService),
+		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter),
 		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,

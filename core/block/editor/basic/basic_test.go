@@ -38,7 +38,7 @@ func TestBasic_Create(t *testing.T) {
 	t.Run("generic", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		st := sb.NewState()
 		id, err := b.CreateBlock(st, pb.RpcBlockCreateRequest{
 			Block: &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "ll"}}},
@@ -52,7 +52,7 @@ func TestBasic_Create(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		s := sb.NewState()
 		id, err := b.CreateBlock(s, pb.RpcBlockCreateRequest{
 			TargetId: template.TitleBlockId,
@@ -73,7 +73,7 @@ func TestBasic_Create(t *testing.T) {
 		}
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		_, err := b.CreateBlock(sb.NewState(), pb.RpcBlockCreateRequest{})
 		assert.ErrorIs(t, err, restriction.ErrRestricted)
 	})
@@ -86,7 +86,7 @@ func TestBasic_Duplicate(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "3"}))
 
 	st := sb.NewState()
-	newIds, err := NewBasic(sb, nil, converter.NewLayoutConverter(), nil).Duplicate(st, st, "", 0, []string{"2"})
+	newIds, err := NewBasic(sb, nil, converter.NewLayoutConverter()).Duplicate(st, st, "", 0, []string{"2"})
 	require.NoError(t, err)
 
 	err = sb.Apply(st)
@@ -105,7 +105,7 @@ func TestBasic_Unlink(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
 			AddBlock(simple.New(&model.Block{Id: "3"}))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 
 		err := b.Unlink(nil, "2")
 		require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestBasic_Unlink(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
 			AddBlock(simple.New(&model.Block{Id: "3"}))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 
 		err := b.Unlink(nil, "2", "3")
 		require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "3"})).
 			AddBlock(simple.New(&model.Block{Id: "4"}))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		st := sb.NewState()
 
 		err := b.Move(st, st, "4", model.Block_Inner, []string{"3"})
@@ -150,7 +150,7 @@ func TestBasic_Move(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		s := sb.NewState()
 		id1, err := b.CreateBlock(s, pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
@@ -199,7 +199,7 @@ func TestBasic_Move(t *testing.T) {
 						},
 					),
 				)
-			basic := NewBasic(testDoc, nil, converter.NewLayoutConverter(), nil)
+			basic := NewBasic(testDoc, nil, converter.NewLayoutConverter())
 			state := testDoc.NewState()
 
 			// when
@@ -215,7 +215,7 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(newTextBlock("1", "", nil)).
 			AddBlock(newTextBlock("2", "one", nil))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		st := sb.NewState()
 		err := b.Move(st, st, "1", model.Block_InnerFirst, []string{"2"})
 		require.NoError(t, err)
@@ -235,7 +235,7 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(firstBlock).
 			AddBlock(secondBlock)
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		st := sb.NewState()
 		err := b.Move(st, st, "1", model.Block_InnerFirst, []string{"2"})
 		require.NoError(t, err)
@@ -249,7 +249,7 @@ func TestBasic_Move(t *testing.T) {
 			AddBlock(newTextBlock("1", "", nil)).
 			AddBlock(newTextBlock("2", "one", nil))
 
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		st := sb.NewState()
 		err := b.Move(st, nil, "1", model.Block_Top, []string{"2"})
 		require.NoError(t, err)
@@ -269,7 +269,7 @@ func TestBasic_MoveToAnotherObject(t *testing.T) {
 		sb2 := smarttest.New("test2")
 		sb2.AddBlock(simple.New(&model.Block{Id: "test2", ChildrenIds: []string{}}))
 
-		b := NewBasic(sb1, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb1, nil, converter.NewLayoutConverter())
 
 		srcState := sb1.NewState()
 		destState := sb2.NewState()
@@ -304,7 +304,7 @@ func TestBasic_Replace(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	b := NewBasic(sb, nil, converter.NewLayoutConverter())
 	newId, err := b.Replace(nil, "2", &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "l"}}})
 	require.NoError(t, err)
 	require.NotEmpty(t, newId)
@@ -314,7 +314,7 @@ func TestBasic_SetFields(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	b := NewBasic(sb, nil, converter.NewLayoutConverter())
 
 	fields := &types.Struct{
 		Fields: map[string]*types.Value{
@@ -333,7 +333,7 @@ func TestBasic_Update(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	b := NewBasic(sb, nil, converter.NewLayoutConverter())
 
 	err := b.Update(nil, func(b simple.Block) error {
 		b.Model().BackgroundColor = "test"
@@ -347,7 +347,7 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	b := NewBasic(sb, nil, converter.NewLayoutConverter())
 
 	err := b.SetDivStyle(nil, model.BlockContentDiv_Dots, "2")
 	require.NoError(t, err)
@@ -358,7 +358,7 @@ func TestBasic_SetDivStyle(t *testing.T) {
 func TestBasic_PasteBlocks(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	b := NewBasic(sb, nil, converter.NewLayoutConverter())
 	s := sb.NewState()
 	err := b.PasteBlocks(s, "", model.Block_Inner, []simple.Block{
 		simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
@@ -385,7 +385,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 	t.Run("correct", func(t *testing.T) {
 		sb := smarttest.New("test")
 		fillSb(sb)
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		err := b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "2",
 			Key:     "testRelKey",
@@ -407,7 +407,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 	t.Run("not relation block", func(t *testing.T) {
 		sb := smarttest.New("test")
 		fillSb(sb)
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		require.Error(t, b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "1",
 			Key:     "key",
@@ -416,7 +416,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 	t.Run("relation not found", func(t *testing.T) {
 		sb := smarttest.New("test")
 		fillSb(sb)
-		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
 		require.Error(t, b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "2",
 			Key:     "not exists",
@@ -432,7 +432,7 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	s.AddBundledRelations(bundle.RelationKeyDescription)
 	require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	b := NewBasic(sb, nil, converter.NewLayoutConverter())
 	newRel := []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}
 	require.NoError(t, b.FeaturedRelationAdd(nil, newRel...))
 
@@ -448,7 +448,7 @@ func TestBasic_FeaturedRelationRemove(t *testing.T) {
 	template.WithDescription(s)
 	require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	b := NewBasic(sb, nil, converter.NewLayoutConverter())
 	require.NoError(t, b.FeaturedRelationRemove(nil, bundle.RelationKeyDescription.String()))
 
 	res := sb.NewState()
@@ -485,7 +485,7 @@ func TestBasic_ReplaceLink(t *testing.T) {
 	}
 	require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	b := NewBasic(sb, nil, converter.NewLayoutConverter())
 	require.NoError(t, b.ReplaceLink(oldId, newId))
 
 	res := sb.NewState()

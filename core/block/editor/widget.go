@@ -31,7 +31,7 @@ func NewWidgetObject(
 	layoutConverter converter.LayoutConverter,
 	accountService basic.AccountService,
 ) *WidgetObject {
-	bs := basic.NewBasic(sb, objectStore, layoutConverter, accountService)
+	bs := basic.NewBasic(sb, objectStore, layoutConverter)
 	return &WidgetObject{
 		SmartBlock: sb,
 		Movable:    bs,

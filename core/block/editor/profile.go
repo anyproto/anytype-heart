@@ -43,7 +43,7 @@ func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, f
 	f := file.NewFile(sb, fileBlockService, tempDirProvider, fileService, picker)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil),
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,

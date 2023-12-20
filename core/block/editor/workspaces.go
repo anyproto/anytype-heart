@@ -33,7 +33,7 @@ type Workspaces struct {
 func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
 	return &Workspaces{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter, nil),
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,

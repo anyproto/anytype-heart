@@ -135,7 +135,8 @@ func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 }
 
 func (m *subObjectsAndProfileLinksMigration) migrateId(oldId string) (newId string) {
-	if m.profileID != "" && m.identityObjectID != "" && oldId == m.profileID && m.space.Id() != m.personalSpaceId {
+	if m.profileID != "" && m.identityObjectID != "" && oldId == m.profileID &&
+		m.space.Id() != m.personalSpaceId && m.sbType != smartblock.SmartBlockTypeWidget {
 		return m.identityObjectID
 	}
 	uniqueKey, valid := subObjectIdToUniqueKey(oldId)
