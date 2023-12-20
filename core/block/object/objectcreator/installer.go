@@ -193,7 +193,7 @@ func (s *service) prepareDetailsForInstallingObject(ctx context.Context, sourceS
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
-	objecttype.SetLastUsedDateForCrucialType(sourceId, details)
+	objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
 
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	if len(bundledRelationIds) > 0 {

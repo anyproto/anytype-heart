@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -18,18 +17,7 @@ import (
 
 const maxInstallationTime = 5 * time.Minute
 
-var (
-	log = logging.Logger("update-last-used-date")
-
-	// clients sort lists of object types on descending lastUsedDate value
-	lastUsedDateDecrement = map[string]time.Duration{
-		bundle.TypeKeyNote.BundledURL():       1 * maxInstallationTime,
-		bundle.TypeKeyPage.BundledURL():       2 * maxInstallationTime,
-		bundle.TypeKeyTask.BundledURL():       3 * maxInstallationTime,
-		bundle.TypeKeySet.BundledURL():        4 * maxInstallationTime,
-		bundle.TypeKeyCollection.BundledURL(): 5 * maxInstallationTime,
-	}
-)
+var log = logging.Logger("update-last-used-date")
 
 func UpdateLastUsedDate(spc smartblock.Space, store objectstore.ObjectStore, keys []domain.TypeKey) {
 	for _, key := range keys {
@@ -58,24 +46,28 @@ func UpdateLastUsedDate(spc smartblock.Space, store objectstore.ObjectStore, key
 	}
 }
 
-func isCrucialObjectType(id string) bool {
-	return lo.Contains([]string{
-		bundle.TypeKeyNote.String(),
-		bundle.TypeKeyPage.String(),
-		bundle.TypeKeyTask.String(),
-		bundle.TypeKeySet.String(),
-		bundle.TypeKeyCollection.String(),
-	}, strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix))
-}
+func SetLastUsedDateForInitialObjectType(id string, details *types.Struct) {
+	if !strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || details == nil || details.Fields == nil {
+		return
+	}
 
-func SetLastUsedDateForCrucialType(id string, details *types.Struct) {
-	if !isCrucialObjectType(id) {
-		return
+	var decrement time.Duration
+	switch id {
+	case bundle.TypeKeyNote.BundledURL():
+		decrement = -1 * maxInstallationTime
+	case bundle.TypeKeyPage.BundledURL():
+		decrement = -2 * maxInstallationTime
+	case bundle.TypeKeyTask.BundledURL():
+		decrement = -3 * maxInstallationTime
+	case bundle.TypeKeySet.BundledURL():
+		decrement = -4 * maxInstallationTime
+	case bundle.TypeKeyCollection.BundledURL():
+		decrement = -5 * maxInstallationTime
+	default:
+		decrement = -7 * maxInstallationTime
 	}
-	if details == nil || details.Fields == nil {
-		return
-	}
+
 	// we do this trick to order crucial Anytype object types by last date
-	lastUsed := time.Now().Add(-1 * lastUsedDateDecrement[id]).Unix()
+	lastUsed := time.Now().Add(decrement).Unix()
 	details.Fields[bundle.RelationKeyLastUsedDate.String()] = pbtypes.Int64(lastUsed)
 }

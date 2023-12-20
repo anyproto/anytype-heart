@@ -141,7 +141,7 @@ func (s *service) CreateSmartBlockFromStateInSpace(
 	newDetails = sb.CombinedDetails()
 	id = sb.Id()
 
-	if sbType == coresb.SmartBlockTypeObjectType {
+	if sbType == coresb.SmartBlockTypeObjectType && pbtypes.GetInt64(newDetails, bundle.RelationKeyLastUsedDate.String()) == 0 {
 		objecttype.UpdateLastUsedDate(spc, s.objectStore, []domain.TypeKey{
 			domain.TypeKey(strings.TrimPrefix(pbtypes.GetString(newDetails, bundle.RelationKeyUniqueKey.String()), addr.ObjectTypeKeyToIdPrefix)),
 		})
