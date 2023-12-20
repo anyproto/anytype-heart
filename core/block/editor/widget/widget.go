@@ -21,8 +21,14 @@ type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
 }
 
+type accountService interface {
+	PersonalSpaceID() string
+	IdentityObjectId() string
+}
+
 type widget struct {
 	smartblock.SmartBlock
+	accountService accountService
 }
 
 type ImportWidgetFlags struct {
@@ -56,9 +62,10 @@ func IsPredefinedWidgetTargetId(targetID string) bool {
 	}
 }
 
-func NewWidget(sb smartblock.SmartBlock) Widget {
+func NewWidget(sb smartblock.SmartBlock, accountService accountService) Widget {
 	return &widget{
-		SmartBlock: sb,
+		SmartBlock:     sb,
+		accountService: accountService,
 	}
 }
 
@@ -67,10 +74,12 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		return "", fmt.Errorf("block has no content")
 	}
 
-	switch req.Block.Content.(type) {
-	case *model.BlockContentOfLink:
-		// Add block<->widget layout validation when new cases are added
-	default:
+	if l, ok := req.Block.GetContent().(*model.BlockContentOfLink); ok {
+		// substitute identity object with profile object as links are treated differently in personal and private spaces
+		if l.Link.TargetBlockId == w.accountService.IdentityObjectId() && w.Space().Id() == w.accountService.PersonalSpaceID() {
+			l.Link.TargetBlockId = w.Space().DerivedIDs().Profile
+		}
+	} else {
 		return "", fmt.Errorf("unsupported widget content: %T", req.Block.Content)
 	}
 
