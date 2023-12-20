@@ -163,7 +163,12 @@ func (uw *UpdateWatcher) updateBackLinksInObjects(info objectstore.BacklinksUpda
 }
 
 func hasSelfLinks(info objectstore.BacklinksUpdateInfo) bool {
-	for _, link := range append(info.Added, info.Removed...) {
+	for _, link := range info.Added {
+		if link == info.Id {
+			return true
+		}
+	}
+	for _, link := range info.Removed {
 		if link == info.Id {
 			return true
 		}
