@@ -16,16 +16,18 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const maxInstallationTime = 5 * time.Minute
+
 var (
 	log = logging.Logger("update-last-used-date")
 
 	// clients sort lists of object types on descending lastUsedDate value
-	lastUsedDateIncrement = map[string]time.Duration{
-		bundle.TypeKeyNote.BundledURL():       5 * time.Minute,
-		bundle.TypeKeyPage.BundledURL():       4 * time.Minute,
-		bundle.TypeKeyTask.BundledURL():       3 * time.Minute,
-		bundle.TypeKeySet.BundledURL():        2 * time.Minute,
-		bundle.TypeKeyCollection.BundledURL(): 1 * time.Minute,
+	lastUsedDateDecrement = map[string]time.Duration{
+		bundle.TypeKeyNote.BundledURL():       1 * maxInstallationTime,
+		bundle.TypeKeyPage.BundledURL():       2 * maxInstallationTime,
+		bundle.TypeKeyTask.BundledURL():       3 * maxInstallationTime,
+		bundle.TypeKeySet.BundledURL():        4 * maxInstallationTime,
+		bundle.TypeKeyCollection.BundledURL(): 5 * maxInstallationTime,
 	}
 )
 
@@ -74,6 +76,6 @@ func SetLastUsedDateForCrucialType(id string, details *types.Struct) {
 		return
 	}
 	// we do this trick to order crucial Anytype object types by last date
-	lastUsed := time.Now().Truncate(time.Hour).Add(lastUsedDateIncrement[id] - time.Hour).Unix()
+	lastUsed := time.Now().Add(-1 * lastUsedDateDecrement[id]).Unix()
 	details.Fields[bundle.RelationKeyLastUsedDate.String()] = pbtypes.Int64(lastUsed)
 }

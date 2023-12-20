@@ -1,6 +1,7 @@
 package objecttype
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -17,24 +18,30 @@ func TestSetLastUsedDateForCrucialType(t *testing.T) {
 
 	t.Run("crucial object types are sorted by lastUsedDate in correct order", func(t *testing.T) {
 		// given
-		ots := map[string]*types.Struct{
-			bundle.TypeKeySet.BundledURL():        {Fields: make(map[string]*types.Value)},
-			bundle.TypeKeyNote.BundledURL():       {Fields: make(map[string]*types.Value)},
-			bundle.TypeKeyCollection.BundledURL(): {Fields: make(map[string]*types.Value)},
-			bundle.TypeKeyTask.BundledURL():       {Fields: make(map[string]*types.Value)},
-			bundle.TypeKeyPage.BundledURL():       {Fields: make(map[string]*types.Value)},
+		ots := []string{
+			bundle.TypeKeySet.BundledURL(),
+			bundle.TypeKeyNote.BundledURL(),
+			bundle.TypeKeyCollection.BundledURL(),
+			bundle.TypeKeyTask.BundledURL(),
+			bundle.TypeKeyPage.BundledURL(),
 		}
+		rand.Shuffle(len(ots), func(i, j int) {
+			ots[i], ots[j] = ots[j], ots[i]
+		})
+		detailMap := map[string]*types.Struct{}
 
 		// when
-		for id, details := range ots {
+		for _, id := range ots {
+			details := &types.Struct{Fields: make(map[string]*types.Value)}
 			SetLastUsedDateForCrucialType(id, details)
+			detailMap[id] = details
 		}
 
 		// then
-		assert.True(t, isLastUsedDateGreater(ots[bundle.TypeKeyNote.BundledURL()], ots[bundle.TypeKeyPage.BundledURL()]))
-		assert.True(t, isLastUsedDateGreater(ots[bundle.TypeKeyPage.BundledURL()], ots[bundle.TypeKeyTask.BundledURL()]))
-		assert.True(t, isLastUsedDateGreater(ots[bundle.TypeKeyTask.BundledURL()], ots[bundle.TypeKeySet.BundledURL()]))
-		assert.True(t, isLastUsedDateGreater(ots[bundle.TypeKeySet.BundledURL()], ots[bundle.TypeKeyCollection.BundledURL()]))
+		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyNote.BundledURL()], detailMap[bundle.TypeKeyPage.BundledURL()]))
+		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyPage.BundledURL()], detailMap[bundle.TypeKeyTask.BundledURL()]))
+		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeyTask.BundledURL()], detailMap[bundle.TypeKeySet.BundledURL()]))
+		assert.True(t, isLastUsedDateGreater(detailMap[bundle.TypeKeySet.BundledURL()], detailMap[bundle.TypeKeyCollection.BundledURL()]))
 	})
 
 	t.Run("lastUsedDate is not set to non-crucial types", func(t *testing.T) {
