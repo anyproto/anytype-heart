@@ -119,11 +119,17 @@ type storageServiceKeys struct {
 }
 
 func newStorageServiceKeys() storageServiceKeys {
-	return storageServiceKeys{spacePrefix: []byte("space/header")}
+	return storageServiceKeys{
+		spacePrefix: []byte("space/header"),
+	}
 }
 
 func (s storageServiceKeys) SpacePrefix() []byte {
 	return s.spacePrefix
+}
+
+func (s storageServiceKeys) SpaceCreatedKey(id string) []byte {
+	return treestorage.JoinStringsToBytes("space/created", id)
 }
 
 func (s storageServiceKeys) BindObjectIDKey(objectID string) []byte {

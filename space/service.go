@@ -84,7 +84,6 @@ type service struct {
 
 	newAccount bool
 
-	createdSpaces      map[string]struct{}
 	localStatuses      map[string]spaceinfo.SpaceLocalInfo
 	persistentStatuses map[string]spaceinfo.SpacePersistentInfo
 	loading            map[string]*loadingSpace
@@ -114,7 +113,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.delController = newDeletionController(s, coordClient)
 	s.offloader = app.MustComponent[fileOffloader](a)
 	s.builtinTemplateService = app.MustComponent[builtinTemplateService](a)
-	s.createdSpaces = map[string]struct{}{}
 	s.localStatuses = map[string]spaceinfo.SpaceLocalInfo{}
 	s.persistentStatuses = map[string]spaceinfo.SpacePersistentInfo{}
 	s.loading = map[string]*loadingSpace{}
@@ -170,12 +168,12 @@ func (s *service) GetPersonalSpace(ctx context.Context) (sp Space, err error) {
 	return s.Get(ctx, s.personalSpaceID)
 }
 
-func (s *service) open(ctx context.Context, spaceID string, justCreated bool) (sp Space, err error) {
+func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error) {
 	coreSpace, err := s.spaceCore.Get(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}
-	return s.newSpace(ctx, coreSpace, justCreated)
+	return s.newSpace(ctx, coreSpace)
 }
 
 func (s *service) IsPersonal(id string) bool {
