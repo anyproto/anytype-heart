@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
@@ -26,14 +27,19 @@ const CName = "backlinks-update-watcher"
 
 var log = logging.Logger(CName)
 
+type backlinksUpdater interface {
+	SubscribeBacklinksUpdate(callback func(info objectstore.BacklinksUpdateInfo))
+}
+
 type UpdateWatcher struct {
 	app.ComponentRunnable
 
+	updater      backlinksUpdater
 	store        objectstore.ObjectStore
 	resolver     idresolver.Resolver
 	spaceService space.Service
 
-	closeCh chan struct{}
+	infoBatch *mb.MB
 }
 
 func New() app.Component {
@@ -45,41 +51,54 @@ func (uw *UpdateWatcher) Name() string {
 }
 
 func (uw *UpdateWatcher) Init(a *app.App) error {
+	uw.updater = app.MustComponent[backlinksUpdater](a)
 	uw.store = app.MustComponent[objectstore.ObjectStore](a)
 	uw.resolver = app.MustComponent[idresolver.Resolver](a)
 	uw.spaceService = app.MustComponent[space.Service](a)
+	uw.infoBatch = mb.New(0)
 	return nil
 }
 
-func (uw *UpdateWatcher) Close(_ context.Context) error {
-	close(uw.closeCh)
+func (uw *UpdateWatcher) Close(context.Context) error {
+	if err := uw.infoBatch.Close(); err != nil {
+		log.Errorf("failed to close message batch: %v", err)
+	}
 	return nil
 }
 
-func (uw *UpdateWatcher) Run(ctx context.Context) error {
-	ch := uw.store.SubscribeBacklinksUpdate()
-	uw.closeCh = make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-uw.closeCh:
-				return
-			case info := <-ch:
-				uw.updateBackLinksInObjects(ctx, info)
-			}
+func (uw *UpdateWatcher) Run(context.Context) error {
+	uw.updater.SubscribeBacklinksUpdate(func(info objectstore.BacklinksUpdateInfo) {
+		if err := uw.infoBatch.Add(info); err != nil {
+			log.With("objectID", info.Id).Errorf("failed to add backlinks update info to message batch: %v", err)
 		}
-	}()
+	})
 
+	go uw.backlinksUpdateHandler()
 	return nil
 }
 
-func (uw *UpdateWatcher) updateBackLinksInObjects(ctx context.Context, info objectstore.BacklinksUpdateInfo) {
+func (uw *UpdateWatcher) backlinksUpdateHandler() {
+	for {
+		msgs := uw.infoBatch.Wait()
+		if len(msgs) == 0 {
+			return
+		}
+		for _, msg := range msgs {
+			info, ok := msg.(objectstore.BacklinksUpdateInfo)
+			if !ok {
+				continue
+			}
+			uw.updateBackLinksInObjects(info)
+		}
+	}
+}
+
+func (uw *UpdateWatcher) updateBackLinksInObjects(info objectstore.BacklinksUpdateInfo) {
 	spaceId, err := uw.resolver.ResolveSpaceID(info.Id)
 	if err != nil {
 		log.With("objectID", info.Id).Errorf("failed to resolve space id for object %s: %v", info.Id, err)
 	}
-	spc, err := uw.spaceService.Get(ctx, spaceId)
+	spc, err := uw.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		log.With("objectID", info.Id).Errorf("failed get space %s: %v", spaceId, err)
 	}
