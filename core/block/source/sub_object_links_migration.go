@@ -135,9 +135,12 @@ func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 }
 
 func (m *subObjectsAndProfileLinksMigration) migrateId(oldId string) (newId string) {
-	if m.profileID != "" && m.identityObjectID != "" && oldId == m.profileID &&
-		m.space.Id() != m.personalSpaceId && m.sbType != smartblock.SmartBlockTypeWidget {
-		return m.identityObjectID
+	if m.profileID != "" && m.identityObjectID != "" {
+		if oldId == m.profileID && (m.space.Id() != m.personalSpaceId || m.sbType != smartblock.SmartBlockTypeWidget) {
+			return m.identityObjectID
+		} else if oldId == m.identityObjectID && m.space.Id() == m.personalSpaceId && m.sbType == smartblock.SmartBlockTypeWidget {
+			return m.profileID
+		}
 	}
 	uniqueKey, valid := subObjectIdToUniqueKey(oldId)
 	if !valid {

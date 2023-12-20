@@ -29,7 +29,7 @@ func NewWidgetObject(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	layoutConverter converter.LayoutConverter,
-	accountService basic.AccountService,
+	accountService accountService,
 ) *WidgetObject {
 	bs := basic.NewBasic(sb, objectStore, layoutConverter)
 	return &WidgetObject{

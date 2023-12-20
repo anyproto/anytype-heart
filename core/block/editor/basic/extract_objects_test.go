@@ -190,7 +190,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), fixtureAccountService{}).ExtractBlocksToObjects(ctx, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string
@@ -251,14 +251,4 @@ func newFixture(t *testing.T) *fixture {
 
 func (fx *fixture) cleanUp() {
 	fx.ctrl.Finish()
-}
-
-type fixtureAccountService struct{}
-
-func (s fixtureAccountService) PersonalSpaceID() string {
-	return ""
-}
-
-func (s fixtureAccountService) IdentityObjectId() string {
-	return ""
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
@@ -26,6 +25,11 @@ import (
 
 var log = logging.Logger("anytype-mw-editor")
 
+type accountService interface {
+	PersonalSpaceID() string
+	IdentityObjectId() string
+}
+
 type ObjectFactory struct {
 	bookmarkService    bookmark.BookmarkService
 	fileBlockService   file.BlockService
@@ -40,7 +44,7 @@ type ObjectFactory struct {
 	restrictionService restriction.Service
 	indexer            smartblock.Indexer
 	spaceService       spaceService
-	accountService     basic.AccountService
+	accountService     accountService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -61,7 +65,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
-	f.accountService = app.MustComponent[basic.AccountService](a)
+	f.accountService = app.MustComponent[accountService](a)
 
 	return nil
 }

@@ -3,7 +3,6 @@ package widget
 import (
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -22,9 +21,14 @@ type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
 }
 
+type accountService interface {
+	PersonalSpaceID() string
+	IdentityObjectId() string
+}
+
 type widget struct {
 	smartblock.SmartBlock
-	accountService basic.AccountService
+	accountService accountService
 }
 
 type ImportWidgetFlags struct {
@@ -58,7 +62,7 @@ func IsPredefinedWidgetTargetId(targetID string) bool {
 	}
 }
 
-func NewWidget(sb smartblock.SmartBlock, accountService basic.AccountService) Widget {
+func NewWidget(sb smartblock.SmartBlock, accountService accountService) Widget {
 	return &widget{
 		SmartBlock:     sb,
 		accountService: accountService,

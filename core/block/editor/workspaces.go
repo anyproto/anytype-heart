@@ -27,7 +27,7 @@ type Workspaces struct {
 	spaceService   spaceService
 	objectStore    objectstore.ObjectStore
 	config         *config.Config
-	accountService basic.AccountService
+	accountService accountService
 }
 
 func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
