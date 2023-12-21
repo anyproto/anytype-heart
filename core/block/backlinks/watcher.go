@@ -211,6 +211,10 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 		})
 	})
 
+	if err == nil {
+		return
+	}
+	
 	if !errors.Is(err, ocache.ErrExists) {
 		log.With("objectID", id).Errorf("failed to update backlinks for not cached object %s: %v", id, err)
 	}
