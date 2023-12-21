@@ -127,7 +127,7 @@ func (uw *UpdateWatcher) backlinksUpdateHandler() {
 
 	go func() {
 		process := func() {
-			log.Infof("updating backlinks for %d objects", len(accumulatedBacklinks))
+			log.Debugf("updating backlinks for %d objects", len(accumulatedBacklinks))
 			for id, updates := range accumulatedBacklinks {
 				uw.updateBackLinksInObject(id, updates)
 			}
@@ -147,7 +147,6 @@ func (uw *UpdateWatcher) backlinksUpdateHandler() {
 					continue
 				}
 
-				log.Warnf("updating backlinks for %d objects", len(accumulatedBacklinks))
 				process()
 				l.Unlock()
 			}
@@ -160,7 +159,6 @@ func (uw *UpdateWatcher) backlinksUpdateHandler() {
 			return
 		}
 
-		log.Infof("got %d updates from mb", len(msgs))
 		l.Lock()
 		for _, msg := range msgs {
 			info, ok := msg.(objectstore.LinksUpdateInfo)
