@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -90,6 +91,7 @@ type service struct {
 	offloading         map[string]*offloadingSpace
 	offloaded          map[string]struct{}
 	loaded             map[string]Space
+	closed             atomic.Bool
 
 	virtualSpaceService VirtualSpaceService
 	mu                  sync.Mutex
@@ -150,6 +152,9 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Create(ctx context.Context) (Space, error) {
+	if s.closed.Load() {
+		return nil, ErrSpaceClosed
+	}
 	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
 	if err != nil {
 		return nil, err
@@ -169,6 +174,9 @@ func (s *service) GetPersonalSpace(ctx context.Context) (sp Space, err error) {
 }
 
 func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error) {
+	if s.closed.Load() {
+		return nil, ErrSpaceClosed
+	}
 	coreSpace, err := s.spaceCore.Get(ctx, spaceID)
 	if err != nil {
 		return nil, err
@@ -210,14 +218,18 @@ func (s *service) SpaceViewId(spaceId string) (spaceViewId string, err error) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
+	s.closed.Store(true)
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
+	sps := make([]Space, 0, len(s.loaded))
 	for _, sp := range s.loaded {
+		sps = append(sps, sp)
+	}
+	s.mu.Unlock()
+	for _, sp := range sps {
 		err = sp.Close(ctx)
 		if err != nil {
 			log.Error("close space", zap.String("spaceId", sp.Id()), zap.Error(err))

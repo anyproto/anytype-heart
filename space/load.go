@@ -5,13 +5,20 @@ import (
 	"errors"
 	"fmt"
 
+	"go.uber.org/zap"
+
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
+var ErrSpaceClosed = errors.New("space service closed")
+
 func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.closed.Load() {
+		return ErrSpaceClosed
+	}
 	persistentStatus := s.getPersistentStatus(spaceID)
 	if persistentStatus.AccountStatus == spaceinfo.AccountStatusDeleted {
 		return ErrSpaceDeleted
@@ -43,8 +50,17 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 
 func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	s.mu.Lock()
+	if s.closed.Load() {
+		s.mu.Unlock()
+		if loadErr == nil {
+			err := sp.Close(s.ctx)
+			if err != nil {
+				log.Warn("space close error", zap.Error(err))
+			}
+		}
+		return ErrSpaceClosed
+	}
 	defer s.mu.Unlock()
-
 	switch {
 	case loadErr == nil:
 	case errors.Is(loadErr, spaceservice.ErrSpaceDeletionPending):
@@ -95,6 +111,9 @@ func (s *service) preLoad(spc Space) {
 }
 
 func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err error) {
+	if s.closed.Load() {
+		return nil, ErrSpaceClosed
+	}
 	s.mu.Lock()
 	status := s.getLocalStatus(spaceID)
 
