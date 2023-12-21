@@ -37,8 +37,7 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	if err = s.setLocalStatus(ctx, info); err != nil {
 		return
 	}
-	_, justCreated := s.createdSpaces[spaceID]
-	s.loading[spaceID] = s.newLoadingSpace(s.ctx, spaceID, justCreated)
+	s.loading[spaceID] = s.newLoadingSpace(s.ctx, spaceID)
 	return
 }
 
@@ -105,7 +104,11 @@ func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err e
 	case spaceinfo.LocalStatusLoading:
 		// loading in progress, wait channel and retry
 		waitCh := s.loading[spaceID].loadCh
+		loadErr := s.loading[spaceID].loadErr
 		s.mu.Unlock()
+		if loadErr != nil {
+			return nil, loadErr
+		}
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()

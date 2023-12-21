@@ -56,7 +56,7 @@ type space struct {
 	loadMandatoryObjectsErr error
 }
 
-func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, justCreated bool) (*space, error) {
+func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (*space, error) {
 	sp := &space{
 		service:                s,
 		Space:                  coreSpace,
@@ -70,10 +70,14 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, j
 	if err != nil {
 		return nil, fmt.Errorf("derive object ids: %w", err)
 	}
-	if justCreated {
+	if s.storageService.IsSpaceCreated(coreSpace.Id()) {
 		err = sp.ObjectProvider.CreateMandatoryObjects(ctx, sp)
 		if err != nil {
 			return nil, fmt.Errorf("create mandatory objects: %w", err)
+		}
+		err = s.storageService.UnmarkSpaceCreated(coreSpace.Id())
+		if err != nil {
+			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
 	}
 	go sp.mandatoryObjectsLoad(s.ctx)
