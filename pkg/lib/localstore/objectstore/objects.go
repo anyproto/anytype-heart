@@ -193,9 +193,9 @@ type dsObjectStore struct {
 	fts ftsearch.FTSearch
 
 	sync.RWMutex
-	onChangeCallback          func(record database.Record)
-	subscriptions             []database.Subscription
-	onBacklinksUpdateCallback func(info BacklinksUpdateInfo)
+	onChangeCallback      func(record database.Record)
+	subscriptions         []database.Subscription
+	onLinksUpdateCallback func(info LinksUpdateInfo)
 }
 
 func (s *dsObjectStore) Run(context.Context) (err error) {
