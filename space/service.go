@@ -218,10 +218,10 @@ func (s *service) SpaceViewId(spaceId string) (spaceViewId string, err error) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
+	s.closed.Store(true)
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
-	s.closed.Store(true)
 
 	s.mu.Lock()
 	sps := make([]Space, 0, len(s.loaded))
