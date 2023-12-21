@@ -98,7 +98,6 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 }
 
 func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
-	<-s.loadMandatoryObjectsCh
 	return s.derivedIDs
 }
 
