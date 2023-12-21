@@ -123,7 +123,10 @@ func (uw *UpdateWatcher) updateBackLinksInObjects(info objectstore.BacklinksUpda
 			return nil, objectstore.ErrDetailsNotChanged
 		}
 		backlinks := pbtypes.GetStringList(current, bundle.RelationKeyBacklinks.String())
-		newBacklinks := slice.Remove(backlinks, info.Id)
+		var newBacklinks []string
+		if len(backlinks) != 0 {
+			newBacklinks = slice.Remove(backlinks, info.Id)
+		}
 		if len(backlinks) == len(newBacklinks) {
 			return nil, objectstore.ErrDetailsNotChanged
 		}

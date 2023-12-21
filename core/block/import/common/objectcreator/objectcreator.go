@@ -311,9 +311,9 @@ func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []st
 			if f := bl.GetFile(); f != nil {
 				oc.deleteFile(f.Hash)
 			}
-			for _, hash := range filesToDelete {
-				oc.deleteFile(hash)
-			}
+		}
+		for _, hash := range filesToDelete {
+			oc.deleteFile(hash)
 		}
 	}
 }
