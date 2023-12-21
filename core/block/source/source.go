@@ -360,10 +360,10 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	if change.Snapshot != nil {
 		s.lastSnapshotId = id
 		s.changesSinceSnapshot = 0
-		log.Errorf("%s: pushed snapshot", s.id)
+		log.Debugf("%s: pushed snapshot", s.id)
 	} else {
 		s.changesSinceSnapshot++
-		log.Errorf("%s: pushed %d changes", s.id, len(change.Content))
+		log.Debugf("%s: pushed %d changes", s.id, len(change.Content))
 	}
 	return
 }

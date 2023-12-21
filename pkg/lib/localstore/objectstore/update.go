@@ -52,9 +52,28 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 }
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		return s.updateObjectLinks(txn, id, links)
+	var (
+		added, removed []string
+	)
+	err := s.updateTxn(func(txn *badger.Txn) error {
+		var err error
+		added, removed, err = s.updateObjectLinks(txn, id, links)
+		return err
 	})
+	// todo: too big txn is not handled
+	if err != nil {
+		return err
+	}
+	s.RLock()
+	defer s.RUnlock()
+	if s.onLinksUpdateCallback != nil && len(added)+len(removed) > 0 {
+		s.onLinksUpdateCallback(LinksUpdateInfo{
+			LinksFromId: id,
+			Added:       added,
+			Removed:     removed,
+		})
+	}
+	return nil
 }
 
 func (s *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
@@ -153,41 +172,30 @@ func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*mo
 	})
 }
 
-func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []string) error {
+func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []string) (added []string, removed []string, err error) {
 	exLinks, err := findOutboundLinks(txn, id)
 	if err != nil {
 		log.Errorf("error while finding outbound links for %s: %s", id, err)
 	}
-	var addedLinks, removedLinks []string
 
-	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
-	if len(addedLinks) > 0 {
-		for _, k := range pageLinkKeys(id, addedLinks) {
-			err := txn.Set(k.Bytes(), nil)
+	removed, added = slice.DifferenceRemovedAdded(exLinks, links)
+	if len(added) > 0 {
+		for _, k := range pageLinkKeys(id, added) {
+			err = txn.Set(k.Bytes(), nil)
 			if err != nil {
-				return fmt.Errorf("setting link %s: %w", k, err)
+				err = fmt.Errorf("setting link %s: %w", k, err)
+				return
 			}
 		}
 	}
-	if len(removedLinks) > 0 {
-		for _, k := range pageLinkKeys(id, removedLinks) {
-			if err := txn.Delete(k.Bytes()); err != nil {
-				return err
+	if len(removed) > 0 {
+		for _, k := range pageLinkKeys(id, removed) {
+			if err = txn.Delete(k.Bytes()); err != nil {
+				return
 			}
 		}
 	}
-
-	s.RLock()
-	defer s.RUnlock()
-	if s.onLinksUpdateCallback != nil && len(addedLinks)+len(removedLinks) > 0 {
-		s.onLinksUpdateCallback(LinksUpdateInfo{
-			LinksFromId: id,
-			Added:       addedLinks,
-			Removed:     removedLinks,
-		})
-	}
-
-	return nil
+	return
 }
 
 func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
