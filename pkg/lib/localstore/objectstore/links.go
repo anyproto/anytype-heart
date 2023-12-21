@@ -9,8 +9,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type BacklinksUpdateInfo struct {
-	Id             string
+type LinksUpdateInfo struct {
+	LinksFromId    string
 	Added, Removed []string
 }
 
@@ -79,9 +79,9 @@ func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 	return links, err
 }
 
-func (s *dsObjectStore) SubscribeBacklinksUpdate(callback func(info BacklinksUpdateInfo)) {
+func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info LinksUpdateInfo)) {
 	s.Lock()
-	s.onBacklinksUpdateCallback = callback
+	s.onLinksUpdateCallback = callback
 	s.Unlock()
 }
 

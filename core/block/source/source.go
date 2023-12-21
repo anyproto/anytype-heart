@@ -21,9 +21,11 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -282,6 +284,11 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.IdentityObjectId(), s.accountService.PersonalSpaceID(), s.objectStore)
 	migration.Migrate(st)
 
+	if s.Type() == smartblock.SmartBlockTypePage {
+		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
+		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+	}
+
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
@@ -353,10 +360,10 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	if change.Snapshot != nil {
 		s.lastSnapshotId = id
 		s.changesSinceSnapshot = 0
-		log.Infof("%s: pushed snapshot", s.id)
+		log.Errorf("%s: pushed snapshot", s.id)
 	} else {
 		s.changesSinceSnapshot++
-		log.Debugf("%s: pushed %d changes", s.id, len(change.Content))
+		log.Errorf("%s: pushed %d changes", s.id, len(change.Content))
 	}
 	return
 }
