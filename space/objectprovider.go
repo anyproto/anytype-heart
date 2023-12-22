@@ -11,7 +11,7 @@ import (
 
 type bundledObjectsInstaller interface {
 	app.Component
-	InstallBundledObjects(ctx context.Context, spc Space, ids []string) ([]string, []*types.Struct, error)
+	InstallBundledObjects(ctx context.Context, spc Space, ids []string, isNewSpace bool) ([]string, []*types.Struct, error)
 }
 
 func (s *space) InstallBundledObjects(ctx context.Context) error {
@@ -22,7 +22,7 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 	for _, rk := range bundle.SystemRelations {
 		ids = append(ids, rk.BundledURL())
 	}
-	_, _, err := s.installer.InstallBundledObjects(ctx, s, ids)
+	_, _, err := s.installer.InstallBundledObjects(ctx, s, ids, true)
 	if err != nil {
 		return err
 	}
