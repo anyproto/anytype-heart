@@ -124,6 +124,10 @@ func (_m *MockSpace) CreateMandatoryObjects(ctx context.Context, space smartbloc
 		panic("no return value specified for CreateMandatoryObjects")
 	}
 
+	if len(ret) == 0 {
+		panic("no return value specified for CreateMandatoryObjects")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, smartblock.Space) error); ok {
 		r0 = rf(ctx, space)
@@ -1074,6 +1078,51 @@ func (_c *MockSpace_Id_Call) Return(_a0 string) *MockSpace_Id_Call {
 }
 
 func (_c *MockSpace_Id_Call) RunAndReturn(run func() string) *MockSpace_Id_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsPersonal provides a mock function with given fields:
+func (_m *MockSpace) IsPersonal() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsPersonal")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockSpace_IsPersonal_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsPersonal'
+type MockSpace_IsPersonal_Call struct {
+	*mock.Call
+}
+
+// IsPersonal is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) IsPersonal() *MockSpace_IsPersonal_Call {
+	return &MockSpace_IsPersonal_Call{Call: _e.mock.On("IsPersonal")}
+}
+
+func (_c *MockSpace_IsPersonal_Call) Run(run func()) *MockSpace_IsPersonal_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_IsPersonal_Call) Return(_a0 bool) *MockSpace_IsPersonal_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_IsPersonal_Call) RunAndReturn(run func() bool) *MockSpace_IsPersonal_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -19,7 +19,7 @@ const CName = "client.components.builder"
 
 type SpaceBuilder interface {
 	app.Component
-	BuildSpace(ctx context.Context, justCreated bool) (clientspace.Space, error)
+	BuildSpace(ctx context.Context) (clientspace.Space, error)
 }
 
 func New() SpaceBuilder {
@@ -68,7 +68,7 @@ func (b *spaceBuilder) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (b *spaceBuilder) BuildSpace(ctx context.Context, justCreated bool) (clientspace.Space, error) {
+func (b *spaceBuilder) BuildSpace(ctx context.Context) (clientspace.Space, error) {
 	coreSpace, err := b.spaceCore.Get(ctx, b.status.SpaceId())
 	if err != nil {
 		return nil, err
@@ -81,7 +81,6 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, justCreated bool) (client
 		AccountService:  b.accountService,
 		PersonalSpaceId: b.personalSpaceId,
 		LoadCtx:         b.ctx,
-		JustCreated:     justCreated,
 	}
 	return clientspace.BuildSpace(ctx, deps)
 }

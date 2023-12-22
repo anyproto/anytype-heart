@@ -36,14 +36,10 @@ type spaceLoader struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	space  clientspace.Space
-
-	justCreated bool
 }
 
-func New(justCreated bool) SpaceLoader {
-	return &spaceLoader{
-		justCreated: justCreated,
-	}
+func New() SpaceLoader {
+	return &spaceLoader{}
 }
 
 func (s *spaceLoader) Init(a *app.App) (err error) {
@@ -93,7 +89,7 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 	if err = s.status.SetLocalInfo(ctx, info); err != nil {
 		return
 	}
-	s.loading = s.newLoadingSpace(s.ctx, s.status.SpaceId(), s.justCreated)
+	s.loading = s.newLoadingSpace(s.ctx, s.status.SpaceId())
 	return
 }
 
@@ -133,9 +129,9 @@ func (s *spaceLoader) onLoad(spaceID string, sp clientspace.Space, loadErr error
 	})
 }
 
-func (s *spaceLoader) open(ctx context.Context, spaceId string, justCreated bool) (clientspace.Space, error) {
+func (s *spaceLoader) open(ctx context.Context, spaceId string) (clientspace.Space, error) {
 	// TODO: [MR] remove extra params
-	return s.builder.BuildSpace(ctx, s.justCreated)
+	return s.builder.BuildSpace(ctx)
 }
 
 func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
@@ -148,7 +144,11 @@ func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err e
 	case spaceinfo.LocalStatusLoading:
 		// loading in progress, wait channel and retry
 		waitCh := s.loading.loadCh
+		loadErr := s.loading.loadErr
 		s.status.Unlock()
+		if loadErr != nil {
+			return nil, loadErr
+		}
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()

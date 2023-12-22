@@ -21,7 +21,6 @@ var log = logger.NewNamed("common.space.shareablespace")
 type spaceController struct {
 	spaceId           string
 	app               *app.App
-	justCreated       bool
 	status            spacestatus.SpaceStatus
 	lastUpdatedStatus spaceinfo.AccountStatus
 
@@ -30,12 +29,10 @@ type spaceController struct {
 
 func NewSpaceController(
 	spaceId string,
-	justCreated bool,
 	status spaceinfo.AccountStatus,
 	a *app.App) (spacecontroller.SpaceController, error) {
 	s := &spaceController{
 		spaceId:           spaceId,
-		justCreated:       justCreated,
 		status:            spacestatus.New(spaceId, status),
 		lastUpdatedStatus: status,
 		app:               a,
@@ -120,9 +117,8 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 		return initial.New()
 	case mode.ModeLoading:
 		return loader.New(s.app, loader.Params{
-			JustCreated: s.justCreated,
-			SpaceId:     s.spaceId,
-			Status:      s.status,
+			SpaceId: s.spaceId,
+			Status:  s.status,
 		})
 	case mode.ModeOffloading:
 		return offloader.New(s.app, offloader.Params{

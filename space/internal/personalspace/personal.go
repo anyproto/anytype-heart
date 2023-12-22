@@ -16,25 +16,20 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-func NewSpaceController(
-	spaceId string,
-	justCreated bool,
-	a *app.App) spacecontroller.SpaceController {
+func NewSpaceController(spaceId string, a *app.App) spacecontroller.SpaceController {
 	techSpace := a.MustComponent(techspace.CName).(techspace.TechSpace)
 	spaceCore := a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
 	return &spaceController{
-		app:         a,
-		spaceId:     spaceId,
-		justCreated: justCreated,
-		techSpace:   techSpace,
-		spaceCore:   spaceCore,
+		app:       a,
+		spaceId:   spaceId,
+		techSpace: techSpace,
+		spaceCore: spaceCore,
 	}
 }
 
 type spaceController struct {
-	app         *app.App
-	spaceId     string
-	justCreated bool
+	app     *app.App
+	spaceId string
 
 	loader    loader.Loader
 	spaceCore spacecore.SpaceCoreService
@@ -91,9 +86,8 @@ func (s *spaceController) SpaceId() string {
 
 func (s *spaceController) newLoader() loader.Loader {
 	return loader.New(s.app, loader.Params{
-		JustCreated: s.justCreated,
-		SpaceId:     s.spaceId,
-		Status:      spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown),
+		SpaceId: s.spaceId,
+		Status:  spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown),
 	})
 }
 

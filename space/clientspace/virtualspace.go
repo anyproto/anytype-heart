@@ -41,6 +41,7 @@ func NewVirtualSpace(spaceId string, deps VirtualSpaceDeps) *VirtualSpace {
 			installer:              deps.Installer,
 			common:                 newVirtualCommonSpace(spaceId),
 			loadMandatoryObjectsCh: make(chan struct{}),
+			personalSpaceId:        deps.PersonalSpaceId,
 		},
 		Prefix: deps.Prefix,
 	}
@@ -62,6 +63,10 @@ func newVirtualCommonSpace(spaceId string) commonspace.Space {
 
 type virtualCommonSpace struct {
 	spaceId string
+}
+
+func (c *virtualCommonSpace) IsPersonal() bool {
+	return false
 }
 
 func (c *virtualCommonSpace) Id() string {

@@ -19,6 +19,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/internal/objectprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 type Space interface {
@@ -40,6 +41,8 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
+	IsPersonal() bool
+
 	Close(ctx context.Context) error
 }
 
@@ -59,9 +62,10 @@ type space struct {
 	objectcache.Cache
 	objectprovider.ObjectProvider
 
-	indexer    spaceIndexer
-	derivedIDs threads.DerivedSmartblockIds
-	installer  bundledObjectsInstaller
+	indexer         spaceIndexer
+	derivedIDs      threads.DerivedSmartblockIds
+	installer       bundledObjectsInstaller
+	personalSpaceId string
 
 	common commonspace.Space
 
@@ -75,9 +79,9 @@ type SpaceDeps struct {
 	CommonSpace     commonspace.Space
 	ObjectFactory   objectcache.ObjectFactory
 	AccountService  accountservice.Service
+	StorageService  storage.ClientStorage
 	PersonalSpaceId string
 	LoadCtx         context.Context
-	JustCreated     bool
 }
 
 func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
@@ -85,6 +89,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		indexer:                deps.Indexer,
 		installer:              deps.Installer,
 		common:                 deps.CommonSpace,
+		personalSpaceId:        deps.PersonalSpaceId,
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
@@ -94,10 +99,14 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 	if err != nil {
 		return nil, fmt.Errorf("derive object ids: %w", err)
 	}
-	if deps.JustCreated {
+	if deps.StorageService.IsSpaceCreated(deps.CommonSpace.Id()) {
 		err = sp.ObjectProvider.CreateMandatoryObjects(ctx, sp)
 		if err != nil {
 			return nil, fmt.Errorf("create mandatory objects: %w", err)
+		}
+		err = deps.StorageService.UnmarkSpaceCreated(deps.CommonSpace.Id())
+		if err != nil {
+			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
 	}
 	go sp.mandatoryObjectsLoad(deps.LoadCtx)
@@ -146,7 +155,6 @@ func (s *space) Storage() spacestorage.SpaceStorage {
 }
 
 func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
-	<-s.loadMandatoryObjectsCh
 	return s.derivedIDs
 }
 
@@ -183,6 +191,10 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 		return "", err
 	}
 	return s.DeriveObjectID(ctx, uk)
+}
+
+func (s *space) IsPersonal() bool {
+	return s.Id() == s.personalSpaceId
 }
 
 func (s *space) Close(ctx context.Context) error {

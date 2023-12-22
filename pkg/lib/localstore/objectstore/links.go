@@ -9,8 +9,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type BacklinksUpdateInfo struct {
-	Id             string
+type LinksUpdateInfo struct {
+	LinksFromId    string
 	Added, Removed []string
 }
 
@@ -79,9 +79,10 @@ func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 	return links, err
 }
 
-func (s *dsObjectStore) SubscribeBacklinksUpdate() <-chan BacklinksUpdateInfo {
-	s.backlinksUpdateCh = make(chan BacklinksUpdateInfo)
-	return s.backlinksUpdateCh
+func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info LinksUpdateInfo)) {
+	s.Lock()
+	s.onLinksUpdateCallback = callback
+	s.Unlock()
 }
 
 // Find to which IDs specified one has outbound links.

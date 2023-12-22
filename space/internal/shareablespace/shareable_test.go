@@ -223,7 +223,6 @@ func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 	require.NoError(t, err)
 	controller := &spaceController{
 		spaceId:           "spaceId",
-		justCreated:       false,
 		status:            s,
 		app:               &app.App{},
 		lastUpdatedStatus: startStatus,

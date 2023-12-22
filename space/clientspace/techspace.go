@@ -28,6 +28,8 @@ type TechSpaceDeps struct {
 	TechSpace       techspace.TechSpace
 }
 
+// TODO: cover space methods
+
 func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 	sp := &TechSpace{
 		space: &space{
@@ -35,6 +37,7 @@ func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 			installer:              deps.Installer,
 			common:                 deps.CommonSpace,
 			loadMandatoryObjectsCh: make(chan struct{}),
+			personalSpaceId:        deps.PersonalSpaceId,
 		},
 		TechSpace: deps.TechSpace,
 	}

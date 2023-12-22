@@ -36,7 +36,7 @@ const (
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 61
+	ForceIdxRebuildCounter int32 = 62
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
@@ -327,23 +327,20 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 			err = nil
 			log.Errorf("reindex failed to removeOldObjects: %v", err)
 		}
-		ids, err := i.store.ListIdsBySpace(spaceId)
+		var ids []string
+		ids, err = i.store.ListIdsBySpace(spaceId)
 		if err != nil {
 			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 		}
 		for _, id := range ids {
-			err = i.store.DeleteDetails(id)
-			if err != nil {
-				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
+			if err = i.store.DeleteLinks(id); err != nil {
+				log.Errorf("reindex failed to delete links(removeAllIndexedObjects): %v", err)
 			}
 		}
-	}
-	if flags.eraseIndexes {
-		err = i.store.EraseIndexes(spaceId)
-		if err != nil {
-			log.Errorf("reindex failed to erase indexes: %v", err)
-		} else {
-			log.Infof("all store indexes successfully erased")
+		for _, id := range ids {
+			if err = i.store.DeleteDetails(id); err != nil {
+				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
+			}
 		}
 	}
 	return

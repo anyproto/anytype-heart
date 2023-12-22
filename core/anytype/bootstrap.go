@@ -185,6 +185,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientds.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
+		Register(backlinks.New()).
 		// Services
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
@@ -253,8 +254,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(profiler.New()).
 		Register(identity.New()).
 		Register(templateservice.New()).
-		Register(notifications.New()).
-		Register(backlinks.New())
+		Register(notifications.New())
 }
 
 func MiddlewareVersion() string {

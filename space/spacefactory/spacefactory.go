@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -40,6 +41,7 @@ type spaceFactory struct {
 	objectFactory   objectcache.ObjectFactory
 	indexer         dependencies.SpaceIndexer
 	installer       dependencies.BundledObjectsInstaller
+	storageService  storage.ClientStorage
 	personalSpaceId string
 }
 
@@ -54,6 +56,7 @@ func (s *spaceFactory) Init(a *app.App) (err error) {
 	s.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
 	s.indexer = app.MustComponent[dependencies.SpaceIndexer](a)
 	s.installer = app.MustComponent[dependencies.BundledObjectsInstaller](a)
+	s.storageService = app.MustComponent[storage.ClientStorage](a)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	if err != nil {
 		return
@@ -66,13 +69,17 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context) (sp spacecontrol
 	if err != nil {
 		return
 	}
+	err = s.storageService.MarkSpaceCreated(coreSpace.Id())
+	if err != nil {
+		return
+	}
 	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true); err != nil {
 		if errors.Is(err, techspace.ErrSpaceViewExists) {
 			return s.NewPersonalSpace(ctx)
 		}
 		return nil, err
 	}
-	ctrl := personalspace.NewSpaceController(coreSpace.Id(), true, s.app)
+	ctrl := personalspace.NewSpaceController(coreSpace.Id(), s.app)
 	err = ctrl.Start(ctx)
 	return ctrl, err
 }
@@ -82,7 +89,7 @@ func (s *spaceFactory) NewPersonalSpace(ctx context.Context) (ctrl spacecontroll
 	if err != nil {
 		return nil, err
 	}
-	ctrl = personalspace.NewSpaceController(coreSpace.Id(), false, s.app)
+	ctrl = personalspace.NewSpaceController(coreSpace.Id(), s.app)
 	err = ctrl.Start(ctx)
 	return ctrl, err
 }
@@ -115,7 +122,7 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 }
 
 func (s *spaceFactory) NewShareableSpace(ctx context.Context, id string, status spaceinfo.AccountStatus) (spacecontroller.SpaceController, error) {
-	ctrl, err := shareablespace.NewSpaceController(id, false, status, s.app)
+	ctrl, err := shareablespace.NewSpaceController(id, status, s.app)
 	if err != nil {
 		return nil, err
 	}
@@ -124,10 +131,14 @@ func (s *spaceFactory) NewShareableSpace(ctx context.Context, id string, status 
 }
 
 func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error) {
+	err = s.storageService.MarkSpaceCreated(id)
+	if err != nil {
+		return
+	}
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true); err != nil {
 		return nil, err
 	}
-	ctrl, err := shareablespace.NewSpaceController(id, true, spaceinfo.AccountStatusUnknown, s.app)
+	ctrl, err := shareablespace.NewSpaceController(id, spaceinfo.AccountStatusUnknown, s.app)
 	if err != nil {
 		return nil, err
 	}
