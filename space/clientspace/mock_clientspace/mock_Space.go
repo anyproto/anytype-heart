@@ -124,10 +124,6 @@ func (_m *MockSpace) CreateMandatoryObjects(ctx context.Context, space smartbloc
 		panic("no return value specified for CreateMandatoryObjects")
 	}
 
-	if len(ret) == 0 {
-		panic("no return value specified for CreateMandatoryObjects")
-	}
-
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, smartblock.Space) error); ok {
 		r0 = rf(ctx, space)

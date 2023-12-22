@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -231,10 +232,11 @@ func (s *service) Close(ctx context.Context) error {
 func (s *service) allIDs() (ids []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for id := range s.spaceControllers {
-		if id != addr.AnytypeMarketplaceWorkspace {
-			ids = append(ids, id)
+	for id, sc := range s.spaceControllers {
+		if id == addr.AnytypeMarketplaceWorkspace || sc.Mode() != mode.ModeLoading {
+			continue
 		}
+		ids = append(ids, id)
 	}
 	return
 }

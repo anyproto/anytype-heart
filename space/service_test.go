@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller/mock_spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/internal/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory/mock_spacefactory"
@@ -39,7 +40,6 @@ func TestService_Init(t *testing.T) {
 		fx := newFixture(t, true)
 		defer fx.finish(t)
 	})
-
 }
 
 func newFixture(t *testing.T, newAccount bool) *fixture {
@@ -110,6 +110,7 @@ func (fx *fixture) expectRun(t *testing.T, newAccount bool) {
 		lw := lwMock{clientSpace}
 		prCtrl.EXPECT().Current().Return(lw)
 	}
+	prCtrl.EXPECT().Mode().Return(mode.ModeLoading)
 	ts.EXPECT().Close(mock.Anything).Return(nil)
 	mpCtrl.EXPECT().Close(mock.Anything).Return(nil)
 	prCtrl.EXPECT().Close(mock.Anything).Return(nil)

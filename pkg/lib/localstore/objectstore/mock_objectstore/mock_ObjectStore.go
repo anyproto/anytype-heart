@@ -19,8 +19,6 @@ import (
 
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
-	objectstore "github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
 
 	relationutils "github.com/anyproto/anytype-heart/core/relationutils"
@@ -239,6 +237,65 @@ func (_c *MockObjectStore_DeleteDetails_Call) RunAndReturn(run func(...string) e
 	return _c
 }
 
+// DeleteLinks provides a mock function with given fields: id
+func (_m *MockObjectStore) DeleteLinks(id ...string) error {
+	_va := make([]interface{}, len(id))
+	for _i := range id {
+		_va[_i] = id[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteLinks")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(...string) error); ok {
+		r0 = rf(id...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_DeleteLinks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteLinks'
+type MockObjectStore_DeleteLinks_Call struct {
+	*mock.Call
+}
+
+// DeleteLinks is a helper method to define mock.On call
+//   - id ...string
+func (_e *MockObjectStore_Expecter) DeleteLinks(id ...interface{}) *MockObjectStore_DeleteLinks_Call {
+	return &MockObjectStore_DeleteLinks_Call{Call: _e.mock.On("DeleteLinks",
+		append([]interface{}{}, id...)...)}
+}
+
+func (_c *MockObjectStore_DeleteLinks_Call) Run(run func(id ...string)) *MockObjectStore_DeleteLinks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_DeleteLinks_Call) Return(_a0 error) *MockObjectStore_DeleteLinks_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_DeleteLinks_Call) RunAndReturn(run func(...string) error) *MockObjectStore_DeleteLinks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteObject provides a mock function with given fields: id
 func (_m *MockObjectStore) DeleteObject(id string) error {
 	ret := _m.Called(id)
@@ -327,52 +384,6 @@ func (_c *MockObjectStore_DeleteVirtualSpace_Call) Return(_a0 error) *MockObject
 }
 
 func (_c *MockObjectStore_DeleteVirtualSpace_Call) RunAndReturn(run func(string) error) *MockObjectStore_DeleteVirtualSpace_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// EraseIndexes provides a mock function with given fields: spaceId
-func (_m *MockObjectStore) EraseIndexes(spaceId string) error {
-	ret := _m.Called(spaceId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for EraseIndexes")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(spaceId)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockObjectStore_EraseIndexes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EraseIndexes'
-type MockObjectStore_EraseIndexes_Call struct {
-	*mock.Call
-}
-
-// EraseIndexes is a helper method to define mock.On call
-//   - spaceId string
-func (_e *MockObjectStore_Expecter) EraseIndexes(spaceId interface{}) *MockObjectStore_EraseIndexes_Call {
-	return &MockObjectStore_EraseIndexes_Call{Call: _e.mock.On("EraseIndexes", spaceId)}
-}
-
-func (_c *MockObjectStore_EraseIndexes_Call) Run(run func(spaceId string)) *MockObjectStore_EraseIndexes_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_EraseIndexes_Call) Return(_a0 error) *MockObjectStore_EraseIndexes_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockObjectStore_EraseIndexes_Call) RunAndReturn(run func(string) error) *MockObjectStore_EraseIndexes_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2617,53 +2628,6 @@ func (_c *MockObjectStore_SaveVirtualSpace_Call) Return(_a0 error) *MockObjectSt
 }
 
 func (_c *MockObjectStore_SaveVirtualSpace_Call) RunAndReturn(run func(string) error) *MockObjectStore_SaveVirtualSpace_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SubscribeBacklinksUpdate provides a mock function with given fields:
-func (_m *MockObjectStore) SubscribeBacklinksUpdate() <-chan objectstore.BacklinksUpdateInfo {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for SubscribeBacklinksUpdate")
-	}
-
-	var r0 <-chan objectstore.BacklinksUpdateInfo
-	if rf, ok := ret.Get(0).(func() <-chan objectstore.BacklinksUpdateInfo); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan objectstore.BacklinksUpdateInfo)
-		}
-	}
-
-	return r0
-}
-
-// MockObjectStore_SubscribeBacklinksUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeBacklinksUpdate'
-type MockObjectStore_SubscribeBacklinksUpdate_Call struct {
-	*mock.Call
-}
-
-// SubscribeBacklinksUpdate is a helper method to define mock.On call
-func (_e *MockObjectStore_Expecter) SubscribeBacklinksUpdate() *MockObjectStore_SubscribeBacklinksUpdate_Call {
-	return &MockObjectStore_SubscribeBacklinksUpdate_Call{Call: _e.mock.On("SubscribeBacklinksUpdate")}
-}
-
-func (_c *MockObjectStore_SubscribeBacklinksUpdate_Call) Run(run func()) *MockObjectStore_SubscribeBacklinksUpdate_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_SubscribeBacklinksUpdate_Call) Return(_a0 <-chan objectstore.BacklinksUpdateInfo) *MockObjectStore_SubscribeBacklinksUpdate_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockObjectStore_SubscribeBacklinksUpdate_Call) RunAndReturn(run func() <-chan objectstore.BacklinksUpdateInfo) *MockObjectStore_SubscribeBacklinksUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }
