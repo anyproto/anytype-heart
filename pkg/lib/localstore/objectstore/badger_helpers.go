@@ -77,7 +77,7 @@ func iterateKeysByPrefixTx(txn *badger.Txn, prefix []byte, processKeyFn func(key
 	defer iter.Close()
 
 	for iter.Rewind(); iter.Valid(); iter.Next() {
-		key := iter.Item().Key()
+		key := iter.Item().KeyCopy(nil)
 		processKeyFn(key)
 	}
 	return nil
