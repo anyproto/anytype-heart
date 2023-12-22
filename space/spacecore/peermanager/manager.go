@@ -45,6 +45,7 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
+	go n.manageResponsiblePeers()
 	return
 }
 
