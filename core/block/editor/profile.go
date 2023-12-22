@@ -74,6 +74,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
+		//Version: 4,
 		Version: 3,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
@@ -84,6 +85,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 				template.WithRequiredRelations(),
 				migrationWithIdentityBlock,
 				migrationSetHidden,
+				//migrationWithBacklinks,
 			)
 		},
 	}
@@ -113,6 +115,11 @@ func migrationWithIdentityBlock(st *state.State) {
 	st.InsertTo(state.TitleBlockID, model.Block_Bottom, blockId)
 }
 
+func migrationWithBacklinks(st *state.State) {
+	template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
+	template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+}
+
 func (p *Profile) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{
 		{
@@ -123,6 +130,10 @@ func (p *Profile) StateMigrations() migration.Migrations {
 			Version: 3,
 			Proc:    migrationSetHidden,
 		},
+		//{
+		//	Version: 4,
+		//	Proc:    migrationWithBacklinks,
+		//},
 	})
 }
 
