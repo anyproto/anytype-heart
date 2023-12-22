@@ -80,6 +80,7 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context) (clientspace.Space, error
 		ObjectFactory:   b.objectFactory,
 		AccountService:  b.accountService,
 		PersonalSpaceId: b.personalSpaceId,
+		StorageService:  b.storageService,
 		LoadCtx:         b.ctx,
 	}
 	return clientspace.BuildSpace(ctx, deps)
