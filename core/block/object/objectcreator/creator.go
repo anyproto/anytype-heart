@@ -43,7 +43,7 @@ type Service interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 
-	InstallBundledObjects(ctx context.Context, space space.Space, sourceObjectIds []string) (ids []string, objects []*types.Struct, err error)
+	InstallBundledObjects(ctx context.Context, space space.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
 	app.Component
 }
 
@@ -142,11 +142,11 @@ func (s *service) CreateSmartBlockFromStateInSpace(
 	id = sb.Id()
 
 	if sbType == coresb.SmartBlockTypeObjectType && pbtypes.GetInt64(newDetails, bundle.RelationKeyLastUsedDate.String()) == 0 {
-		objecttype.UpdateLastUsedDate(spc, s.objectStore, []domain.TypeKey{
-			domain.TypeKey(strings.TrimPrefix(pbtypes.GetString(newDetails, bundle.RelationKeyUniqueKey.String()), addr.ObjectTypeKeyToIdPrefix)),
-		})
+		objecttype.UpdateLastUsedDate(spc, s.objectStore, domain.TypeKey(
+			strings.TrimPrefix(pbtypes.GetString(newDetails, bundle.RelationKeyUniqueKey.String()), addr.ObjectTypeKeyToIdPrefix)),
+		)
 	} else if pbtypes.GetInt64(newDetails, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys)
+		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys[0])
 	}
 
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs

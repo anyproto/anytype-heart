@@ -25,6 +25,7 @@ func (s *service) InstallBundledObjects(
 	ctx context.Context,
 	space space.Space,
 	sourceObjectIds []string,
+	isNewSpace bool,
 ) (ids []string, objects []*types.Struct, err error) {
 
 	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
@@ -46,7 +47,7 @@ func (s *service) InstallBundledObjects(
 		if _, ok := existingObjectMap[sourceObjectId]; ok {
 			continue
 		}
-		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, sourceObjectId, space)
+		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, sourceObjectId, space, isNewSpace)
 		if err != nil {
 			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
 		}
@@ -146,7 +147,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace space
 	for _, rec := range uninstalledObjects {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		sourceObjectId := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
-		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space)
+		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
 		}
@@ -177,7 +178,13 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace space
 	return ids, objects, nil
 }
 
-func (s *service) prepareDetailsForInstallingObject(ctx context.Context, sourceSpace space.Space, sourceObjectId string, spc space.Space) (*types.Struct, error) {
+func (s *service) prepareDetailsForInstallingObject(
+	ctx context.Context,
+	sourceSpace space.Space,
+	sourceObjectId string,
+	spc space.Space,
+	isNewSpace bool,
+) (*types.Struct, error) {
 	var details *types.Struct
 	err := sourceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
 		details = b.CombinedDetails()
@@ -193,7 +200,9 @@ func (s *service) prepareDetailsForInstallingObject(ctx context.Context, sourceS
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
-	objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
+	if isNewSpace {
+		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
+	}
 
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	if len(bundledRelationIds) > 0 {
