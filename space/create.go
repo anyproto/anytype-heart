@@ -7,10 +7,10 @@ import (
 )
 
 func (s *service) create(ctx context.Context, coreSpace *spacecore.AnySpace) (Space, error) {
-	s.mu.Lock()
-	s.createdSpaces[coreSpace.Id()] = struct{}{}
-	s.mu.Unlock()
-
+	err := s.storageService.MarkSpaceCreated(coreSpace.Id())
+	if err != nil {
+		return nil, err
+	}
 	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true); err != nil {
 		return nil, err
 	}

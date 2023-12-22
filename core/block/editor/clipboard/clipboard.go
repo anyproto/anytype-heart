@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/anyproto/anytype-heart/util/strutil"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -570,7 +569,7 @@ func renderText(s *state.State) string {
 	texts, _ = renderBlock(s, texts, s.RootId(), -1, 0)
 
 	if len(texts) > 0 {
-		return strutil.JoinWithTrailingEnd(texts, "\n")
+		return strings.Join(texts, "\n")
 	}
 
 	return ""

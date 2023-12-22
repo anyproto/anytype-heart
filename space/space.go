@@ -37,6 +37,8 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
+	IsPersonal() bool
+
 	Close(ctx context.Context) error
 }
 
@@ -54,7 +56,7 @@ type space struct {
 	loadMandatoryObjectsErr error
 }
 
-func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, justCreated bool) (*space, error) {
+func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (*space, error) {
 	sp := &space{
 		service:                s,
 		Space:                  coreSpace,
@@ -68,10 +70,14 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, j
 	if err != nil {
 		return nil, fmt.Errorf("derive object ids: %w", err)
 	}
-	if justCreated {
+	if s.storageService.IsSpaceCreated(coreSpace.Id()) {
 		err = sp.ObjectProvider.CreateMandatoryObjects(ctx, sp)
 		if err != nil {
 			return nil, fmt.Errorf("create mandatory objects: %w", err)
+		}
+		err = s.storageService.UnmarkSpaceCreated(coreSpace.Id())
+		if err != nil {
+			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
 	}
 	go sp.mandatoryObjectsLoad(s.ctx)
@@ -96,7 +102,6 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 }
 
 func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
-	<-s.loadMandatoryObjectsCh
 	return s.derivedIDs
 }
 
@@ -133,6 +138,10 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 		return "", err
 	}
 	return s.DeriveObjectID(ctx, uk)
+}
+
+func (s *space) IsPersonal() bool {
+	return s.service.IsPersonal(s.Id())
 }
 
 func (s *space) Close(ctx context.Context) error {
