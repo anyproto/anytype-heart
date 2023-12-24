@@ -13,13 +13,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var revisionKey = bundle.RelationKeyRevision.String()
 
-func (s *service) reviseSystemObjects(space space.Space, objects map[string]*types.Struct) {
+func (s *service) reviseSystemObjects(space clientspace.Space, objects map[string]*types.Struct) {
 	marketObjects, err := s.listAllTypesAndRelations(addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		log.Errorf("failed to get relations from marketplace space: %v", err)
@@ -58,7 +58,7 @@ func (s *service) listAllTypesAndRelations(spaceId string) (map[string]*types.St
 	return details, nil
 }
 
-func reviseSystemObject(space space.Space, localObject *types.Struct, marketObjects map[string]*types.Struct) {
+func reviseSystemObject(space clientspace.Space, localObject *types.Struct, marketObjects map[string]*types.Struct) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) < pbtypes.GetInt64(localObject, revisionKey) {
