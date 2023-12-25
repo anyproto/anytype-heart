@@ -30,6 +30,9 @@ type AccountStatus int
 const (
 	AccountStatusUnknown = AccountStatus(model.SpaceStatus_Unknown)
 	AccountStatusDeleted = AccountStatus(model.SpaceStatus_SpaceDeleted)
+	// TODO: [MR] generate
+	AccountStatusInviting = AccountStatus(8)
+	AccountStatusLoading  = AccountStatus(9)
 )
 
 type SpaceLocalInfo struct {

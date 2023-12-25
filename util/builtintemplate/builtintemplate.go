@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -40,7 +40,7 @@ func New() BuiltinTemplate {
 
 type BuiltinTemplate interface {
 	Hash() string
-	RegisterBuiltinTemplates(space space.Space) error
+	RegisterBuiltinTemplates(space clientspace.Space) error
 	app.Component
 }
 
@@ -69,7 +69,7 @@ func (b *builtinTemplate) Name() (name string) {
 	return CName
 }
 
-func (b *builtinTemplate) RegisterBuiltinTemplates(space space.Space) error {
+func (b *builtinTemplate) RegisterBuiltinTemplates(space clientspace.Space) error {
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))
 	if err != nil {
 		return fmt.Errorf("new reader: %w", err)
@@ -90,7 +90,7 @@ func (b *builtinTemplate) Hash() string {
 	return b.generatedHash
 }
 
-func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (err error) {
+func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadCloser) (err error) {
 	defer rd.Close()
 	data, err := io.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}

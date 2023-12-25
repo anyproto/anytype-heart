@@ -17,13 +17,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) InstallBundledObjects(
 	ctx context.Context,
-	space space.Space,
+	space clientspace.Space,
 	sourceObjectIds []string,
 	isNewSpace bool,
 ) (ids []string, objects []*types.Struct, err error) {
@@ -65,7 +65,7 @@ func (s *service) InstallBundledObjects(
 	return
 }
 
-func (s *service) installObject(ctx context.Context, space space.Space, installingDetails *types.Struct) (id string, newDetails *types.Struct, err error) {
+func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *types.Struct) (id string, newDetails *types.Struct, err error) {
 	uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(installingDetails, bundle.RelationKeyUniqueKey.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal unique key: %w", err)
@@ -91,7 +91,7 @@ func (s *service) installObject(ctx context.Context, space space.Space, installi
 	return id, newDetails, nil
 }
 
-func (s *service) listInstalledObjects(space space.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
+func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
 	existingObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -116,7 +116,7 @@ func (s *service) listInstalledObjects(space space.Space, sourceObjectIds []stri
 	return existingObjectMap, nil
 }
 
-func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace space.Space, space space.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
+func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clientspace.Space, space clientspace.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
 	uninstalledObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -180,9 +180,9 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace space
 
 func (s *service) prepareDetailsForInstallingObject(
 	ctx context.Context,
-	sourceSpace space.Space,
+	sourceSpace clientspace.Space,
 	sourceObjectId string,
-	spc space.Space,
+	spc clientspace.Space,
 	isNewSpace bool,
 ) (*types.Struct, error) {
 	var details *types.Struct

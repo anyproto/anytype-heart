@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -45,7 +46,7 @@ type Service interface {
 	ObjectApplyTemplate(contextId string, templateId string) error
 	TemplateCreateFromObject(ctx context.Context, id string) (templateId string, err error)
 
-	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
+	TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
 	TemplateClone(spaceId string, id string) (templateId string, err error)
 
 	TemplateExportAll(ctx context.Context, path string) (string, error)
@@ -208,7 +209,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 	return
 }
 
-func (s *service) TemplateCloneInSpace(space space.Space, id string) (templateId string, err error) {
+func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error) {
 	var (
 		st             *state.State
 		objectTypeKeys []domain.TypeKey
@@ -249,7 +250,7 @@ func (s *service) TemplateCloneInSpace(space space.Space, id string) (templateId
 }
 
 func (s *service) TemplateClone(spaceId string, id string) (templateId string, err error) {
-	var spaceObject space.Space
+	var spaceObject clientspace.Space
 	spaceObject, err = s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return "", fmt.Errorf("get space: %w", err)

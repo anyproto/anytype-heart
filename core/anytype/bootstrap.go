@@ -79,6 +79,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacefactory"
+	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -209,13 +211,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(filesync.New()).
-		Register(space.NewVirtualSpaceService()).
+		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
 		Register(source.New()).
+		Register(spacefactory.New()).
 		Register(space.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
