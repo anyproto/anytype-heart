@@ -18,7 +18,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -40,7 +40,7 @@ func (s *service) CreateSmartBlockFromState(
 }
 
 func (s *service) createSmartBlockFromStateInSpace(
-	ctx context.Context, spc space.Space, objectTypeKeys []domain.TypeKey, createState *state.State,
+	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State,
 ) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
@@ -118,7 +118,7 @@ func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlock
 }
 
 func createSmartBlock(
-	ctx context.Context, spc space.Space, initFunc objectcache.InitFunc, st *state.State, sbType coresb.SmartBlockType,
+	ctx context.Context, spc clientspace.Space, initFunc objectcache.InitFunc, st *state.State, sbType coresb.SmartBlockType,
 ) (smartblock.SmartBlock, error) {
 	if uKey := st.UniqueKeyInternal(); uKey != "" {
 		uk, err := domain.NewUniqueKey(sbType, uKey)
