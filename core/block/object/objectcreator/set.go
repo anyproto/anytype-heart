@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) CreateSet(ctx context.Context, space space.Space, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
+func (s *service) createSet(ctx context.Context, space space.Space, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	dvContent, err := dataview.BlockBySource(s.objectStore, req.Source)
@@ -47,5 +47,5 @@ func (s *service) CreateSet(ctx context.Context, space space.Space, req *pb.RpcO
 
 	template.InitTemplate(newState, tmpls...)
 
-	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeySet}, newState)
+	return s.createSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeySet}, newState)
 }

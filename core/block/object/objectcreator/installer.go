@@ -79,7 +79,7 @@ func (s *service) installObject(ctx context.Context, space space.Space, installi
 		return "", nil, fmt.Errorf("unsupported object type: %s", uk.SmartblockType())
 	}
 
-	id, newDetails, err = s.CreateObjectInSpace(ctx, space, CreateObjectRequest{
+	id, newDetails, err = s.createObjectInSpace(ctx, space, CreateObjectRequest{
 		Details:       installingDetails,
 		ObjectTypeKey: objectTypeKey,
 	})

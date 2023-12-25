@@ -31,8 +31,9 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		Details:       req.Details,
 		InternalFlags: req.InternalFlags,
 		TemplateId:    req.TemplateId,
+		UniqueKey:     req.ObjectTypeUniqueKey,
 	}
-	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
+	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)

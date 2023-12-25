@@ -241,7 +241,7 @@ func (s *service) TemplateCloneInSpace(space space.Space, id string) (templateId
 	}); err != nil {
 		return
 	}
-	templateId, _, err = s.creator.CreateSmartBlockFromStateInSpace(context.Background(), space, objectTypeKeys, st)
+	templateId, _, err = s.creator.CreateSmartBlockFromState(context.Background(), space.Id(), objectTypeKeys, st)
 	if err != nil {
 		return
 	}
