@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -370,6 +371,8 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 func (h *MD) FileHashes() []string {
 	return h.fileHashes
 }
+
+func (h *MD) SetFileKeys(fileKeys *files.FileKeys) {}
 
 func (h *MD) ImageHashes() []string {
 	return h.imageHashes

@@ -25,6 +25,7 @@ type AddOptions struct {
 	LastModifiedDate int64
 	Plaintext        bool
 	Origin           model.ObjectOrigin
+	FileKeys         map[string]string
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -48,6 +49,12 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 func WithOrigin(origin model.ObjectOrigin) AddOption {
 	return func(args *AddOptions) {
 		args.Origin = origin
+	}
+}
+
+func WithFileKeys(FileKeys map[string]string) AddOption {
+	return func(args *AddOptions) {
+		args.FileKeys = FileKeys
 	}
 }
 

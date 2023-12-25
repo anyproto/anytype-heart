@@ -43,6 +43,7 @@ func initializeProviders(objectStore objectstore.ObjectStore, p *Provider, space
 	p.idProviderBySmartBlockType[sb.SmartBlockTypePage] = treeObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
+	p.idProviderBySmartBlockType[sb.SmartBlockTypeFile] = newSkipObject()
 }
 
 func (p *Provider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {

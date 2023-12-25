@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -70,9 +71,23 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesID
 			handleMarkdownTest(oldIDtoNew, block, st, filesIDs)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
+		case file.Block:
+			handleFileBlock(block, oldIDtoNew, st)
 		}
 		return true
 	})
+}
+
+func handleFileBlock(block file.Block, oldIDtoNew map[string]string, st *state.State) {
+	newTarget := oldIDtoNew[block.Model().GetFile().GetHash()]
+	if newTarget == "" {
+		log.Errorf("failed to find bookmark object")
+		return
+	}
+
+	block.Model().GetFile().Hash = newTarget
+	st.Set(simple.New(block.Model()))
+	// TODO update file keys
 }
 
 func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {

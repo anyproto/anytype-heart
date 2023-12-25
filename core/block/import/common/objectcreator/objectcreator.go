@@ -110,6 +110,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	if sn.SbType == coresb.SmartBlockTypeWidget {
 		return oc.updateWidgetObject(st)
 	}
+
 	// TODO Fix this
 	// converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
