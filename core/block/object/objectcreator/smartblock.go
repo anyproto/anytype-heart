@@ -2,11 +2,11 @@ package objectcreator
 
 import (
 	"context"
-	"slices"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
