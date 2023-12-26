@@ -638,12 +638,6 @@ func (e *export) processObject(object database.Record, derivedObjects []database
 		return nil, err
 	}
 	derivedObjects = append(derivedObjects, database.Record{Details: objectTypeDetails.Details})
-
-	templates, err := e.getTemplates(pbtypes.GetString(objectTypeDetails.Details, bundle.RelationKeyId.String()))
-	if err != nil {
-		return nil, err
-	}
-	derivedObjects = append(derivedObjects, templates...)
 	return derivedObjects, nil
 }
 
@@ -756,30 +750,4 @@ func (e *export) getFilterForStringOption(value *types.Value, filter *model.Bloc
 		Value:       pbtypes.String(id),
 	}
 	return filter
-}
-
-func (e *export) getTemplates(id string) ([]database.Record, error) {
-	templates, _, err := e.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(id),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	return templates, nil
 }
