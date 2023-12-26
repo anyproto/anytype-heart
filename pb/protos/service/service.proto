@@ -167,6 +167,7 @@ service ClientCommands {
     rpc BlockSetFields (anytype.Rpc.Block.SetFields.Request) returns (anytype.Rpc.Block.SetFields.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);
     rpc BlockSetCarriage (anytype.Rpc.Block.SetCarriage.Request) returns (anytype.Rpc.Block.SetCarriage.Response);
+    rpc BlockPreview (anytype.Rpc.Block.Preview.Request) returns (anytype.Rpc.Block.Preview.Response);
 
 
     rpc BlockListDelete (anytype.Rpc.Block.ListDelete.Request) returns (anytype.Rpc.Block.ListDelete.Response);
