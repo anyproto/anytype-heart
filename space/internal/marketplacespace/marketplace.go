@@ -40,7 +40,8 @@ func (s *spaceController) Start(ctx context.Context) (err error) {
 			PersonalSpaceId: s.personalSpaceId,
 			Indexer:         app.MustComponent[dependencies.SpaceIndexer](s.app),
 			Installer:       app.MustComponent[dependencies.BundledObjectsInstaller](s.app),
-			Prefix:          addr.BundledRelationURLPrefix,
+			TypePrefix:      addr.BundledObjectTypeURLPrefix,
+			RelationPrefix:  addr.BundledRelationURLPrefix,
 		})
 	vsService := app.MustComponent[virtualspaceservice.VirtualSpaceService](s.app)
 	bsService := app.MustComponent[dependencies.BuiltinTemplateService](s.app)
