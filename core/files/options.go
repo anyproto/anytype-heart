@@ -52,9 +52,9 @@ func WithOrigin(origin model.ObjectOrigin) AddOption {
 	}
 }
 
-func WithFileKeys(FileKeys map[string]string) AddOption {
+func WithFileKeys(fileKeys map[string]string) AddOption {
 	return func(args *AddOptions) {
-		args.FileKeys = FileKeys
+		args.FileKeys = fileKeys
 	}
 }
 

@@ -120,13 +120,7 @@ var ValidContentLinkNames = []string{"content"}
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
 func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) (string, *storage.FileInfo, error) {
-	var key string
-	if len(opts.FileKeys) > 0 {
-		for _, fileKey := range opts.FileKeys {
-			key = fileKey
-			break
-		}
-	}
+	key := s.getFileKeyForFile(opts)
 	fileInfo, err := s.fileAddWithConfig(ctx, spaceID, &m.Blob{}, opts, key)
 	if err != nil {
 		return "", nil, err
@@ -159,6 +153,17 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
 	}
 	return nodeHash, fileInfo, nil
+}
+
+func (s *service) getFileKeyForFile(opts AddOptions) string {
+	var key string
+	if len(opts.FileKeys) > 0 {
+		for _, fileKey := range opts.FileKeys {
+			key = fileKey
+			break
+		}
+	}
+	return key
 }
 
 func (s *service) storeFileSize(spaceId string, hash string) error {
@@ -624,25 +629,10 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 		encryptor     symmetric.EncryptorDecryptor
 	)
 	if mill.Encrypt() && !conf.Plaintext {
-		key, err := symmetric.NewRandom()
+		encryptor, contentReader, err = s.encryptFile(fileKey, res, fileInfo)
 		if err != nil {
 			return nil, err
 		}
-		if fileKey != "" {
-			key, err = symmetric.FromString(fileKey)
-			if err != nil {
-				return nil, err
-			}
-		}
-		encryptor = cfb.New(key, [aes.BlockSize]byte{})
-
-		contentReader, err = encryptor.EncryptReader(res.File)
-		if err != nil {
-			return nil, err
-		}
-
-		fileInfo.Key = key.String()
-		fileInfo.EncMode = storage.FileInfo_AES_CFB
 	} else {
 		contentReader = res.File
 	}
@@ -681,6 +671,42 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 	}
 
 	return fileInfo, nil
+}
+
+func (s *service) encryptFile(fileKey string, res *m.Result, fileInfo *storage.FileInfo) (symmetric.EncryptorDecryptor, io.Reader, error) {
+	var (
+		contentReader io.Reader
+		encryptor     symmetric.EncryptorDecryptor
+	)
+
+	key, err := s.getEncryptionKey(fileKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	encryptor = cfb.New(key, [aes.BlockSize]byte{})
+
+	contentReader, err = encryptor.EncryptReader(res.File)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fileInfo.Key = key.String()
+	fileInfo.EncMode = storage.FileInfo_AES_CFB
+	return encryptor, contentReader, nil
+}
+
+func (s *service) getEncryptionKey(fileKey string) (symmetric.Key, error) {
+	key, err := symmetric.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+	if fileKey != "" {
+		key, err = symmetric.FromString(fileKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return key, nil
 }
 
 // fileNode has structure:
@@ -766,15 +792,7 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, option
 			if err != nil {
 				return nil, err
 			}
-			var key string
-			if len(options.FileKeys) > 0 {
-				for name, fileKeys := range options.FileKeys {
-					if strings.Contains(name, step.Name) {
-						key = fileKeys
-						break
-					}
-				}
-			}
+			key := s.getFileKeyForImage(options, step)
 			var opts *AddOptions
 			if step.Link.Use == schema.FileTag {
 				opts = &AddOptions{
@@ -813,13 +831,29 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, option
 				return nil, err
 			}
 			dir.Files[step.Name] = added
-			options.Reader.Seek(0, 0)
+			_, err = options.Reader.Seek(0, 0)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		return nil, schema.ErrEmptySchema
 	}
 
 	return dir, nil
+}
+
+func (s *service) getFileKeyForImage(options AddOptions, step storage.Step) string {
+	var key string
+	if len(options.FileKeys) > 0 {
+		for name, fileKeys := range options.FileKeys {
+			if strings.Contains(name, step.Name) {
+				key = fileKeys
+				break
+			}
+		}
+	}
+	return key
 }
 
 func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfExists bool) ([]*storage.FileInfo, error) {

@@ -87,7 +87,6 @@ func handleFileBlock(block file.Block, oldIDtoNew map[string]string, st *state.S
 
 	block.Model().GetFile().Hash = newTarget
 	st.Set(simple.New(block.Model()))
-	// TODO update file keys
 }
 
 func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {

@@ -84,6 +84,10 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	var err error
 	newID := oldIDtoNew[sn.Id]
+
+	if sn.SbType == coresb.SmartBlockTypeFile {
+		return nil, newID, nil
+	}
 	oc.setRootBlock(snapshot, newID)
 
 	oc.injectImportDetails(sn, origin, spaceID)
@@ -97,6 +101,9 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	}()
 
 	common.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
+
+	// this function is needed to support old use cases
+	oc.setFileImportedFlagAndOrigin(st, origin, oldIDtoNew)
 
 	if err = common.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
@@ -119,7 +126,6 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		}
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
-	oc.setFileImportedFlagAndOrigin(st, origin)
 	typeKeys := st.ObjectTypeKeys()
 	if sn.SbType == coresb.SmartBlockTypeObjectType {
 		// we widen typeKeys here to install bundled templates for imported object type
@@ -491,7 +497,7 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
 }
 
-func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin model.ObjectOrigin) {
+func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin model.ObjectOrigin, oldToNew map[string]string) {
 	var fileHashes []string
 	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if fh, ok := bl.(simple.FileHashes); ok {
@@ -504,6 +510,10 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin mo
 	}
 
 	for _, hash := range fileHashes {
+		// we have file objects, so skip this logic
+		if _, ok := oldToNew[hash]; ok {
+			continue
+		}
 		err = oc.fileStore.SetIsFileImported(hash, true)
 		if err != nil {
 			log.Errorf("failed to set isFileImported for file %s: %s", hash, err)

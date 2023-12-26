@@ -25,6 +25,7 @@ func newFileObject(service *block.Service) *file {
 
 func (f *file) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, _ bool) (string, treestorage.TreeStorageCreatePayload, error) {
 	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	params := pb.RpcFileUploadRequest{
 		SpaceId:   spaceID,
 		LocalPath: filePath,
@@ -42,7 +43,7 @@ func (f *file) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.S
 
 	filesKeys := make(map[string]string, 0)
 	for _, fileKeys := range sn.Snapshot.FileKeys {
-		if fileKeys.Hash == sn.Id {
+		if fileKeys.Hash == id {
 			filesKeys = fileKeys.Keys
 			break
 		}
