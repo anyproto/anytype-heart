@@ -59,8 +59,8 @@ type widgetParameters struct {
 	isObjectIDChanged bool
 }
 
-//go:embed data/skip.zip
-var skipZip []byte
+//go:embed data/get_started.zip
+var getStartedZip []byte
 
 //go:embed data/personal_projects.zip
 var personalProjectsZip []byte
@@ -84,12 +84,12 @@ var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
-		pb.RpcObjectImportUseCaseRequest_EMPTY:             emptyZip,
-		pb.RpcObjectImportUseCaseRequest_SKIP:              skipZip,
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       getStartedZip,
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
 		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
 		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
 		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
+		pb.RpcObjectImportUseCaseRequest_EMPTY:             emptyZip,
 	}
 
 	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
@@ -99,7 +99,7 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
-		pb.RpcObjectImportUseCaseRequest_SKIP: {
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
 			{model.BlockContentWidget_Link, "bafyreiembqdejpkqhupwhukcyqtsjhi43bnqkbp6zfszu26r4c5o6zkeyu", "", true},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
@@ -176,6 +176,10 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	spaceID string,
 	useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
+	if useCase == pb.RpcObjectImportUseCaseRequest_NONE {
+		return pb.RpcObjectImportUseCaseResponseError_NULL, nil
+	}
+
 	start := time.Now()
 
 	archive, found := archives[useCase]
