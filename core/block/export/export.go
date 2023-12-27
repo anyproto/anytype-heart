@@ -278,7 +278,7 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 		return docs, nil
 	}
 
-	derivedObjects, err := e.getRelatedDerivedObjects(res)
+	derivedObjects, err := e.getRelatedDerivedObjects(docs)
 	if err != nil {
 		return nil, err
 	}
@@ -587,7 +587,7 @@ func (e *export) cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func (e *export) getRelatedDerivedObjects(objects []database.Record) ([]database.Record, error) {
+func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]database.Record, error) {
 	var (
 		derivedObjects []database.Record
 		err            error
@@ -602,9 +602,8 @@ func (e *export) getRelatedDerivedObjects(objects []database.Record) ([]database
 	return derivedObjects, nil
 }
 
-func (e *export) processObject(object database.Record, derivedObjects []database.Record) ([]database.Record, error) {
-	details := object.Details
-	for key, value := range details.Fields {
+func (e *export) processObject(object *types.Struct, derivedObjects []database.Record) ([]database.Record, error) {
+	for key, value := range object.Fields {
 		relation, err := e.getRelation(key)
 		if err != nil {
 			return nil, err
@@ -617,7 +616,7 @@ func (e *export) processObject(object database.Record, derivedObjects []database
 		}
 	}
 
-	objectTypeDetails, err := e.objectStore.GetDetails(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	objectTypeDetails, err := e.objectStore.GetDetails(pbtypes.GetString(object, bundle.RelationKeyType.String()))
 	if err != nil {
 		return nil, err
 	}
