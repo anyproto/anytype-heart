@@ -8,8 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/net"
-
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -20,16 +18,18 @@ import (
 )
 
 type clientPeerManager struct {
-	spaceId                 string
-	responsibleNodeIds      []string
-	p                       *provider
-	peerStore               peerstore.PeerStore
-	responsiblePeers        []peer.Peer
-	rebuildResponsiblePeers chan struct{}
+	spaceId            string
+	responsibleNodeIds []string
+	p                  *provider
+	peerStore          peerstore.PeerStore
+
+	responsiblePeers          []peer.Peer
+	watchingPeers             map[string]struct{}
+	rebuildResponsiblePeers   chan struct{}
+	availableResponsiblePeers chan struct{}
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
-
 	sync.Mutex
 }
 
@@ -37,6 +37,9 @@ func (n *clientPeerManager) Init(_ *app.App) (err error) {
 	n.responsibleNodeIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
+	n.watchingPeers = make(map[string]struct{})
+	n.availableResponsiblePeers = make(chan struct{})
+	go n.manageResponsiblePeers()
 	return
 }
 
@@ -45,7 +48,6 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
-	go n.manageResponsiblePeers()
 	return
 }
 
@@ -81,11 +83,23 @@ func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.O
 
 func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	n.Lock()
-	defer n.Unlock()
 	if len(n.responsiblePeers) == 0 {
-		return nil, net.ErrUnableToConnect
+		if n.availableResponsiblePeers == nil {
+			n.availableResponsiblePeers = make(chan struct{})
+		}
+		ch := n.availableResponsiblePeers
+		n.Unlock()
+		select {
+		case <-ch:
+			return n.GetResponsiblePeers(ctx)
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
-	return n.responsiblePeers, nil
+	peers = n.responsiblePeers
+	n.Unlock()
+	log.Debug("get responsible peers", zap.Int("peerCount", len(peers)), zap.String("spaceId", n.spaceId))
+	return
 }
 
 func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (peers []peer.Peer, err error) {
@@ -153,17 +167,33 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		}
 		peers = append(peers, p)
 	}
-	for _, p := range peers {
-		go func(pr peer.Peer) {
-			n.watchPeer(pr)
-		}(p)
-	}
+
 	n.Lock()
 	defer n.Unlock()
+
+	for _, p = range peers {
+		if _, ok := n.watchingPeers[p.Id()]; !ok {
+			n.watchingPeers[p.Id()] = struct{}{}
+			go func(pr peer.Peer) {
+				n.watchPeer(pr)
+			}(p)
+		}
+	}
+	log.Debug("set responsible peers", zap.Int("peerCount", len(peers)), zap.String("spaceId", n.spaceId))
 	n.responsiblePeers = peers
+	if len(peers) > 0 && n.availableResponsiblePeers != nil {
+		close(n.availableResponsiblePeers)
+		n.availableResponsiblePeers = nil
+	}
 }
 
 func (n *clientPeerManager) watchPeer(p peer.Peer) {
+	defer func() {
+		n.Lock()
+		defer n.Unlock()
+		delete(n.watchingPeers, p.Id())
+	}()
+
 	select {
 	case <-p.CloseChan():
 		select {
