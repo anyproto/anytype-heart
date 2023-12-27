@@ -17,6 +17,11 @@ func init() {
 	simple.RegisterCreator(NewBookmark)
 }
 
+type ObjectContent struct {
+	BookmarkContent *model.BlockContentBookmark
+	Blocks          []*model.Block
+}
+
 func NewBookmark(m *model.Block) simple.Block {
 	if bookmark := m.GetBookmark(); bookmark != nil {
 		return &Bookmark{
@@ -33,7 +38,7 @@ type Block interface {
 	GetContent() *model.BlockContentBookmark
 	ToDetails(origin model.ObjectOrigin) *types.Struct
 	SetState(s model.BlockContentBookmarkState)
-	UpdateContent(func(content *model.BlockContentBookmark))
+	UpdateContent(func(content *ObjectContent))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
 }
 
@@ -58,8 +63,8 @@ func (b *Bookmark) ToDetails(origin model.ObjectOrigin) *types.Struct {
 	return details
 }
 
-func (b *Bookmark) UpdateContent(updater func(bookmark *model.BlockContentBookmark)) {
-	updater(b.content)
+func (b *Bookmark) UpdateContent(updater func(content *ObjectContent)) {
+	updater(&ObjectContent{BookmarkContent: b.content})
 }
 
 func (b *Bookmark) SetState(s model.BlockContentBookmarkState) {

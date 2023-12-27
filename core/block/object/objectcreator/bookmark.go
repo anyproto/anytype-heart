@@ -7,9 +7,9 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
+	simpleBookmark "github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
@@ -23,9 +23,9 @@ func (s *service) ObjectCreateBookmark(ctx context.Context, spaceId string, req 
 		if err != nil {
 			return "", nil, fmt.Errorf("process uri: %w", err)
 		}
-		res = s.bookmark.FetchBookmarkContent(req.SpaceId, u)
+		res = s.bookmark.FetchBookmarkContent(req.SpaceId, u, false)
 	} else {
-		res = func() *model.BlockContentBookmark {
+		res = func() *simpleBookmark.ObjectContent {
 			return nil
 		}
 	}
