@@ -146,13 +146,8 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		targetState.SetLocalDetails(nil)
 		return
 	})
-	if err != nil {
-		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-			targetState = s.createBlankTemplateState(model.ObjectType_basic)
-			err = nil
-		} else {
-			err = fmt.Errorf("can't apply template: %w", err)
-		}
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return s.createBlankTemplateState(model.ObjectType_basic), nil
 	}
 	return
 }
