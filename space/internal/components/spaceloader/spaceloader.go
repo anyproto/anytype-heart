@@ -28,19 +28,21 @@ type SpaceLoader interface {
 }
 
 type spaceLoader struct {
-	techSpace     techspace.TechSpace
-	status        spacestatus.SpaceStatus
-	builder       builder.SpaceBuilder
-	loading       *loadingSpace
-	mandatoryFail bool
+	techSpace           techspace.TechSpace
+	status              spacestatus.SpaceStatus
+	builder             builder.SpaceBuilder
+	loading             *loadingSpace
+	stopIfMandatoryFail bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
 	space  clientspace.Space
 }
 
-func New(mandatoryFail bool) SpaceLoader {
-	return &spaceLoader{mandatoryFail: mandatoryFail}
+func New(stopIfMandatoryFail bool) SpaceLoader {
+	return &spaceLoader{
+		stopIfMandatoryFail: stopIfMandatoryFail,
+	}
 }
 
 func (s *spaceLoader) Init(a *app.App) (err error) {
@@ -95,7 +97,7 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 	if err = s.status.SetLocalInfo(ctx, info); err != nil {
 		return
 	}
-	s.loading = s.newLoadingSpace(s.ctx, s.mandatoryFail, s.status.SpaceId())
+	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail, s.status.SpaceId())
 	return
 }
 

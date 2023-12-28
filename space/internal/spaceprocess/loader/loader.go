@@ -26,16 +26,16 @@ type Loader interface {
 }
 
 type Params struct {
-	SpaceId       string
-	Status        spacestatus.SpaceStatus
-	MandatoryFail bool
+	SpaceId             string
+	Status              spacestatus.SpaceStatus
+	StopIfMandatoryFail bool
 }
 
 func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
 	child.Register(params.Status).
 		Register(builder.New()).
-		Register(spaceloader.New(params.MandatoryFail))
+		Register(spaceloader.New(params.StopIfMandatoryFail))
 	return &loader{
 		app: child,
 	}

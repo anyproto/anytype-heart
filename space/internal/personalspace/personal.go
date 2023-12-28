@@ -86,9 +86,9 @@ func (s *spaceController) SpaceId() string {
 
 func (s *spaceController) newLoader() loader.Loader {
 	return loader.New(s.app, loader.Params{
-		SpaceId:       s.spaceId,
-		Status:        spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown),
-		MandatoryFail: true,
+		SpaceId:             s.spaceId,
+		Status:              spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown),
+		StopIfMandatoryFail: true,
 	})
 }
 
