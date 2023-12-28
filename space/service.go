@@ -10,6 +10,8 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -130,6 +132,9 @@ func (s *service) Run(ctx context.Context) (err error) {
 	}
 	err = s.initPersonalSpace()
 	if err != nil {
+		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
+			err = ErrSpaceNotExists
+		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
 	s.delController.Run()
