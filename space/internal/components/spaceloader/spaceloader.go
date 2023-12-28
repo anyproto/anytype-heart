@@ -59,7 +59,12 @@ func (s *spaceLoader) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) Close(ctx context.Context) (err error) {
-	return s.space.Close(ctx)
+	s.cancel()
+	sp, err := s.WaitLoad(ctx)
+	if err != nil {
+		return
+	}
+	return sp.Close(ctx)
 }
 
 func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
@@ -120,7 +125,6 @@ func (s *spaceLoader) onLoad(spaceID string, sp clientspace.Space, loadErr error
 	}
 
 	s.space = sp
-	s.loading = nil
 	// TODO: check remote state
 	return s.status.SetLocalInfo(s.ctx, spaceinfo.SpaceLocalInfo{
 		SpaceID:      spaceID,
