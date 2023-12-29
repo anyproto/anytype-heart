@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer/mock_treesyncer"
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -89,12 +90,13 @@ func TestTechSpace_SpaceViewExists(t *testing.T) {
 		spaceId = "space.id"
 		viewId  = "viewId"
 		view    = newSpaceViewStub(viewId)
+		respCtx = peer.CtxWithPeerId(context.Background(), peer.CtxResponsiblePeers)
 	)
 	t.Run("exists", func(t *testing.T) {
 		fx := newFixture(t, nil)
 		defer fx.finish(t)
 		fx.expectDeriveTreePayload(viewId)
-		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(view, nil)
+		fx.objectCache.EXPECT().GetObject(respCtx, viewId).Return(view, nil)
 		exists, err := fx.SpaceViewExists(ctx, spaceId)
 		require.NoError(t, err)
 		assert.True(t, exists)
@@ -103,7 +105,7 @@ func TestTechSpace_SpaceViewExists(t *testing.T) {
 		fx := newFixture(t, nil)
 		defer fx.finish(t)
 		fx.expectDeriveTreePayload(viewId)
-		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(nil, fmt.Errorf("not found"))
+		fx.objectCache.EXPECT().GetObject(respCtx, viewId).Return(nil, fmt.Errorf("not found"))
 		exists, err := fx.SpaceViewExists(ctx, spaceId)
 		require.NoError(t, err)
 		assert.False(t, exists)

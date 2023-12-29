@@ -62,6 +62,12 @@ func (s *spaceLoader) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) Close(ctx context.Context) (err error) {
+	s.status.Lock()
+	if s.loading == nil {
+		s.status.Unlock()
+		return nil
+	}
+	s.status.Unlock()
 	s.cancel()
 	sp, err := s.WaitLoad(ctx)
 	if err != nil {
