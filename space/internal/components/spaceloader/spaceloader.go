@@ -67,7 +67,7 @@ func (s *spaceLoader) Close(ctx context.Context) (err error) {
 		s.status.Unlock()
 		return nil
 	}
-	s.status.Lock()
+	s.status.Unlock()
 	s.cancel()
 	sp, err := s.WaitLoad(ctx)
 	if err != nil {
