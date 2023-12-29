@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"math/rand"
+	"strconv"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
@@ -2496,6 +2497,45 @@ func TestState_RootId(t *testing.T) {
 		// then
 		assert.Equal(t, "root", id)
 	})
+
+}
+
+func TestState_SearchText(t *testing.T) {
+	testData := map[int]string{
+		1: "c",
+		2: "ca\n",
+		3: "ca\n",
+		4: "ca\nf",
+		5: "ca\nfe",
+		6: "ca\nfé\n",
+	}
+
+	for key, value := range testData {
+		// given
+		ftsTextMaxSize = key
+		t.Run("search text "+strconv.Itoa(key)+" : "+value, func(t *testing.T) {
+			st := buildStateFromAST(
+				blockbuilder.Root(
+					blockbuilder.ID("root"),
+					blockbuilder.Children(
+						blockbuilder.Text(
+							"ca",
+						),
+						blockbuilder.Text(
+							"fé",
+						),
+						blockbuilder.Text(
+							" garage ",
+						),
+					)))
+
+			// when
+			searchText := st.SearchText()
+
+			// then
+			assert.Equal(t, value, searchText)
+		})
+	}
 
 }
 

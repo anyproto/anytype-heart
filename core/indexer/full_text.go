@@ -17,6 +17,7 @@ var (
 	ftIndexInterval         = 10 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
 	ftBatchLimit            = 100
+	ftsTitleMaxSize         = 1024
 )
 
 func (i *indexer) ForceFTIndex() {
@@ -88,6 +89,10 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 		title := pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String())
 		if sb.ObjectTypeKey() == bundle.TypeKeyNote || title == "" {
 			title = sb.Snippet()
+		}
+		runes := []rune(title)
+		if len([]rune(title)) > ftsTitleMaxSize {
+			title = string(runes[:ftsTitleMaxSize])
 		}
 
 		ftDoc = ftsearch.SearchDoc{

@@ -25,6 +25,10 @@ import (
 
 var log = logging.Logger("anytype-mw-state")
 
+var (
+	ftsTextMaxSize = 1024 * 1024
+)
+
 const (
 	snippetMinSize                 = 50
 	snippetMaxSize                 = 300
@@ -390,11 +394,23 @@ func (s *State) InState(id string) (ok bool) {
 }
 
 func (s *State) SearchText() string {
+	var builderLen int
 	var builder strings.Builder
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if tb := b.Model().GetText(); tb != nil {
+			runes := []rune(tb.Text)
+			runesLen := len(runes)
+			if builderLen+runesLen > ftsTextMaxSize {
+				toCut := ftsTextMaxSize - builderLen
+				if toCut > 0 {
+					builder.WriteString(string(runes[:toCut]))
+					builderLen += toCut
+				}
+				return false
+			}
 			builder.WriteString(tb.Text)
 			builder.WriteRune('\n')
+			builderLen += runesLen + 1
 		}
 		return true
 	})
