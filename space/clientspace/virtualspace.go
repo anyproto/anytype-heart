@@ -26,12 +26,13 @@ type VirtualSpaceDeps struct {
 	PersonalSpaceId string
 	Indexer         spaceIndexer
 	Installer       bundledObjectsInstaller
-	Prefix          string
+	TypePrefix      string
+	RelationPrefix  string
 }
 
 type VirtualSpace struct {
 	*space
-	Prefix string
+	TypePrefix, RelationPrefix string
 }
 
 func NewVirtualSpace(spaceId string, deps VirtualSpaceDeps) *VirtualSpace {
@@ -43,18 +44,19 @@ func NewVirtualSpace(spaceId string, deps VirtualSpaceDeps) *VirtualSpace {
 			loadMandatoryObjectsCh: make(chan struct{}),
 			personalSpaceId:        deps.PersonalSpaceId,
 		},
-		Prefix: deps.Prefix,
+		TypePrefix:     deps.TypePrefix,
+		RelationPrefix: deps.RelationPrefix,
 	}
 	vs.space.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, vs)
 	return vs
 }
 
 func (vs *VirtualSpace) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
-	return vs.Prefix + key.String(), nil
+	return vs.RelationPrefix + key.String(), nil
 }
 
 func (vs *VirtualSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
-	return vs.Prefix + key.String(), nil
+	return vs.TypePrefix + key.String(), nil
 }
 
 func newVirtualCommonSpace(spaceId string) commonspace.Space {
