@@ -240,8 +240,12 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		log.Errorf("failed to send notification: %v", err)
 	}
 
-	// TODO: GO-2627 Home page handling should be moved to importer
-	b.handleHomePage(path, spaceID, removeFunc, false)
+	if isNewSpace {
+		// TODO: GO-2627 Home page handling should be moved to importer
+		b.handleHomePage(path, spaceID, removeFunc, false)
+	} else {
+		removeFunc()
+	}
 
 	return importErr
 }
