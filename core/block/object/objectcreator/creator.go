@@ -40,6 +40,7 @@ var log = logging.Logger("object-service")
 type Service interface {
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 
 	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
 	app.Component
@@ -127,7 +128,7 @@ func (s *service) createObjectInSpace(
 		if err != nil {
 			return "", nil, err
 		}
-		return s.createSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyCollection}, st)
+		return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyCollection}, st)
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)
 	case bundle.TypeKeyRelation:
@@ -150,5 +151,5 @@ func (s *service) createObjectFromTemplate(
 	if err != nil {
 		return
 	}
-	return s.createSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
+	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
 }

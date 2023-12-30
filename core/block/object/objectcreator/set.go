@@ -47,5 +47,5 @@ func (s *service) createSet(ctx context.Context, space clientspace.Space, req *p
 
 	template.InitTemplate(newState, tmpls...)
 
-	return s.createSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeySet}, newState)
+	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeySet}, newState)
 }

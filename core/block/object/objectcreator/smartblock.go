@@ -36,10 +36,10 @@ func (s *service) CreateSmartBlockFromState(
 	if err != nil {
 		return "", nil, err
 	}
-	return s.createSmartBlockFromStateInSpace(ctx, spc, objectTypeKeys, createState)
+	return s.CreateSmartBlockFromStateInSpace(ctx, spc, objectTypeKeys, createState)
 }
 
-func (s *service) createSmartBlockFromStateInSpace(
+func (s *service) CreateSmartBlockFromStateInSpace(
 	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State,
 ) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
