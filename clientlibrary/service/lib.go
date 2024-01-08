@@ -3,7 +3,9 @@ package service
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/proto"
@@ -13,8 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-
-	_ "net/http/pprof"
 )
 
 var log = logging.Logger("anytype-mw")
@@ -23,6 +23,7 @@ var mw = core.New()
 
 func init() {
 	fmt.Printf("mw jsaddon: %s\n", app.GitSummary)
+	fmt.Printf(time.Now().Location().String())
 	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
