@@ -22,6 +22,8 @@ var log = logging.Logger("anytype-mw")
 var mw = core.New()
 
 func init() {
+	fixTZ()
+
 	fmt.Printf("mw jsaddon: %s\n", app.GitSummary)
 	z, offset := time.Now().Zone()
 	fmt.Printf("Loc: %s; zone %s %d\n", time.Now().Location().String(), z, offset)
