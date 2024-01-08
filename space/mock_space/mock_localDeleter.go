@@ -70,64 +70,17 @@ func (_c *MocklocalDeleter_allIDs_Call) RunAndReturn(run func() []string) *Mockl
 	return _c
 }
 
-// startDelete provides a mock function with given fields: ctx, id
-func (_m *MocklocalDeleter) startDelete(ctx context.Context, id string) error {
-	ret := _m.Called(ctx, id)
+// updateRemoteStatus provides a mock function with given fields: ctx, spaceId, status
+func (_m *MocklocalDeleter) updateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus) error {
+	ret := _m.Called(ctx, spaceId, status)
 
 	if len(ret) == 0 {
-		panic("no return value specified for startDelete")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, id)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MocklocalDeleter_startDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'startDelete'
-type MocklocalDeleter_startDelete_Call struct {
-	*mock.Call
-}
-
-// startDelete is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id string
-func (_e *MocklocalDeleter_Expecter) startDelete(ctx interface{}, id interface{}) *MocklocalDeleter_startDelete_Call {
-	return &MocklocalDeleter_startDelete_Call{Call: _e.mock.On("startDelete", ctx, id)}
-}
-
-func (_c *MocklocalDeleter_startDelete_Call) Run(run func(ctx context.Context, id string)) *MocklocalDeleter_startDelete_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MocklocalDeleter_startDelete_Call) Return(_a0 error) *MocklocalDeleter_startDelete_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MocklocalDeleter_startDelete_Call) RunAndReturn(run func(context.Context, string) error) *MocklocalDeleter_startDelete_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// updateRemoteStatusLocked provides a mock function with given fields: ctx, spaceID, remoteStatus
-func (_m *MocklocalDeleter) updateRemoteStatusLocked(ctx context.Context, spaceID string, remoteStatus spaceinfo.RemoteStatus) error {
-	ret := _m.Called(ctx, spaceID, remoteStatus)
-
-	if len(ret) == 0 {
-		panic("no return value specified for updateRemoteStatusLocked")
+		panic("no return value specified for updateRemoteStatus")
 	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.RemoteStatus) error); ok {
-		r0 = rf(ctx, spaceID, remoteStatus)
+		r0 = rf(ctx, spaceId, status)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -135,32 +88,32 @@ func (_m *MocklocalDeleter) updateRemoteStatusLocked(ctx context.Context, spaceI
 	return r0
 }
 
-// MocklocalDeleter_updateRemoteStatusLocked_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'updateRemoteStatusLocked'
-type MocklocalDeleter_updateRemoteStatusLocked_Call struct {
+// MocklocalDeleter_updateRemoteStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'updateRemoteStatus'
+type MocklocalDeleter_updateRemoteStatus_Call struct {
 	*mock.Call
 }
 
-// updateRemoteStatusLocked is a helper method to define mock.On call
+// updateRemoteStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - spaceID string
-//   - remoteStatus spaceinfo.RemoteStatus
-func (_e *MocklocalDeleter_Expecter) updateRemoteStatusLocked(ctx interface{}, spaceID interface{}, remoteStatus interface{}) *MocklocalDeleter_updateRemoteStatusLocked_Call {
-	return &MocklocalDeleter_updateRemoteStatusLocked_Call{Call: _e.mock.On("updateRemoteStatusLocked", ctx, spaceID, remoteStatus)}
+//   - spaceId string
+//   - status spaceinfo.RemoteStatus
+func (_e *MocklocalDeleter_Expecter) updateRemoteStatus(ctx interface{}, spaceId interface{}, status interface{}) *MocklocalDeleter_updateRemoteStatus_Call {
+	return &MocklocalDeleter_updateRemoteStatus_Call{Call: _e.mock.On("updateRemoteStatus", ctx, spaceId, status)}
 }
 
-func (_c *MocklocalDeleter_updateRemoteStatusLocked_Call) Run(run func(ctx context.Context, spaceID string, remoteStatus spaceinfo.RemoteStatus)) *MocklocalDeleter_updateRemoteStatusLocked_Call {
+func (_c *MocklocalDeleter_updateRemoteStatus_Call) Run(run func(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus)) *MocklocalDeleter_updateRemoteStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].(spaceinfo.RemoteStatus))
 	})
 	return _c
 }
 
-func (_c *MocklocalDeleter_updateRemoteStatusLocked_Call) Return(err error) *MocklocalDeleter_updateRemoteStatusLocked_Call {
-	_c.Call.Return(err)
+func (_c *MocklocalDeleter_updateRemoteStatus_Call) Return(_a0 error) *MocklocalDeleter_updateRemoteStatus_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MocklocalDeleter_updateRemoteStatusLocked_Call) RunAndReturn(run func(context.Context, string, spaceinfo.RemoteStatus) error) *MocklocalDeleter_updateRemoteStatusLocked_Call {
+func (_c *MocklocalDeleter_updateRemoteStatus_Call) RunAndReturn(run func(context.Context, string, spaceinfo.RemoteStatus) error) *MocklocalDeleter_updateRemoteStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

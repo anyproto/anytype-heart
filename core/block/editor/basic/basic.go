@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/block/simple/latex"
+	"github.com/anyproto/anytype-heart/core/block/simple/embed"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
@@ -92,9 +92,11 @@ type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
-var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
-
-func NewBasic(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) AllOperations {
+func NewBasic(
+	sb smartblock.SmartBlock,
+	objectStore objectstore.ObjectStore,
+	layoutConverter converter.LayoutConverter,
+) AllOperations {
 	return &basic{
 		SmartBlock:      sb,
 		objectStore:     objectStore,
@@ -357,10 +359,10 @@ func (bs *basic) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRe
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	if rel, ok := b.(latex.Block); ok {
+	if rel, ok := b.(embed.Block); ok {
 		rel.SetText(req.Text)
 	} else {
-		return fmt.Errorf("unexpected block type: %T (want latex)", b)
+		return fmt.Errorf("unexpected block type: %T (want embed)", b)
 	}
 	return bs.Apply(s, smartblock.NoEvent)
 }

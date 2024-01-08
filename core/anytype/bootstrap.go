@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -56,6 +57,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -79,6 +81,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacefactory"
+	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -183,6 +187,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientds.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
+		Register(backlinks.New()).
 		Register(filestore.New()).
 		// Services
 		Register(nodeconfsource.New()).
@@ -204,7 +209,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
-		Register(space.NewVirtualSpaceService()).
+		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
 		Register(localdiscovery.New()).
@@ -217,6 +222,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(fileobject.New()).
 		Register(source.New()).
+		Register(spacefactory.New()).
 		Register(space.New()).
 		Register(filesync.New()).
 		Register(builtintemplate.New()).
@@ -251,7 +257,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(account.New()).
 		Register(profiler.New()).
 		Register(identity.New()).
-		Register(templateservice.New())
+		Register(templateservice.New()).
+		Register(notifications.New())
 }
 
 func MiddlewareVersion() string {

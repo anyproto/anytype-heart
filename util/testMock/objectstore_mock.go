@@ -61,6 +61,20 @@ func (mr *MockObjectStoreMockRecorder) AddToIndexQueue(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddToIndexQueue", reflect.TypeOf((*MockObjectStore)(nil).AddToIndexQueue), arg0)
 }
 
+// BatchProcessFullTextQueue mocks base method.
+func (m *MockObjectStore) BatchProcessFullTextQueue(arg0 int, arg1 func([]string) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchProcessFullTextQueue", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchProcessFullTextQueue indicates an expected call of BatchProcessFullTextQueue.
+func (mr *MockObjectStoreMockRecorder) BatchProcessFullTextQueue(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchProcessFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).BatchProcessFullTextQueue), arg0, arg1)
+}
+
 // Close mocks base method.
 func (m *MockObjectStore) Close(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -93,6 +107,24 @@ func (mr *MockObjectStoreMockRecorder) DeleteDetails(arg0 ...any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDetails", reflect.TypeOf((*MockObjectStore)(nil).DeleteDetails), arg0...)
 }
 
+// DeleteLinks mocks base method.
+func (m *MockObjectStore) DeleteLinks(arg0 ...string) error {
+	m.ctrl.T.Helper()
+	varargs := []any{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteLinks", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteLinks indicates an expected call of DeleteLinks.
+func (mr *MockObjectStoreMockRecorder) DeleteLinks(arg0 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLinks", reflect.TypeOf((*MockObjectStore)(nil).DeleteLinks), arg0...)
+}
+
 // DeleteObject mocks base method.
 func (m *MockObjectStore) DeleteObject(arg0 string) error {
 	m.ctrl.T.Helper()
@@ -119,20 +151,6 @@ func (m *MockObjectStore) DeleteVirtualSpace(arg0 string) error {
 func (mr *MockObjectStoreMockRecorder) DeleteVirtualSpace(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).DeleteVirtualSpace), arg0)
-}
-
-// EraseIndexes mocks base method.
-func (m *MockObjectStore) EraseIndexes(arg0 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EraseIndexes", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// EraseIndexes indicates an expected call of EraseIndexes.
-func (mr *MockObjectStoreMockRecorder) EraseIndexes(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EraseIndexes", reflect.TypeOf((*MockObjectStore)(nil).EraseIndexes), arg0)
 }
 
 // FTSearch mocks base method.
@@ -545,6 +563,20 @@ func (m *MockObjectStore) ListVirtualSpaces() ([]string, error) {
 func (mr *MockObjectStoreMockRecorder) ListVirtualSpaces() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVirtualSpaces", reflect.TypeOf((*MockObjectStore)(nil).ListVirtualSpaces))
+}
+
+// ModifyObjectDetails mocks base method.
+func (m *MockObjectStore) ModifyObjectDetails(arg0 string, arg1 func(*types.Struct) (*types.Struct, error)) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ModifyObjectDetails", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ModifyObjectDetails indicates an expected call of ModifyObjectDetails.
+func (mr *MockObjectStoreMockRecorder) ModifyObjectDetails(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModifyObjectDetails", reflect.TypeOf((*MockObjectStore)(nil).ModifyObjectDetails), arg0, arg1)
 }
 
 // Name mocks base method.

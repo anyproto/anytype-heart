@@ -131,4 +131,43 @@ func TestMD_Convert(t *testing.T) {
 		exp := "***[some](http://golang.org)*** [t](http://golang.org) [e](http://golang.org)xt **wi~~th m~~**~~ar~~ks @mention   \n"
 		assert.Equal(t, exp, string(res))
 	})
+
+	t.Run("test render native emoji", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Test 😝",
+					Marks: &model.BlockContentTextMarks{
+						Marks: nil,
+					},
+				},
+			},
+		})
+		c := NewMDConverter(s, nil)
+		res := c.Convert(0)
+		exp := "Test 😝   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("test render in app emoji", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Test ⛰️",
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{
+							{
+								Range: &model.Range{6, 7},
+								Type:  model.BlockContentTextMark_Emoji,
+							},
+						},
+					},
+				},
+			},
+		})
+		c := NewMDConverter(s, nil)
+		res := c.Convert(0)
+		exp := "Test ⛰️   \n"
+		assert.Equal(t, exp, string(res))
+	})
 }

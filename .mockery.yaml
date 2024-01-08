@@ -55,18 +55,20 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore:
     interfaces:
       SpaceCoreService:
-  github.com/anyproto/anytype-heart/space/techspace:
+  github.com/anyproto/anytype-heart/space/internal/techspace:
     interfaces:
       TechSpace:
+  github.com/anyproto/anytype-heart/space/spacefactory:
+    interfaces:
+      SpaceFactory:
+  github.com/anyproto/anytype-heart/space/internal/spacecontroller:
+    interfaces:
+      SpaceController:
+      DeleteController:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/space/clientspace:
+    interfaces:
       Space:
-      bundledObjectsInstaller:
-        config:
-          dir: "{{.InterfaceDir}}"
-          inpackage: true
-      isNewAccount:
-        config:
-          dir: "{{.InterfaceDir}}"
-          inpackage: true
+

@@ -236,3 +236,44 @@ func Test_GetCodeBlocksSuccess(t *testing.T) {
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Text, "Code")
 }
+
+func Test_GetTextBlocks(t *testing.T) {
+	t.Run("page not in integration - write link in text block", func(t *testing.T) {
+		to := &TextObject{
+			RichText: []api.RichText{
+				{
+					Type:    api.Mention,
+					Mention: &api.MentionObject{Type: api.Page, Page: &api.PageMention{ID: "not exist"}},
+					Href:    "href",
+				},
+			},
+		}
+
+		bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &api.NotionImportContext{})
+		assert.Len(t, bl.Blocks, 1)
+		assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+		assert.Equal(t, bl.Blocks[0].GetText().Text, "href")
+		assert.NotNil(t, bl.Blocks[0].GetText().Marks)
+		assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 1)
+		assert.Equal(t, bl.Blocks[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Link)
+	})
+	t.Run("db not in integration - write link in text block", func(t *testing.T) {
+		to := &TextObject{
+			RichText: []api.RichText{
+				{
+					Type:    api.Mention,
+					Mention: &api.MentionObject{Type: api.Database, Database: &api.DatabaseMention{ID: "not exist"}},
+					Href:    "href",
+				},
+			},
+		}
+
+		bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &api.NotionImportContext{})
+		assert.Len(t, bl.Blocks, 1)
+		assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
+		assert.Equal(t, bl.Blocks[0].GetText().Text, "href")
+		assert.NotNil(t, bl.Blocks[0].GetText().Marks)
+		assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 1)
+		assert.Equal(t, bl.Blocks[0].GetText().Marks.Marks[0].Type, model.BlockContentTextMark_Link)
+	})
+}

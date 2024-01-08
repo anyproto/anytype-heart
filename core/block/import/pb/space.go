@@ -22,13 +22,13 @@ func NewSpaceImport(service *collection.Service) *SpaceImport {
 	return &SpaceImport{service: service}
 }
 
-func (s *SpaceImport) ProvideCollection(
-	snapshots []*common.Snapshot,
+func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 	widgetSnapshot *common.Snapshot,
 	oldToNewID map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
 	_ *common.Snapshot,
-) (*common.Snapshot, error) {
+	_ bool,
+) ([]*common.Snapshot, error) {
 	if params.GetNoCollection() {
 		return nil, nil
 	}
@@ -57,7 +57,11 @@ func (s *SpaceImport) ProvideCollection(
 		})
 	}
 	rootCollection := common.NewRootCollection(s.service)
-	return rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true)
+	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true, true)
+	if err != nil {
+		return nil, err
+	}
+	return []*common.Snapshot{rootCollectionSnapshot}, nil
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {

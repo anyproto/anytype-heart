@@ -37,6 +37,10 @@ func (_m *MockFileSync) AddFile(spaceId string, fileId domain.FileId, uploadedBy
 		panic("no return value specified for AddFile")
 	}
 
+	if len(ret) == 0 {
+		panic("no return value specified for AddFile")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, domain.FileId, bool, bool) error); ok {
 		r0 = rf(spaceId, fileId, uploadedByUser, imported)
@@ -81,6 +85,10 @@ func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(string, domain.FileId
 // CalculateFileSize provides a mock function with given fields: ctx, spaceId, fileId
 func (_m *MockFileSync) CalculateFileSize(ctx context.Context, spaceId string, fileId domain.FileId) (int, error) {
 	ret := _m.Called(ctx, spaceId, fileId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CalculateFileSize")
+	}
 
 	if len(ret) == 0 {
 		panic("no return value specified for CalculateFileSize")
@@ -275,6 +283,10 @@ func (_c *MockFileSync_DebugQueue_Call) RunAndReturn(run func(*http.Request) (*f
 // FileListStats provides a mock function with given fields: ctx, spaceId, hashes
 func (_m *MockFileSync) FileListStats(ctx context.Context, spaceId string, hashes []domain.FileId) ([]filesync.FileStat, error) {
 	ret := _m.Called(ctx, spaceId, hashes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FileListStats")
+	}
 
 	if len(ret) == 0 {
 		panic("no return value specified for FileListStats")

@@ -100,7 +100,7 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot) ([]*common.Snapshot, string, error) {
 	targetObjects := m.getObjectIDs(allSnapshots)
 	rootCollection := common.NewRootCollection(m.service)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true, true)
 	if err != nil {
 		return nil, "", err
 	}
@@ -152,7 +152,7 @@ func (m *Markdown) processImportStep(pathCount int,
 	callback func(map[string]*FileInfo, process.Progress, map[string]*types.Struct, *common.ConvertError),
 ) (abortImport bool) {
 	callback(files, progress, details, allErrors)
-	return allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Markdown)
+	return allErrors.ShouldAbortImport(pathCount, model.Import_Markdown)
 }
 
 func (m *Markdown) convertCsvToLinks(csvFileName string, files map[string]*FileInfo) (blocks []*model.Block) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var ErrCancel = fmt.Errorf("import is canceled")
@@ -62,7 +63,7 @@ func (ce *ConvertError) Error() error {
 	return fmt.Errorf(errorString.String())
 }
 
-func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) error {
+func (ce *ConvertError) GetResultError(importType model.ImportType) error {
 	if ce.IsEmpty() {
 		return nil
 	}
@@ -100,9 +101,27 @@ func (ce *ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
 	}
 	return importPathsCount == countNoObjectsToImport
 }
-func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType pb.RpcObjectImportRequestType) bool {
+func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType model.ImportType) bool {
 	return !ce.IsEmpty() && ce.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING ||
 		ce.IsNoObjectToImportError(pathsCount) ||
 		errors.Is(ce.GetResultError(importType), ErrLimitExceeded) ||
 		errors.Is(ce.GetResultError(importType), ErrCancel)
+}
+
+func GetImportErrorCode(err error) model.ImportErrorCode {
+	if err == nil {
+		return model.Import_NULL
+	}
+	switch {
+	case errors.Is(err, ErrNoObjectsToImport):
+		return model.Import_NO_OBJECTS_TO_IMPORT
+	case errors.Is(err, ErrCancel):
+		return model.Import_IMPORT_IS_CANCELED
+	case errors.Is(err, ErrLimitExceeded):
+		return model.Import_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED
+	case errors.Is(err, ErrFileLoad):
+		return model.Import_FILE_LOAD_ERROR
+	default:
+		return model.Import_INTERNAL_ERROR
+	}
 }

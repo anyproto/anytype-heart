@@ -31,13 +31,15 @@ var whitelist = map[string]*regexp.Regexp{
 	"community.anytype.io":      regexp.MustCompile(`.*`),
 	"anytype.io":                regexp.MustCompile(`.*`),
 	"gallery.any.coop":          regexp.MustCompile(`.*`),
+	"tools.gallery.any.coop":    regexp.MustCompile(`.*`),
+	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
-func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
+func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
-	if !IsInWhitelist(url) {
+	if checkWhitelist && !IsInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
 	raw, err := getRawManifest(url)
@@ -74,7 +76,6 @@ func IsInWhitelist(url string) bool {
 	if len(whitelist) == 0 {
 		return true
 	}
-	// nolint:errcheck
 	parsedURL, err := uri.ParseURI(url)
 	if err != nil {
 		return false
@@ -122,7 +123,7 @@ func validateSchema(schemaResp schemaResponse, info *pb.RpcDownloadManifestRespo
 		return err
 	}
 	if !result.Valid() {
-		return fmt.Errorf("manifest does not correspond provided schema")
+		return buildResultError(result)
 	}
 	info.Schema = schemaResp.Schema
 	return nil
@@ -133,4 +134,18 @@ func stripTags(str string) string {
 		return str
 	}
 	return strip.StripTags(str)
+}
+
+func buildResultError(result *gojsonschema.Result) error {
+	var description strings.Builder
+	n := len(result.Errors()) - 1
+	for i, e := range result.Errors() {
+		description.WriteString(e.Context().String())
+		description.WriteString(" - ")
+		description.WriteString(e.Description())
+		if i < n {
+			description.WriteString("; ")
+		}
+	}
+	return fmt.Errorf("manifest does not correspond provided schema: %s", description.String())
 }

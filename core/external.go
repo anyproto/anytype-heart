@@ -102,6 +102,6 @@ func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadMan
 		}
 		return m
 	}
-	info, err := gallery.DownloadManifest(req.Url)
+	info, err := gallery.DownloadManifest(req.Url, true)
 	return response(info, err)
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -790,12 +791,26 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
+	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
 
-	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionID, nil)
+	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
+		Status:  model.Notification_Created,
+		IsLocal: true,
+		Space:   req.SpaceId,
+		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
+			ProcessId:  processID,
+			ErrorCode:  common.GetImportErrorCode(err),
+			ImportType: req.Type,
+			SpaceId:    req.SpaceId,
+		}},
+	})
+	if notificationSendErr != nil {
+		log.Errorf("failed to send notification: %v", notificationSendErr)
 	}
 
+	if err == nil {
+		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
+	}
 	switch {
 	case errors.Is(err, common.ErrNoObjectsToImport):
 		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)
@@ -896,7 +911,7 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title); err != nil {
+	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace); err != nil {
 		return response(pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectImportExperienceResponseError_NULL, nil)
