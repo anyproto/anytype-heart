@@ -233,6 +233,9 @@ func main() {
 		server.Serve(lis)
 	}()
 	fmt.Println("gRPC server started at: " + addr)
+	z, offset := time.Now().Zone()
+
+	fmt.Printf("Loc: %s; zone %s %d\n", time.Now().Location().String(), z, offset)
 
 	go func() {
 		if err := proxy.Serve(webLis); err != nil && err != http.ErrServerClosed {

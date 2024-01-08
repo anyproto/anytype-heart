@@ -23,7 +23,9 @@ var mw = core.New()
 
 func init() {
 	fmt.Printf("mw jsaddon: %s\n", app.GitSummary)
-	fmt.Printf(time.Now().Location().String())
+	z, offset := time.Now().Zone()
+	fmt.Printf("Loc: %s; zone %s %d\n", time.Now().Location().String(), z, offset)
+
 	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
