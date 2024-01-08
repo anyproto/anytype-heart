@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/anyproto/any-sync/app"
@@ -13,8 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-
-	_ "net/http/pprof"
 )
 
 var log = logging.Logger("anytype-mw")
@@ -22,6 +21,8 @@ var log = logging.Logger("anytype-mw")
 var mw = core.New()
 
 func init() {
+	fixTZ()
+
 	fmt.Printf("mw jsaddon: %s\n", app.GitSummary)
 	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
