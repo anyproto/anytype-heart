@@ -16,6 +16,7 @@ const char* getSystemTimeZone() {
 import "C"
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -26,6 +27,16 @@ func getSystemTimeZone() string {
 }
 
 func fixTZ() {
-	z, _ := time.LoadLocation(strings.Split(getSystemTimeZone(), " ")[0])
+	tzDesc := getSystemTimeZone()
+	if len(tzDesc) == 0 {
+		fmt.Printf("failed to get system timezone\n")
+		return
+	}
+	tzName := strings.Split(tzDesc, " ")[0]
+	z, err := time.LoadLocation(tzName)
+	if err != nil {
+		fmt.Printf("failed to load tz %s: %s\n", tzName, err.Error())
+		return
+	}
 	time.Local = z
 }
