@@ -23,6 +23,7 @@
     - [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet)
     - [Change.RelationAdd](#anytype-Change-RelationAdd)
     - [Change.RelationRemove](#anytype-Change-RelationRemove)
+    - [Change.SetFileInfo](#anytype-Change-SetFileInfo)
     - [Change.Snapshot](#anytype-Change-Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype-Change-Snapshot-LogHeadsEntry)
     - [Change.StoreKeySet](#anytype-Change-StoreKeySet)
@@ -561,6 +562,10 @@
     - [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request)
     - [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response)
     - [Rpc.File.Offload.Response.Error](#anytype-Rpc-File-Offload-Response-Error)
+    - [Rpc.File.SpaceOffload](#anytype-Rpc-File-SpaceOffload)
+    - [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request)
+    - [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response)
+    - [Rpc.File.SpaceOffload.Response.Error](#anytype-Rpc-File-SpaceOffload-Response-Error)
     - [Rpc.File.SpaceUsage](#anytype-Rpc-File-SpaceUsage)
     - [Rpc.File.SpaceUsage.Request](#anytype-Rpc-File-SpaceUsage-Request)
     - [Rpc.File.SpaceUsage.Response](#anytype-Rpc-File-SpaceUsage-Response)
@@ -1089,6 +1094,7 @@
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
     - [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
+    - [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
     - [Rpc.GenericErrorResponse.Error.Code](#anytype-Rpc-GenericErrorResponse-Error-Code)
@@ -1296,6 +1302,7 @@
     - [Event.Block.Set.File.Size](#anytype-Event-Block-Set-File-Size)
     - [Event.Block.Set.File.State](#anytype-Event-Block-Set-File-State)
     - [Event.Block.Set.File.Style](#anytype-Event-Block-Set-File-Style)
+    - [Event.Block.Set.File.TargetObjectId](#anytype-Event-Block-Set-File-TargetObjectId)
     - [Event.Block.Set.File.Type](#anytype-Event-Block-Set-File-Type)
     - [Event.Block.Set.File.Width](#anytype-Event-Block-Set-File-Width)
     - [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex)
@@ -1437,6 +1444,8 @@
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [Export](#anytype-model-Export)
+    - [FileInfo](#anytype-model-FileInfo)
+    - [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
@@ -1624,6 +1633,7 @@
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
 | FileOffload | [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request) | [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response) | Files *** |
+| FileSpaceOffload | [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request) | [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response) |  |
 | FileListOffload | [Rpc.File.ListOffload.Request](#anytype-Rpc-File-ListOffload-Request) | [Rpc.File.ListOffload.Response](#anytype-Rpc-File-ListOffload-Response) |  |
 | FileUpload | [Rpc.File.Upload.Request](#anytype-Rpc-File-Upload-Request) | [Rpc.File.Upload.Response](#anytype-Rpc-File-Upload-Response) |  |
 | FileDownload | [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request) | [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response) |  |
@@ -1879,6 +1889,7 @@ the element of change tree used to store and internal apply smartBlock history
 | storeKeyUnset | [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset) |  |  |
 | storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
 | originalCreatedTimestampSet | [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet) |  |  |
+| setFileInfo | [Change.SetFileInfo](#anytype-Change-SetFileInfo) |  |  |
 
 
 
@@ -2019,6 +2030,21 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | relationKey | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Change-SetFileInfo"></a>
+
+### Change.SetFileInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fileInfo | [model.FileInfo](#anytype-model-FileInfo) |  |  |
 
 
 
@@ -9561,7 +9587,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| hash | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | path | [string](#string) |  | path to save file. Temp directory is used if empty |
 
 
@@ -9869,6 +9895,64 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-File-SpaceOffload"></a>
+
+### Rpc.File.SpaceOffload
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SpaceOffload-Request"></a>
+
+### Rpc.File.SpaceOffload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SpaceOffload-Response"></a>
+
+### Rpc.File.SpaceOffload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.SpaceOffload.Response.Error](#anytype-Rpc-File-SpaceOffload-Response-Error) |  |  |
+| filesOffloaded | [int32](#int32) |  |  |
+| bytesOffloaded | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SpaceOffload-Response-Error"></a>
+
+### Rpc.File.SpaceOffload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File-SpaceUsage"></a>
 
 ### Rpc.File.SpaceUsage
@@ -9985,7 +10069,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.File.Upload.Response.Error](#anytype-Rpc-File-Upload-Response-Error) |  |  |
-| hash | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 
@@ -14688,7 +14772,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Unsplash.Download.Response.Error](#anytype-Rpc-Unsplash-Download-Response-Error) |  |  |
-| hash | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 
@@ -17382,6 +17466,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-File-Offload-Response-Error-Code"></a>
 
 ### Rpc.File.Offload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NODE_NOT_STARTED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-File-SpaceOffload-Response-Error-Code"></a>
+
+### Rpc.File.SpaceOffload.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -20288,6 +20386,7 @@ Precondition: user A opened a block
 | name | [Event.Block.Set.File.Name](#anytype-Event-Block-Set-File-Name) |  |  |
 | size | [Event.Block.Set.File.Size](#anytype-Event-Block-Set-File-Size) |  |  |
 | style | [Event.Block.Set.File.Style](#anytype-Event-Block-Set-File-Style) |  |  |
+| targetObjectId | [Event.Block.Set.File.TargetObjectId](#anytype-Event-Block-Set-File-TargetObjectId) |  |  |
 
 
 
@@ -20378,6 +20477,21 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-File-TargetObjectId"></a>
+
+### Event.Block.Set.File.TargetObjectId
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
 
 
 
@@ -22390,6 +22504,7 @@ Divider: block, that contains only one horizontal thin line
 | mime | [string](#string) |  |  |
 | size | [int64](#int64) |  |  |
 | addedAt | [int64](#int64) |  |  |
+| targetObjectId | [string](#string) |  |  |
 | state | [Block.Content.File.State](#anytype-model-Block-Content-File-State) |  |  |
 | style | [Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 
@@ -22645,6 +22760,38 @@ Used to decode block meta only, without the content itself
 
 ### Export
 
+
+
+
+
+
+
+<a name="anytype-model-FileInfo"></a>
+
+### FileInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fileId | [string](#string) |  |  |
+| encryptionKeys | [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-FileInfo-EncryptionKey"></a>
+
+### FileInfo.EncryptionKey
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -23137,6 +23284,7 @@ stored |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
 | originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
+| fileInfo | [FileInfo](#anytype-model-FileInfo) |  |  |
 
 
 
@@ -23843,6 +23991,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SpaceView | 530 |  |
 | Identity | 532 |  |
 | MissingObject | 519 |  |
+| FileObject | 533 |  |
 
 
 

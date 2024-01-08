@@ -40,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -174,7 +175,7 @@ func (e *export) exportGraphJson(ctx context.Context, req pb.RpcObjectListExport
 	mc := graphjson.NewMultiConverter(e.sbtProvider)
 	mc.SetKnownDocs(docs)
 	var werr error
-	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
+	if succeed, werr = e.writeMultiDoc(ctx, req.SpaceId, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
 	}
 	return succeed
@@ -188,7 +189,7 @@ func (e *export) exportDotAndSVG(ctx context.Context, req pb.RpcObjectListExport
 	mc := dot.NewMultiConverter(format, e.sbtProvider)
 	mc.SetKnownDocs(docs)
 	var werr error
-	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
+	if succeed, werr = e.writeMultiDoc(ctx, req.SpaceId, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
 	}
 	return succeed
@@ -332,7 +333,7 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 	}
 }
 
-func (e *export) fillLinkedFiles(space space.Space, id string, docs map[string]*types.Struct) error {
+func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*types.Struct) error {
 	return space.Do(id, func(b sb.SmartBlock) error {
 		b.NewState().IterateLinkedFiles(func(fileObjectId string) bool {
 			details, err := e.objectStore.GetDetails(fileObjectId)
@@ -432,7 +433,7 @@ func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr wri
 				return fmt.Errorf("save file: %w", err)
 			}
 			// Don't save file objects in markdown
-			if format == pb.RpcObjectListExport_Markdown {
+			if format == model.Export_Markdown {
 				return nil
 			}
 		}
