@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -21,10 +22,11 @@ import (
 )
 
 const (
-	CName           = "datastore"
-	oldLitestoreDir = "ipfslite_v3"
-	localstoreDSDir = "localstore"
-	SpaceDSDir      = "spacestore"
+	CName             = "datastore"
+	oldLitestoreDir   = "ipfslite_v3"
+	localstoreDSDir   = "localstore"
+	SpaceDSDir        = "spacestore"
+	SpaceDSBackupsDir = "spacestore_backup"
 )
 
 var log = logging.Logger("anytype-clientds")
@@ -38,6 +40,7 @@ type clientds struct {
 	repoPath                                   string
 	spaceStoreWasMissing, localStoreWasMissing bool
 	spentOnInit                                time.Duration
+	closed                                     chan struct{}
 }
 
 type Config struct {
@@ -86,10 +89,71 @@ func init() {
 	DefaultConfig.Localstore.SyncWrites = false
 	DefaultConfig.Localstore.BlockCacheSize = 0
 	DefaultConfig.Localstore.Compression = options.None
+
+}
+
+var ErrBadgerPanicked = fmt.Errorf("badger panicked")
+
+func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
+	defer func() {
+		// recover in case we have badger panic on open but not recovered by badger
+		if r := recover(); r != nil {
+			log.Errorf("badger panic: %v", r)
+			err = ErrBadgerPanicked
+		}
+	}()
+	var started atomic.Bool
+	var asyncPanic interface{}
+	opts.PanicHandler = func(panicPayload interface{}) {
+		// this one will handle async panics
+		log.Errorf("badger async panic: %v", panicPayload)
+		asyncPanic = panicPayload
+		if started.Load() {
+			// todo: save panics to file
+			// if already started lets panic normally, otherwise it may be dangerous to continue work as usually
+			panic("badger panic: %v")
+		}
+	}
+	db, err = badger.Open(opts)
+	if err != nil {
+		return nil, err
+	}
+	started.Store(true)
+	if asyncPanic != nil {
+		if db != nil {
+			db.Close()
+		}
+		return nil, fmt.Errorf("badger panic: %v", asyncPanic)
+	}
+	return db, nil
+}
+
+func openBadgerWithCorruptionRecovery(opts badger.Options, initWithoutBackupIfBroken bool) (*badger.DB, error) {
+	db, err := openBadgerWithRecover(opts)
+	if err != nil {
+		baseDir := filepath.Base(opts.Dir)
+		log.With("err", err.Error()).With("dir", baseDir).Errorf("failed to open badger")
+		// check if backup exists
+		if _, err := os.Stat(getBackupPathFromDbPath(opts.Dir)); os.IsNotExist(err) {
+			if !initWithoutBackupIfBroken {
+				// backup does not exist, return error
+				return nil, err
+			} else {
+				return restoreBadger(opts, true)
+			}
+		} else {
+			// backup exists, try to restore
+			if db, err = restoreBadger(opts, false); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return db, nil
 }
 
 func (r *clientds) Init(a *app.App) (err error) {
 	// TODO: looks like we do a lot of stuff on Init here. We should consider moving it to the Run
+	r.closed = make(chan struct{})
 	start := time.Now()
 	wl := a.Component(wallet.CName)
 	if wl == nil {
@@ -120,7 +184,8 @@ func (r *clientds) Init(a *app.App) (err error) {
 	opts := r.cfg.Localstore
 	opts.Dir = r.getRepoPath(localstoreDSDir)
 	opts.ValueDir = opts.Dir
-	r.localstoreDS, err = badger.Open(opts)
+
+	r.localstoreDS, err = openBadgerWithCorruptionRecovery(opts, true)
 	if err != nil {
 		return oserror.TransformError(err)
 	}
@@ -128,7 +193,8 @@ func (r *clientds) Init(a *app.App) (err error) {
 	opts = r.cfg.Spacestore
 	opts.Dir = r.getRepoPath(SpaceDSDir)
 	opts.ValueDir = opts.Dir
-	r.spaceDS, err = badger.Open(opts)
+	r.spaceDS, err = openBadgerWithCorruptionRecovery(opts, false)
+
 	if err != nil {
 		return oserror.TransformError(err)
 	}
@@ -139,6 +205,9 @@ func (r *clientds) Init(a *app.App) (err error) {
 }
 
 func (r *clientds) Run(context.Context) error {
+	if err := r.runBackup(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -162,6 +231,7 @@ func (r *clientds) Name() (name string) {
 }
 
 func (r *clientds) Close(ctx context.Context) (err error) {
+	close(r.closed)
 	if r.localstoreDS != nil {
 		err2 := r.localstoreDS.Close()
 		if err2 != nil {

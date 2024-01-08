@@ -31,6 +31,7 @@ require (
 	github.com/gogo/status v1.1.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
+	github.com/golang/mock v1.6.0
 	github.com/golang/snappy v0.0.4
 	github.com/google/uuid v1.5.0
 	github.com/gosimple/slug v1.13.1
@@ -88,6 +89,7 @@ require (
 	golang.org/x/mobile v0.0.0-20231006135142-2b44d11868fe
 	golang.org/x/net v0.19.0
 	golang.org/x/oauth2 v0.15.0
+	golang.org/x/sys v0.15.0
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.60.1
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
@@ -253,7 +255,6 @@ require (
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/sync v0.4.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
@@ -266,6 +267,8 @@ require (
 	lukechampine.com/blake3 v1.2.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
+
+replace github.com/dgraph-io/badger/v4 => github.com/VinGarcia/badger/v4 v4.0.0-20231207134132-548c3cee3e9c
 
 replace github.com/dgraph-io/ristretto => github.com/anyproto/ristretto v0.1.2-0.20231209140254-b0fde22c72ec
 
