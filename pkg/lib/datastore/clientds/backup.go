@@ -100,8 +100,12 @@ func backupJob(db *badger.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to get all backups: %s", err)
 	}
+	var shouldDoFullBackup bool
+	if len(backups) >= FullBackupEvery {
+		shouldDoFullBackup = true
+	}
 
-	if len(backups) < FullBackupEvery && len(backups) > 0 {
+	if !shouldDoFullBackup && len(backups) > 0 {
 		lastTime, err := strconv.ParseUint(filepath.Base(backups[len(backups)-1]), 10, 64)
 		if err != nil {
 			return fmt.Errorf("failed to parse backup max version: %s", err)
@@ -149,7 +153,7 @@ func backupJob(db *badger.DB) error {
 		return fmt.Errorf("failed to rename temp backup: %s", err)
 	}
 
-	if len(backups) > FullBackupEvery {
+	if since == 0 && shouldDoFullBackup {
 		for _, backup := range backups {
 			err = os.Remove(backup)
 			if err != nil {
