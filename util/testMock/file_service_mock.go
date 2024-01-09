@@ -5,6 +5,7 @@
 //
 //	mockgen -package testMock -destination file_service_mock.go -mock_names Service=MockFileService github.com/anyproto/anytype-heart/core/files Service,Image,File
 //
+
 // Package testMock is a generated GoMock package.
 package testMock
 

@@ -5,6 +5,7 @@
 //
 //	mockgen -package filesync -destination filestore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore FileStore
 //
+
 // Package filesync is a generated GoMock package.
 package filesync
 
