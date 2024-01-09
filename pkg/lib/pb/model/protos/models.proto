@@ -808,6 +808,7 @@ enum ObjectOrigin {
   sharingExtension = 5;
   usecase = 6;
   builtin = 7;
+  bookmark = 8;
 }
 
 message RelationLink {
