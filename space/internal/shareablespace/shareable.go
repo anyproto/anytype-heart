@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/inviter"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/offloader"
@@ -123,6 +124,12 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 	case mode.ModeOffloading:
 		return offloader.New(s.app, offloader.Params{
 			Status: s.status,
+		})
+	case mode.ModeInviting:
+		return inviter.New(s.app, inviter.Params{
+			SpaceId: s.spaceId,
+			Status:  s.status,
+			Log:     log,
 		})
 	default:
 		panic("unknown mode")
