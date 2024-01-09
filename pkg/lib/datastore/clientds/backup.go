@@ -146,6 +146,7 @@ func backupJob(db *badger.DB) error {
 		if err != nil {
 			return fmt.Errorf("failed to remove empty temp backup: %s", err)
 		}
+		return nil
 	}
 
 	err = os.Rename(path, getSpaceStoreFinishedBackupPath(backupPath, maxVersion))
