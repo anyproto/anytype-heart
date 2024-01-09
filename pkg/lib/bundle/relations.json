@@ -1120,12 +1120,13 @@
   {
     "description": "Outgoing links",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "links",
     "maxCount": 0,
-    "name": "Outgoing links",
+    "name": "Links from this object",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 2
   },
   {
     "format": "number",
@@ -1433,14 +1434,15 @@
     "source": "derived"
   },
   {
-    "description": "List of backlinks",
+    "description": "List of links coming to object",
     "format": "object",
     "key": "backlinks",
-    "maxCount": 1,
-    "hidden": true,
-    "name": "Backlinks",
-    "readonly": false,
-    "source": "local"
+    "maxCount": 0,
+    "hidden": false,
+    "name": "Links to this object",
+    "readonly": true,
+    "source": "local",
+    "revision": 2
   },
   {
     "description": "Relation that indicates document has been uninstalled",
@@ -1540,5 +1542,15 @@
     "name": "Last Used date",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Revision of system object",
+    "format": "number",
+    "hidden": true,
+    "key": "revision",
+    "maxCount": 1,
+    "name": "Revision",
+    "readonly": true,
+    "source": "details"
   }
 ]

@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -29,6 +30,7 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
+	source.ChangeReceiver
 
 	dataview.Dataview
 	table.TableEditor
@@ -40,9 +42,10 @@ type Page struct {
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Page{
-		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
-		IHistory:      basic.NewHistory(sb),
+		SmartBlock:     sb,
+		ChangeReceiver: sb.(source.ChangeReceiver),
+		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter),
+		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
 			f.objectStore,
@@ -133,6 +136,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithDescription,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+					template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 					template.WithBookmarkBlocks,
 				)
 			case model.ObjectType_relation:
@@ -158,5 +162,10 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 2,
+			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
+		},
+	})
 }

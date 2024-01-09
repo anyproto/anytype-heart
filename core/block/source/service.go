@@ -34,6 +34,7 @@ func New() Service {
 
 type accountService interface {
 	IdentityObjectId() string
+	PersonalSpaceID() string
 }
 
 type Space interface {

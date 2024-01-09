@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -39,7 +40,7 @@ const CName = "fileobject"
 type Service interface {
 	app.Component
 
-	DeleteFileData(ctx context.Context, space space.Space, objectId string) error
+	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectIdByFileId(fileId domain.FileId) (string, error)
@@ -51,7 +52,7 @@ type Service interface {
 }
 
 type objectCreatorService interface {
-	CreateSmartBlockFromStateInSpace(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 type service struct {
@@ -107,7 +108,7 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	return id, object, nil
 }
 
-func (s *service) createInSpace(ctx context.Context, space space.Space, req CreateRequest) (id string, object *types.Struct, err error) {
+func (s *service) createInSpace(ctx context.Context, space clientspace.Space, req CreateRequest) (id string, object *types.Struct, err error) {
 	if req.FileId == "" {
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
@@ -134,7 +135,7 @@ func (s *service) createInSpace(ctx context.Context, space space.Space, req Crea
 	return id, object, nil
 }
 
-func (s *service) migrateDeriveObject(ctx context.Context, space space.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
+func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
 	if req.FileId == "" {
 		return fmt.Errorf("file hash is empty")
 	}
@@ -246,7 +247,7 @@ func (s *service) getFileIdFromObjectInSpace(space smartblock.Space, objectId st
 	}, nil
 }
 
-func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId string) string {
+func (s *service) migrate(space clientspace.Space, keys []*pb.ChangeFileKeys, fileId string) string {
 	if fileId == "" {
 		return fileId
 	}
@@ -299,7 +300,7 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.Ch
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			fh.MigrateFile(func(oldHash string) (newHash string) {
-				return s.migrate(spc.(space.Space), keys, oldHash)
+				return s.migrate(spc.(clientspace.Space), keys, oldHash)
 			})
 		}
 		return true
@@ -327,7 +328,7 @@ func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.C
 				if hash == "" {
 					continue
 				}
-				newHash := s.migrate(spc.(space.Space), keys, hash)
+				newHash := s.migrate(spc.(clientspace.Space), keys, hash)
 				if hash != newHash {
 					hashList[i] = newHash
 					anyChanges = true
@@ -444,7 +445,7 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 	return filesOffloaded, totalSize, nil
 }
 
-func (s *service) DeleteFileData(ctx context.Context, space space.Space, objectId string) error {
+func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error {
 	fullId, err := s.getFileIdFromObjectInSpace(space, objectId)
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)

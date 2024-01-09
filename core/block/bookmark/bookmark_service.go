@@ -87,7 +87,7 @@ func (s *service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error) {
+func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, objectDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("empty details")
 	}
@@ -130,10 +130,11 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	if len(records) > 0 {
 		rec := records[0]
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+		objectDetails = rec.Details
 	} else {
 		creationState := state.NewDoc("", nil).(*state.State)
 		creationState.SetDetails(details)
-		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(
+		objectId, objectDetails, err = s.creator.CreateSmartBlockFromState(
 			ctx,
 			spaceID,
 			[]domain.TypeKey{bundle.TypeKeyBookmark},
@@ -154,7 +155,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 		}()
 	}
 
-	return objectId, newDetails, nil
+	return objectId, objectDetails, nil
 }
 
 func detailsFromContent(content *model.BlockContentBookmark) map[string]*types.Value {

@@ -23,7 +23,21 @@ type proxyStore struct {
 	localStore *flatStore
 	origin     rpcstore.RpcStore
 
+	backgroundCtx    context.Context
+	backgroundCancel context.CancelFunc
+
 	oldStore *badger.DB
+}
+
+func newProxyStore(localStore *flatStore, origin rpcstore.RpcStore, oldStore *badger.DB) *proxyStore {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &proxyStore{
+		localStore:       localStore,
+		origin:           origin,
+		oldStore:         oldStore,
+		backgroundCtx:    ctx,
+		backgroundCancel: cancel,
+	}
 }
 
 func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
@@ -130,6 +144,8 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 				}
 			case <-ctx.Done():
 				return
+			case <-c.backgroundCtx.Done():
+				return
 			}
 			if !oOk && !cOk && !oldOk {
 				return
@@ -216,6 +232,9 @@ func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (no
 }
 
 func (c *proxyStore) Close() error {
+	if c.backgroundCancel != nil {
+		c.backgroundCancel()
+	}
 	if c.oldStore != nil {
 		if err := c.oldStore.Close(); err != nil {
 			log.Error("error while closing old store", zap.Error(err))

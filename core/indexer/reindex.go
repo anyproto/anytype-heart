@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -105,7 +105,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	return flags, nil
 }
 
-func (i *indexer) ReindexSpace(space space.Space) (err error) {
+func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	flags, err := i.buildFlags(space.Id())
 	if err != nil {
 		return
@@ -207,7 +207,7 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 	return i.saveLatestChecksums(space.Id())
 }
 
-func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
+func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	flags, err := i.buildFlags(space.Id())
 	if err != nil {
 		return err
@@ -230,7 +230,6 @@ func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
 	}
-
 	if flags.bundledObjects {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
@@ -317,23 +316,20 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 			err = nil
 			log.Errorf("reindex failed to removeOldObjects: %v", err)
 		}
-		ids, err := i.store.ListIdsBySpace(spaceId)
+		var ids []string
+		ids, err = i.store.ListIdsBySpace(spaceId)
 		if err != nil {
 			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 		}
 		for _, id := range ids {
-			err = i.store.DeleteDetails(id)
-			if err != nil {
-				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
+			if err = i.store.DeleteLinks(id); err != nil {
+				log.Errorf("reindex failed to delete links(removeAllIndexedObjects): %v", err)
 			}
 		}
-	}
-	if flags.eraseIndexes {
-		err = i.store.EraseIndexes(spaceId)
-		if err != nil {
-			log.Errorf("reindex failed to erase indexes: %v", err)
-		} else {
-			log.Infof("all store indexes successfully erased")
+		for _, id := range ids {
+			if err = i.store.DeleteDetails(id); err != nil {
+				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
+			}
 		}
 	}
 	return
@@ -354,7 +350,7 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 	return nil
 }
 
-func (i *indexer) reindexOutdatedObjects(ctx context.Context, space space.Space) (toReindex, success int, err error) {
+func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
 	tids := space.StoredIds()
 	var idsToReindex []string
 	for _, tid := range tids {

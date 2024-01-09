@@ -21,9 +21,11 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -97,7 +99,6 @@ func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, er
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
 	StateRebuild(d state.Doc) (err error)
-	sync.Locker
 }
 
 type Source interface {
@@ -286,12 +287,15 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.IdentityObjectId(), s.objectStore)
+	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.IdentityObjectId(), s.accountService.PersonalSpaceID(), s.objectStore)
 	migration.Migrate(st)
 
-	now := time.Now()
+	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
+		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
+		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+	}
+
 	s.fileObjectMigrator.MigrateDetails(st, s.space, s.GetFileKeysSnapshot())
-	fmt.Println("DETAILS MIGRATED", time.Since(now))
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
@@ -364,7 +368,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	if change.Snapshot != nil {
 		s.lastSnapshotId = id
 		s.changesSinceSnapshot = 0
-		log.Infof("%s: pushed snapshot", s.id)
+		log.Debugf("%s: pushed snapshot", s.id)
 	} else {
 		s.changesSinceSnapshot++
 		log.Debugf("%s: pushed %d changes", s.id, len(change.Content))

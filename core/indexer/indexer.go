@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -45,8 +45,8 @@ func New() Indexer {
 type Indexer interface {
 	ForceFTIndex()
 	StartFullTextIndex() error
-	ReindexMarketplaceSpace(space space.Space) error
-	ReindexSpace(space space.Space) error
+	ReindexMarketplaceSpace(space clientspace.Space) error
+	ReindexSpace(space clientspace.Space) error
 	RemoveIndexes(spaceId string) (err error)
 	Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error
 	app.ComponentRunnable

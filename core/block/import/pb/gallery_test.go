@@ -13,25 +13,24 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestGalleryImport_ProvideCollection(t *testing.T) {
-	t.Run("no widget in experience - root collection without objects", func(t *testing.T) {
+	t.Run("no widget in experience - only objects root collection", func(t *testing.T) {
 		// given
 		collectionProvider := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
-		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 0)
+		assert.Len(t, collection, 1)
+		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})
 	t.Run("CollectionTitle parameter is empty - collection with default name", func(t *testing.T) {
 		// given
@@ -39,27 +38,27 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		assert.Equal(t, rootCollectionName, collection.FileName)
+		assert.Len(t, collection, 1)
+		assert.Equal(t, rootCollectionName, collection[0].FileName)
 	})
-	t.Run("CollectionTitle parameter is equeal 'test' - collection with name test", func(t *testing.T) {
+	t.Run("CollectionTitle parameter is equal 'test' - collection with name test", func(t *testing.T) {
 		// given
 		collectionProvider := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{CollectionTitle: "test"}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		assert.Equal(t, "test", collection.FileName)
+		assert.Len(t, collection, 1)
+		assert.Equal(t, "test", collection[0].FileName)
 	})
-	t.Run("widget with sets - root collection without objects as we ignore default sets", func(t *testing.T) {
+	t.Run("widget with sets - only objects root collection as we ignore default sets and not create widgets collection", func(t *testing.T) {
 		// given
 		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
@@ -129,16 +128,14 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil)
+		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
-		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 0)
+		assert.Len(t, collection, 1)
+		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})
-	t.Run("default sets and objects in widget - root collection with objects from widget", func(t *testing.T) {
+	t.Run("default sets and objects in widget - root collection with objects from widget and object root collection are created", func(t *testing.T) {
 		// given
 		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
@@ -202,17 +199,25 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil)
+		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
+		assert.Len(t, collection, 2)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "oldObjectInWidget")
+		assert.False(t, pbtypes.GetBool(rootCollectionState.Details(), bundle.RelationKeyIsFavorite.String()))
+
+		rootCollectionState = state.NewDocFromSnapshot("", collection[1].Snapshot).(*state.State)
+		objectsInCollection = rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, objectsInCollection, 3)
+		assert.Equal(t, objectsInCollection[0], "id1")
+		assert.Equal(t, objectsInCollection[1], "id4")
+		assert.Equal(t, objectsInCollection[2], "id5")
 	})
-	t.Run("widget is empty - root collection without objects", func(t *testing.T) {
+	t.Run("widget is empty - only objects root collection created", func(t *testing.T) {
 		// given
 		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
@@ -229,14 +234,13 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(nil, widgetSnapshot, nil, params, nil)
+		collection, err := p.ProvideCollection(nil, widgetSnapshot, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
-		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 0)
+		assert.Len(t, collection, 1)
+		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
+
 	})
 	t.Run("workspace is empty - root collection without icon", func(t *testing.T) {
 		// given
@@ -244,12 +248,12 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// when
-		collection, err := p.ProvideCollection(nil, nil, nil, params, nil)
+		collection, err := p.ProvideCollection(nil, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		assert.Empty(t, pbtypes.GetString(collection.Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+		assert.Len(t, collection, 1)
+		assert.Empty(t, pbtypes.GetString(collection[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
 	})
 	t.Run("workspace without icon - root collection without icon", func(t *testing.T) {
 		// given
@@ -267,12 +271,12 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			},
 		}
 		// when
-		collection, err := p.ProvideCollection(nil, nil, nil, params, workspace)
+		collection, err := p.ProvideCollection(nil, nil, nil, params, workspace, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		assert.Empty(t, pbtypes.GetString(collection.Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+		assert.Len(t, collection, 1)
+		assert.Empty(t, pbtypes.GetString(collection[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
 	})
 	t.Run("workspace with icon - root collection with icon", func(t *testing.T) {
 		// given
@@ -292,11 +296,57 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			},
 		}
 		// when
-		collection, err := p.ProvideCollection(nil, nil, nil, params, workspace)
+		collection, err := p.ProvideCollection(nil, nil, nil, params, workspace, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		assert.Equal(t, "icon", pbtypes.GetString(collection.Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+		assert.Len(t, collection, 1)
+		assert.Equal(t, "icon", pbtypes.GetString(collection[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+	})
+	t.Run("if import in new space - not create anything", func(t *testing.T) {
+		// given
+		p := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+
+		// when
+		collection, err := p.ProvideCollection(nil, nil, nil, params, nil, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Nil(t, collection)
+	})
+
+	t.Run("widget has only deleted objects - not create widget collection", func(t *testing.T) {
+		// given
+		p := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+
+		// object with widget
+		widgetSnapshot := &common.Snapshot{
+			Id:     "widgetID",
+			SbType: smartblock.SmartBlockTypeWidget,
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Blocks: []*model.Block{
+						{
+							Id: "widgetID",
+							Content: &model.BlockContentOfLink{
+								Link: &model.BlockContentLink{
+									TargetBlockId: addr.MissingObject,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		collection, err := p.ProvideCollection(nil, widgetSnapshot, nil, params, nil, false)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, collection, 1)
+		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})
 }

@@ -313,6 +313,12 @@ func (s *Service) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextR
 	})
 }
 
+func (s *Service) SetLatexProcessor(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) error {
+	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
+		return b.SetLatexText(ctx, req)
+	})
+}
+
 func (s *Service) SetTextStyle(
 	ctx session.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string,
 ) error {

@@ -41,6 +41,19 @@ type store struct {
 	s  *service
 	cm *clientManager
 	mu sync.RWMutex
+
+	backgroundCtx    context.Context
+	backgroundCancel context.CancelFunc
+}
+
+func newStore(s *service, cm *clientManager) *store {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &store{
+		s:                s,
+		cm:               cm,
+		backgroundCtx:    ctx,
+		backgroundCancel: cancel,
+	}
 }
 
 func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
@@ -55,7 +68,7 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) 
 	}, k); err != nil {
 		return
 	}
-	if err := waitResult(ctx, ready); err != nil {
+	if err := waitResult(s.backgroundCtx, ctx, ready); err != nil {
 		return nil, err
 	}
 	return blocks.NewBlockWithCid(data, k)
@@ -157,13 +170,13 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileId domain.Fil
 }
 
 func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
-	return writeOperation(ctx, s, "checkAvailability", func(c *client) ([]*fileproto.BlockAvailability, error) {
+	return writeOperation(s.backgroundCtx, ctx, s, "checkAvailability", func(c *client) ([]*fileproto.BlockAvailability, error) {
 		return c.checkBlocksAvailability(ctx, spaceID, cids...)
 	})
 }
 
 func (s *store) BindCids(ctx context.Context, spaceID string, fileId domain.FileId, cids []cid.Cid) error {
-	_, err := writeOperation(ctx, s, "bindCids", func(c *client) (interface{}, error) {
+	_, err := writeOperation(s.backgroundCtx, ctx, s, "bindCids", func(c *client) (interface{}, error) {
 		return nil, c.bind(ctx, spaceID, fileId, cids...)
 	})
 	return err
@@ -174,35 +187,38 @@ func (s *store) Delete(ctx context.Context, c cid.Cid) error {
 }
 
 func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...domain.FileId) error {
-	_, err := writeOperation(ctx, s, "deleteFiles", func(c *client) (interface{}, error) {
+	_, err := writeOperation(s.backgroundCtx, ctx, s, "deleteFiles", func(c *client) (interface{}, error) {
 		return nil, c.delete(ctx, spaceId, fileIds...)
 	})
 	return err
 }
 
 func (s *store) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {
-	return writeOperation(ctx, s, "accountInfo", func(c *client) (*fileproto.AccountInfoResponse, error) {
+	return writeOperation(s.backgroundCtx, ctx, s, "accountInfo", func(c *client) (*fileproto.AccountInfoResponse, error) {
 		return c.accountInfo(ctx)
 	})
 }
 
 func (s *store) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
-	return writeOperation(ctx, s, "spaceInfo", func(c *client) (*fileproto.SpaceInfoResponse, error) {
+	return writeOperation(s.backgroundCtx, ctx, s, "spaceInfo", func(c *client) (*fileproto.SpaceInfoResponse, error) {
 		return c.spaceInfo(ctx, spaceId)
 	})
 }
 
 func (s *store) FilesInfo(ctx context.Context, spaceId string, fileIds ...domain.FileId) ([]*fileproto.FileInfo, error) {
-	return writeOperation(ctx, s, "filesInfo", func(c *client) ([]*fileproto.FileInfo, error) {
+	return writeOperation(s.backgroundCtx, ctx, s, "filesInfo", func(c *client) ([]*fileproto.FileInfo, error) {
 		return c.filesInfo(ctx, spaceId, fileIds)
 	})
 }
 
 func (s *store) Close() (err error) {
+	if s.backgroundCancel != nil {
+		s.backgroundCancel()
+	}
 	return s.cm.Close()
 }
 
-func writeOperation[T any](ctx context.Context, s *store, operationName string, fn func(c *client) (T, error)) (T, error) {
+func writeOperation[T any](backgroundCtx context.Context, ctx context.Context, s *store, operationName string, fn func(c *client) (T, error)) (T, error) {
 	ready := make(chan result, 1)
 	ctx = context.WithValue(ctx, operationNameKey, operationName)
 	var res T
@@ -213,14 +229,16 @@ func writeOperation[T any](ctx context.Context, s *store, operationName string, 
 	}, cid.Cid{}); err != nil {
 		return res, err
 	}
-	if err := waitResult(ctx, ready); err != nil {
+	if err := waitResult(backgroundCtx, ctx, ready); err != nil {
 		return res, err
 	}
 	return res, nil
 }
 
-func waitResult(ctx context.Context, ready chan result) error {
+func waitResult(backgroundCtx context.Context, ctx context.Context, ready chan result) error {
 	select {
+	case <-backgroundCtx.Done():
+		return backgroundCtx.Err()
 	case <-ctx.Done():
 		return ctx.Err()
 	case res := <-ready:

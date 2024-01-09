@@ -66,5 +66,6 @@
   "profileOwnerIdentity",
   "fileBackupStatus",
   "fileId",
-  "origin"
+  "origin",
+  "revision"
 ]
