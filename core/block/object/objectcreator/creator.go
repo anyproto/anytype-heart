@@ -273,7 +273,6 @@ func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlock
 func createSmartBlock(
 	ctx context.Context, spc clientspace.Space, initFunc objectcache.InitFunc, createState *state.State, sbType coresb.SmartBlockType,
 ) (smartblock.SmartBlock, error) {
-	var sb smartblock.SmartBlock
 	if uKey := createState.UniqueKeyInternal(); uKey != "" {
 		uk, err := domain.NewUniqueKey(sbType, uKey)
 		if err != nil {
