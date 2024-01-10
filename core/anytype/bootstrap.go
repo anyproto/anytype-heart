@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
@@ -206,6 +207,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
+		Register(aclclient.NewAclInvitingClient()).
 		Register(rpcstore.New()).
 		Register(filestore.New()).
 		Register(fileservice.New()).

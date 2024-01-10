@@ -71,7 +71,7 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(nil, fmt.Errorf("not found"))
 		fx.objectCache.EXPECT().DeriveTreeObject(ctx, mock.Anything).Return(view, nil)
 
-		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId, false))
+		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId, false, spaceinfo.AccountStatusUnknown))
 	})
 
 	t.Run("err spaceView exists", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		fx.expectDeriveTreePayload(viewId)
 		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(view, nil)
 
-		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId, false), ErrSpaceViewExists.Error())
+		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId, false, spaceinfo.AccountStatusUnknown), ErrSpaceViewExists.Error())
 	})
 }
 

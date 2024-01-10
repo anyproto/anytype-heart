@@ -58,7 +58,6 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 	s.DisableLayouts()
 	info := s.getSpaceInfo(ctx.State)
-	// TODO: [MR] set persistent status on the basis of context
 	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
 	s.setSpacePersistentInfo(ctx.State, newPersistentInfo)
 	s.setSpaceLocalInfo(ctx.State, spaceinfo.SpaceLocalInfo{

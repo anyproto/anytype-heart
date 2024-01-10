@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/acl/aclwaiter"
 	"go.uber.org/zap"
 
@@ -31,16 +30,15 @@ type Params struct {
 
 func New(app *app.App, params Params) Inviter {
 	child := app.ChildApp()
-	child.Register(aclclient.NewAclInvitingClient(params.SpaceId)).
-		Register(aclwaiter.New(params.SpaceId, func() error {
-			params.Status.Lock()
-			defer params.Status.Unlock()
-			err := params.Status.SetPersistentStatus(context.Background(), spaceinfo.AccountStatusLoading)
-			if err != nil {
-				params.Log.Error("failed to set persistent status", zap.Error(err))
-			}
-			return err
-		}))
+	child.Register(aclwaiter.New(params.SpaceId, func() error {
+		params.Status.Lock()
+		defer params.Status.Unlock()
+		err := params.Status.SetPersistentStatus(context.Background(), spaceinfo.AccountStatusLoading)
+		if err != nil {
+			params.Log.Error("failed to set persistent status", zap.Error(err))
+		}
+		return err
+	}))
 	return &inviter{
 		app: child,
 	}

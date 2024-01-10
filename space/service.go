@@ -48,10 +48,12 @@ type isNewAccount interface {
 type Service interface {
 	Create(ctx context.Context) (space clientspace.Space, err error)
 
+	Invite(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
+	AccountMetadata() []byte
 
 	app.ComponentRunnable
 }
@@ -188,6 +190,10 @@ func (s *service) OnWorkspaceChanged(spaceId string, details *types.Struct) {
 			log.Warn("OnWorkspaceChanged error", zap.Error(err))
 		}
 	}()
+}
+
+func (s *service) AccountMetadata() []byte {
+	return s.metadataPayload
 }
 
 func (s *service) updateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus) error {
