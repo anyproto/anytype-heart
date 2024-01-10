@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -29,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -726,9 +728,9 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}
-	res := s.bookmark.FetchBookmarkContent(spaceID, url)
+	res := s.bookmark.FetchBookmarkContent(spaceID, url, false)
 	go func() {
-		if err := s.bookmark.UpdateBookmarkObject(req.ContextId, res); err != nil {
+		if err := s.bookmark.UpdateObject(req.ContextId, res()); err != nil {
 			log.Errorf("update bookmark object %s: %s", req.ContextId, err)
 		}
 	}()
@@ -771,6 +773,58 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 	}
 
 	return
+}
+
+func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest) (id string, err error) {
+	url, err := uri.NormalizeURI(req.Url)
+	if err != nil {
+		return "", err
+	}
+	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+	if err != nil {
+		return "", err
+	}
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: objectTypeKey,
+	}
+	id, _, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
+	if err != nil {
+		return "", err
+	}
+
+	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, true)
+	content := res()
+	err = s.bookmark.UpdateObject(id, content)
+	if err != nil {
+		return "", err
+	}
+
+	if content != nil && len(content.Blocks) > 0 {
+		err := s.pasteBlocks(id, content)
+		if err != nil {
+			return "", err
+		}
+	}
+	return id, nil
+}
+
+func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error {
+	groupID := bson.NewObjectId().Hex()
+	_, uploadArr, _, _, err := s.Paste(nil, pb.RpcBlockPasteRequest{
+		ContextId: id,
+		AnySlot:   content.Blocks,
+	}, groupID)
+	if err != nil {
+		return err
+	}
+	for _, r := range uploadArr {
+		r.ContextId = id
+		uploadReq := UploadRequest{RpcBlockUploadRequest: r}
+		if err = s.UploadBlockFile(nil, uploadReq, groupID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) replaceLink(id, oldId, newId string) error {
