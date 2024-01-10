@@ -226,17 +226,6 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
 	progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
 
-	err = b.notifications.CreateAndSendLocal(&model.Notification{
-		Status:  model.Notification_Created,
-		IsLocal: true,
-		Space:   spaceID,
-		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
-			ProcessId: progress.Id(),
-			ErrorCode: common.GetImportErrorCode(importErr),
-			SpaceId:   spaceID,
-			Name:      title,
-		}},
-	})
 	if err != nil {
 		log.Errorf("failed to send notification: %v", err)
 	}
