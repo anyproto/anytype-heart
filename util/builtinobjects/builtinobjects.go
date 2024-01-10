@@ -287,22 +287,28 @@ func (b *builtinObjects) importArchive(
 	progress process.Progress,
 	isNewSpace bool,
 ) (err error) {
-	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
-		SpaceId:               spaceID,
-		UpdateExistingObjects: false,
-		Type:                  model.Import_Pb,
-		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
-		NoProgress:            progress == nil,
-		IsMigration:           false,
-		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
-			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path:            []string{path},
-				NoCollection:    true,
-				CollectionTitle: title,
-				ImportType:      importType,
-			}},
-		IsNewSpace: isNewSpace,
-	}, model.ObjectOrigin_usecase, progress, false, true)
+	importRequest := &importer.ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			SpaceId:               spaceID,
+			UpdateExistingObjects: false,
+			Type:                  model.Import_Pb,
+			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+			NoProgress:            progress == nil,
+			IsMigration:           false,
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+				PbParams: &pb.RpcObjectImportRequestPbParams{
+					Path:            []string{path},
+					NoCollection:    true,
+					CollectionTitle: title,
+					ImportType:      importType,
+				}},
+			IsNewSpace: isNewSpace,
+		},
+		Origin:   model.ObjectOrigin_usecase,
+		Progress: progress,
+		IsSync:   true,
+	}
+	_, err = b.importer.Import(ctx, importRequest)
 
 	return err
 }

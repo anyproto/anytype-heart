@@ -790,7 +790,14 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionId, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil, true, false)
+	importRequest := &importer.ImportRequest{
+		RpcObjectImportRequest: req,
+		Origin:                 model.ObjectOrigin_import,
+		Progress:               nil,
+		SendNotification:       true,
+		IsSync:                 false,
+	}
+	rootCollectionId, err := getService[importer.Importer](mw).Import(cctx, importRequest)
 
 	if err == nil {
 		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
