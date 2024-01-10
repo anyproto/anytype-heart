@@ -30,14 +30,16 @@ type loadingSpace struct {
 	spaceServiceProvider spaceServiceProvider
 
 	// results
-	space   clientspace.Space
-	loadErr error
-	loadCh  chan struct{}
+	stopIfMandatoryFail bool
+	space               clientspace.Space
+	loadErr             error
+	loadCh              chan struct{}
 }
 
-func (s *spaceLoader) newLoadingSpace(ctx context.Context, spaceID string) *loadingSpace {
+func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail bool, spaceID string) *loadingSpace {
 	ls := &loadingSpace{
 		ID:                   spaceID,
+		stopIfMandatoryFail:  stopIfMandatoryFail,
 		retryTimeout:         loadingRetryTimeout,
 		spaceServiceProvider: s,
 		loadCh:               make(chan struct{}),
@@ -82,6 +84,10 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
 		if errors.Is(err, treechangeproto.ErrGetTree) {
+			if ls.stopIfMandatoryFail {
+				ls.loadErr = err
+				return true
+			}
 			return false
 		}
 	}

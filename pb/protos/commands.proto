@@ -1120,6 +1120,31 @@ message Rpc {
             }
         }
 
+        message CreateFromUrl {
+            message Request {
+                string spaceId = 1;
+                string objectTypeUniqueKey = 2;
+                string url = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                string objectId = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message BookmarkFetch {
             message Request {
                 string contextId = 1;
@@ -2119,12 +2144,13 @@ message Rpc {
                 UseCase useCase = 1;
 
                 enum UseCase {
-                    EMPTY = 0;
-                    SKIP = 1;
+                    NONE = 0;
+                    GET_STARTED = 1;
                     PERSONAL_PROJECTS = 2;
                     KNOWLEDGE_BASE = 3;
                     NOTES_DIARY = 4;
                     STRATEGIC_WRITING = 5;
+                    EMPTY = 6;
                 }
             }
 

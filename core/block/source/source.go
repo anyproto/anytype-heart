@@ -284,7 +284,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.IdentityObjectId(), s.accountService.PersonalSpaceID(), s.objectStore)
 	migration.Migrate(st)
 
-	if s.Type() == smartblock.SmartBlockTypePage {
+	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
 	}

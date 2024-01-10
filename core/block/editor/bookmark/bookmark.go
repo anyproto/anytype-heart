@@ -144,15 +144,18 @@ func (b *sbookmark) updateBlock(_ session.Context, block bookmark.Block, apply f
 	}
 
 	content := block.GetContent()
-	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), block.ToDetails(origin), func() *model.BlockContentBookmark {
-		return content
+	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), block.ToDetails(origin), func() *bookmark.ObjectContent {
+		return &bookmark.ObjectContent{BookmarkContent: content}
 	})
 	if err != nil {
 		return fmt.Errorf("create bookmark object: %w", err)
 	}
 
-	block.UpdateContent(func(content *model.BlockContentBookmark) {
-		content.TargetObjectId = pageID
+	block.UpdateContent(func(content *bookmark.ObjectContent) {
+		if content.BookmarkContent == nil {
+			content.BookmarkContent = &model.BlockContentBookmark{}
+		}
+		content.BookmarkContent.TargetObjectId = pageID
 	})
 	return nil
 }

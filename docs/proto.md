@@ -643,6 +643,10 @@
     - [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request)
     - [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response)
     - [Rpc.Object.CreateBookmark.Response.Error](#anytype-Rpc-Object-CreateBookmark-Response-Error)
+    - [Rpc.Object.CreateFromUrl](#anytype-Rpc-Object-CreateFromUrl)
+    - [Rpc.Object.CreateFromUrl.Request](#anytype-Rpc-Object-CreateFromUrl-Request)
+    - [Rpc.Object.CreateFromUrl.Response](#anytype-Rpc-Object-CreateFromUrl-Response)
+    - [Rpc.Object.CreateFromUrl.Response.Error](#anytype-Rpc-Object-CreateFromUrl-Response-Error)
     - [Rpc.Object.CreateObjectType](#anytype-Rpc-Object-CreateObjectType)
     - [Rpc.Object.CreateObjectType.Request](#anytype-Rpc-Object-CreateObjectType-Request)
     - [Rpc.Object.CreateObjectType.Response](#anytype-Rpc-Object-CreateObjectType-Response)
@@ -1114,6 +1118,7 @@
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
     - [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code)
     - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
+    - [Rpc.Object.CreateFromUrl.Response.Error.Code](#anytype-Rpc-Object-CreateFromUrl-Response-Error-Code)
     - [Rpc.Object.CreateObjectType.Response.Error.Code](#anytype-Rpc-Object-CreateObjectType-Response-Error-Code)
     - [Rpc.Object.CreateRelation.Response.Error.Code](#anytype-Rpc-Object-CreateRelation-Response-Error-Code)
     - [Rpc.Object.CreateRelationOption.Response.Error.Code](#anytype-Rpc-Object-CreateRelationOption-Response-Error-Code)
@@ -1575,6 +1580,7 @@
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
 | ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
+| ObjectCreateFromUrl | [Rpc.Object.CreateFromUrl.Request](#anytype-Rpc-Object-CreateFromUrl-Request) | [Rpc.Object.CreateFromUrl.Response](#anytype-Rpc-Object-CreateFromUrl-Response) |  |
 | ObjectCreateSet | [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request) | [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response) | ObjectCreateSet just creates the new set, without adding the link to it from some other page |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
@@ -11057,6 +11063,65 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-CreateFromUrl"></a>
+
+### Rpc.Object.CreateFromUrl
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateFromUrl-Request"></a>
+
+### Rpc.Object.CreateFromUrl.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateFromUrl-Response"></a>
+
+### Rpc.Object.CreateFromUrl.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CreateFromUrl.Response.Error](#anytype-Rpc-Object-CreateFromUrl-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateFromUrl-Response-Error"></a>
+
+### Rpc.Object.CreateFromUrl.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CreateFromUrl.Response.Error.Code](#anytype-Rpc-Object-CreateFromUrl-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-CreateObjectType"></a>
 
 ### Rpc.Object.CreateObjectType
@@ -17734,6 +17799,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-CreateFromUrl-Response-Error-Code"></a>
+
+### Rpc.Object.CreateFromUrl.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Object-CreateObjectType-Response-Error-Code"></a>
 
 ### Rpc.Object.CreateObjectType.Response.Error.Code
@@ -17958,12 +18036,13 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 |  |
-| SKIP | 1 |  |
+| NONE | 0 |  |
+| GET_STARTED | 1 |  |
 | PERSONAL_PROJECTS | 2 |  |
 | KNOWLEDGE_BASE | 3 |  |
 | NOTES_DIARY | 4 |  |
 | STRATEGIC_WRITING | 5 |  |
+| EMPTY | 6 |  |
 
 
 
@@ -23476,6 +23555,17 @@ stored |
 | Soundcloud | 5 |  |
 | GoogleMaps | 6 |  |
 | Miro | 7 |  |
+| Figma | 8 |  |
+| Twitter | 9 |  |
+| OpenStreetMap | 10 |  |
+| Reddit | 11 |  |
+| Facebook | 12 |  |
+| Instagram | 13 |  |
+| Telegram | 14 |  |
+| GithubGist | 15 |  |
+| Codepen | 16 |  |
+| Bilibili | 17 |  |
+| Excalidraw | 18 |  |
 
 
 
@@ -23771,6 +23861,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | sharingExtension | 5 |  |
 | usecase | 6 |  |
 | builtin | 7 |  |
+| bookmark | 8 |  |
 
 
 
