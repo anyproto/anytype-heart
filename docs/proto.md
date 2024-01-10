@@ -175,6 +175,10 @@
     - [Rpc.Block.Paste.Request.File](#anytype-Rpc-Block-Paste-Request-File)
     - [Rpc.Block.Paste.Response](#anytype-Rpc-Block-Paste-Response)
     - [Rpc.Block.Paste.Response.Error](#anytype-Rpc-Block-Paste-Response-Error)
+    - [Rpc.Block.Preview](#anytype-Rpc-Block-Preview)
+    - [Rpc.Block.Preview.Request](#anytype-Rpc-Block-Preview-Request)
+    - [Rpc.Block.Preview.Response](#anytype-Rpc-Block-Preview-Response)
+    - [Rpc.Block.Preview.Response.Error](#anytype-Rpc-Block-Preview-Response-Error)
     - [Rpc.Block.Replace](#anytype-Rpc-Block-Replace)
     - [Rpc.Block.Replace.Request](#anytype-Rpc-Block-Replace-Request)
     - [Rpc.Block.Replace.Response](#anytype-Rpc-Block-Replace-Response)
@@ -1002,6 +1006,7 @@
     - [Rpc.Block.ListTurnInto.Response.Error.Code](#anytype-Rpc-Block-ListTurnInto-Response-Error-Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype-Rpc-Block-Merge-Response-Error-Code)
     - [Rpc.Block.Paste.Response.Error.Code](#anytype-Rpc-Block-Paste-Response-Error-Code)
+    - [Rpc.Block.Preview.Response.Error.Code](#anytype-Rpc-Block-Preview-Response-Error-Code)
     - [Rpc.Block.Replace.Response.Error.Code](#anytype-Rpc-Block-Replace-Response-Error-Code)
     - [Rpc.Block.SetCarriage.Response.Error.Code](#anytype-Rpc-Block-SetCarriage-Response-Error-Code)
     - [Rpc.Block.SetFields.Response.Error.Code](#anytype-Rpc-Block-SetFields-Response-Error-Code)
@@ -1656,6 +1661,7 @@
 | BlockSetFields | [Rpc.Block.SetFields.Request](#anytype-Rpc-Block-SetFields-Request) | [Rpc.Block.SetFields.Response](#anytype-Rpc-Block-SetFields-Response) |  |
 | BlockExport | [Rpc.Block.Export.Request](#anytype-Rpc-Block-Export-Request) | [Rpc.Block.Export.Response](#anytype-Rpc-Block-Export-Response) |  |
 | BlockSetCarriage | [Rpc.Block.SetCarriage.Request](#anytype-Rpc-Block-SetCarriage-Request) | [Rpc.Block.SetCarriage.Response](#anytype-Rpc-Block-SetCarriage-Response) |  |
+| BlockPreview | [Rpc.Block.Preview.Request](#anytype-Rpc-Block-Preview-Request) | [Rpc.Block.Preview.Response](#anytype-Rpc-Block-Preview-Response) |  |
 | BlockListDelete | [Rpc.Block.ListDelete.Request](#anytype-Rpc-Block-ListDelete-Request) | [Rpc.Block.ListDelete.Response](#anytype-Rpc-Block-ListDelete-Response) |  |
 | BlockListMoveToExistingObject | [Rpc.Block.ListMoveToExistingObject.Request](#anytype-Rpc-Block-ListMoveToExistingObject-Request) | [Rpc.Block.ListMoveToExistingObject.Response](#anytype-Rpc-Block-ListMoveToExistingObject-Response) |  |
 | BlockListMoveToNewObject | [Rpc.Block.ListMoveToNewObject.Request](#anytype-Rpc-Block-ListMoveToNewObject-Request) | [Rpc.Block.ListMoveToNewObject.Response](#anytype-Rpc-Block-ListMoveToNewObject-Response) |  |
@@ -4233,6 +4239,63 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Paste.Response.Error.Code](#anytype-Rpc-Block-Paste-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-Preview"></a>
+
+### Rpc.Block.Preview
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-Preview-Request"></a>
+
+### Rpc.Block.Preview.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| html | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-Preview-Response"></a>
+
+### Rpc.Block.Preview.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Preview.Response.Error](#anytype-Rpc-Block-Preview-Response-Error) |  |  |
+| blocks | [model.Block](#anytype-model-Block) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-Preview-Response-Error"></a>
+
+### Rpc.Block.Preview.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Preview.Response.Error.Code](#anytype-Rpc-Block-Preview-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -16269,6 +16332,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Block-Preview-Response-Error-Code"></a>
+
+### Rpc.Block.Preview.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
