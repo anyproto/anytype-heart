@@ -198,7 +198,7 @@ func (s *service) prepareDetailsForInstallingObject(ctx context.Context, sourceS
 		for _, id := range bundledRelationIds {
 			key, err := bundle.RelationKeyFromID(id)
 			if err != nil {
-				return nil, fmt.Errorf("relation key from id %s: %w", id, err)
+				return nil, fmt.Errorf("relation key from id: %w", err)
 			}
 			recommendedRelationKeys = append(recommendedRelationKeys, key.String())
 		}
