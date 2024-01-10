@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 // we cannot check the constant error from badger because they hardcoded it there
@@ -117,7 +118,7 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 		if errors.Is(err, spacesyncproto.ErrSpaceIsDeleted) {
 			return nil, errors.Join(ErrAccountIsDeleted, err)
 		}
-		if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
+		if errors.Is(err, space.ErrSpaceNotExists) {
 			return nil, errors.Join(ErrFailedToFindAccountInfo, err)
 		}
 		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {

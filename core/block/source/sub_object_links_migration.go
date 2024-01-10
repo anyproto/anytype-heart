@@ -25,15 +25,23 @@ import (
 type subObjectsAndProfileLinksMigration struct {
 	profileID        string
 	identityObjectID string
+	personalSpaceId  string
 	sbType           smartblock.SmartBlockType
 	space            Space
 	objectStore      objectstore.ObjectStore
 }
 
-func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(
+	sbType smartblock.SmartBlockType,
+	space Space,
+	identityObjectID string,
+	personalSpaceId string,
+	objectStore objectstore.ObjectStore,
+) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
+		personalSpaceId:  personalSpaceId,
 		sbType:           sbType,
 		objectStore:      objectStore,
 	}
@@ -127,8 +135,14 @@ func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 }
 
 func (m *subObjectsAndProfileLinksMigration) migrateId(oldId string) (newId string) {
-	if m.profileID != "" && m.identityObjectID != "" && oldId == m.profileID {
-		return m.identityObjectID
+	if m.profileID != "" && m.identityObjectID != "" {
+		// we substitute all links to profile object with identity object EXCEPT the case with
+		// widget to identity in Personal space, we must substitute identity with profile to show links correctly
+		if oldId == m.profileID && (m.space.Id() != m.personalSpaceId || m.sbType != smartblock.SmartBlockTypeWidget) {
+			return m.identityObjectID
+		} else if oldId == m.identityObjectID && m.space.Id() == m.personalSpaceId && m.sbType == smartblock.SmartBlockTypeWidget {
+			return m.profileID
+		}
 	}
 	uniqueKey, valid := subObjectIdToUniqueKey(oldId)
 	if !valid {

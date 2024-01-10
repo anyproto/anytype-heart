@@ -57,7 +57,7 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 		})
 	}
 	rootCollection := common.NewRootCollection(s.service)
-	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true)
+	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true, true)
 	if err != nil {
 		return nil, err
 	}

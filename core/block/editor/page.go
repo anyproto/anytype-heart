@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -28,6 +29,7 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
+	source.ChangeReceiver
 
 	dataview.Dataview
 	table.TableEditor
@@ -38,9 +40,10 @@ type Page struct {
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 	file := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker)
 	return &Page{
-		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
-		IHistory:      basic.NewHistory(sb),
+		SmartBlock:     sb,
+		ChangeReceiver: sb.(source.ChangeReceiver),
+		AllOperations:  basic.NewBasic(sb, f.objectStore, f.layoutConverter),
+		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
 			f.objectStore,

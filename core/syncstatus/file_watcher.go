@@ -71,9 +71,6 @@ func newFileWatcher(
 const filesToWatchPrefix = "/files_to_watch/"
 
 func (s *fileWatcher) loadFilesToWatch() error {
-	s.filesToWatchLock.Lock()
-	defer s.filesToWatchLock.Unlock()
-
 	return s.badger.View(func(txn *badger.Txn) error {
 		defaultSpaceID := s.provider.PersonalSpaceID()
 		iter := txn.NewIterator(badger.IteratorOptions{
@@ -89,7 +86,9 @@ func (s *fileWatcher) loadFilesToWatch() error {
 				return fmt.Errorf("failed to copy spaceID value from badger for '%s'", fileID)
 			}
 			if len(spaceID) != 0 {
+				s.filesToWatchLock.Lock()
 				s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: string(spaceID)}] = struct{}{}
+				s.filesToWatchLock.Unlock()
 			} else {
 				err = s.Watch(defaultSpaceID, string(fileID))
 				if err != nil {

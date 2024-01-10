@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -20,10 +21,12 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -36,12 +39,12 @@ const eventCreate eventKey = 0
 
 type Service interface {
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
-	CreateObjectInSpace(ctx context.Context, space space.Space, req CreateObjectRequest) (id string, details *types.Struct, err error)
+	CreateObjectInSpace(ctx context.Context, space clientspace.Space, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromStateInSpace(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 
-	InstallBundledObjects(ctx context.Context, space space.Space, sourceObjectIds []string) (ids []string, objects []*types.Struct, err error)
+	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string) (ids []string, objects []*types.Struct, err error)
 	app.Component
 }
 
@@ -60,7 +63,7 @@ type CollectionService interface {
 
 type TemplateService interface {
 	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
-	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
+	TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
 }
 
 func NewCreator() Service {
@@ -83,43 +86,12 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) createSmartBlockFromTemplate(
-	ctx context.Context,
-	space space.Space,
-	objectTypeKeys []domain.TypeKey,
-	details *types.Struct,
-	templateId string,
-) (id string, newDetails *types.Struct, err error) {
-	createState, err := s.templateService.CreateTemplateStateWithDetails(templateId, details)
-	if err != nil {
-		return
-	}
-	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
-}
-
-func objectTypeKeysToSmartblockType(typeKeys []domain.TypeKey) (coresb.SmartBlockType, error) {
-	// TODO Add validation for types that user can't create
-
-	if slices.Contains(typeKeys, bundle.TypeKeyTemplate) {
-		return coresb.SmartBlockTypeTemplate, nil
-	}
-	typeKey := typeKeys[0]
-
-	switch typeKey {
-	case bundle.TypeKeyObjectType:
-		return coresb.SmartBlockTypeObjectType, nil
-	case bundle.TypeKeyRelation:
-		return coresb.SmartBlockTypeRelation, nil
-	case bundle.TypeKeyRelationOption:
-		return coresb.SmartBlockTypeRelationOption, nil
-	default:
-		return coresb.SmartBlockTypePage, nil
-	}
-}
-
-// CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
+// CreateSmartBlockFromState create new object from the provided `createState` and `details`.
+// If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
-func (s *service) CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromState(
+	ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State,
+) (id string, newDetails *types.Struct, err error) {
 	spc, err := s.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return "", nil, err
@@ -127,7 +99,9 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	return s.CreateSmartBlockFromStateInSpace(ctx, spc, objectTypeKeys, createState)
 }
 
-func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc space.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromStateInSpace(
+	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State,
+) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -140,10 +114,7 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 	if len(objectTypeKeys) == 0 {
 		objectTypeKeys = []domain.TypeKey{bundle.TypeKeyPage}
 	}
-	sbType, err := objectTypeKeysToSmartblockType(objectTypeKeys)
-	if err != nil {
-		return "", nil, fmt.Errorf("objectTypeKey to smartblockType: %w", err)
-	}
+	sbType := objectTypeKeysToSmartBlockType(objectTypeKeys)
 
 	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spc.Id()))
 
@@ -151,13 +122,6 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
 	}
 
-	relationKeys := make([]string, 0, len(createState.Details().GetFields())+len(createState.LocalDetails().GetFields()))
-	for k := range createState.Details().GetFields() {
-		relationKeys = append(relationKeys, k)
-	}
-	for k := range createState.LocalDetails().GetFields() {
-		relationKeys = append(relationKeys, k)
-	}
 	ctx = context.WithValue(ctx, eventCreate, ev)
 	initFunc := func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
@@ -165,45 +129,32 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 			Ctx:            ctx,
 			ObjectTypeKeys: objectTypeKeys,
 			State:          createState,
-			RelationKeys:   relationKeys,
+			RelationKeys:   generateRelationKeysFromState(createState),
 			SpaceID:        spc.Id(),
 		}
 	}
 
-	var sb smartblock.SmartBlock
-	if uKey := createState.UniqueKeyInternal(); uKey != "" {
-		uk, err := domain.NewUniqueKey(sbType, uKey)
-		if err != nil {
-			return "", nil, err
-		}
-		sb, err = spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-			Key:      uk,
-			InitFunc: initFunc,
-		})
-		if err != nil {
-			return "", nil, err
-		}
-	} else {
-		sb, err = spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
-			Time:           time.Now(),
-			SmartblockType: sbType,
-			InitFunc:       initFunc,
-		})
-		if err != nil {
-			return
-		}
-	}
-
-	if err = objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys); err != nil {
+	sb, err := createSmartBlock(ctx, spc, initFunc, createState, sbType)
+	if err != nil {
 		return "", nil, err
 	}
 
+	newDetails = sb.CombinedDetails()
 	id = sb.Id()
+
+	if sbType == coresb.SmartBlockTypeObjectType {
+		objecttype.UpdateLastUsedDate(spc, s.objectStore, []domain.TypeKey{
+			domain.TypeKey(strings.TrimPrefix(pbtypes.GetString(newDetails, bundle.RelationKeyUniqueKey.String()), addr.ObjectTypeKeyToIdPrefix)),
+		})
+	} else if pbtypes.GetInt64(newDetails, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+		objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys)
+	}
+
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
 	metrics.SharedClient.RecordEvent(*ev)
-	return id, sb.CombinedDetails(), nil
+	return id, newDetails, nil
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (domain.UniqueKey, error) {
@@ -231,7 +182,7 @@ func (s *service) CreateObject(ctx context.Context, spaceID string, req CreateOb
 }
 
 // CreateObjectInSpace is high-level method for creating new objects
-func (s *service) CreateObjectInSpace(ctx context.Context, space space.Space, req CreateObjectRequest) (id string, details *types.Struct, err error) {
+func (s *service) CreateObjectInSpace(ctx context.Context, space clientspace.Space, req CreateObjectRequest) (id string, details *types.Struct, err error) {
 	details = req.Details
 	if details.GetFields() == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
@@ -276,4 +227,70 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spac
 	}
 	req.ObjectTypeKey = objectTypeKey
 	return s.CreateObject(ctx, spaceID, req)
+}
+
+func (s *service) createSmartBlockFromTemplate(
+	ctx context.Context,
+	space clientspace.Space,
+	objectTypeKeys []domain.TypeKey,
+	details *types.Struct,
+	templateId string,
+) (id string, newDetails *types.Struct, err error) {
+	createState, err := s.templateService.CreateTemplateStateWithDetails(templateId, details)
+	if err != nil {
+		return
+	}
+	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
+}
+
+func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlockType {
+	// TODO Add validation for types that user can't create
+
+	if slices.Contains(typeKeys, bundle.TypeKeyTemplate) {
+		return coresb.SmartBlockTypeTemplate
+	}
+	typeKey := typeKeys[0]
+
+	switch typeKey {
+	case bundle.TypeKeyObjectType:
+		return coresb.SmartBlockTypeObjectType
+	case bundle.TypeKeyRelation:
+		return coresb.SmartBlockTypeRelation
+	case bundle.TypeKeyRelationOption:
+		return coresb.SmartBlockTypeRelationOption
+	default:
+		return coresb.SmartBlockTypePage
+	}
+}
+
+func createSmartBlock(
+	ctx context.Context, spc clientspace.Space, initFunc objectcache.InitFunc, st *state.State, sbType coresb.SmartBlockType,
+) (smartblock.SmartBlock, error) {
+	if uKey := st.UniqueKeyInternal(); uKey != "" {
+		uk, err := domain.NewUniqueKey(sbType, uKey)
+		if err != nil {
+			return nil, err
+		}
+		return spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+			Key:      uk,
+			InitFunc: initFunc,
+		})
+	}
+	return spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
+		Time:           time.Now(),
+		SmartblockType: sbType,
+		InitFunc:       initFunc,
+	})
+}
+
+func generateRelationKeysFromState(st *state.State) (relationKeys []string) {
+	if st == nil {
+		return
+	}
+	details := st.CombinedDetails().GetFields()
+	relationKeys = make([]string, 0, len(details))
+	for k := range details {
+		relationKeys = append(relationKeys, k)
+	}
+	return
 }

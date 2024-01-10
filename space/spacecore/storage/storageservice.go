@@ -36,6 +36,9 @@ type ClientStorage interface {
 	GetSpaceID(objectID string) (spaceID string, err error)
 	BindSpaceID(spaceID, objectID string) (err error)
 	DeleteSpaceStorage(ctx context.Context, spaceId string) error
+	MarkSpaceCreated(id string) (err error)
+	UnmarkSpaceCreated(id string) (err error)
+	IsSpaceCreated(id string) (created bool)
 }
 
 func New() ClientStorage {
@@ -75,6 +78,18 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store
 		}
 	}
 	return
+}
+
+func (s *storageService) MarkSpaceCreated(id string) (err error) {
+	return badgerhelper.SetValue(s.db, s.keys.SpaceCreatedKey(id), nil)
+}
+
+func (s *storageService) UnmarkSpaceCreated(id string) (err error) {
+	return badgerhelper.DeleteValue(s.db, s.keys.SpaceCreatedKey(id))
+}
+
+func (s *storageService) IsSpaceCreated(id string) (created bool) {
+	return hasDB(s.db, s.keys.SpaceCreatedKey(id))
 }
 
 func (s *storageService) SpaceExists(id string) bool {

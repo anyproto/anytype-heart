@@ -32,6 +32,8 @@ func TestIsInWhitelist(t *testing.T) {
 	assert.True(t, IsInWhitelist("http://community.anytype.io/localstorage/knowledge_base.zip"))
 	assert.True(t, IsInWhitelist("anytype://anytype.io/localstorage/knowledge_base.zip"))
 	assert.True(t, IsInWhitelist("anytype://gallery.any.coop/"))
+	assert.True(t, IsInWhitelist("anytype://tools.gallery.any.coop/somethingveryimportant.zip"))
+	assert.True(t, IsInWhitelist("http://storage.gallery.any.coop/img_with_kitten.jpeg"))
 }
 
 func TestDownloadManifestAndValidateSchema(t *testing.T) {

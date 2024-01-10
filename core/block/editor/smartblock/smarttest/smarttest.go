@@ -92,6 +92,10 @@ func (s *stubSpace) DoLockedIfNotExists(objectID string, proc func() error) erro
 	return nil
 }
 
+func (s *stubSpace) IsPersonal() bool {
+	return false
+}
+
 func (st *SmartTest) Space() smartblock.Space {
 	return &stubSpace{}
 }
