@@ -3,6 +3,8 @@ package service
 import (
 	"fmt"
 	"net/http"
+	//nolint: gosec
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/anyproto/any-sync/app"
