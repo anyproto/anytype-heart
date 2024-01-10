@@ -60,6 +60,15 @@
     - [Rpc.Account.GetConfig](#anytype-Rpc-Account-GetConfig)
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
+    - [Rpc.Account.LocalLink](#anytype-Rpc-Account-LocalLink)
+    - [Rpc.Account.LocalLink.NewChallenge](#anytype-Rpc-Account-LocalLink-NewChallenge)
+    - [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request)
+    - [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response)
+    - [Rpc.Account.LocalLink.NewChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error)
+    - [Rpc.Account.LocalLink.SolveChallenge](#anytype-Rpc-Account-LocalLink-SolveChallenge)
+    - [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request)
+    - [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response)
+    - [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error)
     - [Rpc.Account.Move](#anytype-Rpc-Account-Move)
     - [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request)
     - [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response)
@@ -977,6 +986,8 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
+    - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
+    - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
@@ -1208,6 +1219,8 @@
     - [Event.Account.Config](#anytype-Event-Account-Config)
     - [Event.Account.Config.Update](#anytype-Event-Account-Config-Update)
     - [Event.Account.Details](#anytype-Event-Account-Details)
+    - [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge)
+    - [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo)
     - [Event.Account.Show](#anytype-Event-Account-Show)
     - [Event.Account.Update](#anytype-Event-Account-Update)
     - [Event.Block](#anytype-Event-Block)
@@ -1551,6 +1564,8 @@
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype-Rpc-Wallet-Create-Request) | [Rpc.Wallet.Create.Response](#anytype-Rpc-Wallet-Create-Response) | Wallet *** |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request) | [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
+| AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) |  |
+| AccountLocalLinkSolveChallenge | [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request) | [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
@@ -2538,6 +2553,132 @@ TODO: Remove this request if we do not need it, GO-1926
 
 ### Rpc.Account.GetConfig.Get.Request
 
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink"></a>
+
+### Rpc.Account.LocalLink
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-NewChallenge"></a>
+
+### Rpc.Account.LocalLink.NewChallenge
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-NewChallenge-Request"></a>
+
+### Rpc.Account.LocalLink.NewChallenge.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| appName | [string](#string) |  | just for info, not secure to rely on |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-NewChallenge-Response"></a>
+
+### Rpc.Account.LocalLink.NewChallenge.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.NewChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error) |  |  |
+| challengeId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error"></a>
+
+### Rpc.Account.LocalLink.NewChallenge.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-SolveChallenge"></a>
+
+### Rpc.Account.LocalLink.SolveChallenge
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-SolveChallenge-Request"></a>
+
+### Rpc.Account.LocalLink.SolveChallenge.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| challengeId | [string](#string) |  |  |
+| answer | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-SolveChallenge-Response"></a>
+
+### Rpc.Account.LocalLink.SolveChallenge.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error) |  |  |
+| sessionToken | [string](#string) |  | ephemeral token for the session |
+| appKey | [string](#string) |  | persistent key, that can be used to restore session via CreateSession |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error"></a>
+
+### Rpc.Account.LocalLink.SolveChallenge.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -15115,7 +15256,8 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| mnemonic | [string](#string) |  |  |
+| mnemonic | [string](#string) |  | cold auth |
+| appKey | [string](#string) |  | persistent app key, that can be used to restore session |
 
 
 
@@ -15132,6 +15274,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Wallet.CreateSession.Response.Error](#anytype-Rpc-Wallet-CreateSession-Response-Error) |  |  |
 | token | [string](#string) |  |  |
+| appToken | [string](#string) |  | in case of mnemonic auth, need to be persisted by client |
 
 
 
@@ -15931,6 +16074,38 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.NewChallenge.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+| TOO_MANY_REQUESTS | 102 | protection from overuse |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+| INVALID_CHALLENGE_ID | 102 |  |
+| CHALLENGE_ATTEMPTS_EXCEEDED | 103 |  |
+| INCORRECT_ANSWER | 104 |  |
 
 
 
@@ -18972,6 +19147,39 @@ Event – type of message, that could be sent from a middleware to the correspon
 
 
 
+<a name="anytype-Event-Account-LinkChallenge"></a>
+
+### Event.Account.LinkChallenge
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| challenge | [string](#string) |  |  |
+| clientInfo | [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-LinkChallenge-ClientInfo"></a>
+
+### Event.Account.LinkChallenge.ClientInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processName | [string](#string) |  |  |
+| processPath | [string](#string) |  |  |
+| signatureVerified | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Account-Show"></a>
 
 ### Event.Account.Show
@@ -21095,6 +21303,7 @@ Precondition: user A opened a block
 | accountDetails | [Event.Account.Details](#anytype-Event-Account-Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
 | accountUpdate | [Event.Account.Update](#anytype-Event-Account-Update) |  |  |
+| accountLinkChallenge | [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |
