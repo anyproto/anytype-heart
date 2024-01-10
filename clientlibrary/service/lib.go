@@ -13,8 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-
-	_ "net/http/pprof"
+	"github.com/anyproto/anytype-heart/util/conc"
 )
 
 var log = logging.Logger("anytype-mw")
@@ -24,7 +23,7 @@ var mw = core.New()
 func init() {
 	fmt.Printf("mw jsaddon: %s\n", app.GitSummary)
 	registerClientCommandsHandler(mw)
-	PanicHandler = mw.OnPanic
+	PanicHandler = conc.OnPanic
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {

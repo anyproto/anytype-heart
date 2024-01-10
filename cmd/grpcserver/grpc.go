@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/conc"
 	"github.com/anyproto/anytype-heart/util/debug"
 )
 
@@ -284,7 +285,7 @@ func appendInterceptor(
 }
 
 func onDefaultError(mw *core.Middleware, r any, resp interface{}) interface{} {
-	mw.OnPanic(r)
+	conc.OnPanic(r)
 	resp = &pb.RpcGenericErrorResponse{
 		Error: &pb.RpcGenericErrorResponseError{
 			Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,

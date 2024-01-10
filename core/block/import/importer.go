@@ -45,6 +45,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/conc"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -116,12 +117,12 @@ func (i *Import) Import(ctx context.Context, importRequest *ImportRequest) (stri
 	if importRequest.IsSync {
 		return i.importObjects(ctx, importRequest)
 	}
-	go func() {
+	go conc.Go(func() {
 		_, err := i.importObjects(context.Background(), importRequest)
 		if err != nil {
 			log.Errorf("import from %s failed with error: %s", importRequest.Type.String(), err)
 		}
-	}()
+	})
 	return "", nil
 }
 
