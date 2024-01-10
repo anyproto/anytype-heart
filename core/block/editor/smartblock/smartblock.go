@@ -85,7 +85,8 @@ const CallerKey key = 0
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New(space Space,
+func New(
+	space Space,
 	currentProfileId string,
 	fileService files.Service,
 	restrictionService restriction.Service,
