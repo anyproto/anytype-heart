@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -25,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/netutil"
+	"github.com/anyproto/anytype-heart/util/svg"
 )
 
 const (
@@ -33,6 +35,8 @@ const (
 	defaultPort    = 47800
 	getFileTimeout = 1 * time.Minute
 	requestLimit   = 32
+	pngMedia       = "image/png"
+	svgMedia       = "image/svg+xml"
 )
 
 var log = logging.Logger("anytype-gateway")
@@ -356,10 +360,24 @@ func (g *gateway) handleSVGFile(ctx context.Context, id domain.FullID, err error
 	}
 	if filepath.Ext(file.Info().Name) == constant.SvgExt {
 		reader, err := file.Reader(ctx)
-		file.Info().Media = "image/svg+xml"
+		file.Info().Media = svgMedia
+		if g.rasterizeSvg() {
+			reader, err = svg.Rasterize(reader)
+			if err != nil {
+				return nil, nil, err
+			}
+			file.Info().Media = pngMedia
+		}
 		return file, reader, err
 	}
 	return nil, nil, fmt.Errorf("get image by hash: file is not an image")
+}
+
+func (g *gateway) rasterizeSvg() bool {
+	var rasterizerSvg bool
+	flag.BoolVar(&rasterizerSvg, "rasterizerSvg", false, "")
+	flag.Parse()
+	return rasterizerSvg
 }
 
 func cleanUpPathForLogging(input string) string {
