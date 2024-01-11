@@ -71,6 +71,7 @@ type spaceKeys struct {
 	treeRootPrefixKey  []byte
 	spaceSettingsIdKey []byte
 	spaceHash          []byte
+	oldSpaceHash       []byte
 	spaceDeletedKey    []byte
 }
 
@@ -82,6 +83,7 @@ func newSpaceKeys(spaceId string) spaceKeys {
 		treePrefixKey:      treestorage.JoinStringsToBytes("space", spaceId, "t"),
 		spaceSettingsIdKey: treestorage.JoinStringsToBytes("space", spaceId, "spaceSettingsId"),
 		spaceHash:          treestorage.JoinStringsToBytes("space", spaceId, "spaceHash"),
+		oldSpaceHash:       treestorage.JoinStringsToBytes("space", spaceId, "oldSpaceHash"),
 		spaceDeletedKey:    treestorage.JoinStringsToBytes("space", spaceId, "spaceDeleted"),
 	}
 }
@@ -114,16 +116,26 @@ func (s spaceKeys) SpaceHash() []byte {
 	return s.spaceHash
 }
 
+func (s spaceKeys) OldSpaceHash() []byte {
+	return s.oldSpaceHash
+}
+
 type storageServiceKeys struct {
 	spacePrefix []byte
 }
 
 func newStorageServiceKeys() storageServiceKeys {
-	return storageServiceKeys{spacePrefix: []byte("space/header")}
+	return storageServiceKeys{
+		spacePrefix: []byte("space/header"),
+	}
 }
 
 func (s storageServiceKeys) SpacePrefix() []byte {
 	return s.spacePrefix
+}
+
+func (s storageServiceKeys) SpaceCreatedKey(id string) []byte {
+	return treestorage.JoinStringsToBytes("space/created", id)
 }
 
 func (s storageServiceKeys) BindObjectIDKey(objectID string) []byte {

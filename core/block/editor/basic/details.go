@@ -37,15 +37,14 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
 	updates := bs.collectDetailUpdates(details, s)
-
-	applyFlags := []smartblock.ApplyFlag{smartblock.NoRestrictions}
-	if shouldKeepInternalFlags(updates) {
-		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
-	}
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
-	if err = bs.Apply(s, applyFlags...); err != nil {
+	flags := internalflag.NewFromState(s.ParentState())
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
+
+	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
 		return
 	}
 
@@ -64,17 +63,6 @@ func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s
 		}
 	}
 	return updates
-}
-
-// shouldKeepInternalFlags is used to keep internal flags in case we update name or description
-// We keep internal flags because we allow user to change object type and apply some template further
-func shouldKeepInternalFlags(updates []*detailUpdate) bool {
-	for _, update := range updates {
-		if update.key == bundle.RelationKeyName.String() || update.key == bundle.RelationKeyDescription.String() {
-			return true
-		}
-	}
-	return false
 }
 
 func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
@@ -299,12 +287,6 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.Typ
 		return
 	}
 
-	flags := internalflag.NewFromState(s)
-	flags.Remove(model.InternalFlag_editorSelectType)
-	flags.Remove(model.InternalFlag_editorDeleteEmpty)
-	flags.AddToState(s)
-
-	// send event here to send updated details to client
 	// KeepInternalFlags is set because we allow to choose template further
 	return bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
@@ -325,9 +307,10 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)
+	removeInternalFlags(s)
 
-	if err = objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys); err != nil {
-		return err
+	if pbtypes.GetInt64(bs.CombinedDetails(), bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
+		objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys)
 	}
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
@@ -363,4 +346,11 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil
+}
+
+func removeInternalFlags(s *state.State) {
+	flags := internalflag.NewFromState(s)
+	flags.Remove(model.InternalFlag_editorSelectType)
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(s)
 }

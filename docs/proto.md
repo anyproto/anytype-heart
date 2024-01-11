@@ -17882,12 +17882,13 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 |  |
-| SKIP | 1 |  |
+| NONE | 0 |  |
+| GET_STARTED | 1 |  |
 | PERSONAL_PROJECTS | 2 |  |
 | KNOWLEDGE_BASE | 3 |  |
 | NOTES_DIARY | 4 |  |
 | STRATEGIC_WRITING | 5 |  |
+| EMPTY | 6 |  |
 
 
 
@@ -23400,6 +23401,17 @@ stored |
 | Soundcloud | 5 |  |
 | GoogleMaps | 6 |  |
 | Miro | 7 |  |
+| Figma | 8 |  |
+| Twitter | 9 |  |
+| OpenStreetMap | 10 |  |
+| Reddit | 11 |  |
+| Facebook | 12 |  |
+| Instagram | 13 |  |
+| Telegram | 14 |  |
+| GithubGist | 15 |  |
+| Codepen | 16 |  |
+| Bilibili | 17 |  |
+| Excalidraw | 18 |  |
 
 
 
@@ -23695,6 +23707,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | sharingExtension | 5 |  |
 | usecase | 6 |  |
 | builtin | 7 |  |
+| bookmark | 8 |  |
 
 
 

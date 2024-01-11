@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -60,7 +61,7 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 		}
 	}
 	objectsIDs := g.getObjectsIDs(snapshots)
-	objectsCollection, err := rootCollection.MakeRootCollection(collectionName, objectsIDs, icon, fileKeys, false)
+	objectsCollection, err := rootCollection.MakeRootCollection(collectionName, objectsIDs, icon, fileKeys, false, true)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +78,7 @@ func (g *GalleryImport) getWidgetsCollection(collectionName string,
 	collectionsSnapshots []*common.Snapshot,
 ) ([]*common.Snapshot, error) {
 	widgetCollectionName := collectionName + widgetCollectionPattern
-	widgetsCollectionSnapshot, err := rootCollection.MakeRootCollection(widgetCollectionName, widgetObjects, icon, fileKeys, false)
+	widgetsCollectionSnapshot, err := rootCollection.MakeRootCollection(widgetCollectionName, widgetObjects, icon, fileKeys, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +97,9 @@ func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) [
 	err := widgetState.Iterate(func(b simple.Block) (isContinue bool) {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId != "" {
 			if widgets.IsPredefinedWidgetTargetId(link.TargetBlockId) {
+				return true
+			}
+			if link.TargetBlockId == addr.MissingObject {
 				return true
 			}
 			objectsInWidget = append(objectsInWidget, link.TargetBlockId)
