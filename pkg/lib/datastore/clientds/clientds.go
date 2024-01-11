@@ -31,6 +31,9 @@ const (
 
 var log = logging.Logger("anytype-clientds")
 
+// SyncDbAfterInactivity shows the minimum time after db was changed to call db.Sync
+// regular Db.Sync will help to decrease the chance of data loss in case of power loss/bsod
+// while this logic decrease the chance some db writer will need to wait for sync to finish
 var SyncDbAfterInactivity = time.Second * 60
 
 type clientds struct {
