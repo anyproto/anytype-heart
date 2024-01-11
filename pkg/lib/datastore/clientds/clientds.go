@@ -94,8 +94,6 @@ func init() {
 
 }
 
-var ErrBadgerPanicked = fmt.Errorf("badger panicked")
-
 func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
 	defer func() {
 		// recover in case we have badger panic on open but not recovered by badger
