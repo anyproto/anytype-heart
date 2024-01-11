@@ -98,8 +98,10 @@ func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
 	defer func() {
 		// recover in case we have badger panic on open but not recovered by badger
 		if r := recover(); r != nil {
-			log.Errorf("badger panic: %v", r)
-			err = ErrBadgerPanicked
+			err = fmt.Errorf("badger panic: %v", r)
+			if db != nil {
+				db.Close()
+			}
 		}
 	}()
 	db, err = badger.Open(opts)
