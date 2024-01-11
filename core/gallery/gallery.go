@@ -31,6 +31,8 @@ var whitelist = map[string]*regexp.Regexp{
 	"community.anytype.io":      regexp.MustCompile(`.*`),
 	"anytype.io":                regexp.MustCompile(`.*`),
 	"gallery.any.coop":          regexp.MustCompile(`.*`),
+	"tools.gallery.any.coop":    regexp.MustCompile(`.*`),
+	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
 func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {

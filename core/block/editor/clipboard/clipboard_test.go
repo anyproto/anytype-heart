@@ -935,7 +935,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			text             = "simple text"
 			firstTextBlockId = "firstTextBlockId"
 			bookmarkId       = "bookmarkId"
-			result           = text + "\n"
+			result           = text
 		)
 		st := withBookmark(t, text, "", url)
 		cb := NewClipboard(st, nil, nil, nil, nil)
@@ -965,7 +965,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			lastTextBlockId  = "lastTextBlockId"
 			bookmarkId       = "bookmarkId"
 			secondText       = "second text"
-			result           = firstText + "\n" + secondText + "\n"
+			result           = firstText + "\n" + secondText
 		)
 		st := withBookmark(t, firstText, secondText, url)
 		cb := NewClipboard(st, nil, nil, nil, nil)
@@ -1275,7 +1275,7 @@ func Test_CopyAndCutText(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		const expected = "some text 1\n\tsome text 2\n"
+		const expected = "some text 1\n\tsome text 2"
 		assert.Equal(t, expected, textSlotCopy)
 		assert.Equal(t, expected, textSlotCut)
 	})
@@ -1306,7 +1306,7 @@ func Test_CopyAndCutText(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		const expected = "1. A-1\n\t1. B-1\n2. C-1\nD-1\n1. E-1\n2. F-1\n"
+		const expected = "1. A-1\n\t1. B-1\n2. C-1\nD-1\n1. E-1\n2. F-1"
 		assert.Equal(t, expected, textSlotCopy)
 		assert.Equal(t, expected, textSlotCut)
 	})

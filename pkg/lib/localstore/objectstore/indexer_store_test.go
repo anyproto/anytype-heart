@@ -32,6 +32,26 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	})
 }
 
+func TextIndexerBatch(t *testing.T) {
+	s := NewStoreFixture(t)
+
+	t.Run("batch - no more than limit", func(t *testing.T) {
+		require.NoError(t, s.AddToIndexQueue("one"))
+		require.NoError(t, s.AddToIndexQueue("two"))
+		require.NoError(t, s.AddToIndexQueue("three"))
+
+		var batches [][]string
+		err := s.BatchProcessFullTextQueue(2, func(ids []string) error {
+			batches = append(batches, ids)
+			return nil
+		})
+
+		assert.ElementsMatch(t, []string{"one", "two"}, batches[0])
+		assert.ElementsMatch(t, []string{"three"}, batches[1])
+		require.NoError(t, err)
+	})
+}
+
 func TestIndexerChecksums(t *testing.T) {
 	t.Run("previous checksums are not found", func(t *testing.T) {
 		s := NewStoreFixture(t)

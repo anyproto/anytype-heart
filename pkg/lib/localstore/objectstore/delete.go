@@ -91,6 +91,20 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	})
 }
 
+func (s *dsObjectStore) DeleteLinks(ids ...string) (err error) {
+	return badgerhelper.RetryOnConflict(func() error {
+		txn := s.db.NewTransaction(true)
+		defer txn.Discard()
+		for _, id := range ids {
+			txn, err = s.eraseLinksForObject(txn, id)
+			if err != nil {
+				return fmt.Errorf("erase links for object %s: %w", id, err)
+			}
+		}
+		return txn.Commit()
+	})
+}
+
 func getLastPartOfKey(key []byte) string {
 	lastSlashIdx := bytes.LastIndexByte(key, '/')
 	if lastSlashIdx == -1 {
@@ -113,7 +127,7 @@ func (s *dsObjectStore) eraseLinksForObject(txn *badger.Txn, from string) (*badg
 
 	for _, key := range toDelete {
 		err = txn.Delete(key)
-		if err == badger.ErrTxnTooBig {
+		if errors.Is(err, badger.ErrTxnTooBig) {
 			err = txn.Commit()
 			if err != nil {
 				return txn, fmt.Errorf("commit big transaction: %w", err)

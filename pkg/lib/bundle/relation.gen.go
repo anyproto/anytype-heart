@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "c96f9c947ca3afa05f075bfe7de76d9ef8e5450ba1da7312d067d1ad53de150c"
+const RelationChecksum = "9d13b57d26e1a12a93d497a0016a692457a39e7fa73797a1ba27a4957cb9b734"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -165,7 +165,6 @@ const (
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
 	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                  domain.RelationKey = "revision"
-	RelationKeyImportType                domain.RelationKey = "importType"
 )
 
 var (
@@ -346,11 +345,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brbacklinks",
 			Key:              "backlinks",
-			MaxCount:         1,
-			Name:             "Links to object",
+			Name:             "Links to this object",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBudget: {
@@ -923,19 +921,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyImportType: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Import type, used to create object (notion, md and etc)",
-			Format:           model.RelationFormat_number,
-			Id:               "_brimportType",
-			Key:              "importType",
-			MaxCount:         1,
-			Name:             "Import Type",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyIngredients: {
 
 			DataSource:       model.Relation_details,
@@ -1227,10 +1212,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brlinks",
 			Key:              "links",
-			Name:             "Links from object",
+			Name:             "Links from this object",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLogic: {
