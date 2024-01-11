@@ -15,7 +15,7 @@ const CName = "common.acl.aclservice"
 
 type AclService interface {
 	app.Component
-	Invite(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) error
+	Join(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) error
 }
 
 type aclService struct {
@@ -33,7 +33,7 @@ func (a *aclService) Name() (name string) {
 	return CName
 }
 
-func (a *aclService) Invite(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) error {
+func (a *aclService) Join(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) error {
 	metadata := a.spaceService.AccountMetadata()
 	err := a.invitingClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
 		InviteKey: inviteKey,
@@ -42,5 +42,5 @@ func (a *aclService) Invite(ctx context.Context, spaceId string, inviteKey crypt
 	if err != nil {
 		return err
 	}
-	return a.spaceService.Invite(ctx, spaceId)
+	return a.spaceService.Join(ctx, spaceId)
 }

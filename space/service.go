@@ -48,7 +48,7 @@ type isNewAccount interface {
 type Service interface {
 	Create(ctx context.Context) (space clientspace.Space, err error)
 
-	Invite(ctx context.Context, id string) (err error)
+	Join(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
