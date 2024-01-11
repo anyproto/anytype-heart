@@ -268,7 +268,7 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/dgraph-io/badger/v4 => github.com/VinGarcia/badger/v4 v4.0.0-20231207134132-548c3cee3e9c
+replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
 
 replace github.com/dgraph-io/ristretto => github.com/anyproto/ristretto v0.1.2-0.20231209140254-b0fde22c72ec
 

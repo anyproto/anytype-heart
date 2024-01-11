@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync/atomic"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -102,30 +102,8 @@ func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
 			err = ErrBadgerPanicked
 		}
 	}()
-	var started atomic.Bool
-	var asyncPanic interface{}
-	opts.PanicHandler = func(panicPayload interface{}) {
-		// this one will handle async panics
-		log.Errorf("badger async panic: %v", panicPayload)
-		asyncPanic = panicPayload
-		if started.Load() {
-			// todo: save panics to file
-			// if already started lets panic normally, otherwise it may be dangerous to continue work as usually
-			panic("badger panic: %v")
-		}
-	}
 	db, err = badger.Open(opts)
-	if err != nil {
-		return nil, err
-	}
-	started.Store(true)
-	if asyncPanic != nil {
-		if db != nil {
-			db.Close()
-		}
-		return nil, fmt.Errorf("badger panic: %v", asyncPanic)
-	}
-	return db, nil
+	return db, err
 }
 
 func openBadgerWithCorruptionRecovery(opts badger.Options, initWithoutBackupIfBroken bool) (*badger.DB, error) {
@@ -133,6 +111,10 @@ func openBadgerWithCorruptionRecovery(opts badger.Options, initWithoutBackupIfBr
 	if err != nil {
 		baseDir := filepath.Base(opts.Dir)
 		log.With("err", err.Error()).With("dir", baseDir).Errorf("failed to open badger")
+		if !strings.Contains(err.Error(), "checksum") {
+			// do not provide recovery in cases other than checksum mismatch/empty
+			return nil, err
+		}
 		// check if backup exists
 		if _, err := os.Stat(getBackupPathFromDbPath(opts.Dir)); os.IsNotExist(err) {
 			if !initWithoutBackupIfBroken {

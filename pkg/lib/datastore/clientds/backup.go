@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"golang.org/x/sys/unix"
 )
 
 var (
@@ -66,10 +67,38 @@ func initBackupDir(dsPath string) error {
 	return nil
 }
 
+func (r *clientds) getDBsToBackup() []*badger.DB {
+	var backupList string
+	// enable backup on windows by default
+	if runtime.GOOS == "windows" {
+		backupList = "spacestore"
+	}
+
+	// ANYTYPE_DB_BACKUP = "disabled" or any other value can be used to disable backup on windows
+	if v := os.Getenv("ANYTYPE_DB_BACKUP"); v != "" {
+		backupList = v
+	}
+	dbs := strings.Split(backupList, ";")
+	var dbsToBackup []*badger.DB
+	for _, db := range dbs {
+		db = strings.TrimSpace(db)
+		switch db {
+		case "spacestore":
+			dbsToBackup = append(dbsToBackup, r.spaceDS)
+		case "localstore":
+			dbsToBackup = append(dbsToBackup, r.localstoreDS)
+		}
+	}
+	return dbsToBackup
+}
+
 func (r *clientds) runBackup() error {
+	dbs := r.getDBsToBackup()
 	// create backup dir if not exists
-	if err := initBackupDir(r.spaceDS.Opts().Dir); err != nil {
-		return err
+	for _, db := range dbs {
+		if err := initBackupDir(db.Opts().Dir); err != nil {
+			return err
+		}
 	}
 	go func() {
 		for {
@@ -77,9 +106,11 @@ func (r *clientds) runBackup() error {
 			case <-r.closed:
 				return
 			case <-time.After(BackupInterval):
-				err := backupJob(r.spaceDS)
-				if err != nil {
-					log.Errorf("failed to backup spacestore: %s", err)
+				for _, db := range dbs {
+					err := backupJob(db)
+					if err != nil {
+						log.Errorf("failed to backup spacestore: %s", err)
+					}
 				}
 			}
 		}
@@ -184,18 +215,6 @@ func restoreBadger(opts badger.Options, skipBackupRestore bool) (*badger.DB, err
 		backups []string
 		err     error
 	)
-	err = os.RemoveAll(filepath.Join(opts.Dir, lock))
-	if err != nil {
-		return nil, err
-	}
-	r, err := os.Open(opts.Dir)
-	if err != nil {
-		return nil, err
-	}
-	if err := unix.Flock(int(r.Fd()), unix.LOCK_UN); err != nil {
-		log.Fatal(err)
-	}
-	r.Close()
 
 	backups, err = getAllBackupFiles(getBackupPathFromDbPath(opts.Dir))
 	if err != nil {
