@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -29,6 +30,11 @@ const (
 
 var log = logging.Logger("anytype-clientds")
 
+// SyncDbAfterInactivity shows the minimum time after db was changed to call db.Sync
+// regular Db.Sync will help to decrease the chance of data loss in case of power loss/bsod
+// while this logic decrease the chance some db writer will need to wait for sync to finish
+var SyncDbAfterInactivity = time.Second * 60
+
 type clientds struct {
 	running bool
 
@@ -38,6 +44,7 @@ type clientds struct {
 	repoPath                                   string
 	spaceStoreWasMissing, localStoreWasMissing bool
 	spentOnInit                                time.Duration
+	closed                                     chan struct{}
 }
 
 type Config struct {
@@ -86,10 +93,26 @@ func init() {
 	DefaultConfig.Localstore.SyncWrites = false
 	DefaultConfig.Localstore.BlockCacheSize = 0
 	DefaultConfig.Localstore.Compression = options.None
+
+}
+
+func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
+	defer func() {
+		// recover in case we have badger panic on open but not recovered by badger
+		if r := recover(); r != nil {
+			err = fmt.Errorf("badger panic: %v", r)
+			if db != nil {
+				db.Close()
+			}
+		}
+	}()
+	db, err = badger.Open(opts)
+	return db, err
 }
 
 func (r *clientds) Init(a *app.App) (err error) {
 	// TODO: looks like we do a lot of stuff on Init here. We should consider moving it to the Run
+	r.closed = make(chan struct{})
 	start := time.Now()
 	wl := a.Component(wallet.CName)
 	if wl == nil {
@@ -120,15 +143,24 @@ func (r *clientds) Init(a *app.App) (err error) {
 	opts := r.cfg.Localstore
 	opts.Dir = r.getRepoPath(localstoreDSDir)
 	opts.ValueDir = opts.Dir
-	r.localstoreDS, err = badger.Open(opts)
+
+	r.localstoreDS, err = openBadgerWithRecover(opts)
+	if err != nil && strings.Contains(err.Error(), "checksum mismatch") {
+		// because localstore contains mostly recoverable info (with th only exception of objects' lastOpenedDate)
+		// we can just remove and recreate it
+		err2 := os.Rename(opts.Dir, filepath.Join(opts.Dir, "-corrupted"))
+		log.Errorf("failed to rename corrupted localstore: %s", err2)
+		r.localstoreDS, err = openBadgerWithRecover(opts)
+	}
+
 	if err != nil {
 		return oserror.TransformError(err)
 	}
-
 	opts = r.cfg.Spacestore
 	opts.Dir = r.getRepoPath(SpaceDSDir)
 	opts.ValueDir = opts.Dir
-	r.spaceDS, err = badger.Open(opts)
+	r.spaceDS, err = openBadgerWithRecover(opts)
+
 	if err != nil {
 		return oserror.TransformError(err)
 	}
@@ -139,7 +171,59 @@ func (r *clientds) Init(a *app.App) (err error) {
 }
 
 func (r *clientds) Run(context.Context) error {
+	go r.syncer()
 	return nil
+}
+
+type dbSyncer struct {
+	LastMaxVersion       uint64
+	LastMaxVersionSynced uint64
+	db                   *badger.DB
+}
+
+func (d *dbSyncer) Info() string {
+	return fmt.Sprintf("%s; lastMax: %d; lastSynced: %d;", filepath.Base(d.db.Opts().Dir), d.LastMaxVersion, d.LastMaxVersionSynced)
+}
+
+func newDbSyncer(db *badger.DB) *dbSyncer {
+	d := &dbSyncer{
+		db: db,
+	}
+	d.LastMaxVersion = d.db.MaxVersion()
+	return d
+}
+
+func (r *clientds) syncer() error {
+	var syncers = []*dbSyncer{
+		newDbSyncer(r.spaceDS),
+		newDbSyncer(r.localstoreDS),
+	}
+
+	for {
+		select {
+		case <-r.closed:
+			return nil
+		case <-time.After(SyncDbAfterInactivity):
+			for _, syncer := range syncers {
+				maxVersion := syncer.db.MaxVersion()
+				if syncer.LastMaxVersion != maxVersion {
+					syncer.LastMaxVersion = maxVersion
+					continue
+				}
+				if syncer.LastMaxVersionSynced == maxVersion {
+					continue
+				}
+				err := syncer.db.Sync()
+				if err != nil {
+					log.Errorf("failed to sync db %s at version %d: %s", syncer.Info(), maxVersion, err)
+				} else {
+					log.Debugf("db synced %s at version %d", syncer.Info(), maxVersion)
+					syncer.LastMaxVersionSynced = maxVersion
+				}
+			}
+		}
+	}
+
 }
 
 func (r *clientds) SpaceStorage() (*badger.DB, error) {
@@ -162,6 +246,7 @@ func (r *clientds) Name() (name string) {
 }
 
 func (r *clientds) Close(ctx context.Context) (err error) {
+	close(r.closed)
 	if r.localstoreDS != nil {
 		err2 := r.localstoreDS.Close()
 		if err2 != nil {
