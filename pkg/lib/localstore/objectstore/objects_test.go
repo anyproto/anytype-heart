@@ -69,7 +69,7 @@ func Test_removeByPrefix(t *testing.T) {
 	}
 
 	// Test huge transaction
-	err := s.EraseIndexes(spaceId)
+	err := s.DeleteLinks(objectIds...)
 	require.NoError(t, err)
 
 	for _, id := range objectIds {

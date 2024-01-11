@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/space/mock_space"
+	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -125,6 +125,19 @@ func TestUpdateSystemObject(t *testing.T) {
 			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-isReadonly"),
 		}}
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
+
+		reviseSystemObject(space, rel, marketObjects)
+	})
+
+	t.Run("relation with absent maxCount is updated", func(t *testing.T) {
+		rel := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyRevision.String():         pbtypes.Int64(2),
+			bundle.RelationKeySourceObject.String():     pbtypes.String("_brisReadonly"),
+			bundle.RelationKeyUniqueKey.String():        pbtypes.String("rel-isReadonly"),
+			bundle.RelationKeyRelationMaxCount.String(): pbtypes.Int64(1),
+		}}
+		space := mock_space.NewMockSpace(t)
+		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		reviseSystemObject(space, rel, marketObjects)
 	})
