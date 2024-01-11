@@ -40,8 +40,6 @@ type Notifications interface {
 
 type notificationService struct {
 	notificationId     string
-	notificationCh     chan struct{}
-	notificationErr    error
 	notificationCancel context.CancelFunc
 	eventSender        event.Sender
 	notificationStore  NotificationStore
@@ -50,9 +48,7 @@ type notificationService struct {
 }
 
 func New() Notifications {
-	return &notificationService{
-		notificationCh: make(chan struct{}),
-	}
+	return &notificationService{}
 }
 
 func (n *notificationService) Init(a *app.App) (err error) {
@@ -76,24 +72,16 @@ func (n *notificationService) Run(_ context.Context) (err error) {
 	notificationContext, notificationCancel := context.WithCancel(context.Background())
 	n.notificationCancel = notificationCancel
 	go n.loadNotificationObject(notificationContext)
-	go n.indexNotifications(notificationContext)
 	return nil
 }
 
 func (n *notificationService) indexNotifications(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			log.Errorf("failed to index notifications: %v", ctx.Err())
-			return
-		case <-n.notificationCh:
-			if n.notificationErr != nil {
-				log.Errorf("failed to get notification object: %v", n.notificationErr)
-				return
-			}
-			n.updateNotificationsInLocalStore()
-			return
-		}
+	select {
+	case <-ctx.Done():
+		log.Errorf("failed to index notifications: %v", ctx.Err())
+		return
+	default:
+		n.updateNotificationsInLocalStore()
 	}
 }
 
@@ -238,26 +226,25 @@ func (n *notificationService) isNotificationRead(notification *model.Notificatio
 }
 
 func (n *notificationService) loadNotificationObject(ctx context.Context) {
-	defer close(n.notificationCh)
 	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeNotificationObject, "")
 	if err != nil {
-		n.notificationErr = err
+		log.Errorf("failed to get notification object unique key: %v", err)
 		return
 	}
 	spc, err := n.spaceService.GetPersonalSpace(ctx)
 	if err != nil {
-		n.notificationErr = err
+		log.Errorf("failed to get personal space for notifications: %v", err)
 		return
 	}
 	n.notificationId, err = spc.DeriveObjectID(ctx, uk)
 	if err != nil {
-		n.notificationErr = err
+		log.Errorf("failed to get notification object: %v", err)
 		return
 	}
 	ctxWithPeer := peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	_, err = spc.GetObject(ctxWithPeer, n.notificationId)
 	if err != nil && errors.Is(err, net.ErrUnableToConnect) {
-		n.notificationErr = err
+		log.Errorf("failed to get notification object: %v", err)
 		return
 	}
 	if err != nil {
@@ -272,8 +259,9 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 			},
 		})
 		if dErr != nil {
-			n.notificationErr = dErr
+			log.Errorf("failed to derive notification object: %v", err)
 			return
 		}
 	}
+	n.indexNotifications(ctx)
 }
