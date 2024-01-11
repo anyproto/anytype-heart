@@ -36,6 +36,7 @@ type Space interface {
 	DerivedIDs() threads.DerivedSmartblockIds
 
 	WaitMandatoryObjects(ctx context.Context) (err error)
+	CommonSpace() commonspace.Space
 
 	Do(objectId string, apply func(sb smartblock.SmartBlock) error) error
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
@@ -156,6 +157,10 @@ func (s *space) Storage() spacestorage.SpaceStorage {
 
 func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
 	return s.derivedIDs
+}
+
+func (s *space) CommonSpace() commonspace.Space {
+	return s.common
 }
 
 func (s *space) WaitMandatoryObjects(ctx context.Context) (err error) {
