@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
@@ -69,6 +70,7 @@ type service struct {
 	detailsModifier   DetailsModifier
 	coordinatorClient coordinatorclient.CoordinatorClient
 	fileService       files.Service
+	fileObjectService fileobject.Service
 	closing           chan struct{}
 	identities        []string
 	techSpaceId       string
@@ -98,6 +100,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.detailsModifier = app.MustComponent[DetailsModifier](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.coordinatorClient = app.MustComponent[coordinatorclient.CoordinatorClient](a)
+	s.fileService = app.MustComponent[files.Service](a)
+	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.closing = make(chan struct{})
 	return
 }
@@ -272,10 +276,37 @@ func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
 }
 
 func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDetails *types.Struct) error {
+	iconImageObjectId := pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String())
+	var (
+		iconCid           string
+		iconEncryptionKey string
+	)
+	if iconImageObjectId != "" {
+		fileId, err := s.fileObjectService.GetFileIdFromObject(ctx, iconImageObjectId)
+		if err != nil {
+			return fmt.Errorf("get file id from object: %w", err)
+		}
+
+		img, err := s.fileService.ImageByHash(ctx, fileId)
+		if err != nil {
+			return fmt.Errorf("get image by hash: %w", err)
+		}
+
+		originalIcon, err := img.GetOriginalFile(ctx)
+		if err != nil {
+			return fmt.Errorf("get original file: %w", err)
+		}
+		info := originalIcon.Info()
+		iconCid = info.Hash
+		iconEncryptionKey = info.Key
+	}
+
 	identity := s.accountService.AccountID()
 	identityProfile := &model.IdentityProfile{
-		Identity: identity,
-		Name:     pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()),
+		Identity:          identity,
+		Name:              pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()),
+		IconCid:           iconCid,
+		IconEncryptionKey: iconEncryptionKey,
 	}
 	data, err := proto.Marshal(identityProfile)
 	if err != nil {

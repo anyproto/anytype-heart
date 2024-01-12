@@ -1006,7 +1006,7 @@ message IdentityProfile {
     string identity = 1;
     string name = 2;
     string iconCid = 3;
-    bytes iconEncryptionKey = 4;
+    string iconEncryptionKey = 4;
 }
 
 
