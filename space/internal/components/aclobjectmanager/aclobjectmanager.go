@@ -90,7 +90,7 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	}
 	a.cancel()
 	<-a.wait
-	a.unregisterAllIdentities()
+	a.identityService.UnregisterIdentitiesInSpace(a.sp.Id())
 	return
 }
 
@@ -136,6 +136,9 @@ func (a *aclObjectManager) processAcl() (err error) {
 	a.mx.Lock()
 	lastIndexed := a.lastIndexed
 	a.mx.Unlock()
+	if lastIndexed == common.Acl().Head().Id {
+		return nil
+	}
 	var diff list.AclAccountDiff
 	// get all identities and permissions for us to process
 	if lastIndexed == "" {
@@ -171,6 +174,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	if err != nil {
 		return
 	}
+	a.lastIndexed = common.Acl().Head().Id
 	return
 }
 
@@ -234,10 +238,6 @@ func (a *aclObjectManager) processJoinRecords(recs []list.RequestRecord) (err er
 		}
 	}
 	return nil
-}
-
-func (a *aclObjectManager) unregisterAllIdentities() {
-	a.identityService.UnregisterIdentitiesInSpace(a.sp.Id())
 }
 
 func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AclAccountState) (err error) {
