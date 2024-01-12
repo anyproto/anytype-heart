@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/crypto/cryptoproto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -34,20 +36,17 @@ func New() AclObjectManager {
 	return &aclObjectManager{}
 }
 
-type DetailsModifier interface {
-	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
-}
-
 type aclObjectManager struct {
-	ctx         context.Context
-	cancel      context.CancelFunc
-	wait        chan struct{}
-	waitLoad    chan struct{}
-	sp          clientspace.Space
-	loadErr     error
-	spaceLoader spaceloader.SpaceLoader
-	modifier    DetailsModifier
-	started     bool
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wait            chan struct{}
+	waitLoad        chan struct{}
+	sp              clientspace.Space
+	loadErr         error
+	spaceLoader     spaceloader.SpaceLoader
+	modifier        dependencies.DetailsModifier
+	identityService dependencies.IdentityService
+	started         bool
 
 	mx          sync.Mutex
 	lastIndexed string
@@ -62,7 +61,8 @@ func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 
 func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.spaceLoader = ap.MustComponent(spaceloader.CName).(spaceloader.SpaceLoader)
-	a.modifier = app.MustComponent[DetailsModifier](ap)
+	a.modifier = app.MustComponent[dependencies.DetailsModifier](ap)
+	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil
@@ -127,6 +127,7 @@ func (a *aclObjectManager) clearAclIndexes() (err error) {
 
 func (a *aclObjectManager) deleteObject(identity crypto.PubKey) (err error) {
 	// TODO: remove object from cache and clear acl indexes in object store for this object
+	a.identityService.UnregisterIdentity(a.sp.Id(), identity.Account())
 	return nil
 }
 
@@ -175,13 +176,28 @@ func (a *aclObjectManager) processAcl() (err error) {
 
 func (a *aclObjectManager) processDiff(diff list.AclAccountDiff) (err error) {
 	for _, state := range diff.Added {
-		err := a.updateParticipantObject(a.ctx, state)
+		err := a.updateParticipantFromAclState(a.ctx, state)
+		if err != nil {
+			return err
+		}
+		key, err := getSymKey(state.RequestMetadata)
+		if err != nil {
+			return err
+		}
+		err = a.identityService.RegisterIdentity(a.sp.Id(), state.PubKey.Account(), key,
+			func(identity string, profile *model.IdentityProfile) {
+				err := a.updateParticipantFromIdentity(a.ctx, identity, profile)
+				if err != nil {
+					log.Error("error updating participant from identity", zap.Error(err))
+				}
+			},
+		)
 		if err != nil {
 			return err
 		}
 	}
 	for _, state := range diff.Changed {
-		err := a.updateParticipantObject(a.ctx, state)
+		err := a.updateParticipantFromAclState(a.ctx, state)
 		if err != nil {
 			return err
 		}
@@ -197,7 +213,22 @@ func (a *aclObjectManager) processDiff(diff list.AclAccountDiff) (err error) {
 
 func (a *aclObjectManager) processJoinRecords(recs []list.RequestRecord) (err error) {
 	for _, rec := range recs {
-		err := a.updateJoinerObject(a.ctx, rec)
+		err := a.updateParticipantFromAclRequest(a.ctx, rec)
+		if err != nil {
+			return err
+		}
+		key, err := getSymKey(rec.RequestMetadata)
+		if err != nil {
+			return err
+		}
+		err = a.identityService.RegisterIdentity(a.sp.Id(), rec.RequestIdentity.Account(), key,
+			func(identity string, profile *model.IdentityProfile) {
+				err := a.updateParticipantFromIdentity(a.ctx, identity, profile)
+				if err != nil {
+					log.Error("error updating participant from identity", zap.Error(err))
+				}
+			},
+		)
 		if err != nil {
 			return err
 		}
@@ -205,19 +236,11 @@ func (a *aclObjectManager) processJoinRecords(recs []list.RequestRecord) (err er
 	return nil
 }
 
-func (a *aclObjectManager) unregisterIdentities() {
-
-}
-
 func (a *aclObjectManager) unregisterAllIdentities() {
-
+	a.identityService.UnregisterIdentitiesInSpace(a.sp.Id())
 }
 
-func (a *aclObjectManager) registerIdentities() {
-
-}
-
-func (a *aclObjectManager) updateParticipantObject(ctx context.Context, accState list.AclAccountState) (err error) {
+func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AclAccountState) (err error) {
 	key := fmt.Sprintf("%s_%s", a.sp.Id(), accState.PubKey.Account())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeParticipant, key)
 	if err != nil {
@@ -243,7 +266,24 @@ func (a *aclObjectManager) updateParticipantObject(ctx context.Context, accState
 	})
 }
 
-func (a *aclObjectManager) updateJoinerObject(ctx context.Context, rec list.RequestRecord) (err error) {
+func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, identity string, profile *model.IdentityProfile) (err error) {
+	key := fmt.Sprintf("%s_%s", a.sp.Id(), identity)
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeParticipant, key)
+	if err != nil {
+		return
+	}
+	id := uniqueKey.Marshal()
+	_, err = a.sp.GetObject(ctx, uniqueKey.Marshal())
+	details := &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():      pbtypes.String(profile.Name),
+		bundle.RelationKeyIconImage.String(): pbtypes.String(profile.IconCid),
+	}}
+	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+		return pbtypes.StructMerge(current, details, false), nil
+	})
+}
+
+func (a *aclObjectManager) updateParticipantFromAclRequest(ctx context.Context, rec list.RequestRecord) (err error) {
 	key := fmt.Sprintf("%s_%s", a.sp.Id(), rec.RequestIdentity.Account())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeParticipant, key)
 	if err != nil {
@@ -291,4 +331,18 @@ func decryptAll(acl list.AclList, states []list.AclAccountState) (decrypted []li
 		decrypted = append(decrypted, state)
 	}
 	return
+}
+
+func getSymKey(metadata []byte) (crypto.SymKey, error) {
+	md := &model.Metadata{}
+	err := md.Unmarshal(metadata)
+	if err != nil {
+		return nil, err
+	}
+	keyProto := &cryptoproto.Key{}
+	err = keyProto.Unmarshal(md.GetIdentity().GetProfileSymKey())
+	if err != nil {
+		return nil, err
+	}
+	return crypto.UnmarshallAESKey(keyProto.Data)
 }
