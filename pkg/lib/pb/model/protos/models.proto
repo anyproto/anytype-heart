@@ -997,3 +997,8 @@ message Import {
         FILE_LOAD_ERROR = 8;
     }
 }
+
+message IdentityProfile {
+    string identity = 1;
+    string temp = 2;
+}

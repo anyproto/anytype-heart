@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/any-sync/app"
@@ -48,15 +51,16 @@ type spaceIdDeriver interface {
 }
 
 type service struct {
-	spaceService    space.Service
-	objectStore     objectstore.ObjectStore
-	accountService  account.Service
-	spaceIdDeriver  spaceIdDeriver
-	detailsModifier DetailsModifier
-	closing         chan struct{}
-	identities      []string
-	techSpaceId     string
-	personalSpaceId string
+	spaceService      space.Service
+	objectStore       objectstore.ObjectStore
+	accountService    account.Service
+	spaceIdDeriver    spaceIdDeriver
+	detailsModifier   DetailsModifier
+	coordinatorClient coordinatorclient.CoordinatorClient
+	closing           chan struct{}
+	identities        []string
+	techSpaceId       string
+	personalSpaceId   string
 }
 
 func New() Service {
@@ -69,6 +73,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceIdDeriver = app.MustComponent[spaceIdDeriver](a)
 	s.detailsModifier = app.MustComponent[DetailsModifier](a)
 	s.spaceService = app.MustComponent[space.Service](a)
+	s.coordinatorClient = app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.closing = make(chan struct{})
 	return
 }
@@ -187,12 +192,10 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 		closeSub func()
 	)
 
-	identityObjectId := s.accountService.IdentityObjectId()
 	records, closeSub, err = s.objectStore.QueryByIDAndSubscribeForChanges([]string{profileObjectId}, sub)
 	if err != nil {
 		return err
 	}
-
 	go func() {
 		select {
 		case <-s.closing:
@@ -202,13 +205,9 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 	}()
 
 	if len(records) > 0 {
-		details := getDetailsFromProfile(identityObjectId, s.techSpaceId, records[0].Details)
-
-		err = s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
-			return pbtypes.StructMerge(current, details, false), nil
-		})
+		err := s.updateIdentityObject(records[0].Details)
 		if err != nil {
-			return fmt.Errorf("initial modify details: %w", err)
+			log.Errorf("error updating identity object: %v", err)
 		}
 	}
 
@@ -218,17 +217,68 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 			if !ok {
 				return
 			}
-
-			details := getDetailsFromProfile(identityObjectId, s.techSpaceId, rec)
-			err = s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
-				return pbtypes.StructMerge(current, details, false), nil
-			})
+			err := s.updateIdentityObject(rec)
 			if err != nil {
 				log.Errorf("error updating identity object: %v", err)
 			}
 		}
 	}()
 
+	return nil
+}
+
+func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
+	identityObjectId := s.accountService.IdentityObjectId()
+	details := getDetailsFromProfile(identityObjectId, s.techSpaceId, profileDetails)
+	err := s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
+		return pbtypes.StructMerge(current, details, false), nil
+	})
+	if err != nil {
+		return fmt.Errorf("modify details: %w", err)
+	}
+
+	err = s.pushProfileToIdentityRegistry(context.Background(), profileDetails)
+	if err != nil {
+		return fmt.Errorf("push profile to identity registry: %w", err)
+	}
+	return nil
+}
+
+func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDetails *types.Struct) error {
+	//data, err := s.coordinatorClient.IdentityRepoGet(ctx, []string{s.accountService.AccountID()}, []string{"profile"})
+	//if err != nil {
+	//	return fmt.Errorf("failed to pull identity: %w", err)
+	//}
+	//fmt.Println("IDENTITY DATA for", s.AccountID())
+	//for _, d := range data {
+	//	fmt.Println(d)
+	//}
+
+	identity := s.accountService.AccountID()
+	identityProfile := &model.IdentityProfile{
+		Identity: identity,
+		Temp:     pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()),
+	}
+	data, err := proto.Marshal(identityProfile)
+	if err != nil {
+		return fmt.Errorf("marshal identity profile: %w", err)
+	}
+	signature, err := s.accountService.SignData(data)
+	if err != nil {
+		return fmt.Errorf("failed to sign profile data: %w", err)
+	}
+	err = s.coordinatorClient.IdentityRepoPut(ctx, identity, []*identityrepoproto.Data{
+		{
+			Kind:      "profile",
+			Data:      data,
+			Signature: signature,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to push identity: %w", err)
+	}
+
+	fmt.Println("PUSHED IDENTITY DATA for", s.accountService.AccountID(), identityProfile)
 	return nil
 }
 

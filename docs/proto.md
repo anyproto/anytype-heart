@@ -1437,6 +1437,7 @@
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [Export](#anytype-model-Export)
+    - [IdentityProfile](#anytype-model-IdentityProfile)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
@@ -22645,6 +22646,22 @@ Used to decode block meta only, without the content itself
 
 ### Export
 
+
+
+
+
+
+
+<a name="anytype-model-IdentityProfile"></a>
+
+### IdentityProfile
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| temp | [string](#string) |  |  |
 
 
 
