@@ -19,12 +19,12 @@ type AclService interface {
 }
 
 type aclService struct {
-	invitingClient aclclient.AclInvitingClient
-	spaceService   space.Service
+	joiningClient aclclient.AclJoiningClient
+	spaceService  space.Service
 }
 
 func (a *aclService) Init(app *app.App) (err error) {
-	a.invitingClient = app.MustComponent(aclclient.CName).(aclclient.AclInvitingClient)
+	a.joiningClient = app.MustComponent(aclclient.CName).(aclclient.AclJoiningClient)
 	a.spaceService = app.MustComponent(space.CName).(space.Service)
 	return nil
 }
@@ -35,7 +35,7 @@ func (a *aclService) Name() (name string) {
 
 func (a *aclService) Join(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) error {
 	metadata := a.spaceService.AccountMetadata()
-	err := a.invitingClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
+	err := a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
 		InviteKey: inviteKey,
 		Metadata:  metadata,
 	})

@@ -23,6 +23,7 @@ const (
 	VirtualPrefix               = "_virtual"
 	DatePrefix                  = "_date_"
 	IdentityPrefix              = "_id_"
+	ParticipantPrefix           = "_participant_"
 
 	MissingObject = "_missing_object"
 )

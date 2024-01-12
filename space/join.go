@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-func (s *service) Invite(ctx context.Context, id string) error {
+func (s *service) Join(ctx context.Context, id string) error {
 	s.mu.Lock()
 	wait := make(chan struct{})
 	s.waiting[id] = controllerWaiter{

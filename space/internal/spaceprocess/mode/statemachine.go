@@ -16,7 +16,7 @@ const (
 	ModeInitial
 	ModeLoading
 	ModeOffloading
-	ModeInviting
+	ModeJoining
 )
 
 type WaitResult struct {

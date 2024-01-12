@@ -48,7 +48,7 @@ type Space interface {
 type Service interface {
 	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
-	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
+	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, creatorId string, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
@@ -133,6 +133,11 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			return NewBundledRelation(id), nil
 		case smartblock.SmartBlockTypeIdentity:
 			return NewIdentity(s.identityService, id), nil
+		case smartblock.SmartBlockTypeParticipant:
+			return s.NewStaticSource(domain.FullID{
+				ObjectID: fmt.Sprintf("%s_%s", space.Id(), id),
+				SpaceID:  space.Id(),
+			}, smartblock.SmartBlockTypeParticipant, nil, "", nil), nil
 		}
 	}
 
@@ -159,7 +164,7 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource(domain.FullID{}, smartblock.SmartBlockTypeBundledTemplate, nil, nil), nil
+		return s.NewStaticSource(domain.FullID{}, smartblock.SmartBlockTypeBundledTemplate, nil, addr.AnytypeProfileId, nil), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err

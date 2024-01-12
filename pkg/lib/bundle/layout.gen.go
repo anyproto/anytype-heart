@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
-const LayoutChecksum = "d0f1feb0705e9d74789a25e3c41b0c4682a79ecac2145a48606e8a26b8c688fc"
+const LayoutChecksum = "b520bc9fb3b565d81599eefbd4e4feace6402815b626a5b0a3bff4941aa3528d"
 
 var (
 	Layouts = map[model.ObjectTypeLayout]model.Layout{
@@ -58,6 +58,11 @@ var (
 			Id:                model.ObjectType_objectType,
 			Name:              "Object Type",
 			RequiredRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRecommendedRelations]},
+		},
+		model.ObjectType_participant: {
+
+			Id:   model.ObjectType_participant,
+			Name: "Participant",
 		},
 		model.ObjectType_profile: {
 

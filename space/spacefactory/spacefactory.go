@@ -132,10 +132,10 @@ func (s *spaceFactory) NewShareableSpace(ctx context.Context, id string, status 
 }
 
 func (s *spaceFactory) CreateInvitingSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error) {
-	if err := s.techSpace.SpaceViewCreate(ctx, id, true, spaceinfo.AccountStatusInviting); err != nil {
+	if err := s.techSpace.SpaceViewCreate(ctx, id, true, spaceinfo.AccountStatusJoining); err != nil {
 		return nil, err
 	}
-	ctrl, err := shareablespace.NewSpaceController(id, spaceinfo.AccountStatusInviting, s.app)
+	ctrl, err := shareablespace.NewSpaceController(id, spaceinfo.AccountStatusJoining, s.app)
 	if err != nil {
 		return nil, err
 	}

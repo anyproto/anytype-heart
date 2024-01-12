@@ -22,6 +22,7 @@ const (
 	SmartBlockTypeBundledRelation   = SmartBlockType(model.SmartBlockType_BundledRelation)
 	SmartBlockTypeSubObject         = SmartBlockType(model.SmartBlockType_SubObject)
 	SmartBlockTypeBundledObjectType = SmartBlockType(model.SmartBlockType_BundledObjectType)
+	SmartBlockTypeParticipant       = SmartBlockType(model.SmartBlockType_Participant)
 	SmartBlockTypeAnytypeProfile    = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeIdentity          = SmartBlockType(model.SmartBlockType_Identity)

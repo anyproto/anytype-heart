@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/inviter"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/joiner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/offloader"
@@ -55,8 +55,8 @@ func (s *spaceController) Start(ctx context.Context) error {
 	case spaceinfo.AccountStatusDeleted:
 		_, err := s.sm.ChangeMode(mode.ModeOffloading)
 		return err
-	case spaceinfo.AccountStatusInviting:
-		_, err := s.sm.ChangeMode(mode.ModeInviting)
+	case spaceinfo.AccountStatusJoining:
+		_, err := s.sm.ChangeMode(mode.ModeJoining)
 		return err
 	default:
 		_, err := s.sm.ChangeMode(mode.ModeLoading)
@@ -90,8 +90,8 @@ func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.Acc
 	switch status {
 	case spaceinfo.AccountStatusDeleted:
 		return updateStatus(mode.ModeOffloading)
-	case spaceinfo.AccountStatusInviting:
-		return updateStatus(mode.ModeInviting)
+	case spaceinfo.AccountStatusJoining:
+		return updateStatus(mode.ModeJoining)
 	default:
 		return updateStatus(mode.ModeLoading)
 	}
@@ -125,8 +125,8 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 		return offloader.New(s.app, offloader.Params{
 			Status: s.status,
 		})
-	case mode.ModeInviting:
-		return inviter.New(s.app, inviter.Params{
+	case mode.ModeJoining:
+		return joiner.New(s.app, joiner.Params{
 			SpaceId: s.spaceId,
 			Status:  s.status,
 			Log:     log,

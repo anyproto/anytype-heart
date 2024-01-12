@@ -2,20 +2,21 @@ package source
 
 import (
 	"context"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
-func (s *service) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
+func (s *service) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, creatorId string, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
 	return &static{
 		id:         id,
 		sbType:     sbType,
 		doc:        doc,
 		s:          s,
+		creatorId:  creatorId,
 		pushChange: pushChange,
 	}
 }
@@ -24,6 +25,7 @@ type static struct {
 	id         domain.FullID
 	sbType     smartblock.SmartBlockType
 	doc        *state.State
+	creatorId  string
 	pushChange func(p PushChangeParams) (string, error)
 	s          *service
 }
@@ -70,7 +72,11 @@ func (s *static) Close() (err error) {
 	return
 }
 
-func (v *static) Heads() []string {
+func (s *static) TryClose(objectTTL time.Duration) (res bool, err error) {
+	return false, nil
+}
+
+func (s *static) Heads() []string {
 	return []string{"todo"} // todo hash of the details
 }
 
@@ -79,5 +85,5 @@ func (s *static) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (s *static) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
-	return addr.AnytypeProfileId, 0, nil
+	return s.creatorId, 0, nil
 }

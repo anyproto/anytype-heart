@@ -38,13 +38,14 @@ enum SmartBlockType {
     AnytypeProfile = 0x203;
     Date = 0x204;
     Workspace = 0x206;
+    MissingObject = 0x207;
     STRelation = 0x209;
     STType = 0x210;
     STRelationOption = 0x211;
     SpaceView = 0x212;
 
     Identity = 0x214;
-    MissingObject = 0x207;
+    Participant = 0x215;
 }
 
 message Block {
@@ -709,6 +710,7 @@ message ObjectType {
         video = 16;
         date = 17;
         spaceView = 18;
+        participant = 19;
 
         database = 20; // to be released later
     }
@@ -889,6 +891,22 @@ enum SpaceStatus {
     RemoteDeleted = 6;
     // SpaceDeleted - the space should be deleted in the network
     SpaceDeleted = 7;
+    // SpaceActive - the space is active in the network
+    SpaceActive = 8;
+    // SpaceJoining - the account is joining the space
+    SpaceJoining = 9;
+}
+
+enum ParticipantPermissions {
+    Reader = 0;
+    Writer = 1;
+    Owner = 2;
+    NoPermissions = 3;
+}
+
+enum ParticipantStatus {
+    Joining = 0;
+    Active = 1;
 }
 
 message Metadata {

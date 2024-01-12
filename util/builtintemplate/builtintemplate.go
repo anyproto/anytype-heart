@@ -135,7 +135,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	}
 
 	fullID := domain.FullID{SpaceID: space.Id(), ObjectID: id}
-	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
+	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), addr.AnytypeProfileId, nil))
 	if err != nil {
 		return fmt.Errorf("register static source: %w", err)
 	}

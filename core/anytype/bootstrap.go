@@ -207,7 +207,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
-		Register(aclclient.NewAclInvitingClient()).
+		Register(aclclient.NewAclJoiningClient()).
 		Register(rpcstore.New()).
 		Register(filestore.New()).
 		Register(fileservice.New()).

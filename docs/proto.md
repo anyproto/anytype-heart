@@ -1503,6 +1503,8 @@
     - [Notification.Status](#anytype-model-Notification-Status)
     - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
+    - [ParticipantPermissions](#anytype-model-ParticipantPermissions)
+    - [ParticipantStatus](#anytype-model-ParticipantStatus)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
     - [RelationFormat](#anytype-model-RelationFormat)
@@ -23726,7 +23728,34 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | video | 16 |  |
 | date | 17 |  |
 | spaceView | 18 |  |
+| participant | 19 |  |
 | database | 20 | to be released later |
+
+
+
+<a name="anytype-model-ParticipantPermissions"></a>
+
+### ParticipantPermissions
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Reader | 0 |  |
+| Writer | 1 |  |
+| Owner | 2 |  |
+| NoPermissions | 3 |  |
+
+
+
+<a name="anytype-model-ParticipantStatus"></a>
+
+### ParticipantStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Joining | 0 |  |
+| Active | 1 |  |
 
 
 
@@ -23838,12 +23867,13 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
 | Workspace | 518 |  |
+| MissingObject | 519 |  |
 | STRelation | 521 |  |
 | STType | 528 |  |
 | STRelationOption | 529 |  |
 | SpaceView | 530 |  |
 | Identity | 532 |  |
-| MissingObject | 519 |  |
+| Participant | 533 |  |
 
 
 
@@ -23862,6 +23892,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | RemoteWaitingDeletion | 5 | RemoteWaitingDeletion - network status is &#34;waiting deletion&#34; |
 | RemoteDeleted | 6 | RemoteDeleted - the space is deleted in the current network |
 | SpaceDeleted | 7 | SpaceDeleted - the space should be deleted in the network |
+| SpaceActive | 8 | SpaceActive - the space is active in the network |
+| SpaceJoining | 9 | SpaceJoining - the account is joining the space |
 
 
  
