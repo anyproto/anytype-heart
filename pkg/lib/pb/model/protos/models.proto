@@ -1000,5 +1000,5 @@ message Import {
 
 message IdentityProfile {
     string identity = 1;
-    string temp = 2;
+    string name = 2;
 }

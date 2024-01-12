@@ -22661,7 +22661,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | identity | [string](#string) |  |  |
-| temp | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 
 
 

@@ -3,11 +3,15 @@ package identity
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/slice"
@@ -17,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -29,10 +34,15 @@ import (
 const CName = "identity"
 
 var (
-	log = logging.Logger("anytype-identity")
+	log = logging.Logger("anytype-identity").Desugar()
 )
 
 type Service interface {
+	// TODO maybe return initial details?
+	RegisterIdentity(spaceId string, identity string, encryptionKey symmetric.Key, observer func(identity string, profile *model.IdentityProfile)) error
+
+	// TODO Unregister observer
+
 	// SubscribeToIdentities subscribes to identities and updates them directly into the objectStore
 	SubscribeToIdentities(identities []string) (err error)
 	// GetDetails returns the last store details of the identity and provides a way to receive updates via updateHook
@@ -61,10 +71,22 @@ type service struct {
 	identities        []string
 	techSpaceId       string
 	personalSpaceId   string
+
+	identityObservePeriod time.Duration
+	lock                  sync.RWMutex
+	// identity => spaceId => observer
+	identityObservers      map[string]map[string]func(identity string, profile *model.IdentityProfile)
+	identityEncryptionKeys map[string]symmetric.Key
+	identityProfileCache   map[string]*model.IdentityProfile
 }
 
-func New() Service {
-	return new(service)
+func New(identityObservePeriod time.Duration) Service {
+	return &service{
+		identityObservePeriod:  identityObservePeriod,
+		identityObservers:      make(map[string]map[string]func(identity string, profile *model.IdentityProfile)),
+		identityEncryptionKeys: make(map[string]symmetric.Key),
+		identityProfileCache:   make(map[string]*model.IdentityProfile),
+	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -102,6 +124,9 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+
+	go s.observeIdentitiesLoop()
+
 	return
 }
 
@@ -207,7 +232,7 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 	if len(records) > 0 {
 		err := s.updateIdentityObject(records[0].Details)
 		if err != nil {
-			log.Errorf("error updating identity object: %v", err)
+			log.Error("error updating identity object", zap.Error(err))
 		}
 	}
 
@@ -219,7 +244,7 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 			}
 			err := s.updateIdentityObject(rec)
 			if err != nil {
-				log.Errorf("error updating identity object: %v", err)
+				log.Error("error updating identity object", zap.Error(err))
 			}
 		}
 	}()
@@ -245,24 +270,17 @@ func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
 }
 
 func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDetails *types.Struct) error {
-	//data, err := s.coordinatorClient.IdentityRepoGet(ctx, []string{s.accountService.AccountID()}, []string{"profile"})
-	//if err != nil {
-	//	return fmt.Errorf("failed to pull identity: %w", err)
-	//}
-	//fmt.Println("IDENTITY DATA for", s.AccountID())
-	//for _, d := range data {
-	//	fmt.Println(d)
-	//}
-
 	identity := s.accountService.AccountID()
 	identityProfile := &model.IdentityProfile{
 		Identity: identity,
-		Temp:     pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()),
+		Name:     pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()),
 	}
 	data, err := proto.Marshal(identityProfile)
 	if err != nil {
 		return fmt.Errorf("marshal identity profile: %w", err)
 	}
+	// TODO Encrypt data using metadata symmetric key
+
 	signature, err := s.accountService.SignData(data)
 	if err != nil {
 		return fmt.Errorf("failed to sign profile data: %w", err)
@@ -279,6 +297,105 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDeta
 	}
 
 	fmt.Println("PUSHED IDENTITY DATA for", s.accountService.AccountID(), identityProfile)
+	return nil
+}
+
+func (s *service) observeIdentitiesLoop() {
+	ticker := time.NewTicker(s.identityObservePeriod)
+	defer ticker.Stop()
+
+	ctx := context.Background()
+	for {
+		select {
+		case <-s.closing:
+			return
+		case <-ticker.C:
+			err := s.observeIdentities(ctx)
+			if err != nil {
+				log.Error("error observing identities", zap.Error(err))
+			}
+		}
+	}
+}
+
+const identityRepoDataKind = "profile"
+
+func (s *service) observeIdentities(ctx context.Context) error {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	if len(s.identityObservers) == 0 {
+		return nil
+	}
+	identities := make([]string, 0, len(s.identityObservers))
+	for identity := range s.identityObservers {
+		identities = append(identities, identity)
+	}
+	identitiesData, err := s.coordinatorClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
+	if err != nil {
+		return fmt.Errorf("failed to pull identity: %w", err)
+	}
+
+	for _, identityData := range identitiesData {
+		err := s.handleIdentityData(identityData)
+		if err != nil {
+			log.Error("error handling identity data", zap.Error(err))
+		}
+	}
+	return nil
+}
+
+func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIdentity) error {
+	var profile *model.IdentityProfile
+	// TODO Decrypt
+	for _, data := range identityData.Data {
+		if data.Kind == identityRepoDataKind {
+			profile = new(model.IdentityProfile)
+			err := proto.Unmarshal(data.Data, profile)
+			if err != nil {
+				return fmt.Errorf("unmarshal identity profile: %w", err)
+			}
+		}
+	}
+	if profile == nil {
+		return fmt.Errorf("no profile data found")
+	}
+
+	prevProfile, ok := s.identityProfileCache[identityData.Identity]
+	if ok && proto.Equal(prevProfile, profile) {
+		return nil
+	}
+
+	// TODO Store profile in badger
+
+	s.identityProfileCache[identityData.Identity] = profile
+	observers := s.identityObservers[identityData.Identity]
+	for _, obs := range observers {
+		obs(identityData.Identity, profile)
+	}
+	return nil
+}
+
+func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey symmetric.Key, observer func(identity string, profile *model.IdentityProfile)) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if key, ok := s.identityEncryptionKeys[identity]; ok {
+		if !slices.Equal(key.Bytes(), encryptionKey.Bytes()) {
+			return fmt.Errorf("encryption key for identity %s already exists and do not match new key", identity)
+		}
+	} else {
+		s.identityEncryptionKeys[identity] = encryptionKey
+	}
+
+	observers := s.identityObservers[identity]
+	if observers == nil {
+		observers = make(map[string]func(identity string, profile *model.IdentityProfile))
+		s.identityObservers[identity] = observers
+	}
+
+	s.identityObservers[identity][spaceId] = observer
+
 	return nil
 }
 
