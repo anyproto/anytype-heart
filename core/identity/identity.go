@@ -25,6 +25,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -72,6 +73,7 @@ type service struct {
 	coordinatorClient coordinatorclient.CoordinatorClient
 	fileService       files.Service
 	fileObjectService fileobject.Service
+	fileStore         filestore.FileStore
 	closing           chan struct{}
 	identities        []string
 	techSpaceId       string
@@ -103,6 +105,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.coordinatorClient = app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
+	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.closing = make(chan struct{})
 	return
 }
@@ -133,6 +136,14 @@ func (s *service) Run(ctx context.Context) (err error) {
 	}
 
 	go s.observeIdentitiesLoop()
+
+	// TODO Temp for testing purposes
+	err = s.RegisterIdentity("space1", "AAj9HKbneHRsiEbbGj7Lhm2WJHzYNVwnz3qe2Mncn2mF49Wx", symmetric.Key{}, func(identity string, profile *model.IdentityProfile) {
+		fmt.Println("OBSERVED IDENTITY DATA for", identity, profile)
+	})
+	if err != nil {
+		return err
+	}
 
 	return
 }
@@ -399,6 +410,20 @@ func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIde
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
 	if ok && proto.Equal(prevProfile, profile) {
 		return nil
+	}
+
+	if len(profile.IconEncryptionKeys) > 0 {
+		keys := domain.FileEncryptionKeys{
+			FileId:         domain.FileId(profile.IconCid),
+			EncryptionKeys: map[string]string{},
+		}
+		for _, key := range profile.IconEncryptionKeys {
+			keys.EncryptionKeys[key.Path] = key.Key
+		}
+		err := s.fileStore.AddFileKeys(keys)
+		if err != nil {
+			return fmt.Errorf("store icon encryption keys: %w", err)
+		}
 	}
 
 	// TODO Store profile in badger
