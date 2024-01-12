@@ -9,8 +9,10 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -80,7 +82,6 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
-	// todo: injectDerivedRelations has been removed, it shouldn't be here. Check if this produced any side effects
 	return s
 }
 
@@ -115,7 +116,8 @@ type State struct {
 	newIds            []string
 	changeId          string
 	changes           []*pb.ChangeContent
-	fileKeys          []pb.ChangeFileKeys
+	fileInfo          FileInfo
+	fileKeys          []pb.ChangeFileKeys // Deprecated
 	details           *types.Struct
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
@@ -164,11 +166,21 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return s.NewStateCtx(nil)
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return &State{
+		parent:                   s,
+		blocks:                   make(map[string]simple.Block),
+		rootId:                   s.rootId,
+		ctx:                      ctx,
+		noObjectType:             s.noObjectType,
+		migrationVersion:         s.migrationVersion,
+		uniqueKeyInternal:        s.uniqueKeyInternal,
+		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		fileInfo:                 s.fileInfo,
+	}
 }
 
 func (s *State) Context() session.Context {
@@ -628,6 +640,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
+	if s.parent != nil {
+		s.parent.fileInfo = s.fileInfo
+	}
+
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -718,6 +734,7 @@ func (s *State) intermediateApply() {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
+	s.parent.fileInfo = s.fileInfo
 	return
 }
 
@@ -1088,12 +1105,60 @@ func (s *State) FileRelationKeys() []string {
 	return keys
 }
 
-func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
-	hashes = s.getAllFileHashesOrTempLink(detailsKeys)
+func (s *State) IterateLinkedFiles(proc func(id string) bool) {
+	var stop bool
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if fh, ok := b.(file.Block); ok {
+			cont := proc(fh.TargetObjectId())
+			if !cont {
+				stop = true
+				return false
+			}
+		}
+		return true
+	})
+	if stop {
+		return
+	}
+	det := s.Details()
+	if det == nil || det.Fields == nil {
+		return
+	}
+	for _, key := range s.FileRelationKeys() {
+		if key == bundle.RelationKeyCoverId.String() {
+			v := pbtypes.GetString(det, key)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contains not a file hash but color
+				continue
+			}
+		}
+		if fileObjectIds := pbtypes.GetStringList(det, key); fileObjectIds != nil {
+			for _, id := range fileObjectIds {
+				if id == "" {
+					continue
+				}
+				cont := proc(id)
+				if !cont {
+					return
+				}
+			}
+		}
+	}
+	return
+}
+
+// DEPRECATED, use only for backward compatibility and migration purposes
+func (s *State) GetAllFileHashes(detailsKeys []string) []string {
+	hashes := s.GetFileHashes(detailsKeys)
 	return slice.FilterCID(hashes)
 }
 
-func (s *State) getAllFileHashesOrTempLink(detailsKeys []string) (hashes []string) {
+// GetFileHashes iterates over all file hashes in the state and updates them with the provided function
+// Can be used just for iteration, if update return the same hash
+// DEPRECATED, use only for backward compatibility and migration purposes
+func (s *State) GetFileHashes(detailsKeys []string) []string {
+	var hashes []string
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)
@@ -1102,7 +1167,7 @@ func (s *State) getAllFileHashesOrTempLink(detailsKeys []string) (hashes []strin
 	})
 	det := s.Details()
 	if det == nil || det.Fields == nil {
-		return
+		return hashes
 	}
 
 	for _, key := range detailsKeys {
@@ -1114,18 +1179,18 @@ func (s *State) getAllFileHashesOrTempLink(detailsKeys []string) (hashes []strin
 				continue
 			}
 		}
-		if v := pbtypes.GetStringList(det, key); v != nil {
-			for _, hash := range v {
+		if hashList := pbtypes.GetStringList(det, key); hashList != nil {
+			for _, hash := range hashList {
 				if hash == "" {
 					continue
 				}
-				if slice.FindPos(hashes, hash) == -1 {
-					hashes = append(hashes, hash)
+				if !slices.Contains(hashes, hash) {
+					hashes = append(hashes, hashList...)
 				}
 			}
 		}
 	}
-	return
+	return hashes
 }
 
 func (s *State) blockInit(b simple.Block) {
@@ -1271,6 +1336,7 @@ func (s *State) Copy() *State {
 		storeKeyRemoved:          storeKeyRemovedCopy,
 		uniqueKeyInternal:        s.uniqueKeyInternal,
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		fileInfo:                 s.fileInfo,
 	}
 	return copy
 }

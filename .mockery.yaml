@@ -71,4 +71,9 @@ packages:
   github.com/anyproto/anytype-heart/space/clientspace:
     interfaces:
       Space:
-
+  github.com/anyproto/anytype-heart/core/anytype/account:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/files/fileobject:
+    interfaces:
+      Service:

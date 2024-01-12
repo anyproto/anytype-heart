@@ -464,7 +464,7 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 
 func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupID string) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, file.FileSource{
+		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: groupID,
@@ -476,7 +476,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupI
 
 func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, file.FileSource{
+		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
 			Url:    req.Url,
 			Origin: req.Origin,
@@ -495,8 +495,8 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUploadRequest) (hash string, err error) {
-	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
+func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (hash string, err error) {
+	upl := s.fileUploaderService.NewUploader(spaceId)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
@@ -517,7 +517,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUpload
 	if res.Err != nil {
 		return "", res.Err
 	}
-	return res.Hash, nil
+	return res.FileObjectId, nil
 }
 
 func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
@@ -534,24 +534,22 @@ func (s *Service) SetFileStyle(
 	})
 }
 
-func (s *Service) UploadFileBlockWithHash(
+func (s *Service) UploadFileBlock(
 	contextID string, req UploadRequest,
-) (hash string, err error) {
+) (fileObjectId string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
-		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
+		fileObjectId, err = b.Upload(nil, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: "",
 			Origin:  req.Origin,
-		})
+		}, true)
 		if err != nil {
 			return err
 		}
-		hash = res.Hash
 		return nil
 	})
-
-	return hash, err
+	return fileObjectId, err
 }
 
 func (s *Service) Undo(

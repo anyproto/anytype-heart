@@ -1,9 +1,10 @@
-package file
+package fileuploader
 
 import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -14,19 +15,59 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/h2non/filetype"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
+
+var log = logging.Logger("file-uploader")
+
+type Service interface {
+	app.Component
+
+	NewUploader(spaceId string) Uploader
+}
+
+type service struct {
+	fileService       files.Service
+	tempDirProvider   core.TempDirProvider
+	picker            getblock.ObjectGetter
+	fileObjectService fileobject.Service
+}
+
+func New() Service {
+	return &service{}
+}
+
+func (f *service) NewUploader(spaceId string) Uploader {
+	return NewUploader(spaceId, f.fileService, f.tempDirProvider, f.picker, f.fileObjectService)
+}
+
+const CName = "file-uploader"
+
+func (f *service) Name() string {
+	return CName
+}
+
+func (f *service) Init(a *app.App) error {
+	f.fileService = app.MustComponent[files.Service](a)
+	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	f.picker = app.MustComponent[getblock.ObjectGetter](a)
+	f.fileObjectService = app.MustComponent[fileobject.Service](a)
+	return nil
+}
 
 var (
 	// limiting overall file upload goroutines
@@ -37,22 +78,6 @@ var (
 func init() {
 	for i := 0; i < cap(uploadFilesLimiter); i++ {
 		uploadFilesLimiter <- struct{}{}
-	}
-}
-
-func NewUploader(
-	spaceID string,
-	s BlockService,
-	fileService files.Service,
-	provider core.TempDirProvider,
-	picker getblock.ObjectGetter,
-) Uploader {
-	return &uploader{
-		spaceID:         spaceID,
-		service:         s,
-		picker:          picker,
-		fileService:     fileService,
-		tempDirProvider: provider,
 	}
 }
 
@@ -74,13 +99,14 @@ type Uploader interface {
 	Upload(ctx context.Context) (result UploadResult)
 	UploadAsync(ctx context.Context) (ch chan UploadResult)
 }
+
 type UploadResult struct {
-	Name string
-	Type model.BlockContentFileType
-	Hash string
-	MIME string
-	Size int64
-	Err  error
+	Name         string
+	Type         model.BlockContentFileType
+	FileObjectId string
+	MIME         string
+	Size         int64
+	Err          error
 }
 
 func (ur UploadResult) ToBlock() file.Block {
@@ -92,37 +118,53 @@ func (ur UploadResult) ToBlock() file.Block {
 	return simple.New(&model.Block{
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				Hash:    ur.Hash,
-				Name:    ur.Name,
-				Type:    ur.Type,
-				Mime:    ur.MIME,
-				Size_:   ur.Size,
-				AddedAt: time.Now().Unix(),
-				State:   state,
+				TargetObjectId: ur.FileObjectId,
+				Name:           ur.Name,
+				Type:           ur.Type,
+				Mime:           ur.MIME,
+				Size_:          ur.Size,
+				AddedAt:        time.Now().Unix(),
+				State:          state,
 			},
 		},
 	}).(file.Block)
 }
 
 type uploader struct {
-	spaceID          string
-	service          BlockService
-	picker           getblock.ObjectGetter
-	block            file.Block
-	getReader        func(ctx context.Context) (*fileReader, error)
-	name             string
-	lastModifiedDate int64
-	typeDetect       bool
-	forceType        bool
-	smartBlockID     string
-	fileType         model.BlockContentFileType
-	fileStyle        model.BlockContentFileStyle
-	opts             []files.AddOption
-	groupID          string
+	spaceId           string
+	fileObjectService fileobject.Service
+	picker            getblock.ObjectGetter
+	block             file.Block
+	getReader         func(ctx context.Context) (*fileReader, error)
+	name              string
+	lastModifiedDate  int64
+	typeDetect        bool
+	forceType         bool
+	smartBlockID      string
+	fileType          model.BlockContentFileType
+	fileStyle         model.BlockContentFileStyle
+	opts              []files.AddOption
+	groupID           string
 
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
 	origin          model.ObjectOrigin
+}
+
+func NewUploader(
+	spaceID string,
+	fileService files.Service,
+	provider core.TempDirProvider,
+	picker getblock.ObjectGetter,
+	fileObjectService fileobject.Service,
+) Uploader {
+	return &uploader{
+		spaceId:           spaceID,
+		picker:            picker,
+		fileService:       fileService,
+		tempDirProvider:   provider,
+		fileObjectService: fileObjectService,
+	}
 }
 
 type bufioSeekClose struct {
@@ -383,55 +425,102 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		opts = append(opts, u.opts...)
 	}
 
+	var addResult *addToStorageResult
 	if u.fileType == model.BlockContentFile_Image {
-		im, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
-		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
-			e = nil
+		addResult, err = u.addImageToStorage(ctx, opts)
+		if errors.Is(err, image.ErrFormat) || errors.Is(err, mill.ErrFormatSupportNotEnabled) {
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
 		}
-		if e != nil {
-			err = e
-			return
-		}
-		result.Hash = im.Hash()
-		orig, _ := im.GetOriginalFile(ctx)
-		if orig != nil {
-			result.MIME = orig.Meta().Media
-			result.Size = orig.Meta().Size
+		if err != nil {
+			return UploadResult{Err: fmt.Errorf("add image to storage: %w", err)}
 		}
 	} else {
-		fl, e := u.fileService.FileAdd(ctx, u.spaceID, opts...)
-		if e != nil {
-			err = e
-			return
-		}
-		result.Hash = fl.Hash()
-		if meta := fl.Meta(); meta != nil {
-			result.MIME = meta.Media
-			result.Size = meta.Size
+		addResult, err = u.addFileToStorage(ctx, opts)
+		if err != nil {
+			return UploadResult{Err: fmt.Errorf("add file to storage: %w", err)}
 		}
 	}
+	result.MIME = addResult.mime
+	result.Size = addResult.size
 
-	// Touch the file to activate indexing
-	derr := getblock.Do(u.picker, result.Hash, func(_ smartblock.SmartBlock) error {
-		return nil
-	})
-	if derr != nil {
-		log.Errorf("can't touch file object %s: %s", result.Hash, derr)
+	fileObjectId, err := u.getOrCreateFileObject(ctx, addResult)
+	if err != nil {
+		return UploadResult{Err: err}
 	}
+	result.FileObjectId = fileObjectId
+
 	result.Type = u.fileType
 	result.Name = u.name
 	if u.block != nil {
 		u.block.SetName(u.name).
 			SetState(model.BlockContentFile_Done).
 			SetType(u.fileType).
-			SetHash(result.Hash).
+			SetTargetObjectId(result.FileObjectId).
 			SetSize(result.Size).
 			SetStyle(u.fileStyle).
 			SetMIME(result.MIME)
 		u.updateBlock()
 	}
 	return
+}
+
+type addToStorageResult struct {
+	fileId     domain.FileId
+	fileKeys   *domain.FileEncryptionKeys
+	fileExists bool
+	mime       string
+	size       int64
+}
+
+func (u *uploader) addImageToStorage(ctx context.Context, addOptions []files.AddOption) (*addToStorageResult, error) {
+	addResult, err := u.fileService.ImageAdd(ctx, u.spaceId, addOptions...)
+	if err != nil {
+		return nil, err
+	}
+	res := &addToStorageResult{
+		fileId:     addResult.FileId,
+		fileKeys:   addResult.EncryptionKeys,
+		fileExists: addResult.IsExisting,
+	}
+	orig, _ := addResult.Image.GetOriginalFile(ctx)
+	if orig != nil {
+		res.mime = orig.Meta().Media
+		res.size = orig.Meta().Size
+	}
+	return res, nil
+}
+
+func (u *uploader) addFileToStorage(ctx context.Context, addOptions []files.AddOption) (*addToStorageResult, error) {
+	addResult, err := u.fileService.FileAdd(ctx, u.spaceId, addOptions...)
+	if err != nil {
+		return nil, err
+	}
+	res := &addToStorageResult{
+		fileId:     addResult.FileId,
+		fileKeys:   addResult.EncryptionKeys,
+		fileExists: addResult.IsExisting,
+	}
+	if meta := addResult.File.Meta(); meta != nil {
+		res.mime = meta.Media
+		res.size = meta.Size
+	}
+	return res, nil
+}
+
+func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToStorageResult) (string, error) {
+	if addResult.fileExists {
+		return u.fileObjectService.GetObjectIdByFileId(addResult.fileId)
+	} else {
+		fileObjectId, _, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
+			FileId:         addResult.fileId,
+			EncryptionKeys: addResult.fileKeys.EncryptionKeys,
+			IsImported:     u.origin == model.ObjectOrigin_import,
+		})
+		if err != nil {
+			return "", fmt.Errorf("create file object: %w", err)
+		}
+		return fileObjectId, nil
+	}
 }
 
 func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
@@ -443,9 +532,13 @@ func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
 	return file.DetectTypeByMIME(tp.MIME.Value)
 }
 
+type FileComponent interface {
+	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
+}
+
 func (u *uploader) updateBlock() {
 	if u.smartBlockID != "" && u.block != nil {
-		err := getblock.Do(u.picker, u.smartBlockID, func(f File) error {
+		err := getblock.Do(u.picker, u.smartBlockID, func(f FileComponent) error {
 			return f.UpdateFile(u.block.Model().Id, u.groupID, func(b file.Block) error {
 				b.SetModel(u.block.Copy().Model().GetFile())
 				return nil

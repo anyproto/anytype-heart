@@ -213,8 +213,8 @@ func (f *fileSync) sendSpaceUsageEvent(spaceID string, bytesUsage uint64) {
 	})
 }
 
-func (f *fileSync) FileListStats(ctx context.Context, spaceID string, fileIDs []string) ([]FileStat, error) {
-	filesInfo, err := f.fetchFilesInfo(ctx, spaceID, fileIDs)
+func (f *fileSync) FileListStats(ctx context.Context, spaceID string, hashes []domain.FileId) ([]FileStat, error) {
+	filesInfo, err := f.fetchFilesInfo(ctx, spaceID, hashes)
 	if err != nil {
 		return nil, err
 	}
@@ -223,9 +223,9 @@ func (f *fileSync) FileListStats(ctx context.Context, spaceID string, fileIDs []
 	})
 }
 
-func (f *fileSync) fetchFilesInfo(ctx context.Context, spaceId string, fileIDs []string) ([]*fileproto.FileInfo, error) {
-	requests := lo.Chunk(fileIDs, 50)
-	responses, err := conc.MapErr(requests, func(chunk []string) ([]*fileproto.FileInfo, error) {
+func (f *fileSync) fetchFilesInfo(ctx context.Context, spaceId string, hashes []domain.FileId) ([]*fileproto.FileInfo, error) {
+	requests := lo.Chunk(hashes, 50)
+	responses, err := conc.MapErr(requests, func(chunk []domain.FileId) ([]*fileproto.FileInfo, error) {
 		return f.rpcStore.FilesInfo(ctx, spaceId, chunk...)
 	})
 	if err != nil {
@@ -234,7 +234,7 @@ func (f *fileSync) fetchFilesInfo(ctx context.Context, spaceId string, fileIDs [
 	return lo.Flatten(responses), nil
 }
 
-func (f *fileSync) FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error) {
+func (f *fileSync) FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error) {
 	fi, err := f.rpcStore.FilesInfo(ctx, spaceId, fileId)
 	if err != nil {
 		return
@@ -248,7 +248,7 @@ func (f *fileSync) FileStat(ctx context.Context, spaceId, fileId string) (fs Fil
 }
 
 func (f *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fileproto.FileInfo) (FileStat, error) {
-	totalChunks, err := f.countChunks(ctx, spaceId, file.FileId)
+	totalChunks, err := f.countChunks(ctx, spaceId, domain.FileId(file.FileId))
 	if err != nil {
 		return FileStat{}, fmt.Errorf("count chunks: %w", err)
 	}
@@ -262,24 +262,24 @@ func (f *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fil
 	}, nil
 }
 
-func (f *fileSync) countChunks(ctx context.Context, spaceID string, fileID string) (int, error) {
-	chunksCount, err := f.fileStore.GetChunksCount(fileID)
+func (f *fileSync) countChunks(ctx context.Context, spaceID string, fileId domain.FileId) (int, error) {
+	chunksCount, err := f.fileStore.GetChunksCount(fileId)
 	if err == nil {
 		return chunksCount, nil
 	}
 
-	chunksCount, err = f.fetchChunksCount(ctx, spaceID, fileID)
+	chunksCount, err = f.fetchChunksCount(ctx, spaceID, fileId)
 	if err != nil {
 		return -1, fmt.Errorf("count chunks in IPFS: %w", err)
 	}
 
-	err = f.fileStore.SetChunksCount(fileID, chunksCount)
+	err = f.fileStore.SetChunksCount(fileId, chunksCount)
 
 	return chunksCount, err
 }
 
-func (f *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileID string) (int, error) {
-	fileCid, err := cid.Parse(fileID)
+func (f *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId domain.FileId) (int, error) {
+	fileCid, err := cid.Parse(fileId.String())
 	if err != nil {
 		return -1, err
 	}

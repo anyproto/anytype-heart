@@ -13,12 +13,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -31,20 +35,24 @@ type accountService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService    bookmark.BookmarkService
-	fileBlockService   file.BlockService
-	layoutConverter    converter.LayoutConverter
-	objectStore        objectstore.ObjectStore
-	sourceService      source.Service
-	tempDirProvider    core.TempDirProvider
-	fileService        files.Service
-	config             *config.Config
-	picker             getblock.ObjectGetter
-	eventSender        event.Sender
-	restrictionService restriction.Service
-	indexer            smartblock.Indexer
-	spaceService       spaceService
-	accountService     accountService
+	bookmarkService     bookmark.BookmarkService
+	fileBlockService    file.BlockService
+	layoutConverter     converter.LayoutConverter
+	objectStore         objectstore.ObjectStore
+	sourceService       source.Service
+	tempDirProvider     core.TempDirProvider
+	fileStore           filestore.FileStore
+	fileService         files.Service
+	config              *config.Config
+	picker              getblock.ObjectGetter
+	eventSender         event.Sender
+	restrictionService  restriction.Service
+	indexer             smartblock.Indexer
+	spaceService        spaceService
+	accountService      accountService
+	fileObjectService   fileobject.Service
+	processService      process.Service
+	fileUploaderService fileuploader.Service
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -58,6 +66,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.fileService = app.MustComponent[files.Service](a)
+	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.config = app.MustComponent[*config.Config](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
@@ -66,6 +75,9 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
 	f.accountService = app.MustComponent[accountService](a)
+	f.fileObjectService = app.MustComponent[fileobject.Service](a)
+	f.processService = app.MustComponent[process.Service](a)
+	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 
 	return nil
 }
@@ -117,7 +129,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.Sma
 	return smartblock.New(
 		space,
 		f.accountService.IdentityObjectId(),
-		f.fileService,
+		f.fileStore,
 		f.restrictionService,
 		f.objectStore,
 		f.indexer,
@@ -144,9 +156,9 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return NewDashboard(sb, f.objectStore, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
-		return NewProfile(sb, f.objectStore, f.fileBlockService, f.picker, f.bookmarkService, f.tempDirProvider, f.layoutConverter, f.fileService, f.eventSender), nil
-	case coresb.SmartBlockTypeFile:
-		return NewFiles(sb), nil
+		return f.newProfile(sb), nil
+	case coresb.SmartBlockTypeFileObject:
+		return f.newFile(sb), nil
 	case coresb.SmartBlockTypeTemplate,
 		coresb.SmartBlockTypeBundledTemplate:
 		return f.newTemplate(sb), nil

@@ -19,7 +19,7 @@ import (
 
 type File interface {
 	Meta() *FileMeta
-	Hash() string
+	FileId() domain.FileId
 	Reader(ctx context.Context) (io.ReadSeeker, error)
 	Details(ctx context.Context) (*types.Struct, domain.TypeKey, error)
 	Info() *storage.FileInfo
@@ -29,10 +29,19 @@ var _ File = (*file)(nil)
 
 type file struct {
 	spaceID string
-	hash    string
+	fileId  domain.FileId
 	info    *storage.FileInfo
 	node    *service
 	origin  model.ObjectOrigin
+}
+
+func (s *service) newFile(spaceId string, fileId domain.FileId, info *storage.FileInfo) File {
+	return &file{
+		spaceID: spaceId,
+		fileId:  fileId,
+		info:    info,
+		node:    s,
+	}
 }
 
 type FileMeta struct {
@@ -85,7 +94,7 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 	meta := f.Meta()
 
 	typeKey := bundle.TypeKeyFile
-	commonDetails := calculateCommonDetails(f.hash, model.ObjectType_file, f.info.LastModifiedDate)
+	commonDetails := calculateCommonDetails(f.fileId, model.ObjectType_file, f.info.LastModifiedDate)
 	commonDetails[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(meta.Media)
 
 	commonDetails[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name)))
@@ -130,8 +139,8 @@ func (f *file) Meta() *FileMeta {
 	}
 }
 
-func (f *file) Hash() string {
-	return f.hash
+func (f *file) FileId() domain.FileId {
+	return f.fileId
 }
 
 func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
@@ -139,13 +148,13 @@ func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
 }
 
 func calculateCommonDetails(
-	hash string,
+	fileId domain.FileId,
 	layout model.ObjectTypeLayout,
 	lastModifiedDate int64,
 ) map[string]*types.Value {
 	return map[string]*types.Value{
-		bundle.RelationKeyId.String():               pbtypes.String(hash),
-		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(true),
+		bundle.RelationKeyFileId.String():           pbtypes.String(fileId.String()),
+		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(false),
 		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(lastModifiedDate),
 	}

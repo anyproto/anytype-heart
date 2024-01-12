@@ -227,6 +227,8 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 }
 
 func (i *indexer) indexLinkedFiles(ctx context.Context, space smartblock.Space, fileHashes []string) {
+	return
+
 	if len(fileHashes) == 0 {
 		return
 	}

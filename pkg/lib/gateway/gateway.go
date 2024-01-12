@@ -15,10 +15,12 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -51,16 +53,17 @@ type spaceIDResolver interface {
 }
 
 type gateway struct {
-	fileService     files.Service
-	resolver        idresolver.Resolver
-	objectStore     objectstore.ObjectStore
-	server          *http.Server
-	listener        net.Listener
-	handler         *http.ServeMux
-	addr            string
-	mu              sync.Mutex
-	isServerStarted bool
-	limitCh         chan struct{}
+	fileService       files.Service
+	fileObjectService fileobject.Service
+	resolver          idresolver.Resolver
+	objectStore       objectstore.ObjectStore
+	server            *http.Server
+	listener          net.Listener
+	handler           *http.ServeMux
+	addr              string
+	mu                sync.Mutex
+	isServerStarted   bool
+	limitCh           chan struct{}
 }
 
 func getRandomPort() (int, error) {
@@ -96,6 +99,7 @@ func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	g.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	g.fileObjectService = app.MustComponent[fileobject.Service](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -253,17 +257,13 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
-	fileHashAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
-	parts := strings.Split(fileHashAndPath, "/")
-	fileHash := parts[0]
+	fileIdAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
+	parts := strings.Split(fileIdAndPath, "/")
+	fileId := parts[0]
 
-	spaceID, err := g.resolver.ResolveSpaceID(fileHash)
+	id, err := g.fileObjectService.GetFileIdFromObject(ctx, fileId)
 	if err != nil {
-		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
-	}
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: fileHash,
+		return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
 	}
 	file, err := g.fileService.FileByHash(ctx, id)
 	if err != nil {
@@ -310,17 +310,24 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 
 func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	urlParts := strings.Split(r.URL.Path, "/")
-	imageHash := urlParts[2]
+	imageId := urlParts[2]
 	query := r.URL.Query()
 
-	spaceID, err := g.resolver.ResolveSpaceID(imageHash)
-	if err != nil {
-		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
+	var id domain.FullFileId
+	// TODO Decide how to address images from IPFS
+	c, err := cid.Decode(imageId)
+	if err == nil && c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256 {
+		id = domain.FullFileId{
+			FileId: domain.FileId(imageId),
+		}
+
+	} else {
+		id, err = g.fileObjectService.GetFileIdFromObject(ctx, imageId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+		}
 	}
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: imageHash,
-	}
+
 	image, err := g.fileService.ImageByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get image by hash: %w", err)

@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -55,6 +56,7 @@ type service struct {
 	app               *app.App
 	spaceService      space.Service
 	templateService   TemplateService
+	fileService       files.Service
 }
 
 type CollectionService interface {
@@ -76,6 +78,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
+	s.fileService = app.MustComponent[files.Service](a)
 	s.app = a
 	return nil
 }
@@ -215,6 +218,8 @@ func (s *service) CreateObjectInSpace(ctx context.Context, space clientspace.Spa
 		return s.createRelation(ctx, space, details)
 	case bundle.TypeKeyRelationOption:
 		return s.createRelationOption(ctx, space, details)
+	case bundle.TypeKeyFile:
+		return "", nil, fmt.Errorf("files must be created via fileobject service")
 	}
 
 	return s.createSmartBlockFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)
@@ -258,29 +263,40 @@ func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlock
 		return coresb.SmartBlockTypeRelation
 	case bundle.TypeKeyRelationOption:
 		return coresb.SmartBlockTypeRelationOption
+	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
+		return coresb.SmartBlockTypeFileObject
 	default:
 		return coresb.SmartBlockTypePage
 	}
 }
 
 func createSmartBlock(
-	ctx context.Context, spc clientspace.Space, initFunc objectcache.InitFunc, st *state.State, sbType coresb.SmartBlockType,
+	ctx context.Context, spc clientspace.Space, initFunc objectcache.InitFunc, createState *state.State, sbType coresb.SmartBlockType,
 ) (smartblock.SmartBlock, error) {
-	if uKey := st.UniqueKeyInternal(); uKey != "" {
+	if uKey := createState.UniqueKeyInternal(); uKey != "" {
 		uk, err := domain.NewUniqueKey(sbType, uKey)
 		if err != nil {
 			return nil, err
 		}
-		return spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-			Key:      uk,
-			InitFunc: initFunc,
+		if sbType == coresb.SmartBlockTypeFileObject {
+			return spc.DeriveTreeObjectWithAccountSignature(ctx, objectcache.TreeDerivationParams{
+				Key:      uk,
+				InitFunc: initFunc,
+			})
+		} else {
+			return spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+				Key:      uk,
+				InitFunc: initFunc,
+			})
+		}
+
+	} else {
+		return spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
+			Time:           time.Now(),
+			SmartblockType: sbType,
+			InitFunc:       initFunc,
 		})
 	}
-	return spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
-		Time:           time.Now(),
-		SmartblockType: sbType,
-		InitFunc:       initFunc,
-	})
 }
 
 func generateRelationKeysFromState(st *state.State) (relationKeys []string) {

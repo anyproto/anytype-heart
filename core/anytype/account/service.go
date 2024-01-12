@@ -36,6 +36,7 @@ type Service interface {
 	Delete(ctx context.Context) (toBeDeleted int64, err error)
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
+	SignData(data []byte) (signature []byte, err error)
 	PersonalSpaceID() string
 	IdentityObjectId() string
 	LocalProfile() (Profile, error)
@@ -91,6 +92,10 @@ func (s *service) AccountID() string {
 	return s.wallet.Account().SignKey.GetPublic().Account()
 }
 
+func (s *service) SignData(data []byte) (signature []byte, err error) {
+	return s.wallet.Account().SignKey.Sign(data)
+}
+
 func (s *service) PersonalSpaceID() string {
 	return s.personalSpaceID
 }
@@ -100,6 +105,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error) {
+
 	deviceKey := s.wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().PeerId()
 

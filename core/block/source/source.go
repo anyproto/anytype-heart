@@ -159,11 +159,16 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		sbtProvider:        s.sbtProvider,
 		fileService:        s.fileService,
 		objectStore:        s.objectStore,
+		fileObjectMigrator: s.fileObjectMigrator,
 	}, nil
 }
 
 type ObjectTreeProvider interface {
 	Tree() objecttree.ObjectTree
+}
+
+type fileObjectMigrator interface {
+	MigrateDetails(st *state.State, spc Space, keys []*pb.ChangeFileKeys)
 }
 
 type source struct {
@@ -187,6 +192,7 @@ type source struct {
 	spaceService       spacecore.SpaceCoreService
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	objectStore        objectstore.ObjectStore
+	fileObjectMigrator fileObjectMigrator
 }
 
 var _ updatelistener.UpdateListener = (*source)(nil)
@@ -289,6 +295,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
 	}
 
+	s.fileObjectMigrator.MigrateDetails(st, s.space, s.GetFileKeysSnapshot())
+
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
@@ -383,6 +391,7 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 				RelationLinks:            params.State.PickRelationLinks(),
 				Key:                      params.State.UniqueKeyInternal(),
 				OriginalCreatedTimestamp: params.State.OriginalCreatedTimestamp(),
+				FileInfo:                 params.State.GetFileInfo().ToModel(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}
@@ -482,17 +491,19 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(domain.FullID{
-			SpaceID:  s.spaceID,
-			ObjectID: h,
+		fk, err := s.fileService.FileGetKeys(domain.FullFileId{
+			SpaceId: s.spaceID,
+			FileId:  domain.FileId(h),
 		})
 		if err != nil {
-			log.Warnf("can't get file key for hash: %v: %v", h, err)
+			// New file
+			log.Debugf("can't get file key for hash: %v: %v", h, err)
 			continue
 		}
+		// Migrated file
 		fileKeys = append(fileKeys, &pb.ChangeFileKeys{
-			Hash: fk.Hash,
-			Keys: fk.Keys,
+			Hash: fk.FileId.String(),
+			Keys: fk.EncryptionKeys,
 		})
 	}
 	return fileKeys

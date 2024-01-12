@@ -65,6 +65,7 @@ type service struct {
 	fileService        files.Service
 	identityService    identityService
 	objectStore        objectstore.ObjectStore
+	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -83,6 +84,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }
 
@@ -123,8 +125,6 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	st, err := typeprovider.SmartblockTypeFromID(id)
 	if err == nil {
 		switch st {
-		case smartblock.SmartBlockTypeFile:
-			return NewFile(s.accountService, s.fileStore, s.fileService, space.Id(), id), nil
 		case smartblock.SmartBlockTypeDate:
 			return NewDate(space, id), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
@@ -157,8 +157,6 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 		return &anytypeProfile{}, nil
 	case smartblock.SmartBlockTypeMissingObject:
 		return &missingObject{}, nil
-	case smartblock.SmartBlockTypeFile:
-		return &file{accountService: s.accountService, fileStore: s.fileStore}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{}, nil
 	case smartblock.SmartBlockTypeBundledRelation:
