@@ -22662,6 +22662,8 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | identity | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+| iconCid | [string](#string) |  |  |
+| iconEncryptionKey | [bytes](#bytes) |  |  |
 
 
 

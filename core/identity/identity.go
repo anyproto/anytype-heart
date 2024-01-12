@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
@@ -67,6 +68,7 @@ type service struct {
 	spaceIdDeriver    spaceIdDeriver
 	detailsModifier   DetailsModifier
 	coordinatorClient coordinatorclient.CoordinatorClient
+	fileService       files.Service
 	closing           chan struct{}
 	identities        []string
 	techSpaceId       string
