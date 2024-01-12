@@ -33,6 +33,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -115,9 +117,11 @@ type Service struct {
 	tempDirProvider      core.TempDirProvider
 	layoutConverter      converter.LayoutConverter
 	builtinObjectService builtinObjects
+	fileObjectService    fileobject.Service
 
-	fileSync    filesync.FileSync
-	fileService files.Service
+	fileSync            filesync.FileSync
+	fileService         files.Service
+	fileUploaderService fileuploader.Service
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -152,6 +156,8 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
+	s.fileObjectService = app.MustComponent[fileobject.Service](a)
+	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	s.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
@@ -204,6 +210,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 			return fmt.Errorf("show: %w", err)
 		}
 		afterShowTime := time.Now()
+
 		_, err = s.syncStatus.Watch(id.SpaceID, id.ObjectID, func() []string {
 			ob.Lock()
 			defer ob.Unlock()
@@ -211,13 +218,14 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 
 			return lo.Uniq(bs.GetAllFileHashes(ob.FileRelationKeys(bs)))
 		})
+
 		if err == nil {
 			ob.AddHook(func(_ smartblock.ApplyInfo) error {
 				s.syncStatus.Unwatch(id.SpaceID, id.ObjectID)
 				return nil
 			}, smartblock.HookOnClose)
 		}
-		if err != nil && err != treestorage.ErrUnknownTreeId {
+		if err != nil && !errors.Is(err, treestorage.ErrUnknownTreeId) {
 			log.Errorf("failed to watch status for object %s: %s", id, err)
 		}
 

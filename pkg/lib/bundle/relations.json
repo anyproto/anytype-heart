@@ -1385,6 +1385,16 @@
     "source": "derived"
   },
   {
+    "description": "File backup status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileBackupStatus",
+    "maxCount": 1,
+    "name": "File backup status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Last change ID",
     "format": "longtext",
     "hidden": true,
@@ -1513,6 +1523,15 @@
     "name": "Target space id",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileId",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
   },
   {
     "description": "Last time object type was used",

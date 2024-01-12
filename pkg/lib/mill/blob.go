@@ -8,10 +8,6 @@ func (m *Blob) ID() string {
 	return "/blob"
 }
 
-func (m *Blob) Encrypt() bool {
-	return true
-}
-
 func (m *Blob) Pin() bool {
 	return false
 }

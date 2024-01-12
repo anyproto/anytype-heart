@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -34,11 +35,12 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore objectstore.ObjectStore
+	objectStore       objectstore.ObjectStore
+	fileObjectService fileobject.Service
 }
 
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
-	file := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker)
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
@@ -49,18 +51,20 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 			f.objectStore,
 			f.eventSender,
 		),
-		File: file,
+		File: fileComponent,
 		Clipboard: clipboard.NewClipboard(
 			sb,
-			file,
+			fileComponent,
 			f.tempDirProvider,
 			f.objectStore,
 			f.fileService,
+			f.fileObjectService,
 		),
-		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
-		Dataview:    dataview.NewDataview(sb, f.objectStore),
-		TableEditor: table.NewEditor(sb),
-		objectStore: f.objectStore,
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		Dataview:          dataview.NewDataview(sb, f.objectStore),
+		TableEditor:       table.NewEditor(sb),
+		objectStore:       f.objectStore,
+		fileObjectService: f.fileObjectService,
 	}
 }
 
@@ -72,6 +76,9 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
+
+	migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+
 	return nil
 }
 
@@ -162,19 +169,4 @@ func (p *Page) StateMigrations() migration.Migrations {
 			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 		},
 	})
-}
-
-func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
-	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
-	for _, rel := range rels {
-		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
-			continue
-		}
-		var visible bool
-		if rel.Key == bundle.RelationKeyName.String() {
-			visible = true
-		}
-		viewRels = append(viewRels, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
-	}
-	return viewRels
 }

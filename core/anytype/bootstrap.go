@@ -48,6 +48,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -186,6 +188,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
+		Register(filestore.New()).
 		// Services
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
@@ -206,24 +209,25 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
-		Register(rpcstore.New()).
-		Register(filestore.New()).
-		Register(fileservice.New()).
-		Register(filestorage.New()).
-		Register(filesync.New()).
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
+		Register(fileuploader.New()).
+		Register(rpcstore.New()).
+		Register(fileservice.New()).
+		Register(filestorage.New()).
+		Register(files.New()).
+		Register(fileobject.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(filesync.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
-		Register(files.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(core.New()).

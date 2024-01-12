@@ -23,7 +23,6 @@ type AddOptions struct {
 	Media            string
 	Name             string
 	LastModifiedDate int64
-	Plaintext        bool
 	Origin           model.ObjectOrigin
 }
 
@@ -61,7 +60,7 @@ func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *Ad
 		hash := parts[len(parts)-1]
 		var file *storage.FileInfo
 
-		opts.Reader, file, err = s.fileContent(ctx, domain.FullID{SpaceID: spaceID, ObjectID: hash})
+		opts.Reader, file, err = s.fileContent(ctx, spaceID, domain.FileContentId(hash))
 		if err != nil {
 			/*if err == localstore.ErrNotFound{
 				// just cat the data from dagService

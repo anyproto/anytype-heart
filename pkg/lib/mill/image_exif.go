@@ -38,10 +38,6 @@ func (m *ImageExif) ID() string {
 	return "/image/exif"
 }
 
-func (m *ImageExif) Encrypt() bool {
-	return true
-}
-
 func (m *ImageExif) Pin() bool {
 	return false
 }

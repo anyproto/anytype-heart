@@ -50,7 +50,7 @@ func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 		RpcBlockUploadRequest: params,
 		Origin:                origin,
 	}
-	_, err := fs.service.UploadFileBlockWithHash(id, dto)
+	_, err := fs.service.UploadFileBlock(id, dto)
 	if err != nil {
 		return fmt.Errorf("%w: %s", common.ErrFileLoad, oserror.TransformError(err).Error())
 	}

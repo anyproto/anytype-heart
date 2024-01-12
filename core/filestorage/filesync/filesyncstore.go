@@ -12,6 +12,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
@@ -46,8 +47,8 @@ func newFileSyncStore(db *badger.DB) (*fileSyncStore, error) {
 }
 
 type QueueItem struct {
-	SpaceID     string
-	FileID      string
+	SpaceId     string
+	FileId      domain.FileId
 	Timestamp   int64
 	AddedByUser bool
 	Imported    bool
@@ -147,10 +148,10 @@ func versionFromItem(it *badger.Item) (int, error) {
 	return res, err
 }
 
-func (s *fileSyncStore) QueueUpload(spaceID string, fileID string, addedByUser bool, imported bool) (err error) {
+func (s *fileSyncStore) QueueUpload(spaceID string, fileId domain.FileId, addedByUser bool, imported bool) (err error) {
 	return s.updateTxn(func(txn *badger.Txn) error {
-		logger := log.With(zap.String("fileID", fileID), zap.Bool("addedByUser", addedByUser))
-		ok, err := isKeyExists(txn, discardedKey(spaceID, fileID))
+		logger := log.With(zap.String("fileId", fileId.String()), zap.Bool("addedByUser", addedByUser))
+		ok, err := isKeyExists(txn, discardedKey(spaceID, fileId))
 		if err != nil {
 			return fmt.Errorf("check discarded key: %w", err)
 		}
@@ -158,7 +159,7 @@ func (s *fileSyncStore) QueueUpload(spaceID string, fileID string, addedByUser b
 			logger.Info("add file to upload queue: file is in discarded queue")
 			return nil
 		}
-		ok, err = isKeyExists(txn, uploadKey(spaceID, fileID))
+		ok, err = isKeyExists(txn, uploadKey(spaceID, fileId))
 		if err != nil {
 			return fmt.Errorf("check upload key: %w", err)
 		}
@@ -171,7 +172,7 @@ func (s *fileSyncStore) QueueUpload(spaceID string, fileID string, addedByUser b
 		if err != nil {
 			return fmt.Errorf("create queue item: %w", err)
 		}
-		return txn.Set(uploadKey(spaceID, fileID), raw)
+		return txn.Set(uploadKey(spaceID, fileId), raw)
 	})
 }
 
@@ -183,7 +184,7 @@ func createQueueItem(addedByUser bool, imported bool) ([]byte, error) {
 	})
 }
 
-func (s *fileSyncStore) QueueDiscarded(spaceId, fileId string) (err error) {
+func (s *fileSyncStore) QueueDiscarded(spaceId string, fileId domain.FileId) (err error) {
 	return s.updateTxn(func(txn *badger.Txn) error {
 		if err = txn.Delete(uploadKey(spaceId, fileId)); err != nil {
 			return err
@@ -196,7 +197,7 @@ func (s *fileSyncStore) QueueDiscarded(spaceId, fileId string) (err error) {
 	})
 }
 
-func (s *fileSyncStore) QueueRemove(spaceId, fileId string) (err error) {
+func (s *fileSyncStore) QueueRemove(spaceId string, fileId domain.FileId) (err error) {
 	return s.updateTxn(func(txn *badger.Txn) error {
 		if err = removeFromUploadingQueue(txn, spaceId, fileId); err != nil {
 			return err
@@ -209,7 +210,7 @@ func (s *fileSyncStore) QueueRemove(spaceId, fileId string) (err error) {
 	})
 }
 
-func (s *fileSyncStore) DoneUpload(spaceId, fileId string) (err error) {
+func (s *fileSyncStore) DoneUpload(spaceId string, fileId domain.FileId) (err error) {
 	return s.updateTxn(func(txn *badger.Txn) error {
 		if err = removeFromUploadingQueue(txn, spaceId, fileId); err != nil {
 			return err
@@ -218,17 +219,17 @@ func (s *fileSyncStore) DoneUpload(spaceId, fileId string) (err error) {
 	})
 }
 
-func removeFromUploadingQueue(txn *badger.Txn, spaceID string, fileID string) error {
-	if err := txn.Delete(uploadKey(spaceID, fileID)); err != nil {
+func removeFromUploadingQueue(txn *badger.Txn, spaceID string, fileId domain.FileId) error {
+	if err := txn.Delete(uploadKey(spaceID, fileId)); err != nil {
 		return fmt.Errorf("remove from uploading queue: %w", err)
 	}
-	if err := txn.Delete(discardedKey(spaceID, fileID)); err != nil {
+	if err := txn.Delete(discardedKey(spaceID, fileId)); err != nil {
 		return fmt.Errorf("remove from discarded uploading queue: %w", err)
 	}
 	return nil
 }
 
-func (s *fileSyncStore) DoneRemove(spaceId, fileId string) (err error) {
+func (s *fileSyncStore) DoneRemove(spaceId string, fileId domain.FileId) (err error) {
 	return s.updateTxn(func(txn *badger.Txn) error {
 		if err = txn.Delete(removeKey(spaceId, fileId)); err != nil {
 			return err
@@ -259,7 +260,7 @@ func isKeyExists(txn *badger.Txn, key []byte) (bool, error) {
 	return true, nil
 }
 
-func (s *fileSyncStore) isFileQueued(spaceId, fileId string) (ok bool, err error) {
+func (s *fileSyncStore) isFileQueued(spaceId string, fileId domain.FileId) (ok bool, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
 		if err != nil {
@@ -278,7 +279,7 @@ func (s *fileSyncStore) isFileQueued(spaceId, fileId string) (ok bool, err error
 	return
 }
 
-func (s *fileSyncStore) HasUpload(spaceId, fileId string) (ok bool, err error) {
+func (s *fileSyncStore) HasUpload(spaceId string, fileId domain.FileId) (ok bool, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
 		return err
@@ -286,7 +287,7 @@ func (s *fileSyncStore) HasUpload(spaceId, fileId string) (ok bool, err error) {
 	return
 }
 
-func (s *fileSyncStore) IsFileUploadLimited(spaceId, fileId string) (ok bool, err error) {
+func (s *fileSyncStore) IsFileUploadLimited(spaceId string, fileId domain.FileId) (ok bool, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		ok, err = isKeyExists(txn, discardedKey(spaceId, fileId))
 		return err
@@ -317,8 +318,8 @@ func (s *fileSyncStore) getOne(prefix []byte) (earliest *QueueItem, err error) {
 			if earliest == nil || qItem.less(earliest) {
 				earliest = qItem
 				fileId, spaceId := extractFileAndSpaceID(item)
-				earliest.FileID = fileId
-				earliest.SpaceID = spaceId
+				earliest.FileId = domain.FileId(fileId)
+				earliest.SpaceId = spaceId
 			}
 		}
 		return nil
@@ -349,8 +350,8 @@ func (s *fileSyncStore) listItemsByPrefix(prefix []byte) ([]*QueueItem, error) {
 				return fmt.Errorf("get queue item %s: %w", item.Key(), err)
 			}
 			fileId, spaceId := extractFileAndSpaceID(item)
-			qItem.FileID = fileId
-			qItem.SpaceID = spaceId
+			qItem.FileId = domain.FileId(fileId)
+			qItem.SpaceId = spaceId
 			items = append(items, qItem)
 		}
 		return nil
@@ -389,7 +390,7 @@ func (s *fileSyncStore) QueueLen() (l int, err error) {
 	return
 }
 
-func (s *fileSyncStore) IsAlreadyUploaded(spaceId, fileId string) (done bool, err error) {
+func (s *fileSyncStore) IsAlreadyUploaded(spaceId string, fileId domain.FileId) (done bool, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		_, e := txn.Get(doneUploadKey(spaceId, fileId))
 		if e != nil && e != badger.ErrKeyNotFound {
@@ -423,24 +424,24 @@ func nodeUsageKey() []byte {
 	return []byte(keyPrefix + "node_usage/")
 }
 
-func uploadKey(spaceId, fileId string) (key []byte) {
-	return []byte(keyPrefix + "queue/upload/" + spaceId + "/" + fileId)
+func uploadKey(spaceId string, fileId domain.FileId) (key []byte) {
+	return []byte(keyPrefix + "queue/upload/" + spaceId + "/" + fileId.String())
 }
 
-func discardedKey(spaceId, fileId string) (key []byte) {
-	return []byte(keyPrefix + "queue/discarded/" + spaceId + "/" + fileId)
+func discardedKey(spaceId string, fileId domain.FileId) (key []byte) {
+	return []byte(keyPrefix + "queue/discarded/" + spaceId + "/" + fileId.String())
 }
 
-func removeKey(spaceId, fileId string) (key []byte) {
-	return []byte(keyPrefix + "queue/remove/" + spaceId + "/" + fileId)
+func removeKey(spaceId string, fileId domain.FileId) (key []byte) {
+	return []byte(keyPrefix + "queue/remove/" + spaceId + "/" + fileId.String())
 }
 
-func doneUploadKey(spaceId, fileId string) (key []byte) {
-	return []byte(keyPrefix + "done/upload/" + spaceId + "/" + fileId)
+func doneUploadKey(spaceId string, fileId domain.FileId) (key []byte) {
+	return []byte(keyPrefix + "done/upload/" + spaceId + "/" + fileId.String())
 }
 
-func doneRemoveKey(spaceId, fileId string) (key []byte) {
-	return []byte(keyPrefix + "done/remove/" + spaceId + "/" + fileId)
+func doneRemoveKey(spaceId string, fileId domain.FileId) (key []byte) {
+	return []byte(keyPrefix + "done/remove/" + spaceId + "/" + fileId.String())
 }
 
 func binTime(timestamp int64) []byte {

@@ -25,7 +25,7 @@ const (
 
 type Image interface {
 	Exif(ctx context.Context) (*mill.ImageExifSchema, error)
-	Hash() string
+	FileId() domain.FileId
 	Details(ctx context.Context) (*types.Struct, error)
 	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
 	GetFileForLargestWidth(ctx context.Context) (File, error)
@@ -35,7 +35,7 @@ type Image interface {
 var _ Image = (*image)(nil)
 
 type image struct {
-	hash            string // directory hash
+	fileId          domain.FileId
 	spaceID         string
 	variantsByWidth map[int]*storage.FileInfo
 	service         *service
@@ -48,11 +48,11 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}
 
 	if wantWidth > 1920 {
-		fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/original")
+		fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/original")
 		if err == nil {
 			return &file{
 				spaceID: i.spaceID,
-				hash:    fileIndex.Hash,
+				fileId:  i.fileId,
 				info:    fileIndex,
 				node:    i.service,
 			}, nil
@@ -60,14 +60,14 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}
 
 	sizeName := getSizeForWidth(wantWidth)
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/"+sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/"+sizeName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &file{
 		spaceID: i.spaceID,
-		hash:    fileIndex.Hash,
+		fileId:  i.fileId,
 		info:    fileIndex,
 		node:    i.service,
 	}, nil
@@ -76,11 +76,11 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 // GetOriginalFile doesn't contains Meta
 func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
 	sizeName := "original"
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/"+sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/"+sizeName)
 	if err == nil {
 		return &file{
 			spaceID: i.spaceID,
-			hash:    fileIndex.Hash,
+			fileId:  i.fileId,
 			info:    fileIndex,
 			node:    i.service,
 		}, nil
@@ -97,32 +97,32 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 
 	// fallback to large size, because older image nodes don't have an original
 	sizeName := "large"
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/"+sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/"+sizeName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &file{
 		spaceID: i.spaceID,
-		hash:    fileIndex.Hash,
+		fileId:  i.fileId,
 		info:    fileIndex,
 		node:    i.service,
 	}, nil
 }
 
-func (i *image) Hash() string {
-	return i.hash
+func (i *image) FileId() domain.FileId {
+	return i.fileId
 }
 
 func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/exif")
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.fileId.String()+"/0/exif")
 	if err != nil {
 		return nil, err
 	}
 
 	f := &file{
 		spaceID: i.spaceID,
-		hash:    fileIndex.Hash,
+		fileId:  i.fileId,
 		info:    fileIndex,
 		node:    i.service,
 	}
@@ -150,11 +150,11 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	}
 
 	commonDetails := calculateCommonDetails(
-		i.hash,
+		i.fileId,
 		model.ObjectType_image,
 		i.extractLastModifiedDate(ctx, imageExif),
 	)
-	commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.hash)
+	commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.fileId.String())
 
 	if i.origin != 0 {
 		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(i.origin))
@@ -263,14 +263,14 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	if minWidthMatchedImage != nil {
 		return &file{
 			spaceID: i.spaceID,
-			hash:    minWidthMatchedImage.Hash,
+			fileId:  i.fileId,
 			info:    minWidthMatchedImage,
 			node:    i.service,
 		}, nil
 	} else if maxWidthImage != nil {
 		return &file{
 			spaceID: i.spaceID,
-			hash:    maxWidthImage.Hash,
+			fileId:  i.fileId,
 			info:    maxWidthImage,
 			node:    i.service,
 		}, nil

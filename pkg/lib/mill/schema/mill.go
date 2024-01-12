@@ -2,9 +2,6 @@ package schema
 
 import (
 	"fmt"
-	"sync"
-
-	"github.com/gogo/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -40,29 +37,44 @@ func GetMill(id string, opts map[string]string) (mill.Mill, error) {
 	}
 }
 
-var schemas = map[string]*storage.Node{}
-var schemasMutex = sync.Mutex{}
-
-func ImageNode() *storage.Node {
-	return node("image", Image)
-}
-
-func node(name, blob string) *storage.Node {
-	schemasMutex.Lock()
-	defer schemasMutex.Unlock()
-	if n, exists := schemas[name]; exists {
-		return n
-	}
-
-	var node storage.Node
-	err := jsonpb.UnmarshalString(blob, &node)
-	if err != nil {
-		// this is a predefined schema and must unmarshal properly
-		log.Fatalf("failed to unmarshal %s schema: %s", name, err)
-		return nil
-	}
-
-	schemas[name] = &node
-
-	return &node
+var ImageResizeSchema = &storage.ImageResizeSchema{
+	Name: "image",
+	Links: []*storage.Link{
+		{
+			Name: "original",
+			Mill: "/image/resize",
+			Opts: map[string]string{
+				"width":   "0",
+				"quality": "100",
+			},
+		},
+		{
+			Name: "large",
+			Mill: "/image/resize",
+			Opts: map[string]string{
+				"width":   "1920",
+				"quality": "85",
+			},
+		},
+		{
+			Name: "small",
+			Mill: "/image/resize",
+			Opts: map[string]string{
+				"width":   "320",
+				"quality": "80",
+			},
+		},
+		{
+			Name: "thumbnail",
+			Mill: "/image/resize",
+			Opts: map[string]string{
+				"width":   "100",
+				"quality": "80",
+			},
+		},
+		{
+			Name: "exif",
+			Mill: "/image/exif",
+		},
+	},
 }

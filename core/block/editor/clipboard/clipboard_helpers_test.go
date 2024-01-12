@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
@@ -43,7 +44,7 @@ func page(blocks ...*model.Block) (sb *smarttest.SmartTest) {
 }
 
 func rangePaste(sb *smarttest.SmartTest, t *testing.T, focusId string, focusRange *model.Range, copyRange *model.Range, blocks ...*model.Block) {
-	cb := NewClipboard(sb, nil, nil, nil, nil)
+	cb := newFixture(sb)
 	req := &pb.RpcBlockPasteRequest{
 		ContextId:         sb.Id(),
 		FocusedBlockId:    focusId,
@@ -241,8 +242,12 @@ func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*m
 	}
 }
 
+func newFixture(sb smartblock.SmartBlock) Clipboard {
+	return NewClipboard(sb, nil, nil, nil, nil, nil)
+}
+
 func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
-	cb := NewClipboard(sb, nil, nil, nil, nil)
+	cb := newFixture(sb)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
@@ -258,7 +263,7 @@ func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.
 }
 
 func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {
-	cb := NewClipboard(sb, nil, nil, nil, nil)
+	cb := newFixture(sb)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
@@ -274,7 +279,7 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 }
 
 func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
-	cb := NewClipboard(sb, nil, nil, nil, nil)
+	cb := newFixture(sb)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
