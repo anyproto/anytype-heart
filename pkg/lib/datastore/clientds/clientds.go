@@ -30,11 +30,6 @@ const (
 
 var log = logging.Logger("anytype-clientds")
 
-// SyncDbAfterInactivity shows the minimum time after db was changed to call db.Sync
-// regular Db.Sync will help to decrease the chance of data loss in case of power loss/bsod
-// while this logic decrease the chance some db writer will need to wait for sync to finish
-var SyncDbAfterInactivity = time.Second * 60
-
 type clientds struct {
 	running bool
 
@@ -173,57 +168,6 @@ func (r *clientds) Init(a *app.App) (err error) {
 func (r *clientds) Run(context.Context) error {
 	go r.syncer()
 	return nil
-}
-
-type dbSyncer struct {
-	LastMaxVersion       uint64
-	LastMaxVersionSynced uint64
-	db                   *badger.DB
-}
-
-func (d *dbSyncer) Info() string {
-	return fmt.Sprintf("%s; lastMax: %d; lastSynced: %d;", filepath.Base(d.db.Opts().Dir), d.LastMaxVersion, d.LastMaxVersionSynced)
-}
-
-func newDbSyncer(db *badger.DB) *dbSyncer {
-	d := &dbSyncer{
-		db: db,
-	}
-	d.LastMaxVersion = d.db.MaxVersion()
-	return d
-}
-
-func (r *clientds) syncer() error {
-	var syncers = []*dbSyncer{
-		newDbSyncer(r.spaceDS),
-		newDbSyncer(r.localstoreDS),
-	}
-
-	for {
-		select {
-		case <-r.closed:
-			return nil
-		case <-time.After(SyncDbAfterInactivity):
-			for _, syncer := range syncers {
-				maxVersion := syncer.db.MaxVersion()
-				if syncer.LastMaxVersion != maxVersion {
-					syncer.LastMaxVersion = maxVersion
-					continue
-				}
-				if syncer.LastMaxVersionSynced == maxVersion {
-					continue
-				}
-				err := syncer.db.Sync()
-				if err != nil {
-					log.Errorf("failed to sync db %s at version %d: %s", syncer.Info(), maxVersion, err)
-				} else {
-					log.Debugf("db synced %s at version %d", syncer.Info(), maxVersion)
-					syncer.LastMaxVersionSynced = maxVersion
-				}
-			}
-		}
-	}
-
 }
 
 func (r *clientds) SpaceStorage() (*badger.DB, error) {
