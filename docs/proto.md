@@ -1447,6 +1447,7 @@
     - [FileInfo](#anytype-model-FileInfo)
     - [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey)
     - [IdentityProfile](#anytype-model-IdentityProfile)
+    - [IdentityProfile.EncryptionKey](#anytype-model-IdentityProfile-EncryptionKey)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
@@ -22810,7 +22811,23 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | iconCid | [string](#string) |  |  |
-| iconEncryptionKey | [string](#string) |  |  |
+| iconEncryptionKeys | [IdentityProfile.EncryptionKey](#anytype-model-IdentityProfile-EncryptionKey) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-IdentityProfile-EncryptionKey"></a>
+
+### IdentityProfile.EncryptionKey
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 

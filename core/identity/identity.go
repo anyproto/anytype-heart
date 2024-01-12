@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -278,35 +279,36 @@ func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
 func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDetails *types.Struct) error {
 	iconImageObjectId := pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String())
 	var (
-		iconCid           string
-		iconEncryptionKey string
+		iconCid            string
+		iconEncryptionKeys []*model.IdentityProfileEncryptionKey
 	)
 	if iconImageObjectId != "" {
 		fileId, err := s.fileObjectService.GetFileIdFromObject(ctx, iconImageObjectId)
 		if err != nil {
 			return fmt.Errorf("get file id from object: %w", err)
 		}
-
-		img, err := s.fileService.ImageByHash(ctx, fileId)
+		iconCid = fileId.FileId.String()
+		keys, err := s.fileService.FileGetKeys(fileId)
 		if err != nil {
-			return fmt.Errorf("get image by hash: %w", err)
+			return fmt.Errorf("get file keys: %w", err)
 		}
-
-		originalIcon, err := img.GetOriginalFile(ctx)
-		if err != nil {
-			return fmt.Errorf("get original file: %w", err)
+		for path, key := range keys.EncryptionKeys {
+			iconEncryptionKeys = append(iconEncryptionKeys, &model.IdentityProfileEncryptionKey{
+				Path: path,
+				Key:  key,
+			})
 		}
-		info := originalIcon.Info()
-		iconCid = info.Hash
-		iconEncryptionKey = info.Key
+		sort.Slice(iconEncryptionKeys, func(i, j int) bool {
+			return iconEncryptionKeys[i].Path < iconEncryptionKeys[j].Path
+		})
 	}
 
 	identity := s.accountService.AccountID()
 	identityProfile := &model.IdentityProfile{
-		Identity:          identity,
-		Name:              pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()),
-		IconCid:           iconCid,
-		IconEncryptionKey: iconEncryptionKey,
+		Identity:           identity,
+		Name:               pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()),
+		IconCid:            iconCid,
+		IconEncryptionKeys: iconEncryptionKeys,
 	}
 	data, err := proto.Marshal(identityProfile)
 	if err != nil {

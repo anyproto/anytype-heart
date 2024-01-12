@@ -1006,7 +1006,12 @@ message IdentityProfile {
     string identity = 1;
     string name = 2;
     string iconCid = 3;
-    string iconEncryptionKey = 4;
+    repeated EncryptionKey iconEncryptionKeys = 4;
+
+    message EncryptionKey {
+        string path = 1;
+        string key = 2;
+    }
 }
 
 
