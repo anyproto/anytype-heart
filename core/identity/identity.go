@@ -14,7 +14,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/util/slice"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -38,13 +37,14 @@ var (
 )
 
 type Service interface {
-	// TODO maybe return initial details?
+	// TODO guarantee callback call at least once
 	RegisterIdentity(spaceId string, identity string, encryptionKey symmetric.Key, observer func(identity string, profile *model.IdentityProfile)) error
 
-	// TODO Unregister observer
+	// UnregisterIdentity removes the observer for the identity in specified space
+	UnregisterIdentity(spaceId string, identity string)
+	// UnregisterIdentitiesInSpace removes all identity observers in the space
+	UnregisterIdentitiesInSpace(spaceId string)
 
-	// SubscribeToIdentities subscribes to identities and updates them directly into the objectStore
-	SubscribeToIdentities(identities []string) (err error)
 	// GetDetails returns the last store details of the identity and provides a way to receive updates via updateHook
 	GetDetails(ctx context.Context, identity string) (details *types.Struct, err error)
 	// SpaceId returns the spaceId used to store the identities in the objectStore
@@ -399,16 +399,22 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 	return nil
 }
 
-func (s *service) SubscribeToIdentities(identities []string) (err error) {
-	for _, identity := range identities {
-		if identity != s.accountService.AccountID() {
-			return fmt.Errorf("only your personal profileId is supported right now")
-		}
-		if slice.FindPos(s.identities, identity) == -1 {
-			s.identities = append(s.identities, identity)
-		}
-	}
+func (s *service) UnregisterIdentity(spaceId string, identity string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
-	// todo: later this method will restart the regular update from the identity registry
-	return
+	observers := s.identityObservers[identity]
+	if observers == nil {
+		return
+	}
+	delete(observers, spaceId)
+}
+
+func (s *service) UnregisterIdentitiesInSpace(spaceId string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	for _, observers := range s.identityObservers {
+		delete(observers, spaceId)
+	}
 }
