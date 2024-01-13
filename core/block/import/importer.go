@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -186,6 +187,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 			sn[i] = &common.Snapshot{
 				Id:       s.GetId(),
 				Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
+				SbType:   smartblock.SmartBlockTypePage,
 			}
 		}
 		res := &common.Response{
