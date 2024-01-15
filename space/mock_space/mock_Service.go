@@ -8,6 +8,8 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	clientspace "github.com/anyproto/anytype-heart/space/clientspace"
 
+	crypto "github.com/anyproto/any-sync/util/crypto"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,6 +24,100 @@ type MockService_Expecter struct {
 
 func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
+}
+
+// AccountMetadataPayload provides a mock function with given fields:
+func (_m *MockService) AccountMetadataPayload() []byte {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AccountMetadataPayload")
+	}
+
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func() []byte); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	return r0
+}
+
+// MockService_AccountMetadataPayload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountMetadataPayload'
+type MockService_AccountMetadataPayload_Call struct {
+	*mock.Call
+}
+
+// AccountMetadataPayload is a helper method to define mock.On call
+func (_e *MockService_Expecter) AccountMetadataPayload() *MockService_AccountMetadataPayload_Call {
+	return &MockService_AccountMetadataPayload_Call{Call: _e.mock.On("AccountMetadataPayload")}
+}
+
+func (_c *MockService_AccountMetadataPayload_Call) Run(run func()) *MockService_AccountMetadataPayload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_AccountMetadataPayload_Call) Return(_a0 []byte) *MockService_AccountMetadataPayload_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_AccountMetadataPayload_Call) RunAndReturn(run func() []byte) *MockService_AccountMetadataPayload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AccountMetadataSymKey provides a mock function with given fields:
+func (_m *MockService) AccountMetadataSymKey() crypto.SymKey {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AccountMetadataSymKey")
+	}
+
+	var r0 crypto.SymKey
+	if rf, ok := ret.Get(0).(func() crypto.SymKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(crypto.SymKey)
+		}
+	}
+
+	return r0
+}
+
+// MockService_AccountMetadataSymKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountMetadataSymKey'
+type MockService_AccountMetadataSymKey_Call struct {
+	*mock.Call
+}
+
+// AccountMetadataSymKey is a helper method to define mock.On call
+func (_e *MockService_Expecter) AccountMetadataSymKey() *MockService_AccountMetadataSymKey_Call {
+	return &MockService_AccountMetadataSymKey_Call{Call: _e.mock.On("AccountMetadataSymKey")}
+}
+
+func (_c *MockService_AccountMetadataSymKey_Call) Run(run func()) *MockService_AccountMetadataSymKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_AccountMetadataSymKey_Call) Return(_a0 crypto.SymKey) *MockService_AccountMetadataSymKey_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_AccountMetadataSymKey_Call) RunAndReturn(run func() crypto.SymKey) *MockService_AccountMetadataSymKey_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Close provides a mock function with given fields: ctx
@@ -334,6 +430,53 @@ func (_c *MockService_Init_Call) Return(err error) *MockService_Init_Call {
 }
 
 func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockService_Init_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Join provides a mock function with given fields: ctx, id
+func (_m *MockService) Join(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Join")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_Join_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Join'
+type MockService_Join_Call struct {
+	*mock.Call
+}
+
+// Join is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockService_Expecter) Join(ctx interface{}, id interface{}) *MockService_Join_Call {
+	return &MockService_Join_Call{Call: _e.mock.On("Join", ctx, id)}
+}
+
+func (_c *MockService_Join_Call) Run(run func(ctx context.Context, id string)) *MockService_Join_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_Join_Call) Return(err error) *MockService_Join_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_Join_Call) RunAndReturn(run func(context.Context, string) error) *MockService_Join_Call {
 	_c.Call.Return(run)
 	return _c
 }

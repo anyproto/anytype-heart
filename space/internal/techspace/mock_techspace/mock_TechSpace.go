@@ -308,17 +308,17 @@ func (_c *MockTechSpace_SetPersistentInfo_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// SpaceViewCreate provides a mock function with given fields: ctx, spaceId, force
-func (_m *MockTechSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool) error {
-	ret := _m.Called(ctx, spaceId, force)
+// SpaceViewCreate provides a mock function with given fields: ctx, spaceId, force, status
+func (_m *MockTechSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool, status spaceinfo.AccountStatus) error {
+	ret := _m.Called(ctx, spaceId, force, status)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SpaceViewCreate")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bool) error); ok {
-		r0 = rf(ctx, spaceId, force)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool, spaceinfo.AccountStatus) error); ok {
+		r0 = rf(ctx, spaceId, force, status)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -335,13 +335,14 @@ type MockTechSpace_SpaceViewCreate_Call struct {
 //   - ctx context.Context
 //   - spaceId string
 //   - force bool
-func (_e *MockTechSpace_Expecter) SpaceViewCreate(ctx interface{}, spaceId interface{}, force interface{}) *MockTechSpace_SpaceViewCreate_Call {
-	return &MockTechSpace_SpaceViewCreate_Call{Call: _e.mock.On("SpaceViewCreate", ctx, spaceId, force)}
+//   - status spaceinfo.AccountStatus
+func (_e *MockTechSpace_Expecter) SpaceViewCreate(ctx interface{}, spaceId interface{}, force interface{}, status interface{}) *MockTechSpace_SpaceViewCreate_Call {
+	return &MockTechSpace_SpaceViewCreate_Call{Call: _e.mock.On("SpaceViewCreate", ctx, spaceId, force, status)}
 }
 
-func (_c *MockTechSpace_SpaceViewCreate_Call) Run(run func(ctx context.Context, spaceId string, force bool)) *MockTechSpace_SpaceViewCreate_Call {
+func (_c *MockTechSpace_SpaceViewCreate_Call) Run(run func(ctx context.Context, spaceId string, force bool, status spaceinfo.AccountStatus)) *MockTechSpace_SpaceViewCreate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bool))
+		run(args[0].(context.Context), args[1].(string), args[2].(bool), args[3].(spaceinfo.AccountStatus))
 	})
 	return _c
 }
@@ -351,7 +352,7 @@ func (_c *MockTechSpace_SpaceViewCreate_Call) Return(err error) *MockTechSpace_S
 	return _c
 }
 
-func (_c *MockTechSpace_SpaceViewCreate_Call) RunAndReturn(run func(context.Context, string, bool) error) *MockTechSpace_SpaceViewCreate_Call {
+func (_c *MockTechSpace_SpaceViewCreate_Call) RunAndReturn(run func(context.Context, string, bool, spaceinfo.AccountStatus) error) *MockTechSpace_SpaceViewCreate_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -5,8 +5,11 @@ package mock_clientspace
 import (
 	context "context"
 
-	headsync "github.com/anyproto/any-sync/commonspace/headsync"
+	commonspace "github.com/anyproto/any-sync/commonspace"
+
 	domain "github.com/anyproto/anytype-heart/core/domain"
+
+	headsync "github.com/anyproto/any-sync/commonspace/headsync"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -112,6 +115,53 @@ func (_c *MockSpace_CloseBlocks_Call) Return() *MockSpace_CloseBlocks_Call {
 }
 
 func (_c *MockSpace_CloseBlocks_Call) RunAndReturn(run func()) *MockSpace_CloseBlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CommonSpace provides a mock function with given fields:
+func (_m *MockSpace) CommonSpace() commonspace.Space {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for CommonSpace")
+	}
+
+	var r0 commonspace.Space
+	if rf, ok := ret.Get(0).(func() commonspace.Space); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(commonspace.Space)
+		}
+	}
+
+	return r0
+}
+
+// MockSpace_CommonSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CommonSpace'
+type MockSpace_CommonSpace_Call struct {
+	*mock.Call
+}
+
+// CommonSpace is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) CommonSpace() *MockSpace_CommonSpace_Call {
+	return &MockSpace_CommonSpace_Call{Call: _e.mock.On("CommonSpace")}
+}
+
+func (_c *MockSpace_CommonSpace_Call) Run(run func()) *MockSpace_CommonSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_CommonSpace_Call) Return(_a0 commonspace.Space) *MockSpace_CommonSpace_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_CommonSpace_Call) RunAndReturn(run func() commonspace.Space) *MockSpace_CommonSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }

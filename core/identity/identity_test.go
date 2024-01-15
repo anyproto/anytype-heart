@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,10 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
-	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
+	"github.com/anyproto/anytype-heart/core/files/mock_files"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -38,17 +42,28 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
+	fileService := mock_files.NewMockService(t)
+	fileObjectService := mock_fileobject.NewMockService(t)
+	dataStore := datastore.NewInMemory()
+	fileStore := filestore.New()
 
 	a := new(app.App)
 	a.Register(&spaceIdDeriverStub{})
 	a.Register(&detailsModifierStub{})
+	a.Register(dataStore)
 	a.Register(objectStore)
+	a.Register(fileStore)
 	a.Register(testutil.PrepareMock(ctx, a, coordinatorClient))
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
+	a.Register(testutil.PrepareMock(ctx, a, fileService))
+	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
 
 	svc := New(testObserverPeriod)
 	err := svc.Init(a)
+	t.Cleanup(func() {
+		svc.Close(ctx)
+	})
 	require.NoError(t, err)
 
 	return &fixture{
@@ -57,35 +72,45 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
+func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.SymKey) []byte {
+	data, err := proto.Marshal(profile)
+	require.NoError(t, err)
+	data, err = key.Encrypt(data)
+	require.NoError(t, err)
+	return data
+}
+
 func TestObservers(t *testing.T) {
 	fx := newFixture(t)
 	go fx.observeIdentitiesLoop()
 
 	spaceId := "space1"
 	identity := "identity1"
-	key, err := symmetric.NewRandom()
-	require.NoError(t, err)
 
+	profileSymKey, err := crypto.NewRandomAES()
+	require.NoError(t, err)
 	wantProfile := &model.IdentityProfile{
 		Identity: identity,
 		Name:     "name1",
 	}
-	wantData, err := proto.Marshal(wantProfile)
-	// TODO Encrypt
-	require.NoError(t, err)
+	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
 	var wg sync.WaitGroup
 	var callbackCalls []*model.IdentityProfile
 	wg.Add(2)
-	err = fx.RegisterIdentity(spaceId, identity, key, func(gotIdentity string, gotProfile *model.IdentityProfile) {
+	err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(gotIdentity string, gotProfile *model.IdentityProfile) {
 		callbackCalls = append(callbackCalls, gotProfile)
 		wg.Done()
 	})
 	require.NoError(t, err)
 
-	fx.coordinatorClient.EXPECT().IdentityRepoGet(gomock.Any(), []string{identity}, []string{identityRepoDataKind}).Return([]*identityrepoproto.DataWithIdentity{}, nil)
+	var identitiesFromRepo []*identityrepoproto.DataWithIdentity
+
+	fx.coordinatorClient.EXPECT().IdentityRepoGet(gomock.Any(), []string{identity}, []string{identityRepoDataKind}).DoAndReturn(func(_ context.Context, _ []string, _ []string) ([]*identityrepoproto.DataWithIdentity, error) {
+		return identitiesFromRepo, nil
+	}).AnyTimes()
 	time.Sleep(testObserverPeriod)
-	fx.coordinatorClient.EXPECT().IdentityRepoGet(gomock.Any(), []string{identity}, []string{identityRepoDataKind}).Return([]*identityrepoproto.DataWithIdentity{
+	identitiesFromRepo = []*identityrepoproto.DataWithIdentity{
 		{
 			Identity: identity,
 			Data: []*identityrepoproto.Data{
@@ -95,19 +120,17 @@ func TestObservers(t *testing.T) {
 				},
 			},
 		},
-	}, nil)
+	}
 
 	t.Run("change profile's name", func(t *testing.T) {
 		wantProfile2 := &model.IdentityProfile{
 			Identity: identity,
 			Name:     "name1 edited",
 		}
-		wantData2, err := proto.Marshal(wantProfile2)
-		// TODO Encrypt
-		require.NoError(t, err)
+		wantData2 := marshalProfile(t, wantProfile2, profileSymKey)
 
 		time.Sleep(testObserverPeriod)
-		fx.coordinatorClient.EXPECT().IdentityRepoGet(gomock.Any(), []string{identity}, []string{identityRepoDataKind}).Return([]*identityrepoproto.DataWithIdentity{
+		identitiesFromRepo = []*identityrepoproto.DataWithIdentity{
 			{
 				Identity: identity,
 				Data: []*identityrepoproto.Data{
@@ -117,7 +140,7 @@ func TestObservers(t *testing.T) {
 					},
 				},
 			},
-		}, nil)
+		}
 	})
 
 	wg.Wait()
@@ -133,6 +156,15 @@ func TestObservers(t *testing.T) {
 		},
 	}
 	assert.Equal(t, wantCalls, callbackCalls)
+
+	t.Run("callback should be called at least once for each observer", func(t *testing.T) {
+		wg.Add(1)
+		err = fx.RegisterIdentity("space2", identity, profileSymKey, func(gotIdentity string, gotProfile *model.IdentityProfile) {
+			wg.Done()
+		})
+		require.NoError(t, err)
+		wg.Wait()
+	})
 }
 
 type spaceIdDeriverStub struct{}

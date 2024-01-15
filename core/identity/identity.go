@@ -62,6 +62,11 @@ type spaceIdDeriver interface {
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
 }
 
+type observer struct {
+	callback    func(identity string, profile *model.IdentityProfile)
+	initialized bool
+}
+
 type service struct {
 	spaceService      space.Service
 	objectStore       objectstore.ObjectStore
@@ -80,7 +85,7 @@ type service struct {
 	identityObservePeriod time.Duration
 	lock                  sync.RWMutex
 	// identity => spaceId => observer
-	identityObservers      map[string]map[string]func(identity string, profile *model.IdentityProfile)
+	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
 	identityProfileCache   map[string]*model.IdentityProfile
 }
@@ -88,7 +93,7 @@ type service struct {
 func New(identityObservePeriod time.Duration) Service {
 	return &service{
 		identityObservePeriod:  identityObservePeriod,
-		identityObservers:      make(map[string]map[string]func(identity string, profile *model.IdentityProfile)),
+		identityObservers:      make(map[string]map[string]*observer),
 		identityEncryptionKeys: make(map[string]crypto.SymKey),
 		identityProfileCache:   make(map[string]*model.IdentityProfile),
 	}
@@ -134,6 +139,14 @@ func (s *service) Run(ctx context.Context) (err error) {
 	}
 
 	go s.observeIdentitiesLoop()
+
+	key, _ := crypto.NewRandomAES()
+	s.RegisterIdentity("space1", "AAj9HKbneHRsiEbbGj7Lhm2WJHzYNVwnz3qe2Mncn2mF49Wx", key, func(identity string, profile *model.IdentityProfile) {
+		fmt.Println("OBSERVED IDENTITY", identity, profile)
+	})
+	s.RegisterIdentity("space2", "AAj9HKbneHRsiEbbGj7Lhm2WJHzYNVwnz3qe2Mncn2mF49Wx", key, func(identity string, profile *model.IdentityProfile) {
+		fmt.Println("OBSERVED IDENTITY", identity, profile)
+	})
 
 	return
 }
@@ -430,25 +443,32 @@ func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIde
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
-	if ok && proto.Equal(prevProfile, profile) {
-		return nil
+	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
+
+	if hasUpdates {
+		err := s.indexIconImage(profile)
+		if err != nil {
+			return fmt.Errorf("index icon image: %w", err)
+		}
 	}
 
-	err := s.indexIconImage(profile)
-	if err != nil {
-		return fmt.Errorf("index icon image: %w", err)
-	}
 	// TODO Store profile in badger
 
 	s.identityProfileCache[identityData.Identity] = profile
 	observers := s.identityObservers[identityData.Identity]
 	for _, obs := range observers {
-		obs(identityData.Identity, profile)
+		// Run callback at least once for each observer
+		if !obs.initialized {
+			obs.initialized = true
+			obs.callback(identityData.Identity, profile)
+		} else if hasUpdates {
+			obs.callback(identityData.Identity, profile)
+		}
 	}
 	return nil
 }
 
-func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error {
+func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observerCallback func(identity string, profile *model.IdentityProfile)) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -462,12 +482,18 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 
 	observers := s.identityObservers[identity]
 	if observers == nil {
-		observers = make(map[string]func(identity string, profile *model.IdentityProfile))
+		observers = make(map[string]*observer)
 		s.identityObservers[identity] = observers
 	}
 
-	s.identityObservers[identity][spaceId] = observer
-
+	if obs, ok := observers[spaceId]; ok {
+		obs.callback = observerCallback
+	} else {
+		s.identityObservers[identity][spaceId] = &observer{
+			callback:    observerCallback,
+			initialized: false,
+		}
+	}
 	return nil
 }
 

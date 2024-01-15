@@ -77,3 +77,6 @@ packages:
   github.com/anyproto/anytype-heart/core/files/fileobject:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/files:
+    interfaces:
+      Service:
