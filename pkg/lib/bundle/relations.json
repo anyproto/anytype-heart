@@ -1533,5 +1533,25 @@
     "name": "Revision",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Search Result Target Block",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "searchTargetBlock",
+    "maxCount": 1,
+    "name": "Search Target Block",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Search Result Target Relation",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "searchTargetRelation",
+    "maxCount": 1,
+    "name": "Search Result Target Relation",
+    "readonly": true,
+    "source": "derived"
   }
 ]

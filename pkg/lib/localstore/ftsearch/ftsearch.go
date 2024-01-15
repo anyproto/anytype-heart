@@ -14,6 +14,7 @@ import (
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
 	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
+	"github.com/blevesearch/bleve/v2/search"
 	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/samber/lo"
 
@@ -55,7 +56,7 @@ type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	BatchIndex(docs []SearchDoc) (err error)
-	Search(spaceID, query string) (results []string, err error)
+	Search(spaceID, query string) (results search.DocumentMatchCollection, err error)
 	Has(id string) (exists bool, err error)
 	Delete(id string) error
 	DocCount() (uint64, error)
@@ -175,7 +176,7 @@ func (f *ftSearch) getTerms(qry string) []string {
 	return terms
 }
 
-func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results []string, err error) {
+func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results search.DocumentMatchCollection, err error) {
 	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
 	if spaceID != "" {
 		spaceQuery := bleve.NewMatchQuery(spaceID)
@@ -190,10 +191,7 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results []st
 	if err != nil {
 		return
 	}
-	for _, result := range searchResult.Hits {
-		results = append(results, result.ID)
-	}
-	return
+	return searchResult.Hits, nil
 }
 
 func (f *ftSearch) Has(id string) (exists bool, err error) {
