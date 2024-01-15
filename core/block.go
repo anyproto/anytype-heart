@@ -1128,6 +1128,6 @@ func (mw *Middleware) BlockPreview(cctx context.Context, req *pb.RpcBlockPreview
 	if err != nil {
 		return response(pb.RpcBlockPreviewResponseError_UNKNOWN_ERROR, nil, err)
 	}
-
+	blocks = anymark.AddRootBlock(blocks, "preview")
 	return response(pb.RpcBlockPreviewResponseError_NULL, blocks, nil)
 }
