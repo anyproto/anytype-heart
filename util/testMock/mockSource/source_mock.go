@@ -120,17 +120,17 @@ func (mr *MockServiceMockRecorder) NewSource(arg0, arg1, arg2, arg3 any) *gomock
 }
 
 // NewStaticSource mocks base method.
-func (m *MockService) NewStaticSource(arg0 domain.FullID, arg1 smartblock.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
+func (m *MockService) NewStaticSource(arg0 domain.FullID, arg1 smartblock.SmartBlockType, arg2 *state.State, arg3 string, arg4 func(source.PushChangeParams) (string, error)) source.SourceWithType {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewStaticSource", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "NewStaticSource", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(source.SourceWithType)
 	return ret0
 }
 
 // NewStaticSource indicates an expected call of NewStaticSource.
-func (mr *MockServiceMockRecorder) NewStaticSource(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockServiceMockRecorder) NewStaticSource(arg0, arg1, arg2, arg3, arg4 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewStaticSource", reflect.TypeOf((*MockService)(nil).NewStaticSource), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewStaticSource", reflect.TypeOf((*MockService)(nil).NewStaticSource), arg0, arg1, arg2, arg3, arg4)
 }
 
 // RegisterStaticSource mocks base method.

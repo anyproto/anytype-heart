@@ -34,7 +34,7 @@ func (s *service) createPersonalSpace(ctx context.Context) (err error) {
 }
 
 func (s *service) create(ctx context.Context) (sp clientspace.Space, err error) {
-	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
+	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.AccountMetadataPayload())
 	if err != nil {
 		return nil, err
 	}

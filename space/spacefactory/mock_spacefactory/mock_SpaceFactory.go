@@ -86,6 +86,65 @@ func (_c *MockSpaceFactory_CreateAndSetTechSpace_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// CreateInvitingSpace provides a mock function with given fields: ctx, id
+func (_m *MockSpaceFactory) CreateInvitingSpace(ctx context.Context, id string) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateInvitingSpace")
+	}
+
+	var r0 spacecontroller.SpaceController
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(spacecontroller.SpaceController)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceFactory_CreateInvitingSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateInvitingSpace'
+type MockSpaceFactory_CreateInvitingSpace_Call struct {
+	*mock.Call
+}
+
+// CreateInvitingSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockSpaceFactory_Expecter) CreateInvitingSpace(ctx interface{}, id interface{}) *MockSpaceFactory_CreateInvitingSpace_Call {
+	return &MockSpaceFactory_CreateInvitingSpace_Call{Call: _e.mock.On("CreateInvitingSpace", ctx, id)}
+}
+
+func (_c *MockSpaceFactory_CreateInvitingSpace_Call) Run(run func(ctx context.Context, id string)) *MockSpaceFactory_CreateInvitingSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceFactory_CreateInvitingSpace_Call) Return(sp spacecontroller.SpaceController, err error) *MockSpaceFactory_CreateInvitingSpace_Call {
+	_c.Call.Return(sp, err)
+	return _c
+}
+
+func (_c *MockSpaceFactory_CreateInvitingSpace_Call) RunAndReturn(run func(context.Context, string) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreateInvitingSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateMarketplaceSpace provides a mock function with given fields: ctx
 func (_m *MockSpaceFactory) CreateMarketplaceSpace(ctx context.Context) (spacecontroller.SpaceController, error) {
 	ret := _m.Called(ctx)

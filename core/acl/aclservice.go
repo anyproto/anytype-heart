@@ -42,7 +42,7 @@ func (a *aclService) Name() (name string) {
 }
 
 func (a *aclService) Join(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) error {
-	metadata := a.spaceService.AccountMetadata()
+	metadata := a.spaceService.AccountMetadataPayload()
 	err := a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
 		InviteKey: inviteKey,
 		Metadata:  metadata,
