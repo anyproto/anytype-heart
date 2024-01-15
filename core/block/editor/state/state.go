@@ -681,10 +681,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.originalCreatedTimestamp = s.originalCreatedTimestamp
 	}
 
-	if s.parent != nil && s.notifications != nil {
-		s.parent.notifications = s.notifications
-	}
-
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
@@ -1815,35 +1811,40 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 
 func (s *State) GetNotificationById(id string) *model.Notification {
 	if s.notifications != nil {
-		return s.notifications[id]
+		if notification, ok := s.notifications[id]; ok {
+			return notification
+		}
 	}
 	if s.parent != nil {
-		s.CopyNotification(id)
+		return s.CopyNotification(id)
 	}
 	return nil
 }
 
 func (s *State) AddNotification(notification *model.Notification) {
+	if s.notifications == nil {
+		s.notifications = make(map[string]*model.Notification)
+	}
 	s.notifications[notification.Id] = notification
 }
 
 func (s *State) ListNotifications() map[string]*model.Notification {
-	if s.notifications != nil {
-		return s.notifications
-	}
 	if s.parent != nil {
 		for _, notification := range s.parent.ListNotifications() {
-			s.CopyNotification(notification.Id)
+			s.notifications[notification.Id] = pbtypes.CopyNotification(notification)
 		}
 	}
-	return nil
+	return s.notifications
 }
 
-func (s *State) CopyNotification(id string) {
+func (s *State) CopyNotification(id string) *model.Notification {
 	notification := s.parent.GetNotificationById(id)
 	if notification != nil {
-		s.notifications[id] = notification // TODO copy
+		copyNotification := pbtypes.CopyNotification(notification)
+		s.notifications[id] = copyNotification
+		return copyNotification
 	}
+	return nil
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation

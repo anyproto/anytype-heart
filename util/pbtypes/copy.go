@@ -158,3 +158,16 @@ func CopyFilter(in *model.BlockContentDataviewFilter) (out *model.BlockContentDa
 	bytesPool.Put(buf)
 	return
 }
+
+func CopyNotification(in *model.Notification) (out *model.Notification) {
+	buf := bytesPool.Get().([]byte)
+	size := in.Size()
+	if cap(buf) < size {
+		buf = make([]byte, 0, size*2)
+	}
+	size, _ = in.MarshalToSizedBuffer(buf[:size])
+	out = &model.Notification{}
+	_ = out.Unmarshal(buf[:size])
+	bytesPool.Put(buf)
+	return
+}
