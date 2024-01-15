@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -48,7 +47,7 @@ type Space interface {
 type Service interface {
 	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
-	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, creatorId string, pushChange func(p PushChangeParams) (string, error)) SourceWithType
+	NewStaticSource(params StaticSourceParams) SourceWithType
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
@@ -134,10 +133,16 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		case smartblock.SmartBlockTypeIdentity:
 			return NewIdentity(s.identityService, id), nil
 		case smartblock.SmartBlockTypeParticipant:
-			return s.NewStaticSource(domain.FullID{
-				ObjectID: fmt.Sprintf("%s_%s", space.Id(), id),
-				SpaceID:  space.Id(),
-			}, smartblock.SmartBlockTypeParticipant, nil, "", nil), nil
+			params := StaticSourceParams{
+				Id: domain.FullID{
+					ObjectID: NewParticipantId(space.Id(), id),
+					SpaceID:  space.Id(),
+				},
+				StayInCache: true,
+				SbType:      smartblock.SmartBlockTypeBundledTemplate,
+				CreatorId:   addr.AnytypeProfileId,
+			}
+			return s.NewStaticSource(params), nil
 		}
 	}
 
@@ -162,7 +167,11 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource(domain.FullID{}, smartblock.SmartBlockTypeBundledTemplate, nil, addr.AnytypeProfileId, nil), nil
+		params := StaticSourceParams{
+			SbType:    smartblock.SmartBlockTypeBundledTemplate,
+			CreatorId: addr.AnytypeProfileId,
+		}
+		return s.NewStaticSource(params), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err

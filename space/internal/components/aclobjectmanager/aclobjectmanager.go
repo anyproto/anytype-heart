@@ -14,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -254,13 +255,11 @@ func (a *aclObjectManager) processJoinRecords(recs []list.RequestRecord) (err er
 }
 
 func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AclAccountState) (err error) {
-	key := fmt.Sprintf("%s_%s", a.sp.Id(), accState.PubKey.Account())
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeParticipant, key)
+	id := source.NewParticipantId(a.sp.Id(), accState.PubKey.Account())
+	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
-		return
+		return err
 	}
-	id := uniqueKey.Marshal()
-	_, err = a.sp.GetObject(ctx, uniqueKey.Marshal())
 	details := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():                     pbtypes.String(id),
 		bundle.RelationKeyIdentity.String():               pbtypes.String(accState.PubKey.Account()),
@@ -280,13 +279,11 @@ func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, ac
 }
 
 func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, identity string, profile *model.IdentityProfile) (err error) {
-	key := fmt.Sprintf("%s_%s", a.sp.Id(), identity)
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeParticipant, key)
+	id := source.NewParticipantId(a.sp.Id(), identity)
+	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
-		return
+		return err
 	}
-	id := uniqueKey.Marshal()
-	_, err = a.sp.GetObject(ctx, uniqueKey.Marshal())
 	details := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():      pbtypes.String(profile.Name),
 		bundle.RelationKeyIconImage.String(): pbtypes.String(profile.IconCid),

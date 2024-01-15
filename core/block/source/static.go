@@ -10,24 +10,35 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
-func (s *service) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, creatorId string, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
+type StaticSourceParams struct {
+	Id          domain.FullID
+	SbType      smartblock.SmartBlockType
+	Doc         *state.State
+	CreatorId   string
+	StayInCache bool
+	PushChange  func(p PushChangeParams) (string, error)
+}
+
+func (s *service) NewStaticSource(params StaticSourceParams) SourceWithType {
 	return &static{
-		id:         id,
-		sbType:     sbType,
-		doc:        doc,
-		s:          s,
-		creatorId:  creatorId,
-		pushChange: pushChange,
+		id:          params.Id,
+		sbType:      params.SbType,
+		doc:         params.Doc,
+		s:           s,
+		creatorId:   params.CreatorId,
+		pushChange:  params.PushChange,
+		stayInCache: params.StayInCache,
 	}
 }
 
 type static struct {
-	id         domain.FullID
-	sbType     smartblock.SmartBlockType
-	doc        *state.State
-	creatorId  string
-	pushChange func(p PushChangeParams) (string, error)
-	s          *service
+	id          domain.FullID
+	sbType      smartblock.SmartBlockType
+	doc         *state.State
+	creatorId   string
+	pushChange  func(p PushChangeParams) (string, error)
+	s           *service
+	stayInCache bool
 }
 
 func (s *static) Id() string {
@@ -73,7 +84,7 @@ func (s *static) Close() (err error) {
 }
 
 func (s *static) TryClose(objectTTL time.Duration) (res bool, err error) {
-	return false, nil
+	return !s.stayInCache, nil
 }
 
 func (s *static) Heads() []string {
