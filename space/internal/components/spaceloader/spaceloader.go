@@ -28,18 +28,21 @@ type SpaceLoader interface {
 }
 
 type spaceLoader struct {
-	techSpace techspace.TechSpace
-	status    spacestatus.SpaceStatus
-	builder   builder.SpaceBuilder
-	loading   *loadingSpace
+	techSpace           techspace.TechSpace
+	status              spacestatus.SpaceStatus
+	builder             builder.SpaceBuilder
+	loading             *loadingSpace
+	stopIfMandatoryFail bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
 	space  clientspace.Space
 }
 
-func New() SpaceLoader {
-	return &spaceLoader{}
+func New(stopIfMandatoryFail bool) SpaceLoader {
+	return &spaceLoader{
+		stopIfMandatoryFail: stopIfMandatoryFail,
+	}
 }
 
 func (s *spaceLoader) Init(a *app.App) (err error) {
@@ -59,7 +62,18 @@ func (s *spaceLoader) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) Close(ctx context.Context) (err error) {
-	return s.space.Close(ctx)
+	s.status.Lock()
+	if s.loading == nil {
+		s.status.Unlock()
+		return nil
+	}
+	s.status.Unlock()
+	s.cancel()
+	sp, err := s.WaitLoad(ctx)
+	if err != nil {
+		return
+	}
+	return sp.Close(ctx)
 }
 
 func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
@@ -89,7 +103,7 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 	if err = s.status.SetLocalInfo(ctx, info); err != nil {
 		return
 	}
-	s.loading = s.newLoadingSpace(s.ctx, s.status.SpaceId())
+	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail, s.status.SpaceId())
 	return
 }
 
@@ -120,7 +134,6 @@ func (s *spaceLoader) onLoad(spaceID string, sp clientspace.Space, loadErr error
 	}
 
 	s.space = sp
-	s.loading = nil
 	// TODO: check remote state
 	return s.status.SetLocalInfo(s.ctx, spaceinfo.SpaceLocalInfo{
 		SpaceID:      spaceID,
