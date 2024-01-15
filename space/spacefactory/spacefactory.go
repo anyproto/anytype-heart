@@ -23,8 +23,8 @@ import (
 
 type SpaceFactory interface {
 	app.Component
-	CreatePersonalSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
-	NewPersonalSpace(ctx context.Context) (spacecontroller.SpaceController, error)
+	CreatePersonalSpace(ctx context.Context, metadata []byte) (sp spacecontroller.SpaceController, err error)
+	NewPersonalSpace(ctx context.Context, metadata []byte) (spacecontroller.SpaceController, error)
 	CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error)
 	NewShareableSpace(ctx context.Context, id string, status spaceinfo.AccountStatus) (spacecontroller.SpaceController, error)
 	CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
@@ -65,7 +65,7 @@ func (s *spaceFactory) Init(a *app.App) (err error) {
 	return
 }
 
-func (s *spaceFactory) CreatePersonalSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error) {
+func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte) (sp spacecontroller.SpaceController, err error) {
 	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
 	if err != nil {
 		return
@@ -76,21 +76,21 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context) (sp spacecontrol
 	}
 	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true, spaceinfo.AccountStatusUnknown); err != nil {
 		if errors.Is(err, techspace.ErrSpaceViewExists) {
-			return s.NewPersonalSpace(ctx)
+			return s.NewPersonalSpace(ctx, metadata)
 		}
 		return nil, err
 	}
-	ctrl := personalspace.NewSpaceController(coreSpace.Id(), s.app)
+	ctrl := personalspace.NewSpaceController(coreSpace.Id(), metadata, s.app)
 	err = ctrl.Start(ctx)
 	return ctrl, err
 }
 
-func (s *spaceFactory) NewPersonalSpace(ctx context.Context) (ctrl spacecontroller.SpaceController, err error) {
+func (s *spaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (ctrl spacecontroller.SpaceController, err error) {
 	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
 	if err != nil {
 		return nil, err
 	}
-	ctrl = personalspace.NewSpaceController(coreSpace.Id(), s.app)
+	ctrl = personalspace.NewSpaceController(coreSpace.Id(), metadata, s.app)
 	err = ctrl.Start(ctx)
 	return ctrl, err
 }

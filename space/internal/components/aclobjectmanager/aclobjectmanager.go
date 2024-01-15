@@ -33,8 +33,10 @@ type AclObjectManager interface {
 	app.ComponentRunnable
 }
 
-func New() AclObjectManager {
-	return &aclObjectManager{}
+func New(ownerMetadata []byte) AclObjectManager {
+	return &aclObjectManager{
+		ownerMetadata: ownerMetadata,
+	}
 }
 
 type aclObjectManager struct {
@@ -51,8 +53,9 @@ type aclObjectManager struct {
 	indexer         dependencies.SpaceIndexer
 	started         bool
 
-	mx          sync.Mutex
-	lastIndexed string
+	ownerMetadata []byte
+	mx            sync.Mutex
+	lastIndexed   string
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
@@ -153,12 +156,18 @@ func (a *aclObjectManager) processAcl() (err error) {
 			return
 		}
 	}
+	decrypt := func(key crypto.PubKey) ([]byte, error) {
+		if a.ownerMetadata != nil {
+			return a.ownerMetadata, nil
+		}
+		return common.Acl().AclState().GetMetadata(key, true)
+	}
 	// decrypt all metadata
-	decryptedAdded, err := decryptAll(common.Acl(), diff.Added)
+	decryptedAdded, err := decryptAll(diff.Added, decrypt)
 	if err != nil {
 		return
 	}
-	decryptedChanged, err := decryptAll(common.Acl(), diff.Changed)
+	decryptedChanged, err := decryptAll(diff.Changed, decrypt)
 	if err != nil {
 		return
 	}
@@ -325,9 +334,9 @@ func convertPermissions(permissions list.AclPermissions) model.ParticipantPermis
 	return model.ParticipantPermissions_Reader
 }
 
-func decryptAll(acl list.AclList, states []list.AclAccountState) (decrypted []list.AclAccountState, err error) {
+func decryptAll(states []list.AclAccountState, decrypt func(key crypto.PubKey) ([]byte, error)) (decrypted []list.AclAccountState, err error) {
 	for _, state := range states {
-		res, err := acl.AclState().GetMetadata(state.PubKey, true)
+		res, err := decrypt(state.PubKey)
 		if err != nil {
 			return nil, err
 		}
