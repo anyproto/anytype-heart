@@ -30,9 +30,9 @@ func (f FileInfo) ToModel() *model.FileInfo {
 	if f.FileId == "" {
 		return nil
 	}
-	keys := make([]*model.FileInfoEncryptionKey, 0, len(f.EncryptionKeys))
+	keys := make([]*model.FileEncryptionKey, 0, len(f.EncryptionKeys))
 	for path, key := range f.EncryptionKeys {
-		keys = append(keys, &model.FileInfoEncryptionKey{
+		keys = append(keys, &model.FileEncryptionKey{
 			Path: path,
 			Key:  key,
 		})
