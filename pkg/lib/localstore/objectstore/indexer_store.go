@@ -38,6 +38,15 @@ func (s *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
 	return ids, err
 }
 
+func (s *dsObjectStore) CountIDsFromFullTextQueue() (int, error) {
+	var total int
+	err := iterateKeysByPrefix(s.db, indexQueueBase.Bytes(), func(key []byte) {
+		total++
+	})
+
+	return total, err
+}
+
 func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
 	for _, id := range ids {
 		err := s.removeFromIndexQueue(id)

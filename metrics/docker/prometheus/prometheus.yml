@@ -13,6 +13,6 @@ scrape_configs:
          - targets: ['prometheus:9090']
 
   - job_name: 'mw'
-    scrape_interval: 5s
+    scrape_interval: 1s
     static_configs:
          - targets: ['host.docker.internal:9094']

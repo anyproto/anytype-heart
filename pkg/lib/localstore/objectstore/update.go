@@ -33,6 +33,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 			return fmt.Errorf("extract details: %w", err)
 		}
 		if oldDetails != nil && oldDetails.Details.Equal(newDetails.Details) {
+			s.counterIndexDetailsNotChanged.Add(1)
 			return ErrDetailsNotChanged
 		}
 		// Ensure ID is set
@@ -47,6 +48,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if txErr != nil {
 		return txErr
 	}
+	s.counterIndexUpdated.Add(1)
 	s.cache.Set(key, newDetails, int64(newDetails.Size()))
 	return nil
 }

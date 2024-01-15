@@ -280,7 +280,9 @@ func (c *Config) GetSpace() config.Config {
 }
 
 func (c *Config) GetMetric() metric.Config {
-	return metric.Config{}
+	return metric.Config{
+		Addr: os.Getenv(metrics.EnvVarPromAddr),
+	}
 }
 
 func (c *Config) GetDrpc() rpc.Config {

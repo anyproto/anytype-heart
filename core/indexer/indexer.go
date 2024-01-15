@@ -172,7 +172,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	if indexDetails {
 		if err := i.store.UpdateObjectDetails(info.Id, details); err != nil {
 			if errors.Is(err, objectstore.ErrDetailsNotChanged) {
-				metrics.ObjectDetailsHeadsNotChangedCounter.Add(1)
 				log.With("objectID", info.Id).With("hashesAreEqual", lastIndexedHash == headHashToIndex).With("lastHashIsEmpty", lastIndexedHash == "").With("skipFlagSet", opts.SkipIfHeadsNotChanged).Debugf("details have not changed")
 			} else {
 				hasError = true
