@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -135,11 +136,12 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		case smartblock.SmartBlockTypeParticipant:
 			params := StaticSourceParams{
 				Id: domain.FullID{
-					ObjectID: NewParticipantId(space.Id(), id),
+					ObjectID: id,
 					SpaceID:  space.Id(),
 				},
 				StayInCache: true,
-				SbType:      smartblock.SmartBlockTypeBundledTemplate,
+				State:       state.NewDoc(id, nil).(*state.State),
+				SbType:      smartblock.SmartBlockTypeParticipant,
 				CreatorId:   addr.AnytypeProfileId,
 			}
 			return s.NewStaticSource(params), nil

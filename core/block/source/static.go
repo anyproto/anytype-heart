@@ -13,7 +13,7 @@ import (
 type StaticSourceParams struct {
 	Id          domain.FullID
 	SbType      smartblock.SmartBlockType
-	Doc         *state.State
+	State       *state.State
 	CreatorId   string
 	StayInCache bool
 	PushChange  func(p PushChangeParams) (string, error)
@@ -23,7 +23,7 @@ func (s *service) NewStaticSource(params StaticSourceParams) SourceWithType {
 	return &static{
 		id:          params.Id,
 		sbType:      params.SbType,
-		doc:         params.Doc,
+		doc:         params.State,
 		s:           s,
 		creatorId:   params.CreatorId,
 		pushChange:  params.PushChange,

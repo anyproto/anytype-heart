@@ -138,7 +138,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	params := source.StaticSourceParams{
 		Id:        fullID,
 		SbType:    smartblock.SmartBlockTypeBundledTemplate,
-		Doc:       st.Copy(),
+		State:     st.Copy(),
 		CreatorId: addr.AnytypeProfileId,
 	}
 	err = b.source.RegisterStaticSource(b.source.NewStaticSource(params))
