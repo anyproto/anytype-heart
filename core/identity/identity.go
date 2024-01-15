@@ -140,14 +140,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 
 	go s.observeIdentitiesLoop()
 
-	key, _ := crypto.NewRandomAES()
-	s.RegisterIdentity("space1", "AAj9HKbneHRsiEbbGj7Lhm2WJHzYNVwnz3qe2Mncn2mF49Wx", key, func(identity string, profile *model.IdentityProfile) {
-		fmt.Println("OBSERVED IDENTITY", identity, profile)
-	})
-	s.RegisterIdentity("space2", "AAj9HKbneHRsiEbbGj7Lhm2WJHzYNVwnz3qe2Mncn2mF49Wx", key, func(identity string, profile *model.IdentityProfile) {
-		fmt.Println("OBSERVED IDENTITY", identity, profile)
-	})
-
 	return
 }
 
