@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -38,6 +39,7 @@ type clientds struct {
 	repoPath                                   string
 	spaceStoreWasMissing, localStoreWasMissing bool
 	spentOnInit                                time.Duration
+	closed                                     chan struct{}
 }
 
 type Config struct {
@@ -86,10 +88,26 @@ func init() {
 	DefaultConfig.Localstore.SyncWrites = false
 	DefaultConfig.Localstore.BlockCacheSize = 0
 	DefaultConfig.Localstore.Compression = options.None
+
+}
+
+func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
+	defer func() {
+		// recover in case we have badger panic on open but not recovered by badger
+		if r := recover(); r != nil {
+			err = fmt.Errorf("badger panic: %v", r)
+			if db != nil {
+				db.Close()
+			}
+		}
+	}()
+	db, err = badger.Open(opts)
+	return db, err
 }
 
 func (r *clientds) Init(a *app.App) (err error) {
 	// TODO: looks like we do a lot of stuff on Init here. We should consider moving it to the Run
+	r.closed = make(chan struct{})
 	start := time.Now()
 	wl := a.Component(wallet.CName)
 	if wl == nil {
@@ -120,15 +138,24 @@ func (r *clientds) Init(a *app.App) (err error) {
 	opts := r.cfg.Localstore
 	opts.Dir = r.getRepoPath(localstoreDSDir)
 	opts.ValueDir = opts.Dir
-	r.localstoreDS, err = badger.Open(opts)
+
+	r.localstoreDS, err = openBadgerWithRecover(opts)
+	if err != nil && strings.Contains(err.Error(), "checksum mismatch") {
+		// because localstore contains mostly recoverable info (with th only exception of objects' lastOpenedDate)
+		// we can just remove and recreate it
+		err2 := os.Rename(opts.Dir, filepath.Join(opts.Dir, "-corrupted"))
+		log.Errorf("failed to rename corrupted localstore: %s", err2)
+		r.localstoreDS, err = openBadgerWithRecover(opts)
+	}
+
 	if err != nil {
 		return oserror.TransformError(err)
 	}
-
 	opts = r.cfg.Spacestore
 	opts.Dir = r.getRepoPath(SpaceDSDir)
 	opts.ValueDir = opts.Dir
-	r.spaceDS, err = badger.Open(opts)
+	r.spaceDS, err = openBadgerWithRecover(opts)
+
 	if err != nil {
 		return oserror.TransformError(err)
 	}
@@ -139,6 +166,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 }
 
 func (r *clientds) Run(context.Context) error {
+	go r.syncer()
 	return nil
 }
 
@@ -162,6 +190,7 @@ func (r *clientds) Name() (name string) {
 }
 
 func (r *clientds) Close(ctx context.Context) (err error) {
+	close(r.closed)
 	if r.localstoreDS != nil {
 		err2 := r.localstoreDS.Close()
 		if err2 != nil {
