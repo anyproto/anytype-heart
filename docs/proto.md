@@ -1444,12 +1444,14 @@
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [Export](#anytype-model-Export)
+    - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
     - [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey)
     - [IdentityProfile](#anytype-model-IdentityProfile)
-    - [IdentityProfile.EncryptionKey](#anytype-model-IdentityProfile-EncryptionKey)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
+    - [Invite](#anytype-model-Invite)
+    - [InvitePayload](#anytype-model-InvitePayload)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
     - [Metadata](#anytype-model-Metadata)
@@ -22770,6 +22772,22 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-FileEncryptionKey"></a>
+
+### FileEncryptionKey
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+| key | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-FileInfo"></a>
 
 ### FileInfo
@@ -22813,23 +22831,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | iconCid | [string](#string) |  |  |
-| iconEncryptionKeys | [IdentityProfile.EncryptionKey](#anytype-model-IdentityProfile-EncryptionKey) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-model-IdentityProfile-EncryptionKey"></a>
-
-### IdentityProfile.EncryptionKey
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| path | [string](#string) |  |  |
-| key | [string](#string) |  |  |
+| iconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 
 
 
@@ -22855,6 +22857,42 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [InternalFlag.Value](#anytype-model-InternalFlag-Value) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Invite"></a>
+
+### Invite
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| payload | [bytes](#bytes) |  |  |
+| signature | [bytes](#bytes) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-InvitePayload"></a>
+
+### InvitePayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| creatorIdentity | [string](#string) |  |  |
+| inviteKey | [bytes](#bytes) |  |  |
+| spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
+| spaceIconCid | [string](#string) |  |  |
+| spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 
 
 
