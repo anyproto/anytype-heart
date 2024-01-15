@@ -1446,7 +1446,6 @@
     - [Export](#anytype-model-Export)
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
-    - [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey)
     - [IdentityProfile](#anytype-model-IdentityProfile)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
@@ -22797,23 +22796,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | fileId | [string](#string) |  |  |
-| encryptionKeys | [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-model-FileInfo-EncryptionKey"></a>
-
-### FileInfo.EncryptionKey
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| path | [string](#string) |  |  |
-| key | [string](#string) |  |  |
+| encryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 
 
 

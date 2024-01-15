@@ -294,7 +294,7 @@ func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
 	return nil
 }
 
-func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId string) (iconCid string, iconEncryptionKeys []*model.IdentityProfileEncryptionKey, err error) {
+func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId string) (iconCid string, iconEncryptionKeys []*model.FileEncryptionKey, err error) {
 	if iconImageObjectId == "" {
 		return "", nil, nil
 	}
@@ -308,7 +308,7 @@ func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId st
 		return "", nil, fmt.Errorf("get file keys: %w", err)
 	}
 	for path, key := range keys.EncryptionKeys {
-		iconEncryptionKeys = append(iconEncryptionKeys, &model.IdentityProfileEncryptionKey{
+		iconEncryptionKeys = append(iconEncryptionKeys, &model.FileEncryptionKey{
 			Path: path,
 			Key:  key,
 		})
