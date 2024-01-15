@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 type fixture struct {
@@ -45,6 +47,8 @@ func newFixture(t *testing.T) *fixture {
 	fileService := mock_files.NewMockService(t)
 	fileObjectService := mock_fileobject.NewMockService(t)
 	dataStore := datastore.NewInMemory()
+	err := dataStore.Run(ctx)
+	require.NoError(t, err)
 	fileStore := filestore.New()
 
 	a := new(app.App)
@@ -60,16 +64,23 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
 
 	svc := New(testObserverPeriod)
-	err := svc.Init(a)
+	err = svc.Init(a)
 	t.Cleanup(func() {
 		svc.Close(ctx)
 	})
 	require.NoError(t, err)
 
-	return &fixture{
-		service:           svc.(*service),
+	svcRef := svc.(*service)
+	db, err := dataStore.LocalStorage()
+	require.NoError(t, err)
+	svcRef.db = db
+	fx := &fixture{
+		service:           svcRef,
 		coordinatorClient: coordinatorClient,
 	}
+	go fx.observeIdentitiesLoop()
+
+	return fx
 }
 
 func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.SymKey) []byte {
@@ -80,9 +91,39 @@ func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.Sym
 	return data
 }
 
+func TestIdentityProfileCache(t *testing.T) {
+	fx := newFixture(t)
+
+	spaceId := "space1"
+	identity := "identity1"
+
+	fx.coordinatorClient.EXPECT().IdentityRepoGet(gomock.Any(), []string{identity}, []string{identityRepoDataKind}).Return(nil, fmt.Errorf("network problem")).AnyTimes()
+
+	profileSymKey, err := crypto.NewRandomAES()
+	require.NoError(t, err)
+	wantProfile := &model.IdentityProfile{
+		Identity: identity,
+		Name:     "name1",
+	}
+	wantData := marshalProfile(t, wantProfile, profileSymKey)
+
+	err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(gotIdentity string, gotProfile *model.IdentityProfile) {
+		assert.Equal(t, identity, gotIdentity)
+		assert.Equal(t, wantProfile, gotProfile)
+		wg.Done()
+	})
+	require.NoError(t, err)
+
+	wg.Wait()
+}
+
 func TestObservers(t *testing.T) {
 	fx := newFixture(t)
-	go fx.observeIdentitiesLoop()
 
 	spaceId := "space1"
 	identity := "identity1"

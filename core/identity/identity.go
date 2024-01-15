@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -23,12 +24,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -39,7 +42,6 @@ var (
 )
 
 type Service interface {
-	// TODO guarantee callback call at least once
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
 	// UnregisterIdentity removes the observer for the identity in specified space
@@ -68,6 +70,8 @@ type observer struct {
 }
 
 type service struct {
+	dbProvider        datastore.Datastore
+	db                *badger.DB
 	spaceService      space.Service
 	objectStore       objectstore.ObjectStore
 	accountService    account.Service
@@ -83,6 +87,7 @@ type service struct {
 	personalSpaceId   string
 
 	identityObservePeriod time.Duration
+	identityForceUpdate   chan struct{}
 	lock                  sync.RWMutex
 	// identity => spaceId => observer
 	identityObservers      map[string]map[string]*observer
@@ -92,6 +97,8 @@ type service struct {
 
 func New(identityObservePeriod time.Duration) Service {
 	return &service{
+		closing:                make(chan struct{}),
+		identityForceUpdate:    make(chan struct{}),
 		identityObservePeriod:  identityObservePeriod,
 		identityObservers:      make(map[string]map[string]*observer),
 		identityEncryptionKeys: make(map[string]crypto.SymKey),
@@ -109,7 +116,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.closing = make(chan struct{})
+	s.dbProvider = app.MustComponent[datastore.Datastore](a)
 	return
 }
 
@@ -118,6 +125,10 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	s.db, err = s.dbProvider.LocalStorage()
+	if err != nil {
+		return err
+	}
 	s.techSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.TechSpaceType)
 	if err != nil {
 		return err
@@ -160,6 +171,7 @@ func (s *service) indexIdentityObject(ctx context.Context) error {
 
 func (s *service) Close(ctx context.Context) (err error) {
 	close(s.closing)
+	close(s.identityForceUpdate)
 	return nil
 }
 
@@ -346,8 +358,6 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDeta
 	if err != nil {
 		return fmt.Errorf("failed to push identity: %w", err)
 	}
-
-	fmt.Println("PUSHED IDENTITY DATA for", s.accountService.AccountID(), identityProfile, data)
 	return nil
 }
 
@@ -356,21 +366,27 @@ func (s *service) observeIdentitiesLoop() {
 	defer ticker.Stop()
 
 	ctx := context.Background()
+	observe := func() {
+		err := s.observeIdentities(ctx)
+		if err != nil {
+			log.Error("error observing identities", zap.Error(err))
+		}
+	}
 	for {
 		select {
 		case <-s.closing:
 			return
+		case <-s.identityForceUpdate:
+			observe()
 		case <-ticker.C:
-			err := s.observeIdentities(ctx)
-			if err != nil {
-				log.Error("error observing identities", zap.Error(err))
-			}
+			observe()
 		}
 	}
 }
 
 const identityRepoDataKind = "profile"
 
+// TODO Maybe we need to use backoff in case of error from coordinator
 func (s *service) observeIdentities(ctx context.Context) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -382,7 +398,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 	for identity := range s.identityObservers {
 		identities = append(identities, identity)
 	}
-	identitiesData, err := s.coordinatorClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
+	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
 	if err != nil {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
@@ -394,6 +410,41 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
+	res, err := s.coordinatorClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
+	if err == nil {
+		return res, nil
+	}
+	log.Info("get identities data from remote repo", zap.Error(err))
+
+	res = make([]*identityrepoproto.DataWithIdentity, 0, len(identities))
+	err = s.db.View(func(txn *badger.Txn) error {
+		for _, identity := range identities {
+			rawData, err := badgerhelper.GetValueTxn(txn, makeIdentityProfileKey(identity), badgerhelper.UnmarshalBytes)
+			if badgerhelper.IsNotFound(err) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			res = append(res, &identityrepoproto.DataWithIdentity{
+				Identity: identity,
+				Data: []*identityrepoproto.Data{
+					{
+						Kind: identityRepoDataKind,
+						Data: rawData,
+					},
+				},
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get identities data from local cache: %w", err)
+	}
+	return res, nil
 }
 
 func (s *service) indexIconImage(profile *model.IdentityProfile) error {
@@ -415,9 +466,13 @@ func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 }
 
 func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIdentity) error {
-	var profile *model.IdentityProfile
+	var (
+		rawProfile []byte
+		profile    *model.IdentityProfile
+	)
 	for _, data := range identityData.Data {
 		if data.Kind == identityRepoDataKind {
+			rawProfile = data.Data
 			symKey := s.identityEncryptionKeys[identityData.Identity]
 			rawProfile, err := symKey.Decrypt(data.Data)
 			if err != nil {
@@ -442,11 +497,12 @@ func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIde
 		if err != nil {
 			return fmt.Errorf("index icon image: %w", err)
 		}
+		err = s.cacheIdentityProfile(rawProfile, profile)
+		if err != nil {
+			return fmt.Errorf("put identity profile: %w", err)
+		}
 	}
 
-	// TODO Store profile in badger
-
-	s.identityProfileCache[identityData.Identity] = profile
 	observers := s.identityObservers[identityData.Identity]
 	for _, obs := range observers {
 		// Run callback at least once for each observer
@@ -458,6 +514,15 @@ func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIde
 		}
 	}
 	return nil
+}
+
+func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {
+	s.identityProfileCache[profile.Identity] = profile
+	return badgerhelper.SetValue(s.db, makeIdentityProfileKey(profile.Identity), rawProfile)
+}
+
+func makeIdentityProfileKey(identity string) []byte {
+	return []byte("/identity_profile/" + identity)
 }
 
 func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observerCallback func(identity string, profile *model.IdentityProfile)) error {
@@ -486,6 +551,7 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 			initialized: false,
 		}
 	}
+	s.identityForceUpdate <- struct{}{}
 	return nil
 }
 
