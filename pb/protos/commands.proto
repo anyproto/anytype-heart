@@ -92,6 +92,81 @@ message Rpc {
     }
 
     message Space {
+        message InviteGenerate {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                string inviteKey = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error; mnemonic should be non-empty
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2; // Root path is wrong
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                    }
+                }
+            }
+        }
+
+        message RequestApprove {
+            message Request {
+                string spaceId = 1;
+                string identity = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error; mnemonic should be non-empty
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2; // Root path is wrong
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                    }
+                }
+            }
+        }
+
+        message RequestJoin {
+            message Request {
+                string spaceId = 1;
+                string privateKey = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error; mnemonic should be non-empty
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2; // Root path is wrong
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                    }
+                }
+            }
+        }
+
         message Delete {
             message Request {
                 string spaceId = 1;

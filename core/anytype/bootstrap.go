@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -226,6 +227,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(acl.New()).
 		Register(filesync.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
