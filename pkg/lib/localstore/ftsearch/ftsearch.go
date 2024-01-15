@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
-	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/samber/lo"
@@ -31,9 +30,10 @@ const (
 	fieldTitle        = "Title"
 	fieldText         = "Text"
 	fieldTitleNoTerms = "TitleNoTerms"
-	fieldTextNoTerms  = "TextNoTerms"
 	fieldID           = "Id"
 )
+
+var analyzerName = standard.Name
 
 var log = logging.Logger("ftsearch")
 
@@ -44,7 +44,6 @@ type SearchDoc struct {
 	Title        string
 	TitleNoTerms string
 	Text         string
-	TextNoTerms  string
 }
 
 func New() FTSearch {
@@ -62,17 +61,15 @@ type FTSearch interface {
 }
 
 type ftSearch struct {
-	rootPath       string
-	ftsPath        string
-	index          bleve.Index
-	enStopWordsMap map[string]bool
+	rootPath string
+	ftsPath  string
+	index    bleve.Index
 }
 
 func (f *ftSearch) Init(a *app.App) (err error) {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir, ftsVer)
-	f.enStopWordsMap, err = en.TokenMapConstructor(nil, nil)
 	return err
 }
 
@@ -83,7 +80,7 @@ func (f *ftSearch) Name() (name string) {
 func (f *ftSearch) Run(context.Context) (err error) {
 	f.index, err = bleve.Open(f.ftsPath)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
-		if f.index, err = bleve.New(f.ftsPath, makeMapping()); err != nil {
+		if f.index, err = bleve.New(f.ftsPath, makeMapping(analyzerName)); err != nil {
 			return
 		}
 		f.cleanUpOldIndexes()
@@ -110,7 +107,7 @@ func (f *ftSearch) cleanUpOldIndexes() {
 func (f *ftSearch) Index(doc SearchDoc) (err error) {
 	metrics.ObjectFTUpdatedCounter.Inc()
 	doc.TitleNoTerms = doc.Title
-	doc.TextNoTerms = doc.Text
+	//doc.TextNoTerms = doc.Text
 	return f.index.Index(doc.Id, doc)
 }
 
@@ -132,7 +129,7 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 	}()
 	for _, doc := range docs {
 		doc.TitleNoTerms = doc.Title
-		doc.TextNoTerms = doc.Text
+		//doc.TextNoTerms = doc.Text
 		if err := b.Index(doc.Id, doc); err != nil {
 			return fmt.Errorf("failed to index document %s: %w", doc.Id, err)
 		}
@@ -145,20 +142,108 @@ func (f *ftSearch) Search(spaceID, qry string) (results []string, err error) {
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
 
-	queries := append(
-		getFullQueries(qry),
-		bleve.NewMatchQuery(qry),
+	prefixQueriesTitle, prefixQueriesText, queries := f.exactQueries(qry, terms)
+
+	results, err = f.doSearch(spaceID, queries)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(results) == 0 {
+		looseQuery := f.looseQueries(qry, prefixQueriesTitle, prefixQueriesText)
+		results, err = f.doSearch(spaceID, looseQuery)
+	}
+	return results, err
+}
+
+func (f *ftSearch) looseQueries(qry string, prefixQueriesTitle []query.Query, prefixQueriesText []query.Query) []query.Query {
+	var looseQuery []query.Query
+	orMatchTitle := bleve.NewMatchQuery(qry)
+	orMatchTitle.SetField(fieldTitle)
+	orMatchTitle.SetFuzziness(0)
+	orMatchTitle.SetOperator(query.MatchQueryOperatorOr)
+	orMatchTitle.SetBoost(3)
+	orMatchText := bleve.NewMatchQuery(qry)
+	orMatchText.SetField(fieldText)
+	orMatchText.SetFuzziness(0)
+	orMatchText.SetOperator(query.MatchQueryOperatorOr)
+	orMatchText.SetBoost(2)
+
+	prefixQuerySomeTitle := bleve.NewDisjunctionQuery(prefixQueriesTitle...)
+	prefixQuerySomeTitle.SetBoost(1)
+
+	prefixQuerySomeText := bleve.NewDisjunctionQuery(prefixQueriesText...)
+	prefixQuerySomeText.SetBoost(1)
+	looseQuery = append(
+		looseQuery,
+		orMatchTitle,
+		orMatchText,
+		prefixQuerySomeTitle,
+		prefixQuerySomeText,
 	)
+	return looseQuery
+}
+
+func (f *ftSearch) exactQueries(qry string, terms []string) ([]query.Query, []query.Query, []query.Query) {
+	exactQueries := []query.Query{getIDMatchQuery(qry)}
 
 	if len(terms) > 0 {
-		queries = append(
-			queries,
+		exactQueries = append(
+			exactQueries,
 			getAllWordsFromQueryConsequently(terms, fieldTitleNoTerms),
-			getAllWordsFromQueryConsequently(terms, fieldTextNoTerms),
 		)
 	}
 
-	return f.doSearch(spaceID, queries)
+	titleMatchPhrase := bleve.NewMatchPhraseQuery(qry)
+	titleMatchPhrase.SetField(fieldTitle)
+	titleMatchPhrase.SetFuzziness(0)
+	titleMatchPhrase.SetBoost(100)
+
+	textMatchPhrase := bleve.NewMatchPhraseQuery(qry)
+	textMatchPhrase.SetField(fieldText)
+	textMatchPhrase.SetFuzziness(0)
+	textMatchPhrase.SetBoost(99)
+
+	titleMatch := bleve.NewMatchQuery(qry)
+	titleMatch.SetField(fieldTitle)
+	titleMatch.SetFuzziness(0)
+	titleMatch.SetOperator(query.MatchQueryOperatorAnd)
+	titleMatch.SetBoost(20)
+	textMatch := bleve.NewMatchQuery(qry)
+	textMatch.SetField(fieldText)
+	textMatch.SetFuzziness(0)
+	textMatch.SetOperator(query.MatchQueryOperatorAnd)
+	textMatch.SetBoost(19)
+
+	var prefixQueriesTitle []query.Query
+
+	for _, term := range terms {
+		newQry := bleve.NewPrefixQuery(term)
+		newQry.SetField(fieldTitle)
+		prefixQueriesTitle = append(prefixQueriesTitle, newQry)
+	}
+	prefixQueryAllTitle := bleve.NewConjunctionQuery(prefixQueriesTitle...)
+
+	prefixQueriesText := make([]query.Query, 0, 2)
+	for _, term := range terms {
+		newQry := bleve.NewPrefixQuery(term)
+		newQry.SetField(fieldText)
+		prefixQueriesText = append(prefixQueriesText, newQry)
+	}
+	prefixQueryAllText := bleve.NewConjunctionQuery(prefixQueriesText...)
+	prefixQueryAllText.SetBoost(50)
+
+	exactQueries = append(
+		exactQueries,
+		titleMatchPhrase,
+		textMatchPhrase,
+		titleMatch,
+		textMatch,
+		prefixQueryAllTitle,
+		prefixQueryAllText,
+	)
+	return prefixQueriesTitle, prefixQueriesText, exactQueries
 }
 
 func (f *ftSearch) getTerms(qry string) []string {
@@ -219,22 +304,22 @@ func (f *ftSearch) Close(ctx context.Context) error {
 	return nil
 }
 
-func makeMapping() mapping.IndexMapping {
+func makeMapping(mapping string) mapping.IndexMapping {
 	indexMapping := bleve.NewIndexMapping()
 
 	addNoTermsMapping(indexMapping)
-	addDefaultMapping(indexMapping)
+	addDefaultMapping(indexMapping, mapping)
 
 	return indexMapping
 }
 
-func addDefaultMapping(indexMapping *mapping.IndexMappingImpl) {
+func addDefaultMapping(indexMapping *mapping.IndexMappingImpl, mapping string) {
 	fields := []string{
 		fieldTitle,
 		fieldText,
 	}
 
-	addMappings(indexMapping, fields, getStandardMapping())
+	addMappings(indexMapping, fields, getStandardMapping(mapping))
 }
 
 func addNoTermsMapping(indexMapping *mapping.IndexMappingImpl) {
@@ -247,7 +332,6 @@ func addNoTermsMapping(indexMapping *mapping.IndexMappingImpl) {
 
 	fields := []string{
 		fieldTitleNoTerms,
-		fieldTextNoTerms,
 		fieldID,
 	}
 	addMappings(indexMapping, fields, keywordMapping)
@@ -259,9 +343,9 @@ func addMappings(indexMapping *mapping.IndexMappingImpl, fields []string, mappin
 	}
 }
 
-func getStandardMapping() *mapping.FieldMapping {
+func getStandardMapping(mapping string) *mapping.FieldMapping {
 	standardMapping := bleve.NewTextFieldMapping()
-	standardMapping.Analyzer = standard.Name
+	standardMapping.Analyzer = mapping
 	return standardMapping
 }
 
@@ -276,19 +360,8 @@ func getAllWordsFromQueryConsequently(terms []string, field string) query.Query 
 	return regexpQuery
 }
 
-func getFullQueries(qry string) []query.Query {
-	var fullQueries = make([]query.Query, 0, 2)
-
-	if len(qry) > 5 {
-		fullQueries = append(fullQueries, getIDMatchQuery(qry))
-	}
-	fullQueries = append(fullQueries, bleve.NewPrefixQuery(qry))
-
-	return fullQueries
-}
-
 func getIDMatchQuery(qry string) *query.DocIDQuery {
 	docIDQuery := bleve.NewDocIDQuery([]string{qry})
-	docIDQuery.SetBoost(30)
+	docIDQuery.SetBoost(100)
 	return docIDQuery
 }

@@ -11,6 +11,7 @@ require (
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.10
+	github.com/blevesearch/blevex/v2 v2.1.3
 	github.com/chai2010/webp v1.1.1
 	github.com/cheggaaa/mb v1.0.3
 	github.com/cheggaaa/mb/v3 v3.0.2

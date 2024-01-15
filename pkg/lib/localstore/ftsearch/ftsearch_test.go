@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -22,60 +25,41 @@ type fixture struct {
 }
 
 func newFixture(path string, t *testing.T) *fixture {
-	ft := New()
-	ta := new(app.App)
+	fts := New()
+	testApp := new(app.App)
 
-	ta.Register(wallet.NewWithRepoDirAndRandomKeys(path)).
-		Register(ft)
+	testApp.Register(wallet.NewWithRepoDirAndRandomKeys(path)).
+		Register(fts)
 
-	require.NoError(t, ta.Start(context.Background()))
+	require.NoError(t, testApp.Start(context.Background()))
 	return &fixture{
-		ft: ft,
-		ta: ta,
+		ft: fts,
+		ta: testApp,
 	}
 }
 
 func TestNewFTSearch(t *testing.T) {
-	testCases := []struct {
-		name   string
-		tester func(t *testing.T, tmpDir string)
-	}{
-		{
-			name:   "assertSearch",
-			tester: assertSearch,
-		},
-		{
-			name:   "assertThaiSubstrFound",
-			tester: assertThaiSubstrFound,
-		},
-		{
-			name:   "assertChineseFound",
-			tester: assertChineseFound,
-		},
-		{
-			name:   "assertFoundPartsOfTheWords",
-			tester: assertFoundPartsOfTheWords,
-		},
-		{
-			name:   "assertFoundCaseSensitivePartsOfTheWords",
-			tester: assertFoundCaseSensitivePartsOfTheWords,
-		},
-		{
-			name:   "assertNonEscapedQuery",
-			tester: assertNonEscapedQuery,
-		},
-		{
-			name:   "assertMultiSpace",
-			tester: assertMultiSpace,
-		},
+	testCases := []func(t *testing.T, tmpDir string){
+		assertSearch,
+		assertThaiSubstrFound,
+		assertExactQueryFound,
+		assertChineseFound,
+		assertFoundPartsOfTheWords,
+		assertFoundCaseSensitivePartsOfTheWords,
+		assertNonEscapedQuery,
+		assertMultiSpace,
 	}
 
 	for _, testCase := range testCases {
 		tmpDir, _ := os.MkdirTemp("", "")
-		t.Run(testCase.name, func(t *testing.T) {
-			testCase.tester(t, tmpDir)
+		t.Run(GetFunctionName(testCase), func(t *testing.T) {
+			testCase(t, tmpDir)
 		})
 	}
+}
+
+func GetFunctionName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }
 
 func assertFoundCaseSensitivePartsOfTheWords(t *testing.T, tmpDir string) {
@@ -117,22 +101,23 @@ func assertFoundCaseSensitivePartsOfTheWords(t *testing.T, tmpDir string) {
 }
 
 func assertChineseFound(t *testing.T, tmpDir string) {
+	//analyzerName = cjk.AnalyzerName
 	fixture := newFixture(tmpDir, t)
 	ft := fixture.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",
-		Title: "",
-		Text:  "你好",
+		Title: "你好",
+		Text:  "",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "2",
-		Title: "",
-		Text:  "交代",
+		Title: "交代",
+		Text:  "",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "3",
-		Title: "",
-		Text:  "长江大桥",
+		Title: "长江大桥",
+		Text:  "",
 	}))
 
 	queries := []string{
@@ -146,21 +131,50 @@ func assertChineseFound(t *testing.T, tmpDir string) {
 	}
 
 	_ = ft.Close(nil)
+	analyzerName = standard.Name
+}
+
+func assertExactQueryFound(t *testing.T, tmpDir string) {
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "test1",
+		Title: "https://community.anytype.io/c/bug-reports/7/none",
+		Text:  "name:section.name",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "test2",
+		Title: "Some random text name:section.name and there some random text",
+		Text:  "I have this nice link I can't find https://community.anytype.io/c/bug-reports/7/none but I'll try to find it",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "test3",
+		Title: "Some strange filler strings section community https",
+		Text:  "Some strange symbols :// :strange: :none:",
+	}))
+
+	validateSearch(t, ft, "", "https://community.anytype.io/c/bug-reports/7/none", 2)
+	validateSearch(t, ft, "", "name:section.name", 2)
+
+	_ = ft.Close(nil)
 }
 
 func assertThaiSubstrFound(t *testing.T, tmpDir string) {
+	//analyzerName = th.AnalyzerName
 	fixture := newFixture(tmpDir, t)
 	ft := fixture.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "test",
-		Title: "ตัวอย่าง",
-		Text:  "พรระเจ้า \n kumamon",
+		Title: "พรระเจ้า \n kumamon",
+		Text:  "ตัวอย่าง",
 	}))
 
 	validateSearch(t, ft, "", "ระเ", 1)
 	validateSearch(t, ft, "", "ระเ ma", 1)
+	validateSearch(t, ft, "", "ตัวอย่", 1)
 
 	_ = ft.Close(nil)
+	analyzerName = standard.Name
 }
 
 func assertSearch(t *testing.T, tmpDir string) {
@@ -283,7 +297,7 @@ func givenPrefilledChineseIndex() bleve.Index {
 		},
 	}
 
-	indexMapping := makeMapping()
+	indexMapping := makeMapping(standard.Name)
 
 	index, err := bleve.New(tmpDir, indexMapping)
 	if err != nil {
@@ -310,8 +324,8 @@ func assertNonEscapedQuery(t *testing.T, tmpDir string) {
 
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",
-		Title: "This is the title",
-		Text:  ".*?([])",
+		Title: ".*?([])",
+		Text:  "This is the text",
 	}))
 	validateSearch(t, ft, "", ".*?([])", 1)
 
