@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
+	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -44,8 +45,10 @@ type aclObjectManager struct {
 	sp              clientspace.Space
 	loadErr         error
 	spaceLoader     spaceloader.SpaceLoader
+	status          spacestatus.SpaceStatus
 	modifier        dependencies.DetailsModifier
 	identityService dependencies.IdentityService
+	indexer         dependencies.SpaceIndexer
 	started         bool
 
 	mx          sync.Mutex
@@ -63,6 +66,8 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.spaceLoader = ap.MustComponent(spaceloader.CName).(spaceloader.SpaceLoader)
 	a.modifier = app.MustComponent[dependencies.DetailsModifier](ap)
 	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
+	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
+	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil
@@ -121,8 +126,7 @@ func (a *aclObjectManager) process() {
 }
 
 func (a *aclObjectManager) clearAclIndexes() (err error) {
-	// TODO: clear acl indexes in object store
-	return nil
+	return a.indexer.RemoveIndexes(a.status.SpaceId())
 }
 
 func (a *aclObjectManager) deleteObject(identity crypto.PubKey) (err error) {
