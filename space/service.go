@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
@@ -53,7 +54,8 @@ type Service interface {
 	Delete(ctx context.Context, id string) (err error)
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
-	AccountMetadata() []byte
+	AccountMetadataSymKey() crypto.SymKey
+	AccountMetadataPayload() []byte
 
 	app.ComponentRunnable
 }
@@ -66,12 +68,13 @@ type service struct {
 
 	delController *deletionController
 
-	personalSpaceId  string
-	newAccount       bool
-	spaceControllers map[string]spacecontroller.SpaceController
-	waiting          map[string]controllerWaiter
-	metadataPayload  []byte
-	repKey           uint64
+	personalSpaceId        string
+	newAccount             bool
+	spaceControllers       map[string]spacecontroller.SpaceController
+	waiting                map[string]controllerWaiter
+	accountMetadataSymKey  crypto.SymKey
+	accountMetadataPayload []byte
+	repKey                 uint64
 
 	mu        sync.Mutex
 	ctx       context.Context
@@ -110,10 +113,16 @@ func (s *service) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	s.metadataPayload, err = deriveMetadata(s.accountService.Account().SignKey)
+	accountMetadata, metadataSymKey, err := deriveMetadata(s.accountService.Account().SignKey)
 	if err != nil {
 		return
 	}
+	s.accountMetadataSymKey = metadataSymKey
+	s.accountMetadataPayload, err = accountMetadata.Marshal()
+	if err != nil {
+		return fmt.Errorf("marshal account metadata: %w", err)
+	}
+
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	return err
@@ -192,8 +201,12 @@ func (s *service) OnWorkspaceChanged(spaceId string, details *types.Struct) {
 	}()
 }
 
-func (s *service) AccountMetadata() []byte {
-	return s.metadataPayload
+func (s *service) AccountMetadataSymKey() crypto.SymKey {
+	return s.accountMetadataSymKey
+}
+
+func (s *service) AccountMetadataPayload() []byte {
+	return s.accountMetadataPayload
 }
 
 func (s *service) updateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus) error {

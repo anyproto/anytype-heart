@@ -135,14 +135,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 
 	go s.observeIdentitiesLoop()
 
-	// TODO Temp for testing purposes
-	err = s.RegisterIdentity("space1", "AAj9HKbneHRsiEbbGj7Lhm2WJHzYNVwnz3qe2Mncn2mF49Wx", nil, func(identity string, profile *model.IdentityProfile) {
-		fmt.Println("OBSERVED IDENTITY DATA for", identity, profile)
-	})
-	if err != nil {
-		return err
-	}
-
 	return
 }
 
@@ -328,7 +320,12 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDeta
 	if err != nil {
 		return fmt.Errorf("marshal identity profile: %w", err)
 	}
-	// TODO Encrypt data using metadata symmetric key
+
+	symKey := s.spaceService.AccountMetadataSymKey()
+	data, err = symKey.Encrypt(data)
+	if err != nil {
+		return fmt.Errorf("encrypt data: %w", err)
+	}
 
 	signature, err := s.accountService.SignData(data)
 	if err != nil {
@@ -345,7 +342,7 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDeta
 		return fmt.Errorf("failed to push identity: %w", err)
 	}
 
-	fmt.Println("PUSHED IDENTITY DATA for", s.accountService.AccountID(), identityProfile)
+	fmt.Println("PUSHED IDENTITY DATA for", s.accountService.AccountID(), identityProfile, data)
 	return nil
 }
 
@@ -414,11 +411,15 @@ func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 
 func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIdentity) error {
 	var profile *model.IdentityProfile
-	// TODO Decrypt
 	for _, data := range identityData.Data {
 		if data.Kind == identityRepoDataKind {
+			symKey := s.identityEncryptionKeys[identityData.Identity]
+			rawProfile, err := symKey.Decrypt(data.Data)
+			if err != nil {
+				return fmt.Errorf("decrypt identity profile: %w", err)
+			}
 			profile = new(model.IdentityProfile)
-			err := proto.Unmarshal(data.Data, profile)
+			err = proto.Unmarshal(rawProfile, profile)
 			if err != nil {
 				return fmt.Errorf("unmarshal identity profile: %w", err)
 			}
