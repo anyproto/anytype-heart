@@ -3,6 +3,7 @@ package template
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -262,5 +263,51 @@ func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLa
 		})
 		assert.True(t, foundTitle)
 		assert.False(t, foundDescription)
+	}
+}
+
+func TestExtractTargetDetails(t *testing.T) {
+	for _, testCase := range []struct {
+		Key                        string
+		OriginValue, TemplateValue *types.Value
+		OriginLeft                 bool
+	}{
+		{Key: bundle.RelationKeyLayout.String(), OriginValue: pbtypes.Int64(0), TemplateValue: pbtypes.Int64(1), OriginLeft: false},
+		{Key: bundle.RelationKeyLayout.String(), OriginValue: pbtypes.Int64(5), TemplateValue: pbtypes.Int64(0), OriginLeft: false},
+		{Key: bundle.RelationKeyLayout.String(), OriginValue: pbtypes.Int64(3), TemplateValue: pbtypes.Int64(3), OriginLeft: false},
+		{Key: bundle.RelationKeySourceObject.String(), OriginValue: pbtypes.String(""), TemplateValue: pbtypes.String("s1"), OriginLeft: false},
+		{Key: bundle.RelationKeySourceObject.String(), OriginValue: pbtypes.String("s2"), TemplateValue: pbtypes.String(""), OriginLeft: true},
+		{Key: bundle.RelationKeySourceObject.String(), OriginValue: pbtypes.String("s0"), TemplateValue: pbtypes.String("s3"), OriginLeft: false},
+		{Key: bundle.RelationKeyFeaturedRelations.String(), OriginValue: pbtypes.StringList([]string{"tag"}), TemplateValue: pbtypes.StringList([]string{}), OriginLeft: true},
+		{Key: bundle.RelationKeyFeaturedRelations.String(), OriginValue: pbtypes.StringList([]string{}), TemplateValue: pbtypes.StringList([]string{"tag", "type"}), OriginLeft: false},
+		{Key: bundle.RelationKeyFeaturedRelations.String(), OriginValue: pbtypes.StringList([]string{"type"}), TemplateValue: pbtypes.StringList([]string{"tag"}), OriginLeft: false},
+		{Key: bundle.RelationKeyName.String(), OriginValue: pbtypes.String("orig"), TemplateValue: pbtypes.String(""), OriginLeft: true},
+		{Key: bundle.RelationKeyName.String(), OriginValue: pbtypes.String(""), TemplateValue: pbtypes.String("tmpl"), OriginLeft: false},
+		{Key: bundle.RelationKeyName.String(), OriginValue: pbtypes.String("orig"), TemplateValue: pbtypes.String("tmpl"), OriginLeft: true},
+		{Key: bundle.RelationKeyDescription.String(), OriginValue: pbtypes.String("orig"), TemplateValue: pbtypes.String(""), OriginLeft: true},
+		{Key: bundle.RelationKeyDescription.String(), OriginValue: pbtypes.String(""), TemplateValue: pbtypes.String("tmpl"), OriginLeft: false},
+		{Key: bundle.RelationKeyDescription.String(), OriginValue: pbtypes.String("orig"), TemplateValue: pbtypes.String("tmpl"), OriginLeft: true},
+		{Key: bundle.RelationKeyCoverId.String(), OriginValue: pbtypes.String("old"), TemplateValue: pbtypes.String(""), OriginLeft: true},
+		{Key: bundle.RelationKeyCoverId.String(), OriginValue: pbtypes.String(""), TemplateValue: pbtypes.String("new"), OriginLeft: false},
+		{Key: bundle.RelationKeyCoverId.String(), OriginValue: pbtypes.String("old"), TemplateValue: pbtypes.String("new"), OriginLeft: false},
+	} {
+		t.Run("merge details: key = "+testCase.Key+", origin = "+testCase.OriginValue.String()+
+			", template = "+testCase.TemplateValue.String()+". Should origin be left:"+strconv.FormatBool(testCase.OriginLeft),
+			func(t *testing.T) {
+				// given
+				originDetails := &types.Struct{Fields: map[string]*types.Value{testCase.Key: testCase.OriginValue}}
+				templateDetails := &types.Struct{Fields: map[string]*types.Value{testCase.Key: testCase.TemplateValue}}
+
+				// when
+				targetDetails := extractTargetDetails(originDetails, templateDetails)
+
+				// then
+				value, found := targetDetails.Fields[testCase.Key]
+				assert.Equal(t, found, testCase.OriginLeft)
+				if found {
+					assert.True(t, testCase.OriginValue.Equal(value))
+				}
+			},
+		)
 	}
 }
