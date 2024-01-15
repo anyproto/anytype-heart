@@ -6,11 +6,13 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type fixture struct {
@@ -43,11 +45,25 @@ func TestStore(t *testing.T) {
 	fx := newFixture(t)
 	ctx := context.Background()
 
-	wantInvite := "hi!"
+	priv, pub, err := crypto.GenerateRandomEd25519KeyPair()
+	require.NoError(t, err)
+
+	payload := []byte("payload")
+	signature, err := priv.Sign(payload)
+	require.NoError(t, err)
+
+	wantInvite := &model.Invite{
+		Payload:   payload,
+		Signature: signature,
+	}
 	id, key, err := fx.StoreInvite(ctx, wantInvite)
 	require.NoError(t, err)
 
-	invite, err := fx.GetInvite(ctx, id, key)
+	gotInvite, err := fx.GetInvite(ctx, id, key)
 	require.NoError(t, err)
-	assert.Equal(t, wantInvite, invite)
+	assert.Equal(t, wantInvite, gotInvite)
+
+	ok, err := pub.Verify(gotInvite.Payload, gotInvite.Signature)
+	require.NoError(t, err)
+	assert.True(t, ok)
 }

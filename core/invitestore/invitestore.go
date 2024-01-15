@@ -9,15 +9,18 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const CName = "invitestore"
 
 type Service interface {
 	app.Component
-	StoreInvite(ctx context.Context, invite string) (id cid.Cid, key crypto.SymKey, err error)
-	GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (string, error)
+	StoreInvite(ctx context.Context, invite *model.Invite) (id cid.Cid, key crypto.SymKey, err error)
+	GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (*model.Invite, error)
 }
 
 type service struct {
@@ -37,13 +40,17 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) StoreInvite(ctx context.Context, invite string) (cid.Cid, crypto.SymKey, error) {
+func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Cid, crypto.SymKey, error) {
 	key, err := crypto.NewRandomAES()
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("generate key: %w", err)
 	}
 
-	data, err := key.Encrypt([]byte(invite))
+	rawInvite, err := proto.Marshal(invite)
+	if err != nil {
+		return cid.Cid{}, nil, fmt.Errorf("marshal invite: %w", err)
+	}
+	data, err := key.Encrypt(rawInvite)
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("encrypt invite data: %w", err)
 	}
@@ -56,21 +63,27 @@ func (s *service) StoreInvite(ctx context.Context, invite string) (cid.Cid, cryp
 	return node.Cid(), key, nil
 }
 
-func (s *service) GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (string, error) {
+func (s *service) GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (*model.Invite, error) {
 	rd, err := s.commonFile.GetFile(ctx, id)
 	if err != nil {
-		return "", fmt.Errorf("get data from IPFS: %w", err)
+		return nil, fmt.Errorf("get data from IPFS: %w", err)
 	}
 	defer rd.Close()
 
 	data, err := io.ReadAll(rd)
 	if err != nil {
-		return "", fmt.Errorf("read data: %w", err)
+		return nil, fmt.Errorf("read data: %w", err)
 	}
 
 	data, err = key.Decrypt(data)
 	if err != nil {
-		return "", fmt.Errorf("decrypt data: %w", err)
+		return nil, fmt.Errorf("decrypt data: %w", err)
 	}
-	return string(data), nil
+
+	var invite model.Invite
+	err = proto.Unmarshal(data, &invite)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal data: %w", err)
+	}
+	return &invite, nil
 }
