@@ -5,8 +5,11 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+var log = logging.Logger("anytype-pbtypes")
 
 var bytesPool = &sync.Pool{
 	New: func() interface{} {
@@ -160,14 +163,22 @@ func CopyFilter(in *model.BlockContentDataviewFilter) (out *model.BlockContentDa
 }
 
 func CopyNotification(in *model.Notification) (out *model.Notification) {
+	var err error
 	buf := bytesPool.Get().([]byte)
 	size := in.Size()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size*2)
 	}
-	size, _ = in.MarshalToSizedBuffer(buf[:size])
+	// nolint:errcheck
+	size, err = in.MarshalToSizedBuffer(buf[:size])
+	if err != nil {
+		log.Debugf("failed to marshal size buffer: %s", err)
+	}
 	out = &model.Notification{}
-	_ = out.Unmarshal(buf[:size])
+	err = out.Unmarshal(buf[:size])
+	if err != nil {
+		log.Debugf("failed to unmarshal notification: %s", err)
+	}
 	bytesPool.Put(buf)
 	return
 }
