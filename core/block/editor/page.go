@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -73,61 +72,9 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	if p.isRelationDeleted(ctx) {
-		err = p.deleteRelationOptions(ctx)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
-	return p.Type() == coresb.SmartBlockTypeRelation &&
-		pbtypes.GetBool(ctx.State.Details(), bundle.RelationKeyIsUninstalled.String())
-}
-
-func (p *Page) deleteRelationOptions(ctx *smartblock.InitContext) error {
-	relationKey := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyRelationKey.String())
-	relationOptions, _, err := p.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(relationKey),
-			},
-			{
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	for _, id := range relationOptions {
-		err = p.Space().Do(id, func(b smartblock.SmartBlock) error {
-			st := b.NewState()
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(true))
-			return b.Apply(st)
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
 func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
 		Version: 2,
