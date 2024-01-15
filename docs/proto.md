@@ -1331,6 +1331,8 @@
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
+    - [Event.Import](#anytype-Event-Import)
+    - [Event.Import.Finish](#anytype-Event-Import-Finish)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Notification](#anytype-Event-Notification)
     - [Event.Notification.Send](#anytype-Event-Notification-Send)
@@ -11683,8 +11685,8 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
-| collectionId | [string](#string) |  |  |
+| error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  | deprecated |
+| collectionId | [string](#string) |  | deprecated |
 
 
 
@@ -20929,6 +20931,31 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Import"></a>
+
+### Event.Import
+
+
+
+
+
+
+
+<a name="anytype-Event-Import-Finish"></a>
+
+### Event.Import.Finish
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rootCollectionID | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -20999,6 +21026,7 @@ Precondition: user A opened a block
 | fileLocalUsage | [Event.File.LocalUsage](#anytype-Event-File-LocalUsage) |  |  |
 | notificationSend | [Event.Notification.Send](#anytype-Event-Notification-Send) |  |  |
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
+| importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
 
 
 

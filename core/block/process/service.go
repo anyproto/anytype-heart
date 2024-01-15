@@ -117,6 +117,9 @@ func (s *service) monitor(p Process) {
 					},
 				},
 			})
+			if notificationSender, ok := p.(NotificationSender); ok {
+				notificationSender.SendNotification()
+			}
 			return
 		}
 	}

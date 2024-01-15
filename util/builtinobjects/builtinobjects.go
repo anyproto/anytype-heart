@@ -224,18 +224,8 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
+	progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
 
-	err = b.notifications.CreateAndSendLocal(&model.Notification{
-		Status:  model.Notification_Created,
-		IsLocal: true,
-		Space:   spaceID,
-		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
-			ProcessId: progress.Id(),
-			ErrorCode: common.GetImportErrorCode(importErr),
-			SpaceId:   spaceID,
-			Name:      title,
-		}},
-	})
 	if err != nil {
 		log.Errorf("failed to send notification: %v", err)
 	}
@@ -248,6 +238,20 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	return importErr
+}
+
+func (b *builtinObjects) provideNotification(spaceID string, progress process.Progress, err error, title string) *model.Notification {
+	return &model.Notification{
+		Status:  model.Notification_Created,
+		IsLocal: true,
+		Space:   spaceID,
+		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
+			ProcessId: progress.Id(),
+			ErrorCode: common.GetImportErrorCode(err),
+			SpaceId:   spaceID,
+			Name:      title,
+		}},
+	}
 }
 
 func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
@@ -283,22 +287,28 @@ func (b *builtinObjects) importArchive(
 	progress process.Progress,
 	isNewSpace bool,
 ) (err error) {
-	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
-		SpaceId:               spaceID,
-		UpdateExistingObjects: false,
-		Type:                  model.Import_Pb,
-		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
-		NoProgress:            progress == nil,
-		IsMigration:           false,
-		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
-			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path:            []string{path},
-				NoCollection:    true,
-				CollectionTitle: title,
-				ImportType:      importType,
-			}},
-		IsNewSpace: isNewSpace,
-	}, model.ObjectOrigin_usecase, progress)
+	importRequest := &importer.ImportRequest{
+		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
+			SpaceId:               spaceID,
+			UpdateExistingObjects: false,
+			Type:                  model.Import_Pb,
+			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+			NoProgress:            progress == nil,
+			IsMigration:           false,
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+				PbParams: &pb.RpcObjectImportRequestPbParams{
+					Path:            []string{path},
+					NoCollection:    true,
+					CollectionTitle: title,
+					ImportType:      importType,
+				}},
+			IsNewSpace: isNewSpace,
+		},
+		Origin:   model.ObjectOrigin_usecase,
+		Progress: progress,
+		IsSync:   true,
+	}
+	_, err = b.importer.Import(ctx, importRequest)
 
 	return err
 }
@@ -515,8 +525,8 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	return path, nil
 }
 
-func (b *builtinObjects) setupProgress() (process.Progress, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
+func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
+	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}
