@@ -95,7 +95,7 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	}
 	a.cancel()
 	<-a.wait
-	a.identityService.UnregisterIdentitiesInSpace(a.sp.Id())
+	a.identityService.UnregisterIdentitiesInSpace(a.status.SpaceId())
 	return
 }
 
