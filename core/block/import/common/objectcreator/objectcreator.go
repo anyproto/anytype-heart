@@ -217,7 +217,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceID, err)
 	}
-	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck)
+	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, false)
 	return err
 }
 
