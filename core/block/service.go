@@ -776,7 +776,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 }
 
 func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest,
-) (id string, newDetails *types.Struct, err error) {
+) (id string, objectDetails *types.Struct, err error) {
 	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
 		return "", nil, err
@@ -789,14 +789,14 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 		ObjectTypeKey: objectTypeKey,
 		Details:       req.Details,
 	}
-	id, newDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
+	id, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
 		return "", nil, err
 	}
 
 	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, true)
 	content := res()
-	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(req.Details, content)
+	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(req.Details, objectDetails, content)
 	if shouldUpdateDetails {
 		err = s.bookmark.UpdateObject(id, content)
 		if err != nil {
@@ -810,7 +810,7 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 			return "", nil, err
 		}
 	}
-	return id, newDetails, nil
+	return id, objectDetails, nil
 }
 
 func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error {
@@ -832,9 +832,9 @@ func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error 
 	return nil
 }
 
-func (s *Service) updateBookmarkContentWithUserDetails(userDetails *types.Struct, content *bookmark.ObjectContent) bool {
+func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetails *types.Struct, content *bookmark.ObjectContent) bool {
 	shouldUpdate := false
-	relationToValue := map[string]*string{
+	bookmarkRelationToValue := map[string]*string{
 		bundle.RelationKeyName.String():        &content.BookmarkContent.Title,
 		bundle.RelationKeyDescription.String(): &content.BookmarkContent.Description,
 		bundle.RelationKeySource.String():      &content.BookmarkContent.Url,
@@ -842,13 +842,15 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails *types.Struct
 		bundle.RelationKeyIconImage.String():   &content.BookmarkContent.FaviconHash,
 	}
 
-	for relation, valueFromBookmark := range relationToValue {
-		// Don't change details of the object, if they are provided by user
+	for relation, valueFromBookmark := range bookmarkRelationToValue {
+		// Don't change details of the object, if they are provided by client in request
 		if userValue := pbtypes.GetString(userDetails, relation); userValue != "" {
 			*valueFromBookmark = userValue
 		} else {
-			// if detail wasn't provided in request, we get it from bookmark and set it later
+			// if detail wasn't provided in request, we get it from bookmark and set it later in bookmark.UpdateObject
+			// and add to response details
 			shouldUpdate = true
+			objectDetails.Fields[relation] = pbtypes.String(*valueFromBookmark)
 		}
 	}
 	return shouldUpdate
