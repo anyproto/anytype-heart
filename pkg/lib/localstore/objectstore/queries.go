@@ -45,17 +45,20 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 			}
 			id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
 			name := pbtypes.GetString(details.Details, bundle.RelationKeyName.String())
-			if innerId, ok := filters.ObjectInnerId[id]; ok {
-				if strings.HasPrefix(innerId, "r_") {
-					details.Details.Fields[bundle.RelationKeySearchTargetRelation.String()] = pbtypes.String(innerId[2:])
-					name = fmt.Sprintf("%s (rel %s)", name, innerId[2:])
-				} else {
-					details.Details.Fields[bundle.RelationKeySearchTargetBlock.String()] = pbtypes.String(innerId)
-					name = fmt.Sprintf("%s (block %s)", name, innerId)
-				}
-			}
-			details.Details.Fields[bundle.RelationKeyName.String()] = pbtypes.ToValue(name)
 			rec := database.Record{Details: details.Details}
+
+			if innerId, ok := filters.ObjectInnerId[id]; ok && details.Details != nil {
+				detailsCopy := pbtypes.CopyStruct(details.Details)
+				if strings.HasPrefix(innerId, "r_") {
+					detailsCopy.Fields[bundle.RelationKeySearchTargetRelation.String()] = pbtypes.String(innerId[2:])
+					detailsCopy.Fields[bundle.RelationKeyName.String()] = pbtypes.String(fmt.Sprintf("%s (rel %s)", name, innerId[2:]))
+				} else {
+					detailsCopy.Fields[bundle.RelationKeySearchTargetBlock.String()] = pbtypes.String(innerId)
+					detailsCopy.Fields[bundle.RelationKeyName.String()] = pbtypes.String(fmt.Sprintf("%s (block %s)", name, innerId))
+				}
+				rec.Details = detailsCopy
+			}
+
 			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {
 				records = append(records, rec)
 			}

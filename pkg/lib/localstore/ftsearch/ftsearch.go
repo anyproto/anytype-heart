@@ -141,7 +141,7 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 	return f.index.Batch(b)
 }
 
-func (f *ftSearch) Search(spaceID, qry string) (results []string, err error) {
+func (f *ftSearch) Search(spaceID, qry string) (results search.DocumentMatchCollection, err error) {
 	qry = strings.ToLower(qry)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
