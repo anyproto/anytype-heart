@@ -49,23 +49,23 @@ func SetLastUsedDateForInitialObjectType(id string, details *types.Struct) {
 		return
 	}
 
-	var decrement time.Duration
+	var priority int64
 	switch id {
 	case bundle.TypeKeyNote.BundledURL():
-		decrement = -1 * maxInstallationTime
+		priority = 1
 	case bundle.TypeKeyPage.BundledURL():
-		decrement = -2 * maxInstallationTime
+		priority = 2
 	case bundle.TypeKeyTask.BundledURL():
-		decrement = -3 * maxInstallationTime
+		priority = 3
 	case bundle.TypeKeySet.BundledURL():
-		decrement = -4 * maxInstallationTime
+		priority = 4
 	case bundle.TypeKeyCollection.BundledURL():
-		decrement = -5 * maxInstallationTime
+		priority = 5
 	default:
-		decrement = -7 * maxInstallationTime
+		priority = 7
 	}
 
 	// we do this trick to order crucial Anytype object types by last date
-	lastUsed := time.Now().Add(decrement).Unix()
+	lastUsed := time.Now().Add(time.Duration(-1 * priority * int64(maxInstallationTime))).Unix()
 	details.Fields[bundle.RelationKeyLastUsedDate.String()] = pbtypes.Int64(lastUsed)
 }

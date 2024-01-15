@@ -141,9 +141,13 @@ func generateRelationKeysFromState(st *state.State) (relationKeys []string) {
 	if st == nil {
 		return
 	}
-	details := st.CombinedDetails().GetFields()
-	relationKeys = make([]string, 0, len(details))
+	details := st.Details().GetFields()
+	localDetails := st.LocalDetails().GetFields()
+	relationKeys = make([]string, 0, len(details)+len(localDetails))
 	for k := range details {
+		relationKeys = append(relationKeys, k)
+	}
+	for k := range localDetails {
 		relationKeys = append(relationKeys, k)
 	}
 	return
