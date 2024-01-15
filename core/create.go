@@ -183,8 +183,8 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjectCreateFromUrlRequest) *pb.RpcObjectCreateFromUrlResponse {
-	response := func(code pb.RpcObjectCreateFromUrlResponseErrorCode, id string, err error) *pb.RpcObjectCreateFromUrlResponse {
-		m := &pb.RpcObjectCreateFromUrlResponse{Error: &pb.RpcObjectCreateFromUrlResponseError{Code: code}, ObjectId: id}
+	response := func(code pb.RpcObjectCreateFromUrlResponseErrorCode, id string, err error, newDetails *types.Struct) *pb.RpcObjectCreateFromUrlResponse {
+		m := &pb.RpcObjectCreateFromUrlResponse{Details: newDetails, Error: &pb.RpcObjectCreateFromUrlResponseError{Code: code}, ObjectId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -192,9 +192,9 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 	}
 	bs := getService[*block.Service](mw)
 
-	id, err := bs.CreateObjectFromUrl(cctx, req)
+	id, newDetails, err := bs.CreateObjectFromUrl(cctx, req)
 	if err != nil {
-		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
 	}
-	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil)
+	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails)
 }

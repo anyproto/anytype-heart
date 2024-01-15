@@ -1125,11 +1125,13 @@ message Rpc {
                 string spaceId = 1;
                 string objectTypeUniqueKey = 2;
                 string url = 3;
+                google.protobuf.Struct details = 4;
             }
 
             message Response {
                 Error error = 1;
                 string objectId = 2;
+                google.protobuf.Struct details = 3;
 
                 message Error {
                     Code code = 1;

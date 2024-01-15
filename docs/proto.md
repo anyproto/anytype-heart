@@ -11021,6 +11021,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -11037,6 +11038,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CreateFromUrl.Response.Error](#anytype-Rpc-Object-CreateFromUrl-Response-Error) |  |  |
 | objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
