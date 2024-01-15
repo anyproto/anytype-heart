@@ -783,7 +783,7 @@ func (s *State) makeOriginalCreatedChanges() (ch []*pb.ChangeContent) {
 
 func (s *State) makeNotificationChanges() []*pb.ChangeContent {
 	var changes []*pb.ChangeContent
-	if s.parent == nil || s.parent.ListNotifications() == nil {
+	if s.parent == nil || len(s.parent.ListNotifications()) == 0 {
 		for _, notification := range s.notifications {
 			changes = append(changes, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfNotificationCreate{
