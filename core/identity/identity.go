@@ -7,14 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
-
-	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -23,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -42,7 +40,7 @@ var (
 
 type Service interface {
 	// TODO guarantee callback call at least once
-	RegisterIdentity(spaceId string, identity string, encryptionKey symmetric.Key, observer func(identity string, profile *model.IdentityProfile)) error
+	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
 	// UnregisterIdentity removes the observer for the identity in specified space
 	UnregisterIdentity(spaceId string, identity string)
@@ -83,7 +81,7 @@ type service struct {
 	lock                  sync.RWMutex
 	// identity => spaceId => observer
 	identityObservers      map[string]map[string]func(identity string, profile *model.IdentityProfile)
-	identityEncryptionKeys map[string]symmetric.Key
+	identityEncryptionKeys map[string]crypto.SymKey
 	identityProfileCache   map[string]*model.IdentityProfile
 }
 
@@ -91,7 +89,7 @@ func New(identityObservePeriod time.Duration) Service {
 	return &service{
 		identityObservePeriod:  identityObservePeriod,
 		identityObservers:      make(map[string]map[string]func(identity string, profile *model.IdentityProfile)),
-		identityEncryptionKeys: make(map[string]symmetric.Key),
+		identityEncryptionKeys: make(map[string]crypto.SymKey),
 		identityProfileCache:   make(map[string]*model.IdentityProfile),
 	}
 }
@@ -138,7 +136,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 	go s.observeIdentitiesLoop()
 
 	// TODO Temp for testing purposes
-	err = s.RegisterIdentity("space1", "AAj9HKbneHRsiEbbGj7Lhm2WJHzYNVwnz3qe2Mncn2mF49Wx", symmetric.Key{}, func(identity string, profile *model.IdentityProfile) {
+	err = s.RegisterIdentity("space1", "AAj9HKbneHRsiEbbGj7Lhm2WJHzYNVwnz3qe2Mncn2mF49Wx", nil, func(identity string, profile *model.IdentityProfile) {
 		fmt.Println("OBSERVED IDENTITY DATA for", identity, profile)
 	})
 	if err != nil {
@@ -287,31 +285,36 @@ func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
 	return nil
 }
 
+func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId string) (iconCid string, iconEncryptionKeys []*model.IdentityProfileEncryptionKey, err error) {
+	if iconImageObjectId == "" {
+		return "", nil, nil
+	}
+	fileId, err := s.fileObjectService.GetFileIdFromObject(ctx, iconImageObjectId)
+	if err != nil {
+		return "", nil, fmt.Errorf("get file id from object: %w", err)
+	}
+	iconCid = fileId.FileId.String()
+	keys, err := s.fileService.FileGetKeys(fileId)
+	if err != nil {
+		return "", nil, fmt.Errorf("get file keys: %w", err)
+	}
+	for path, key := range keys.EncryptionKeys {
+		iconEncryptionKeys = append(iconEncryptionKeys, &model.IdentityProfileEncryptionKey{
+			Path: path,
+			Key:  key,
+		})
+	}
+	sort.Slice(iconEncryptionKeys, func(i, j int) bool {
+		return iconEncryptionKeys[i].Path < iconEncryptionKeys[j].Path
+	})
+	return iconCid, iconEncryptionKeys, nil
+}
+
 func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDetails *types.Struct) error {
 	iconImageObjectId := pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String())
-	var (
-		iconCid            string
-		iconEncryptionKeys []*model.IdentityProfileEncryptionKey
-	)
-	if iconImageObjectId != "" {
-		fileId, err := s.fileObjectService.GetFileIdFromObject(ctx, iconImageObjectId)
-		if err != nil {
-			return fmt.Errorf("get file id from object: %w", err)
-		}
-		iconCid = fileId.FileId.String()
-		keys, err := s.fileService.FileGetKeys(fileId)
-		if err != nil {
-			return fmt.Errorf("get file keys: %w", err)
-		}
-		for path, key := range keys.EncryptionKeys {
-			iconEncryptionKeys = append(iconEncryptionKeys, &model.IdentityProfileEncryptionKey{
-				Path: path,
-				Key:  key,
-			})
-		}
-		sort.Slice(iconEncryptionKeys, func(i, j int) bool {
-			return iconEncryptionKeys[i].Path < iconEncryptionKeys[j].Path
-		})
+	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(ctx, iconImageObjectId)
+	if err != nil {
+		return fmt.Errorf("prepare icon image info: %w", err)
 	}
 
 	identity := s.accountService.AccountID()
@@ -391,6 +394,24 @@ func (s *service) observeIdentities(ctx context.Context) error {
 	return nil
 }
 
+func (s *service) indexIconImage(profile *model.IdentityProfile) error {
+	if len(profile.IconEncryptionKeys) > 0 {
+		// TODO Garbage collect old icons
+		keys := domain.FileEncryptionKeys{
+			FileId:         domain.FileId(profile.IconCid),
+			EncryptionKeys: map[string]string{},
+		}
+		for _, key := range profile.IconEncryptionKeys {
+			keys.EncryptionKeys[key.Path] = key.Key
+		}
+		err := s.fileStore.AddFileKeys(keys)
+		if err != nil {
+			return fmt.Errorf("store icon encryption keys: %w", err)
+		}
+	}
+	return nil
+}
+
 func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIdentity) error {
 	var profile *model.IdentityProfile
 	// TODO Decrypt
@@ -412,20 +433,10 @@ func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIde
 		return nil
 	}
 
-	if len(profile.IconEncryptionKeys) > 0 {
-		keys := domain.FileEncryptionKeys{
-			FileId:         domain.FileId(profile.IconCid),
-			EncryptionKeys: map[string]string{},
-		}
-		for _, key := range profile.IconEncryptionKeys {
-			keys.EncryptionKeys[key.Path] = key.Key
-		}
-		err := s.fileStore.AddFileKeys(keys)
-		if err != nil {
-			return fmt.Errorf("store icon encryption keys: %w", err)
-		}
+	err := s.indexIconImage(profile)
+	if err != nil {
+		return fmt.Errorf("index icon image: %w", err)
 	}
-
 	// TODO Store profile in badger
 
 	s.identityProfileCache[identityData.Identity] = profile
@@ -436,12 +447,12 @@ func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIde
 	return nil
 }
 
-func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey symmetric.Key, observer func(identity string, profile *model.IdentityProfile)) error {
+func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if key, ok := s.identityEncryptionKeys[identity]; ok {
-		if !slices.Equal(key.Bytes(), encryptionKey.Bytes()) {
+		if !key.Equals(encryptionKey) {
 			return fmt.Errorf("encryption key for identity %s already exists and do not match new key", identity)
 		}
 	} else {
