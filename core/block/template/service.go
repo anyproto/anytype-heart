@@ -39,7 +39,15 @@ const (
 	BlankTemplateId = "blank"
 )
 
-var log = logging.Logger("template")
+var (
+	log = logging.Logger("template")
+
+	templateIsPreferableRelationKeys = []domain.RelationKey{
+		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout,
+		bundle.RelationKeyIconEmoji, bundle.RelationKeyCoverId,
+		bundle.RelationKeySourceObject,
+	}
+)
 
 type Service interface {
 	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
@@ -105,19 +113,22 @@ func (s *service) CreateTemplateStateWithDetails(
 	return targetState, nil
 }
 
-func extractTargetDetails(addedDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
-	templateIsPreferableRelationKeys := []domain.RelationKey{bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout}
-	targetDetails := pbtypes.CopyStruct(addedDetails)
+func extractTargetDetails(originDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
+	targetDetails := pbtypes.CopyStruct(originDetails)
 	if templateDetails == nil {
 		return targetDetails
 	}
-	for key := range addedDetails.GetFields() {
+	for key := range originDetails.GetFields() {
 		_, exists := templateDetails.Fields[key]
 		if exists {
 			inTemplateEmpty := pbtypes.IsEmptyValueOrAbsent(templateDetails, key)
-			inAddedEmpty := pbtypes.IsEmptyValueOrAbsent(addedDetails, key)
+			if key == bundle.RelationKeyLayout.String() {
+				// layout = 0 is actually basic layout, so it counts
+				inTemplateEmpty = false
+			}
+			inOriginEmpty := pbtypes.IsEmptyValueOrAbsent(originDetails, key)
 			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, domain.RelationKey(key))
-			if !inTemplateEmpty && (inAddedEmpty || templateValueShouldBePreferred) {
+			if !inTemplateEmpty && (inOriginEmpty || templateValueShouldBePreferred) {
 				delete(targetDetails.Fields, key)
 			}
 		}
@@ -146,13 +157,8 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		targetState.SetLocalDetails(nil)
 		return
 	})
-	if err != nil {
-		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-			targetState = s.createBlankTemplateState(model.ObjectType_basic)
-			err = nil
-		} else {
-			err = fmt.Errorf("can't apply template: %w", err)
-		}
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return s.createBlankTemplateState(model.ObjectType_basic), nil
 	}
 	return
 }
