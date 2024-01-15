@@ -274,8 +274,6 @@ replace github.com/dgraph-io/ristretto => github.com/anyproto/ristretto v0.1.2-0
 
 replace github.com/libp2p/zeroconf/v2 => github.com/anyproto/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941
 
-replace github.com/elastic/gosigar => github.com/anyproto/gosigar v0.0.0-20220811145612-92bd3366198a
-
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139
 
 replace github.com/msingleton/amplitude-go => github.com/anyproto/amplitude-go v0.0.0-20211130222238-8d16496a9b31
@@ -288,4 +286,4 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 
 replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr v0.8.1-0.20221213144344-0b6b93adaec4
 
-replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20231204193907-b6eb6dcadbe6
+replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240115180122-702dd61fb919

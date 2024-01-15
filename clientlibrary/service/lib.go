@@ -2,11 +2,9 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -18,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
-var log = logging.Logger("anytype-mw")
+var log = logging.Logger("anytype-mw-library")
 
 var mw = core.New()
 
@@ -32,12 +30,9 @@ func init() {
 	registerClientCommandsHandler(
 		&ClientCommandsHandlerProxy{
 			client: mw,
-			interceptor: func(ctx context.Context, methodName string, actualCall func(ctx context.Context, req any) any) any {
-				start := time.Now().UnixMilli()
-				resp := actualCall(ctx, methodName)
-				delta := time.Now().UnixMilli() - start
-				metrics.SendMethodEvent(methodName, nil, resp, delta)
-				return resp
+			interceptors: []func(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error){
+				metrics.SharedTraceInterceptor,
+				metrics.SharedLongMethodsInterceptor,
 			},
 		})
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {

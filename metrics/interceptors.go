@@ -8,15 +8,17 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
 
+	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/reflection"
 )
 
 const (
-	BlockSetCarriage      = "BlockSetCarriage"
-	BlockTextSetText      = "BlockTextSetText"
-	ObjectSearchSubscribe = "ObjectSearchSubscribe"
-	unexpectedErrorCode   = -1
-	parsingErrorCode      = -2
+	BlockSetCarriage         = "BlockSetCarriage"
+	BlockTextSetText         = "BlockTextSetText"
+	ObjectSearchSubscribe    = "ObjectSearchSubscribe"
+	unexpectedErrorCode      = -1
+	parsingErrorCode         = -2
+	defaultUnaryWarningAfter = time.Second * 3
 )
 
 var excludedMethods = []string{
@@ -25,28 +27,52 @@ var excludedMethods = []string{
 	ObjectSearchSubscribe,
 }
 
-func UnaryTraceInterceptor() func(
+func UnaryTraceInterceptor(
 	ctx context.Context,
-	req interface{},
+	req any,
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
-) (interface{}, error) {
-	return func(
-		ctx context.Context,
-		req interface{},
-		info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler,
-	) (interface{}, error) {
-		start := time.Now().UnixMilli()
-		resp, err := handler(ctx, req)
-		delta := time.Now().UnixMilli() - start
+) (any, error) {
+	return SharedTraceInterceptor(ctx, req, extractMethodName(info.FullMethod), handler)
+}
 
-		// it looks like that, we need the last part /anytype.ClientCommands/FileNodeUsage
-		method := strings.Split(info.FullMethod, "/")[2]
-		SendMethodEvent(method, err, resp, delta)
+func extractMethodName(info string) string {
+	// it looks like that, we need the last part /anytype.ClientCommands/FileNodeUsage
+	return strings.Split(info, "/")[2]
+}
 
-		return resp, err
+func SharedTraceInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
+	start := time.Now().UnixMilli()
+	resp, err := actualCall(ctx, req)
+	delta := time.Now().UnixMilli() - start
+	SendMethodEvent(methodName, err, resp, delta)
+	return resp, err
+}
+
+func LongMethodsInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+	return SharedLongMethodsInterceptor(ctx, req, extractMethodName(info.FullMethod), handler)
+}
+
+func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
+	doneCh := make(chan struct{})
+	start := time.Now()
+
+	l := log.With("method", methodName)
+
+	go func() {
+		select {
+		case <-doneCh:
+		case <-time.After(defaultUnaryWarningAfter):
+			l.With("in_progress", true).With("goroutines", debug.StackCompact(true)).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
+		}
+	}()
+	ctx = context.WithValue(ctx, CtxKeyRPC, methodName)
+	resp, err := actualCall(ctx, req)
+	close(doneCh)
+	if time.Since(start) > defaultUnaryWarningAfter {
+		l.With("error", err).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
 	}
+	return resp, err
 }
 
 func SendMethodEvent(method string, err error, resp any, delta int64) {
