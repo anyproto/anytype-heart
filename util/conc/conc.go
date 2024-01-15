@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var log = logging.Logger("anytype-mw-api")
+var log = logging.Logger("anytype-mw-panic")
 
 func MapErr[T, R any](input []T, f func(T) (R, error)) ([]R, error) {
 	var (
