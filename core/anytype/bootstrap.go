@@ -87,7 +87,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/unsplash"
 	"github.com/anyproto/anytype-heart/util/vcs"
 
-	ppclient "github.com/anyproto/any-pp-node/drpcclient"
+	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 )
 
 var (

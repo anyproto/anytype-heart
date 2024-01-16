@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	mock_ppclient "github.com/anyproto/any-pp-node/drpcclient/mock"
-	"github.com/anyproto/any-pp-node/pb/anypp_api"
+	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
+	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -28,7 +29,7 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		var pp *mock_ppclient.MockAnyPpClientService
 		pp = mock_ppclient.NewMockAnyPpClientService(c)
 
-		pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *anypp_api.GetSubscriptionRequestSigned) (*anypp_api.GetSubscriptionResponse, error) {
+		pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
@@ -64,15 +65,15 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		var pp *mock_ppclient.MockAnyPpClientService
 		pp = mock_ppclient.NewMockAnyPpClientService(c)
 
-		pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *anypp_api.GetSubscriptionRequestSigned) (*anypp_api.GetSubscriptionResponse, error) {
-			var out anypp_api.GetSubscriptionResponse
+		pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			var out psp.GetSubscriptionResponse
 
-			out.Tier = anypp_api.SubscriptionTier_Tier_Friend
-			out.Status = anypp_api.SubscriptionStatus_Status_Active
+			out.Tier = psp.SubscriptionTier_Tier_Friend
+			out.Status = psp.SubscriptionStatus_Status_Active
 			out.DateStarted = 1234567890
 			out.DateEnds = 1234567890
 			out.IsAutoRenew = true
-			out.PaymentMethod = anypp_api.PaymentMethod_Method_Crypto
+			out.PaymentMethod = psp.PaymentMethod_Method_Crypto
 
 			return &out, nil
 		}).MinTimes(1)
@@ -98,7 +99,7 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 
 		// Call the function being tested
 		resp := subscriptionGetStatus(context.Background(), pp, w, req)
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(anypp_api.SubscriptionTier_Tier_Friend), resp.Tier)
+		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_Tier_Friend), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(2), resp.Status)
 		assert.Equal(t, uint64(1234567890), resp.DateStarted)
 		assert.Equal(t, uint64(1234567890), resp.DateEnds)
@@ -115,7 +116,7 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		var pp *mock_ppclient.MockAnyPpClientService
 		pp = mock_ppclient.NewMockAnyPpClientService(c)
 
-		pp.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*anypp_api.BuySubscriptionResponse, error) {
+		pp.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.BuySubscriptionResponse, error) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
@@ -159,8 +160,8 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		var pp *mock_ppclient.MockAnyPpClientService
 		pp = mock_ppclient.NewMockAnyPpClientService(c)
 
-		pp.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*anypp_api.BuySubscriptionResponse, error) {
-			var out anypp_api.BuySubscriptionResponse
+		pp.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.BuySubscriptionResponse, error) {
+			var out psp.BuySubscriptionResponse
 			out.PaymentUrl = "https://xxxx.com"
 
 			return &out, nil

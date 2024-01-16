@@ -3,8 +3,8 @@ package core
 import (
 	"context"
 
-	ppclient "github.com/anyproto/any-pp-node/drpcclient"
-	aa "github.com/anyproto/any-pp-node/pb/anypp_api"
+	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -27,7 +27,7 @@ func (mw *Middleware) getWallet() (w wallet.Wallet, err error) {
 func (mw *Middleware) PaymentsSubscriptionGetStatus(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse {
 	// Get name service object that connects to the remote "paymentProcessingNode"
 	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
-	// see https://github.com/anyproto/any-pp-node/blob/main/etc/ for example
+	// see https://github.com/anyproto/any-sync/paymentservice/ for example
 	pp, err := mw.getPaymentProcessingService()
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
@@ -54,7 +54,7 @@ func (mw *Middleware) PaymentsSubscriptionGetStatus(ctx context.Context, req *pb
 func (mw *Middleware) PaymentsSubscriptionGetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentURLRequest) *pb.RpcPaymentsSubscriptionGetPaymentURLResponse {
 	// Get name service object that connects to the remote "paymentProcessingNode"
 	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
-	// see https://github.com/anyproto/any-pp-node/blob/main/etc/ for example
+	// see https://github.com/anyproto/any-sync/paymentservice/ for example
 	pp, err := mw.getPaymentProcessingService()
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetPaymentURLResponse{
@@ -80,7 +80,7 @@ func (mw *Middleware) PaymentsSubscriptionGetPaymentURL(ctx context.Context, req
 
 func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, w wallet.Wallet, req *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse {
 	// 1 - create request
-	gsr := aa.GetSubscriptionRequest{
+	gsr := psp.GetSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: w.Account().PeerId,
 	}
@@ -108,7 +108,7 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 		}
 	}
 
-	reqSigned := aa.GetSubscriptionRequestSigned{
+	reqSigned := psp.GetSubscriptionRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
@@ -140,15 +140,15 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 
 func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet.Wallet, req *pb.RpcPaymentsSubscriptionGetPaymentURLRequest) *pb.RpcPaymentsSubscriptionGetPaymentURLResponse {
 	// 1 - create request
-	bsr := aa.BuySubscriptionRequest{
+	bsr := psp.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: w.Account().PeerId,
 
 		// including 0x
 		OwnerEthAddress: w.GetAccountEthAddress().Hex(),
 
-		RequestedTier: aa.SubscriptionTier(req.RequestedTier),
-		PaymentMethod: aa.PaymentMethod(req.PaymentMethod),
+		RequestedTier: psp.SubscriptionTier(req.RequestedTier),
+		PaymentMethod: psp.PaymentMethod(req.PaymentMethod),
 	}
 
 	// 2 - sign it with the wallet
@@ -173,7 +173,7 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 		}
 	}
 
-	reqSigned := aa.BuySubscriptionRequestSigned{
+	reqSigned := psp.BuySubscriptionRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
