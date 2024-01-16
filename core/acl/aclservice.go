@@ -26,7 +26,7 @@ const CName = "common.acl.aclservice"
 
 type AclService interface {
 	app.Component
-	Join(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) error
+	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey) error
 	GenerateInvite(ctx context.Context, spaceId string) (*GenerateInviteResult, error)
 }
@@ -56,9 +56,26 @@ func (a *aclService) Name() (name string) {
 	return CName
 }
 
-func (a *aclService) Join(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) error {
+func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
 	metadata := a.spaceService.AccountMetadataPayload()
-	err := a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
+
+	invite, err := a.inviteStore.GetInvite(ctx, inviteCid, inviteFileKey)
+	if err != nil {
+		return fmt.Errorf("get invite: %w", err)
+	}
+
+	// TODO When to check signature?
+	var invitePayload model.InvitePayload
+	err = proto.Unmarshal(invite.Payload, &invitePayload)
+	if err != nil {
+		return fmt.Errorf("unmarshal invite payload: %w", err)
+	}
+	// TODO Setup space name and info
+	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.InviteKey)
+	if err != nil {
+		return fmt.Errorf("unmarshal invite key: %w", err)
+	}
+	err = a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
 		InviteKey: inviteKey,
 		Metadata:  metadata,
 	})

@@ -14601,7 +14601,8 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Space.InviteGenerate.Response.Error](#anytype-Rpc-Space-InviteGenerate-Response-Error) |  |  |
-| inviteKey | [string](#string) |  |  |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
 
 
 
@@ -14700,7 +14701,8 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| privateKey | [string](#string) |  |  |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
 
 
 
