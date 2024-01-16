@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -23,7 +24,6 @@ var mw = core.New()
 func init() {
 	fixTZ()
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
-
 
 	PanicHandler = mw.OnPanic
 	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
