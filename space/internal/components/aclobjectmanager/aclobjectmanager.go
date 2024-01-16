@@ -14,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -21,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
+	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -32,8 +34,10 @@ type AclObjectManager interface {
 	app.ComponentRunnable
 }
 
-func New() AclObjectManager {
-	return &aclObjectManager{}
+func New(ownerMetadata []byte) AclObjectManager {
+	return &aclObjectManager{
+		ownerMetadata: ownerMetadata,
+	}
 }
 
 type aclObjectManager struct {
@@ -44,12 +48,15 @@ type aclObjectManager struct {
 	sp              clientspace.Space
 	loadErr         error
 	spaceLoader     spaceloader.SpaceLoader
+	status          spacestatus.SpaceStatus
 	modifier        dependencies.DetailsModifier
 	identityService dependencies.IdentityService
+	indexer         dependencies.SpaceIndexer
 	started         bool
 
-	mx          sync.Mutex
-	lastIndexed string
+	ownerMetadata []byte
+	mx            sync.Mutex
+	lastIndexed   string
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
@@ -63,6 +70,8 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.spaceLoader = ap.MustComponent(spaceloader.CName).(spaceloader.SpaceLoader)
 	a.modifier = app.MustComponent[dependencies.DetailsModifier](ap)
 	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
+	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
+	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil
@@ -90,7 +99,7 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	}
 	a.cancel()
 	<-a.wait
-	a.identityService.UnregisterIdentitiesInSpace(a.sp.Id())
+	a.identityService.UnregisterIdentitiesInSpace(a.status.SpaceId())
 	return
 }
 
@@ -121,8 +130,7 @@ func (a *aclObjectManager) process() {
 }
 
 func (a *aclObjectManager) clearAclIndexes() (err error) {
-	// TODO: clear acl indexes in object store
-	return nil
+	return a.indexer.RemoveIndexes(a.status.SpaceId())
 }
 
 func (a *aclObjectManager) deleteObject(identity crypto.PubKey) (err error) {
@@ -149,12 +157,18 @@ func (a *aclObjectManager) processAcl() (err error) {
 			return
 		}
 	}
+	decrypt := func(key crypto.PubKey) ([]byte, error) {
+		if a.ownerMetadata != nil {
+			return a.ownerMetadata, nil
+		}
+		return common.Acl().AclState().GetMetadata(key, true)
+	}
 	// decrypt all metadata
-	decryptedAdded, err := decryptAll(common.Acl(), diff.Added)
+	decryptedAdded, err := decryptAll(diff.Added, decrypt)
 	if err != nil {
 		return
 	}
-	decryptedChanged, err := decryptAll(common.Acl(), diff.Changed)
+	decryptedChanged, err := decryptAll(diff.Changed, decrypt)
 	if err != nil {
 		return
 	}
@@ -241,13 +255,11 @@ func (a *aclObjectManager) processJoinRecords(recs []list.RequestRecord) (err er
 }
 
 func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AclAccountState) (err error) {
-	key := fmt.Sprintf("%s_%s", a.sp.Id(), accState.PubKey.Account())
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeParticipant, key)
+	id := source.NewParticipantId(a.sp.Id(), accState.PubKey.Account())
+	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
-		return
+		return err
 	}
-	id := uniqueKey.Marshal()
-	_, err = a.sp.GetObject(ctx, uniqueKey.Marshal())
 	details := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():                     pbtypes.String(id),
 		bundle.RelationKeyIdentity.String():               pbtypes.String(accState.PubKey.Account()),
@@ -267,13 +279,11 @@ func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, ac
 }
 
 func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, identity string, profile *model.IdentityProfile) (err error) {
-	key := fmt.Sprintf("%s_%s", a.sp.Id(), identity)
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeParticipant, key)
+	id := source.NewParticipantId(a.sp.Id(), identity)
+	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
-		return
+		return err
 	}
-	id := uniqueKey.Marshal()
-	_, err = a.sp.GetObject(ctx, uniqueKey.Marshal())
 	details := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():      pbtypes.String(profile.Name),
 		bundle.RelationKeyIconImage.String(): pbtypes.String(profile.IconCid),
@@ -321,9 +331,9 @@ func convertPermissions(permissions list.AclPermissions) model.ParticipantPermis
 	return model.ParticipantPermissions_Reader
 }
 
-func decryptAll(acl list.AclList, states []list.AclAccountState) (decrypted []list.AclAccountState, err error) {
+func decryptAll(states []list.AclAccountState, decrypt func(key crypto.PubKey) ([]byte, error)) (decrypted []list.AclAccountState, err error) {
 	for _, state := range states {
-		res, err := acl.AclState().GetMetadata(state.PubKey, true)
+		res, err := decrypt(state.PubKey)
 		if err != nil {
 			return nil, err
 		}

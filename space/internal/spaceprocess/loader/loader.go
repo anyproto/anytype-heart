@@ -30,6 +30,7 @@ type Params struct {
 	SpaceId             string
 	Status              spacestatus.SpaceStatus
 	StopIfMandatoryFail bool
+	OwnerMetadata       []byte
 }
 
 func New(app *app.App, params Params) Loader {
@@ -37,7 +38,7 @@ func New(app *app.App, params Params) Loader {
 	child.Register(params.Status).
 		Register(builder.New()).
 		Register(spaceloader.New(params.StopIfMandatoryFail)).
-		Register(aclobjectmanager.New())
+		Register(aclobjectmanager.New(params.OwnerMetadata))
 	return &loader{
 		app: child,
 	}
