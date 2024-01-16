@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"errors"
 	"expvar"
 	"fmt"
 	"net/url"
@@ -105,13 +106,12 @@ func (gs *gelfSink) Write(b []byte) (int, error) {
 	}
 
 	err := gs.batch.TryAdd(msg)
-	if err == mb.ErrOverflowed {
+	if errors.Is(err, mb.ErrOverflowed) {
 		// batch is overflowed, probably machine has some internet problems
 		// we don't want to spam with mb overflowed errors, so let's just ignore it and return as success
 		loggerGraylogMBSkipped.Add(1)
 		return len(b), nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return 0, err
 	}
 
