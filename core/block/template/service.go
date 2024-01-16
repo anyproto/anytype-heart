@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -38,14 +39,22 @@ const (
 	BlankTemplateId = "blank"
 )
 
-var log = logging.Logger("template")
+var (
+	log = logging.Logger("template")
+
+	templateIsPreferableRelationKeys = []domain.RelationKey{
+		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout,
+		bundle.RelationKeyIconEmoji, bundle.RelationKeyCoverId,
+		bundle.RelationKeySourceObject,
+	}
+)
 
 type Service interface {
 	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
 	ObjectApplyTemplate(contextId string, templateId string) error
 	TemplateCreateFromObject(ctx context.Context, id string) (templateId string, err error)
 
-	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
+	TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
 	TemplateClone(spaceId string, id string) (templateId string, err error)
 
 	TemplateExportAll(ctx context.Context, path string) (string, error)
@@ -104,19 +113,22 @@ func (s *service) CreateTemplateStateWithDetails(
 	return targetState, nil
 }
 
-func extractTargetDetails(addedDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
-	templateIsPreferableRelationKeys := []domain.RelationKey{bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout}
-	targetDetails := pbtypes.CopyStruct(addedDetails)
+func extractTargetDetails(originDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
+	targetDetails := pbtypes.CopyStruct(originDetails)
 	if templateDetails == nil {
 		return targetDetails
 	}
-	for key := range addedDetails.GetFields() {
+	for key := range originDetails.GetFields() {
 		_, exists := templateDetails.Fields[key]
 		if exists {
 			inTemplateEmpty := pbtypes.IsEmptyValueOrAbsent(templateDetails, key)
-			inAddedEmpty := pbtypes.IsEmptyValueOrAbsent(addedDetails, key)
+			if key == bundle.RelationKeyLayout.String() {
+				// layout = 0 is actually basic layout, so it counts
+				inTemplateEmpty = false
+			}
+			inOriginEmpty := pbtypes.IsEmptyValueOrAbsent(originDetails, key)
 			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, domain.RelationKey(key))
-			if !inTemplateEmpty && (inAddedEmpty || templateValueShouldBePreferred) {
+			if !inTemplateEmpty && (inOriginEmpty || templateValueShouldBePreferred) {
 				delete(targetDetails.Fields, key)
 			}
 		}
@@ -145,13 +157,8 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		targetState.SetLocalDetails(nil)
 		return
 	})
-	if err != nil {
-		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-			targetState = s.createBlankTemplateState(model.ObjectType_basic)
-			err = nil
-		} else {
-			err = fmt.Errorf("can't apply template: %w", err)
-		}
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return s.createBlankTemplateState(model.ObjectType_basic), nil
 	}
 	return
 }
@@ -208,7 +215,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 	return
 }
 
-func (s *service) TemplateCloneInSpace(space space.Space, id string) (templateId string, err error) {
+func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error) {
 	var (
 		st             *state.State
 		objectTypeKeys []domain.TypeKey
@@ -249,7 +256,7 @@ func (s *service) TemplateCloneInSpace(space space.Space, id string) (templateId
 }
 
 func (s *service) TemplateClone(spaceId string, id string) (templateId string, err error) {
-	var spaceObject space.Space
+	var spaceObject clientspace.Space
 	spaceObject, err = s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return "", fmt.Errorf("get space: %w", err)

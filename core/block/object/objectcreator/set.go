@@ -12,12 +12,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) CreateSet(ctx context.Context, space space.Space, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
+func (s *service) createSet(ctx context.Context, space clientspace.Space, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	dvContent, err := dataview.BlockBySource(s.objectStore, req.Source)

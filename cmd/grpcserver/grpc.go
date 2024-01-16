@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 const defaultAddr = "127.0.0.1:31007"
@@ -51,7 +52,7 @@ func main() {
 	var addr string
 	var webaddr string
 	app.StartWarningAfter = time.Second * 5
-	fmt.Printf("mw grpc: %s\n", app.VersionDescription())
+	fmt.Printf("mw grpc: %s\n", vcs.GetVCSInfo().Description())
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
 		if len(os.Args) > 2 {

@@ -129,18 +129,18 @@ type ObjectStore interface {
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
+	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 
 	DeleteObject(id string) error
 	DeleteDetails(id ...string) error
-	// EraseIndexes erase all indexes for objectstore. All objects need to be reindexed
-	EraseIndexes(spaceId string) error
+	DeleteLinks(id ...string) error
 
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
+
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
-
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 
 	GetRelationLink(spaceID string, key string) (*model.RelationLink, error)
@@ -193,27 +193,9 @@ type dsObjectStore struct {
 	fts ftsearch.FTSearch
 
 	sync.RWMutex
-	onChangeCallback func(record database.Record)
-	subscriptions    []database.Subscription
-}
-
-func (s *dsObjectStore) EraseIndexes(spaceId string) error {
-	ids, err := s.ListIdsBySpace(spaceId)
-	if err != nil {
-		return fmt.Errorf("list ids by space: %w", err)
-	}
-	err = badgerhelper.RetryOnConflict(func() error {
-		txn := s.db.NewTransaction(true)
-		defer txn.Discard()
-		for _, id := range ids {
-			txn, err = s.eraseLinksForObject(txn, id)
-			if err != nil {
-				return fmt.Errorf("erase links for object %s: %w", id, err)
-			}
-		}
-		return txn.Commit()
-	})
-	return err
+	onChangeCallback      func(record database.Record)
+	subscriptions         []database.Subscription
+	onLinksUpdateCallback func(info LinksUpdateInfo)
 }
 
 func (s *dsObjectStore) Run(context.Context) (err error) {
@@ -253,71 +235,6 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	s.Lock()
 	s.onChangeCallback = callback
 	s.Unlock()
-}
-
-func (s *dsObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
-	var res *model.ObjectInfoWithLinks
-	err := s.db.View(func(txn *badger.Txn) error {
-		pages, err := s.getObjectsInfo(txn, spaceID, []string{id})
-		if err != nil {
-			return err
-		}
-
-		if len(pages) == 0 {
-			return fmt.Errorf("page not found")
-		}
-		page := pages[0]
-
-		inboundIds, err := findInboundLinks(txn, id)
-		if err != nil {
-			return fmt.Errorf("find inbound links: %w", err)
-		}
-		outboundsIds, err := findOutboundLinks(txn, id)
-		if err != nil {
-			return fmt.Errorf("find outbound links: %w", err)
-		}
-
-		inbound, err := s.getObjectsInfo(txn, spaceID, inboundIds)
-		if err != nil {
-			return err
-		}
-
-		outbound, err := s.getObjectsInfo(txn, spaceID, outboundsIds)
-		if err != nil {
-			return err
-		}
-
-		res = &model.ObjectInfoWithLinks{
-			Id:   id,
-			Info: page,
-			Links: &model.ObjectLinksInfo{
-				Inbound:  inbound,
-				Outbound: outbound,
-			},
-		}
-		return nil
-	})
-	return res, err
-}
-
-func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
-	var links []string
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		links, err = findOutboundLinks(txn, id)
-		return err
-	})
-	return links, err
-}
-
-func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
-	var links []string
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		links, err = findInboundLinks(txn, id)
-		return err
-	})
-	return links, err
 }
 
 // GetDetails returns empty struct without errors in case details are not found
@@ -569,39 +486,12 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.Un
 	return &model.ObjectDetails{Details: records[0].Details}, nil
 }
 
-// Find to which IDs specified one has outbound links.
-func findOutboundLinks(txn *badger.Txn, id string) ([]string, error) {
-	return listIDsByPrefix(txn, pagesOutboundLinksBase.ChildString(id).Bytes())
-}
-
-// Find from which IDs specified one has inbound links.
-func findInboundLinks(txn *badger.Txn, id string) ([]string, error) {
-	return listIDsByPrefix(txn, pagesInboundLinksBase.ChildString(id).Bytes())
-}
-
 func listIDsByPrefix(txn *badger.Txn, prefix []byte) ([]string, error) {
 	var ids []string
 	err := iterateKeysByPrefixTx(txn, prefix, func(key []byte) {
 		ids = append(ids, path.Base(string(key)))
 	})
 	return ids, err
-}
-
-func pageLinkKeys(id string, out []string) []ds.Key {
-	keys := make([]ds.Key, 0, 2*len(out))
-	// links outgoing from specified node id
-	for _, to := range out {
-		keys = append(keys, outgoingLinkKey(id, to), inboundLinkKey(id, to))
-	}
-	return keys
-}
-
-func outgoingLinkKey(from, to string) ds.Key {
-	return pagesOutboundLinksBase.ChildString(from).ChildString(to)
-}
-
-func inboundLinkKey(from, to string) ds.Key {
-	return pagesInboundLinksBase.ChildString(to).ChildString(from)
 }
 
 func extractIdFromKey(key string) (id string) {
