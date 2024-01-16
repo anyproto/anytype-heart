@@ -292,7 +292,7 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 		return docs, nil
 	}
 
-	derivedObjects, err := e.getRelatedDerivedObjects(res)
+	derivedObjects, err := e.getRelatedDerivedObjects(docs)
 	if err != nil {
 		return nil, err
 	}
@@ -609,14 +609,23 @@ func (e *export) cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func (e *export) getRelatedDerivedObjects(objects []database.Record) ([]database.Record, error) {
+func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]database.Record, error) {
 	var (
 		derivedObjects []database.Record
 		err            error
+		relationLinks  pbtypes.RelationLinks
 	)
 
-	for _, object := range objects {
-		derivedObjects, err = e.processObject(object, derivedObjects)
+	for id, object := range objects {
+		err = getblock.Do(e.picker, id, func(b sb.SmartBlock) error {
+			state := b.NewState()
+			relationLinks = state.GetRelationLinks()
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		derivedObjects, err = e.processObject(object, derivedObjects, relationLinks)
 		if err != nil {
 			return nil, err
 		}
@@ -624,27 +633,31 @@ func (e *export) getRelatedDerivedObjects(objects []database.Record) ([]database
 	return derivedObjects, nil
 }
 
-func (e *export) processObject(object database.Record, derivedObjects []database.Record) ([]database.Record, error) {
-	details := object.Details
-	for key, value := range details.Fields {
-		relation, err := e.getRelation(key)
+func (e *export) processObject(object *types.Struct, derivedObjects []database.Record, relationLinks pbtypes.RelationLinks) ([]database.Record, error) {
+	for _, relation := range relationLinks {
+		storeRelation, err := e.getRelation(relation.Key)
 		if err != nil {
 			return nil, err
 		}
-		if relation != nil {
-			derivedObjects, err = e.addRelationAndOptions(relation, value, derivedObjects)
+		if storeRelation != nil {
+			derivedObjects, err = e.addRelationAndOptions(storeRelation, object, derivedObjects, relation.Key)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	objectTypeDetails, err := e.objectStore.GetDetails(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	objectTypeDetails, err := e.objectStore.GetDetails(pbtypes.GetString(object, bundle.RelationKeyType.String()))
 	if err != nil {
 		return nil, err
 	}
-
 	derivedObjects = append(derivedObjects, database.Record{Details: objectTypeDetails.Details})
+
+	templates, err := e.getTemplates(pbtypes.GetString(objectTypeDetails.Details, bundle.RelationKeyId.String()))
+	if err != nil {
+		return nil, err
+	}
+	derivedObjects = append(derivedObjects, templates...)
 	return derivedObjects, nil
 }
 
@@ -681,15 +694,17 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 	return &relation[0], nil
 }
 
-func (e *export) addRelationAndOptions(relation *database.Record, value *types.Value, derivedObjects []database.Record) ([]database.Record, error) {
+func (e *export) addRelationAndOptions(relation *database.Record, object *types.Struct, derivedObjects []database.Record, relationKey string) ([]database.Record, error) {
 	derivedObjects = e.addRelation(relation, derivedObjects)
 	format := pbtypes.GetInt64(relation.Details, bundle.RelationKeyRelationFormat.String())
 	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
-		relationOptions, err := e.getRelationOptions(value)
-		if err != nil {
-			return nil, err
+		if value := pbtypes.Get(object, relationKey); value != nil {
+			relationOptions, err := e.getRelationOptions(value)
+			if err != nil {
+				return nil, err
+			}
+			derivedObjects = append(derivedObjects, relationOptions...)
 		}
-		derivedObjects = append(derivedObjects, relationOptions...)
 	}
 
 	return derivedObjects, nil
@@ -757,4 +772,30 @@ func (e *export) getFilterForStringOption(value *types.Value, filter *model.Bloc
 		Value:       pbtypes.String(id),
 	}
 	return filter
+}
+
+func (e *export) getTemplates(id string) ([]database.Record, error) {
+	templates, _, err := e.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(id),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return templates, nil
 }
