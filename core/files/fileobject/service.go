@@ -267,7 +267,6 @@ func (s *service) migrate(space clientspace.Space, keys []*pb.ChangeFileKeys, fi
 
 	fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(fileId))
 	if err == nil {
-		fmt.Println("FILE OBJECT ID", fileId, "->", fileObjectId)
 		return fileObjectId
 	}
 
@@ -292,7 +291,6 @@ func (s *service) migrate(space clientspace.Space, keys []*pb.ChangeFileKeys, fi
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", fileId, err)
 	}
-	fmt.Println("MIGRATED FILE OBJECT ID", fileId, "->", fileObjectId)
 	return fileObjectId
 }
 
