@@ -95,5 +95,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (crypto
 	if err != nil {
 		return nil, err
 	}
-	return res.InviteKey, nil
+	// TODO: here should be the part with sending the invite to IPFS
+	err = aclClient.AddRecord(ctx, res.InviteRec)
+	return res.InviteKey, err
 }
