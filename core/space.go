@@ -72,11 +72,11 @@ func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpace
 }
 
 func generateInvite(ctx context.Context, spaceId string, aclService acl.AclService) (encKey string, err error) {
-	key, err := aclService.GenerateInvite(ctx, spaceId)
+	res, err := aclService.GenerateInvite(ctx, spaceId)
 	if err != nil {
 		return
 	}
-	return crypto.EncodeKeyToString(key)
+	return crypto.EncodeKeyToString(res.InviteKey)
 }
 
 func join(ctx context.Context, spaceId, encKey string, aclService acl.AclService) (err error) {

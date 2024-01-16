@@ -59,6 +59,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
@@ -226,6 +227,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(fileobject.New()).
 		Register(fileacl.New()).
+		Register(invitestore.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
