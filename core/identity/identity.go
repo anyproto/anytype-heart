@@ -3,7 +3,6 @@ package identity
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -19,13 +18,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -78,9 +75,7 @@ type service struct {
 	spaceIdDeriver    spaceIdDeriver
 	detailsModifier   DetailsModifier
 	coordinatorClient coordinatorclient.CoordinatorClient
-	fileService       files.Service
-	fileObjectService fileobject.Service
-	fileStore         filestore.FileStore
+	fileAclService    fileacl.Service
 	closing           chan struct{}
 	identities        []string
 	techSpaceId       string
@@ -113,9 +108,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.detailsModifier = app.MustComponent[DetailsModifier](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.coordinatorClient = app.MustComponent[coordinatorclient.CoordinatorClient](a)
-	s.fileService = app.MustComponent[files.Service](a)
-	s.fileObjectService = app.MustComponent[fileobject.Service](a)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.fileAclService = app.MustComponent[fileacl.Service](a)
 	s.dbProvider = app.MustComponent[datastore.Datastore](a)
 	return
 }
@@ -298,25 +291,7 @@ func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId st
 	if iconImageObjectId == "" {
 		return "", nil, nil
 	}
-	fileId, err := s.fileObjectService.GetFileIdFromObject(ctx, iconImageObjectId)
-	if err != nil {
-		return "", nil, fmt.Errorf("get file id from object: %w", err)
-	}
-	iconCid = fileId.FileId.String()
-	keys, err := s.fileService.FileGetKeys(fileId)
-	if err != nil {
-		return "", nil, fmt.Errorf("get file keys: %w", err)
-	}
-	for path, key := range keys.EncryptionKeys {
-		iconEncryptionKeys = append(iconEncryptionKeys, &model.FileEncryptionKey{
-			Path: path,
-			Key:  key,
-		})
-	}
-	sort.Slice(iconEncryptionKeys, func(i, j int) bool {
-		return iconEncryptionKeys[i].Path < iconEncryptionKeys[j].Path
-	})
-	return iconCid, iconEncryptionKeys, nil
+	return s.fileAclService.GetInfoForFileSharing(ctx, iconImageObjectId)
 }
 
 func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDetails *types.Struct) error {
@@ -449,18 +424,7 @@ func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []st
 
 func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 	if len(profile.IconEncryptionKeys) > 0 {
-		// TODO Garbage collect old icons
-		keys := domain.FileEncryptionKeys{
-			FileId:         domain.FileId(profile.IconCid),
-			EncryptionKeys: map[string]string{},
-		}
-		for _, key := range profile.IconEncryptionKeys {
-			keys.EncryptionKeys[key.Path] = key.Key
-		}
-		err := s.fileStore.AddFileKeys(keys)
-		if err != nil {
-			return fmt.Errorf("store icon encryption keys: %w", err)
-		}
+		return s.fileAclService.StoreFileKeys(domain.FileId(profile.IconCid), profile.IconEncryptionKeys)
 	}
 	return nil
 }

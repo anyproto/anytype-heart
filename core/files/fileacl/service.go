@@ -67,7 +67,6 @@ func (s *service) GetInfoForFileSharing(ctx context.Context, fileObjectId string
 }
 
 func (s *service) StoreFileKeys(fileId domain.FileId, fileKeys []*model.FileEncryptionKey) error {
-	// TODO Garbage collect old icons
 	keys := domain.FileEncryptionKeys{
 		FileId:         fileId,
 		EncryptionKeys: map[string]string{},
@@ -77,7 +76,7 @@ func (s *service) StoreFileKeys(fileId domain.FileId, fileKeys []*model.FileEncr
 	}
 	err := s.fileStore.AddFileKeys(keys)
 	if err != nil {
-		return fmt.Errorf("store icon encryption keys: %w", err)
+		return fmt.Errorf("store file encryption keys: %w", err)
 	}
 	return nil
 }

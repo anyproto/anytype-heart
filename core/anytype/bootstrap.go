@@ -49,6 +49,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -223,6 +224,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(filestorage.New()).
 		Register(files.New()).
 		Register(fileobject.New()).
+		Register(fileacl.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
