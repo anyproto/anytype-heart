@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -109,7 +110,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var hash string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		dto := block.FileUploadRequest{RpcFileUploadRequest: *req}
+		dto := block.FileUploadRequest{RpcFileUploadRequest: *req, ObjectOrigin: domain.ObjectOriginNone()}
 		hash, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		return
 	})

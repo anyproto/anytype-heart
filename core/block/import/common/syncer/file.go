@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -24,7 +25,7 @@ func NewFileSyncer(
 	}
 }
 
-func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin, importType model.ImportType) error {
+func (fs *FileSyncer) Sync(id string, b simple.Block, origin *domain.ObjectOrigin) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
 		return nil
 	}
@@ -48,8 +49,7 @@ func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin,
 	}
 	dto := block.UploadRequest{
 		RpcBlockUploadRequest: params,
-		Origin:                origin,
-		ImportType:            importType,
+		ObjectOrigin:          origin,
 	}
 	_, err := fs.service.UploadFileBlockWithHash(id, dto)
 	if err != nil {

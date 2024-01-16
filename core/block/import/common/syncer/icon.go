@@ -13,9 +13,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
@@ -30,7 +30,7 @@ func NewIconSyncer(service *block.Service, resolver idresolver.Resolver) *IconSy
 	return &IconSyncer{service: service, resolver: resolver}
 }
 
-func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin, importType model.ImportType) error {
+func (is *IconSyncer) Sync(id string, b simple.Block, origin *domain.ObjectOrigin) error {
 	icon := b.Model().GetText().GetIconImage()
 	_, err := cid.Decode(icon)
 	if err == nil {
@@ -46,8 +46,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin,
 	}
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: req,
-		Origin:               origin,
-		ImportType:           importType,
+		ObjectOrigin:         origin,
 	}
 	hash, err := is.service.UploadFile(context.Background(), spaceID, dto)
 	if err != nil {

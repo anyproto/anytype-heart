@@ -33,20 +33,17 @@ var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
-	Origin     model.ObjectOrigin
-	ImportType model.ImportType
+	ObjectOrigin *domain.ObjectOrigin
 }
 
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
-	Origin     model.ObjectOrigin
-	ImportType model.ImportType
+	ObjectOrigin *domain.ObjectOrigin
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
-	Origin     model.ObjectOrigin
-	ImportType model.ImportType
+	ObjectOrigin *domain.ObjectOrigin
 }
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
@@ -471,7 +468,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupI
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: groupID,
-			Origin:  req.Origin,
+			Origin:  req.ObjectOrigin,
 		}, false)
 		return err
 	})
@@ -482,7 +479,7 @@ func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (e
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
 			Url:    req.Url,
-			Origin: req.Origin,
+			Origin: req.ObjectOrigin,
 		}, true)
 		return err
 	})
@@ -504,9 +501,9 @@ func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUpload
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
 
-	upl.SetOrigin(req.Origin)
+	upl.SetOrigin(req.ObjectOrigin.Origin)
 	upl.SetStyle(req.Style)
-	upl.SetImportType(req.ImportType)
+	upl.SetImportType(req.ObjectOrigin.ImportType)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	} else {
@@ -543,11 +540,10 @@ func (s *Service) UploadFileBlockWithHash(
 ) (hash string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
 		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
-			Path:       req.FilePath,
-			Url:        req.Url,
-			GroupID:    "",
-			Origin:     req.Origin,
-			ImportType: req.ImportType,
+			Path:    req.FilePath,
+			Url:     req.Url,
+			GroupID: "",
+			Origin:  req.ObjectOrigin,
 		})
 		if err != nil {
 			return err
@@ -581,7 +577,7 @@ func (s *Service) Redo(
 
 func (s *Service) BookmarkFetch(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, req.Origin, req.ImportType)
+		return b.Fetch(ctx, req.BlockId, req.Url, req.ObjectOrigin)
 	})
 }
 

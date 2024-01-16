@@ -81,13 +81,12 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	ctx := dataObject.ctx
 	origin := dataObject.origin
 	spaceID := dataObject.spaceID
-	importType := dataObject.importType
 
 	var err error
 	newID := oldIDtoNew[sn.Id]
 	oc.setRootBlock(snapshot, newID)
 
-	oc.injectImportDetails(sn, origin, spaceID, importType)
+	oc.injectImportDetails(sn, origin)
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
 
@@ -115,11 +114,11 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	// converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
 		if link.Format == model.RelationFormat_file {
-			filesToDelete = oc.relationSyncer.Sync(spaceID, st, link.Key, origin, importType)
+			filesToDelete = oc.relationSyncer.Sync(spaceID, st, link.Key, origin)
 		}
 	}
-	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
-	oc.setFileImportedFlagAndOrigin(st, origin, importType)
+	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st, origin)...)
+	oc.setFileImportedFlagAndOrigin(st, origin)
 	typeKeys := st.ObjectTypeKeys()
 	if sn.SbType == coresb.SmartBlockTypeObjectType {
 		// we widen typeKeys here to install bundled templates for imported object type
@@ -145,7 +144,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.setArchived(snapshot, newID)
 
-	syncErr := oc.syncFilesAndLinks(newID, origin, importType)
+	syncErr := oc.syncFilesAndLinks(newID, origin)
 	if syncErr != nil {
 		if errors.Is(syncErr, common.ErrFileLoad) {
 			return respDetails, newID, syncErr
@@ -159,7 +158,7 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin model.ObjectOrigin, spaceID string, importType model.ImportType) {
+func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin *domain.ObjectOrigin) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
@@ -177,10 +176,9 @@ func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin model.O
 		sn.Snapshot.Data.OriginalCreatedTimestamp = createdDate
 	}
 
-	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
-	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(importType))
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin.Origin))
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(origin.ImportType))
 	// we don't need to inject relatonLinks, they will be automatically injected for bundled relations
-
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -377,11 +375,11 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	}
 }
 
-func (oc *ObjectCreator) handleCoverRelation(spaceID string, st *state.State) []string {
+func (oc *ObjectCreator) handleCoverRelation(spaceID string, st *state.State, origin *domain.ObjectOrigin) []string {
 	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
 		return nil
 	}
-	filesToDelete := oc.relationSyncer.Sync(spaceID, st, bundle.RelationKeyCoverId.String(), 0, 0)
+	filesToDelete := oc.relationSyncer.Sync(spaceID, st, bundle.RelationKeyCoverId.String(), origin)
 	return filesToDelete
 }
 
@@ -430,7 +428,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin model.ObjectOrigin, importType model.ImportType) error {
+func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin *domain.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
 	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
@@ -440,7 +438,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin model.ObjectOrig
 			if s != nil {
 				// We can't run syncer here because it will cause a deadlock, so we defer this operation
 				tasks = append(tasks, func() error {
-					err := s.Sync(newID, bl, origin, importType)
+					err := s.Sync(newID, bl, origin)
 					if err != nil {
 						return err
 					}
@@ -492,7 +490,7 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
 }
 
-func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin model.ObjectOrigin, importType model.ImportType) {
+func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin *domain.ObjectOrigin) {
 	var fileHashes []string
 	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if fh, ok := bl.(simple.FileHashes); ok {
@@ -509,11 +507,11 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin mo
 		if err != nil {
 			log.Errorf("failed to set isFileImported for file %s: %s", hash, err)
 		}
-		err = oc.fileStore.SetFileOrigin(hash, origin)
+		err = oc.fileStore.SetFileOrigin(hash, origin.Origin)
 		if err != nil {
 			log.Errorf("failed to set origin for file %s: %s", hash, err)
 		}
-		err = oc.fileStore.SetFileImportType(hash, importType)
+		err = oc.fileStore.SetFileImportType(hash, origin.ImportType)
 		if err != nil {
 			log.Errorf("failed to set origin for file %s: %s", hash, err)
 		}

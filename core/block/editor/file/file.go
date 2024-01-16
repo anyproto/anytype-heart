@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -63,13 +64,12 @@ type File interface {
 }
 
 type FileSource struct {
-	Path       string
-	Url        string // nolint:revive
-	Bytes      []byte
-	Name       string
-	GroupID    string
-	Origin     model.ObjectOrigin
-	ImportType model.ImportType
+	Path    string
+	Url     string // nolint:revive
+	Bytes   []byte
+	Name    string
+	GroupID string
+	Origin  *domain.ObjectOrigin
 }
 
 type sfile struct {
@@ -150,7 +150,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if !ok {
 		return UploadResult{Err: fmt.Errorf("not a file block")}
 	}
-	upl := sf.newUploader().SetBlock(f).SetOrigin(source.Origin).SetImportType(source.ImportType)
+	upl := sf.newUploader().SetBlock(f).SetOrigin(source.Origin.Origin).SetImportType(source.Origin.ImportType)
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {

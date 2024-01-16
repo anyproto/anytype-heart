@@ -7,7 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type DataObject struct {
@@ -15,9 +15,8 @@ type DataObject struct {
 	createPayloads map[string]treestorage.TreeStorageCreatePayload
 	fileIDs        []string
 	ctx            context.Context
-	origin         model.ObjectOrigin
+	origin         *domain.ObjectOrigin
 	spaceID        string
-	importType     model.ImportType
 }
 
 type Result struct {
@@ -30,9 +29,8 @@ func NewDataObject(ctx context.Context,
 	oldIDtoNew map[string]string,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	filesIDs []string,
-	origin model.ObjectOrigin,
+	origin *domain.ObjectOrigin,
 	spaceID string,
-	importType model.ImportType,
 ) *DataObject {
 	return &DataObject{
 		oldIDtoNew:     oldIDtoNew,
@@ -41,7 +39,6 @@ func NewDataObject(ctx context.Context,
 		ctx:            ctx,
 		origin:         origin,
 		spaceID:        spaceID,
-		importType:     importType,
 	}
 }
 
