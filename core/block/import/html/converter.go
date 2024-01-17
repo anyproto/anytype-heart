@@ -158,6 +158,9 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, filesSource source.Source,
 		return nil, err
 	}
 	blocks, _, err := anymark.HTMLToBlocks(b, "")
+	if err != nil {
+		return nil, err
+	}
 	for _, block := range blocks {
 		if block.GetFile() != nil {
 			if newFileName, _, err := common.ProvideFileName(block.GetFile().GetName(), filesSource, path, h.tempDirProvider); err == nil {

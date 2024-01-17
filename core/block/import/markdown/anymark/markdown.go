@@ -311,6 +311,7 @@ func getAbsolutePath(rawUrl, relativeSrc string) string {
 		return relativeSrc
 	}
 
+	// cases like //upload.com/picture.png where we should add scheme
 	if strings.HasPrefix(relativeSrc, "//") {
 		if parsedUrl.Scheme == "" {
 			parsedUrl.Scheme = "http"
@@ -318,10 +319,18 @@ func getAbsolutePath(rawUrl, relativeSrc string) string {
 		return strings.Join([]string{parsedUrl.Scheme, relativeSrc}, ":")
 	}
 
+	// cases like /static/example.png where we should add root path
 	if strings.HasPrefix(relativeSrc, "/") {
 		if parsedUrl.Host != "" {
-			return strings.Join([]string{parsedUrl.Host, relativeSrc}, "")
+			parsedUrl.Path = relativeSrc
+			return parsedUrl.String()
 		}
+	}
+
+	// link to section of html page
+	if strings.HasPrefix(relativeSrc, "#") {
+		parsedUrl.Fragment = strings.TrimLeft(relativeSrc, "#")
+		return parsedUrl.String()
 	}
 	return relativeSrc
 }

@@ -205,5 +205,21 @@
     "desc": "List with spans with new line items",
     "html": "<span>1. One\n</span><span>2. Two</span>",
     "blocks": [{"id":"1","Content":{"text":{"text":"One","style":10,"marks":{}}}},{"id":"2","Content":{"text":{"text":"Two","style":10,"marks":{}}}}]
+  },
+  {
+    "desc": "relative links",
+    "html": "<img class=\"logo-icon\" src=\"/static/image.png\" alt=\"\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"http://test.com/static/image.png","type":2}}}]
+  },
+  {
+    "desc": "link without scheme",
+    "html": "<img class=\"logo-icon\" src=\"//static.com/image.png\" alt=\"\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"http://static.com/image.png","type":2}}}]
+  },
+
+  {
+    "desc": "section linm",
+    "html": "<img class=\"logo-icon\" src=\"#description\" alt=\"\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"http://test.com/test#description","type":2}}}]
   }
 ]

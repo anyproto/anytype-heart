@@ -71,7 +71,7 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
-			blocks, _, err := HTMLToBlocks([]byte(testCase.HTML), "")
+			blocks, _, err := HTMLToBlocks([]byte(testCase.HTML), "http://test.com/test")
 			require.NoError(t, err)
 
 			blocks = replaceFakeIds(blocks)
