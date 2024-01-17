@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -55,11 +56,14 @@ func TestClient_SendEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	telemetry := &mock_amplitude.MockService{}
 	//telemetry.EXPECT().SendEvents(mock.Anything, mock.Anything).Return(nil)
+	mutex := sync.Mutex{}
 	var events []amplitude.Event
 	telemetry.On("SendEvents", mock.Anything, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
+			mutex.Lock()
 			events = args.Get(0).([]amplitude.Event)
+			mutex.Unlock()
 		})
 
 	c := &client{
@@ -83,8 +87,10 @@ func TestClient_SendEvents(t *testing.T) {
 	c.send(&testEvent{})
 	time.Sleep(1 * time.Millisecond)
 
+	mutex.Lock()
 	assert.Equal(t, 0, c.batcher.Len())
 	assert.Equal(t, 2, len(events))
+	mutex.Unlock()
 
 	assert.True(t, events[0].GetTimestamp() > 0)
 	telemetry.AssertCalled(t, "SendEvents", mock.Anything, mock.Anything)

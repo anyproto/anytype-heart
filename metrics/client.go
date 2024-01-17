@@ -51,9 +51,12 @@ func (c *client) startAggregating() {
 			case <-ctx.Done():
 				c.recordAggregatedData()
 				// we close here so that we are sure that we don't lose the aggregated data
-				err := c.batcher.Close()
-				if err != nil {
-					clientMetricsLog.Errorf("failed to close batcher")
+				batcher := c.batcher
+				if batcher != nil {
+					err := batcher.Close()
+					if err != nil {
+						clientMetricsLog.Errorf("failed to close batcher")
+					}
 				}
 				return
 			}
