@@ -1124,7 +1124,7 @@ func (mw *Middleware) BlockPreview(cctx context.Context, req *pb.RpcBlockPreview
 		}
 		return m
 	}
-	blocks, _, err := anymark.HTMLToBlocks([]byte(req.Html))
+	blocks, _, err := anymark.HTMLToBlocks([]byte(req.Html), "")
 	if err != nil {
 		return response(pb.RpcBlockPreviewResponseError_UNKNOWN_ERROR, nil, err)
 	}
