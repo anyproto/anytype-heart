@@ -20,6 +20,7 @@ var (
 	ftIndexInterval         = 10 * time.Second
 	ftIndexForceMinInterval = time.Second * 10
 	ftBatchLimit            = 100
+	ftBlockMaxSize          = 1024 * 1024
 )
 
 func (i *indexer) ForceFTIndex() {
@@ -131,11 +132,16 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 				return true
 			}
 			if tb := b.Model().GetText(); tb != nil {
-				err = processor(ftsearch.SearchDoc{
+				doc := ftsearch.SearchDoc{
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
 					SpaceID: sb.SpaceID(),
-					Text:    tb.Text,
-				})
+				}
+				if len(doc.Text) > ftBlockMaxSize {
+					doc.Text = doc.Text[0:ftBlockMaxSize]
+				} else {
+					doc.Text = tb.Text
+				}
+				err = processor(doc)
 				if err != nil {
 					log.Errorf("process block: %v", err)
 					return false
