@@ -64,12 +64,25 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 		return fmt.Errorf("get invite: %w", err)
 	}
 
-	// TODO When to check signature?
 	var invitePayload model.InvitePayload
 	err = proto.Unmarshal(invite.Payload, &invitePayload)
 	if err != nil {
 		return fmt.Errorf("unmarshal invite payload: %w", err)
 	}
+
+	creatorIdentity, err := crypto.DecodeAccountAddress(invitePayload.CreatorIdentity)
+	if err != nil {
+		return fmt.Errorf("decode creator identity: %w", err)
+	}
+
+	ok, err := creatorIdentity.Verify(invite.Payload, invite.Signature)
+	if err != nil {
+		return fmt.Errorf("verify invite signature: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("invite signature is invalid")
+	}
+
 	// TODO Setup space name and info
 	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.InviteKey)
 	if err != nil {
