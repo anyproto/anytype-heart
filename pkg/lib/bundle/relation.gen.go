@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f67fe3128de8f92ecda48598e234c2f625a60e21a19885db293963ebab773198"
+const RelationChecksum = "9d13b57d26e1a12a93d497a0016a692457a39e7fa73797a1ba27a4957cb9b734"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -165,8 +165,6 @@ const (
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
 	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                  domain.RelationKey = "revision"
-	RelationKeySearchTargetBlock         domain.RelationKey = "searchTargetBlock"
-	RelationKeySearchTargetRelation      domain.RelationKey = "searchTargetRelation"
 )
 
 var (
@@ -1711,34 +1709,6 @@ var (
 			MaxCount:         1,
 			Name:             "Scope",
 			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeySearchTargetBlock: {
-
-			DataSource:       model.Relation_derived,
-			Description:      "Search Result Target Block",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brsearchTargetBlock",
-			Key:              "searchTargetBlock",
-			MaxCount:         1,
-			Name:             "Search Target Block",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeySearchTargetRelation: {
-
-			DataSource:       model.Relation_derived,
-			Description:      "Search Result Target Relation",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brsearchTargetRelation",
-			Key:              "searchTargetRelation",
-			MaxCount:         1,
-			Name:             "Search Result Target Relation",
-			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
