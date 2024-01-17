@@ -39,7 +39,10 @@ const (
 	ForceIdxRebuildCounter int32 = 62
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
-	ForceFulltextIndexCounter int32 = 5
+	ForceFulltextIndexCounter int32 = 6
+
+	// ForceFulltextIndexCounter  performs fulltext erase(all the data if exists); it makes sense to increase ForceFulltextIndexCounter as well
+	ForceFulltextEraseCounter int32 = 2
 
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
 	ForceFilestoreKeysReindexCounter int32 = 2
@@ -68,6 +71,8 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 				// per space
 				FulltextRebuild: ForceFulltextIndexCounter,
+				// per space
+				FulltextErase: ForceFulltextEraseCounter,
 				// global
 				BundledObjects: ForceBundledObjectsReindexCounter,
 			}
@@ -92,6 +97,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.FulltextRebuild != ForceFulltextIndexCounter {
 		flags.fulltext = true
+	}
+	if checksums.FulltextErase != ForceFulltextEraseCounter {
+		flags.fulltextErase = true
 	}
 	if checksums.BundledTemplates != i.btHash.Hash() {
 		flags.bundledTemplates = true
@@ -177,7 +185,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
-	if flags.fulltext {
+	if flags.fulltext || flags.fulltextErase {
 		ids, err := i.getIdsForTypes(space.Id(),
 			smartblock2.SmartBlockTypePage,
 			smartblock2.SmartBlockTypeFile,
@@ -193,6 +201,15 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 
 		var addedToQueue int
+		if flags.fulltextErase {
+			// block/relations are not removed
+			// todo: find a way to find all ids from bleve
+			err = i.ftsearch.BatchDelete(ids)
+			if err != nil {
+				log.Errorf("failed to delete all objects from fulltext index before reindex: %v", err)
+			}
+		}
+
 		for _, id := range ids {
 			if err := i.store.AddToIndexQueue(id); err != nil {
 				log.Errorf("failed to add to index queue: %v", err)
