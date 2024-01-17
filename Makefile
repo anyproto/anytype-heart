@@ -239,7 +239,7 @@ build-server: setup-network-config
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	go build -v -o dist/server -gcflags="all=-N -l" -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
+	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
 
 run-server: build-server
 	@echo 'Running server...'
