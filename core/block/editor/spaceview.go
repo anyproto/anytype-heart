@@ -113,6 +113,13 @@ func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
 	s.spaceService.OnViewUpdated(s.getSpaceInfo(info.State))
 	return nil

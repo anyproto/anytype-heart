@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -42,6 +43,7 @@ type aclService struct {
 	accountService account.Service
 	inviteStore    invitestore.Service
 	fileAcl        fileacl.Service
+	objectGetter   getblock.ObjectGetter
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -50,6 +52,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteStore = app.MustComponent[invitestore.Service](ap)
 	a.fileAcl = app.MustComponent[fileacl.Service](ap)
+	a.objectGetter = app.MustComponent[getblock.ObjectGetter](ap)
 	return nil
 }
 
@@ -132,9 +135,8 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 }
 
 type GenerateInviteResult struct {
-	InviteKey     crypto.PrivKey
-	InviteFileCid cid.Cid
-	InviteFileKey crypto.SymKey
+	InviteFileCid string
+	InviteFileKey string
 }
 
 func (a *aclService) buildInvite(ctx context.Context, space clientspace.Space, inviteKey crypto.PrivKey) (*model.Invite, error) {
@@ -185,7 +187,36 @@ func (a *aclService) buildInvitePayload(ctx context.Context, space clientspace.S
 	return invitePayload, nil
 }
 
+type spaceViewObject interface {
+	SetInviteFileInfo(fileCid string, fileKey string) (err error)
+}
+
+func (a *aclService) getExistingInviteFileInfo(spaceViewId string) (fileCid string, fileKey string, err error) {
+	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
+		details := sb.Details()
+		fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
+		fileKey = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileKey.String())
+		return nil
+	})
+	return
+}
+
 func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result *GenerateInviteResult, err error) {
+	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("get space view id: %w", err)
+	}
+	fileCid, fileKey, err := a.getExistingInviteFileInfo(spaceViewId)
+	if err != nil {
+		return nil, fmt.Errorf("get existing invite file info: %w", err)
+	}
+	if fileCid != "" {
+		return &GenerateInviteResult{
+			InviteFileCid: fileCid,
+			InviteFileKey: fileKey,
+		}, nil
+	}
+
 	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return nil, err
@@ -208,10 +239,24 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 	if err != nil {
 		return nil, fmt.Errorf("store invite in ipfs: %w", err)
 	}
+	inviteFileKeyRaw, err := crypto.EncodeKeyToString(inviteFileKey)
+	if err != nil {
+		return nil, fmt.Errorf("encode invite file key: %w", err)
+	}
+
+	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
+		view, ok := sb.(spaceViewObject)
+		if !ok {
+			return fmt.Errorf("space view object is not implemented")
+		}
+		return view.SetInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("set invite file info: %w", err)
+	}
 
 	return &GenerateInviteResult{
-		InviteKey:     res.InviteKey,
-		InviteFileCid: inviteFileCid,
-		InviteFileKey: inviteFileKey,
+		InviteFileCid: inviteFileCid.String(),
+		InviteFileKey: inviteFileKeyRaw,
 	}, err
 }

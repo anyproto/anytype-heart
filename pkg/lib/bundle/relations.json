@@ -1495,6 +1495,26 @@
     "source": "details"
   },
   {
+    "description": "CID of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileCid",
+    "maxCount": 1,
+    "name": "CID of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Encoded encryption key of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileKey",
+    "maxCount": 1,
+    "name": "Encoded encryption key of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Participant permissions. Possible values: models.ParticipantPermissions",
     "format": "number",
     "hidden": true,

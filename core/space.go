@@ -142,11 +142,7 @@ func generateInvite(ctx context.Context, spaceId string, aclService acl.AclServi
 	if err != nil {
 		return
 	}
-	inviteFileKey, err := crypto.EncodeKeyToString(res.InviteFileKey)
-	if err != nil {
-		return
-	}
-	return res.InviteFileCid.String(), inviteFileKey, nil
+	return res.InviteFileCid, res.InviteFileKey, nil
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
