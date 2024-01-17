@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -136,28 +137,35 @@ type GenerateInviteResult struct {
 	InviteFileKey crypto.SymKey
 }
 
-func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result *GenerateInviteResult, err error) {
-	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
+func (a *aclService) buildInvite(ctx context.Context, space clientspace.Space, inviteKey crypto.PrivKey) (*model.Invite, error) {
+	invitePayload, err := a.buildInvitePayload(ctx, space, inviteKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build invite payload: %w", err)
 	}
-	aclClient := acceptSpace.CommonSpace().AclClient()
-	res, err := aclClient.GenerateInvite()
+	invitePayloadRaw, err := proto.Marshal(invitePayload)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal invite payload: %w", err)
 	}
-	err = aclClient.AddRecord(ctx, res.InviteRec)
+	invitePayloadSignature, err := a.accountService.SignData(invitePayloadRaw)
+	if err != nil {
+		return nil, fmt.Errorf("sign invite payload: %w", err)
+	}
+	return &model.Invite{
+		Payload:   invitePayloadRaw,
+		Signature: invitePayloadSignature,
+	}, nil
+}
 
-	rawInviteKey, err := res.InviteKey.Marshall()
+func (a *aclService) buildInvitePayload(ctx context.Context, space clientspace.Space, inviteKey crypto.PrivKey) (*model.InvitePayload, error) {
+	rawInviteKey, err := inviteKey.Marshall()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal invite priv key: %w", err)
 	}
 	invitePayload := &model.InvitePayload{
 		CreatorIdentity: a.accountService.AccountID(),
 		InviteKey:       rawInviteKey,
 	}
-
-	err = acceptSpace.Do(acceptSpace.DerivedIDs().Workspace, func(sb smartblock.SmartBlock) error {
+	err = space.Do(space.DerivedIDs().Workspace, func(sb smartblock.SmartBlock) error {
 		details := sb.Details()
 		invitePayload.SpaceName = pbtypes.GetString(details, bundle.RelationKeyName.String())
 		iconObjectId := pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
@@ -171,18 +179,30 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	return invitePayload, nil
+}
 
-	invitePayloadRaw, err := proto.Marshal(invitePayload)
+func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result *GenerateInviteResult, err error) {
+	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
-		return nil, fmt.Errorf("marshal invite payload: %w", err)
+		return nil, err
 	}
-	invitePayloadSignature, err := a.accountService.SignData(invitePayloadRaw)
+	aclClient := acceptSpace.CommonSpace().AclClient()
+	res, err := aclClient.GenerateInvite()
 	if err != nil {
-		return nil, fmt.Errorf("sign invite payload: %w", err)
+		return nil, err
 	}
-	invite := &model.Invite{
-		Payload:   invitePayloadRaw,
-		Signature: invitePayloadSignature,
+	err = aclClient.AddRecord(ctx, res.InviteRec)
+	if err != nil {
+		return nil, err
+	}
+
+	invite, err := a.buildInvite(ctx, acceptSpace, res.InviteKey)
+	if err != nil {
+		return nil, fmt.Errorf("build invite: %w", err)
 	}
 	inviteFileCid, inviteFileKey, err := a.inviteStore.StoreInvite(ctx, invite)
 	if err != nil {
