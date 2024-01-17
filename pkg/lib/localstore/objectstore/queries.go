@@ -112,6 +112,7 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 		})
 	}
 
+	// select only the best block/relation result for each object
 	var objectResults = make([]*search.DocumentMatch, 0, len(resultsByObjectId))
 	for _, objectPerBlockResults := range resultsByObjectId {
 		if len(objectPerBlockResults) == 0 {

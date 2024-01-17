@@ -121,7 +121,7 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 		return nil
 	}
 	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
-	b := f.index.NewBatch()
+	batch := f.index.NewBatch()
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
@@ -135,18 +135,18 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 	for _, doc := range docs {
 		doc.TitleNoTerms = doc.Title
 		doc.TextNoTerms = doc.Text
-		if err := b.Index(doc.Id, doc); err != nil {
+		if err := batch.Index(doc.Id, doc); err != nil {
 			return fmt.Errorf("failed to index document %s: %w", doc.Id, err)
 		}
 	}
-	return f.index.Batch(b)
+	return f.index.Batch(batch)
 }
 
 func (f *ftSearch) BatchDelete(ids []string) (err error) {
 	if len(ids) == 0 {
 		return nil
 	}
-	b := f.index.NewBatch()
+	batch := f.index.NewBatch()
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
@@ -158,9 +158,9 @@ func (f *ftSearch) BatchDelete(ids []string) (err error) {
 		}
 	}()
 	for _, id := range ids {
-		b.Delete(id)
+		batch.Delete(id)
 	}
-	return f.index.Batch(b)
+	return f.index.Batch(batch)
 }
 
 func (f *ftSearch) Search(spaceID, qry string) (results search.DocumentMatchCollection, err error) {
