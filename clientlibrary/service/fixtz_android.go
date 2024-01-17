@@ -1,8 +1,9 @@
 package service
 
 import (
+	"bytes"
+	"fmt"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -12,8 +13,8 @@ func fixTZ() {
 		fmt.Printf("failed to get system timezone: %s\n", err.Error())
 		return
 	}
-	tzName = strings.TrimSpace(string(tzName))
-	z, err := time.LoadLocation(tzName)
+	tzName = bytes.TrimSpace(tzName)
+	z, err := time.LoadLocation(string(tzName))
 	if err != nil {
 		fmt.Printf("failed to load tz %s: %s\n", tzName, err.Error())
 		return
