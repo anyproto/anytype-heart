@@ -30,15 +30,16 @@ type Params struct {
 
 func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
-	child.Register(aclwaiter.New(params.SpaceId, func() error {
-		params.Status.Lock()
-		defer params.Status.Unlock()
-		err := params.Status.SetPersistentStatus(context.Background(), spaceinfo.AccountStatusActive)
-		if err != nil {
-			params.Log.Error("failed to set persistent status", zap.Error(err))
-		}
-		return err
-	}))
+	child.Register(params.Status).
+		Register(aclwaiter.New(params.SpaceId, func() error {
+			params.Status.Lock()
+			defer params.Status.Unlock()
+			err := params.Status.SetPersistentStatus(context.Background(), spaceinfo.AccountStatusActive)
+			if err != nil {
+				params.Log.Error("failed to set persistent status", zap.Error(err))
+			}
+			return err
+		}))
 	return &joiner{
 		app: child,
 	}

@@ -130,7 +130,7 @@ func (a *aclObjectManager) process() {
 }
 
 func (a *aclObjectManager) clearAclIndexes() (err error) {
-	return a.indexer.RemoveIndexes(a.status.SpaceId())
+	return a.indexer.RemoveAclIndexes(a.status.SpaceId())
 }
 
 func (a *aclObjectManager) deleteObject(identity crypto.PubKey) (err error) {
