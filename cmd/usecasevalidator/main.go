@@ -416,14 +416,14 @@ func listObjects(info *useCaseInfo) {
 	fmt.Println("\n- Types:")
 	fmt.Println()
 	for id, key := range info.types {
-		obj, _ := info.objects[id]
+		obj := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
 	}
 
 	fmt.Println("\n- Relations:")
 	fmt.Println()
 	for id, key := range info.relations {
-		obj, _ := info.objects[id]
+		obj := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
 	}
 }

@@ -80,22 +80,22 @@ func processRules(s *pb.ChangeSnapshot) {
 
 		switch r.Entity {
 		case relationLink:
-			doRelationLinkRule(s, &r)
+			doRelationLinkRule(s, r)
 		case detail:
-			doDetailRule(s, &r)
+			doDetailRule(s, r)
 		case objectType:
-			doObjectTypeRule(s, &r)
+			doObjectTypeRule(s, r)
 		case dataViewTarget:
-			doDataViewTargetRule(s, &r)
+			doDataViewTargetRule(s, r)
 		case linkTarget:
-			doLinkTargetRule(s, &r)
+			doLinkTargetRule(s, r)
 		default:
 			fmt.Println("Invalid entity in rule", i, ":", r.Entity)
 		}
 	}
 }
 
-func doRelationLinkRule(s *pb.ChangeSnapshot, r *rule) {
+func doRelationLinkRule(s *pb.ChangeSnapshot, r rule) {
 	if r.RelationLink == nil || r.RelationLink.Key == "" {
 		fmt.Println("Invalid Relation link provided in relation-rule")
 		return
@@ -116,7 +116,7 @@ func doRelationLinkRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 }
 
-func doDetailRule(s *pb.ChangeSnapshot, r *rule) {
+func doDetailRule(s *pb.ChangeSnapshot, r rule) {
 	if r.DetailKey == "" {
 		fmt.Println("No detail key provided in detail-rule")
 		return
@@ -131,7 +131,7 @@ func doDetailRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 }
 
-func doObjectTypeRule(s *pb.ChangeSnapshot, r *rule) {
+func doObjectTypeRule(s *pb.ChangeSnapshot, r rule) {
 	if r.ObjectType == "" {
 		fmt.Println("No object type provided in objectType-rule")
 		return
@@ -148,7 +148,7 @@ func doObjectTypeRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 }
 
-func doDataViewTargetRule(s *pb.ChangeSnapshot, r *rule) {
+func doDataViewTargetRule(s *pb.ChangeSnapshot, r rule) {
 	if r.BlockID == "" {
 		fmt.Println("Block id is not provided for dataViewTarget-rule")
 		return
@@ -177,7 +177,7 @@ func doDataViewTargetRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 }
 
-func doLinkTargetRule(s *pb.ChangeSnapshot, r *rule) {
+func doLinkTargetRule(s *pb.ChangeSnapshot, r rule) {
 	if r.BlockID == "" {
 		fmt.Println("Block id is not provided for linkTarget-rule")
 		return

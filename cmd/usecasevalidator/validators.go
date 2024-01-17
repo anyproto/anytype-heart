@@ -229,11 +229,6 @@ func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) error {
 	}
 	for _, b := range s.Snapshot.Data.Blocks {
 		if v, ok := simple.New(b).(simple.FileHashes); ok {
-			//if v, ok := v.(file.Block); ok && v.Model().GetFile().Hash == "" {
-			//	fmt.Printf("file block '%s' of object '%s' has empty hash\n", v.Model().Id, id)
-			//	invalidKeyFound = true
-			//	continue
-			//}
 			var hashes []string
 			hashes = v.FillFileHashes(hashes)
 			if len(hashes) == 0 {
