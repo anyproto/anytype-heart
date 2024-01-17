@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -131,7 +132,12 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 			if objectPath.HasBlock() && b.Model().Id != objectPath.BlockId {
 				return true
 			}
+
 			if tb := b.Model().GetText(); tb != nil {
+				if len(strings.TrimSpace(tb.Text)) == 0 {
+					return true
+				}
+
 				doc := ftsearch.SearchDoc{
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
 					SpaceID: sb.SpaceID(),
