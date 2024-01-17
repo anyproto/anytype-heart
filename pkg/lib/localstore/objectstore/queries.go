@@ -93,6 +93,9 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 		return filters, fmt.Errorf("fullText search not configured")
 	}
 	results, err := s.fts.Search(getSpaceIDFromFilter(filters.FilterObj), text)
+	if err != nil {
+		return filters, fmt.Errorf("fullText search: %w", err)
+	}
 
 	var resultsByObjectId = make(map[string][]*search.DocumentMatch)
 	for _, result := range results {
@@ -109,22 +112,23 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 		})
 	}
 
-	if filters.ObjectInnerId == nil {
-		filters.ObjectInnerId = make(map[string]string)
-	}
-
-	var objectIds = make([]string, 0, len(resultsByObjectId))
-	for objectId, results := range resultsByObjectId {
-		if len(results) == 0 {
+	var objectResults = make([]*search.DocumentMatch, 0, len(resultsByObjectId))
+	for _, objectPerBlockResults := range resultsByObjectId {
+		if len(objectPerBlockResults) == 0 {
 			continue
 		}
-		path := domain.NewFromPath(results[0].ID)
-		filters.ObjectInnerId[objectId] = path.ObjectRelativePath()
-		objectIds = append(objectIds, objectId)
+		objectResults = append(objectResults, objectPerBlockResults[0])
 	}
-	if err != nil {
-		return filters, err
+
+	sort.Slice(objectResults, func(i, j int) bool {
+		return objectResults[i].Score > objectResults[j].Score
+	})
+
+	var objectIds = make([]string, 0, len(objectResults))
+	for _, result := range objectResults {
+		objectIds = append(objectIds, domain.NewFromPath(result.ID).ObjectId)
 	}
+
 	idsQuery := newIdsFilter(objectIds)
 	filters.FilterObj = database.FiltersAnd{filters.FilterObj, idsQuery}
 	filters.Order = database.SetOrder(append([]database.Order{idsQuery}, filters.Order))

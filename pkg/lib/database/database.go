@@ -180,8 +180,6 @@ type Filters struct {
 	FilterObj Filter
 	Order     Order
 	dateKeys  []string
-
-	ObjectInnerId map[string]string
 }
 
 func (f *Filters) Filter(e query.Entry) bool {
