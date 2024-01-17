@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
-	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
@@ -30,7 +29,7 @@ type validator func(snapshot *pb.SnapshotWithType, info *useCaseInfo) error
 var validators = []validator{
 	validateRelationLinks,
 	validateRelationBlocks,
-	validateObjectDetails,
+	validateDetails,
 	validateObjectTypes,
 	validateBlockLinks,
 	validateFileKeys,
@@ -41,7 +40,7 @@ func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) error {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	invalidRelationFound := false
 	for _, rel := range s.Snapshot.Data.RelationLinks {
-		if _, found := info.relations[rel.Key]; !bundle.HasRelation(rel.Key) && !found {
+		if _, found := info.customTypesAndRelations[rel.Key]; !bundle.HasRelation(rel.Key) && !found {
 			invalidRelationFound = true
 			fmt.Printf("object '%s' contains link to unknown relation: %s(%s)\n", id,
 				rel.Key, pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String()))
@@ -75,7 +74,7 @@ func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) error {
 	return nil
 }
 
-func validateObjectDetails(s *pb.SnapshotWithType, info *useCaseInfo) error {
+func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) error {
 	var invalidDetailFound bool
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for k, v := range s.Snapshot.Data.Details.Fields {
@@ -230,11 +229,11 @@ func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) error {
 	}
 	for _, b := range s.Snapshot.Data.Blocks {
 		if v, ok := simple.New(b).(simple.FileHashes); ok {
-			if v, ok := v.(file.Block); ok && v.Model().GetFile().Hash == "" {
-				fmt.Printf("file block '%s' of object '%s' has empty hash\n", v.Model().Id, id)
-				invalidKeyFound = true
-				continue
-			}
+			//if v, ok := v.(file.Block); ok && v.Model().GetFile().Hash == "" {
+			//	fmt.Printf("file block '%s' of object '%s' has empty hash\n", v.Model().Id, id)
+			//	invalidKeyFound = true
+			//	continue
+			//}
 			var hashes []string
 			hashes = v.FillFileHashes(hashes)
 			if len(hashes) == 0 {

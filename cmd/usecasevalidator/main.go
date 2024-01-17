@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 
@@ -49,8 +50,8 @@ type (
 
 	cliFlags struct {
 		analytics, removeRelations bool
-		list, validate             bool
-		path, creator              string
+		list, validate, creator    bool
+		path, rules                string
 	}
 )
 
@@ -72,6 +73,12 @@ func run() error {
 	}
 	fileName := filepath.Base(flags.path)
 	pathToNewZip := strings.TrimSuffix(flags.path, filepath.Ext(fileName)) + "_new.zip"
+
+	if flags.rules != "" {
+		if err = readRules(flags.rules); err != nil {
+			return err
+		}
+	}
 
 	r, err := zip.OpenReader(flags.path)
 	if err != nil {
@@ -117,11 +124,12 @@ func run() error {
 
 func getFlags() (*cliFlags, error) {
 	path := flag.String("path", "", "Path to zip archive")
-	creator := flag.String("creator", "", "Creator name that will be put to LastModifiedDate and Creator")
+	creator := flag.Bool("creator", false, "Set Anytype profile to LastModifiedDate and Creator")
 	list := flag.Bool("list", false, "List all objects in archive")
 	valid := flag.Bool("validate", false, "Perform validation upon all objects")
 	removeRels := flag.Bool("r", false, "Remove account related relations")
 	analytics := flag.Bool("a", false, "Insert analytics context and original id")
+	rules := flag.String("rules", "", "Path to file with processing rules")
 
 	flag.Parse()
 
@@ -136,6 +144,7 @@ func getFlags() (*cliFlags, error) {
 		validate:        *valid,
 		path:            *path,
 		creator:         *creator,
+		rules:           *rules,
 	}, nil
 }
 
@@ -153,6 +162,11 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			info.profileFileFound = true
 			continue
 		}
+
+		if strings.HasPrefix(f.Name, "files/") {
+			continue
+		}
+
 		data, err := readData(f)
 		if err != nil {
 			return nil, err
@@ -242,6 +256,10 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 		return processProfile(data, info)
 	}
 
+	if strings.HasPrefix(name, "files/") {
+		return data, nil
+	}
+
 	snapshot, isOldAccount, err := extractSnapshotAndType(data, name)
 	if err != nil {
 		return nil, err
@@ -255,7 +273,13 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 		removeAccountRelatedDetails(snapshot.Snapshot)
 	}
 
-	insertCreatorInfo(snapshot.Snapshot, flags.creator)
+	if flags.creator {
+		insertCreatorInfo(snapshot.Snapshot)
+	}
+
+	if flags.rules != "" {
+		processRules(snapshot.Snapshot)
+	}
 
 	if flags.validate {
 		if err = validate(snapshot, info); err != nil {
@@ -272,6 +296,24 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 
 func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, isOldAccount bool, err error) {
 	s = &pb.SnapshotWithType{}
+	if strings.HasSuffix(name, ".json") {
+		if err = jsonpb.UnmarshalString(string(data), s); err != nil {
+			return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
+		}
+		if s.SbType == model.SmartBlockType_AccountOld {
+			cs := &pb.ChangeSnapshot{}
+			isOldAccount = true
+			if err = jsonpb.UnmarshalString(string(data), cs); err != nil {
+				return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
+			}
+			s = &pb.SnapshotWithType{
+				Snapshot: cs,
+				SbType:   model.SmartBlockType_Page,
+			}
+		}
+		return
+	}
+
 	if err = s.Unmarshal(data); err != nil {
 		return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 	}
@@ -324,22 +366,20 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 		switch key {
 		case bundle.RelationKeyLastOpenedDate.String(),
 			bundle.RelationKeyCreatedDate.String(),
-			bundle.RelationKeyLastModifiedDate.String(),
 			bundle.RelationKeySpaceId.String(),
 			bundle.RelationKeyRelationFormatObjectTypes.String(),
-			bundle.RelationKeySourceFilePath.String():
+			bundle.RelationKeySourceFilePath.String(),
+			bundle.RelationKeyLinks.String(),
+			bundle.RelationKeyBacklinks.String():
 
 			delete(s.Data.Details.Fields, key)
 		}
 	}
 }
 
-func insertCreatorInfo(s *pb.ChangeSnapshot, creator string) {
-	if creator == "" {
-		creator = addr.AnytypeProfileId
-	}
-	s.Data.Details.Fields[bundle.RelationKeyCreator.String()] = pbtypes.String(creator)
-	s.Data.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(creator)
+func insertCreatorInfo(s *pb.ChangeSnapshot) {
+	s.Data.Details.Fields[bundle.RelationKeyCreator.String()] = pbtypes.String(addr.AnytypeProfileId)
+	s.Data.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(addr.AnytypeProfileId)
 }
 
 func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
@@ -360,7 +400,8 @@ func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
 }
 
 func listObjects(info *useCaseInfo) {
-	fmt.Println("\nUsecase '" + info.useCase + "'content:\n\n- General objects:\n")
+	fmt.Println("\nUsecase '" + info.useCase + "'content:\n\n- General objects:")
+	fmt.Println()
 	for id, obj := range info.objects {
 		if obj.SbType == smartblock.SmartBlockTypeObjectType || obj.SbType == smartblock.SmartBlockTypeRelation {
 			continue
@@ -372,13 +413,15 @@ func listObjects(info *useCaseInfo) {
 		fmt.Printf("%s:\t%24s - %24s - %s\n", id[len(id)-4:], obj.SbType.String(), key, obj.Name)
 	}
 
-	fmt.Println("\n- Types:\n")
+	fmt.Println("\n- Types:")
+	fmt.Println()
 	for id, key := range info.types {
 		obj, _ := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
 	}
 
-	fmt.Println("\n- Relations:\n")
+	fmt.Println("\n- Relations:")
+	fmt.Println()
 	for id, key := range info.relations {
 		obj, _ := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
