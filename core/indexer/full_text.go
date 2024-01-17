@@ -83,9 +83,9 @@ func (i *indexer) runFullTextIndexer() {
 func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.SearchDoc) error) (err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
-	objectId, blockId, relationKey := domain.ExtractFromFullTextId(id)
+	objectPath := domain.NewFromPath(id)
 
-	err = block.DoContext(i.picker, ctx, objectId, func(sb smartblock2.SmartBlock) error {
+	err = block.DoContext(i.picker, ctx, objectPath.ObjectId, func(sb smartblock2.SmartBlock) error {
 		indexDetails, _ := sb.Type().Indexable()
 		if !indexDetails {
 			return nil
@@ -101,7 +101,7 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 		}
 
 		for _, rel := range sb.GetRelationLinks() {
-			if relationKey != "" && rel.Key != relationKey {
+			if objectPath.HasRelation() && rel.Key != objectPath.RelationKey {
 				continue
 			}
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
@@ -113,7 +113,7 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 			}
 
 			f := ftsearch.SearchDoc{
-				Id:      id + "-r_" + rel.Key,
+				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
 				SpaceID: sb.SpaceID(),
 				Text:    val,
 			}
@@ -127,12 +127,12 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 		}
 
 		sb.Iterate(func(b simple.Block) (isContinue bool) {
-			if blockId != "" && b.Model().Id != blockId {
+			if objectPath.HasBlock() && b.Model().Id != objectPath.BlockId {
 				return true
 			}
 			if tb := b.Model().GetText(); tb != nil {
 				err = processor(ftsearch.SearchDoc{
-					Id:      id + "-" + b.Model().Id,
+					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
 					SpaceID: sb.SpaceID(),
 					Text:    tb.Text,
 				})

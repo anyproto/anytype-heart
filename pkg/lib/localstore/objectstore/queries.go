@@ -3,7 +3,6 @@ package objectstore
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/dgraph-io/badger/v4"
@@ -43,21 +42,8 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 			if err != nil {
 				return err
 			}
-			id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
-			name := pbtypes.GetString(details.Details, bundle.RelationKeyName.String())
 			rec := database.Record{Details: details.Details}
-
-			if innerId, ok := filters.ObjectInnerId[id]; ok && details.Details != nil {
-				detailsCopy := pbtypes.CopyStruct(details.Details)
-				if strings.HasPrefix(innerId, "r_") {
-					detailsCopy.Fields[bundle.RelationKeySearchTargetRelation.String()] = pbtypes.String(innerId[2:])
-					detailsCopy.Fields[bundle.RelationKeyName.String()] = pbtypes.String(fmt.Sprintf("%s (rel %s)", name, innerId[2:]))
-				} else {
-					detailsCopy.Fields[bundle.RelationKeySearchTargetBlock.String()] = pbtypes.String(innerId)
-					detailsCopy.Fields[bundle.RelationKeyName.String()] = pbtypes.String(fmt.Sprintf("%s (block %s)", name, innerId))
-				}
-				rec.Details = detailsCopy
-			}
+			// todo: pass the inner block/relation to the result
 
 			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {
 				records = append(records, rec)
@@ -107,17 +93,15 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 		return filters, fmt.Errorf("fullText search not configured")
 	}
 	results, err := s.fts.Search(getSpaceIDFromFilter(filters.FilterObj), text)
-	if filters.ObjectInnerId == nil {
-		filters.ObjectInnerId = make(map[string]string)
-	}
+
 	var resultsByObjectId = make(map[string][]*search.DocumentMatch)
 	for _, result := range results {
-		objectId, _, _ := domain.ExtractFromFullTextId(result.ID)
-		if _, ok := resultsByObjectId[objectId]; !ok {
-			resultsByObjectId[objectId] = make([]*search.DocumentMatch, 0, 1)
+		path := domain.NewFromPath(result.ID)
+		if _, ok := resultsByObjectId[path.ObjectId]; !ok {
+			resultsByObjectId[path.ObjectId] = make([]*search.DocumentMatch, 0, 1)
 		}
 
-		resultsByObjectId[objectId] = append(resultsByObjectId[objectId], result)
+		resultsByObjectId[path.ObjectId] = append(resultsByObjectId[path.ObjectId], result)
 	}
 	for objectId := range resultsByObjectId {
 		sort.Slice(resultsByObjectId[objectId], func(i, j int) bool {
@@ -125,18 +109,17 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 		})
 	}
 
+	if filters.ObjectInnerId == nil {
+		filters.ObjectInnerId = make(map[string]string)
+	}
+
 	var objectIds = make([]string, 0, len(resultsByObjectId))
 	for objectId, results := range resultsByObjectId {
 		if len(results) == 0 {
 			continue
 		}
-		_, blockId, relationKey := domain.ExtractFromFullTextId(results[0].ID)
-
-		if blockId != "" {
-			filters.ObjectInnerId[objectId] = blockId
-		} else if relationKey != "" {
-			filters.ObjectInnerId[objectId] = "r_" + relationKey
-		}
+		path := domain.NewFromPath(results[0].ID)
+		filters.ObjectInnerId[objectId] = path.ObjectRelativePath()
 		objectIds = append(objectIds, objectId)
 	}
 	if err != nil {

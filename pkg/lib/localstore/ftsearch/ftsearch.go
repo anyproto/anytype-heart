@@ -56,6 +56,7 @@ type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	BatchIndex(docs []SearchDoc) (err error)
+	BatchDelete(ids []string) (err error)
 	Search(spaceID, query string) (results search.DocumentMatchCollection, err error)
 	Has(id string) (exists bool, err error)
 	Delete(id string) error
@@ -137,6 +138,27 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 		if err := b.Index(doc.Id, doc); err != nil {
 			return fmt.Errorf("failed to index document %s: %w", doc.Id, err)
 		}
+	}
+	return f.index.Batch(b)
+}
+
+func (f *ftSearch) BatchDelete(ids []string) (err error) {
+	if len(ids) == 0 {
+		return nil
+	}
+	b := f.index.NewBatch()
+	start := time.Now()
+	defer func() {
+		spentMs := time.Since(start).Milliseconds()
+		l := log.With("objects", len(ids)).With("total", time.Since(start).Milliseconds())
+		if spentMs > 1000 {
+			l.Warnf("ft delete took too long")
+		} else {
+			l.Debugf("ft delete done")
+		}
+	}()
+	for _, id := range ids {
+		b.Delete(id)
 	}
 	return f.index.Batch(b)
 }
