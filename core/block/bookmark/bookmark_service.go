@@ -295,7 +295,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		go func() {
 			defer wg.Done()
 			updaters <- func(c *bookmark.ObjectContent) {
-				blocks, _, err := anymark.HTMLToBlocks(body)
+				blocks, _, err := anymark.HTMLToBlocks(body, url)
 				if err != nil {
 					log.Errorf("parse blocks: %s", err)
 					return
