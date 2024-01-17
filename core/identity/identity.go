@@ -164,7 +164,6 @@ func (s *service) indexIdentityObject(ctx context.Context) error {
 
 func (s *service) Close(ctx context.Context) (err error) {
 	close(s.closing)
-	close(s.identityForceUpdate)
 	return nil
 }
 
@@ -515,7 +514,10 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 			initialized: false,
 		}
 	}
-	s.identityForceUpdate <- struct{}{}
+	select {
+	case s.identityForceUpdate <- struct{}{}:
+	default:
+	}
 	return nil
 }
 
