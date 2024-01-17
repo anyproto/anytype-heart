@@ -1,0 +1,386 @@
+//go:build !nogrpcserver && !_test
+
+package main
+
+import (
+	"archive/zip"
+	"bytes"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+type (
+	relationWithFormat interface {
+		GetFormat() model.RelationFormat
+	}
+
+	objectInfo struct {
+		Type, Name string
+		SbType     smartblock.SmartBlockType
+	}
+
+	useCaseInfo struct {
+		objects   map[string]objectInfo
+		relations map[string]domain.RelationKey
+		types     map[string]domain.TypeKey
+
+		customTypesAndRelations map[string]struct{}
+
+		useCase          string
+		profileFileFound bool
+	}
+
+	cliFlags struct {
+		analytics, removeRelations bool
+		list, validate             bool
+		path, creator              string
+	}
+)
+
+const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
+
+var errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	flags, err := getFlags()
+	if err != nil {
+		return err
+	}
+	fileName := filepath.Base(flags.path)
+	pathToNewZip := strings.TrimSuffix(flags.path, filepath.Ext(fileName)) + "_new.zip"
+
+	r, err := zip.OpenReader(flags.path)
+	if err != nil {
+		return fmt.Errorf("cannot open zip file %s: %w", flags.path, err)
+	}
+	defer r.Close()
+
+	info, err := collectUseCaseInfo(r.File, fileName)
+	if err != nil {
+		return err
+	}
+	if !info.profileFileFound {
+		fmt.Printf("profile file does not present in archive\n")
+	}
+
+	if flags.list {
+		listObjects(info)
+	}
+
+	zf, err := os.Create(pathToNewZip)
+	if err != nil {
+		return fmt.Errorf("failed to create output zip file: %w", err)
+	}
+	defer zf.Close()
+
+	writer := zip.NewWriter(zf)
+	defer writer.Close()
+
+	if err = processFiles(r.File, writer, info, flags); err != nil {
+		if errors.Is(err, errIncorrectFileFound) {
+			fmt.Println("Provided zip contains some incorrect data. " +
+				"Please examine errors above. You can change object in editor or add some rules to rules.json")
+			_ = os.Remove(pathToNewZip)
+		} else {
+			fmt.Println("An error occurred on protobuf files processing:", err)
+		}
+		_ = os.Remove(pathToNewZip)
+		return nil
+	}
+	fmt.Println("Processed zip is written to ", pathToNewZip)
+	return nil
+}
+
+func getFlags() (*cliFlags, error) {
+	path := flag.String("path", "", "Path to zip archive")
+	creator := flag.String("creator", "", "Creator name that will be put to LastModifiedDate and Creator")
+	list := flag.Bool("list", false, "List all objects in archive")
+	valid := flag.Bool("validate", false, "Perform validation upon all objects")
+	removeRels := flag.Bool("r", false, "Remove account related relations")
+	analytics := flag.Bool("a", false, "Insert analytics context and original id")
+
+	flag.Parse()
+
+	if *path == "" {
+		return nil, fmt.Errorf("path to zip archive should be specified")
+	}
+
+	return &cliFlags{
+		analytics:       *analytics,
+		list:            *list,
+		removeRelations: *removeRels,
+		validate:        *valid,
+		path:            *path,
+		creator:         *creator,
+	}, nil
+}
+
+func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, err error) {
+	info = &useCaseInfo{
+		useCase:                 strings.TrimSuffix(fileName, filepath.Ext(fileName)),
+		objects:                 make(map[string]objectInfo, len(files)-1),
+		relations:               make(map[string]domain.RelationKey, len(files)-1),
+		types:                   make(map[string]domain.TypeKey, len(files)-1),
+		customTypesAndRelations: make(map[string]struct{}),
+		profileFileFound:        false,
+	}
+	for _, f := range files {
+		if f.Name == constant.ProfileFile {
+			info.profileFileFound = true
+			continue
+		}
+		data, err := readData(f)
+		if err != nil {
+			return nil, err
+		}
+
+		snapshot, _, err := extractSnapshotAndType(data, f.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract snapshot from file %s: %w", f.Name, err)
+		}
+
+		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+
+		info.objects[id] = objectInfo{
+			Type:   pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyType.String()),
+			Name:   pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()),
+			SbType: smartblock.SmartBlockType(snapshot.SbType),
+		}
+
+		switch snapshot.SbType {
+		case model.SmartBlockType_STRelation:
+			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
+			info.relations[id] = domain.RelationKey(key)
+			if !bundle.HasRelation(key) {
+				info.customTypesAndRelations[key] = struct{}{}
+			}
+		case model.SmartBlockType_STType:
+			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+			key := strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)
+			info.types[id] = domain.TypeKey(key)
+			if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
+				info.customTypesAndRelations[key] = struct{}{}
+			}
+		}
+	}
+	return
+}
+
+func readData(f *zip.File) ([]byte, error) {
+	rd, err := f.Open()
+	if err != nil {
+		return nil, fmt.Errorf("cannot open pb file %s: %w", f.Name, err)
+	}
+	defer rd.Close()
+	data, err := io.ReadAll(rd)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read data from file %s: %w", f.Name, err)
+	}
+	return data, nil
+}
+
+func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *cliFlags) error {
+	var incorrectFileFound bool
+	for _, f := range files {
+		if f.Name == anytypeProfileFilename {
+			fmt.Println(anytypeProfileFilename, "is excluded")
+			continue
+		}
+		data, err := readData(f)
+		if err != nil {
+			return err
+		}
+		newData, err := processRawData(data, f.Name, info, flags)
+		if err != nil {
+			incorrectFileFound = true
+			continue
+		}
+		if newData == nil {
+			continue
+		}
+		nf, err := zw.Create(f.Name)
+		if err != nil {
+			return fmt.Errorf("failed to create new file %s: %w", f.Name, err)
+		}
+		if _, err = io.Copy(nf, bytes.NewReader(newData)); err != nil {
+			return fmt.Errorf("failed to copy snapshot to new file %s: %w", f.Name, err)
+		}
+	}
+	if incorrectFileFound {
+		return errIncorrectFileFound
+	}
+	return nil
+}
+
+func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags) ([]byte, error) {
+	if name == constant.ProfileFile {
+		return processProfile(data, info)
+	}
+
+	snapshot, isOldAccount, err := extractSnapshotAndType(data, name)
+	if err != nil {
+		return nil, err
+	}
+
+	if flags.analytics {
+		insertAnalyticsData(snapshot.Snapshot, info)
+	}
+
+	if flags.removeRelations {
+		removeAccountRelatedDetails(snapshot.Snapshot)
+	}
+
+	insertCreatorInfo(snapshot.Snapshot, flags.creator)
+
+	if flags.validate {
+		if err = validate(snapshot, info); err != nil {
+			return nil, err
+		}
+	}
+
+	if isOldAccount {
+		return snapshot.Snapshot.Marshal()
+	}
+
+	return snapshot.Marshal()
+}
+
+func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, isOldAccount bool, err error) {
+	s = &pb.SnapshotWithType{}
+	if err = s.Unmarshal(data); err != nil {
+		return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
+	}
+	if s.SbType == model.SmartBlockType_AccountOld {
+		cs := &pb.ChangeSnapshot{}
+		isOldAccount = true
+		if err = cs.Unmarshal(data); err != nil {
+			return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
+		}
+		s = &pb.SnapshotWithType{
+			Snapshot: cs,
+			SbType:   model.SmartBlockType_Page,
+		}
+	}
+	return s, isOldAccount, nil
+}
+
+func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
+	isValid := true
+	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	for _, v := range validators {
+		if e := v(snapshot, info); e != nil {
+			isValid = false
+			err = multierror.Append(err, e)
+		}
+	}
+	if !isValid {
+		return fmt.Errorf("object '%s' is invalid: %w", id, err)
+	}
+	return nil
+}
+
+func insertAnalyticsData(s *pb.ChangeSnapshot, info *useCaseInfo) {
+	root := s.Data.Blocks[0]
+	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
+	f := root.GetFields().GetFields()
+
+	if f == nil {
+		f = make(map[string]*types.Value)
+	}
+	root.Fields = &types.Struct{Fields: f}
+	f["analyticsContext"] = pbtypes.String(info.useCase)
+	if f["analyticsOriginalId"] == nil {
+		f["analyticsOriginalId"] = pbtypes.String(id)
+	}
+}
+
+func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
+	for key := range s.Data.Details.Fields {
+		switch key {
+		case bundle.RelationKeyLastOpenedDate.String(),
+			bundle.RelationKeyCreatedDate.String(),
+			bundle.RelationKeyLastModifiedDate.String(),
+			bundle.RelationKeySpaceId.String(),
+			bundle.RelationKeyRelationFormatObjectTypes.String(),
+			bundle.RelationKeySourceFilePath.String():
+
+			delete(s.Data.Details.Fields, key)
+		}
+	}
+}
+
+func insertCreatorInfo(s *pb.ChangeSnapshot, creator string) {
+	if creator == "" {
+		creator = addr.AnytypeProfileId
+	}
+	s.Data.Details.Fields[bundle.RelationKeyCreator.String()] = pbtypes.String(creator)
+	s.Data.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(creator)
+}
+
+func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
+	profile := &pb.Profile{}
+	if err := profile.Unmarshal(data); err != nil {
+		e := fmt.Errorf("cannot unmarshal profile: %w", err)
+		fmt.Println(e)
+		return nil, e
+	}
+	profile.Name = ""
+	profile.ProfileId = ""
+	if _, found := info.objects[profile.SpaceDashboardId]; !found {
+		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
+		fmt.Println(err)
+		return nil, err
+	}
+	return profile.Marshal()
+}
+
+func listObjects(info *useCaseInfo) {
+	fmt.Println("\nUsecase '" + info.useCase + "'content:\n\n- General objects:\n")
+	for id, obj := range info.objects {
+		if obj.SbType == smartblock.SmartBlockTypeObjectType || obj.SbType == smartblock.SmartBlockTypeRelation {
+			continue
+		}
+		key, found := info.types[obj.Type]
+		if !found {
+			fmt.Printf("type '%s' is not found in the archive\n", obj.Type)
+		}
+		fmt.Printf("%s:\t%24s - %24s - %s\n", id[len(id)-4:], obj.SbType.String(), key, obj.Name)
+	}
+
+	fmt.Println("\n- Types:\n")
+	for id, key := range info.types {
+		obj, _ := info.objects[id]
+		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
+	}
+
+	fmt.Println("\n- Relations:\n")
+	for id, key := range info.relations {
+		obj, _ := info.objects[id]
+		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
+	}
+}
