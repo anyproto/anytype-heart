@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a6cfcf4cf00602fc665fd6375a4f53fe23f0c3bafcf89be7c74244aff4ea1b26"
+const RelationChecksum = "e674b8ac690dc5eb2f8a619778639a3a38d1c5fbd6ffe8e9e9c567003a40eae9"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -737,7 +737,7 @@ var (
 		},
 		RelationKeyFileExt: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
 			Id:               "_brfileExt",

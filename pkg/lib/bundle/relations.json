@@ -1246,7 +1246,7 @@
     "maxCount": 1,
     "name": "File extension",
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "format": "longtext",
