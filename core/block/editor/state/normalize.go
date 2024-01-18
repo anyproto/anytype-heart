@@ -247,9 +247,11 @@ func (s *State) divBalance(d1, d2 *model.Block) (overflow bool) {
 		div = maxChildrenThreshold / 2
 	}
 
-	d2.ChildrenIds = make([]string, len(d1.ChildrenIds[div:]))
-	copy(d2.ChildrenIds, d1.ChildrenIds[div:])
-	d1.ChildrenIds = d1.ChildrenIds[:div]
+	d1ChildrenIds := make([]string, div)
+	copy(d1ChildrenIds, d1.ChildrenIds[:div])
+
+	d2.ChildrenIds = d1.ChildrenIds[div:]
+	d1.ChildrenIds = d1ChildrenIds
 	return len(d2.ChildrenIds) > maxChildrenThreshold
 }
 
