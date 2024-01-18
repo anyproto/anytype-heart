@@ -42,13 +42,15 @@ func (s FileStatus) ToSyncStatus() syncstatus.SyncStatus {
 }
 
 func (s *service) updateFileStatus(fileId domain.FileId, status FileStatus) error {
-	fileObjectId, err := s.getObjectIdByFileId(fileId)
+	fileObjectIds, err := s.getObjectIdsByFileId(fileId)
 	if err != nil {
 		return fmt.Errorf("get file id by file hash: %w", err)
 	}
-	err = s.indexFileSyncStatus(fileObjectId, status)
-	if err != nil {
-		return fmt.Errorf("index file sync status: %w", err)
+	for _, id := range fileObjectIds {
+		err = s.indexFileSyncStatus(id, status)
+		if err != nil {
+			return fmt.Errorf("index file sync status: %w", err)
+		}
 	}
 	return nil
 }
@@ -65,7 +67,7 @@ func (s *service) OnFileLimited(fileId domain.FileId) error {
 	return s.updateFileStatus(fileId, FileStatusLimited)
 }
 
-func (s *service) getObjectIdByFileId(fileId domain.FileId) (string, error) {
+func (s *service) getObjectIdsByFileId(fileId domain.FileId) ([]string, error) {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -76,12 +78,16 @@ func (s *service) getObjectIdByFileId(fileId domain.FileId) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("query objects by file hash: %w", err)
+		return nil, fmt.Errorf("query objects by file hash: %w", err)
 	}
 	if len(records) == 0 {
-		return "", fmt.Errorf("file object not found")
+		return nil, fmt.Errorf("file object not found")
 	}
-	return pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()), nil
+	ids := make([]string, 0, len(records))
+	for _, rec := range records {
+		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+	}
+	return ids, nil
 }
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status FileStatus) error {

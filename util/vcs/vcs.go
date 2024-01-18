@@ -51,7 +51,7 @@ func (v VCSInfo) Description() string {
 	if !v.CGO {
 		desc += " (no-cgo)"
 	}
-	return fmt.Sprintf("build on %s from %s at #%s(%s)", v.BuildDate, v.Branch, v.Revision, v.Summary)
+	return desc
 }
 
 // GetVCSInfo returns git build info

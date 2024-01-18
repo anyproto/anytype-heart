@@ -41,10 +41,10 @@ func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationN
 		}
 		if fileObjectId == "" {
 			// TODO Fix
-			//if targets, err := fs.fileStore.ListChildrenByFileId(f); err == nil && len(targets) > 0 {
+			// if targets, err := fs.fileStore.ListChildrenByFileId(f); err == nil && len(targets) > 0 {
 			//	allFilesHashes = append(allFilesHashes, f)
 			//	continue
-			//}
+			// }
 		}
 	}
 	fs.updateFileRelationsDetails(state, relationName, allFilesHashes)
@@ -73,7 +73,7 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
 			Origin:               origin,
 		}
-		fileObjectId, err = fs.service.UploadFile(context.Background(), spaceID, req)
+		fileObjectId, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			log.Errorf("file uploading %s", err)
 		}
@@ -86,7 +86,7 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
 			Origin:               origin,
 		}
-		fileObjectId, err = fs.service.UploadFile(context.Background(), spaceID, req)
+		fileObjectId, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			log.Errorf("file uploading %s", err)
 		}

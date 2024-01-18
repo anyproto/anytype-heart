@@ -100,6 +100,10 @@ func getRawManifest(url string) ([]byte, error) {
 		return nil, err
 	}
 
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get manifest. Status: %s", res.Status)
+	}
+
 	if res.Body != nil {
 		defer res.Body.Close()
 	}
