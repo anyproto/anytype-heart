@@ -18,10 +18,8 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
-	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
-	"github.com/anyproto/anytype-heart/core/files/mock_files"
+	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -44,26 +42,22 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
-	fileService := mock_files.NewMockService(t)
-	fileObjectService := mock_fileobject.NewMockService(t)
+	fileAclService := mock_fileacl.NewMockService(t)
 	dataStore := datastore.NewInMemory()
 	err := dataStore.Run(ctx)
 	require.NoError(t, err)
-	fileStore := filestore.New()
 
 	a := new(app.App)
 	a.Register(&spaceIdDeriverStub{})
 	a.Register(&detailsModifierStub{})
 	a.Register(dataStore)
 	a.Register(objectStore)
-	a.Register(fileStore)
 	a.Register(testutil.PrepareMock(ctx, a, coordinatorClient))
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
-	a.Register(testutil.PrepareMock(ctx, a, fileService))
-	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
+	a.Register(testutil.PrepareMock(ctx, a, fileAclService))
 
-	svc := New(testObserverPeriod)
+	svc := New(testObserverPeriod, 1*time.Microsecond)
 	err = svc.Init(a)
 	t.Cleanup(func() {
 		svc.Close(ctx)

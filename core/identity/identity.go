@@ -81,6 +81,11 @@ type service struct {
 	techSpaceId       string
 	personalSpaceId   string
 
+	pushIdentityProfileLock    sync.RWMutex
+	pushIdentityProfileDetails *types.Struct // save details to batch update operation
+	pushIdentityTimer          *time.Timer   // timer for batching
+	pushIdentityBatchTimeout   time.Duration
+
 	identityObservePeriod time.Duration
 	identityForceUpdate   chan struct{}
 	lock                  sync.RWMutex
@@ -90,14 +95,15 @@ type service struct {
 	identityProfileCache   map[string]*model.IdentityProfile
 }
 
-func New(identityObservePeriod time.Duration) Service {
+func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
 	return &service{
-		closing:                make(chan struct{}),
-		identityForceUpdate:    make(chan struct{}),
-		identityObservePeriod:  identityObservePeriod,
-		identityObservers:      make(map[string]map[string]*observer),
-		identityEncryptionKeys: make(map[string]crypto.SymKey),
-		identityProfileCache:   make(map[string]*model.IdentityProfile),
+		closing:                  make(chan struct{}),
+		identityForceUpdate:      make(chan struct{}),
+		identityObservePeriod:    identityObservePeriod,
+		identityObservers:        make(map[string]map[string]*observer),
+		identityEncryptionKeys:   make(map[string]crypto.SymKey),
+		identityProfileCache:     make(map[string]*model.IdentityProfile),
+		pushIdentityBatchTimeout: pushIdentityBatchTimeout,
 	}
 }
 
@@ -279,10 +285,20 @@ func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
 		return fmt.Errorf("modify details: %w", err)
 	}
 
-	err = s.pushProfileToIdentityRegistry(context.Background(), profileDetails)
-	if err != nil {
-		return fmt.Errorf("push profile to identity registry: %w", err)
+	s.pushIdentityProfileLock.Lock()
+	s.pushIdentityProfileDetails = profileDetails
+	s.pushIdentityProfileLock.Unlock()
+	if s.pushIdentityTimer == nil {
+		s.pushIdentityTimer = time.AfterFunc(s.pushIdentityBatchTimeout, func() {
+			pushErr := s.pushProfileToIdentityRegistry(context.Background())
+			if pushErr != nil {
+				log.Error("push profile to identity registry", zap.Error(pushErr))
+			}
+		})
+	} else {
+		s.pushIdentityTimer.Reset(s.pushIdentityBatchTimeout)
 	}
+
 	return nil
 }
 
@@ -293,8 +309,11 @@ func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId st
 	return s.fileAclService.GetInfoForFileSharing(ctx, iconImageObjectId)
 }
 
-func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDetails *types.Struct) error {
-	iconImageObjectId := pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String())
+func (s *service) pushProfileToIdentityRegistry(ctx context.Context) error {
+	s.pushIdentityProfileLock.RLock()
+	defer s.pushIdentityProfileLock.RUnlock()
+
+	iconImageObjectId := pbtypes.GetString(s.pushIdentityProfileDetails, bundle.RelationKeyIconImage.String())
 	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(ctx, iconImageObjectId)
 	if err != nil {
 		return fmt.Errorf("prepare icon image info: %w", err)
@@ -303,7 +322,7 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context, profileDeta
 	identity := s.accountService.AccountID()
 	identityProfile := &model.IdentityProfile{
 		Identity:           identity,
-		Name:               pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()),
+		Name:               pbtypes.GetString(s.pushIdentityProfileDetails, bundle.RelationKeyName.String()),
 		IconCid:            iconCid,
 		IconEncryptionKeys: iconEncryptionKeys,
 	}

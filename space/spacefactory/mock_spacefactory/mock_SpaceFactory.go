@@ -203,9 +203,9 @@ func (_c *MockSpaceFactory_CreateMarketplaceSpace_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// CreatePersonalSpace provides a mock function with given fields: ctx
-func (_m *MockSpaceFactory) CreatePersonalSpace(ctx context.Context) (spacecontroller.SpaceController, error) {
-	ret := _m.Called(ctx)
+// CreatePersonalSpace provides a mock function with given fields: ctx, metadata
+func (_m *MockSpaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, metadata)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreatePersonalSpace")
@@ -213,19 +213,19 @@ func (_m *MockSpaceFactory) CreatePersonalSpace(ctx context.Context) (spacecontr
 
 	var r0 spacecontroller.SpaceController
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (spacecontroller.SpaceController, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, metadata)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) spacecontroller.SpaceController); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, metadata)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(spacecontroller.SpaceController)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, []byte) error); ok {
+		r1 = rf(ctx, metadata)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -240,13 +240,14 @@ type MockSpaceFactory_CreatePersonalSpace_Call struct {
 
 // CreatePersonalSpace is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockSpaceFactory_Expecter) CreatePersonalSpace(ctx interface{}) *MockSpaceFactory_CreatePersonalSpace_Call {
-	return &MockSpaceFactory_CreatePersonalSpace_Call{Call: _e.mock.On("CreatePersonalSpace", ctx)}
+//   - metadata []byte
+func (_e *MockSpaceFactory_Expecter) CreatePersonalSpace(ctx interface{}, metadata interface{}) *MockSpaceFactory_CreatePersonalSpace_Call {
+	return &MockSpaceFactory_CreatePersonalSpace_Call{Call: _e.mock.On("CreatePersonalSpace", ctx, metadata)}
 }
 
-func (_c *MockSpaceFactory_CreatePersonalSpace_Call) Run(run func(ctx context.Context)) *MockSpaceFactory_CreatePersonalSpace_Call {
+func (_c *MockSpaceFactory_CreatePersonalSpace_Call) Run(run func(ctx context.Context, metadata []byte)) *MockSpaceFactory_CreatePersonalSpace_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].([]byte))
 	})
 	return _c
 }
@@ -256,7 +257,7 @@ func (_c *MockSpaceFactory_CreatePersonalSpace_Call) Return(sp spacecontroller.S
 	return _c
 }
 
-func (_c *MockSpaceFactory_CreatePersonalSpace_Call) RunAndReturn(run func(context.Context) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreatePersonalSpace_Call {
+func (_c *MockSpaceFactory_CreatePersonalSpace_Call) RunAndReturn(run func(context.Context, []byte) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreatePersonalSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -411,9 +412,9 @@ func (_c *MockSpaceFactory_Name_Call) RunAndReturn(run func() string) *MockSpace
 	return _c
 }
 
-// NewPersonalSpace provides a mock function with given fields: ctx
-func (_m *MockSpaceFactory) NewPersonalSpace(ctx context.Context) (spacecontroller.SpaceController, error) {
-	ret := _m.Called(ctx)
+// NewPersonalSpace provides a mock function with given fields: ctx, metadata
+func (_m *MockSpaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, metadata)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewPersonalSpace")
@@ -421,19 +422,19 @@ func (_m *MockSpaceFactory) NewPersonalSpace(ctx context.Context) (spacecontroll
 
 	var r0 spacecontroller.SpaceController
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (spacecontroller.SpaceController, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, metadata)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) spacecontroller.SpaceController); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, metadata)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(spacecontroller.SpaceController)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, []byte) error); ok {
+		r1 = rf(ctx, metadata)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -448,13 +449,14 @@ type MockSpaceFactory_NewPersonalSpace_Call struct {
 
 // NewPersonalSpace is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockSpaceFactory_Expecter) NewPersonalSpace(ctx interface{}) *MockSpaceFactory_NewPersonalSpace_Call {
-	return &MockSpaceFactory_NewPersonalSpace_Call{Call: _e.mock.On("NewPersonalSpace", ctx)}
+//   - metadata []byte
+func (_e *MockSpaceFactory_Expecter) NewPersonalSpace(ctx interface{}, metadata interface{}) *MockSpaceFactory_NewPersonalSpace_Call {
+	return &MockSpaceFactory_NewPersonalSpace_Call{Call: _e.mock.On("NewPersonalSpace", ctx, metadata)}
 }
 
-func (_c *MockSpaceFactory_NewPersonalSpace_Call) Run(run func(ctx context.Context)) *MockSpaceFactory_NewPersonalSpace_Call {
+func (_c *MockSpaceFactory_NewPersonalSpace_Call) Run(run func(ctx context.Context, metadata []byte)) *MockSpaceFactory_NewPersonalSpace_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].([]byte))
 	})
 	return _c
 }
@@ -464,7 +466,7 @@ func (_c *MockSpaceFactory_NewPersonalSpace_Call) Return(_a0 spacecontroller.Spa
 	return _c
 }
 
-func (_c *MockSpaceFactory_NewPersonalSpace_Call) RunAndReturn(run func(context.Context) (spacecontroller.SpaceController, error)) *MockSpaceFactory_NewPersonalSpace_Call {
+func (_c *MockSpaceFactory_NewPersonalSpace_Call) RunAndReturn(run func(context.Context, []byte) (spacecontroller.SpaceController, error)) *MockSpaceFactory_NewPersonalSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }
