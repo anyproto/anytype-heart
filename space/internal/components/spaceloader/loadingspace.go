@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
@@ -83,7 +84,7 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
-		if errors.Is(err, treechangeproto.ErrGetTree) {
+		if errors.Is(err, treechangeproto.ErrGetTree) || errors.Is(err, objecttree.ErrHasInvalidChanges) {
 			if ls.stopIfMandatoryFail {
 				ls.loadErr = err
 				return true

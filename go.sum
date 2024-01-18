@@ -111,6 +111,8 @@ github.com/anyproto/any-sync v0.3.18-0.20240112193848-296d0b9c6eea h1:VWvABys2O7
 github.com/anyproto/any-sync v0.3.18-0.20240112193848-296d0b9c6eea/go.mod h1:iHEUzsccp6o6bpO2CoBFFDQ7gJazljyMdjgRlfG37i8=
 github.com/anyproto/any-sync v0.3.18-0.20240115114548-b7aba63a3879 h1:9Awwu+4X4kZeE0M90c/jmIKctI4tCEjAoDWBXP/2/O4=
 github.com/anyproto/any-sync v0.3.18-0.20240115114548-b7aba63a3879/go.mod h1:iHEUzsccp6o6bpO2CoBFFDQ7gJazljyMdjgRlfG37i8=
+github.com/anyproto/any-sync v0.3.18-0.20240117130917-b7926cf3e71e h1:8kGpvnw9RzkW/HCvD/d7iKbuCmNczD1WCPlb4pmNwIU=
+github.com/anyproto/any-sync v0.3.18-0.20240117130917-b7926cf3e71e/go.mod h1:iHEUzsccp6o6bpO2CoBFFDQ7gJazljyMdjgRlfG37i8=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=
 github.com/anyproto/go-chash v0.1.0/go.mod h1:0UjNQi3PDazP0fINpFYu6VKhuna+W/V+1vpXHAfNgLY=
 github.com/anyproto/go-gelf v0.0.0-20210418191311-774bd5b016e7 h1:SyEu5uxZ5nKHEJ6TPKQqjM+T00SYi0MW1VaLzqZtZ9E=

@@ -105,8 +105,8 @@ func (mw *Middleware) SpaceExit(cctx context.Context, req *pb.RpcSpaceExitReques
 }
 
 func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpaceRequestApproveRequest) *pb.RpcSpaceRequestApproveResponse {
-	spaceService := mw.applicationService.GetApp().MustComponent(space.CName).(space.Service)
-	err := spaceService.Delete(cctx, req.SpaceId)
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := accept(cctx, req.SpaceId, req.Identity, aclService)
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceRequestApproveResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceRequestApproveResponseError_NO_SUCH_SPACE),
@@ -160,9 +160,7 @@ func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRe
 }
 
 func accept(ctx context.Context, spaceId, identity string, aclService acl.AclService) (err error) {
-	key, err := crypto.DecodeKeyFromString(identity, func(bytes []byte) (crypto.PubKey, error) {
-		return crypto.NewSigningEd25519PubKeyFromBytes(bytes)
-	}, nil)
+	key, err := crypto.DecodeAccountAddress(identity)
 	if err != nil {
 		return
 	}

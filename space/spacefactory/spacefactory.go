@@ -111,14 +111,14 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 		TechSpace:       techSpace,
 	}
 	ts := clientspace.NewTechSpace(deps)
+	s.techSpace = ts
+	s.app = s.app.ChildApp()
+	s.app.Register(s.techSpace)
 	err = ts.Run(techCoreSpace, ts.Cache)
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}
 
-	s.techSpace = ts
-	s.app = s.app.ChildApp()
-	s.app.Register(s.techSpace)
 	return ts, nil
 }
 
