@@ -134,6 +134,7 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 	out.NextTier = pb.RpcPaymentsSubscriptionSubscriptionTier(status.NextTier)
 	out.NextTierEnds = status.NextTierEnds
 	out.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(status.PaymentMethod)
+	out.RequestedAnyName = status.RequestedAnyName
 
 	return &out
 }
@@ -149,6 +150,8 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 
 		RequestedTier: psp.SubscriptionTier(req.RequestedTier),
 		PaymentMethod: psp.PaymentMethod(req.PaymentMethod),
+
+		RequestedAnyName: req.RequestedAnyName,
 	}
 
 	// 2 - sign it with the wallet

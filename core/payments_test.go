@@ -74,6 +74,7 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 			out.DateEnds = 1234567890
 			out.IsAutoRenew = true
 			out.PaymentMethod = psp.PaymentMethod_Method_Crypto
+			out.RequestedAnyName = "something.any"
 
 			return &out, nil
 		}).MinTimes(1)
@@ -105,6 +106,7 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		assert.Equal(t, uint64(1234567890), resp.DateEnds)
 		assert.Equal(t, true, resp.IsAutoRenew)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionPaymentMethod(1), resp.PaymentMethod)
+		assert.Equal(t, "something.any", resp.RequestedAnyName)
 	})
 }
 
@@ -142,8 +144,9 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
-			RequestedTier: pb.RpcPaymentsSubscription_Tier_Patron1Year,
-			PaymentMethod: pb.RpcPaymentsSubscription_Method_Crypto,
+			RequestedTier:    pb.RpcPaymentsSubscription_Tier_Patron1Year,
+			PaymentMethod:    pb.RpcPaymentsSubscription_Method_Crypto,
+			RequestedAnyName: "something.any",
 		}
 
 		// Call the function being tested
@@ -188,8 +191,9 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
-			RequestedTier: pb.RpcPaymentsSubscription_Tier_Patron1Year,
-			PaymentMethod: pb.RpcPaymentsSubscription_Method_Crypto,
+			RequestedTier:    pb.RpcPaymentsSubscription_Tier_Patron1Year,
+			PaymentMethod:    pb.RpcPaymentsSubscription_Method_Crypto,
+			RequestedAnyName: "something.any",
 		}
 
 		// Call the function being tested

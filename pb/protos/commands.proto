@@ -5874,6 +5874,9 @@ message Rpc {
                     SubscriptionTier nextTier = 7;
                     uint64 nextTierEnds = 8;
                     PaymentMethod paymentMethod = 9;
+
+                    // can be empty if user did not ask for any name
+                    string requestedAnyName = 10;
                   
                     message Error {
                         Code code = 1;
@@ -5896,6 +5899,11 @@ message Rpc {
                     SubscriptionTier requestedTier = 1;
                   
                     PaymentMethod paymentMethod = 2;
+
+                    // can be empty
+                    // passing name here will not register it! this is just for convenience 
+                    // will be returned later with Subscription.GetStatus request
+                    string requestedAnyName = 3;
                 }
     
                 message Response {

@@ -14260,6 +14260,7 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | requestedTier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  |  |
 | paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
+| requestedAnyName | [string](#string) |  | can be empty passing name here will not register it! this is just for convenience will be returned later with Subscription.GetStatus request |
 
 
 
@@ -14335,6 +14336,7 @@ Available undo/redo operations
 | nextTier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  | if client has &#34;downgraded&#34; - he is still able to use the service until the end of the period (dateEnds) but then he will be on nextTier until nextTierEnds if Tier0_Unknown -&gt; then no next tier |
 | nextTierEnds | [uint64](#uint64) |  |  |
 | paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
+| requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
 
 
 
