@@ -35,6 +35,8 @@ import (
 
 var log = logging.Logger("fileobject")
 
+var ErrObjectNotFound = fmt.Errorf("file object not found")
+
 const CName = "fileobject"
 
 type Service interface {
@@ -43,8 +45,7 @@ type Service interface {
 	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
-	GetObjectIdByFileId(fileId domain.FileId) (string, error)
-	GetObjectDetailsByFileId(fileId domain.FileId) (string, *types.Struct, error)
+	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 
 	FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error)
@@ -196,13 +197,18 @@ func (s *service) addToSyncQueue(id domain.FullFileId, uploadedByUser bool, impo
 	return nil
 }
 
-func (s *service) GetObjectIdByFileId(fileId domain.FileId) (string, error) {
+func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.String()),
+				Value:       pbtypes.String(fileId.FileId.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.SpaceId),
 			},
 		},
 	})
@@ -210,18 +216,23 @@ func (s *service) GetObjectIdByFileId(fileId domain.FileId) (string, error) {
 		return "", fmt.Errorf("query objects by file hash: %w", err)
 	}
 	if len(records) == 0 {
-		return "", fmt.Errorf("file object not found")
+		return "", ErrObjectNotFound
 	}
 	return pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()), nil
 }
 
-func (s *service) GetObjectDetailsByFileId(fileId domain.FileId) (string, *types.Struct, error) {
+func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.String()),
+				Value:       pbtypes.String(fileId.FileId.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.SpaceId),
 			},
 		},
 	})
@@ -229,7 +240,7 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FileId) (string, *types
 		return "", nil, fmt.Errorf("query objects by file hash: %w", err)
 	}
 	if len(records) == 0 {
-		return "", nil, fmt.Errorf("file object not found")
+		return "", nil, ErrObjectNotFound
 	}
 	details := records[0].Details
 	return pbtypes.GetString(details, bundle.RelationKeyId.String()), details, nil
@@ -286,7 +297,10 @@ func (s *service) migrate(space clientspace.Space, keys []*pb.ChangeFileKeys, fi
 		return fileId
 	}
 
-	fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(fileId))
+	fileObjectId, err := s.GetObjectIdByFileId(domain.FullFileId{
+		SpaceId: space.Id(),
+		FileId:  domain.FileId(fileId),
+	})
 	if err == nil {
 		return fileObjectId
 	}
@@ -337,7 +351,7 @@ func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.C
 			v := pbtypes.GetString(det, key)
 			_, err := cid.Decode(v)
 			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
+				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
 		}
