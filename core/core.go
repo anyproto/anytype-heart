@@ -9,6 +9,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	nsclient "github.com/anyproto/any-sync/nameservice/nameserviceclient"
+
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -76,6 +78,13 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 		return ErrNotLoggedIn
 	}
 	return f(app.MustComponent[*collection.Service](a))
+}
+
+func (mw *Middleware) getNameService() (ns nsclient.AnyNsClientService, err error) {
+	if a := mw.applicationService.GetApp(); a != nil {
+		return a.MustComponent(nsclient.CName).(nsclient.AnyNsClientService), nil
+	}
+	return nil, ErrNotLoggedIn
 }
 
 func getService[T any](mw *Middleware) T {

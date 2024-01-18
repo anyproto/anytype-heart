@@ -293,4 +293,8 @@ service ClientCommands {
 
     rpc PaymentsSubscriptionGetStatus (anytype.Rpc.Payments.Subscription.GetStatus.Request) returns (anytype.Rpc.Payments.Subscription.GetStatus.Response);
     rpc PaymentsSubscriptionGetPaymentURL (anytype.Rpc.Payments.Subscription.GetPaymentURL.Request) returns (anytype.Rpc.Payments.Subscription.GetPaymentURL.Response);
+
+    rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
+    rpc NameServiceReverseResolveName( anytype.Rpc.NameService.ReverseResolveName.Request) returns (anytype.Rpc.NameService.ReverseResolveName.Response);
+    rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
 }

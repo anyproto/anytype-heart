@@ -600,6 +600,20 @@
     - [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request)
     - [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response)
     - [Rpc.Metrics.SetParameters.Response.Error](#anytype-Rpc-Metrics-SetParameters-Response-Error)
+    - [Rpc.NameService](#anytype-Rpc-NameService)
+    - [Rpc.NameService.ResolveName](#anytype-Rpc-NameService-ResolveName)
+    - [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request)
+    - [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response)
+    - [Rpc.NameService.ResolveName.Response.Error](#anytype-Rpc-NameService-ResolveName-Response-Error)
+    - [Rpc.NameService.ReverseResolveName](#anytype-Rpc-NameService-ReverseResolveName)
+    - [Rpc.NameService.ReverseResolveName.Request](#anytype-Rpc-NameService-ReverseResolveName-Request)
+    - [Rpc.NameService.ReverseResolveName.Response](#anytype-Rpc-NameService-ReverseResolveName-Response)
+    - [Rpc.NameService.ReverseResolveName.Response.Error](#anytype-Rpc-NameService-ReverseResolveName-Response-Error)
+    - [Rpc.NameService.UserAccount](#anytype-Rpc-NameService-UserAccount)
+    - [Rpc.NameService.UserAccount.Get](#anytype-Rpc-NameService-UserAccount-Get)
+    - [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request)
+    - [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response)
+    - [Rpc.NameService.UserAccount.Get.Response.Error](#anytype-Rpc-NameService-UserAccount-Get-Response-Error)
     - [Rpc.Navigation](#anytype-Rpc-Navigation)
     - [Rpc.Navigation.GetObjectInfoWithLinks](#anytype-Rpc-Navigation-GetObjectInfoWithLinks)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request)
@@ -1109,6 +1123,9 @@
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
+    - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
+    - [Rpc.NameService.ReverseResolveName.Response.Error.Code](#anytype-Rpc-NameService-ReverseResolveName-Response-Error-Code)
+    - [Rpc.NameService.UserAccount.Get.Response.Error.Code](#anytype-Rpc-NameService-UserAccount-Get-Response-Error-Code)
     - [Rpc.Navigation.Context](#anytype-Rpc-Navigation-Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response-Error-Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
@@ -1758,6 +1775,9 @@
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | PaymentsSubscriptionGetStatus | [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request) | [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response) |  |
 | PaymentsSubscriptionGetPaymentURL | [Rpc.Payments.Subscription.GetPaymentURL.Request](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Request) | [Rpc.Payments.Subscription.GetPaymentURL.Response](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response) |  |
+| NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
+| NameServiceReverseResolveName | [Rpc.NameService.ReverseResolveName.Request](#anytype-Rpc-NameService-ReverseResolveName-Request) | [Rpc.NameService.ReverseResolveName.Response](#anytype-Rpc-NameService-ReverseResolveName-Response) |  |
+| NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) |  |
 
  
 
@@ -10454,6 +10474,203 @@ returns blockShow event for given version
 
 
 
+<a name="anytype-Rpc-NameService"></a>
+
+### Rpc.NameService
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName"></a>
+
+### Rpc.NameService.ResolveName
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Request"></a>
+
+### Rpc.NameService.ResolveName.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Response"></a>
+
+### Rpc.NameService.ResolveName.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ResolveName.Response.Error](#anytype-Rpc-NameService-ResolveName-Response-Error) |  |  |
+| available | [bool](#bool) |  |  |
+| ownerEthAddress | [string](#string) |  | An Ethereum address that owns that name This field is non-empty only if name is &#34;already registered&#34; |
+| ownerAnyAddress | [string](#string) |  | A content hash attached to this name This field is non-empty only if name is &#34;already registered&#34; |
+| spaceId | [string](#string) |  | A SpaceID attached to this name This field is non-empty only if name is &#34;already registered&#34; |
+| nameExpires | [int64](#int64) |  | A timestamp when this name expires |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Response-Error"></a>
+
+### Rpc.NameService.ResolveName.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName"></a>
+
+### Rpc.NameService.ReverseResolveName
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName-Request"></a>
+
+### Rpc.NameService.ReverseResolveName.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ownerEthAddress | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName-Response"></a>
+
+### Rpc.NameService.ReverseResolveName.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ReverseResolveName.Response.Error](#anytype-Rpc-NameService-ReverseResolveName-Response-Error) |  |  |
+| found | [bool](#bool) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName-Response-Error"></a>
+
+### Rpc.NameService.ReverseResolveName.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.ReverseResolveName.Response.Error.Code](#anytype-Rpc-NameService-ReverseResolveName-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount"></a>
+
+### Rpc.NameService.UserAccount
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get"></a>
+
+### Rpc.NameService.UserAccount.Get
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get-Request"></a>
+
+### Rpc.NameService.UserAccount.Get.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ownerEthAddress | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get-Response"></a>
+
+### Rpc.NameService.UserAccount.Get.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.UserAccount.Get.Response.Error](#anytype-Rpc-NameService-UserAccount-Get-Response-Error) |  |  |
+| namesCountLeft | [uint64](#uint64) |  | Number of names that the user can reserve |
+| operationsCountLeft | [uint64](#uint64) |  | Number of operations: update name, add new data, etc |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get-Response-Error"></a>
+
+### Rpc.NameService.UserAccount.Get.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.UserAccount.Get.Response.Error.Code](#anytype-Rpc-NameService-UserAccount-Get-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Navigation"></a>
 
 ### Rpc.Navigation
@@ -17679,6 +17896,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Response-Error-Code"></a>
+
+### Rpc.NameService.ResolveName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName-Response-Error-Code"></a>
+
+### Rpc.NameService.ReverseResolveName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get-Response-Error-Code"></a>
+
+### Rpc.NameService.UserAccount.Get.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
