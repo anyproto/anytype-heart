@@ -56,3 +56,5 @@ func (d *dot) Convert(_ model.SmartBlockType) []byte {
 func (d *dot) Ext() string {
 	return ""
 }
+
+func (d *dot) SetFileKeys(fileKeys *files.FileKeys) {}
