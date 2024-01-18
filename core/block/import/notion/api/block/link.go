@@ -25,6 +25,10 @@ const (
 var (
 	miroRegexp       = regexp.MustCompile(`https?:\/\/(?:www\.)?miro\.com\/app\/board\/[a-zA-Z0-9_=-]+\/?`)
 	googleMapsRegexp = regexp.MustCompile(`https?:\/\/(?:www\.)?google\.com\/maps(?:\/[^\/\n\s]+)?(?:\/@(-?\d+\.\d+),(-?\d+\.\d+),\d+z?)?(?:\/[^\/\n\s]+)?`)
+	githubGistRegexp = regexp.MustCompile(`https:\/\/gist\.github\.com\/(?:[^\/]+\/)?([a-f0-9]+)(?:#.*)?`)
+	twitterRegexp    = regexp.MustCompile(``)
+	codepenRegexp    = regexp.MustCompile(`https:\/\/codepen\.io\/(?:[^\/]+\/pen\/)?([^\/?#]+)(?:.*)?`)
+	excalidrawRegexp = regexp.MustCompile(``)
 )
 
 type EmbedBlock struct {
@@ -40,16 +44,7 @@ func (b *EmbedBlock) GetBlocks(req *api.NotionImportContext, _ string) *MapRespo
 }
 
 func (b *EmbedBlock) provideEmbedBlock() *MapResponse {
-	var processor model.BlockContentLatexProcessor
-	if googleMapsRegexp.MatchString(b.Embed.URL) {
-		processor = model.BlockContentLatex_GoogleMaps
-	}
-	if miroRegexp.MatchString(b.Embed.URL) {
-		processor = model.BlockContentLatex_Miro
-	}
-	if soundCloudRegexp.MatchString(b.Embed.URL) {
-		processor = model.BlockContentLatex_Soundcloud
-	}
+	processor := b.getProcessor()
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id:          id,
@@ -65,6 +60,32 @@ func (b *EmbedBlock) provideEmbedBlock() *MapResponse {
 		Blocks:   []*model.Block{bl},
 		BlockIDs: []string{id},
 	}
+}
+
+func (b *EmbedBlock) getProcessor() model.BlockContentLatexProcessor {
+	var processor model.BlockContentLatexProcessor
+	if googleMapsRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_GoogleMaps
+	}
+	if miroRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_Miro
+	}
+	if soundCloudRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_Soundcloud
+	}
+	if githubGistRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_GithubGist
+	}
+	if twitter.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_Twitter
+	}
+	if codepenRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_Codepen
+	}
+	if excalidraw.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_Excalidraw
+	}
+	return processor
 }
 
 func (b *EmbedBlock) isEmbedBlock() bool {
