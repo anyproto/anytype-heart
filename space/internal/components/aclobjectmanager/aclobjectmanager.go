@@ -14,7 +14,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -255,7 +254,7 @@ func (a *aclObjectManager) processJoinRecords(recs []list.RequestRecord) (err er
 }
 
 func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AclAccountState) (err error) {
-	id := source.NewParticipantId(a.sp.Id(), accState.PubKey.Account())
+	id := domain.NewParticipantId(a.sp.Id(), accState.PubKey.Account())
 	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
 		return err
@@ -268,7 +267,7 @@ func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, ac
 		bundle.RelationKeyIsHidden.String():               pbtypes.Bool(false),
 		bundle.RelationKeySpaceId.String():                pbtypes.String(a.sp.Id()),
 		bundle.RelationKeyType.String():                   pbtypes.String(bundle.TypeKeyParticipant.BundledURL()),
-		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_participant)),
+		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_profile)),
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(convertPermissions(accState.Permissions))),
@@ -279,7 +278,7 @@ func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, ac
 }
 
 func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, identity string, profile *model.IdentityProfile) (err error) {
-	id := source.NewParticipantId(a.sp.Id(), identity)
+	id := domain.NewParticipantId(a.sp.Id(), identity)
 	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
 		return err
@@ -309,7 +308,7 @@ func (a *aclObjectManager) updateParticipantFromAclRequest(ctx context.Context, 
 		bundle.RelationKeyIsHidden.String():               pbtypes.Bool(false),
 		bundle.RelationKeySpaceId.String():                pbtypes.String(a.sp.Id()),
 		bundle.RelationKeyType.String():                   pbtypes.String(bundle.TypeKeyParticipant.BundledURL()),
-		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_participant)),
+		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_profile)),
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_NoPermissions)),

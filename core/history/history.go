@@ -113,7 +113,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	if limit <= 0 {
 		limit = 100
 	}
-	profileId, profileName, err := h.getProfileInfo()
+	profileId, profileName, err := h.getProfileInfo(id.SpaceID)
 	if err != nil {
 		return
 	}
@@ -218,7 +218,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 		return
 	}
 
-	st, _, _, err = source.BuildState(nil, tree)
+	st, _, _, err = source.BuildState(id.SpaceID, nil, tree)
 	if err != nil {
 		return
 	}
@@ -228,7 +228,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 
 	st.BlocksInit(st)
 	if ch, e := tree.GetChange(versionId); e == nil {
-		profileId, profileName, e := h.getProfileInfo()
+		profileId, profileName, e := h.getProfileInfo(id.SpaceID)
 		if e != nil {
 			err = e
 			return
@@ -244,8 +244,8 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	return
 }
 
-func (h *history) getProfileInfo() (profileId, profileName string, err error) {
-	profileId = h.accountService.IdentityObjectId()
+func (h *history) getProfileInfo(spaceId string) (profileId, profileName string, err error) {
+	profileId = h.accountService.ParticipantId(spaceId)
 	lp, err := h.accountService.LocalProfile()
 	if err != nil {
 		return

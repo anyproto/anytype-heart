@@ -3,7 +3,7 @@ package account
 import (
 	"errors"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type Profile struct {
@@ -14,13 +14,14 @@ type Profile struct {
 	IconColor   string
 }
 
-func (s *service) IdentityObjectId() string {
-	return addr.AccountIdToIdentityObjectId(s.AccountID())
+func (s *service) ParticipantId(spaceId string) string {
+	return domain.NewParticipantId(spaceId, s.AccountID())
 }
 
 func (s *service) LocalProfile() (Profile, error) {
+	// TODO Fix ID!!!
 	profile := Profile{
-		Id:          s.IdentityObjectId(),
+		Id:          s.ParticipantId("TODO"),
 		AccountAddr: s.wallet.GetAccountPrivkey().GetPublic().Account(),
 	}
 

@@ -138,10 +138,10 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	err = s.indexIdentityObject(ctx)
-	if err != nil {
-		return err
-	}
+	//err = s.indexIdentityObject(ctx)
+	//if err != nil {
+	//	return err
+	//}
 
 	err = s.runLocalProfileSubscriptions(ctx)
 	if err != nil {
@@ -159,7 +159,7 @@ func (s *service) indexIdentityObject(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("get tech space: %w", err)
 	}
-	err = techSpace.Do(s.accountService.IdentityObjectId(), func(_ smartblock.SmartBlock) error {
+	err = techSpace.Do(s.accountService.ParticipantId(""), func(_ smartblock.SmartBlock) error {
 		return nil
 	})
 	if err != nil {
@@ -276,14 +276,16 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 }
 
 func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
-	identityObjectId := s.accountService.IdentityObjectId()
-	details := getDetailsFromProfile(identityObjectId, s.techSpaceId, profileDetails)
-	err := s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
-		return pbtypes.StructMerge(current, details, false), nil
-	})
-	if err != nil {
-		return fmt.Errorf("modify details: %w", err)
-	}
+	//identityObjectId := s.accountService.ParticipantId("")
+	//details := getDetailsFromProfile(identityObjectId, s.techSpaceId, profileDetails)
+	//err := s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
+	//	return pbtypes.StructMerge(current, details, false), nil
+	//})
+	//if err != nil {
+	//	return fmt.Errorf("modify details: %w", err)
+	//}
+
+	// TODO CACHE IDENTITY, so it will be taken from cache instead of coordinator
 
 	s.pushIdentityProfileLock.Lock()
 	s.pushIdentityProfileDetails = profileDetails

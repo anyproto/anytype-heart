@@ -187,7 +187,7 @@ func (_c *MockService_GetInfo_Call) RunAndReturn(run func(context.Context, strin
 }
 
 // IdentityObjectId provides a mock function with given fields:
-func (_m *MockService) IdentityObjectId() string {
+func (_m *MockService) ParticipantId(string) string {
 	ret := _m.Called()
 
 	if len(ret) == 0 {

@@ -38,7 +38,7 @@ type Service interface {
 	AccountID() string
 	SignData(data []byte) (signature []byte, err error)
 	PersonalSpaceID() string
-	IdentityObjectId() string
+	ParticipantId(string) string
 	LocalProfile() (Profile, error)
 }
 
