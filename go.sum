@@ -127,8 +127,8 @@ github.com/anyproto/go-slip21 v1.0.0 h1:CI7lUqTIwmPOEGVAj4jyNLoICvueh++0U2HoAi3m
 github.com/anyproto/go-slip21 v1.0.0/go.mod h1:gbIJt7HAdr5DuT4f2pFTKCBSUWYsm/fysHBNqgsuxT0=
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139 h1:Wp9z0Q2kAstznWUmTZyOb9UgpVmUgYt1LXRvK/cg10E=
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139/go.mod h1:1zaDDQVWTRwNksmTUTkcVXqgNF28YHiEUIm8FL9Z+II=
-github.com/anyproto/protobuf v1.3.3-0.20230114170705-8e2cb769640b h1:aRyhmcoIQ7jFHxFPHEAhihoDA5/7GtvAvvrlUW1K0aY=
-github.com/anyproto/protobuf v1.3.3-0.20230114170705-8e2cb769640b/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
+github.com/anyproto/protobuf v1.3.3-0.20240115180122-702dd61fb919 h1:ol+p5mJyx3n1xdifHYkcov2vlMXFQje+HYEjJL3gA64=
+github.com/anyproto/protobuf v1.3.3-0.20240115180122-702dd61fb919/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
 github.com/anyproto/ristretto v0.1.2-0.20240111154712-6cff3b2dc485 h1:jDrwIuNwHbmNVmToIe+wVnsIOTmBvrYSnHs6Q6h4Wkc=
 github.com/anyproto/ristretto v0.1.2-0.20240111154712-6cff3b2dc485/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941 h1:sXnKo0P45QWddNR4Gfh9CgbgdQXiKjry+KJjU8evoyw=
