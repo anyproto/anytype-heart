@@ -67,7 +67,11 @@ func (i *indexer) runFullTextIndexer() {
 				return nil
 			})
 			if err != nil {
-				return err
+				// in the most cases it's about the files that were deleted
+				// should be fixed with files as objects project
+				// todo: research errors
+				log.With("id", id).Errorf("prepare document for full-text indexing: %s", err)
+				continue
 			}
 		}
 		if len(docs) > 0 {
