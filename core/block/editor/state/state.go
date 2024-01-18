@@ -1810,13 +1810,12 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {
-	if s.notifications != nil {
-		if notification, ok := s.notifications[id]; ok {
+	iterState := s
+	for iterState != nil && iterState.notifications != nil {
+		if notification, ok := iterState.notifications[id]; ok {
 			return notification
 		}
-	}
-	if s.parent != nil {
-		return s.CopyNotification(id)
+		iterState = iterState.parent
 	}
 	return nil
 }
@@ -1825,26 +1824,25 @@ func (s *State) AddNotification(notification *model.Notification) {
 	if s.notifications == nil {
 		s.notifications = make(map[string]*model.Notification)
 	}
+	if s.parent != nil {
+		for _, n := range s.parent.ListNotifications() {
+			if _, ok := s.notifications[n.Id]; !ok {
+				s.notifications[n.Id] = pbtypes.CopyNotification(n)
+			}
+		}
+	}
 	s.notifications[notification.Id] = notification
 }
 
 func (s *State) ListNotifications() map[string]*model.Notification {
-	if s.parent != nil {
-		for _, notification := range s.parent.ListNotifications() {
-			s.notifications[notification.Id] = pbtypes.CopyNotification(notification)
-		}
+	iterState := s
+	for iterState != nil && len(iterState.notifications) == 0 {
+		iterState = iterState.parent
 	}
-	return s.notifications
-}
-
-func (s *State) CopyNotification(id string) *model.Notification {
-	notification := s.parent.GetNotificationById(id)
-	if notification != nil {
-		copyNotification := pbtypes.CopyNotification(notification)
-		s.notifications[id] = copyNotification
-		return copyNotification
+	if iterState == nil {
+		return nil
 	}
-	return nil
+	return iterState.notifications
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation
