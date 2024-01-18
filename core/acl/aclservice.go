@@ -235,7 +235,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 	if err != nil {
 		return nil, fmt.Errorf("build invite: %w", err)
 	}
-	inviteFileCid, inviteFileKey, err := a.inviteStore.StoreInvite(ctx, invite)
+	inviteFileCid, inviteFileKey, err := a.inviteStore.StoreInvite(ctx, spaceId, invite)
 	if err != nil {
 		return nil, fmt.Errorf("store invite in ipfs: %w", err)
 	}

@@ -12,6 +12,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -19,12 +21,13 @@ const CName = "invitestore"
 
 type Service interface {
 	app.Component
-	StoreInvite(ctx context.Context, invite *model.Invite) (id cid.Cid, key crypto.SymKey, err error)
+	StoreInvite(ctx context.Context, spaceId string, invite *model.Invite) (id cid.Cid, key crypto.SymKey, err error)
 	GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (*model.Invite, error)
 }
 
 type service struct {
-	commonFile fileservice.FileService
+	commonFile      fileservice.FileService
+	fileSyncService filesync.FileSync
 }
 
 func New() Service {
@@ -33,6 +36,7 @@ func New() Service {
 
 func (s *service) Init(a *app.App) error {
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
+	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
@@ -40,7 +44,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Cid, crypto.SymKey, error) {
+func (s *service) StoreInvite(ctx context.Context, spaceId string, invite *model.Invite) (cid.Cid, crypto.SymKey, error) {
 	key, err := crypto.NewRandomAES()
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("generate key: %w", err)
@@ -59,6 +63,10 @@ func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Ci
 	node, err := s.commonFile.AddFile(ctx, rd)
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("add data to IPFS: %w", err)
+	}
+	err = s.fileSyncService.AddFile(spaceId, domain.FileId(node.Cid().String()), true, false)
+	if err != nil {
+		return cid.Cid{}, nil, fmt.Errorf("add file to sync queue: %w", err)
 	}
 	return node.Cid(), key, nil
 }
