@@ -6,15 +6,18 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type FileSyncer struct {
@@ -31,6 +34,9 @@ func NewFileSyncer(
 
 func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
+		return nil
+	}
+	if hash := b.Model().GetFile().GetTargetObjectId(); hash != "" {
 		return nil
 	}
 	if b.Model().GetFile().Name == "" {
@@ -62,27 +68,29 @@ func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	return nil
 }
 
-func createFileObject(fileStore filestore.FileStore, fileObjectService fileobject.Service, st *state.State, fileId domain.FullFileId, origin model.ObjectOrigin) (string, error) {
+func createFileObject(objectStore objectstore.ObjectStore, fileStore filestore.FileStore, fileObjectService fileobject.Service, fileId domain.FullFileId, origin model.ObjectOrigin) (string, error) {
+	// Check that fileId is not a file object id
+	recs, _, err := objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.FileId.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.SpaceId),
+			},
+		},
+	})
+	if err == nil && len(recs) > 0 {
+		return recs[0], nil
+	}
+
 	keys, err := fileStore.GetFileKeys(fileId.FileId)
 	if err != nil {
-		filesKeys := st.GetAndUnsetFileKeys()
-		keys = map[string]string{}
-		for _, fileKeys := range filesKeys {
-			if fileKeys.Hash == fileId.FileId.String() {
-				keys = fileKeys.Keys
-				err = fileStore.AddFileKeys(domain.FileEncryptionKeys{
-					FileId:         fileId.FileId,
-					EncryptionKeys: keys,
-				})
-				if err != nil {
-					return "", fmt.Errorf("add file keys: %w", err)
-				}
-				break
-			}
-		}
-	}
-	if len(keys) == 0 {
-		log.With("fileId", fileId.FileId.String()).Warnf("encryption keys not found")
+		return "", fmt.Errorf("get file keys: %w", err)
 	}
 	fileObjectId, _, err := fileObjectService.Create(context.Background(), fileId.SpaceId, fileobject.CreateRequest{
 		FileId:         fileId.FileId,
@@ -93,6 +101,5 @@ func createFileObject(fileStore filestore.FileStore, fileObjectService fileobjec
 	if err != nil {
 		return "", fmt.Errorf("create object: %w", err)
 	}
-	fmt.Println("CREATED", fileId.FileId.String(), fileObjectId)
 	return fileObjectId, nil
 }

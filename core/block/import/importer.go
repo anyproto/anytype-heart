@@ -96,7 +96,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.idProvider = objectid.NewIDProvider(store, spaceService)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	fileObjectService := app.MustComponent[fileobject.Service](a)
-	relationSyncer := syncer.NewFileRelationSyncer(i.s, i.fileStore, fileObjectService)
+	relationSyncer := syncer.NewFileRelationSyncer(i.s, i.fileStore, fileObjectService, store)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	i.oc = creator.New(i.s, factory, store, relationSyncer, i.fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)

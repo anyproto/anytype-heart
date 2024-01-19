@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -22,15 +23,17 @@ type RelationSyncer interface {
 
 type FileRelationSyncer struct {
 	service           *block.Service
+	objectStore       objectstore.ObjectStore
 	fileStore         filestore.FileStore
 	fileObjectService fileobject.Service
 }
 
-func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore, fileObjectService fileobject.Service) RelationSyncer {
+func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore, fileObjectService fileobject.Service, objectStore objectstore.ObjectStore) RelationSyncer {
 	return &FileRelationSyncer{
 		service:           service,
 		fileStore:         fileStore,
 		fileObjectService: fileObjectService,
+		objectStore:       objectStore,
 	}
 }
 
@@ -80,8 +83,7 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, st *state.State, file s
 	} else {
 		_, err = cid.Decode(file)
 		if err == nil {
-			// TODO What if I want to import FileObject? I think we should check that id is presented in import ids map
-			fileObjectId, err = createFileObject(fs.fileStore, fs.fileObjectService, st, domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(file)}, origin)
+			fileObjectId, err = createFileObject(fs.objectStore, fs.fileStore, fs.fileObjectService, domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(file)}, origin)
 			if err != nil {
 				log.With("fileId", file).Errorf("create file object: %v", err)
 				return file

@@ -208,9 +208,7 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 		if relLink == nil {
 			continue
 		}
-		if relLink.Format != model.RelationFormat_object &&
-			relLink.Format != model.RelationFormat_tag &&
-			relLink.Format != model.RelationFormat_status {
+		if !isLinkToObject(relLink) {
 			continue
 		}
 		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {
@@ -221,6 +219,14 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 		// For example, RelationKeySetOf is handled here
 		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
 	}
+}
+
+func isLinkToObject(relLink *model.RelationLink) bool {
+	return relLink.Key == bundle.RelationKeyCoverId.String() || // Special case because cover could either be a color or image
+		relLink.Format == model.RelationFormat_object ||
+		relLink.Format == model.RelationFormat_tag ||
+		relLink.Format == model.RelationFormat_status ||
+		relLink.Format == model.RelationFormat_file
 }
 
 func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string, filesIDs []string) {
