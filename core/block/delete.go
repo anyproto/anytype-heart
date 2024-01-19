@@ -94,9 +94,9 @@ func (s *Service) deleteRelationOptions(relationKey string) error {
 	relationOptions, _, err := s.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
+				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
