@@ -345,7 +345,6 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 	if conf.NetworkId != "" && c.NetworkId == "" {
 		log.Infof("Network id is not set in config; set to %s", conf.NetworkId)
 		c.NetworkId = conf.NetworkId
-		WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 	}
 	return
 }
@@ -374,8 +373,14 @@ func (c *Config) GetQuic() quic.Config {
 	}
 }
 
-func (c *Config) ResetNetworkId() error {
+func (c *Config) ResetStoredNetworkId() error {
 	configCopy := c.ConfigRequired
 	configCopy.NetworkId = ""
+	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+}
+
+func (c *Config) PersistAccountNetworkId() error {
+	configCopy := c.ConfigRequired
+	configCopy.NetworkId = c.NetworkId
 	return WriteJsonConfig(c.GetConfigPath(), configCopy)
 }

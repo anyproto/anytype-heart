@@ -137,15 +137,19 @@ func (s *service) Run(ctx context.Context) (err error) {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 			err = ErrSpaceNotExists
 		}
-		// lets reset store networkId if we failed to init personal space
-		// this will allow us to reinit personal space on next start from another network without networkId mismatch error
-		err2 := s.config.ResetNetworkId()
+		// fix for the users that have wrong network id stored in the folder
+		err2 := s.config.ResetStoredNetworkId()
 		if err2 != nil {
 			log.Error("reset network id", zap.Error(err2))
 		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
 	s.delController.Run()
+	// only persist networkId after successful space init
+	err = s.config.PersistAccountNetworkId()
+	if err != nil {
+		log.Error("persist network id to config", zap.Error(err))
+	}
 	return nil
 }
 
