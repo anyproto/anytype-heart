@@ -484,15 +484,31 @@ func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, o
 		return fmt.Errorf("get file id from object: %w", err)
 	}
 
-	if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
-		return err
-	}
-	if err := s.fileSync.RemoveFile(fullId.SpaceId, fullId.FileId); err != nil {
-		return fmt.Errorf("failed to remove file from sync: %w", err)
-	}
-	_, err = s.FileOffload(context.Background(), objectId, true)
-	if err != nil {
-		return err
+	records, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(objectId),
+			},
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+		},
+	})
+	if len(records) == 0 {
+		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
+			return err
+		}
+		if err := s.fileSync.RemoveFile(fullId.SpaceId, fullId.FileId); err != nil {
+			return fmt.Errorf("failed to remove file from sync: %w", err)
+		}
+		_, err = s.FileOffload(context.Background(), objectId, true)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 	return nil
 }
