@@ -14,8 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
-// ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (s *service) ObjectCreateBookmark(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
+// createBookmark creates a new Bookmark object for provided URL or returns id of existing one
+func (s *service) createBookmark(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
 	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
 	var res bookmark.ContentFuture
 	if source != "" {

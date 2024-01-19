@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -60,6 +61,8 @@ func (p *pbj) SetKnownDocs(map[string]*types.Struct) converter.Converter {
 func (p *pbj) FileHashes() []string {
 	return nil
 }
+
+func (p *pbj) SetFileKeys(fileKeys *files.FileKeys) {}
 
 func (p *pbj) ImageHashes() []string {
 	return nil

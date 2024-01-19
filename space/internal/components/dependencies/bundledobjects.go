@@ -9,5 +9,5 @@ import (
 )
 
 type BundledObjectsInstaller interface {
-	InstallBundledObjects(ctx context.Context, spc clientspace.Space, ids []string) ([]string, []*types.Struct, error)
+	InstallBundledObjects(ctx context.Context, spc clientspace.Space, ids []string, isNewSpace bool) ([]string, []*types.Struct, error)
 }

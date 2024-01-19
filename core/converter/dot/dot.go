@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -82,6 +83,8 @@ func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
 func (d *dot) FileHashes() []string {
 	return d.fileHashes
 }
+
+func (d *dot) SetFileKeys(fileKeys *files.FileKeys) {}
 
 func (d *dot) ImageHashes() []string {
 	return d.imageHashes

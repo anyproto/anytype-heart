@@ -1373,7 +1373,7 @@ func givenNumberedBlock(id string, text string) *model.Block {
 	}
 }
 
-func Test_StyleAndTabExtraction(t *testing.T) {
+func Test_StyleAndTabExtractionIgnoreStyle(t *testing.T) {
 	type fixture struct {
 		styleName string
 		style     model.BlockContentTextStyle
@@ -1381,12 +1381,12 @@ func Test_StyleAndTabExtraction(t *testing.T) {
 		emoji     string
 	}
 	testData := []*fixture{
-		{"quote", model.BlockContentText_Quote, "\t> some text 1", ""},
-		{"code", model.BlockContentText_Code, "\t```some text 1```", ""},
-		{"checkbox", model.BlockContentText_Checkbox, "\t- [ ] some text 1", ""},
-		{"bulleted", model.BlockContentText_Marked, "\t- some text 1", ""},
-		{"numbered", model.BlockContentText_Numbered, "\t1. some text 1", ""},
-		{"callout", model.BlockContentText_Callout, "\t👍 some text 1", "👍"},
+		{"quote", model.BlockContentText_Quote, "some text 1", ""},
+		{"code", model.BlockContentText_Code, "some text 1", ""},
+		{"checkbox", model.BlockContentText_Checkbox, "some text 1", ""},
+		{"bulleted", model.BlockContentText_Marked, "some text 1", ""},
+		{"numbered", model.BlockContentText_Numbered, "some text 1", ""},
+		{"callout", model.BlockContentText_Callout, "some text 1", "👍"},
 	}
 
 	for _, testCase := range testData {
@@ -1395,7 +1395,37 @@ func Test_StyleAndTabExtraction(t *testing.T) {
 			givenBlock := givenBlockWithStyle(testCase.style, testCase.emoji)
 
 			// when
-			result, _ := extractTextWithStyleAndTabs(givenBlock, []string{}, 1, 0)
+			result, _ := extractTextWithStyleAndTabs(givenBlock, []string{}, 1, 0, true)
+
+			// then
+			assert.Equal(t, []string{testCase.expected}, result)
+		})
+	}
+}
+
+func Test_StyleAndTabExtraction(t *testing.T) {
+	type fixture struct {
+		styleName string
+		style     model.BlockContentTextStyle
+		expected  string
+		emoji     string
+	}
+	testDataWithStyle := []*fixture{
+		{"quote", model.BlockContentText_Quote, "\t> some text 1", ""},
+		{"code", model.BlockContentText_Code, "\t```some text 1```", ""},
+		{"checkbox", model.BlockContentText_Checkbox, "\t- [ ] some text 1", ""},
+		{"bulleted", model.BlockContentText_Marked, "\t- some text 1", ""},
+		{"numbered", model.BlockContentText_Numbered, "\t1. some text 1", ""},
+		{"callout", model.BlockContentText_Callout, "\t👍 some text 1", "👍"},
+	}
+
+	for _, testCase := range testDataWithStyle {
+		t.Run("extract - when style is "+testCase.styleName, func(t *testing.T) {
+			// given
+			givenBlock := givenBlockWithStyle(testCase.style, testCase.emoji)
+
+			// when
+			result, _ := extractTextWithStyleAndTabs(givenBlock, []string{}, 1, 0, false)
 
 			// then
 			assert.Equal(t, []string{testCase.expected}, result)

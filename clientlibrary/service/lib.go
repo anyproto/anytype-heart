@@ -1,11 +1,12 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core"
@@ -13,8 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-
-	_ "net/http/pprof"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 var log = logging.Logger("anytype-mw")
@@ -22,10 +22,19 @@ var log = logging.Logger("anytype-mw")
 var mw = core.New()
 
 func init() {
-	fmt.Printf("mw jsaddon: %s\n", app.GitSummary)
+	fixTZ()
+	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
+
 	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
+	registerClientCommandsHandler(
+		&ClientCommandsHandlerProxy{
+			client: mw,
+			interceptors: []func(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error){
+				metrics.SharedLongMethodsInterceptor,
+			},
+		})
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {
 			http.ListenAndServe(debug, nil)

@@ -73,6 +73,7 @@ type Uploader interface {
 
 	Upload(ctx context.Context) (result UploadResult)
 	UploadAsync(ctx context.Context) (ch chan UploadResult)
+	SetFileKeys(keys map[string]string) Uploader
 }
 type UploadResult struct {
 	Name string
@@ -123,6 +124,7 @@ type uploader struct {
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
 	origin          model.ObjectOrigin
+	fileKeys        map[string]string
 }
 
 type bufioSeekClose struct {
@@ -297,6 +299,11 @@ func (u *uploader) SetOrigin(origin model.ObjectOrigin) Uploader {
 	return u
 }
 
+func (u *uploader) SetFileKeys(filesKeys map[string]string) Uploader {
+	u.fileKeys = filesKeys
+	return u
+}
+
 func (u *uploader) setLastModifiedDate(path string) {
 	stat, err := os.Stat(path)
 	if err == nil {
@@ -377,6 +384,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
 		files.WithOrigin(u.origin),
+		files.WithFileKeys(u.fileKeys),
 	}
 
 	if len(u.opts) > 0 {
