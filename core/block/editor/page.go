@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -34,7 +35,8 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore objectstore.ObjectStore
+	objectStore   objectstore.ObjectStore
+	objectDeleter ObjectDeleter
 }
 
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
@@ -57,10 +59,11 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 			f.objectStore,
 			f.fileService,
 		),
-		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
-		Dataview:    dataview.NewDataview(sb, f.objectStore),
-		TableEditor: table.NewEditor(sb),
-		objectStore: f.objectStore,
+		Bookmark:      bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		Dataview:      dataview.NewDataview(sb, f.objectStore),
+		TableEditor:   table.NewEditor(sb),
+		objectStore:   f.objectStore,
+		objectDeleter: f.objectDeleter,
 	}
 }
 
@@ -71,6 +74,80 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
+	}
+	if p.isRelationDeleted(ctx) {
+		err = p.deleteRelationOptions(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	//if deleted, err := p.isRelationOptionDeleted(ctx); deleted {
+	//	err := p.objectDeleter.DeleteObjectByFullID(domain.FullID{SpaceID: p.Space().Id(), ObjectID: p.Id()})
+	//	if err != nil {
+	//		return err
+	//	}
+	//} else if err != nil {
+	//	return err
+	//}
+	return nil
+}
+
+func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
+	return p.Type() == coresb.SmartBlockTypeRelation &&
+		pbtypes.GetBool(ctx.State.Details(), bundle.RelationKeyIsUninstalled.String())
+}
+
+func (p *Page) isRelationOptionDeleted(ctx *smartblock.InitContext) (bool, error) {
+	if p.Type() != coresb.SmartBlockTypeRelationOption {
+		return false, nil
+	}
+	relationKey := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyRelationKey.String())
+	relation, _, err := p.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(relationKey),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+		},
+	})
+	if err != nil {
+		return false, err
+	}
+	return relation == nil, nil
+}
+
+func (p *Page) deleteRelationOptions(ctx *smartblock.InitContext) error {
+	relationKey := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyRelationKey.String())
+	relationOptions, _, err := p.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(relationKey),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	spaceID := p.Space().Id()
+	for _, id := range relationOptions {
+		err := p.objectDeleter.DeleteObjectByFullID(domain.FullID{SpaceID: spaceID, ObjectID: id})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

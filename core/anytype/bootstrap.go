@@ -57,7 +57,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
-	"github.com/anyproto/anytype-heart/core/relationoptions"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -255,8 +254,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(profiler.New()).
 		Register(identity.New()).
 		Register(templateservice.New()).
-		Register(notifications.New()).
-		Register(relationoptions.NewRelationOptionsDeleter())
+		Register(notifications.New())
 }
 
 func MiddlewareVersion() string {
