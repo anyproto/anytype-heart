@@ -8,6 +8,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -19,35 +21,33 @@ type RelationSyncer interface {
 }
 
 type FileRelationSyncer struct {
-	service   *block.Service
-	fileStore filestore.FileStore
+	service           *block.Service
+	fileStore         filestore.FileStore
+	fileObjectService fileobject.Service
 }
 
-func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore) RelationSyncer {
-	return &FileRelationSyncer{service: service, fileStore: fileStore}
+func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore, fileObjectService fileobject.Service) RelationSyncer {
+	return &FileRelationSyncer{
+		service:           service,
+		fileStore:         fileStore,
+		fileObjectService: fileObjectService,
+	}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationName string, origin model.ObjectOrigin) []string {
-	allFiles := fs.getFilesFromRelations(state, relationName)
+func (fs *FileRelationSyncer) Sync(spaceID string, st *state.State, relationName string, origin model.ObjectOrigin) []string {
+	fileIds := fs.getFilesFromRelations(st, relationName)
 	var allFilesHashes, filesToDelete []string
-	for _, f := range allFiles {
-		if f == "" {
+	for _, fileId := range fileIds {
+		if fileId == "" {
 			continue
 		}
-		fileObjectId := fs.uploadFile(spaceID, f, origin)
+		fileObjectId := fs.uploadFile(spaceID, st, fileId, origin)
 		if fileObjectId != "" {
 			allFilesHashes = append(allFilesHashes, fileObjectId)
 			filesToDelete = append(filesToDelete, fileObjectId)
 		}
-		if fileObjectId == "" {
-			// TODO Fix
-			// if targets, err := fs.fileStore.ListChildrenByFileId(f); err == nil && len(targets) > 0 {
-			//	allFilesHashes = append(allFilesHashes, f)
-			//	continue
-			// }
-		}
 	}
-	fs.updateFileRelationsDetails(state, relationName, allFilesHashes)
+	fs.updateFileRelationsDetails(st, relationName, allFilesHashes)
 	return filesToDelete
 }
 
@@ -63,7 +63,7 @@ func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string
 	return allFiles
 }
 
-func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin model.ObjectOrigin) string {
+func (fs *FileRelationSyncer) uploadFile(spaceID string, st *state.State, file string, origin model.ObjectOrigin) string {
 	var (
 		fileObjectId string
 		err          error
@@ -80,7 +80,13 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 	} else {
 		_, err = cid.Decode(file)
 		if err == nil {
-			return file
+			// TODO What if I want to import FileObject? I think we should check that id is presented in import ids map
+			fileObjectId, err = createFileObject(fs.fileStore, fs.fileObjectService, st, domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(file)}, origin)
+			if err != nil {
+				log.With("fileId", file).Errorf("create file object: %v", err)
+				return file
+			}
+			return fileObjectId
 		}
 		req := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},

@@ -46,6 +46,7 @@ type Service interface {
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
+	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 
 	FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error)
@@ -90,9 +91,16 @@ type CreateRequest struct {
 	FileId         domain.FileId
 	EncryptionKeys map[string]string
 	IsImported     bool
+	Origin         model.ObjectOrigin
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
+	if id, object, err = s.GetObjectDetailsByFileId(domain.FullFileId{
+		SpaceId: spaceId,
+		FileId:  req.FileId,
+	}); err == nil {
+		return id, object, nil
+	}
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
@@ -105,6 +113,10 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	err = s.addToSyncQueue(domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.IsImported)
 	if err != nil {
 		return "", nil, fmt.Errorf("add to sync queue: %w", err)
+	}
+	err = s.fileStore.SetFileOrigin(req.FileId, req.Origin)
+	if err != nil {
+		log.With("fileId", req.FileId, "origin", req.Origin).Errorf("set file origin: %v", err)
 	}
 
 	return id, object, nil

@@ -34,6 +34,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	icon := b.Model().GetText().GetIconImage()
 	_, err := cid.Decode(icon)
 	if err == nil {
+		// TODO Fix this
 		return nil
 	}
 	req := pb.RpcFileUploadRequest{LocalPath: icon}
