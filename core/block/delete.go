@@ -99,11 +99,6 @@ func (s *Service) deleteRelationOptions(relationKey string) error {
 				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 			},
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
-			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(relationKey),

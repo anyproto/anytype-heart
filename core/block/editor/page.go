@@ -103,11 +103,6 @@ func (p *Page) deleteRelationOptions(ctx *smartblock.InitContext) error {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
-			},
 		},
 	})
 	if err != nil {
