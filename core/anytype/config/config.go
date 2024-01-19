@@ -50,7 +50,7 @@ type ConfigRequired struct {
 	HostAddr            string `json:",omitempty"`
 	CustomFileStorePath string `json:",omitempty"`
 	LegacyFileStorePath string `json:",omitempty"`
-	NetworkId           string `json:",omitempty"` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
 }
 
 type Config struct {
@@ -372,4 +372,10 @@ func (c *Config) GetQuic() quic.Config {
 		WriteTimeoutSec: 10,
 		DialTimeoutSec:  10,
 	}
+}
+
+func (c *Config) ResetNetworkId() error {
+	configCopy := c.ConfigRequired
+	configCopy.NetworkId = ""
+	return WriteJsonConfig(c.GetConfigPath(), configCopy)
 }
