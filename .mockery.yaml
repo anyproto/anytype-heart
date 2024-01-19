@@ -1,5 +1,6 @@
 dir: "{{.InterfaceDir}}/mock_{{.PackageName}}"
 with-expecter: True
+disable-version-string: True
 all: False
 outpkg: "mock_{{.PackageName}}"
 packages:
