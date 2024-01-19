@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -74,6 +75,8 @@ func (g *graphjson) SetKnownDocs(docs map[string]*types.Struct) converter.Conver
 func (g *graphjson) FileHashes() []string {
 	return g.fileHashes
 }
+
+func (g *graphjson) SetFileKeys(fileKeys *files.FileKeys) {}
 
 func (g *graphjson) ImageHashes() []string {
 	return g.imageHashes

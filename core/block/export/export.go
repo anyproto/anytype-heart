@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -137,7 +138,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		succeed = e.exportGraphJson(ctx, req, docs, succeed, wr, queue)
 	} else {
 		tasks := make([]process.Task, 0, len(docs))
-		succeed, tasks = e.exportDocs(ctx, req, docs, wr, queue, succeed, tasks)
+		succeed, tasks = e.exportDocs(ctx, req, docs, wr, succeed, tasks)
 		err := queue.Wait(tasks...)
 		if err != nil {
 			e.cleanupFile(wr)
@@ -155,11 +156,11 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	return wr.Path(), succeed, nil
 }
 
-func (e *export) exportDocs(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, wr writer, queue process.Queue, succeed int, tasks []process.Task) (int, []process.Task) {
+func (e *export) exportDocs(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, wr writer, succeed int, tasks []process.Task) (int, []process.Task) {
 	for docId := range docs {
 		did := docId
 		task := func() {
-			if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
+			if werr := e.writeDoc(ctx, req, wr, docs, did); werr != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
 				succeed++
@@ -362,7 +363,7 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 				}
 				fileHashes := b.GetAndUnsetFileKeys()
 				for _, fh := range fileHashes {
-					if saveFileErr := e.saveFile(ctx, wr, fh.Hash); saveFileErr != nil {
+					if _, saveFileErr := e.saveFile(ctx, wr, fh.Hash); saveFileErr != nil {
 						log.With("hash", fh.Hash).Warnf("can't save file: %v", saveFileErr)
 					}
 				}
@@ -386,25 +387,40 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 	return
 }
 
-func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
+func (e *export) writeDoc(ctx context.Context, req pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*types.Struct, docID string) (err error) {
 	return getblock.Do(e.picker, docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
-		var conv converter.Converter
-		switch format {
+		if !req.IncludeFiles && b.Type() == smartblock.SmartBlockTypeFile {
+			return nil
+		}
+		var (
+			keys *files.FileKeys
+			s    = b.NewState()
+			conv converter.Converter
+		)
+		if b.Type() == smartblock.SmartBlockTypeFile {
+			keys, err = e.handleFileObject(ctx, keys, req.SpaceId, docID, wr, s)
+			if err != nil {
+				log.With("hash", docID).Warnf("can't save file: %v", err)
+				return err
+			}
+		}
+		switch req.Format {
 		case model.Export_Markdown:
-			conv = md.NewMDConverter(b.NewState(), wr.Namer())
+			conv = md.NewMDConverter(s, wr.Namer())
 		case model.Export_Protobuf:
-			conv = pbc.NewConverter(b, isJSON)
+			conv = pbc.NewConverter(s, req.IsJson)
 		case model.Export_JSON:
-			conv = pbjson.NewConverter(b)
+			conv = pbjson.NewConverter(s)
 		}
 		conv.SetKnownDocs(docInfo)
+		conv.SetFileKeys(keys)
+
 		result := conv.Convert(b.Type().ToProto())
 		filename := docID + conv.Ext()
-		s := b.NewState()
-		if format == model.Export_Markdown {
+		if req.Format == model.Export_Markdown {
 			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 			if name == "" {
 				name = s.Snippet()
@@ -418,28 +434,27 @@ func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr wri
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
-		if !exportFiles {
-			return nil
-		}
-		e.saveFiles(ctx, b, queue, wr, docID)
 		return nil
 	})
 }
 
-func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, queue process.Queue, wr writer, docID string) {
-	fileHashes := b.GetAndUnsetFileKeys()
-	for _, fh := range fileHashes {
-		fh := fh
-		if werr := e.saveFile(ctx, wr, fh.Hash); werr != nil {
-			log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
-		}
+func (e *export) handleFileObject(ctx context.Context, keys *files.FileKeys, spaceID, docID string, wr writer, s *state.State) (*files.FileKeys, error) {
+	keys, err := e.fileService.FileGetKeys(domain.FullID{SpaceID: spaceID, ObjectID: docID})
+	if err != nil {
+		return nil, err
 	}
+	filename, err := e.saveFile(ctx, wr, docID)
+	if err != nil {
+		return nil, err
+	}
+	s.SetDetail(bundle.RelationKeySource.String(), pbtypes.String(filename))
+	return keys, nil
 }
 
-func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err error) {
+func (e *export) saveFile(ctx context.Context, wr writer, hash string) (filename string, err error) {
 	spaceID, err := e.resolver.ResolveSpaceID(hash)
 	if err != nil {
-		return fmt.Errorf("resolve spaceID: %w", err)
+		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
 	id := domain.FullID{
 		SpaceID:  spaceID,
@@ -452,20 +467,20 @@ func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err erro
 	if strings.HasPrefix(file.Info().Media, "image") {
 		image, err := e.fileService.ImageByHash(context.TODO(), id)
 		if err != nil {
-			return err
+			return "", err
 		}
 		file, err = image.GetOriginalFile(context.TODO())
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	origName := file.Meta().Name
-	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
+	filename = wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.Background())
 	if err != nil {
 		return
 	}
-	return wr.WriteFile(filename, rd, file.Info().LastModifiedDate)
+	return filename, wr.WriteFile(filename, rd, file.Info().LastModifiedDate)
 }
 
 func (e *export) createProfileFile(spaceID string, wr writer) error {
@@ -574,7 +589,8 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeWidget ||
 		sbType == smartblock.SmartBlockTypeObjectType ||
 		sbType == smartblock.SmartBlockTypeRelation ||
-		sbType == smartblock.SmartBlockTypeRelationOption
+		sbType == smartblock.SmartBlockTypeRelationOption ||
+		sbType == smartblock.SmartBlockTypeFile
 }
 
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
