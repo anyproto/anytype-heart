@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -22,8 +23,9 @@ func NewConverter(s state.Doc, isJSON bool) converter.Converter {
 }
 
 type pbc struct {
-	s      state.Doc
-	isJSON bool
+	s        state.Doc
+	isJSON   bool
+	fileKeys *files.FileKeys
 }
 
 func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
@@ -40,6 +42,10 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 	}
 	for _, fk := range p.s.GetAndUnsetFileKeys() {
 		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
+	}
+
+	if sbType == model.SmartBlockType_File && p.fileKeys != nil {
+		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: p.fileKeys.Hash, Keys: p.fileKeys.Keys})
 	}
 
 	mo := &pb.SnapshotWithType{
@@ -74,6 +80,10 @@ func (p *pbc) SetKnownDocs(map[string]*types.Struct) converter.Converter {
 
 func (p *pbc) FileHashes() []string {
 	return nil
+}
+
+func (p *pbc) SetFileKeys(fileKeys *files.FileKeys) {
+	p.fileKeys = fileKeys
 }
 
 func (p *pbc) ImageHashes() []string {

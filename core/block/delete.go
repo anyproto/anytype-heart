@@ -36,7 +36,8 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeRelationOption:
+		coresb.SmartBlockTypeRelationOption,
+		coresb.SmartBlockTypeTemplate:
 		var relationKey string
 		err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 			st := b.NewState()
