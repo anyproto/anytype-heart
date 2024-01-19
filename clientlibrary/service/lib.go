@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
-var log = logging.Logger("anytype-mw")
+var log = logging.Logger("anytype-mw-library")
 
 var mw = core.New()
 
@@ -25,13 +25,13 @@ func init() {
 	fixTZ()
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
 
-	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
-	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
+	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
 	registerClientCommandsHandler(
 		&ClientCommandsHandlerProxy{
 			client: mw,
 			interceptors: []func(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error){
+				metrics.SharedTraceInterceptor,
 				metrics.SharedLongMethodsInterceptor,
 			},
 		})
