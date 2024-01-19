@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -110,6 +112,9 @@ func main() {
 	}
 	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		resp, err = mw.Authorize(ctx, req, info, handler)
+		_, d := descriptor.ForMessage(req.(descriptor.Message))
+		noAuth := proto.GetBoolExtension(d.GetOptions(), pb.E_NoAuth, false)
+		fmt.Printf("grpc %s: %s (noauth %v) err %v\n", info.FullMethod, noAuth, err)
 		if err != nil {
 			log.Errorf("authorize: %s", err)
 		}
