@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -37,6 +39,11 @@ func TestState_Normalize(t *testing.T) {
 					"width": pbtypes.Float64(w),
 				},
 			}
+		}
+		div = &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Div,
+			},
 		}
 	)
 
@@ -315,6 +322,42 @@ func TestState_Normalize(t *testing.T) {
 		s.normalizeTree()
 		ApplyState(s, true)
 		assert.Equal(t, "header", s.Pick(s.RootId()).Model().ChildrenIds[0])
+	})
+
+	t.Run("normalize div", func(t *testing.T) {
+		// given original state
+		r := NewDoc("root", nil).(*State)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"div-1", "div-2", "div-3"}}))
+		r.Add(simple.New(&model.Block{Id: "div-1", ChildrenIds: []string{"a", "b"}, Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-2", ChildrenIds: []string{"c", "d"}, Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-3", ChildrenIds: []string{"e", "f"}, Content: div}))
+
+		r.Add(simple.New(&model.Block{Id: "a"}))
+		r.Add(simple.New(&model.Block{Id: "b"}))
+		r.Add(simple.New(&model.Block{Id: "c"}))
+		r.Add(simple.New(&model.Block{Id: "d"}))
+		r.Add(simple.New(&model.Block{Id: "e"}))
+		r.Add(simple.New(&model.Block{Id: "f"}))
+
+		// remove blocks
+		s := r.NewState()
+		s.Unlink("a")
+		s.Unlink("b")
+		s.Unlink("c")
+		s.Unlink("d")
+		s.Unlink("e")
+		s.Unlink("f")
+
+		// when
+		require.NoError(t, s.Normalize(false))
+		_, msg, err := ApplyState(s, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Len(t, s.Pick("root").Model().ChildrenIds, 0)
+		expectedRemovedIDs := []string{"div-1", "div-2", "div-3"}
+		expectedRemovedIDsCount := lo.CountBy(msg.Remove, func(block simple.Block) bool { return slices.Contains(expectedRemovedIDs, block.Model().Id) })
+		assert.Equal(t, len(expectedRemovedIDs), expectedRemovedIDsCount)
 	})
 
 	//t.Run("normalize size - big details", func(t *testing.T) {

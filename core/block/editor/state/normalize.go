@@ -81,9 +81,6 @@ func (s *State) doCustomBlockNormalizations() (err error) {
 
 func (s *State) normalizeLayout() {
 	s.removeEmptyLayoutBlocks(s.blocks)
-	if s.parent != nil {
-		s.removeEmptyLayoutBlocks(s.parent.blocks)
-	}
 
 	for _, b := range s.blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
