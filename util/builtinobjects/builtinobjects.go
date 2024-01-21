@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -214,6 +215,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		path = url
 	} else {
 		if path, err = b.downloadZipToFile(url, progress); err != nil {
+			if errors.Is(err, uri.ErrFilepathNotSupported) {
+				return fmt.Errorf("invalid path to file: '%s'", url)
+			}
 			return err
 		}
 		removeFunc = func() {

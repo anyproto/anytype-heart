@@ -95,7 +95,6 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 				err = multierror.Append(err, fmt.Errorf("relation '%s' exists in details of object '%s', but not in relation links", k, id))
 				continue
 			}
-
 		}
 		if rel.GetFormat() != model.RelationFormat_object && rel.GetFormat() != model.RelationFormat_tag && rel.GetFormat() != model.RelationFormat_status {
 			continue
@@ -111,6 +110,15 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 			if k == bundle.RelationKeyFeaturedRelations.String() {
 				if _, found := info.customTypesAndRelations[val]; found {
 					continue
+				}
+			}
+
+			if k == bundle.RelationKeyRecommendedRelations.String() {
+				if key, found := info.relations[val]; found {
+					if cr, foundToo := info.customTypesAndRelations[string(key)]; foundToo {
+						cr.isUsed = true
+						info.customTypesAndRelations[string(key)] = cr
+					}
 				}
 			}
 
@@ -262,7 +270,6 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
 
 	key := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
 	if bundle.HasRelation(key) {
-		//fmt.Println(key + " -\t\t\t\t" + pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String()) + " -\t\t\t" + pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String()))
 		return nil
 	}
 
