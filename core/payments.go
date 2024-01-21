@@ -78,6 +78,17 @@ func (mw *Middleware) PaymentsSubscriptionGetPaymentURL(ctx context.Context, req
 	return getPaymentURL(ctx, pp, w, req)
 }
 
+func (mw *Middleware) PaymentSubscriptionGetPortalLinkURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkURLRequest) *pb.RpcPaymentsSubscriptionGetPortalLinkURLResponse {
+	// TODO:
+
+	return &pb.RpcPaymentsSubscriptionGetPortalLinkURLResponse{
+		Error: &pb.RpcPaymentsSubscriptionGetPortalLinkURLResponseError{
+			Code:        pb.RpcPaymentsSubscriptionGetPortalLinkURLResponseError_UNKNOWN_ERROR,
+			Description: "not implemented",
+		},
+	}
+}
+
 func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, w wallet.Wallet, req *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse {
 	// 1 - create request
 	gsr := psp.GetSubscriptionRequest{

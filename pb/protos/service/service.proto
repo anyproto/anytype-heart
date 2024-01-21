@@ -293,8 +293,14 @@ service ClientCommands {
 
     rpc PaymentsSubscriptionGetStatus (anytype.Rpc.Payments.Subscription.GetStatus.Request) returns (anytype.Rpc.Payments.Subscription.GetStatus.Response);
     rpc PaymentsSubscriptionGetPaymentURL (anytype.Rpc.Payments.Subscription.GetPaymentURL.Request) returns (anytype.Rpc.Payments.Subscription.GetPaymentURL.Response);
+    rpc PaymentSubscriptionGetPortalLinkURL (anytype.Rpc.Payments.Subscription.GetPortalLinkURL.Request) returns (anytype.Rpc.Payments.Subscription.GetPortalLinkURL.Response);
 
+    // hello.any -> data
     rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
-    rpc NameServiceReverseResolveName( anytype.Rpc.NameService.ReverseResolveName.Request) returns (anytype.Rpc.NameService.ReverseResolveName.Response);
+    // 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any
+    rpc NameServiceResolveAnyID( anytype.Rpc.NameService.ResolveAnyID.Request ) returns (anytype.Rpc.NameService.ResolveAnyID.Response);
+    // bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -> hello.any
+    rpc NameServiceResolveSpaceID( anytype.Rpc.NameService.ResolveSpaceID.Request ) returns (anytype.Rpc.NameService.ResolveSpaceID.Response);
+    
     rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
 }
