@@ -16,6 +16,7 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -37,27 +38,41 @@ type (
 		SbType     smartblock.SmartBlockType
 	}
 
+	customInfo struct {
+		isUsed bool
+		id     string
+	}
+
 	useCaseInfo struct {
 		objects   map[string]objectInfo
 		relations map[string]domain.RelationKey
 		types     map[string]domain.TypeKey
+		templates map[string]string
+		options   map[string]domain.RelationKey
 
-		customTypesAndRelations map[string]struct{}
+		customTypesAndRelations map[string]customInfo
 
 		useCase          string
 		profileFileFound bool
 	}
 
 	cliFlags struct {
-		analytics, removeRelations bool
-		list, validate, creator    bool
-		path, rules                string
+		analytics, validate, creator   bool
+		list, removeRelations, exclude bool
+		path, rules                    string
 	}
 )
 
+func (f cliFlags) isUpdateNeeded() bool {
+	return f.analytics || f.creator || f.removeRelations || f.exclude || f.rules != ""
+}
+
 const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 
-var errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
+var (
+	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
+	errValidationFailed   = fmt.Errorf("validation failed")
+)
 
 func main() {
 	if err := run(); err != nil {
@@ -91,34 +106,46 @@ func run() error {
 		return err
 	}
 	if !info.profileFileFound {
-		fmt.Printf("profile file does not present in archive\n")
+		fmt.Println("profile file does not present in archive")
 	}
+
+	updateNeeded := flags.isUpdateNeeded()
+	var writer *zip.Writer
+
+	if updateNeeded {
+		zf, err := os.Create(pathToNewZip)
+		if err != nil {
+			return fmt.Errorf("failed to create output zip file: %w", err)
+		}
+		defer zf.Close()
+
+		writer = zip.NewWriter(zf)
+		defer writer.Close()
+	}
+
+	err = processFiles(r.File, writer, info, flags, updateNeeded)
 
 	if flags.list {
 		listObjects(info)
 	}
 
-	zf, err := os.Create(pathToNewZip)
 	if err != nil {
-		return fmt.Errorf("failed to create output zip file: %w", err)
-	}
-	defer zf.Close()
-
-	writer := zip.NewWriter(zf)
-	defer writer.Close()
-
-	if err = processFiles(r.File, writer, info, flags); err != nil {
 		if errors.Is(err, errIncorrectFileFound) {
-			fmt.Println("Provided zip contains some incorrect data. " +
+			err = fmt.Errorf("provided zip contains some incorrect data. " +
 				"Please examine errors above. You can change object in editor or add some rules to rules.json")
-			_ = os.Remove(pathToNewZip)
 		} else {
-			fmt.Println("An error occurred on protobuf files processing:", err)
+			err = fmt.Errorf("an error occurred on protobuf files processing: %w", err)
 		}
 		_ = os.Remove(pathToNewZip)
-		return nil
+		return err
 	}
-	fmt.Println("Processed zip is written to ", pathToNewZip)
+
+	if updateNeeded {
+		fmt.Println("Processed zip is written to ", pathToNewZip)
+	} else {
+		fmt.Println("No changes to zip file were made")
+	}
+
 	return nil
 }
 
@@ -130,6 +157,7 @@ func getFlags() (*cliFlags, error) {
 	removeRels := flag.Bool("r", false, "Remove account related relations")
 	analytics := flag.Bool("a", false, "Insert analytics context and original id")
 	rules := flag.String("rules", "", "Path to file with processing rules")
+	exclude := flag.Bool("exclude", false, "Exclude objects that did not pass validation")
 
 	flag.Parse()
 
@@ -145,6 +173,7 @@ func getFlags() (*cliFlags, error) {
 		path:            *path,
 		creator:         *creator,
 		rules:           *rules,
+		exclude:         *exclude,
 	}, nil
 }
 
@@ -154,7 +183,9 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 		objects:                 make(map[string]objectInfo, len(files)-1),
 		relations:               make(map[string]domain.RelationKey, len(files)-1),
 		types:                   make(map[string]domain.TypeKey, len(files)-1),
-		customTypesAndRelations: make(map[string]struct{}),
+		templates:               make(map[string]string),
+		options:                 make(map[string]domain.RelationKey),
+		customTypesAndRelations: make(map[string]customInfo),
 		profileFileFound:        false,
 	}
 	for _, f := range files {
@@ -178,10 +209,11 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 		}
 
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 
 		info.objects[id] = objectInfo{
 			Type:   pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyType.String()),
-			Name:   pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()),
+			Name:   name,
 			SbType: smartblock.SmartBlockType(snapshot.SbType),
 		}
 
@@ -191,15 +223,33 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
 			if !bundle.HasRelation(key) {
-				info.customTypesAndRelations[key] = struct{}{}
+				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
 			}
 		case model.SmartBlockType_STType:
 			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 			key := strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)
 			info.types[id] = domain.TypeKey(key)
 			if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
-				info.customTypesAndRelations[key] = struct{}{}
+				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
 			}
+		case model.SmartBlockType_SubObject:
+			if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
+				key := strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix)
+				info.types[id] = domain.TypeKey(key)
+				if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
+					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
+				}
+			} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+				key := strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
+				info.relations[id] = domain.RelationKey(key)
+				if !bundle.HasRelation(key) {
+					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
+				}
+			}
+		case model.SmartBlockType_Template:
+			info.templates[id] = pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyTargetObjectType.String())
+		case model.SmartBlockType_STRelationOption:
+			info.options[id] = domain.RelationKey(pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
 		}
 	}
 	return
@@ -218,7 +268,7 @@ func readData(f *zip.File) ([]byte, error) {
 	return data, nil
 }
 
-func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *cliFlags) error {
+func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *cliFlags, writeNewFile bool) error {
 	var incorrectFileFound bool
 	for _, f := range files {
 		if f.Name == anytypeProfileFilename {
@@ -231,20 +281,29 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 		}
 		newData, err := processRawData(data, f.Name, info, flags)
 		if err != nil {
-			incorrectFileFound = true
+			if !(flags.exclude && errors.Is(err, errValidationFailed)) {
+				// just do not include object that failed validation
+				incorrectFileFound = true
+			}
 			continue
 		}
-		if newData == nil {
+		if newData == nil || !writeNewFile {
 			continue
 		}
-		nf, err := zw.Create(f.Name)
+		newFileName := f.Name
+		if strings.HasPrefix(newFileName, ".pb.json") {
+			// output of usecase validator is always an archive with protobufs
+			newFileName = strings.TrimPrefix(newFileName, ".json")
+		}
+		nf, err := zw.Create(newFileName)
 		if err != nil {
-			return fmt.Errorf("failed to create new file %s: %w", f.Name, err)
+			return fmt.Errorf("failed to create new file %s: %w", newFileName, err)
 		}
 		if _, err = io.Copy(nf, bytes.NewReader(newData)); err != nil {
-			return fmt.Errorf("failed to copy snapshot to new file %s: %w", f.Name, err)
+			return fmt.Errorf("failed to copy snapshot to new file %s: %w", newFileName, err)
 		}
 	}
+
 	if incorrectFileFound {
 		return errIncorrectFileFound
 	}
@@ -283,7 +342,8 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 
 	if flags.validate {
 		if err = validate(snapshot, info); err != nil {
-			return nil, err
+			fmt.Println(err)
+			return nil, errValidationFailed
 		}
 	}
 
@@ -391,6 +451,7 @@ func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
 	}
 	profile.Name = ""
 	profile.ProfileId = ""
+	fmt.Println("spaceDashboardId = " + profile.SpaceDashboardId)
 	if _, found := info.objects[profile.SpaceDashboardId]; !found {
 		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
 		fmt.Println(err)
@@ -400,10 +461,16 @@ func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
 }
 
 func listObjects(info *useCaseInfo) {
-	fmt.Println("\nUsecase '" + info.useCase + "'content:\n\n- General objects:")
-	fmt.Println()
+	fmt.Println("\nUsecase '" + info.useCase + "' content:\n\n- General objects:")
+	fmt.Println("Id:  " + strings.Repeat(" ", 12) + "Smartblock Type -" + strings.Repeat(" ", 17) + "Type Key - Name")
 	for id, obj := range info.objects {
-		if obj.SbType == smartblock.SmartBlockTypeObjectType || obj.SbType == smartblock.SmartBlockTypeRelation {
+		if lo.Contains([]smartblock.SmartBlockType{
+			smartblock.SmartBlockTypeObjectType,
+			smartblock.SmartBlockTypeRelation,
+			smartblock.SmartBlockTypeSubObject,
+			smartblock.SmartBlockTypeTemplate,
+			smartblock.SmartBlockTypeRelationOption,
+		}, obj.SbType) {
 			continue
 		}
 		key, found := info.types[obj.Type]
@@ -414,16 +481,36 @@ func listObjects(info *useCaseInfo) {
 	}
 
 	fmt.Println("\n- Types:")
-	fmt.Println()
+	fmt.Println("Id:  " + strings.Repeat(" ", 24) + "Key - Name")
 	for id, key := range info.types {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
 	}
 
 	fmt.Println("\n- Relations:")
-	fmt.Println()
+	fmt.Println("Id:  " + strings.Repeat(" ", 24) + "Key - Name")
 	for id, key := range info.relations {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
+	}
+
+	fmt.Println("\n- Custom Types and Relations usage (correct only on validation turned on):")
+	fmt.Println("Is used\t\tName\t\t\t\t\tId")
+	for name, cInfo := range info.customTypesAndRelations {
+		fmt.Printf("%v -\t\t%s -\t\t%s\n", cInfo.isUsed, name, cInfo.id)
+	}
+
+	fmt.Println("\n- Templates:")
+	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "Name - Target object type id")
+	for id, target := range info.templates {
+		obj := info.objects[id]
+		fmt.Printf("%s:\t%32s - %s\n", id[len(id)-4:], obj.Name, target)
+	}
+
+	fmt.Println("\n- Relation Options:")
+	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "Name - Relation key")
+	for id, key := range info.options {
+		obj := info.objects[id]
+		fmt.Printf("%s:\t%32s - %s\n", id[len(id)-4:], obj.Name, key)
 	}
 }

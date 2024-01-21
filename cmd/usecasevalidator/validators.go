@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
@@ -34,27 +35,29 @@ var validators = []validator{
 	validateBlockLinks,
 	validateFileKeys,
 	validateDeleted,
+	validateRelationOption,
 }
 
-func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) error {
+func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	invalidRelationFound := false
 	for _, rel := range s.Snapshot.Data.RelationLinks {
-		if _, found := info.customTypesAndRelations[rel.Key]; !bundle.HasRelation(rel.Key) && !found {
-			invalidRelationFound = true
-			fmt.Printf("object '%s' contains link to unknown relation: %s(%s)\n", id,
-				rel.Key, pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String()))
+		if bundle.HasRelation(rel.Key) {
+			continue
+		}
+		v, found := info.customTypesAndRelations[rel.Key]
+		if found {
+			v.isUsed = true
+			info.customTypesAndRelations[rel.Key] = v
+		} else {
+			err = multierror.Append(err, fmt.Errorf("object '%s' contains link to unknown relation: %s(%s)", id,
+				rel.Key, pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String())))
 		}
 	}
-	if invalidRelationFound {
-		return fmt.Errorf("object '%s' contains invalid relation link", id)
-	}
-	return nil
+	return err
 }
 
-func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) error {
+func validateRelationBlocks(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	invalidRelationFound := false
 	var relKeys []string
 	for _, b := range s.Snapshot.Data.Blocks {
 		if rb, ok := simple.New(b).(relation.Block); ok {
@@ -64,33 +67,32 @@ func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) error {
 	relLinks := pbtypes.RelationLinks(s.Snapshot.Data.GetRelationLinks())
 	for _, rk := range relKeys {
 		if !relLinks.Has(rk) {
-			invalidRelationFound = true
-			fmt.Printf("relation '%v' exists in relation block but not in relation links of object %s\n", rk, id)
+			err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in relation links of object %s", rk, id))
 		}
 	}
-	if invalidRelationFound {
-		return fmt.Errorf("relation block of object '%s' contains invalid relation", id)
-	}
-	return nil
+	return err
 }
 
-func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) error {
-	var invalidDetailFound bool
+func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+
 	for k, v := range s.Snapshot.Data.Details.Fields {
 		if k == bundle.RelationKeyLinks.String() || k == bundle.RelationKeySourceObject.String() || k == bundle.RelationKeyBacklinks.String() {
 			continue
 		}
+		if cr, found := info.customTypesAndRelations[k]; found {
+			cr.isUsed = true
+			info.customTypesAndRelations[k] = cr
+		}
 		var (
 			rel relationWithFormat
-			err error
+			e   error
 		)
-		rel, err = bundle.GetRelation(domain.RelationKey(k))
-		if err != nil {
+		rel, e = bundle.GetRelation(domain.RelationKey(k))
+		if e != nil {
 			rel = getRelationLinkByKey(s.Snapshot.Data.RelationLinks, k)
 			if rel == nil {
-				invalidDetailFound = true
-				fmt.Printf("relation '%s' exists in details of object '%s', but not in relation links\n", k, id)
+				err = multierror.Append(err, fmt.Errorf("relation '%s' exists in details of object '%s', but not in relation links", k, id))
 				continue
 			}
 
@@ -99,47 +101,46 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) error {
 			continue
 		}
 
-		vals := pbtypes.GetStringListValue(v)
-		for _, val := range vals {
+		values := pbtypes.GetStringListValue(v)
+		for _, val := range values {
 			if bundle.HasRelation(strings.TrimPrefix(val, addr.RelationKeyToIdPrefix)) ||
 				bundle.HasObjectTypeByKey(domain.TypeKey(strings.TrimPrefix(val, addr.ObjectTypeKeyToIdPrefix))) || val == addr.AnytypeProfileId {
 				continue
 			}
+
+			if k == bundle.RelationKeyFeaturedRelations.String() {
+				if _, found := info.customTypesAndRelations[val]; found {
+					continue
+				}
+			}
+
 			_, found := info.objects[val]
 			if !found {
-				invalidDetailFound = true
-				fmt.Printf("failed to find target id for detail '%s: %s' of object %s\n", k, val, id)
+				err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
 			}
 		}
 	}
-	if invalidDetailFound {
-		return fmt.Errorf("object '%s' contains invalid detail", id)
-	}
-	return nil
+	return err
 }
 
-func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) error {
+func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	typeNotFound := false
 	for _, ot := range s.Snapshot.Data.ObjectTypes {
 		typeId := strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
 		if !bundle.HasObjectTypeByKey(domain.TypeKey(typeId)) {
-			if _, found := info.customTypesAndRelations[typeId]; found {
+			if ct, found := info.customTypesAndRelations[typeId]; found {
+				ct.isUsed = true
+				info.customTypesAndRelations[typeId] = ct
 				continue
 			}
-			typeNotFound = true
-			fmt.Printf("object '%s' contains unknown object type: %s\n", id, ot)
+			err = multierror.Append(err, fmt.Errorf("object '%s' contains unknown object type: %s", id, ot))
 		}
 	}
-	if typeNotFound {
-		return fmt.Errorf("object '%s' contains unknown object type", id)
-	}
-	return nil
+	return err
 }
 
-func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) error {
+func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	invalidBlockFound := false
 	for _, b := range s.Snapshot.Data.Blocks {
 		switch a := simple.New(b).(type) {
 		case link.Block:
@@ -149,16 +150,17 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) error {
 				if s.SbType == model.SmartBlockType_Widget && lo.Contains([]string{widget.DefaultWidgetFavorite, widget.DefaultWidgetSet, widget.DefaultWidgetRecent, widget.DefaultWidgetCollection}, target) {
 					continue
 				}
-				invalidBlockFound = true
-				fmt.Printf("failed to find target id for link '%s' in block '%s' of object '%s'\n",
-					a.Model().GetLink().TargetBlockId, a.Model().Id, id)
+				err = multierror.Append(err, fmt.Errorf("failed to find target id for link '%s' in block '%s' of object '%s'",
+					a.Model().GetLink().TargetBlockId, a.Model().Id, id))
 			}
 		case bookmark.Block:
-			_, found := info.objects[a.Model().GetBookmark().TargetObjectId]
+			target := a.Model().GetBookmark().TargetObjectId
+			if target == "" {
+				continue
+			}
+			_, found := info.objects[target]
 			if !found {
-				invalidBlockFound = true
-				fmt.Printf("failed to find target id for bookmark '%s' in block '%s' of object '%s'\n",
-					a.Model().GetBookmark().TargetObjectId, a.Model().Id, id)
+				err = multierror.Append(err, fmt.Errorf("failed to find target id for bookmark '%s' in block '%s' of object '%s'", target, a.Model().Id, id))
 			}
 		case text.Block:
 			for _, mark := range a.Model().GetText().GetMarks().GetMarks() {
@@ -167,9 +169,8 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) error {
 				}
 				_, found := info.objects[mark.Param]
 				if !found {
-					invalidBlockFound = true
-					fmt.Printf("failed to find target id for mention '%s' in block '%s' of object '%s'\n",
-						mark.Param, a.Model().Id, id)
+					err = multierror.Append(err, fmt.Errorf("failed to find target id for mention '%s' in block '%s' of object '%s'",
+						mark.Param, a.Model().Id, id))
 				}
 			}
 		case dataview.Block:
@@ -178,16 +179,12 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) error {
 			}
 			_, found := info.objects[a.Model().GetDataview().TargetObjectId]
 			if !found {
-				invalidBlockFound = true
-				fmt.Printf("failed to find target id for dataview '%s' in block '%s' of object '%s'\n",
-					a.Model().GetDataview().TargetObjectId, a.Model().Id, id)
+				err = multierror.Append(err, fmt.Errorf("failed to find target id for dataview '%s' in block '%s' of object '%s'",
+					a.Model().GetDataview().TargetObjectId, a.Model().Id, id))
 			}
 		}
 	}
-	if invalidBlockFound {
-		return fmt.Errorf("block of object %s contains links to non-existent objects", id)
-	}
-	return nil
+	return err
 }
 
 func getRelationLinkByKey(links []*model.RelationLink, key string) *model.RelationLink {
@@ -208,9 +205,8 @@ func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
 	return false
 }
 
-func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) error {
+func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	invalidKeyFound := false
 	for _, r := range s.Snapshot.Data.RelationLinks {
 		if r.Format == model.RelationFormat_file || r.Key == bundle.RelationKeyCoverId.String() {
 			for _, hash := range pbtypes.GetStringList(s.Snapshot.GetData().GetDetails(), r.Key) {
@@ -221,8 +217,7 @@ func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) error {
 					}
 				}
 				if !snapshotHasKeyForHash(s, hash) {
-					fmt.Printf("object '%s' has file detail '%s' has hash '%s' which keys are not in the snapshot\n", id, r.Key, hash)
-					invalidKeyFound = true
+					err = multierror.Append(err, fmt.Errorf("object '%s' has file detail '%s' has hash '%s' which keys are not in the snapshot", id, r.Key, hash))
 				}
 			}
 		}
@@ -236,16 +231,12 @@ func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) error {
 			}
 			for _, hash := range hashes {
 				if !snapshotHasKeyForHash(s, hash) {
-					fmt.Printf("file block '%s' of object '%s' has hash '%s' which keys are not in the snapshot\n", b.Id, id, hash)
-					invalidKeyFound = true
+					err = multierror.Append(err, fmt.Errorf("file block '%s' of object '%s' has hash '%s' which keys are not in the snapshot", b.Id, id, hash))
 				}
 			}
 		}
 	}
-	if invalidKeyFound {
-		return fmt.Errorf("found invalid blocks with hashes")
-	}
-	return nil
+	return err
 }
 
 func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
@@ -261,5 +252,23 @@ func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
 		return fmt.Errorf("object is uninstalled")
 	}
 
+	return nil
+}
+
+func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
+	if s.SbType != model.SmartBlockType_STRelationOption {
+		return nil
+	}
+
+	key := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	if bundle.HasRelation(key) {
+		//fmt.Println(key + " -\t\t\t\t" + pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String()) + " -\t\t\t" + pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String()))
+		return nil
+	}
+
+	if _, found := info.customTypesAndRelations[key]; !found {
+		id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		return fmt.Errorf("failed to find relation key %s of relation option %s", key, id)
+	}
 	return nil
 }
