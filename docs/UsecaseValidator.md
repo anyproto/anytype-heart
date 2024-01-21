@@ -1,14 +1,27 @@
-## Use Case archives generating tool
+## Use Case archives validation tool
 
-To use Use Case archives processing tool head to [cmd/usecasegenerator](../cmd/usecasegenerator), build the program
+To use Use Case archives validation tool head to [cmd/usecasevalidator](../cmd/usecasegenerator), build the program
 `go build`
 and run it using
-`./archiveprocessor <path_to_archive>`
+`./usecasevalidator -path <path_to_archive>`
 command.
 
-Program accepts only one parameter - path to the archive containing exported objects from space.
+Program accepts one obligatory flag - path to the archive containing exported objects from space.
+Other flags could be specified to validate/list/process files in archive:
 
-If all protobuf objects contain correct information, resulting archive would be written in **<path_to_archive>_new.zip** file in same directory.
+```
+Usage of ./usecasevalidator:
+-a	Insert analytics context and original id
+-creator    Set Anytype profile to LastModifiedDate and Creator
+-exclude    Exclude objects that did not pass validation
+-list       List all objects in archive
+-path <string>   Path to zip archive
+-r	  Remove account related relations
+-rules <string>  Path to file with processing rules
+-validate   Perform validation upon all objects
+```
+
+If all protobuf objects contain correct information and were changed (e.g. `a`, `creator`, `r`, `rules` or `exclude` flags were specified), resulting archive would be written in **<path_to_archive>_new.zip** file in same directory.
 
 If objects in archive have some incorrect information, e.g.:
 - links to objects that are not presented in the archive
