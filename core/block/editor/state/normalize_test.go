@@ -328,12 +328,13 @@ func TestState_Normalize(t *testing.T) {
 		// given original state
 		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"div-1", "div-2", "div-3"}}))
-		r.Add(simple.New(&model.Block{Id: "div-1", ChildrenIds: []string{"a", "b"}, Content: div}))
-		r.Add(simple.New(&model.Block{Id: "div-2", ChildrenIds: []string{"c", "d"}, Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-1", ChildrenIds: []string{"div-4", "b"}, Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-2", ChildrenIds: []string{"c", "div-5"}, Content: div}))
 		r.Add(simple.New(&model.Block{Id: "div-3", ChildrenIds: []string{"e", "f"}, Content: div}))
 
-		r.Add(simple.New(&model.Block{Id: "a"}))
-		r.Add(simple.New(&model.Block{Id: "b"}))
+		r.Add(simple.New(&model.Block{Id: "div-4", Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-5", ChildrenIds: []string{"div-6"}, Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-6", Content: div}))
 		r.Add(simple.New(&model.Block{Id: "c"}))
 		r.Add(simple.New(&model.Block{Id: "d"}))
 		r.Add(simple.New(&model.Block{Id: "e"}))
@@ -341,8 +342,8 @@ func TestState_Normalize(t *testing.T) {
 
 		// remove blocks
 		s := r.NewState()
-		s.Unlink("a")
-		s.Unlink("b")
+		s.Unlink("div-4")
+		s.Unlink("div-5")
 		s.Unlink("c")
 		s.Unlink("d")
 		s.Unlink("e")
@@ -355,7 +356,7 @@ func TestState_Normalize(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Len(t, s.Pick("root").Model().ChildrenIds, 0)
-		expectedRemovedIDs := []string{"div-1", "div-2", "div-3"}
+		expectedRemovedIDs := []string{"div-1", "div-2", "div-3", "div-4", "div-5", "div-6"}
 		expectedRemovedIDsCount := lo.CountBy(msg.Remove, func(block simple.Block) bool { return slices.Contains(expectedRemovedIDs, block.Model().Id) })
 		assert.Equal(t, len(expectedRemovedIDs), expectedRemovedIDsCount)
 	})
