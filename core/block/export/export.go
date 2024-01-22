@@ -519,11 +519,20 @@ func (e *export) handleFileObject(ctx context.Context,
 }
 
 func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, wr writer) {
-	fileHashes := b.GetAndUnsetFileKeys()
+	st := b.NewState()
+	var fileHashes []string
+	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if fh, ok := bl.(simple.FileHashes); ok {
+			fileHashes = fh.FillFileHashes(fileHashes)
+		}
+		return true
+	})
+	if err != nil {
+		log.Errorf("failed to collect file hashes in state, %s", err)
+	}
 	for _, fh := range fileHashes {
-		fh := fh
-		if _, werr := e.saveFile(ctx, wr, fh.Hash); werr != nil {
-			log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
+		if _, werr := e.saveFile(ctx, wr, fh); werr != nil {
+			log.With("hash", fh).Warnf("can't save file: %v", werr)
 		}
 	}
 }
