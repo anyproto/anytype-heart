@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "1be40898fa31c47abf8a860009c29dcd696e5838d8bef2dbc0711f1333318869"
+const RelationChecksum = "d97195042ec330a72638613d725906f83f37a816cec214454d672b2aaff90ac8"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -161,6 +161,8 @@ const (
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
+	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
+	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
 	RelationKeyParticipantPermissions    domain.RelationKey = "participantPermissions"
 	RelationKeyIdentity                  domain.RelationKey = "identity"
 	RelationKeyParticipantStatus         domain.RelationKey = "participantStatus"
@@ -740,7 +742,7 @@ var (
 		},
 		RelationKeyFileExt: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
 			Id:               "_brfileExt",
@@ -1971,6 +1973,34 @@ var (
 			MaxCount:         1,
 			Name:             "Space ID",
 			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteFileCid: {
+
+			DataSource:       model.Relation_details,
+			Description:      "CID of invite file for current space. It stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteFileCid",
+			Key:              "spaceInviteFileCid",
+			MaxCount:         1,
+			Name:             "CID of invite file for current space",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteFileKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Encoded encryption key of invite file for current space. It stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteFileKey",
+			Key:              "spaceInviteFileKey",
+			MaxCount:         1,
+			Name:             "Encoded encryption key of invite file for current space",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

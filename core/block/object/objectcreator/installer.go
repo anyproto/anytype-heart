@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -24,6 +25,7 @@ func (s *service) InstallBundledObjects(
 	ctx context.Context,
 	space clientspace.Space,
 	sourceObjectIds []string,
+	isNewSpace bool,
 ) (ids []string, objects []*types.Struct, err error) {
 
 	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
@@ -45,7 +47,7 @@ func (s *service) InstallBundledObjects(
 		if _, ok := existingObjectMap[sourceObjectId]; ok {
 			continue
 		}
-		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, sourceObjectId, space)
+		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, sourceObjectId, space, isNewSpace)
 		if err != nil {
 			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
 		}
@@ -77,7 +79,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 		return "", nil, fmt.Errorf("unsupported object type: %s", uk.SmartblockType())
 	}
 
-	id, newDetails, err = s.CreateObjectInSpace(ctx, space, CreateObjectRequest{
+	id, newDetails, err = s.createObjectInSpace(ctx, space, CreateObjectRequest{
 		Details:       installingDetails,
 		ObjectTypeKey: objectTypeKey,
 	})
@@ -145,7 +147,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 	for _, rec := range uninstalledObjects {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		sourceObjectId := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
-		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space)
+		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
 		}
@@ -176,7 +178,13 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 	return ids, objects, nil
 }
 
-func (s *service) prepareDetailsForInstallingObject(ctx context.Context, sourceSpace clientspace.Space, sourceObjectId string, spc clientspace.Space) (*types.Struct, error) {
+func (s *service) prepareDetailsForInstallingObject(
+	ctx context.Context,
+	sourceSpace clientspace.Space,
+	sourceObjectId string,
+	spc clientspace.Space,
+	isNewSpace bool,
+) (*types.Struct, error) {
 	var details *types.Struct
 	err := sourceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
 		details = b.CombinedDetails()
@@ -192,13 +200,17 @@ func (s *service) prepareDetailsForInstallingObject(ctx context.Context, sourceS
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
+	if isNewSpace {
+		objecttype.SetLastUsedDateForInitialObjectType(sourceId, details)
+	}
+
 	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	if len(bundledRelationIds) > 0 {
 		recommendedRelationKeys := make([]string, 0, len(bundledRelationIds))
 		for _, id := range bundledRelationIds {
 			key, err := bundle.RelationKeyFromID(id)
 			if err != nil {
-				return nil, fmt.Errorf("relation key from id %s: %w", id, err)
+				return nil, fmt.Errorf("relation key from id: %w", err)
 			}
 			recommendedRelationKeys = append(recommendedRelationKeys, key.String())
 		}

@@ -25,6 +25,7 @@ var (
 		model.Restrictions_Duplicate,
 	}
 	objFileRestrictions = ObjectRestrictions{
+		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,

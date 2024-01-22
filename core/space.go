@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/pb"
@@ -27,13 +29,14 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
-	key, err := generateInvite(cctx, req.SpaceId, aclService)
+	inviteCid, inviteFileKey, err := generateInvite(cctx, req.SpaceId, aclService)
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteGenerateResponseError_NO_SUCH_SPACE),
 	)
 	return &pb.RpcSpaceInviteGenerateResponse{
-		InviteKey: key,
+		InviteCid:     inviteCid,
+		InviteFileKey: inviteFileKey,
 		Error: &pb.RpcSpaceInviteGenerateResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
@@ -41,17 +44,62 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 	}
 }
 
-func (mw *Middleware) SpaceRequestJoin(cctx context.Context, req *pb.RpcSpaceRequestJoinRequest) *pb.RpcSpaceRequestJoinResponse {
+func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpaceInviteGetCurrentRequest) *pb.RpcSpaceInviteGetCurrentResponse {
+	return &pb.RpcSpaceInviteGetCurrentResponse{
+		Error: &pb.RpcSpaceInviteGetCurrentResponseError{
+			Code:        1,
+			Description: getErrorDescription(fmt.Errorf("not implemented")),
+		},
+	}
+}
+
+func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceInviteRevokeRequest) *pb.RpcSpaceInviteRevokeResponse {
+	return &pb.RpcSpaceInviteRevokeResponse{
+		Error: &pb.RpcSpaceInviteRevokeResponseError{
+			Code:        1,
+			Description: getErrorDescription(fmt.Errorf("not implemented")),
+		},
+	}
+}
+
+func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInviteViewRequest) *pb.RpcSpaceInviteViewResponse {
+	return &pb.RpcSpaceInviteViewResponse{
+		Error: &pb.RpcSpaceInviteViewResponseError{
+			Code:        1,
+			Description: getErrorDescription(fmt.Errorf("not implemented")),
+		},
+	}
+}
+
+func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinRequest) *pb.RpcSpaceJoinResponse {
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
-	err := join(cctx, req.SpaceId, req.PrivateKey, aclService)
+	err := join(cctx, aclService, req)
 	code := mapErrorCode(err,
-		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceRequestJoinResponseError_SPACE_IS_DELETED),
-		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceRequestJoinResponseError_NO_SUCH_SPACE),
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceJoinResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceJoinResponseError_NO_SUCH_SPACE),
 	)
-	return &pb.RpcSpaceRequestJoinResponse{
-		Error: &pb.RpcSpaceRequestJoinResponseError{
+	return &pb.RpcSpaceJoinResponse{
+		Error: &pb.RpcSpaceJoinResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) SpaceJoinCancel(cctx context.Context, req *pb.RpcSpaceJoinCancelRequest) *pb.RpcSpaceJoinCancelResponse {
+	return &pb.RpcSpaceJoinCancelResponse{
+		Error: &pb.RpcSpaceJoinCancelResponseError{
+			Code:        1,
+			Description: getErrorDescription(fmt.Errorf("not implemented")),
+		},
+	}
+}
+
+func (mw *Middleware) SpaceExit(cctx context.Context, req *pb.RpcSpaceExitRequest) *pb.RpcSpaceExitResponse {
+	return &pb.RpcSpaceExitResponse{
+		Error: &pb.RpcSpaceExitResponseError{
+			Code:        1,
+			Description: getErrorDescription(fmt.Errorf("not implemented")),
 		},
 	}
 }
@@ -71,22 +119,44 @@ func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpace
 	}
 }
 
-func generateInvite(ctx context.Context, spaceId string, aclService acl.AclService) (encKey string, err error) {
-	key, err := aclService.GenerateInvite(ctx, spaceId)
+func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpaceRequestDeclineRequest) *pb.RpcSpaceRequestDeclineResponse {
+	return &pb.RpcSpaceRequestDeclineResponse{
+		Error: &pb.RpcSpaceRequestDeclineResponseError{
+			Code:        1,
+			Description: getErrorDescription(fmt.Errorf("not implemented")),
+		},
+	}
+}
+
+func (mw *Middleware) SpaceParticipantRemove(cctx context.Context, req *pb.RpcSpaceParticipantRemoveRequest) *pb.RpcSpaceParticipantRemoveResponse {
+	return &pb.RpcSpaceParticipantRemoveResponse{
+		Error: &pb.RpcSpaceParticipantRemoveResponseError{
+			Code:        1,
+			Description: getErrorDescription(fmt.Errorf("not implemented")),
+		},
+	}
+}
+
+func generateInvite(ctx context.Context, spaceId string, aclService acl.AclService) (inviteCid string, inviteFilekey string, err error) {
+	res, err := aclService.GenerateInvite(ctx, spaceId)
 	if err != nil {
 		return
 	}
-	return crypto.EncodeKeyToString(key)
+	return res.InviteFileCid, res.InviteFileKey, nil
 }
 
-func join(ctx context.Context, spaceId, encKey string, aclService acl.AclService) (err error) {
-	key, err := crypto.DecodeKeyFromString(encKey, func(bytes []byte) (crypto.PrivKey, error) {
-		return crypto.NewSigningEd25519PrivKeyFromBytes(bytes)
+func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
+	inviteFileKey, err := crypto.DecodeKeyFromString(req.InviteFileKey, func(bytes []byte) (crypto.SymKey, error) {
+		return crypto.UnmarshallAESKey(bytes)
 	}, nil)
 	if err != nil {
 		return
 	}
-	return aclService.Join(ctx, spaceId, key)
+	inviteCid, err := cid.Decode(req.InviteCid)
+	if err != nil {
+		return
+	}
+	return aclService.Join(ctx, req.SpaceId, inviteCid, inviteFileKey)
 }
 
 func accept(ctx context.Context, spaceId, identity string, aclService acl.AclService) (err error) {

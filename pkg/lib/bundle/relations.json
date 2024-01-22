@@ -1246,7 +1246,7 @@
     "maxCount": 1,
     "name": "File extension",
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "format": "longtext",
@@ -1491,6 +1491,26 @@
     "key": "spaceAccountStatus",
     "maxCount": 1,
     "name": "Space account status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "CID of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileCid",
+    "maxCount": 1,
+    "name": "CID of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Encoded encryption key of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileKey",
+    "maxCount": 1,
+    "name": "Encoded encryption key of invite file for current space",
     "readonly": true,
     "source": "details"
   },

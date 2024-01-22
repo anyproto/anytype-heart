@@ -50,6 +50,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -58,6 +59,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
@@ -224,6 +226,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(filestorage.New()).
 		Register(files.New()).
 		Register(fileobject.New()).
+		Register(fileacl.New()).
+		Register(invitestore.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
@@ -260,7 +264,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
 		Register(profiler.New()).
-		Register(identity.New(30 * time.Second)).
+		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
 		Register(notifications.New())
 }

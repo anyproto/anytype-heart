@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/gogo/protobuf/types"
 	"github.com/h2non/filetype"
 
 	"github.com/anyproto/anytype-heart/core/block/getblock"
@@ -101,12 +102,13 @@ type Uploader interface {
 }
 
 type UploadResult struct {
-	Name         string
-	Type         model.BlockContentFileType
-	FileObjectId string
-	MIME         string
-	Size         int64
-	Err          error
+	Name              string
+	Type              model.BlockContentFileType
+	FileObjectId      string
+	FileObjectDetails *types.Struct
+	MIME              string
+	Size              int64
+	Err               error
 }
 
 func (ur UploadResult) ToBlock() file.Block {
@@ -443,11 +445,12 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	result.MIME = addResult.mime
 	result.Size = addResult.size
 
-	fileObjectId, err := u.getOrCreateFileObject(ctx, addResult)
+	fileObjectId, fileObjectDetails, err := u.getOrCreateFileObject(ctx, addResult)
 	if err != nil {
 		return UploadResult{Err: err}
 	}
 	result.FileObjectId = fileObjectId
+	result.FileObjectDetails = fileObjectDetails
 
 	result.Type = u.fileType
 	result.Name = u.name
@@ -507,20 +510,33 @@ func (u *uploader) addFileToStorage(ctx context.Context, addOptions []files.AddO
 	return res, nil
 }
 
-func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToStorageResult) (string, error) {
+func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToStorageResult) (string, *types.Struct, error) {
 	if addResult.fileExists {
-		return u.fileObjectService.GetObjectIdByFileId(addResult.fileId)
-	} else {
-		fileObjectId, _, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
-			FileId:         addResult.fileId,
-			EncryptionKeys: addResult.fileKeys.EncryptionKeys,
-			IsImported:     u.origin == model.ObjectOrigin_import,
+		id, details, err := u.fileObjectService.GetObjectDetailsByFileId(domain.FullFileId{
+			SpaceId: u.spaceId,
+			FileId:  addResult.fileId,
 		})
-		if err != nil {
-			return "", fmt.Errorf("create file object: %w", err)
+		if err == nil {
+			return id, details, nil
 		}
-		return fileObjectId, nil
+		if errors.Is(err, fileobject.ErrObjectNotFound) {
+			err = nil
+		}
+		if err != nil {
+			return "", nil, fmt.Errorf("get object details by file id: %w", err)
+		}
 	}
+
+	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
+		FileId:         addResult.fileId,
+		EncryptionKeys: addResult.fileKeys.EncryptionKeys,
+		IsImported:     u.origin == model.ObjectOrigin_import,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("create file object: %w", err)
+	}
+	return fileObjectId, fileObjectDetails, nil
+
 }
 
 func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
