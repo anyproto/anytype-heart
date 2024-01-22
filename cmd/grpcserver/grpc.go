@@ -114,7 +114,7 @@ func main() {
 		resp, err = mw.Authorize(ctx, req, info, handler)
 		_, d := descriptor.ForMessage(req.(descriptor.Message))
 		noAuth := proto.GetBoolExtension(d.GetOptions(), pb.E_NoAuth, false)
-		fmt.Printf("grpc %s: %s (noauth %v) err %v\n", info.FullMethod, noAuth, err)
+		fmt.Printf("grpc %s: (noauth %v) err %v\n", info.FullMethod, noAuth, err)
 		if err != nil {
 			log.Errorf("authorize: %s", err)
 		}
