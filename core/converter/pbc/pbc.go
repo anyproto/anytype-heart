@@ -36,6 +36,7 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 			Collections:   st.Store(),
 			RelationLinks: st.PickRelationLinks(),
 			Key:           p.s.UniqueKeyInternal(),
+			FileInfo:      st.GetFileInfo().ToModel(),
 		},
 	}
 	for _, fk := range p.s.GetAndUnsetFileKeys() {

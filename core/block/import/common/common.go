@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -70,6 +71,8 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesID
 			handleMarkdownTest(oldIDtoNew, block, st, filesIDs)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
+		case file.Block:
+			handleFileBlock(oldIDtoNew, block, st)
 		}
 		return true
 	})
@@ -160,6 +163,15 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	}
 
 	block.Model().GetLink().TargetBlockId = newTarget
+	st.Set(simple.New(block.Model()))
+}
+
+func handleFileBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+	newId := oldIDtoNew[block.Model().GetFile().GetTargetObjectId()]
+	if newId == "" {
+		newId = addr.MissingObject
+	}
+	block.Model().GetFile().TargetObjectId = newId
 	st.Set(simple.New(block.Model()))
 }
 

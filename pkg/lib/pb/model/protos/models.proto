@@ -7,9 +7,8 @@ import "google/protobuf/struct.proto";
 message SmartBlockSnapshotBase {
     repeated Block blocks = 1;
     google.protobuf.Struct details = 2;
-    google.protobuf.Struct fileKeys = 3;
-    // deprecated
-    repeated Relation extraRelations = 4;
+    google.protobuf.Struct fileKeys = 3 [deprecated=true];
+    repeated Relation extraRelations = 4 [deprecated=true];
     repeated string objectTypes = 5;
     google.protobuf.Struct collections = 6;
     repeated string removedCollectionKeys = 8;

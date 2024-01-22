@@ -23277,8 +23277,8 @@ stored |
 | ----- | ---- | ----- | ----------- |
 | blocks | [Block](#anytype-model-Block) | repeated |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| fileKeys | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| extraRelations | [Relation](#anytype-model-Relation) | repeated | deprecated |
+| fileKeys | [google.protobuf.Struct](#google-protobuf-Struct) |  | **Deprecated.**  |
+| extraRelations | [Relation](#anytype-model-Relation) | repeated | **Deprecated.**  |
 | objectTypes | [string](#string) | repeated |  |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
