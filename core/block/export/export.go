@@ -300,22 +300,26 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 }
 
 func (e *export) saveFilesForObject(objectID string, docs map[string]*types.Struct) error {
-	var fileHashes []string
+	var (
+		fileHashes []string
+		st         *state.State
+	)
 	if err := getblock.Do(e.picker, objectID, func(b sb.SmartBlock) error {
-		st := b.NewState()
-		err := st.Iterate(func(bl simple.Block) (isContinue bool) {
-			if fh, ok := bl.(simple.FileHashes); ok {
-				fileHashes = fh.FillFileHashes(fileHashes)
-			}
-			return true
-		})
-		if err != nil {
-			log.Errorf("failed to collect file hashes in state, %s", err)
-		}
+		st = b.NewState()
 		return nil
 	}); err != nil {
 		return nil
 	}
+	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if fh, ok := bl.(simple.FileHashes); ok {
+			fileHashes = fh.FillFileHashes(fileHashes)
+		}
+		return true
+	})
+	if err != nil {
+		log.Errorf("failed to collect file hashes in state, %s", err)
+	}
+	fileHashes = e.getFilesFromRelations(st, fileHashes)
 	filesObjects, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -527,6 +531,7 @@ func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, wr writer) {
 		}
 		return true
 	})
+	fileHashes = e.getFilesFromRelations(st, fileHashes)
 	if err != nil {
 		log.Errorf("failed to collect file hashes in state, %s", err)
 	}
@@ -535,6 +540,22 @@ func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, wr writer) {
 			log.With("hash", fh).Warnf("can't save file: %v", werr)
 		}
 	}
+}
+
+func (e *export) getFilesFromRelations(st *state.State, fileHashes []string) []string {
+	for _, relLink := range st.GetRelationLinks() {
+		if relLink.Format == model.RelationFormat_file {
+			if fileHash := pbtypes.GetString(st.Details(), relLink.GetKey()); fileHash != "" {
+				fileHashes = append(fileHashes, fileHash)
+
+			}
+			if relationFileHashes := pbtypes.GetStringList(st.Details(), relLink.GetKey()); len(relationFileHashes) > 0 {
+				fileHashes = append(fileHashes, relationFileHashes...)
+
+			}
+		}
+	}
+	return fileHashes
 }
 
 func (e *export) saveFile(ctx context.Context, wr writer, hash string) (filename string, err error) {
