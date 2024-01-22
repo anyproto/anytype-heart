@@ -64,6 +64,9 @@ func New(eventEndpoint string, key string, isCompressed bool) Service {
 }
 
 func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
+	if len(amplEvents) == 0 {
+		return nil
+	}
 	arena := c.arenaPool.Get()
 	appVersion := arena.NewString(info.GetAppVersion())
 	deviceId := arena.NewString(info.GetDeviceId())
