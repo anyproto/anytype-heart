@@ -144,6 +144,9 @@ func (s *State) Merge(s2 *State) *State {
 }
 
 func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
+	author := bson.NewObjectId().Hex()
+	s.initSubIdsCache(author)
+	defer s.resetSubIdsCache(author)
 	for _, ch := range changes {
 		if err = s.applyChange(ch); err != nil {
 			return
@@ -174,6 +177,9 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 
 // ApplyChangeIgnoreErr should be called with changes from the single pb.Change
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
+	author := bson.NewObjectId().Hex()
+	s.initSubIdsCache(author)
+	defer s.resetSubIdsCache(author)
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
 			log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)

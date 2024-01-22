@@ -55,19 +55,20 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	switch reqPos {
 	case model.Block_Bottom:
 		pos = targetPos + 1
-		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
+		s.cacheInsert(targetParentM, pos, ids)
 	case model.Block_Top:
 		pos = targetPos
-		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
+		s.cacheInsert(targetParentM, pos, ids)
 	case model.Block_Left, model.Block_Right:
 		if err = s.moveFromSide(target, s.Get(targetParentM.Id), reqPos, ids...); err != nil {
 			return
 		}
 	case model.Block_Inner:
-		target.Model().ChildrenIds = append(target.Model().ChildrenIds, ids...)
+		target.Model().ChildrenIds = s.cacheAppendStart(target, ids)
 	case model.Block_Replace:
 		pos = targetPos + 1
-		if len(ids) > 0 && len(s.Get(ids[0]).Model().ChildrenIds) == 0 {
+		id0Block := s.Get(ids[0]).Model()
+		if len(ids) > 0 && len(id0Block.ChildrenIds) == 0 {
 			var idsIsChild bool
 			if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
 				for _, id := range ids {
@@ -78,13 +79,13 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 				}
 			}
 			if !idsIsChild {
-				s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
+				s.cacheParent(id0Block, target.Model().ChildrenIds)
 			}
 		}
-		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
+		s.cacheInsert(targetParentM, pos, ids)
 		s.Unlink(target.Model().Id)
 	case model.Block_InnerFirst:
-		target.Model().ChildrenIds = append(ids, target.Model().ChildrenIds...)
+		s.cacheAppendEnd(target.Model(), ids)
 	default:
 		return fmt.Errorf("unexpected position")
 	}
@@ -160,15 +161,7 @@ func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPositio
 		}
 		target = s.Get(row.Model().ChildrenIds[0])
 	}
-	column := simple.New(&model.Block{
-		Id:          "cd-" + opId,
-		ChildrenIds: ids,
-		Content: &model.BlockContentOfLayout{
-			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_Column,
-			},
-		},
-	})
+	column := s.cacheColumnCreation(opId, ids)
 	s.Add(column)
 
 	targetPos := slice.FindPos(row.Model().ChildrenIds, target.Model().Id)
@@ -180,23 +173,81 @@ func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPositio
 	if pos == model.Block_Right {
 		columnPos += 1
 	}
-	row.Model().ChildrenIds = slice.Insert(row.Model().ChildrenIds, columnPos, column.Model().Id)
+	row.Model().ChildrenIds = s.cacheInsertMoveFromSide(row.Model(), columnPos, column.Model())
 	s.changesStructureIgnoreIds = append(s.changesStructureIgnoreIds, "cd-"+opId, "ct-"+opId, "r-"+opId, row.Model().Id)
 	return
 }
 
 func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block, err error) {
-	column := simple.New(&model.Block{
-		Id:          "ct-" + opId,
-		ChildrenIds: []string{b.Model().Id},
+	column := s.cacheWrapToColumn(opId, b)
+	s.Add(column)
+	row = s.cacheWriteToRaw(opId, column)
+	s.Add(row)
+	pos := slice.FindPos(parent.Model().ChildrenIds, b.Model().Id)
+	if pos == -1 {
+		return nil, fmt.Errorf("creating row: can't find child[%s] in given parent[%s]", b.Model().Id, parent.Model().Id)
+	}
+	parent.Model().ChildrenIds[pos] = row.Model().Id
+	return
+}
+
+func (s *State) cacheParent(parent *model.Block, childrenIds []string) {
+	s.cacheParentUntilSame(parent, childrenIds, false)
+}
+
+func (s *State) cacheParentUntilSame(parent *model.Block, childrenIds []string, untilSame bool) {
+	parent.ChildrenIds = childrenIds
+	if s.isIdsCacheInited() {
+		cache := s.getSubIdsCache()
+		for _, childId := range childrenIds {
+			if untilSame {
+				if curParentId, ok := cache[childId]; ok && curParentId == parent.Id {
+					break
+				}
+			}
+			cache[childId] = parent.Id
+		}
+	}
+}
+
+func (s *State) cacheAppendStart(target simple.Block, ids []string) []string {
+	result := append(target.Model().ChildrenIds, ids...)
+	s.cacheParent(target.Model(), result)
+	return result
+}
+
+func (s *State) cacheAppendEnd(target *model.Block, ids []string) {
+	result := append(ids, target.ChildrenIds...)
+	s.cacheParent(target, result)
+}
+
+func (s *State) cacheInsert(target *model.Block, pos int, ids []string) {
+	result := slice.Insert(target.ChildrenIds, pos, ids...)
+	s.cacheParent(target, result)
+}
+
+func (s *State) cacheColumnCreation(opId string, ids []string) simple.Block {
+	result := simple.New(&model.Block{
+		Id:          "cd-" + opId,
+		ChildrenIds: ids,
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_Column,
 			},
 		},
 	})
-	s.Add(column)
-	row = simple.New(&model.Block{
+	s.cacheParent(result.Model(), ids)
+	return result
+}
+
+func (s *State) cacheInsertMoveFromSide(row *model.Block, columnPos int, column *model.Block) []string {
+	result := slice.Insert(row.ChildrenIds, columnPos, column.Id)
+	s.cacheParent(row, result)
+	return result
+}
+
+func (s *State) cacheWriteToRaw(opId string, column simple.Block) simple.Block {
+	result := simple.New(&model.Block{
 		Id:          "r-" + opId,
 		ChildrenIds: []string{column.Model().Id},
 		Content: &model.BlockContentOfLayout{
@@ -205,11 +256,20 @@ func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block
 			},
 		},
 	})
-	s.Add(row)
-	pos := slice.FindPos(parent.Model().ChildrenIds, b.Model().Id)
-	if pos == -1 {
-		return nil, fmt.Errorf("creating row: can't find child[%s] in given parent[%s]", b.Model().Id, parent.Model().Id)
-	}
-	parent.Model().ChildrenIds[pos] = row.Model().Id
-	return
+	s.cacheParent(result.Model(), result.Model().ChildrenIds)
+	return result
+}
+
+func (s *State) cacheWrapToColumn(opId string, b simple.Block) simple.Block {
+	result := simple.New(&model.Block{
+		Id:          "ct-" + opId,
+		ChildrenIds: []string{b.Model().Id},
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Column,
+			},
+		},
+	})
+	s.cacheParent(result.Model(), result.Model().ChildrenIds)
+	return result
 }

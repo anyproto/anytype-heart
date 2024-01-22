@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
@@ -133,6 +134,8 @@ type State struct {
 	groupId                  string
 	noObjectType             bool
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
+	subIdsCache              map[string]string
+	idsCacheAuthor           string
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -201,6 +204,7 @@ func (s *State) Add(b simple.Block) (ok bool) {
 	if s.Pick(id) == nil {
 		s.blocks[id] = b
 		s.blockInit(b)
+		s.cacheParent(b.Model(), b.Model().ChildrenIds)
 		return true
 	}
 	return false
@@ -210,8 +214,17 @@ func (s *State) Set(b simple.Block) {
 	if !s.Exists(b.Model().Id) {
 		s.Add(b)
 	} else {
+		s.removeFromCache(b)
+		s.cacheParent(b.Model(), b.Model().ChildrenIds)
 		s.blocks[b.Model().Id] = b
 		s.blockInit(b)
+	}
+}
+
+func (s *State) removeFromCache(b simple.Block) {
+	for _, id := range s.Pick(b.Model().Id).Model().ChildrenIds {
+		cache := s.getSubIdsCache()
+		delete(cache, id)
 	}
 }
 
@@ -269,6 +282,7 @@ func (s *State) Unlink(id string) (ok bool) {
 	if parent := s.GetParentOf(id); parent != nil {
 		parentM := parent.Model()
 		parentM.ChildrenIds = slice.RemoveMut(parentM.ChildrenIds, id)
+		delete(s.getSubIdsCache(), id)
 		return true
 	}
 	return
@@ -308,6 +322,13 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	if s.isIdsCacheInited() {
+		if parentId, ok := s.getSubIdsCache()[id]; ok {
+			return s.Pick(parentId)
+		}
+		return
+	}
+
 	s.Iterate(func(b simple.Block) bool {
 		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
 			res = b
@@ -316,6 +337,53 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		return true
 	})
 	return
+}
+
+func (s *State) getSubIdsCache() map[string]string {
+	t := s
+	for t != nil {
+		if t.idsCacheAuthor != "" {
+			return t.subIdsCache
+		}
+		t = t.parent
+	}
+	return s.subIdsCache
+}
+
+func (s *State) isIdsCacheInited() bool {
+	t := s
+	for t != nil {
+		if t.idsCacheAuthor != "" {
+			return true
+		}
+		t = t.parent
+	}
+	return false
+}
+
+func (s *State) initSubIdsCache(hash string) {
+	if !s.isIdsCacheInited() {
+		s.subIdsCache = make(map[string]string)
+		s.Iterate(func(block simple.Block) bool {
+			for _, id := range block.Model().ChildrenIds {
+				s.subIdsCache[id] = block.Model().Id
+			}
+			return true
+		})
+		s.idsCacheAuthor = hash
+	}
+}
+
+func (s *State) resetSubIdsCache(hash string) {
+	t := s
+	for t != nil {
+		if t.idsCacheAuthor == hash {
+			t.subIdsCache = nil
+			t.idsCacheAuthor = ""
+			return
+		}
+		t = t.parent
+	}
 }
 
 func (s *State) IsChild(parentId, childId string) bool {
@@ -422,6 +490,9 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
+	author := bson.NewObjectId().Hex()
+	s.initSubIdsCache(author)
+	defer s.resetSubIdsCache(author)
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -693,7 +764,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
-
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
