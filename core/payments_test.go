@@ -144,8 +144,8 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
-			RequestedTier:    pb.RpcPaymentsSubscription_Tier_Patron1Year,
-			PaymentMethod:    pb.RpcPaymentsSubscription_Method_Crypto,
+			RequestedTier:    pb.RpcPaymentsSubscription_TierPatron1Year,
+			PaymentMethod:    pb.RpcPaymentsSubscription_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
 
@@ -191,8 +191,8 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
-			RequestedTier:    pb.RpcPaymentsSubscription_Tier_Patron1Year,
-			PaymentMethod:    pb.RpcPaymentsSubscription_Method_Crypto,
+			RequestedTier:    pb.RpcPaymentsSubscription_TierPatron1Year,
+			PaymentMethod:    pb.RpcPaymentsSubscription_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
 

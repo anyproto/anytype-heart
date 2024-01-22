@@ -1785,7 +1785,7 @@
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | PaymentsSubscriptionGetStatus | [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request) | [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response) |  |
 | PaymentsSubscriptionGetPaymentURL | [Rpc.Payments.Subscription.GetPaymentURL.Request](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Request) | [Rpc.Payments.Subscription.GetPaymentURL.Response](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response) |  |
-| PaymentSubscriptionGetPortalLinkURL | [Rpc.Payments.Subscription.GetPortalLinkURL.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Request) | [Rpc.Payments.Subscription.GetPortalLinkURL.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response) |  |
+| PaymentsSubscriptionGetPortalLinkURL | [Rpc.Payments.Subscription.GetPortalLinkURL.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Request) | [Rpc.Payments.Subscription.GetPortalLinkURL.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response) |  |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | hello.any -&gt; data |
 | NameServiceResolveAnyID | [Rpc.NameService.ResolveAnyID.Request](#anytype-Rpc-NameService-ResolveAnyID-Request) | [Rpc.NameService.ResolveAnyID.Response](#anytype-Rpc-NameService-ResolveAnyID-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | NameServiceResolveSpaceID | [Rpc.NameService.ResolveSpaceID.Request](#anytype-Rpc-NameService-ResolveSpaceID-Request) | [Rpc.NameService.ResolveSpaceID.Response](#anytype-Rpc-NameService-ResolveSpaceID-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
@@ -19008,10 +19008,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Method_Card | 0 |  |
-| Method_Crypto | 1 |  |
-| Method_ApplePay | 2 |  |
-| Method_GooglePay | 3 |  |
+| MethodCard | 0 |  |
+| MethodCrypto | 1 |  |
+| MethodApplePay | 2 |  |
+| MethodGooglePay | 3 |  |
 
 
 
@@ -19022,11 +19022,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Status_Unknown | 0 |  |
-| Status_Pending | 1 |  |
-| Status_Active | 2 |  |
-| Status_Expired | 3 |  |
-| Status_Canceled | 4 |  |
+| StatusUnknown | 0 |  |
+| StatusPending | 1 |  |
+| StatusActive | 2 |  |
 
 
 
@@ -19037,10 +19035,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Tier_Unknown | 0 |  |
-| Tier_Friend | 1 |  |
-| Tier_Supporter1Year | 2 |  |
-| Tier_Patron1Year | 3 |  |
+| TierUnknown | 0 |  |
+| TierFriend | 1 |  |
+| TierSupporter1Year | 2 |  |
+| TierPatron1Year | 3 |  |
 
 
 

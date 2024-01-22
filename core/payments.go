@@ -78,7 +78,7 @@ func (mw *Middleware) PaymentsSubscriptionGetPaymentURL(ctx context.Context, req
 	return getPaymentURL(ctx, pp, w, req)
 }
 
-func (mw *Middleware) PaymentSubscriptionGetPortalLinkURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkURLRequest) *pb.RpcPaymentsSubscriptionGetPortalLinkURLResponse {
+func (mw *Middleware) PaymentsSubscriptionGetPortalLinkURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkURLRequest) *pb.RpcPaymentsSubscriptionGetPortalLinkURLResponse {
 	// TODO:
 
 	return &pb.RpcPaymentsSubscriptionGetPortalLinkURLResponse{

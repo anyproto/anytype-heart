@@ -5831,26 +5831,24 @@ message Rpc {
     message Payments {
         message Subscription {
             enum SubscriptionTier {
-                Tier_Unknown = 0;
+                TierUnknown = 0;
                 
-                Tier_Friend = 1;
-                Tier_Supporter1Year = 2;
-                Tier_Patron1Year = 3;
+                TierFriend = 1;
+                TierSupporter1Year = 2;
+                TierPatron1Year = 3;
             }
             
             enum SubscriptionStatus {
-                Status_Unknown = 0;
-                Status_Pending = 1;
-                Status_Active = 2;
-                Status_Expired = 3;
-                Status_Canceled = 4;
+                StatusUnknown = 0;
+                StatusPending = 1;
+                StatusActive = 2;
             }
             
             enum PaymentMethod {
-                Method_Card = 0;
-                Method_Crypto = 1;
-                Method_ApplePay = 2;
-                Method_GooglePay = 3;
+                MethodCard = 0;
+                MethodCrypto = 1;
+                MethodApplePay = 2;
+                MethodGooglePay = 3;
             }
 
             message GetStatus {

@@ -293,7 +293,7 @@ service ClientCommands {
 
     rpc PaymentsSubscriptionGetStatus (anytype.Rpc.Payments.Subscription.GetStatus.Request) returns (anytype.Rpc.Payments.Subscription.GetStatus.Response);
     rpc PaymentsSubscriptionGetPaymentURL (anytype.Rpc.Payments.Subscription.GetPaymentURL.Request) returns (anytype.Rpc.Payments.Subscription.GetPaymentURL.Response);
-    rpc PaymentSubscriptionGetPortalLinkURL (anytype.Rpc.Payments.Subscription.GetPortalLinkURL.Request) returns (anytype.Rpc.Payments.Subscription.GetPortalLinkURL.Response);
+    rpc PaymentsSubscriptionGetPortalLinkURL (anytype.Rpc.Payments.Subscription.GetPortalLinkURL.Request) returns (anytype.Rpc.Payments.Subscription.GetPortalLinkURL.Response);
 
     // hello.any -> data
     rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
