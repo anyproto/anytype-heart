@@ -3,6 +3,8 @@ package syncer
 import (
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
@@ -17,7 +19,7 @@ func NewBookmarkSyncer(service *block.Service) *BookmarkSyncer {
 	return &BookmarkSyncer{service: service}
 }
 
-func (bs *BookmarkSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin) error {
+func (bs *BookmarkSyncer) Sync(id string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin model.ObjectOrigin) error {
 	if b.Model().GetBookmark().TargetObjectId != "" {
 		return nil
 	}

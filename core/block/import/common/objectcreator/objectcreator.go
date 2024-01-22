@@ -111,9 +111,9 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		return oc.updateWidgetObject(st)
 	}
 	for _, key := range st.FileRelationKeys() {
-		filesToDelete = oc.relationSyncer.Sync(spaceID, st, key, origin)
+		filesToDelete = oc.relationSyncer.Sync(spaceID, dataObject.createPayloads, st, key, origin)
 	}
-	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
+	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, dataObject.createPayloads, st)...)
 	typeKeys := st.ObjectTypeKeys()
 	if sn.SbType == coresb.SmartBlockTypeObjectType {
 		// we widen typeKeys here to install bundled templates for imported object type
@@ -139,7 +139,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.setArchived(snapshot, newID)
 
-	syncErr := oc.syncFilesAndLinks(newID, origin)
+	syncErr := oc.syncFilesAndLinks(dataObject.createPayloads, newID, origin)
 	if syncErr != nil {
 		if errors.Is(syncErr, common.ErrFileLoad) {
 			return respDetails, newID, syncErr
@@ -370,11 +370,11 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	}
 }
 
-func (oc *ObjectCreator) handleCoverRelation(spaceID string, st *state.State) []string {
+func (oc *ObjectCreator) handleCoverRelation(spaceID string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, st *state.State) []string {
 	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
 		return nil
 	}
-	filesToDelete := oc.relationSyncer.Sync(spaceID, st, bundle.RelationKeyCoverId.String(), 0)
+	filesToDelete := oc.relationSyncer.Sync(spaceID, snapshotPayloads, st, bundle.RelationKeyCoverId.String(), 0)
 	return filesToDelete
 }
 
@@ -423,7 +423,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin model.ObjectOrigin) error {
+func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, newID string, origin model.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
 	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
@@ -433,7 +433,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin model.ObjectOrig
 			if s != nil {
 				// We can't run syncer here because it will cause a deadlock, so we defer this operation
 				tasks = append(tasks, func() error {
-					err := s.Sync(newID, bl, origin)
+					err := s.Sync(newID, snapshotPayloads, bl, origin)
 					if err != nil {
 						return err
 					}

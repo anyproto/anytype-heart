@@ -91,11 +91,11 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[c.Name()] = c
 	}
 	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
-	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	i.idProvider = objectid.NewIDProvider(store, spaceService)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	fileObjectService := app.MustComponent[fileobject.Service](a)
+	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver, i.fileStore, fileObjectService, store))
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, i.fileStore, fileObjectService, store)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	i.oc = creator.New(i.s, factory, store, relationSyncer, i.fileStore, spaceService, objectCreator)
@@ -376,6 +376,19 @@ func (i *Import) getObjectID(
 		})
 		if err != nil {
 			return fmt.Errorf("add file keys: %w", err)
+		}
+	}
+	if fileInfo := snapshot.Snapshot.GetData().GetFileInfo(); fileInfo != nil {
+		keys := make(map[string]string, len(fileInfo.EncryptionKeys))
+		for _, key := range fileInfo.EncryptionKeys {
+			keys[key.Path] = key.Key
+		}
+		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+			FileId:         domain.FileId(fileInfo.FileId),
+			EncryptionKeys: keys,
+		})
+		if err != nil {
+			return fmt.Errorf("add file keys from file info: %w", err)
 		}
 	}
 

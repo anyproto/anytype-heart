@@ -62,13 +62,14 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 
 func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
+		// TODO I think we should use some kind of iterator by object ids
 		switch block := bl.(type) {
 		case link.Block:
 			handleLinkBlock(oldIDtoNew, block, st, filesIDs)
 		case bookmark.Block:
 			handleBookmarkBlock(oldIDtoNew, block, st)
 		case text.Block:
-			handleMarkdownTest(oldIDtoNew, block, st, filesIDs)
+			handleTextBlock(oldIDtoNew, block, st, filesIDs)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
 		case file.Block:
@@ -191,7 +192,14 @@ func isBundledObjects(targetObjectID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
+func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
+	if iconImage := block.Model().GetText().GetIconImage(); iconImage != "" {
+		newTarget := oldIDtoNew[iconImage]
+		if newTarget == "" {
+			newTarget = addr.MissingObject
+		}
+		block.Model().GetText().IconImage = newTarget
+	}
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {

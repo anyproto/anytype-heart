@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -32,7 +34,8 @@ func NewFileSyncer(
 	}
 }
 
-func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin) error {
+func (fs *FileSyncer) Sync(id string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin model.ObjectOrigin) error {
+	// TODO Handle Hash
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
 		return nil
 	}
@@ -88,11 +91,15 @@ func createFileObject(objectStore objectstore.ObjectStore, fileStore filestore.F
 		return recs[0], nil
 	}
 
+	fileObjectId, _, err := fileObjectService.GetObjectDetailsByFileId(fileId)
+	if err == nil {
+		return fileObjectId, nil
+	}
 	keys, err := fileStore.GetFileKeys(fileId.FileId)
 	if err != nil {
 		return "", fmt.Errorf("get file keys: %w", err)
 	}
-	fileObjectId, _, err := fileObjectService.Create(context.Background(), fileId.SpaceId, fileobject.CreateRequest{
+	fileObjectId, _, err = fileObjectService.Create(context.Background(), fileId.SpaceId, fileobject.CreateRequest{
 		FileId:         fileId.FileId,
 		EncryptionKeys: keys,
 		IsImported:     true,

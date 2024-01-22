@@ -95,12 +95,6 @@ type CreateRequest struct {
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
-	if id, object, err = s.GetObjectDetailsByFileId(domain.FullFileId{
-		SpaceId: spaceId,
-		FileId:  req.FileId,
-	}); err == nil {
-		return id, object, nil
-	}
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)

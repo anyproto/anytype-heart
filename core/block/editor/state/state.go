@@ -12,7 +12,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -1105,15 +1104,11 @@ func (s *State) FileRelationKeys() []string {
 	return keys
 }
 
-func (s *State) IterateLinkedFiles(proc func(id string) bool) {
+func (s *State) IterateLinkedFiles(proc func(id string)) {
 	var stop bool
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if fh, ok := b.(file.Block); ok {
-			cont := proc(fh.TargetObjectId())
-			if !cont {
-				stop = true
-				return false
-			}
+	s.Iterate(func(block simple.Block) (isContinue bool) {
+		if iter, ok := block.(simple.LinkedFilesIterator); ok {
+			iter.IterateLinkedFiles(proc)
 		}
 		return true
 	})
@@ -1129,7 +1124,7 @@ func (s *State) IterateLinkedFiles(proc func(id string) bool) {
 			v := pbtypes.GetString(det, key)
 			_, err := cid.Decode(v)
 			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
+				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
 		}
@@ -1138,10 +1133,7 @@ func (s *State) IterateLinkedFiles(proc func(id string) bool) {
 				if id == "" {
 					continue
 				}
-				cont := proc(id)
-				if !cont {
-					return
-				}
+				proc(id)
 			}
 		}
 	}

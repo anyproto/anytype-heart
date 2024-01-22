@@ -77,7 +77,9 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+	if !ctx.IsNewObject {
+		migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+	}
 
 	return nil
 }

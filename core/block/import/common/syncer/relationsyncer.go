@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -18,7 +19,7 @@ import (
 )
 
 type RelationSyncer interface {
-	Sync(spaceID string, state *state.State, relationName string, origin model.ObjectOrigin) []string
+	Sync(spaceID string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, state *state.State, relationName string, origin model.ObjectOrigin) []string
 }
 
 type FileRelationSyncer struct {
@@ -37,14 +38,14 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, st *state.State, relationName string, origin model.ObjectOrigin) []string {
+func (fs *FileRelationSyncer) Sync(spaceID string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, st *state.State, relationName string, origin model.ObjectOrigin) []string {
 	fileIds := fs.getFilesFromRelations(st, relationName)
 	var allFilesHashes, filesToDelete []string
 	for _, fileId := range fileIds {
 		if fileId == "" {
 			continue
 		}
-		fileObjectId := fs.uploadFile(spaceID, st, fileId, origin)
+		fileObjectId := fs.uploadFile(spaceID, snapshotPayloads, fileId, origin)
 		if fileObjectId != "" {
 			allFilesHashes = append(allFilesHashes, fileObjectId)
 			filesToDelete = append(filesToDelete, fileObjectId)
@@ -66,7 +67,7 @@ func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string
 	return allFiles
 }
 
-func (fs *FileRelationSyncer) uploadFile(spaceID string, st *state.State, file string, origin model.ObjectOrigin) string {
+func (fs *FileRelationSyncer) uploadFile(spaceID string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, file string, origin model.ObjectOrigin) string {
 	var (
 		fileObjectId string
 		err          error
@@ -81,6 +82,9 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, st *state.State, file s
 			log.Errorf("file uploading %s", err)
 		}
 	} else {
+		if _, ok := snapshotPayloads[file]; ok {
+			return file
+		}
 		_, err = cid.Decode(file)
 		if err == nil {
 			fileObjectId, err = createFileObject(fs.objectStore, fs.fileStore, fs.fileObjectService, domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(file)}, origin)
