@@ -8,6 +8,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -23,20 +25,35 @@ import (
 )
 
 type FileSyncer struct {
-	service *block.Service
+	service           *block.Service
+	objectStore       objectstore.ObjectStore
+	fileStore         filestore.FileStore
+	fileObjectService fileobject.Service
 }
 
 func NewFileSyncer(
 	service *block.Service,
+	fileStore filestore.FileStore,
+	fileObjectService fileobject.Service,
+	objectStore objectstore.ObjectStore,
 ) *FileSyncer {
 	return &FileSyncer{
-		service: service,
+		service:           service,
+		fileStore:         fileStore,
+		fileObjectService: fileObjectService,
+		objectStore:       objectStore,
 	}
 }
 
-func (fs *FileSyncer) Sync(id string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin model.ObjectOrigin) error {
-	// TODO Handle Hash
+func (s *FileSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin model.ObjectOrigin) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
+		err := s.migrateFile(id.ObjectID, b.Model().Id, domain.FullFileId{
+			FileId:  domain.FileId(hash),
+			SpaceId: id.SpaceID,
+		}, origin)
+		if err != nil {
+			return fmt.Errorf("%w: %w", common.ErrFileLoad, err)
+		}
 		return nil
 	}
 	if hash := b.Model().GetFile().GetTargetObjectId(); hash != "" {
@@ -64,9 +81,27 @@ func (fs *FileSyncer) Sync(id string, snapshotPayloads map[string]treestorage.Tr
 		RpcBlockUploadRequest: params,
 		Origin:                origin,
 	}
-	_, err := fs.service.UploadFileBlock(id, dto)
+	_, err := s.service.UploadFileBlock(id.ObjectID, dto)
 	if err != nil {
 		return fmt.Errorf("%w: %s", common.ErrFileLoad, oserror.TransformError(err).Error())
+	}
+	return nil
+}
+
+func (s *FileSyncer) migrateFile(objectId string, fileBlockId string, fileId domain.FullFileId, origin model.ObjectOrigin) error {
+	fileObjectId, err := createFileObject(s.objectStore, s.fileStore, s.fileObjectService, fileId, origin)
+	if err != nil {
+		return fmt.Errorf("create file object: %w", err)
+	}
+	err = block.Do(s.service, objectId, func(sb smartblock.SmartBlock) error {
+		updater := sb.(basic.Updatable)
+		return updater.Update(nil, func(simpleBlock simple.Block) error {
+			simpleBlock.Model().GetFile().TargetObjectId = fileObjectId
+			return nil
+		}, fileBlockId)
+	})
+	if err != nil {
+		return fmt.Errorf("update file block: %w", err)
 	}
 	return nil
 }

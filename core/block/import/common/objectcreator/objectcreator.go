@@ -139,7 +139,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.setArchived(snapshot, newID)
 
-	syncErr := oc.syncFilesAndLinks(dataObject.createPayloads, newID, origin)
+	syncErr := oc.syncFilesAndLinks(dataObject.createPayloads, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
 	if syncErr != nil {
 		if errors.Is(syncErr, common.ErrFileLoad) {
 			return respDetails, newID, syncErr
@@ -423,17 +423,17 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, newID string, origin model.ObjectOrigin) error {
+func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin model.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
-	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
+	err := block.Do(oc.service, id.ObjectID, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		return st.Iterate(func(bl simple.Block) (isContinue bool) {
 			s := oc.syncFactory.GetSyncer(bl)
 			if s != nil {
 				// We can't run syncer here because it will cause a deadlock, so we defer this operation
 				tasks = append(tasks, func() error {
-					err := s.Sync(newID, snapshotPayloads, bl, origin)
+					err := s.Sync(id, snapshotPayloads, bl, origin)
 					if err != nil {
 						return err
 					}
@@ -450,7 +450,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestora
 	for _, task := range tasks {
 		err = task()
 		if err != nil {
-			log.With(zap.String("objectID", newID)).Errorf("failed to sync: %s", err)
+			log.With(zap.String("objectId", id.ObjectID)).Errorf("failed to sync: %s", err)
 			if errors.Is(err, common.ErrFileLoad) {
 				fileLoadErr = err
 			}

@@ -44,14 +44,9 @@ func NewIconSyncer(service *block.Service, resolver idresolver.Resolver, fileSto
 	}
 }
 
-func (s *IconSyncer) Sync(id string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin model.ObjectOrigin) error {
-	spaceId, err := s.resolver.ResolveSpaceID(id)
-	if err != nil {
-		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
-	}
-
+func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin model.ObjectOrigin) error {
 	iconImage := b.Model().GetText().GetIconImage()
-	newId, err := s.handleIconImage(spaceId, snapshotPayloads, iconImage, origin)
+	newId, err := s.handleIconImage(id.SpaceID, snapshotPayloads, iconImage, origin)
 	if err != nil {
 		return fmt.Errorf("%w: %w", common.ErrFileLoad, err)
 	}
@@ -59,7 +54,7 @@ func (s *IconSyncer) Sync(id string, snapshotPayloads map[string]treestorage.Tre
 		return nil
 	}
 
-	err = block.Do(s.service, id, func(sb smartblock.SmartBlock) error {
+	err = block.Do(s.service, id.ObjectID, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
 		upErr := updater.Update(nil, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = newId
