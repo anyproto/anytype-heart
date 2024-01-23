@@ -15,6 +15,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -300,26 +301,14 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 }
 
 func (e *export) saveFilesForObject(objectID string, docs map[string]*types.Struct) error {
-	var (
-		fileHashes []string
-		st         *state.State
-	)
+	var st *state.State
 	if err := getblock.Do(e.picker, objectID, func(b sb.SmartBlock) error {
 		st = b.NewState()
 		return nil
 	}); err != nil {
-		return nil
+		return err
 	}
-	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if fh, ok := bl.(simple.FileHashes); ok {
-			fileHashes = fh.FillFileHashes(fileHashes)
-		}
-		return true
-	})
-	if err != nil {
-		log.Errorf("failed to collect file hashes in state, %s", err)
-	}
-	fileHashes = e.getFilesFromRelations(st, fileHashes)
+	fileHashes := e.getFileHashes(st)
 	filesObjects, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -340,13 +329,28 @@ func (e *export) saveFilesForObject(objectID string, docs map[string]*types.Stru
 		},
 	})
 	if err != nil {
-		return nil
+		log.Errorf("failed to get files from object store %s", err)
 	}
 	for _, fo := range filesObjects {
 		id := pbtypes.GetString(fo.Details, bundle.RelationKeyId.String())
 		docs[id] = fo.Details
 	}
 	return nil
+}
+
+func (e *export) getFileHashes(st *state.State) []string {
+	var fileHashes []string
+	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if fh, ok := bl.(simple.FileHashes); ok {
+			fileHashes = fh.FillFileHashes(fileHashes)
+		}
+		return true
+	})
+	if err != nil {
+		log.Errorf("failed to collect file hashes in state, %s")
+	}
+	fileHashes = e.getFilesFromRelations(st, fileHashes)
+	return fileHashes
 }
 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
@@ -524,17 +528,7 @@ func (e *export) handleFileObject(ctx context.Context,
 
 func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, wr writer) {
 	st := b.NewState()
-	var fileHashes []string
-	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if fh, ok := bl.(simple.FileHashes); ok {
-			fileHashes = fh.FillFileHashes(fileHashes)
-		}
-		return true
-	})
-	fileHashes = e.getFilesFromRelations(st, fileHashes)
-	if err != nil {
-		log.Errorf("failed to collect file hashes in state, %s", err)
-	}
+	fileHashes := e.getFileHashes(st)
 	for _, fh := range fileHashes {
 		if _, werr := e.saveFile(ctx, wr, fh); werr != nil {
 			log.With("hash", fh).Warnf("can't save file: %v", werr)
@@ -545,9 +539,16 @@ func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, wr writer) {
 func (e *export) getFilesFromRelations(st *state.State, fileHashes []string) []string {
 	for _, relLink := range st.GetRelationLinks() {
 		if relLink.Format == model.RelationFormat_file {
+			if relLink.GetKey() == bundle.RelationKeyCoverId.String() {
+				v := pbtypes.GetString(st.Details(), relLink.GetKey())
+				_, err := cid.Decode(v)
+				if err != nil {
+					// this is an exception cause coverId can contain not a file hash but color
+					continue
+				}
+			}
 			if fileHash := pbtypes.GetString(st.Details(), relLink.GetKey()); fileHash != "" {
 				fileHashes = append(fileHashes, fileHash)
-
 			}
 			if relationFileHashes := pbtypes.GetStringList(st.Details(), relLink.GetKey()); len(relationFileHashes) > 0 {
 				fileHashes = append(fileHashes, relationFileHashes...)
