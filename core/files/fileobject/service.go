@@ -44,6 +44,7 @@ type Service interface {
 
 	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
+	CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
 	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
@@ -141,6 +142,47 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		return "", nil, fmt.Errorf("create object: %w", err)
 	}
 	return id, object, nil
+}
+
+// CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
+func (s *service) CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error) {
+	// Check that fileId is not a file object id
+	recs, _, err := s.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.FileId.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.SpaceId),
+			},
+		},
+	})
+	if err == nil && len(recs) > 0 {
+		return recs[0], nil
+	}
+
+	fileObjectId, _, err := s.GetObjectDetailsByFileId(fileId)
+	if err == nil {
+		return fileObjectId, nil
+	}
+	keys, err := s.fileStore.GetFileKeys(fileId.FileId)
+	if err != nil {
+		return "", fmt.Errorf("get file keys: %w", err)
+	}
+	fileObjectId, _, err = s.Create(context.Background(), fileId.SpaceId, CreateRequest{
+		FileId:         fileId.FileId,
+		EncryptionKeys: keys,
+		IsImported:     true,
+		Origin:         origin,
+	})
+	if err != nil {
+		return "", fmt.Errorf("create object: %w", err)
+	}
+	return fileObjectId, nil
 }
 
 func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {

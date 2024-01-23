@@ -77,7 +77,7 @@ func (s *IconSyncer) handleIconImage(spaceId string, snapshotPayloads map[string
 	}
 	_, err := cid.Decode(iconImage)
 	if err == nil {
-		fileObjectId, err := createFileObject(s.objectStore, s.fileStore, s.fileObjectService, domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(iconImage)}, origin)
+		fileObjectId, err := s.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(iconImage)}, origin)
 		if err != nil {
 			log.With("fileId", iconImage).Errorf("create file object: %v", err)
 			return iconImage, nil

@@ -87,7 +87,7 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, snapshotPayloads map[st
 		}
 		_, err = cid.Decode(file)
 		if err == nil {
-			fileObjectId, err = createFileObject(fs.objectStore, fs.fileStore, fs.fileObjectService, domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(file)}, origin)
+			fileObjectId, err = fs.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(file)}, origin)
 			if err != nil {
 				log.With("fileId", file).Errorf("create file object: %v", err)
 				return file
