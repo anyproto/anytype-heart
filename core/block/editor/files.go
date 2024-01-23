@@ -68,6 +68,8 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 
 			switch fileType {
 			case model.BlockContentFile_Image:
+				s.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(p.Id()))
+
 				if pbtypes.GetInt64(details, bundle.RelationKeyWidthInPixels.String()) != 0 {
 					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))
 				}

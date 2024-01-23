@@ -154,8 +154,6 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 		model.ObjectType_image,
 		i.extractLastModifiedDate(ctx, imageExif),
 	)
-	// TODO Do we need iconImage?
-	// commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.fileId.String())
 
 	if i.origin != 0 {
 		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(i.origin))
