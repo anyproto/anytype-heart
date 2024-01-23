@@ -167,12 +167,12 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	st.Set(simple.New(block.Model()))
 }
 
-func handleFileBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+func handleFileBlock(oldIdToNew map[string]string, block simple.Block, st *state.State) {
 	targetObjectId := block.Model().GetFile().TargetObjectId
 	if targetObjectId == "" {
 		return
 	}
-	newId := oldIDtoNew[targetObjectId]
+	newId := oldIdToNew[targetObjectId]
 	if newId == "" {
 		newId = addr.MissingObject
 	}
