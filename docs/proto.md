@@ -601,18 +601,18 @@
     - [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response)
     - [Rpc.Metrics.SetParameters.Response.Error](#anytype-Rpc-Metrics-SetParameters-Response-Error)
     - [Rpc.NameService](#anytype-Rpc-NameService)
-    - [Rpc.NameService.ResolveAnyID](#anytype-Rpc-NameService-ResolveAnyID)
-    - [Rpc.NameService.ResolveAnyID.Request](#anytype-Rpc-NameService-ResolveAnyID-Request)
-    - [Rpc.NameService.ResolveAnyID.Response](#anytype-Rpc-NameService-ResolveAnyID-Response)
-    - [Rpc.NameService.ResolveAnyID.Response.Error](#anytype-Rpc-NameService-ResolveAnyID-Response-Error)
+    - [Rpc.NameService.ResolveAnyId](#anytype-Rpc-NameService-ResolveAnyId)
+    - [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request)
+    - [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response)
+    - [Rpc.NameService.ResolveAnyId.Response.Error](#anytype-Rpc-NameService-ResolveAnyId-Response-Error)
     - [Rpc.NameService.ResolveName](#anytype-Rpc-NameService-ResolveName)
     - [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request)
     - [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response)
     - [Rpc.NameService.ResolveName.Response.Error](#anytype-Rpc-NameService-ResolveName-Response-Error)
-    - [Rpc.NameService.ResolveSpaceID](#anytype-Rpc-NameService-ResolveSpaceID)
-    - [Rpc.NameService.ResolveSpaceID.Request](#anytype-Rpc-NameService-ResolveSpaceID-Request)
-    - [Rpc.NameService.ResolveSpaceID.Response](#anytype-Rpc-NameService-ResolveSpaceID-Response)
-    - [Rpc.NameService.ResolveSpaceID.Response.Error](#anytype-Rpc-NameService-ResolveSpaceID-Response-Error)
+    - [Rpc.NameService.ResolveSpaceId](#anytype-Rpc-NameService-ResolveSpaceId)
+    - [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request)
+    - [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response)
+    - [Rpc.NameService.ResolveSpaceId.Response.Error](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error)
     - [Rpc.NameService.UserAccount](#anytype-Rpc-NameService-UserAccount)
     - [Rpc.NameService.UserAccount.Get](#anytype-Rpc-NameService-UserAccount-Get)
     - [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request)
@@ -876,14 +876,14 @@
     - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
     - [Rpc.Payments](#anytype-Rpc-Payments)
     - [Rpc.Payments.Subscription](#anytype-Rpc-Payments-Subscription)
-    - [Rpc.Payments.Subscription.GetPaymentURL](#anytype-Rpc-Payments-Subscription-GetPaymentURL)
-    - [Rpc.Payments.Subscription.GetPaymentURL.Request](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Request)
-    - [Rpc.Payments.Subscription.GetPaymentURL.Response](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response)
-    - [Rpc.Payments.Subscription.GetPaymentURL.Response.Error](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error)
-    - [Rpc.Payments.Subscription.GetPortalLinkURL](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL)
-    - [Rpc.Payments.Subscription.GetPortalLinkURL.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Request)
-    - [Rpc.Payments.Subscription.GetPortalLinkURL.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response)
-    - [Rpc.Payments.Subscription.GetPortalLinkURL.Response.Error](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response-Error)
+    - [Rpc.Payments.Subscription.GetPaymentUrl](#anytype-Rpc-Payments-Subscription-GetPaymentUrl)
+    - [Rpc.Payments.Subscription.GetPaymentUrl.Request](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request)
+    - [Rpc.Payments.Subscription.GetPaymentUrl.Response](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response)
+    - [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error)
+    - [Rpc.Payments.Subscription.GetPortalLinkUrl](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl)
+    - [Rpc.Payments.Subscription.GetPortalLinkUrl.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request)
+    - [Rpc.Payments.Subscription.GetPortalLinkUrl.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response)
+    - [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error)
     - [Rpc.Payments.Subscription.GetStatus](#anytype-Rpc-Payments-Subscription-GetStatus)
     - [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request)
     - [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response)
@@ -1131,9 +1131,9 @@
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
-    - [Rpc.NameService.ResolveAnyID.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyID-Response-Error-Code)
+    - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
-    - [Rpc.NameService.ResolveSpaceID.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceID-Response-Error-Code)
+    - [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code)
     - [Rpc.NameService.UserAccount.Get.Response.Error.Code](#anytype-Rpc-NameService-UserAccount-Get-Response-Error-Code)
     - [Rpc.Navigation.Context](#anytype-Rpc-Navigation-Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response-Error-Code)
@@ -1201,8 +1201,8 @@
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
-    - [Rpc.Payments.Subscription.GetPaymentURL.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error-Code)
-    - [Rpc.Payments.Subscription.GetPortalLinkURL.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response-Error-Code)
+    - [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code)
+    - [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Payments.Subscription.GetStatus.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code)
     - [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod)
     - [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus)
@@ -1784,11 +1784,11 @@
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | PaymentsSubscriptionGetStatus | [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request) | [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response) |  |
-| PaymentsSubscriptionGetPaymentURL | [Rpc.Payments.Subscription.GetPaymentURL.Request](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Request) | [Rpc.Payments.Subscription.GetPaymentURL.Response](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response) |  |
-| PaymentsSubscriptionGetPortalLinkURL | [Rpc.Payments.Subscription.GetPortalLinkURL.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Request) | [Rpc.Payments.Subscription.GetPortalLinkURL.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response) |  |
+| PaymentsSubscriptionGetPaymentUrl | [Rpc.Payments.Subscription.GetPaymentUrl.Request](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request) | [Rpc.Payments.Subscription.GetPaymentUrl.Response](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response) |  |
+| PaymentsSubscriptionGetPortalLinkUrl | [Rpc.Payments.Subscription.GetPortalLinkUrl.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request) | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response) |  |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | hello.any -&gt; data |
-| NameServiceResolveAnyID | [Rpc.NameService.ResolveAnyID.Request](#anytype-Rpc-NameService-ResolveAnyID-Request) | [Rpc.NameService.ResolveAnyID.Response](#anytype-Rpc-NameService-ResolveAnyID-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
-| NameServiceResolveSpaceID | [Rpc.NameService.ResolveSpaceID.Request](#anytype-Rpc-NameService-ResolveSpaceID-Request) | [Rpc.NameService.ResolveSpaceID.Response](#anytype-Rpc-NameService-ResolveSpaceID-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
+| NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
+| NameServiceResolveSpaceId | [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request) | [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) |  |
 
  
@@ -10496,40 +10496,40 @@ returns blockShow event for given version
 
 
 
-<a name="anytype-Rpc-NameService-ResolveAnyID"></a>
+<a name="anytype-Rpc-NameService-ResolveAnyId"></a>
 
-### Rpc.NameService.ResolveAnyID
-
-
-
-
-
-
-
-<a name="anytype-Rpc-NameService-ResolveAnyID-Request"></a>
-
-### Rpc.NameService.ResolveAnyID.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| anyID | [string](#string) |  |  |
+### Rpc.NameService.ResolveAnyId
 
 
 
 
 
 
-<a name="anytype-Rpc-NameService-ResolveAnyID-Response"></a>
 
-### Rpc.NameService.ResolveAnyID.Response
+<a name="anytype-Rpc-NameService-ResolveAnyId-Request"></a>
+
+### Rpc.NameService.ResolveAnyId.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.NameService.ResolveAnyID.Response.Error](#anytype-Rpc-NameService-ResolveAnyID-Response-Error) |  |  |
+| anyId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveAnyId-Response"></a>
+
+### Rpc.NameService.ResolveAnyId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ResolveAnyId.Response.Error](#anytype-Rpc-NameService-ResolveAnyId-Response-Error) |  |  |
 | found | [bool](#bool) |  |  |
 | fullName | [string](#string) |  | including &#34;.any&#34; suffix |
 
@@ -10538,15 +10538,15 @@ returns blockShow event for given version
 
 
 
-<a name="anytype-Rpc-NameService-ResolveAnyID-Response-Error"></a>
+<a name="anytype-Rpc-NameService-ResolveAnyId-Response-Error"></a>
 
-### Rpc.NameService.ResolveAnyID.Response.Error
+### Rpc.NameService.ResolveAnyId.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.NameService.ResolveAnyID.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyID-Response-Error-Code) |  |  |
+| code | [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10592,7 +10592,7 @@ returns blockShow event for given version
 | ownerScwEthAddress | [string](#string) |  | EOA -&gt; SCW -&gt; name This field is non-empty only if name is &#34;already registered&#34; |
 | ownerEthAddress | [string](#string) |  | This field is non-empty only if name is &#34;already registered&#34; |
 | ownerAnyAddress | [string](#string) |  | A content hash attached to this name This field is non-empty only if name is &#34;already registered&#34; |
-| spaceId | [string](#string) |  | A SpaceID attached to this name This field is non-empty only if name is &#34;already registered&#34; |
+| spaceId | [string](#string) |  | A SpaceId attached to this name This field is non-empty only if name is &#34;already registered&#34; |
 | nameExpires | [int64](#int64) |  | A timestamp when this name expires |
 
 
@@ -10616,40 +10616,40 @@ returns blockShow event for given version
 
 
 
-<a name="anytype-Rpc-NameService-ResolveSpaceID"></a>
+<a name="anytype-Rpc-NameService-ResolveSpaceId"></a>
 
-### Rpc.NameService.ResolveSpaceID
-
-
-
-
-
-
-
-<a name="anytype-Rpc-NameService-ResolveSpaceID-Request"></a>
-
-### Rpc.NameService.ResolveSpaceID.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceID | [string](#string) |  |  |
+### Rpc.NameService.ResolveSpaceId
 
 
 
 
 
 
-<a name="anytype-Rpc-NameService-ResolveSpaceID-Response"></a>
 
-### Rpc.NameService.ResolveSpaceID.Response
+<a name="anytype-Rpc-NameService-ResolveSpaceId-Request"></a>
+
+### Rpc.NameService.ResolveSpaceId.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.NameService.ResolveSpaceID.Response.Error](#anytype-Rpc-NameService-ResolveSpaceID-Response-Error) |  |  |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveSpaceId-Response"></a>
+
+### Rpc.NameService.ResolveSpaceId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ResolveSpaceId.Response.Error](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error) |  |  |
 | found | [bool](#bool) |  |  |
 | fullName | [string](#string) |  | including &#34;.any&#34; suffix |
 
@@ -10658,15 +10658,15 @@ returns blockShow event for given version
 
 
 
-<a name="anytype-Rpc-NameService-ResolveSpaceID-Response-Error"></a>
+<a name="anytype-Rpc-NameService-ResolveSpaceId-Response-Error"></a>
 
-### Rpc.NameService.ResolveSpaceID.Response.Error
+### Rpc.NameService.ResolveSpaceId.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.NameService.ResolveSpaceID.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceID-Response-Error-Code) |  |  |
+| code | [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14524,19 +14524,19 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL"></a>
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl"></a>
 
-### Rpc.Payments.Subscription.GetPaymentURL
-
-
+### Rpc.Payments.Subscription.GetPaymentUrl
 
 
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL-Request"></a>
 
-### Rpc.Payments.Subscription.GetPaymentURL.Request
+
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request"></a>
+
+### Rpc.Payments.Subscription.GetPaymentUrl.Request
 
 
 
@@ -14551,15 +14551,15 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL-Response"></a>
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response"></a>
 
-### Rpc.Payments.Subscription.GetPaymentURL.Response
+### Rpc.Payments.Subscription.GetPaymentUrl.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Subscription.GetPaymentURL.Response.Error](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error) |  |  |
+| error | [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error) |  |  |
 | paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
 
 
@@ -14567,15 +14567,15 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error"></a>
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error"></a>
 
-### Rpc.Payments.Subscription.GetPaymentURL.Response.Error
+### Rpc.Payments.Subscription.GetPaymentUrl.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Subscription.GetPaymentURL.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error-Code) |  |  |
+| code | [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14583,9 +14583,9 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkURL"></a>
+<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl"></a>
 
-### Rpc.Payments.Subscription.GetPortalLinkURL
+### Rpc.Payments.Subscription.GetPortalLinkUrl
 Will generate a link to the portal where user can:
 a) change his billing details
 b) see payment info, invoices, etc
@@ -14596,25 +14596,25 @@ c) cancel the subscription
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Request"></a>
+<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request"></a>
 
-### Rpc.Payments.Subscription.GetPortalLinkURL.Request
-
-
+### Rpc.Payments.Subscription.GetPortalLinkUrl.Request
 
 
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response"></a>
 
-### Rpc.Payments.Subscription.GetPortalLinkURL.Response
+
+<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response"></a>
+
+### Rpc.Payments.Subscription.GetPortalLinkUrl.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Subscription.GetPortalLinkURL.Response.Error](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response-Error) |  |  |
+| error | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error) |  |  |
 | portalUrl | [string](#string) |  |  |
 
 
@@ -14622,15 +14622,15 @@ c) cancel the subscription
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response-Error"></a>
+<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error"></a>
 
-### Rpc.Payments.Subscription.GetPortalLinkURL.Response.Error
+### Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Subscription.GetPortalLinkURL.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response-Error-Code) |  |  |
+| code | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -18021,9 +18021,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-NameService-ResolveAnyID-Response-Error-Code"></a>
+<a name="anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code"></a>
 
-### Rpc.NameService.ResolveAnyID.Response.Error.Code
+### Rpc.NameService.ResolveAnyId.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -18047,9 +18047,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-NameService-ResolveSpaceID-Response-Error-Code"></a>
+<a name="anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code"></a>
 
-### Rpc.NameService.ResolveSpaceID.Response.Error.Code
+### Rpc.NameService.ResolveSpaceId.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -18956,9 +18956,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error-Code"></a>
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code"></a>
 
-### Rpc.Payments.Subscription.GetPaymentURL.Response.Error.Code
+### Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -18971,9 +18971,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkURL-Response-Error-Code"></a>
+<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error-Code"></a>
 
-### Rpc.Payments.Subscription.GetPortalLinkURL.Response.Error.Code
+### Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error.Code
 
 
 | Name | Number | Description |

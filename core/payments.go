@@ -51,15 +51,15 @@ func (mw *Middleware) PaymentsSubscriptionGetStatus(ctx context.Context, req *pb
 	return subscriptionGetStatus(ctx, pp, w, req)
 }
 
-func (mw *Middleware) PaymentsSubscriptionGetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentURLRequest) *pb.RpcPaymentsSubscriptionGetPaymentURLResponse {
+func (mw *Middleware) PaymentsSubscriptionGetPaymentUrl(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) *pb.RpcPaymentsSubscriptionGetPaymentUrlResponse {
 	// Get name service object that connects to the remote "paymentProcessingNode"
 	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
 	// see https://github.com/anyproto/any-sync/paymentservice/ for example
 	pp, err := mw.getPaymentProcessingService()
 	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPaymentURLResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPaymentURLResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPaymentURLResponseError_NOT_LOGGED_IN,
+		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
+			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
+				Code:        pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_NOT_LOGGED_IN,
 				Description: err.Error(),
 			},
 		}
@@ -67,9 +67,9 @@ func (mw *Middleware) PaymentsSubscriptionGetPaymentURL(ctx context.Context, req
 
 	w, err := mw.getWallet()
 	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPaymentURLResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPaymentURLResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPaymentURLResponseError_NOT_LOGGED_IN,
+		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
+			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
+				Code:        pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_NOT_LOGGED_IN,
 				Description: err.Error(),
 			},
 		}
@@ -78,12 +78,12 @@ func (mw *Middleware) PaymentsSubscriptionGetPaymentURL(ctx context.Context, req
 	return getPaymentURL(ctx, pp, w, req)
 }
 
-func (mw *Middleware) PaymentsSubscriptionGetPortalLinkURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkURLRequest) *pb.RpcPaymentsSubscriptionGetPortalLinkURLResponse {
+func (mw *Middleware) PaymentsSubscriptionGetPortalLinkUrl(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) *pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse {
 	// TODO:
 
-	return &pb.RpcPaymentsSubscriptionGetPortalLinkURLResponse{
-		Error: &pb.RpcPaymentsSubscriptionGetPortalLinkURLResponseError{
-			Code:        pb.RpcPaymentsSubscriptionGetPortalLinkURLResponseError_UNKNOWN_ERROR,
+	return &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse{
+		Error: &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError{
+			Code:        pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError_UNKNOWN_ERROR,
 			Description: "not implemented",
 		},
 	}
@@ -150,11 +150,11 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 	return &out
 }
 
-func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet.Wallet, req *pb.RpcPaymentsSubscriptionGetPaymentURLRequest) *pb.RpcPaymentsSubscriptionGetPaymentURLResponse {
+func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet.Wallet, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) *pb.RpcPaymentsSubscriptionGetPaymentUrlResponse {
 	// 1 - create request
 	bsr := psp.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyID: w.Account().PeerId,
+		OwnerAnyId: w.Account().PeerId,
 
 		// including 0x
 		OwnerEthAddress: w.GetAccountEthAddress().Hex(),
@@ -168,9 +168,9 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 	// 2 - sign it with the wallet
 	payload, err := bsr.Marshal()
 	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPaymentURLResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPaymentURLResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPaymentURLResponseError_UNKNOWN_ERROR,
+		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
+			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
+				Code:        pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_UNKNOWN_ERROR,
 				Description: err.Error(),
 			},
 		}
@@ -179,9 +179,9 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 	privKey := w.GetDevicePrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPaymentURLResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPaymentURLResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPaymentURLResponseError_UNKNOWN_ERROR,
+		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
+			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
+				Code:        pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_UNKNOWN_ERROR,
 				Description: err.Error(),
 			},
 		}
@@ -194,16 +194,16 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 
 	bsRet, err := pp.BuySubscription(ctx, &reqSigned)
 	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPaymentURLResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPaymentURLResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPaymentURLResponseError_PAYMENT_NODE_ERROR,
+		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
+			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
+				Code:        pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_PAYMENT_NODE_ERROR,
 				Description: err.Error(),
 			},
 		}
 	}
 
 	// return out
-	var out pb.RpcPaymentsSubscriptionGetPaymentURLResponse
+	var out pb.RpcPaymentsSubscriptionGetPaymentUrlResponse
 	out.PaymentUrl = bsRet.PaymentUrl
 
 	return &out

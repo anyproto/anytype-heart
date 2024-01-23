@@ -68,12 +68,12 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			var out psp.GetSubscriptionResponse
 
-			out.Tier = psp.SubscriptionTier_Tier_Friend
-			out.Status = psp.SubscriptionStatus_Status_Active
+			out.Tier = psp.SubscriptionTier_TierFriend
+			out.Status = psp.SubscriptionStatus_StatusActive
 			out.DateStarted = 1234567890
 			out.DateEnds = 1234567890
 			out.IsAutoRenew = true
-			out.PaymentMethod = psp.PaymentMethod_Method_Crypto
+			out.PaymentMethod = psp.PaymentMethod_MethodCrypto
 			out.RequestedAnyName = "something.any"
 
 			return &out, nil
@@ -100,7 +100,7 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 
 		// Call the function being tested
 		resp := subscriptionGetStatus(context.Background(), pp, w, req)
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_Tier_Friend), resp.Tier)
+		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierFriend), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(2), resp.Status)
 		assert.Equal(t, uint64(1234567890), resp.DateStarted)
 		assert.Equal(t, uint64(1234567890), resp.DateEnds)
@@ -143,7 +143,7 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		//w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
-		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
+		req := &pb.RpcPaymentsSubscriptionGetPaymentUrlRequest{
 			RequestedTier:    pb.RpcPaymentsSubscription_TierPatron1Year,
 			PaymentMethod:    pb.RpcPaymentsSubscription_MethodCrypto,
 			RequestedAnyName: "something.any",
@@ -152,7 +152,7 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		// Call the function being tested
 		resp := getPaymentURL(context.Background(), pp, w, req)
 
-		assert.Equal(t, pb.RpcPaymentsSubscriptionGetPaymentURLResponseErrorCode(pb.RpcPaymentsSubscriptionGetPaymentURLResponseError_PAYMENT_NODE_ERROR), resp.Error.Code)
+		assert.Equal(t, pb.RpcPaymentsSubscriptionGetPaymentUrlResponseErrorCode(pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_PAYMENT_NODE_ERROR), resp.Error.Code)
 		assert.Equal(t, "bad error", resp.Error.Description)
 	})
 
@@ -190,7 +190,7 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		//w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
-		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
+		req := &pb.RpcPaymentsSubscriptionGetPaymentUrlRequest{
 			RequestedTier:    pb.RpcPaymentsSubscription_TierPatron1Year,
 			PaymentMethod:    pb.RpcPaymentsSubscription_MethodCrypto,
 			RequestedAnyName: "something.any",

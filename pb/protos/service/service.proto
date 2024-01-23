@@ -292,15 +292,15 @@ service ClientCommands {
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
 
     rpc PaymentsSubscriptionGetStatus (anytype.Rpc.Payments.Subscription.GetStatus.Request) returns (anytype.Rpc.Payments.Subscription.GetStatus.Response);
-    rpc PaymentsSubscriptionGetPaymentURL (anytype.Rpc.Payments.Subscription.GetPaymentURL.Request) returns (anytype.Rpc.Payments.Subscription.GetPaymentURL.Response);
-    rpc PaymentsSubscriptionGetPortalLinkURL (anytype.Rpc.Payments.Subscription.GetPortalLinkURL.Request) returns (anytype.Rpc.Payments.Subscription.GetPortalLinkURL.Response);
+    rpc PaymentsSubscriptionGetPaymentUrl (anytype.Rpc.Payments.Subscription.GetPaymentUrl.Request) returns (anytype.Rpc.Payments.Subscription.GetPaymentUrl.Response);
+    rpc PaymentsSubscriptionGetPortalLinkUrl (anytype.Rpc.Payments.Subscription.GetPortalLinkUrl.Request) returns (anytype.Rpc.Payments.Subscription.GetPortalLinkUrl.Response);
 
     // hello.any -> data
     rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
     // 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any
-    rpc NameServiceResolveAnyID( anytype.Rpc.NameService.ResolveAnyID.Request ) returns (anytype.Rpc.NameService.ResolveAnyID.Response);
+    rpc NameServiceResolveAnyId( anytype.Rpc.NameService.ResolveAnyId.Request ) returns (anytype.Rpc.NameService.ResolveAnyId.Response);
     // bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -> hello.any
-    rpc NameServiceResolveSpaceID( anytype.Rpc.NameService.ResolveSpaceID.Request ) returns (anytype.Rpc.NameService.ResolveSpaceID.Response);
+    rpc NameServiceResolveSpaceId( anytype.Rpc.NameService.ResolveSpaceId.Request ) returns (anytype.Rpc.NameService.ResolveSpaceId.Response);
     
     rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
 }

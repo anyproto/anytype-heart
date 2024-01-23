@@ -5892,7 +5892,7 @@ message Rpc {
                 }
             }
 
-            message GetPaymentURL {
+            message GetPaymentUrl {
                 message Request {
                     SubscriptionTier requestedTier = 1;
                   
@@ -5931,7 +5931,7 @@ message Rpc {
             // a) change his billing details
             // b) see payment info, invoices, etc
             // c) cancel the subscription
-            message GetPortalLinkURL {
+            message GetPortalLinkUrl {
                 message Request {
                     
                 }
@@ -5982,7 +5982,7 @@ message Rpc {
                 // This field is non-empty only if name is "already registered"
                 string ownerAnyAddress = 5;
 
-                // A SpaceID attached to this name
+                // A SpaceId attached to this name
                 // This field is non-empty only if name is "already registered"
                 string spaceId = 6;
 
@@ -6002,9 +6002,9 @@ message Rpc {
             }
         }
 
-        message ResolveAnyID {
+        message ResolveAnyId {
             message Request {
-                string anyID = 1;
+                string anyId = 1;
             }
 
             message Response {
@@ -6028,9 +6028,9 @@ message Rpc {
             }
         }
         
-        message ResolveSpaceID {
+        message ResolveSpaceId {
             message Request {
-                string spaceID = 1;
+                string spaceId = 1;
             }
 
             message Response {

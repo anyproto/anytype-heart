@@ -52,25 +52,25 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 	return &out
 }
 
-func (mw *Middleware) NameServiceResolveAnyID(ctx context.Context, req *pb.RpcNameServiceResolveAnyIDRequest) *pb.RpcNameServiceResolveAnyIDResponse {
+func (mw *Middleware) NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNameServiceResolveAnyIdRequest) *pb.RpcNameServiceResolveAnyIdResponse {
 	// TODO: implement
 	// TODO: test
 
-	return &pb.RpcNameServiceResolveAnyIDResponse{
-		Error: &pb.RpcNameServiceResolveAnyIDResponseError{
-			Code:        pb.RpcNameServiceResolveAnyIDResponseError_UNKNOWN_ERROR,
+	return &pb.RpcNameServiceResolveAnyIdResponse{
+		Error: &pb.RpcNameServiceResolveAnyIdResponseError{
+			Code:        pb.RpcNameServiceResolveAnyIdResponseError_UNKNOWN_ERROR,
 			Description: "not implemented",
 		},
 	}
 }
 
-func (mw *Middleware) NameServiceResolveSpaceID(ctx context.Context, req *pb.RpcNameServiceResolveSpaceIDRequest) *pb.RpcNameServiceResolveSpaceIDResponse {
+func (mw *Middleware) NameServiceResolveSpaceId(ctx context.Context, req *pb.RpcNameServiceResolveSpaceIdRequest) *pb.RpcNameServiceResolveSpaceIdResponse {
 	// TODO: implement
 	// TODO: test
 
-	return &pb.RpcNameServiceResolveSpaceIDResponse{
-		Error: &pb.RpcNameServiceResolveSpaceIDResponseError{
-			Code:        pb.RpcNameServiceResolveSpaceIDResponseError_UNKNOWN_ERROR,
+	return &pb.RpcNameServiceResolveSpaceIdResponse{
+		Error: &pb.RpcNameServiceResolveSpaceIdResponseError{
+			Code:        pb.RpcNameServiceResolveSpaceIdResponseError_UNKNOWN_ERROR,
 			Description: "not implemented",
 		},
 	}
