@@ -159,6 +159,15 @@ func (s *State) AddFileKeys(keys ...*pb.ChangeFileKeys) {
 	}
 }
 
+func (s *State) RemoveFileKeys(hash string) {
+	for i, fh := range s.fileKeys {
+		if fh.Hash == hash {
+			s.fileKeys = append(s.fileKeys[:i], s.fileKeys[i+1:]...)
+			break
+		}
+	}
+}
+
 // GetAndUnsetFileKeys returns file keys from the current set and unset them, so they will no longer pop up
 func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 	if s.parent != nil {
