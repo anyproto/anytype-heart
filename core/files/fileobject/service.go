@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -389,37 +388,9 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.Ch
 }
 
 func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
-	det := st.Details()
-	if det == nil || det.Fields == nil {
-		return
-	}
-
-	for _, key := range st.FileRelationKeys() {
-		if key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, key)
-			_, err := cid.Decode(v)
-			if err != nil {
-				// this is an exception cause coverId can contain not a file hash but color
-				continue
-			}
-		}
-		if hashList := pbtypes.GetStringList(det, key); hashList != nil {
-			var anyChanges bool
-			for i, hash := range hashList {
-				if hash == "" {
-					continue
-				}
-				newHash := s.migrate(spc.(clientspace.Space), keys, hash)
-				if hash != newHash {
-					hashList[i] = newHash
-					anyChanges = true
-				}
-			}
-			if anyChanges {
-				st.SetDetail(key, pbtypes.StringList(hashList))
-			}
-		}
-	}
+	st.ModifyLinkedFilesInDetails(func(id string) string {
+		return s.migrate(spc.(clientspace.Space), keys, id)
+	})
 }
 
 func (s *service) FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error) {

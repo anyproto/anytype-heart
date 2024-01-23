@@ -115,10 +115,15 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	if sn.SbType == coresb.SmartBlockTypeWidget {
 		return oc.updateWidgetObject(st)
 	}
-	for _, key := range st.FileRelationKeys() {
-		filesToDelete = oc.relationSyncer.Sync(spaceID, dataObject.createPayloads, st, key, origin)
-	}
-	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, dataObject.createPayloads, st)...)
+
+	st.ModifyLinkedFilesInDetails(func(fileId string) string {
+		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.createPayloads, origin)
+		if newFileId != fileId {
+			filesToDelete = append(filesToDelete, fileId)
+		}
+		return newFileId
+	})
+
 	typeKeys := st.ObjectTypeKeys()
 	if sn.SbType == coresb.SmartBlockTypeObjectType {
 		// we widen typeKeys here to install bundled templates for imported object type
@@ -373,14 +378,6 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 			log.Errorf("failed to set spaceDashBoardID, %s", err)
 		}
 	}
-}
-
-func (oc *ObjectCreator) handleCoverRelation(spaceID string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, st *state.State) []string {
-	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
-		return nil
-	}
-	filesToDelete := oc.relationSyncer.Sync(spaceID, snapshotPayloads, st, bundle.RelationKeyCoverId.String(), 0)
-	return filesToDelete
 }
 
 func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct {
