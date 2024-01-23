@@ -539,16 +539,8 @@ func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, wr writer) {
 func (e *export) getFilesFromRelations(st *state.State, fileHashes []string) []string {
 	for _, relLink := range st.GetRelationLinks() {
 		if relLink.Format == model.RelationFormat_file {
-			if relLink.GetKey() == bundle.RelationKeyCoverId.String() {
-				v := pbtypes.GetString(st.Details(), relLink.GetKey())
-				_, err := cid.Decode(v)
-				if err != nil {
-					// this is an exception cause coverId can contain not a file hash but color
-					continue
-				}
-			}
-			if fileHash := pbtypes.GetString(st.Details(), relLink.GetKey()); fileHash != "" {
-				fileHashes = append(fileHashes, fileHash)
+			if e.isCoverRelationColor(st, relLink) {
+				continue
 			}
 			if relationFileHashes := pbtypes.GetStringList(st.Details(), relLink.GetKey()); len(relationFileHashes) > 0 {
 				fileHashes = append(fileHashes, relationFileHashes...)
@@ -557,6 +549,15 @@ func (e *export) getFilesFromRelations(st *state.State, fileHashes []string) []s
 		}
 	}
 	return fileHashes
+}
+
+func (e *export) isCoverRelationColor(st *state.State, relLink *model.RelationLink) bool {
+	if relLink.GetKey() == bundle.RelationKeyCoverId.String() {
+		v := pbtypes.GetString(st.Details(), relLink.GetKey())
+		_, err := cid.Decode(v)
+		return err != nil
+	}
+	return false
 }
 
 func (e *export) saveFile(ctx context.Context, wr writer, hash string) (filename string, err error) {
