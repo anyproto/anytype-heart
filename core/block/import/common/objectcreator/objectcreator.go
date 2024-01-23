@@ -84,6 +84,11 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	var err error
 	newID := oldIDtoNew[sn.Id]
+
+	if sn.SbType == coresb.SmartBlockTypeFile {
+		return nil, newID, nil
+	}
+
 	oc.setRootBlock(snapshot, newID)
 
 	oc.injectImportDetails(sn, origin, spaceID)
