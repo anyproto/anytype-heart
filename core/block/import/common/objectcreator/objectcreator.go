@@ -512,7 +512,7 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin mo
 	for _, hash := range fileHashes {
 		// we have file objects, so skip this logic
 		if newID, ok := oldToNew[hash]; ok {
-			if oc.saveFileKeys(st, newID, hash) {
+			if oc.saveFileKeys(st, newID) {
 				return
 			}
 			continue
@@ -528,7 +528,7 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin mo
 	}
 }
 
-func (oc *ObjectCreator) saveFileKeys(st *state.State, newHash string, oldHash string) bool {
+func (oc *ObjectCreator) saveFileKeys(st *state.State, newHash string) bool {
 	fileKeys, err := oc.fileStore.GetFileKeys(newHash)
 	if err != nil {
 		return true
@@ -537,7 +537,6 @@ func (oc *ObjectCreator) saveFileKeys(st *state.State, newHash string, oldHash s
 		Hash: newHash,
 		Keys: fileKeys,
 	})
-	st.RemoveFileKeys(oldHash)
 	return false
 }
 

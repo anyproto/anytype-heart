@@ -538,26 +538,28 @@ func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, wr writer) {
 
 func (e *export) getFilesFromRelations(st *state.State, fileHashes []string) []string {
 	for _, relLink := range st.GetRelationLinks() {
+		fileHashes = e.handleCoverRelation(st, relLink, fileHashes)
 		if relLink.Format == model.RelationFormat_file {
-			if e.isCoverRelationColor(st, relLink) {
-				continue
-			}
 			if relationFileHashes := pbtypes.GetStringList(st.Details(), relLink.GetKey()); len(relationFileHashes) > 0 {
 				fileHashes = append(fileHashes, relationFileHashes...)
-
 			}
 		}
 	}
 	return fileHashes
 }
 
-func (e *export) isCoverRelationColor(st *state.State, relLink *model.RelationLink) bool {
+func (e *export) handleCoverRelation(st *state.State, relLink *model.RelationLink, fileHashes []string) []string {
 	if relLink.GetKey() == bundle.RelationKeyCoverId.String() {
 		v := pbtypes.GetString(st.Details(), relLink.GetKey())
+		if v == "" {
+			return fileHashes
+		}
 		_, err := cid.Decode(v)
-		return err != nil
+		if err == nil {
+			fileHashes = append(fileHashes, pbtypes.GetString(st.Details(), relLink.GetKey()))
+		}
 	}
-	return false
+	return fileHashes
 }
 
 func (e *export) saveFile(ctx context.Context, wr writer, hash string) (filename string, err error) {
