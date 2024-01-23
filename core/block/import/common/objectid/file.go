@@ -11,21 +11,27 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type file struct {
-	service *block.Service
+	service   *block.Service
+	fileStore filestore.FileStore
 }
 
-func newFileObject(service *block.Service) *file {
-	return &file{service: service}
+func newFileObject(service *block.Service, fileStore filestore.FileStore) *file {
+	return &file{service: service, fileStore: fileStore}
 }
 
 func (f *file) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, _ bool) (string, treestorage.TreeStorageCreatePayload, error) {
 	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
 	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	fileKeys, err := f.fileStore.GetFileKeys(id)
+	if err == nil && len(fileKeys) > 0 {
+		return id, treestorage.TreeStorageCreatePayload{}, nil
+	}
 	params := pb.RpcFileUploadRequest{
 		SpaceId:   spaceID,
 		LocalPath: filePath,

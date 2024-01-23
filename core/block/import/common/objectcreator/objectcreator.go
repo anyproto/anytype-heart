@@ -512,7 +512,10 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin mo
 
 	for _, hash := range fileHashes {
 		// we have file objects, so skip this logic
-		if _, ok := oldToNew[hash]; ok {
+		if newID, ok := oldToNew[hash]; ok {
+			if oc.saveFileKeys(st, newID) {
+				return
+			}
 			continue
 		}
 		err = oc.fileStore.SetIsFileImported(hash, true)
@@ -524,6 +527,18 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin mo
 			log.Errorf("failed to set origin for file %s: %s", hash, err)
 		}
 	}
+}
+
+func (oc *ObjectCreator) saveFileKeys(st *state.State, newHash string) bool {
+	fileKeys, err := oc.fileStore.GetFileKeys(newHash)
+	if err != nil {
+		return true
+	}
+	st.AddFileKeys(&pb.ChangeFileKeys{
+		Hash: newHash,
+		Keys: fileKeys,
+	})
+	return false
 }
 
 func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*types.Struct, string, error) {
