@@ -516,6 +516,9 @@ func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, o
 			},
 		},
 	})
+	if err != nil {
+		return fmt.Errorf("list objects that use file id: %w", err)
+	}
 	if len(records) == 0 {
 		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
 			return err

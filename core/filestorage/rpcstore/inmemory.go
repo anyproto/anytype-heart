@@ -203,7 +203,7 @@ func (t *inMemoryStore) FilesInfo(ctx context.Context, spaceId string, fileIds .
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	var infos []*fileproto.FileInfo
+	infos := make([]*fileproto.FileInfo, 0, len(fileIds))
 	for _, fileId := range fileIds {
 		info, err := t.fileInfo(spaceId, fileId)
 		if err != nil {

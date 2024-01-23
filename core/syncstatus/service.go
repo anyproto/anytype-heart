@@ -29,7 +29,6 @@ var log = logging.Logger("anytype-mw-status")
 const CName = "status"
 
 type Service interface {
-	WatchFile(spaceId string, fileId string, fileHash string) error
 	Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error)
 	Unwatch(spaceID string, id string)
 	RegisterSpace(space commonspace.Space)
@@ -115,16 +114,9 @@ func (s *service) Unwatch(spaceID string, id string) {
 	s.unwatch(spaceID, id)
 }
 
-func (s *service) WatchFile(spaceId string, fileId string, fileHash string) error {
-	// err := s.fileWatcher.Watch(spaceId, fileId, fileHash)
-	// return err
-	return nil
-}
-
 func (s *service) Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error) {
 	s.updateReceiver.ClearLastObjectStatus(id)
 
-	//s.linkedFilesWatcher.WatchLinkedFiles(space.Id(), id, filesGetter)
 	s.objectWatchersLock.Lock()
 	defer s.objectWatchersLock.Unlock()
 	objectWatcher := s.objectWatchers[spaceId]

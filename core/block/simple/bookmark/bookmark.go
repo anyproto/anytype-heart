@@ -195,7 +195,6 @@ func (b *Bookmark) MigrateFile(replacer func(oldHash string) (newHash string)) {
 	if b.content.FaviconHash != "" {
 		b.content.FaviconHash = replacer(b.content.FaviconHash)
 	}
-	return
 }
 
 func (l *Bookmark) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
