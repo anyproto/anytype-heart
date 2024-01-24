@@ -26,11 +26,14 @@ import (
 
 const CName = "common.acl.aclservice"
 
+var ErrInviteNotExist = fmt.Errorf("invite doesn't exist")
+
 type AclService interface {
 	app.Component
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey) error
-	GenerateInvite(ctx context.Context, spaceId string) (*GenerateInviteResult, error)
+	GetCurrentInvite(spaceId string) (*InviteInfo, error)
+	GenerateInvite(ctx context.Context, spaceId string) (*InviteInfo, error)
 }
 
 func New() AclService {
@@ -134,7 +137,7 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	})
 }
 
-type GenerateInviteResult struct {
+type InviteInfo struct {
 	InviteFileCid string
 	InviteFileKey string
 }
@@ -201,7 +204,25 @@ func (a *aclService) getExistingInviteFileInfo(spaceViewId string) (fileCid stri
 	return
 }
 
-func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result *GenerateInviteResult, err error) {
+func (a *aclService) GetCurrentInvite(spaceId string) (*InviteInfo, error) {
+	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("get space view id: %w", err)
+	}
+	fileCid, fileKey, err := a.getExistingInviteFileInfo(spaceViewId)
+	if err != nil {
+		return nil, fmt.Errorf("get existing invite file info: %w", err)
+	}
+	if fileCid == "" {
+		return nil, ErrInviteNotExist
+	}
+	return &InviteInfo{
+		InviteFileCid: fileCid,
+		InviteFileKey: fileKey,
+	}, nil
+}
+
+func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result *InviteInfo, err error) {
 	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
 	if err != nil {
 		return nil, fmt.Errorf("get space view id: %w", err)
@@ -211,7 +232,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		return nil, fmt.Errorf("get existing invite file info: %w", err)
 	}
 	if fileCid != "" {
-		return &GenerateInviteResult{
+		return &InviteInfo{
 			InviteFileCid: fileCid,
 			InviteFileKey: fileKey,
 		}, nil
@@ -255,7 +276,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		return nil, fmt.Errorf("set invite file info: %w", err)
 	}
 
-	return &GenerateInviteResult{
+	return &InviteInfo{
 		InviteFileCid: inviteFileCid.String(),
 		InviteFileKey: inviteFileKeyRaw,
 	}, err

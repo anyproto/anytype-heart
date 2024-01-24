@@ -45,11 +45,22 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 }
 
 func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpaceInviteGetCurrentRequest) *pb.RpcSpaceInviteGetCurrentResponse {
+	aclService := getService[acl.AclService](mw)
+	inviteInfo, err := aclService.GetCurrentInvite(req.SpaceId)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(acl.ErrInviteNotExist, pb.RpcSpaceInviteGetCurrentResponseError_NO_ACTIVE_INVITE),
+		)
+		return &pb.RpcSpaceInviteGetCurrentResponse{
+			Error: &pb.RpcSpaceInviteGetCurrentResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
 	return &pb.RpcSpaceInviteGetCurrentResponse{
-		Error: &pb.RpcSpaceInviteGetCurrentResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
-		},
+		InviteCid:     inviteInfo.InviteFileCid,
+		InviteFileKey: inviteInfo.InviteFileKey,
 	}
 }
 
