@@ -448,6 +448,9 @@ func (s *State) addNotification(notification *model.Notification) {
 }
 
 func (s *State) updateNotification(update *pb.ChangeNotificationUpdate) {
+	if s.notifications == nil {
+		return
+	}
 	if _, ok := s.notifications[update.Id]; !ok {
 		return
 	}

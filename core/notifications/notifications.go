@@ -241,7 +241,7 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	sb, dErr := techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+	notificationObject, err := techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 		Key: uk,
 		InitFunc: func(id string) *smartblock.InitContext {
 			return &smartblock.InitContext{
@@ -251,10 +251,20 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 			}
 		},
 	})
-	if dErr != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		log.Errorf("failed to derive notification object: %v", err)
 		return
 	}
-	n.notificationId = sb.Id()
+	if err == nil {
+		n.notificationId = notificationObject.Id()
+	}
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		notificationID, err := techSpace.DeriveObjectID(ctx, uk)
+		if err != nil {
+			log.Errorf("failed to derive notification object id: %v", err)
+			return
+		}
+		n.notificationId = notificationID
+	}
 	n.indexNotifications(ctx)
 }
