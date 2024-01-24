@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "e674b8ac690dc5eb2f8a619778639a3a38d1c5fbd6ffe8e9e9c567003a40eae9"
+const RelationChecksum = "89f8475020c56ccd43009676a5924f0a8da64bcdc88a24638c37326b2aafb396"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -167,6 +167,7 @@ const (
 	RelationKeyFileId                    domain.RelationKey = "fileId"
 	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                  domain.RelationKey = "revision"
+	RelationKeyImageKind                 domain.RelationKey = "imageKind"
 )
 
 var (
@@ -934,6 +935,20 @@ var (
 			MaxCount:         1,
 			Name:             "Profile link",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyImageKind: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Describes how this image is used",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brimageKind",
+			Key:              "imageKind",
+			MaxCount:         1,
+			Name:             "Image kind",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

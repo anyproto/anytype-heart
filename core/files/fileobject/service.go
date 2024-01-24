@@ -88,10 +88,11 @@ func (s *service) Init(a *app.App) error {
 }
 
 type CreateRequest struct {
-	FileId         domain.FileId
-	EncryptionKeys map[string]string
-	IsImported     bool
-	Origin         model.ObjectOrigin
+	FileId            domain.FileId
+	EncryptionKeys    map[string]string
+	IsImported        bool
+	Origin            model.ObjectOrigin
+	AdditionalDetails *types.Struct
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
@@ -128,6 +129,14 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		return "", nil, fmt.Errorf("get details for file or image: %w", err)
 	}
 	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
+
+	if req.AdditionalDetails != nil {
+		for k, v := range req.AdditionalDetails.GetFields() {
+			if _, ok := details.Fields[k]; !ok {
+				details.Fields[k] = pbtypes.CopyVal(v)
+			}
+		}
+	}
 
 	createState := state.NewDoc("", nil).(*state.State)
 	createState.SetDetails(details)

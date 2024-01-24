@@ -1010,3 +1010,9 @@ message FileInfo {
     string fileId = 1;
     repeated FileEncryptionKey encryptionKeys = 2;
 }
+
+enum ImageKind {
+    Basic = 0;
+    Cover = 1;
+    Icon = 2;
+}
