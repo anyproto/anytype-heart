@@ -26,7 +26,10 @@ import (
 
 const CName = "common.acl.aclservice"
 
-var ErrInviteNotExist = fmt.Errorf("invite doesn't exist")
+var (
+	ErrInviteNotExist = fmt.Errorf("invite doesn't exist")
+	ErrPersonalSpace  = fmt.Errorf("sharing of personal space is forbidden")
+)
 
 type AclService interface {
 	app.Component
@@ -223,6 +226,9 @@ func (a *aclService) GetCurrentInvite(spaceId string) (*InviteInfo, error) {
 }
 
 func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result *InviteInfo, err error) {
+	if spaceId == a.accountService.PersonalSpaceID() {
+		return nil, ErrPersonalSpace
+	}
 	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
 	if err != nil {
 		return nil, fmt.Errorf("get space view id: %w", err)

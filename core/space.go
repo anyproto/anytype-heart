@@ -28,19 +28,24 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 }
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
-	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
-	inviteCid, inviteFileKey, err := generateInvite(cctx, req.SpaceId, aclService)
-	code := mapErrorCode(err,
-		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
-		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteGenerateResponseError_NO_SUCH_SPACE),
-	)
+	aclService := getService[acl.AclService](mw)
+	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
+			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteGenerateResponseError_NO_SUCH_SPACE),
+			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteGenerateResponseError_BAD_INPUT),
+		)
+		return &pb.RpcSpaceInviteGenerateResponse{
+			Error: &pb.RpcSpaceInviteGenerateResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
 	return &pb.RpcSpaceInviteGenerateResponse{
-		InviteCid:     inviteCid,
-		InviteFileKey: inviteFileKey,
-		Error: &pb.RpcSpaceInviteGenerateResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
-		},
+		InviteCid:     inviteInfo.InviteFileCid,
+		InviteFileKey: inviteInfo.InviteFileKey,
 	}
 }
 
@@ -146,14 +151,6 @@ func (mw *Middleware) SpaceParticipantRemove(cctx context.Context, req *pb.RpcSp
 			Description: getErrorDescription(fmt.Errorf("not implemented")),
 		},
 	}
-}
-
-func generateInvite(ctx context.Context, spaceId string, aclService acl.AclService) (inviteCid string, inviteFilekey string, err error) {
-	res, err := aclService.GenerateInvite(ctx, spaceId)
-	if err != nil {
-		return
-	}
-	return res.InviteFileCid, res.InviteFileKey, nil
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
