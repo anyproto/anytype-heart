@@ -1836,7 +1836,7 @@ func (s *State) AddNotification(notification *model.Notification) {
 
 func (s *State) ListNotifications() map[string]*model.Notification {
 	iterState := s
-	for iterState != nil && len(iterState.notifications) == 0 {
+	for iterState != nil && iterState.notifications == nil {
 		iterState = iterState.parent
 	}
 	if iterState == nil {

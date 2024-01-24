@@ -7,23 +7,22 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/net"
-	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/domain"
-	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 var log = logging.Logger("notifications")
@@ -45,6 +44,7 @@ type notificationService struct {
 	notificationStore  NotificationStore
 	spaceService       space.Service
 	picker             block.ObjectGetter
+	spaceCore          spacecore.SpaceCoreService
 }
 
 func New() Notifications {
@@ -59,6 +59,7 @@ func (n *notificationService) Init(a *app.App) (err error) {
 	}
 	n.notificationStore = NewNotificationStore(db)
 	n.eventSender = app.MustComponent[event.Sender](a)
+	n.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	n.spaceService = app.MustComponent[space.Service](a)
 	n.picker = app.MustComponent[block.ObjectGetter](a)
 	return nil
@@ -231,37 +232,29 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 		log.Errorf("failed to get notification object unique key: %v", err)
 		return
 	}
-	spc, err := n.spaceService.GetPersonalSpace(ctx)
+	techSpaceID, err := n.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
 	if err != nil {
 		log.Errorf("failed to get personal space for notifications: %v", err)
 		return
 	}
-	n.notificationId, err = spc.DeriveObjectID(ctx, uk)
+	techSpace, err := n.spaceService.Get(ctx, techSpaceID)
 	if err != nil {
-		log.Errorf("failed to get notification object: %v", err)
 		return
 	}
-	ctxWithPeer := peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
-	_, err = spc.GetObject(ctxWithPeer, n.notificationId)
-	if err != nil && errors.Is(err, net.ErrUnableToConnect) {
-		log.Errorf("failed to get notification object: %v", err)
+	sb, dErr := techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+		Key: uk,
+		InitFunc: func(id string) *smartblock.InitContext {
+			return &smartblock.InitContext{
+				Ctx:     ctx,
+				SpaceID: techSpace.Id(),
+				State:   state.NewDoc(id, nil).(*state.State),
+			}
+		},
+	})
+	if dErr != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+		log.Errorf("failed to derive notification object: %v", err)
 		return
 	}
-	if err != nil {
-		_, dErr := spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-			Key: uk,
-			InitFunc: func(id string) *smartblock.InitContext {
-				return &smartblock.InitContext{
-					Ctx:     ctx,
-					SpaceID: spc.Id(),
-					State:   state.NewDoc(id, nil).(*state.State),
-				}
-			},
-		})
-		if dErr != nil {
-			log.Errorf("failed to derive notification object: %v", err)
-			return
-		}
-	}
+	n.notificationId = sb.Id()
 	n.indexNotifications(ctx)
 }
