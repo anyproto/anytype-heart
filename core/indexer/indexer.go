@@ -215,7 +215,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 		saveIndexedHash()
 	}
 
-	metrics.SharedClient.RecordEvent(metrics.IndexEvent{
+	metrics.Service.Send(&metrics.IndexEvent{
 		ObjectId:                info.Id,
 		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
 		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),

@@ -495,7 +495,7 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUploadRequest) (hash string, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUploadRequest, fileKeys map[string]string) (hash string, err error) {
 	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -513,6 +513,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUpload
 	} else if req.Url != "" {
 		upl.SetUrl(req.Url)
 	}
+	upl.SetFileKeys(fileKeys)
 	res := upl.Upload(ctx)
 	if res.Err != nil {
 		return "", res.Err

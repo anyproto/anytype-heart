@@ -15,13 +15,16 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/converter/dot"
 	"github.com/anyproto/anytype-heart/core/converter/graphjson"
@@ -137,7 +140,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		succeed = e.exportGraphJson(ctx, req, docs, succeed, wr, queue)
 	} else {
 		tasks := make([]process.Task, 0, len(docs))
-		succeed, tasks = e.exportDocs(ctx, req, docs, wr, queue, succeed, tasks)
+		succeed, tasks = e.exportDocs(ctx, req, docs, wr, succeed, tasks)
 		err := queue.Wait(tasks...)
 		if err != nil {
 			e.cleanupFile(wr)
@@ -155,11 +158,11 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	return wr.Path(), succeed, nil
 }
 
-func (e *export) exportDocs(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, wr writer, queue process.Queue, succeed int, tasks []process.Task) (int, []process.Task) {
+func (e *export) exportDocs(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, wr writer, succeed int, tasks []process.Task) (int, []process.Task) {
 	for docId := range docs {
 		did := docId
 		task := func() {
-			if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
+			if werr := e.writeDoc(ctx, req, wr, docs, did); werr != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
 				succeed++
@@ -287,7 +290,67 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 		id := pbtypes.GetString(do.Details, bundle.RelationKeyId.String())
 		docs[id] = do.Details
 	}
+
+	for id := range docs {
+		err := e.saveFilesForObject(id, docs)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return docs, nil
+}
+
+func (e *export) saveFilesForObject(objectID string, docs map[string]*types.Struct) error {
+	var st *state.State
+	if err := getblock.Do(e.picker, objectID, func(b sb.SmartBlock) error {
+		st = b.NewState()
+		return nil
+	}); err != nil {
+		return err
+	}
+	fileHashes := e.getFileHashes(st)
+	filesObjects, _, err := e.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(fileHashes),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	})
+	if err != nil {
+		log.Errorf("failed to get files from object store %s", err)
+	}
+	for _, fo := range filesObjects {
+		id := pbtypes.GetString(fo.Details, bundle.RelationKeyId.String())
+		docs[id] = fo.Details
+	}
+	return nil
+}
+
+func (e *export) getFileHashes(st *state.State) []string {
+	var fileHashes []string
+	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if fh, ok := bl.(simple.FileHashes); ok {
+			fileHashes = fh.FillFileHashes(fileHashes)
+		}
+		return true
+	})
+	if err != nil {
+		log.Errorf("failed to collect file hashes in state, %s")
+	}
+	fileHashes = e.getFilesFromRelations(st, fileHashes)
+	return fileHashes
 }
 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
@@ -362,7 +425,7 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 				}
 				fileHashes := b.GetAndUnsetFileKeys()
 				for _, fh := range fileHashes {
-					if saveFileErr := e.saveFile(ctx, wr, fh.Hash); saveFileErr != nil {
+					if _, saveFileErr := e.saveFile(ctx, wr, fh.Hash); saveFileErr != nil {
 						log.With("hash", fh.Hash).Warnf("can't save file: %v", saveFileErr)
 					}
 				}
@@ -379,32 +442,52 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0)), 0); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(nil)), 0); err != nil {
 		return 0, err
 	}
 	err = nil
 	return
 }
 
-func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
+func (e *export) writeDoc(ctx context.Context,
+	req pb.RpcObjectListExportRequest,
+	wr writer,
+	docInfo map[string]*types.Struct,
+	docID string,
+) (err error) {
 	return getblock.Do(e.picker, docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
-		var conv converter.Converter
-		switch format {
+		if !req.IncludeFiles && b.Type() == smartblock.SmartBlockTypeFile {
+			return nil
+		}
+		var (
+			keys *files.FileKeys
+			s    = b.NewState()
+			conv converter.Converter
+		)
+		if b.Type() == smartblock.SmartBlockTypeFile {
+			keys, err = e.handleFileObject(ctx, keys, req.SpaceId, docID, wr, s)
+			if err != nil {
+				log.With("hash", docID).Warnf("can't save file: %v", err)
+				return err
+			}
+		}
+		switch req.Format {
 		case model.Export_Markdown:
-			conv = md.NewMDConverter(b.NewState(), wr.Namer())
+			conv = md.NewMDConverter(s, wr.Namer())
 		case model.Export_Protobuf:
-			conv = pbc.NewConverter(b, isJSON)
+			conv = pbc.NewConverter(s, req.IsJson)
 		case model.Export_JSON:
-			conv = pbjson.NewConverter(b)
+			conv = pbjson.NewConverter(s)
 		}
 		conv.SetKnownDocs(docInfo)
-		result := conv.Convert(b.Type().ToProto())
+		conv.SetFileKeys(keys)
+
+		result := conv.Convert(b)
 		filename := docID + conv.Ext()
-		s := b.NewState()
-		if format == model.Export_Markdown {
+		if req.Format == model.Export_Markdown {
 			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 			if name == "" {
 				name = s.Snippet()
@@ -418,28 +501,71 @@ func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr wri
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
-		if !exportFiles {
-			return nil
+		if req.IncludeFiles && !isAnyblockExport(req.Format) {
+			e.saveFiles(ctx, b, wr)
 		}
-		e.saveFiles(ctx, b, queue, wr, docID)
 		return nil
 	})
 }
 
-func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, queue process.Queue, wr writer, docID string) {
-	fileHashes := b.GetAndUnsetFileKeys()
+func (e *export) handleFileObject(ctx context.Context,
+	keys *files.FileKeys,
+	spaceID, docID string,
+	wr writer,
+	s *state.State,
+) (*files.FileKeys, error) {
+	keys, err := e.fileService.FileGetKeys(domain.FullID{SpaceID: spaceID, ObjectID: docID})
+	if err != nil {
+		return nil, err
+	}
+	filename, err := e.saveFile(ctx, wr, docID)
+	if err != nil {
+		return nil, err
+	}
+	s.SetDetail(bundle.RelationKeySource.String(), pbtypes.String(filename))
+	return keys, nil
+}
+
+func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, wr writer) {
+	st := b.NewState()
+	fileHashes := e.getFileHashes(st)
 	for _, fh := range fileHashes {
-		fh := fh
-		if werr := e.saveFile(ctx, wr, fh.Hash); werr != nil {
-			log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
+		if _, werr := e.saveFile(ctx, wr, fh); werr != nil {
+			log.With("hash", fh).Warnf("can't save file: %v", werr)
 		}
 	}
 }
 
-func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err error) {
+func (e *export) getFilesFromRelations(st *state.State, fileHashes []string) []string {
+	for _, relLink := range st.GetRelationLinks() {
+		fileHashes = e.handleCoverRelation(st, relLink, fileHashes)
+		if relLink.Format == model.RelationFormat_file {
+			if relationFileHashes := pbtypes.GetStringList(st.Details(), relLink.GetKey()); len(relationFileHashes) > 0 {
+				fileHashes = append(fileHashes, relationFileHashes...)
+			}
+		}
+	}
+	return fileHashes
+}
+
+func (e *export) handleCoverRelation(st *state.State, relLink *model.RelationLink, fileHashes []string) []string {
+	if relLink.GetKey() == bundle.RelationKeyCoverId.String() {
+		v := pbtypes.GetString(st.Details(), relLink.GetKey())
+		if v == "" {
+			return fileHashes
+		}
+		_, err := cid.Decode(v)
+		if err == nil {
+			fileHashes = append(fileHashes, pbtypes.GetString(st.Details(), relLink.GetKey()))
+		}
+	}
+	return fileHashes
+}
+
+func (e *export) saveFile(ctx context.Context, wr writer, hash string) (filename string, err error) {
 	spaceID, err := e.resolver.ResolveSpaceID(hash)
 	if err != nil {
-		return fmt.Errorf("resolve spaceID: %w", err)
+		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
 	id := domain.FullID{
 		SpaceID:  spaceID,
@@ -452,20 +578,20 @@ func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err erro
 	if strings.HasPrefix(file.Info().Media, "image") {
 		image, err := e.fileService.ImageByHash(context.TODO(), id)
 		if err != nil {
-			return err
+			return "", err
 		}
 		file, err = image.GetOriginalFile(context.TODO())
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	origName := file.Meta().Name
-	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
+	filename = wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.Background())
 	if err != nil {
 		return
 	}
-	return wr.WriteFile(filename, rd, file.Info().LastModifiedDate)
+	return filename, wr.WriteFile(filename, rd, file.Info().LastModifiedDate)
 }
 
 func (e *export) createProfileFile(spaceID string, wr writer) error {
@@ -574,7 +700,8 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeWidget ||
 		sbType == smartblock.SmartBlockTypeObjectType ||
 		sbType == smartblock.SmartBlockTypeRelation ||
-		sbType == smartblock.SmartBlockTypeRelationOption
+		sbType == smartblock.SmartBlockTypeRelationOption ||
+		sbType == smartblock.SmartBlockTypeFile
 }
 
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
