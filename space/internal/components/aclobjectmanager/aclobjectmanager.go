@@ -172,12 +172,6 @@ func (a *aclObjectManager) clearAclIndexes() (err error) {
 	return a.indexer.RemoveAclIndexes(a.status.SpaceId())
 }
 
-func (a *aclObjectManager) deleteObject(identity crypto.PubKey) (err error) {
-	// TODO: remove object from cache and clear acl indexes in object store for this object
-	a.identityService.UnregisterIdentity(a.sp.Id(), identity.Account())
-	return nil
-}
-
 func (a *aclObjectManager) processAcl() (err error) {
 	common := a.sp.CommonSpace()
 	a.mx.Lock()
