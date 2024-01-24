@@ -44,14 +44,11 @@ func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error
 		if bundle.HasRelation(rel.Key) {
 			continue
 		}
-		v, found := info.customTypesAndRelations[rel.Key]
-		if found {
-			v.isUsed = true
-			info.customTypesAndRelations[rel.Key] = v
-		} else {
-			err = multierror.Append(err, fmt.Errorf("object '%s' contains link to unknown relation: %s(%s)", id,
-				rel.Key, pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String())))
+		if _, found := info.customTypesAndRelations[rel.Key]; found {
+			continue
 		}
+		err = multierror.Append(err, fmt.Errorf("object '%s' contains link to unknown relation: %s(%s)", id,
+			rel.Key, pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String())))
 	}
 	return err
 }
@@ -77,12 +74,8 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 
 	for k, v := range s.Snapshot.Data.Details.Fields {
-		if k == bundle.RelationKeyLinks.String() || k == bundle.RelationKeySourceObject.String() || k == bundle.RelationKeyBacklinks.String() {
+		if isLinkRelation(k) {
 			continue
-		}
-		if cr, found := info.customTypesAndRelations[k]; found {
-			cr.isUsed = true
-			info.customTypesAndRelations[k] = cr
 		}
 		var (
 			rel relationWithFormat
@@ -96,7 +89,7 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 				continue
 			}
 		}
-		if rel.GetFormat() != model.RelationFormat_object && rel.GetFormat() != model.RelationFormat_tag && rel.GetFormat() != model.RelationFormat_status {
+		if !canRelationContainObjectValues(rel.GetFormat()) {
 			continue
 		}
 
@@ -110,15 +103,6 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 			if k == bundle.RelationKeyFeaturedRelations.String() {
 				if _, found := info.customTypesAndRelations[val]; found {
 					continue
-				}
-			}
-
-			if k == bundle.RelationKeyRecommendedRelations.String() {
-				if key, found := info.relations[val]; found {
-					if cr, foundToo := info.customTypesAndRelations[string(key)]; foundToo {
-						cr.isUsed = true
-						info.customTypesAndRelations[string(key)] = cr
-					}
 				}
 			}
 
@@ -136,12 +120,9 @@ func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) 
 	for _, ot := range s.Snapshot.Data.ObjectTypes {
 		typeId := strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
 		if !bundle.HasObjectTypeByKey(domain.TypeKey(typeId)) {
-			if ct, found := info.customTypesAndRelations[typeId]; found {
-				ct.isUsed = true
-				info.customTypesAndRelations[typeId] = ct
-				continue
+			if _, found := info.customTypesAndRelations[typeId]; !found {
+				err = multierror.Append(err, fmt.Errorf("object '%s' contains unknown object type: %s", id, ot))
 			}
-			err = multierror.Append(err, fmt.Errorf("object '%s' contains unknown object type: %s", id, ot))
 		}
 	}
 	return err
@@ -155,7 +136,7 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 			target := a.Model().GetLink().TargetBlockId
 			_, found := info.objects[target]
 			if !found {
-				if s.SbType == model.SmartBlockType_Widget && lo.Contains([]string{widget.DefaultWidgetFavorite, widget.DefaultWidgetSet, widget.DefaultWidgetRecent, widget.DefaultWidgetCollection}, target) {
+				if s.SbType == model.SmartBlockType_Widget && isDefaultWidget(target) {
 					continue
 				}
 				err = multierror.Append(err, fmt.Errorf("failed to find target id for link '%s' in block '%s' of object '%s'",
@@ -195,24 +176,6 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	return err
 }
 
-func getRelationLinkByKey(links []*model.RelationLink, key string) *model.RelationLink {
-	for _, l := range links {
-		if l.Key == key {
-			return l
-		}
-	}
-	return nil
-}
-
-func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
-	for _, k := range s.Snapshot.FileKeys {
-		if k.Hash == hash && len(k.Keys) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
 func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, r := range s.Snapshot.Data.RelationLinks {
@@ -232,8 +195,7 @@ func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
 	}
 	for _, b := range s.Snapshot.Data.Blocks {
 		if v, ok := simple.New(b).(simple.FileHashes); ok {
-			var hashes []string
-			hashes = v.FillFileHashes(hashes)
+			hashes := v.FillFileHashes([]string{})
 			if len(hashes) == 0 {
 				continue
 			}
@@ -278,4 +240,47 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
 		return fmt.Errorf("failed to find relation key %s of relation option %s", key, id)
 	}
 	return nil
+}
+
+func getRelationLinkByKey(links []*model.RelationLink, key string) *model.RelationLink {
+	for _, l := range links {
+		if l.Key == key {
+			return l
+		}
+	}
+	return nil
+}
+
+func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
+	for _, k := range s.Snapshot.FileKeys {
+		if k.Hash == hash && len(k.Keys) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func isLinkRelation(k string) bool {
+	return k == bundle.RelationKeyLinks.String() || k == bundle.RelationKeySourceObject.String() || k == bundle.RelationKeyBacklinks.String()
+}
+
+func canRelationContainObjectValues(format model.RelationFormat) bool {
+	switch format {
+	case
+		model.RelationFormat_status,
+		model.RelationFormat_tag,
+		model.RelationFormat_object:
+		return true
+	default:
+		return false
+	}
+}
+
+func isDefaultWidget(target string) bool {
+	return lo.Contains([]string{
+		widget.DefaultWidgetFavorite,
+		widget.DefaultWidgetSet,
+		widget.DefaultWidgetRecent,
+		widget.DefaultWidgetCollection,
+	}, target)
 }

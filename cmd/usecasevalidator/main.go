@@ -59,6 +59,7 @@ type (
 	cliFlags struct {
 		analytics, validate, creator   bool
 		list, removeRelations, exclude bool
+		collectCustomUsageInfo         bool
 		path, rules                    string
 	}
 )
@@ -129,6 +130,10 @@ func run() error {
 		listObjects(info)
 	}
 
+	if flags.collectCustomUsageInfo {
+		printCustomObjectsUsageInfo(info)
+	}
+
 	if err != nil {
 		if errors.Is(err, errIncorrectFileFound) {
 			err = fmt.Errorf("provided zip contains some incorrect data. " +
@@ -158,6 +163,7 @@ func getFlags() (*cliFlags, error) {
 	analytics := flag.Bool("a", false, "Insert analytics context and original id")
 	rules := flag.String("rules", "", "Path to file with processing rules")
 	exclude := flag.Bool("exclude", false, "Exclude objects that did not pass validation")
+	custom := flag.Bool("c", false, "Collect usage information about custom types and relations")
 
 	flag.Parse()
 
@@ -166,14 +172,15 @@ func getFlags() (*cliFlags, error) {
 	}
 
 	return &cliFlags{
-		analytics:       *analytics,
-		list:            *list,
-		removeRelations: *removeRels,
-		validate:        *valid,
-		path:            *path,
-		creator:         *creator,
-		rules:           *rules,
-		exclude:         *exclude,
+		analytics:              *analytics,
+		list:                   *list,
+		removeRelations:        *removeRels,
+		validate:               *valid,
+		path:                   *path,
+		creator:                *creator,
+		rules:                  *rules,
+		exclude:                *exclude,
+		collectCustomUsageInfo: *custom,
 	}, nil
 }
 
@@ -347,6 +354,10 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 		}
 	}
 
+	if flags.collectCustomUsageInfo {
+		collectCustomObjectsUsageInfo(snapshot, info)
+	}
+
 	if isOldAccount {
 		return snapshot.Snapshot.Marshal()
 	}
@@ -492,12 +503,6 @@ func listObjects(info *useCaseInfo) {
 	for id, key := range info.relations {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%24s - %s\n", id[len(id)-4:], key, obj.Name)
-	}
-
-	fmt.Println("\n- Custom Types and Relations usage (correct only on validation turned on):")
-	fmt.Println("Is used\t\tName\t\t\t\t\tId")
-	for name, cInfo := range info.customTypesAndRelations {
-		fmt.Printf("%v -\t\t%s -\t\t%s\n", cInfo.isUsed, name, cInfo.id)
 	}
 
 	fmt.Println("\n- Templates:")
