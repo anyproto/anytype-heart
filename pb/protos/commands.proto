@@ -181,7 +181,6 @@ message Rpc {
                 string spaceName = 2;
                 string spaceIconCid = 3;
                 string creatorName = 4;
-                string creatorIconCid = 5;
 
                 message Error {
                     Code code = 1;

@@ -67,6 +67,9 @@ func (s *service) GetInfoForFileSharing(ctx context.Context, fileObjectId string
 }
 
 func (s *service) StoreFileKeys(fileId domain.FileId, fileKeys []*model.FileEncryptionKey) error {
+	if fileId == "" || len(fileKeys) == 0 {
+		return nil
+	}
 	keys := domain.FileEncryptionKeys{
 		FileId:         fileId,
 		EncryptionKeys: map[string]string{},

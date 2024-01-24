@@ -79,12 +79,38 @@ func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceIn
 }
 
 func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInviteViewRequest) *pb.RpcSpaceInviteViewResponse {
-	return &pb.RpcSpaceInviteViewResponse{
-		Error: &pb.RpcSpaceInviteViewResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
-		},
+	aclService := getService[acl.AclService](mw)
+	inviteView, err := viewInvite(cctx, aclService, req)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(acl.ErrInviteBadSignature, pb.RpcSpaceInviteViewResponseError_INVITE_BAD_SIGNATURE),
+		)
+		return &pb.RpcSpaceInviteViewResponse{
+			Error: &pb.RpcSpaceInviteViewResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
 	}
+	return &pb.RpcSpaceInviteViewResponse{
+		CreatorName:  inviteView.CreatorName,
+		SpaceName:    inviteView.SpaceName,
+		SpaceIconCid: inviteView.SpaceIconCid,
+	}
+}
+
+func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceInviteViewRequest) (*acl.InviteView, error) {
+	inviteFileKey, err := crypto.DecodeKeyFromString(req.InviteFileKey, func(bytes []byte) (crypto.SymKey, error) {
+		return crypto.UnmarshallAESKey(bytes)
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	inviteCid, err := cid.Decode(req.InviteCid)
+	if err != nil {
+		return nil, err
+	}
+	return aclService.ViewInvite(ctx, inviteCid, inviteFileKey)
 }
 
 func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinRequest) *pb.RpcSpaceJoinResponse {

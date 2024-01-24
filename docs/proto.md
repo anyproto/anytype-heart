@@ -14877,7 +14877,6 @@ Available undo/redo operations
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
-| creatorIconCid | [string](#string) |  |  |
 
 
 
@@ -23667,6 +23666,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | creatorIdentity | [string](#string) |  |  |
+| creatorName | [string](#string) |  |  |
 | inviteKey | [bytes](#bytes) |  |  |
 | spaceId | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |
