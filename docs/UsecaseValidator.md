@@ -16,9 +16,10 @@ Usage of ./usecasevalidator:
 -exclude    Exclude objects that did not pass validation
 -list       List all objects in archive
 -path <string>   Path to zip archive
--r	  Remove account related relations
+-r          Remove account related relations
 -rules <string>  Path to file with processing rules
 -validate   Perform validation upon all objects
+-c          Collect usage information about custom types and relations 
 ```
 
 If all protobuf objects contain correct information and were changed (e.g. `a`, `creator`, `r`, `rules` or `exclude` flags were specified), resulting archive would be written in **<path_to_archive>_new.zip** file in same directory.
