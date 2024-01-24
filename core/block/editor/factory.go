@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -24,6 +25,10 @@ import (
 )
 
 var log = logging.Logger("anytype-mw-editor")
+
+type ObjectDeleter interface {
+	DeleteObjectByFullID(id domain.FullID) (err error)
+}
 
 type accountService interface {
 	PersonalSpaceID() string
@@ -45,6 +50,7 @@ type ObjectFactory struct {
 	indexer            smartblock.Indexer
 	spaceService       spaceService
 	accountService     accountService
+	objectDeleter      ObjectDeleter
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -66,6 +72,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
 	f.accountService = app.MustComponent[accountService](a)
+	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	return nil
 }
 
