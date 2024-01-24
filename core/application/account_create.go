@@ -119,7 +119,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 				LocalPath: req.GetAvatarLocalPath(),
 				Type:      model.BlockContentFile_Image,
 			},
-		})
+		}, nil)
 		if err != nil {
 			log.Warnf("can't add avatar: %v", err)
 		} else {

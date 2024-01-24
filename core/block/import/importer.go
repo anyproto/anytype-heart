@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/metrics/amplitude"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -79,7 +80,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	converters := []common.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
-		pbc.New(col, accountService),
+		pbc.New(col, accountService, i.tempDirProvider),
 		web.NewConverter(),
 		html.New(col, i.tempDirProvider),
 		txt.New(col),
@@ -91,8 +92,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.idProvider = objectid.NewIDProvider(store, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
+	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, fileStore)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	i.oc = creator.New(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
@@ -416,8 +417,9 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	}
 	return details
 }
-func (i *Import) recordEvent(event metrics.EventRepresentable) {
-	metrics.SharedClient.RecordEvent(event)
+
+func (i *Import) recordEvent(event amplitude.Event) {
+	metrics.Service.Send(event)
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {
