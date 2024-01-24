@@ -286,7 +286,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.ParticipantId(s.spaceID), s.accountService.PersonalSpaceID(), s.objectStore)
+	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.accountService.PersonalSpaceID(), s.objectStore)
 	migration.Migrate(st)
 
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {

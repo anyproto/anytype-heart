@@ -46,6 +46,10 @@ packages:
   github.com/anyproto/anytype-heart/core/subscription:
     interfaces:
       CollectionService:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:

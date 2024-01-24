@@ -245,8 +245,8 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 }
 
 func (h *history) getProfileInfo(spaceId string) (profileId, profileName string, err error) {
-	profileId = h.accountService.ParticipantId(spaceId)
-	lp, err := h.accountService.LocalProfile()
+	profileId = h.accountService.MyParticipantId(spaceId)
+	lp, err := h.accountService.ProfileInfo()
 	if err != nil {
 		return
 	}

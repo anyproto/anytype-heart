@@ -186,51 +186,6 @@ func (_c *MockService_GetInfo_Call) RunAndReturn(run func(context.Context, strin
 	return _c
 }
 
-// IdentityObjectId provides a mock function with given fields:
-func (_m *MockService) ParticipantId(string) string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for IdentityObjectId")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// MockService_IdentityObjectId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IdentityObjectId'
-type MockService_IdentityObjectId_Call struct {
-	*mock.Call
-}
-
-// IdentityObjectId is a helper method to define mock.On call
-func (_e *MockService_Expecter) IdentityObjectId() *MockService_IdentityObjectId_Call {
-	return &MockService_IdentityObjectId_Call{Call: _e.mock.On("IdentityObjectId")}
-}
-
-func (_c *MockService_IdentityObjectId_Call) Run(run func()) *MockService_IdentityObjectId_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockService_IdentityObjectId_Call) Return(_a0 string) *MockService_IdentityObjectId_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockService_IdentityObjectId_Call) RunAndReturn(run func() string) *MockService_IdentityObjectId_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Init provides a mock function with given fields: a
 func (_m *MockService) Init(a *app.App) error {
 	ret := _m.Called(a)
@@ -277,57 +232,48 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// LocalProfile provides a mock function with given fields:
-func (_m *MockService) LocalProfile() (account.Profile, error) {
-	ret := _m.Called()
+// MyParticipantId provides a mock function with given fields: _a0
+func (_m *MockService) MyParticipantId(_a0 string) string {
+	ret := _m.Called(_a0)
 
 	if len(ret) == 0 {
-		panic("no return value specified for LocalProfile")
+		panic("no return value specified for MyParticipantId")
 	}
 
-	var r0 account.Profile
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (account.Profile, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() account.Profile); ok {
-		r0 = rf()
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(_a0)
 	} else {
-		r0 = ret.Get(0).(account.Profile)
+		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
-// MockService_LocalProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LocalProfile'
-type MockService_LocalProfile_Call struct {
+// MockService_MyParticipantId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MyParticipantId'
+type MockService_MyParticipantId_Call struct {
 	*mock.Call
 }
 
-// LocalProfile is a helper method to define mock.On call
-func (_e *MockService_Expecter) LocalProfile() *MockService_LocalProfile_Call {
-	return &MockService_LocalProfile_Call{Call: _e.mock.On("LocalProfile")}
+// MyParticipantId is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockService_Expecter) MyParticipantId(_a0 interface{}) *MockService_MyParticipantId_Call {
+	return &MockService_MyParticipantId_Call{Call: _e.mock.On("MyParticipantId", _a0)}
 }
 
-func (_c *MockService_LocalProfile_Call) Run(run func()) *MockService_LocalProfile_Call {
+func (_c *MockService_MyParticipantId_Call) Run(run func(_a0 string)) *MockService_MyParticipantId_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *MockService_LocalProfile_Call) Return(_a0 account.Profile, _a1 error) *MockService_LocalProfile_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockService_MyParticipantId_Call) Return(_a0 string) *MockService_MyParticipantId_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockService_LocalProfile_Call) RunAndReturn(run func() (account.Profile, error)) *MockService_LocalProfile_Call {
+func (_c *MockService_MyParticipantId_Call) RunAndReturn(run func(string) string) *MockService_MyParticipantId_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -418,6 +364,116 @@ func (_c *MockService_PersonalSpaceID_Call) Return(_a0 string) *MockService_Pers
 }
 
 func (_c *MockService_PersonalSpaceID_Call) RunAndReturn(run func() string) *MockService_PersonalSpaceID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ProfileInfo provides a mock function with given fields:
+func (_m *MockService) ProfileInfo() (account.Profile, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ProfileInfo")
+	}
+
+	var r0 account.Profile
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (account.Profile, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() account.Profile); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(account.Profile)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_ProfileInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProfileInfo'
+type MockService_ProfileInfo_Call struct {
+	*mock.Call
+}
+
+// ProfileInfo is a helper method to define mock.On call
+func (_e *MockService_Expecter) ProfileInfo() *MockService_ProfileInfo_Call {
+	return &MockService_ProfileInfo_Call{Call: _e.mock.On("ProfileInfo")}
+}
+
+func (_c *MockService_ProfileInfo_Call) Run(run func()) *MockService_ProfileInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_ProfileInfo_Call) Return(_a0 account.Profile, _a1 error) *MockService_ProfileInfo_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_ProfileInfo_Call) RunAndReturn(run func() (account.Profile, error)) *MockService_ProfileInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ProfileObjectId provides a mock function with given fields:
+func (_m *MockService) ProfileObjectId() (string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ProfileObjectId")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_ProfileObjectId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProfileObjectId'
+type MockService_ProfileObjectId_Call struct {
+	*mock.Call
+}
+
+// ProfileObjectId is a helper method to define mock.On call
+func (_e *MockService_Expecter) ProfileObjectId() *MockService_ProfileObjectId_Call {
+	return &MockService_ProfileObjectId_Call{Call: _e.mock.On("ProfileObjectId")}
+}
+
+func (_c *MockService_ProfileObjectId_Call) Run(run func()) *MockService_ProfileObjectId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_ProfileObjectId_Call) Return(_a0 string, _a1 error) *MockService_ProfileObjectId_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_ProfileObjectId_Call) RunAndReturn(run func() (string, error)) *MockService_ProfileObjectId_Call {
 	_c.Call.Return(run)
 	return _c
 }
