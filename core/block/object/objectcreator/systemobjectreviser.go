@@ -28,6 +28,8 @@ func (s *service) reviseSystemObjects(space clientspace.Space, objects map[strin
 
 	for _, details := range objects {
 		reviseSystemObject(space, details, marketObjects)
+
+		fixReadonlyTagStatus(space, details)
 	}
 }
 
@@ -105,4 +107,24 @@ func buildDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjectSet
 		details = append(details, &pb.RpcObjectSetDetailsDetail{Key: key, Value: value})
 	}
 	return
+}
+
+func fixReadonlyTagStatus(space clientspace.Space, details *types.Struct) {
+	format := model.RelationFormat(pbtypes.GetInt64(details, bundle.RelationKeyRelationFormat.String()))
+
+	if format == model.RelationFormat_tag || format == model.RelationFormat_status {
+		det := []*pb.RpcObjectSetDetailsDetail{{
+			Key:   bundle.RelationKeyIsReadonly.String(),
+			Value: pbtypes.Bool(false),
+		}}
+		if err := space.Do(pbtypes.GetString(details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
+			if ds, ok := sb.(basic.DetailsSettable); ok {
+				return ds.SetDetails(nil, det, false)
+			}
+			return nil
+		}); err != nil {
+			source := pbtypes.GetString(details, bundle.RelationKeySourceObject.String())
+			log.Errorf("failed to set readOnly=true to relation %s in space %s: %v", source, space.Id(), err)
+		}
+	}
 }
