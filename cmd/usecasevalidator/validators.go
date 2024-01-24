@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
-	"github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -57,8 +56,8 @@ func validateRelationBlocks(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) 
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	var relKeys []string
 	for _, b := range s.Snapshot.Data.Blocks {
-		if rb, ok := simple.New(b).(relation.Block); ok {
-			relKeys = append(relKeys, rb.Model().GetRelation().Key)
+		if rel := simple.New(b).Model().GetRelation(); rel != nil {
+			relKeys = append(relKeys, rel.Key)
 		}
 	}
 	relLinks := pbtypes.RelationLinks(s.Snapshot.Data.GetRelationLinks())
