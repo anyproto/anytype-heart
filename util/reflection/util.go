@@ -6,11 +6,16 @@ import (
 	"strings"
 )
 
-func GetError(i interface{}) (code int64, description string, err error) {
-	v := reflect.ValueOf(i).Elem()
+func GetError(obj any) (code int64, description string, err error) {
+	val := reflect.ValueOf(obj)
 
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
+	if !val.IsValid() {
+		return code, description, errors.New("response is absent")
+	}
+
+	elem := val.Elem()
+	for i := 0; i < elem.NumField(); i++ {
+		f := elem.Field(i)
 		if f.Kind() != reflect.Pointer {
 			continue
 		}
