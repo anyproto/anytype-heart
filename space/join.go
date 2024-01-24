@@ -6,6 +6,12 @@ import (
 
 func (s *service) Join(ctx context.Context, id string) error {
 	s.mu.Lock()
+	waiter, exists := s.waiting[id]
+	if exists {
+		s.mu.Unlock()
+		<-waiter.wait
+		return waiter.err
+	}
 	wait := make(chan struct{})
 	s.waiting[id] = controllerWaiter{
 		wait: wait,

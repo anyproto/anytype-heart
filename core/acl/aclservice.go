@@ -88,7 +88,6 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 	if err != nil {
 		return err
 	}
-	// TODO: check if we already have the space view
 	return a.spaceService.Join(ctx, spaceId)
 }
 
@@ -307,7 +306,6 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 	if err != nil {
 		return nil, fmt.Errorf("encode invite file key: %w", err)
 	}
-
 	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
 		view, ok := sb.(spaceViewObject)
 		if !ok {
