@@ -1027,11 +1027,12 @@ message Invite {
 
 message InvitePayload {
     string creatorIdentity = 1;
-    bytes inviteKey = 2;
-    string spaceId = 3;
-    string spaceName = 4;
-    string spaceIconCid = 5;
-    repeated FileEncryptionKey spaceIconEncryptionKeys = 6;
+    string creatorName = 2;
+    bytes inviteKey = 3;
+    string spaceId = 4;
+    string spaceName = 5;
+    string spaceIconCid = 6;
+    repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
 }
 
 message IdentityProfile {

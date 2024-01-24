@@ -33,7 +33,7 @@ func New() Service {
 }
 
 type accountService interface {
-	IdentityObjectId() string
+	MyParticipantId(string) string
 	PersonalSpaceID() string
 }
 

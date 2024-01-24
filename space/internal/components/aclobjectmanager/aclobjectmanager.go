@@ -2,7 +2,6 @@ package aclobjectmanager
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -14,10 +13,8 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
@@ -119,14 +116,51 @@ func (a *aclObjectManager) process() {
 		}
 		break
 	}
+
+	err := a.initAndRegisterMyIdentity(a.ctx)
+	if err != nil {
+		log.Error("init my identity", zap.Error(err))
+	}
+
 	common := a.sp.CommonSpace()
 	common.Acl().SetAclUpdater(a)
 	common.Acl().RLock()
 	defer common.Acl().RUnlock()
-	err := a.processAcl()
+	err = a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
+}
+
+func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error {
+	myIdentity, metadataKey, profileDetails := a.identityService.GetMyProfileDetails()
+	id := domain.NewParticipantId(a.sp.Id(), myIdentity)
+	_, err := a.sp.GetObject(ctx, id)
+	if err != nil {
+		return err
+	}
+	details := buildParticipantDetails(id, a.sp.Id(), myIdentity, model.ParticipantPermissions_Owner)
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()))
+	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
+	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
+	err = a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+		return pbtypes.StructMerge(current, details, false), nil
+	})
+	if err != nil {
+		return err
+	}
+	err = a.identityService.RegisterIdentity(a.sp.Id(), myIdentity, metadataKey,
+		func(identity string, profile *model.IdentityProfile) {
+			err := a.updateParticipantFromIdentity(a.ctx, identity, profile)
+			if err != nil {
+				log.Error("error updating participant from identity", zap.Error(err))
+			}
+		},
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (a *aclObjectManager) clearAclIndexes() (err error) {
@@ -255,31 +289,19 @@ func (a *aclObjectManager) processJoinRecords(recs []list.RequestRecord) (err er
 }
 
 func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AclAccountState) (err error) {
-	id := source.NewParticipantId(a.sp.Id(), accState.PubKey.Account())
+	id := domain.NewParticipantId(a.sp.Id(), accState.PubKey.Account())
 	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
 		return err
 	}
-	details := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():                     pbtypes.String(id),
-		bundle.RelationKeyIdentity.String():               pbtypes.String(accState.PubKey.Account()),
-		bundle.RelationKeyIsReadonly.String():             pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String():             pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():               pbtypes.Bool(false),
-		bundle.RelationKeySpaceId.String():                pbtypes.String(a.sp.Id()),
-		bundle.RelationKeyType.String():                   pbtypes.String(bundle.TypeKeyParticipant.BundledURL()),
-		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_participant)),
-		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
-		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
-		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(convertPermissions(accState.Permissions))),
-	}}
+	details := buildParticipantDetails(id, a.sp.Id(), accState.PubKey.Account(), convertPermissions(accState.Permissions))
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		return pbtypes.StructMerge(current, details, false), nil
 	})
 }
 
 func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, identity string, profile *model.IdentityProfile) (err error) {
-	id := source.NewParticipantId(a.sp.Id(), identity)
+	id := domain.NewParticipantId(a.sp.Id(), identity)
 	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
 		return err
@@ -294,26 +316,12 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 }
 
 func (a *aclObjectManager) updateParticipantFromAclRequest(ctx context.Context, rec list.RequestRecord) (err error) {
-	key := fmt.Sprintf("%s_%s", a.sp.Id(), rec.RequestIdentity.Account())
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeParticipant, key)
+	id := domain.NewParticipantId(a.sp.Id(), rec.RequestIdentity.Account())
+	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
-		return
+		return err
 	}
-	id := uniqueKey.Marshal()
-	_, err = a.sp.GetObject(ctx, uniqueKey.Marshal())
-	details := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():                     pbtypes.String(id),
-		bundle.RelationKeyIdentity.String():               pbtypes.String(rec.RequestIdentity.Account()),
-		bundle.RelationKeyIsReadonly.String():             pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String():             pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():               pbtypes.Bool(false),
-		bundle.RelationKeySpaceId.String():                pbtypes.String(a.sp.Id()),
-		bundle.RelationKeyType.String():                   pbtypes.String(bundle.TypeKeyParticipant.BundledURL()),
-		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_participant)),
-		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
-		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
-		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_NoPermissions)),
-	}}
+	details := buildParticipantDetails(id, a.sp.Id(), rec.RequestIdentity.Account(), model.ParticipantPermissions_NoPermissions)
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		return pbtypes.StructMerge(current, details, false), nil
 	})
@@ -355,4 +363,20 @@ func getSymKey(metadata []byte) (crypto.SymKey, error) {
 		return nil, err
 	}
 	return crypto.UnmarshallAESKey(keyProto.Data)
+}
+
+func buildParticipantDetails(id string, spaceId string, identity string, permissions model.ParticipantPermissions) *types.Struct {
+	return &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyId.String():                     pbtypes.String(id),
+		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
+		bundle.RelationKeyIsReadonly.String():             pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String():             pbtypes.Bool(false),
+		bundle.RelationKeyIsHidden.String():               pbtypes.Bool(false),
+		bundle.RelationKeySpaceId.String():                pbtypes.String(spaceId),
+		bundle.RelationKeyType.String():                   pbtypes.String(bundle.TypeKeyParticipant.BundledURL()),
+		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_participant)),
+		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
+		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
+	}}
 }

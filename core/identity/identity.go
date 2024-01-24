@@ -16,7 +16,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -39,6 +38,8 @@ var (
 )
 
 type Service interface {
+	GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct)
+
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
 	// UnregisterIdentity removes the observer for the identity in specified space
@@ -51,10 +52,6 @@ type Service interface {
 	// SpaceId returns the spaceId used to store the identities in the objectStore
 	SpaceId() string
 	app.ComponentRunnable
-}
-
-type DetailsModifier interface {
-	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
 }
 
 type spaceIdDeriver interface {
@@ -73,18 +70,19 @@ type service struct {
 	objectStore       objectstore.ObjectStore
 	accountService    account.Service
 	spaceIdDeriver    spaceIdDeriver
-	detailsModifier   DetailsModifier
 	coordinatorClient coordinatorclient.CoordinatorClient
 	fileAclService    fileacl.Service
 	closing           chan struct{}
+	startedCh         chan struct{}
 	identities        []string
 	techSpaceId       string
 	personalSpaceId   string
 
-	pushIdentityProfileLock    sync.RWMutex
-	pushIdentityProfileDetails *types.Struct // save details to batch update operation
-	pushIdentityTimer          *time.Timer   // timer for batching
-	pushIdentityBatchTimeout   time.Duration
+	myIdentity                string
+	currentProfileDetailsLock sync.RWMutex
+	currentProfileDetails     *types.Struct // save details to batch update operation
+	pushIdentityTimer         *time.Timer   // timer for batching
+	pushIdentityBatchTimeout  time.Duration
 
 	identityObservePeriod time.Duration
 	identityForceUpdate   chan struct{}
@@ -97,6 +95,7 @@ type service struct {
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
 	return &service{
+		startedCh:                make(chan struct{}),
 		closing:                  make(chan struct{}),
 		identityForceUpdate:      make(chan struct{}),
 		identityObservePeriod:    identityObservePeriod,
@@ -111,7 +110,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.accountService = app.MustComponent[account.Service](a)
 	s.spaceIdDeriver = app.MustComponent[spaceIdDeriver](a)
-	s.detailsModifier = app.MustComponent[DetailsModifier](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.coordinatorClient = app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.fileAclService = app.MustComponent[fileacl.Service](a)
@@ -138,10 +136,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	err = s.indexIdentityObject(ctx)
-	if err != nil {
-		return err
-	}
+	s.myIdentity = s.accountService.AccountID()
 
 	err = s.runLocalProfileSubscriptions(ctx)
 	if err != nil {
@@ -151,21 +146,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 	go s.observeIdentitiesLoop()
 
 	return
-}
-
-func (s *service) indexIdentityObject(ctx context.Context) error {
-	// Index profile
-	techSpace, err := s.spaceService.Get(ctx, s.techSpaceId)
-	if err != nil {
-		return fmt.Errorf("get tech space: %w", err)
-	}
-	err = techSpace.Do(s.accountService.IdentityObjectId(), func(_ smartblock.SmartBlock) error {
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("touch profile to index: %w", err)
-	}
-	return nil
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
@@ -275,21 +255,18 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 	return nil
 }
 
-func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
-	identityObjectId := s.accountService.IdentityObjectId()
-	details := getDetailsFromProfile(identityObjectId, s.techSpaceId, profileDetails)
-	err := s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
-		return pbtypes.StructMerge(current, details, false), nil
-	})
-	if err != nil {
-		return fmt.Errorf("modify details: %w", err)
-	}
+func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct) {
+	<-s.startedCh
+	s.currentProfileDetailsLock.RLock()
+	defer s.currentProfileDetailsLock.RUnlock()
 
-	s.pushIdentityProfileLock.Lock()
-	s.pushIdentityProfileDetails = profileDetails
-	s.pushIdentityProfileLock.Unlock()
+	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
+}
+
+func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
+	s.cacheProfileDetails(profileDetails)
 	if s.pushIdentityTimer == nil {
-		s.pushIdentityTimer = time.AfterFunc(s.pushIdentityBatchTimeout, func() {
+		s.pushIdentityTimer = time.AfterFunc(0, func() {
 			pushErr := s.pushProfileToIdentityRegistry(context.Background())
 			if pushErr != nil {
 				log.Error("push profile to identity registry", zap.Error(pushErr))
@@ -302,6 +279,30 @@ func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
 	return nil
 }
 
+func (s *service) cacheProfileDetails(details *types.Struct) {
+	if details == nil {
+		return
+	}
+	s.currentProfileDetailsLock.Lock()
+	if s.currentProfileDetails == nil {
+		close(s.startedCh)
+	}
+	s.currentProfileDetails = details
+	s.currentProfileDetailsLock.Unlock()
+
+	identityProfile := &model.IdentityProfile{
+		Identity: s.myIdentity,
+		Name:     pbtypes.GetString(details, bundle.RelationKeyName.String()),
+		IconCid:  pbtypes.GetString(details, bundle.RelationKeyIconImage.String()),
+	}
+	observers, ok := s.identityObservers[s.myIdentity]
+	if ok {
+		for _, obs := range observers {
+			obs.callback(s.myIdentity, identityProfile)
+		}
+	}
+}
+
 func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId string) (iconCid string, iconEncryptionKeys []*model.FileEncryptionKey, err error) {
 	if iconImageObjectId == "" {
 		return "", nil, nil
@@ -310,10 +311,10 @@ func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId st
 }
 
 func (s *service) pushProfileToIdentityRegistry(ctx context.Context) error {
-	s.pushIdentityProfileLock.RLock()
-	defer s.pushIdentityProfileLock.RUnlock()
+	s.currentProfileDetailsLock.RLock()
+	defer s.currentProfileDetailsLock.RUnlock()
 
-	iconImageObjectId := pbtypes.GetString(s.pushIdentityProfileDetails, bundle.RelationKeyIconImage.String())
+	iconImageObjectId := pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyIconImage.String())
 	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(ctx, iconImageObjectId)
 	if err != nil {
 		return fmt.Errorf("prepare icon image info: %w", err)
@@ -322,7 +323,7 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context) error {
 	identity := s.accountService.AccountID()
 	identityProfile := &model.IdentityProfile{
 		Identity:           identity,
-		Name:               pbtypes.GetString(s.pushIdentityProfileDetails, bundle.RelationKeyName.String()),
+		Name:               pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyName.String()),
 		IconCid:            iconCid,
 		IconEncryptionKeys: iconEncryptionKeys,
 	}
@@ -387,8 +388,11 @@ func (s *service) observeIdentities(ctx context.Context) error {
 	if len(s.identityObservers) == 0 {
 		return nil
 	}
-	identities := make([]string, 0, len(s.identityObservers))
+	identities := make([]string, 0, len(s.identityObservers)-1)
 	for identity := range s.identityObservers {
+		if identity == s.myIdentity {
+			continue
+		}
 		identities = append(identities, identity)
 	}
 	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)

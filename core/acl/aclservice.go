@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -26,11 +27,19 @@ import (
 
 const CName = "common.acl.aclservice"
 
+var (
+	ErrInviteNotExist     = fmt.Errorf("invite doesn't exist")
+	ErrPersonalSpace      = fmt.Errorf("sharing of personal space is forbidden")
+	ErrInviteBadSignature = fmt.Errorf("invite has bad signature")
+)
+
 type AclService interface {
 	app.Component
+	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey) error
-	GenerateInvite(ctx context.Context, spaceId string) (*GenerateInviteResult, error)
+	GetCurrentInvite(spaceId string) (*InviteInfo, error)
+	GenerateInvite(ctx context.Context, spaceId string) (*InviteInfo, error)
 }
 
 func New() AclService {
@@ -61,30 +70,9 @@ func (a *aclService) Name() (name string) {
 }
 
 func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
-	metadata := a.spaceService.AccountMetadataPayload()
-
-	invite, err := a.inviteStore.GetInvite(ctx, inviteCid, inviteFileKey)
+	invitePayload, err := a.getInvitePayload(ctx, inviteCid, inviteFileKey)
 	if err != nil {
-		return fmt.Errorf("get invite: %w", err)
-	}
-
-	var invitePayload model.InvitePayload
-	err = proto.Unmarshal(invite.Payload, &invitePayload)
-	if err != nil {
-		return fmt.Errorf("unmarshal invite payload: %w", err)
-	}
-
-	creatorIdentity, err := crypto.DecodeAccountAddress(invitePayload.CreatorIdentity)
-	if err != nil {
-		return fmt.Errorf("decode creator identity: %w", err)
-	}
-
-	ok, err := creatorIdentity.Verify(invite.Payload, invite.Signature)
-	if err != nil {
-		return fmt.Errorf("verify invite signature: %w", err)
-	}
-	if !ok {
-		return fmt.Errorf("invite signature is invalid")
+		return fmt.Errorf("get invite payload: %w", err)
 	}
 
 	// TODO Setup space name and info
@@ -92,15 +80,65 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 	if err != nil {
 		return fmt.Errorf("unmarshal invite key: %w", err)
 	}
+
 	err = a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
 		InviteKey: inviteKey,
-		Metadata:  metadata,
+		Metadata:  a.spaceService.AccountMetadataPayload(),
 	})
 	if err != nil {
 		return err
 	}
 	// TODO: check if we already have the space view
 	return a.spaceService.Join(ctx, spaceId)
+}
+
+type InviteView struct {
+	SpaceName    string
+	SpaceIconCid string
+	CreatorName  string
+}
+
+func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error) {
+	invitePayload, err := a.getInvitePayload(ctx, inviteCid, inviteFileKey)
+	if err != nil {
+		return nil, fmt.Errorf("get invite payload: %w", err)
+	}
+	return &InviteView{
+		SpaceName:    invitePayload.SpaceName,
+		SpaceIconCid: invitePayload.SpaceIconCid,
+		CreatorName:  invitePayload.CreatorName,
+	}, nil
+}
+
+func (a *aclService) getInvitePayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*model.InvitePayload, error) {
+	invite, err := a.inviteStore.GetInvite(ctx, inviteCid, inviteFileKey)
+	if err != nil {
+		return nil, fmt.Errorf("get invite: %w", err)
+	}
+	var invitePayload model.InvitePayload
+	err = proto.Unmarshal(invite.Payload, &invitePayload)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal invite payload: %w", err)
+	}
+	creatorIdentity, err := crypto.DecodeAccountAddress(invitePayload.CreatorIdentity)
+	if err != nil {
+		return nil, fmt.Errorf("decode creator identity: %w", err)
+	}
+
+	ok, err := creatorIdentity.Verify(invite.Payload, invite.Signature)
+	if err != nil {
+		return nil, fmt.Errorf("verify invite signature: %w", err)
+	}
+	if !ok {
+		return nil, ErrInviteBadSignature
+	}
+
+	err = a.fileAcl.StoreFileKeys(domain.FileId(invitePayload.SpaceIconCid), invitePayload.SpaceIconEncryptionKeys)
+	if err != nil {
+		return nil, fmt.Errorf("store icon keys: %w", err)
+	}
+
+	return &invitePayload, nil
 }
 
 func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey) error {
@@ -134,7 +172,7 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	})
 }
 
-type GenerateInviteResult struct {
+type InviteInfo struct {
 	InviteFileCid string
 	InviteFileKey string
 }
@@ -159,12 +197,17 @@ func (a *aclService) buildInvite(ctx context.Context, space clientspace.Space, i
 }
 
 func (a *aclService) buildInvitePayload(ctx context.Context, space clientspace.Space, inviteKey crypto.PrivKey) (*model.InvitePayload, error) {
+	profile, err := a.accountService.ProfileInfo()
+	if err != nil {
+		return nil, fmt.Errorf("get profile info: %w", err)
+	}
 	rawInviteKey, err := inviteKey.Marshall()
 	if err != nil {
 		return nil, fmt.Errorf("marshal invite priv key: %w", err)
 	}
 	invitePayload := &model.InvitePayload{
 		CreatorIdentity: a.accountService.AccountID(),
+		CreatorName:     profile.Name,
 		InviteKey:       rawInviteKey,
 	}
 	err = space.Do(space.DerivedIDs().Workspace, func(sb smartblock.SmartBlock) error {
@@ -201,7 +244,28 @@ func (a *aclService) getExistingInviteFileInfo(spaceViewId string) (fileCid stri
 	return
 }
 
-func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result *GenerateInviteResult, err error) {
+func (a *aclService) GetCurrentInvite(spaceId string) (*InviteInfo, error) {
+	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("get space view id: %w", err)
+	}
+	fileCid, fileKey, err := a.getExistingInviteFileInfo(spaceViewId)
+	if err != nil {
+		return nil, fmt.Errorf("get existing invite file info: %w", err)
+	}
+	if fileCid == "" {
+		return nil, ErrInviteNotExist
+	}
+	return &InviteInfo{
+		InviteFileCid: fileCid,
+		InviteFileKey: fileKey,
+	}, nil
+}
+
+func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result *InviteInfo, err error) {
+	if spaceId == a.accountService.PersonalSpaceID() {
+		return nil, ErrPersonalSpace
+	}
 	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
 	if err != nil {
 		return nil, fmt.Errorf("get space view id: %w", err)
@@ -211,7 +275,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		return nil, fmt.Errorf("get existing invite file info: %w", err)
 	}
 	if fileCid != "" {
-		return &GenerateInviteResult{
+		return &InviteInfo{
 			InviteFileCid: fileCid,
 			InviteFileKey: fileKey,
 		}, nil
@@ -255,7 +319,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		return nil, fmt.Errorf("set invite file info: %w", err)
 	}
 
-	return &GenerateInviteResult{
+	return &InviteInfo{
 		InviteFileCid: inviteFileCid.String(),
 		InviteFileKey: inviteFileKeyRaw,
 	}, err

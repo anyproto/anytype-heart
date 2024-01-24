@@ -396,58 +396,67 @@ func (_c *MockService_GetFileIdFromObject_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// GetObjectIdByFileId provides a mock function with given fields: fileId
-func (_m *MockService) GetObjectIdByFileId(fileId domain.FileId) (string, error) {
+// GetObjectDetailsByFileId provides a mock function with given fields: fileId
+func (_m *MockService) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
 	ret := _m.Called(fileId)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetObjectIdByFileId")
+		panic("no return value specified for GetObjectDetailsByFileId")
 	}
 
 	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(domain.FileId) (string, error)); ok {
+	var r1 *types.Struct
+	var r2 error
+	if rf, ok := ret.Get(0).(func(domain.FullFileId) (string, *types.Struct, error)); ok {
 		return rf(fileId)
 	}
-	if rf, ok := ret.Get(0).(func(domain.FileId) string); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullFileId) string); ok {
 		r0 = rf(fileId)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(domain.FileId) error); ok {
+	if rf, ok := ret.Get(1).(func(domain.FullFileId) *types.Struct); ok {
 		r1 = rf(fileId)
 	} else {
-		r1 = ret.Error(1)
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*types.Struct)
+		}
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(domain.FullFileId) error); ok {
+		r2 = rf(fileId)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
-// MockService_GetObjectIdByFileId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectIdByFileId'
-type MockService_GetObjectIdByFileId_Call struct {
+// MockService_GetObjectDetailsByFileId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectDetailsByFileId'
+type MockService_GetObjectDetailsByFileId_Call struct {
 	*mock.Call
 }
 
-// GetObjectIdByFileId is a helper method to define mock.On call
-//   - fileId domain.FileId
-func (_e *MockService_Expecter) GetObjectIdByFileId(fileId interface{}) *MockService_GetObjectIdByFileId_Call {
-	return &MockService_GetObjectIdByFileId_Call{Call: _e.mock.On("GetObjectIdByFileId", fileId)}
+// GetObjectDetailsByFileId is a helper method to define mock.On call
+//   - fileId domain.FullFileId
+func (_e *MockService_Expecter) GetObjectDetailsByFileId(fileId interface{}) *MockService_GetObjectDetailsByFileId_Call {
+	return &MockService_GetObjectDetailsByFileId_Call{Call: _e.mock.On("GetObjectDetailsByFileId", fileId)}
 }
 
-func (_c *MockService_GetObjectIdByFileId_Call) Run(run func(fileId domain.FileId)) *MockService_GetObjectIdByFileId_Call {
+func (_c *MockService_GetObjectDetailsByFileId_Call) Run(run func(fileId domain.FullFileId)) *MockService_GetObjectDetailsByFileId_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(domain.FileId))
+		run(args[0].(domain.FullFileId))
 	})
 	return _c
 }
 
-func (_c *MockService_GetObjectIdByFileId_Call) Return(_a0 string, _a1 error) *MockService_GetObjectIdByFileId_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockService_GetObjectDetailsByFileId_Call) Return(_a0 string, _a1 *types.Struct, _a2 error) *MockService_GetObjectDetailsByFileId_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockService_GetObjectIdByFileId_Call) RunAndReturn(run func(domain.FileId) (string, error)) *MockService_GetObjectIdByFileId_Call {
+func (_c *MockService_GetObjectDetailsByFileId_Call) RunAndReturn(run func(domain.FullFileId) (string, *types.Struct, error)) *MockService_GetObjectDetailsByFileId_Call {
 	_c.Call.Return(run)
 	return _c
 }

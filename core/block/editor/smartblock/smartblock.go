@@ -33,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -87,7 +86,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 func New(
 	space Space,
-	currentProfileId string,
+	currentParticipantId string,
 	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
@@ -95,12 +94,12 @@ func New(
 	eventSender event.Sender,
 ) SmartBlock {
 	s := &smartBlock{
-		currentProfileId: currentProfileId,
-		space:            space,
-		hooks:            map[Hook][]HookCallback{},
-		hooksOnce:        map[string]struct{}{},
-		Locker:           &sync.Mutex{},
-		sessions:         map[string]session.Context{},
+		currentParticipantId: currentParticipantId,
+		space:                space,
+		hooks:                map[Hook][]HookCallback{},
+		hooksOnce:            map[string]struct{}{},
+		Locker:               &sync.Mutex{},
+		sessions:             map[string]session.Context{},
 
 		fileStore:          fileStore,
 		restrictionService: restrictionService,
@@ -216,15 +215,15 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	currentProfileId string
-	depIds           []string // slice must be sorted
-	sessions         map[string]session.Context
-	undo             undo.History
-	source           source.Source
-	lastDepDetails   map[string]*pb.EventObjectDetailsSet
-	restrictions     restriction.Restrictions
-	isDeleted        bool
-	disableLayouts   bool
+	currentParticipantId string
+	depIds               []string // slice must be sorted
+	sessions             map[string]session.Context
+	undo                 undo.History
+	source               source.Source
+	lastDepDetails       map[string]*pb.EventObjectDetailsSet
+	restrictions         restriction.Restrictions
+	isDeleted            bool
+	disableLayouts       bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -350,7 +349,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	ctx.State.AddBundledRelations(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
-		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentProfileId, "", sb.objectStore).Migrate(ctx.State)
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(ctx.State)
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
@@ -613,7 +612,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentProfileId))
+	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentParticipantId))
 	s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
 
 	sb.beforeStateApply(s)
@@ -748,7 +747,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentProfileId, "", sb.objectStore).Migrate(s)
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -1227,7 +1226,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 
 	for _, link := range links {
 		// sync backlinks of identity and profile objects in personal space
-		if strings.HasPrefix(link, addr.IdentityPrefix) && sb.space.IsPersonal() {
+		if strings.HasPrefix(link, domain.ParticipantPrefix) && sb.space.IsPersonal() {
 			links = append(links, sb.space.DerivedIDs().Profile)
 			break
 		}

@@ -28,28 +28,44 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 }
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
-	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
-	inviteCid, inviteFileKey, err := generateInvite(cctx, req.SpaceId, aclService)
-	code := mapErrorCode(err,
-		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
-		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteGenerateResponseError_NO_SUCH_SPACE),
-	)
+	aclService := getService[acl.AclService](mw)
+	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
+			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteGenerateResponseError_NO_SUCH_SPACE),
+			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteGenerateResponseError_BAD_INPUT),
+		)
+		return &pb.RpcSpaceInviteGenerateResponse{
+			Error: &pb.RpcSpaceInviteGenerateResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
 	return &pb.RpcSpaceInviteGenerateResponse{
-		InviteCid:     inviteCid,
-		InviteFileKey: inviteFileKey,
-		Error: &pb.RpcSpaceInviteGenerateResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
-		},
+		InviteCid:     inviteInfo.InviteFileCid,
+		InviteFileKey: inviteInfo.InviteFileKey,
 	}
 }
 
 func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpaceInviteGetCurrentRequest) *pb.RpcSpaceInviteGetCurrentResponse {
+	aclService := getService[acl.AclService](mw)
+	inviteInfo, err := aclService.GetCurrentInvite(req.SpaceId)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(acl.ErrInviteNotExist, pb.RpcSpaceInviteGetCurrentResponseError_NO_ACTIVE_INVITE),
+		)
+		return &pb.RpcSpaceInviteGetCurrentResponse{
+			Error: &pb.RpcSpaceInviteGetCurrentResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
 	return &pb.RpcSpaceInviteGetCurrentResponse{
-		Error: &pb.RpcSpaceInviteGetCurrentResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
-		},
+		InviteCid:     inviteInfo.InviteFileCid,
+		InviteFileKey: inviteInfo.InviteFileKey,
 	}
 }
 
@@ -63,12 +79,38 @@ func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceIn
 }
 
 func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInviteViewRequest) *pb.RpcSpaceInviteViewResponse {
-	return &pb.RpcSpaceInviteViewResponse{
-		Error: &pb.RpcSpaceInviteViewResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
-		},
+	aclService := getService[acl.AclService](mw)
+	inviteView, err := viewInvite(cctx, aclService, req)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(acl.ErrInviteBadSignature, pb.RpcSpaceInviteViewResponseError_INVITE_BAD_SIGNATURE),
+		)
+		return &pb.RpcSpaceInviteViewResponse{
+			Error: &pb.RpcSpaceInviteViewResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
 	}
+	return &pb.RpcSpaceInviteViewResponse{
+		CreatorName:  inviteView.CreatorName,
+		SpaceName:    inviteView.SpaceName,
+		SpaceIconCid: inviteView.SpaceIconCid,
+	}
+}
+
+func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceInviteViewRequest) (*acl.InviteView, error) {
+	inviteFileKey, err := crypto.DecodeKeyFromString(req.InviteFileKey, func(bytes []byte) (crypto.SymKey, error) {
+		return crypto.UnmarshallAESKey(bytes)
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	inviteCid, err := cid.Decode(req.InviteCid)
+	if err != nil {
+		return nil, err
+	}
+	return aclService.ViewInvite(ctx, inviteCid, inviteFileKey)
 }
 
 func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinRequest) *pb.RpcSpaceJoinResponse {
@@ -135,14 +177,6 @@ func (mw *Middleware) SpaceParticipantRemove(cctx context.Context, req *pb.RpcSp
 			Description: getErrorDescription(fmt.Errorf("not implemented")),
 		},
 	}
-}
-
-func generateInvite(ctx context.Context, spaceId string, aclService acl.AclService) (inviteCid string, inviteFilekey string, err error) {
-	res, err := aclService.GenerateInvite(ctx, spaceId)
-	if err != nil {
-		return
-	}
-	return res.InviteFileCid, res.InviteFileKey, nil
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
