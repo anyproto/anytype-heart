@@ -33,7 +33,8 @@ type AclObjectManager interface {
 
 func New(ownerMetadata []byte) AclObjectManager {
 	return &aclObjectManager{
-		ownerMetadata: ownerMetadata,
+		ownerMetadata:     ownerMetadata,
+		addedParticipants: make(map[string]struct{}),
 	}
 }
 
@@ -51,9 +52,10 @@ type aclObjectManager struct {
 	indexer         dependencies.SpaceIndexer
 	started         bool
 
-	ownerMetadata []byte
-	mx            sync.Mutex
-	lastIndexed   string
+	ownerMetadata     []byte
+	mx                sync.Mutex
+	lastIndexed       string
+	addedParticipants map[string]struct{}
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
@@ -139,7 +141,7 @@ func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error 
 	if err != nil {
 		return err
 	}
-	details := buildParticipantDetails(id, a.sp.Id(), myIdentity, model.ParticipantPermissions_Owner)
+	details := buildParticipantDetails(id, a.sp.Id(), myIdentity, model.ParticipantPermissions_Owner, model.ParticipantStatus_Active)
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()))
 	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
 	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
@@ -160,6 +162,9 @@ func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error 
 	if err != nil {
 		return err
 	}
+	a.mx.Lock()
+	a.addedParticipants[myIdentity] = struct{}{}
+	a.mx.Unlock()
 	return nil
 }
 
@@ -181,44 +186,21 @@ func (a *aclObjectManager) processAcl() (err error) {
 	if lastIndexed == common.Acl().Head().Id {
 		return nil
 	}
-	var diff list.AclAccountDiff
-	// get all identities and permissions for us to process
-	if lastIndexed == "" {
-		diff.Added = common.Acl().AclState().CurrentStates()
-	} else {
-		diff, err = common.Acl().AclState().ChangedStates(lastIndexed, common.Acl().Head().Id)
-		if err != nil {
-			return
-		}
-	}
 	decrypt := func(key crypto.PubKey) ([]byte, error) {
 		if a.ownerMetadata != nil {
 			return a.ownerMetadata, nil
 		}
 		return common.Acl().AclState().GetMetadata(key, true)
 	}
+	states := common.Acl().AclState().CurrentStates()
 	// decrypt all metadata
-	decryptedAdded, err := decryptAll(diff.Added, decrypt)
+	states, err = decryptAll(states, decrypt)
 	if err != nil {
 		return
 	}
-	decryptedChanged, err := decryptAll(diff.Changed, decrypt)
-	if err != nil {
-		return
-	}
-	diff.Added = decryptedAdded
-	diff.Changed = decryptedChanged
 	a.mx.Lock()
 	defer a.mx.Unlock()
-	err = a.processDiff(diff)
-	if err != nil {
-		return
-	}
-	recs, err := common.Acl().AclState().JoinRecords(true)
-	if err != nil {
-		return
-	}
-	err = a.processJoinRecords(recs)
+	err = a.processStates(states)
 	if err != nil {
 		return
 	}
@@ -226,8 +208,8 @@ func (a *aclObjectManager) processAcl() (err error) {
 	return
 }
 
-func (a *aclObjectManager) processDiff(diff list.AclAccountDiff) (err error) {
-	for _, state := range diff.Added {
+func (a *aclObjectManager) processStates(states []list.AccountState) (err error) {
+	for _, state := range states {
 		err := a.updateParticipantFromAclState(a.ctx, state)
 		if err != nil {
 			return err
@@ -235,6 +217,10 @@ func (a *aclObjectManager) processDiff(diff list.AclAccountDiff) (err error) {
 		key, err := getSymKey(state.RequestMetadata)
 		if err != nil {
 			return err
+		}
+		accKey := state.PubKey.Account()
+		if _, exists := a.addedParticipants[state.PubKey.Account()]; exists {
+			continue
 		}
 		err = a.identityService.RegisterIdentity(a.sp.Id(), state.PubKey.Account(), key,
 			func(identity string, profile *model.IdentityProfile) {
@@ -247,54 +233,23 @@ func (a *aclObjectManager) processDiff(diff list.AclAccountDiff) (err error) {
 		if err != nil {
 			return err
 		}
-	}
-	for _, state := range diff.Changed {
-		err := a.updateParticipantFromAclState(a.ctx, state)
-		if err != nil {
-			return err
-		}
-	}
-	for _, state := range diff.Removed {
-		err := a.deleteObject(state.PubKey)
-		if err != nil {
-			return err
-		}
+		a.addedParticipants[accKey] = struct{}{}
 	}
 	return nil
 }
 
-func (a *aclObjectManager) processJoinRecords(recs []list.RequestRecord) (err error) {
-	for _, rec := range recs {
-		err := a.updateParticipantFromAclRequest(a.ctx, rec)
-		if err != nil {
-			return err
-		}
-		key, err := getSymKey(rec.RequestMetadata)
-		if err != nil {
-			return err
-		}
-		err = a.identityService.RegisterIdentity(a.sp.Id(), rec.RequestIdentity.Account(), key,
-			func(identity string, profile *model.IdentityProfile) {
-				err := a.updateParticipantFromIdentity(a.ctx, identity, profile)
-				if err != nil {
-					log.Error("error updating participant from identity", zap.Error(err))
-				}
-			},
-		)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AclAccountState) (err error) {
+func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AccountState) (err error) {
 	id := domain.NewParticipantId(a.sp.Id(), accState.PubKey.Account())
 	_, err = a.sp.GetObject(ctx, id)
 	if err != nil {
 		return err
 	}
-	details := buildParticipantDetails(id, a.sp.Id(), accState.PubKey.Account(), convertPermissions(accState.Permissions))
+	details := buildParticipantDetails(
+		id,
+		a.sp.Id(),
+		accState.PubKey.Account(),
+		convertPermissions(accState.Permissions),
+		convertStatus(accState.Status))
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		return pbtypes.StructMerge(current, details, false), nil
 	})
@@ -315,18 +270,6 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 	})
 }
 
-func (a *aclObjectManager) updateParticipantFromAclRequest(ctx context.Context, rec list.RequestRecord) (err error) {
-	id := domain.NewParticipantId(a.sp.Id(), rec.RequestIdentity.Account())
-	_, err = a.sp.GetObject(ctx, id)
-	if err != nil {
-		return err
-	}
-	details := buildParticipantDetails(id, a.sp.Id(), rec.RequestIdentity.Account(), model.ParticipantPermissions_NoPermissions)
-	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
-		return pbtypes.StructMerge(current, details, false), nil
-	})
-}
-
 func convertPermissions(permissions list.AclPermissions) model.ParticipantPermissions {
 	switch aclrecordproto.AclUserPermissions(permissions) {
 	case aclrecordproto.AclUserPermissions_Writer:
@@ -339,7 +282,23 @@ func convertPermissions(permissions list.AclPermissions) model.ParticipantPermis
 	return model.ParticipantPermissions_Reader
 }
 
-func decryptAll(states []list.AclAccountState, decrypt func(key crypto.PubKey) ([]byte, error)) (decrypted []list.AclAccountState, err error) {
+func convertStatus(status list.AclStatus) model.ParticipantStatus {
+	switch status {
+	case list.StatusJoining:
+		return model.ParticipantStatus_Joining
+	case list.StatusActive:
+		return model.ParticipantStatus_Active
+	case list.StatusRemoved:
+		return model.ParticipantStatus_Removed
+	case list.StatusDeclined:
+		return model.ParticipantStatus_Declined
+	case list.StatusRemoving:
+		return model.ParticipantStatus_Removing
+	}
+	return model.ParticipantStatus_Active
+}
+
+func decryptAll(states []list.AccountState, decrypt func(key crypto.PubKey) ([]byte, error)) (decrypted []list.AccountState, err error) {
 	for _, state := range states {
 		res, err := decrypt(state.PubKey)
 		if err != nil {
@@ -365,7 +324,12 @@ func getSymKey(metadata []byte) (crypto.SymKey, error) {
 	return crypto.UnmarshallAESKey(keyProto.Data)
 }
 
-func buildParticipantDetails(id string, spaceId string, identity string, permissions model.ParticipantPermissions) *types.Struct {
+func buildParticipantDetails(
+	id string,
+	spaceId string,
+	identity string,
+	permissions model.ParticipantPermissions,
+	status model.ParticipantStatus) *types.Struct {
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():                     pbtypes.String(id),
 		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
@@ -378,5 +342,6 @@ func buildParticipantDetails(id string, spaceId string, identity string, permiss
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
+		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
 	}}
 }

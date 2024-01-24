@@ -24768,6 +24768,9 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | ---- | ------ | ----------- |
 | Joining | 0 |  |
 | Active | 1 |  |
+| Removed | 2 |  |
+| Declined | 3 |  |
+| Removing | 4 |  |
 
 
 
