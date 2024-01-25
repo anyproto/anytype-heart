@@ -1510,6 +1510,7 @@
     - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
+    - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -23771,6 +23772,7 @@ Used to decode block meta only, without the content itself
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
 | export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
 | galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
+| requestToJoin | [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin) |  |  |
 | space | [string](#string) |  |  |
 
 
@@ -23825,6 +23827,24 @@ Used to decode block meta only, without the content itself
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-RequestToJoin"></a>
+
+### Notification.RequestToJoin
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+| identityName | [string](#string) |  |  |
+| identityIcon | [string](#string) |  |  |
 
 
 
