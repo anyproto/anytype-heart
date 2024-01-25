@@ -1,3 +1,5 @@
+//go:build !nogrpcserver && !_test
+
 package main
 
 import (
