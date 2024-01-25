@@ -26,7 +26,6 @@ var (
 	miroRegexp       = regexp.MustCompile(`https?:\/\/(?:www\.)?miro\.com\/app\/board\/[a-zA-Z0-9_=-]+\/?`)
 	googleMapsRegexp = regexp.MustCompile(`https?:\/\/(?:www\.)?google\.com\/maps(?:\/[^\/\n\s]+)?(?:\/@(-?\d+\.\d+),(-?\d+\.\d+),\d+z?)?(?:\/[^\/\n\s]+)?`)
 	githubGistRegexp = regexp.MustCompile(`https:\/\/gist\.github\.com\/[a-zA-Z0-9_-]+\/([a-fA-F0-9]+)`)
-	twitterRegexp    = regexp.MustCompile(`https:\/\/twitter\.com(?:\/[^\s]*)?`)
 	codepenRegexp    = regexp.MustCompile(`https:\/\/codepen\.io\/[a-zA-Z0-9_-]+\/(?:pen\/([a-zA-Z0-9_-]+)|details\/([a-zA-Z0-9_-]+)(?:\/[a-zA-Z0-9_-]+)?)\/?`)
 )
 
@@ -75,9 +74,6 @@ func (b *EmbedBlock) getProcessor() model.BlockContentLatexProcessor {
 	if githubGistRegexp.MatchString(b.Embed.URL) {
 		processor = model.BlockContentLatex_GithubGist
 	}
-	if twitterRegexp.MatchString(b.Embed.URL) {
-		processor = model.BlockContentLatex_Twitter
-	}
 	if codepenRegexp.MatchString(b.Embed.URL) {
 		processor = model.BlockContentLatex_Codepen
 	}
@@ -86,7 +82,7 @@ func (b *EmbedBlock) getProcessor() model.BlockContentLatexProcessor {
 
 func (b *EmbedBlock) isEmbedBlock() bool {
 	return miroRegexp.MatchString(b.Embed.URL) || googleMapsRegexp.MatchString(b.Embed.URL) || soundCloudRegexp.MatchString(b.Embed.URL) ||
-		twitterRegexp.MatchString(b.Embed.URL) || codepenRegexp.MatchString(b.Embed.URL) || githubGistRegexp.MatchString(b.Embed.URL)
+		codepenRegexp.MatchString(b.Embed.URL) || githubGistRegexp.MatchString(b.Embed.URL)
 }
 
 type LinkToWeb struct {

@@ -327,28 +327,6 @@ func Test_EmbedBlockGetBlocks(t *testing.T) {
 		assert.Len(t, bl.Blocks, 1)
 		assert.Nil(t, bl.Blocks[0].GetLatex())
 	})
-	t.Run("twitter url like twitter.com - we create embed block", func(t *testing.T) {
-		vo := &EmbedBlock{
-			Embed: LinkToWeb{
-				URL: "https://twitter.com/",
-			},
-		}
-		bl := vo.GetBlocks(nil, "")
-		assert.NotNil(t, bl)
-		assert.NotNil(t, bl.Blocks[0].GetLatex())
-		assert.Equal(t, model.BlockContentLatex_Twitter, bl.Blocks[0].GetLatex().GetProcessor())
-	})
-	t.Run("twitter url like twitter.com/home - we create embed block", func(t *testing.T) {
-		vo := &EmbedBlock{
-			Embed: LinkToWeb{
-				URL: "https://twitter.com/home",
-			},
-		}
-		bl := vo.GetBlocks(nil, "")
-		assert.NotNil(t, bl)
-		assert.NotNil(t, bl.Blocks[0].GetLatex())
-		assert.Equal(t, model.BlockContentLatex_Twitter, bl.Blocks[0].GetLatex().GetProcessor())
-	})
 	t.Run("codepen url like codepen.io - not create embed block", func(t *testing.T) {
 		vo := &EmbedBlock{
 			Embed: LinkToWeb{
