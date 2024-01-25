@@ -2249,7 +2249,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeRemove(t *testing.T) {
 			Id: "root",
 		}),
 	}).(*State)
-	st.objectTypeKeys = append(st.objectTypeKeys, "page")
+	st.ObjectType.SetObjectTypeKeys(append(st.ObjectTypeKeys(), "page"))
 
 	t.Run("apply ObjectTypeRemove change: remove existing object type", func(t *testing.T) {
 		// given

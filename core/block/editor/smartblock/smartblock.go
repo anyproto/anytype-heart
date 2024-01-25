@@ -795,13 +795,15 @@ func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
 }
 
 func (sb *smartBlock) NewState() *state.State {
-	s := sb.Doc.NewState().SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
+	s := sb.Doc.NewState()
+	s.SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
 
 func (sb *smartBlock) NewStateCtx(ctx session.Context) *state.State {
-	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
+	s := sb.Doc.NewStateCtx(ctx)
+	s.SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
