@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
+	"github.com/mr-tron/base58/base58"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -302,7 +303,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 	if err != nil {
 		return nil, fmt.Errorf("store invite in ipfs: %w", err)
 	}
-	inviteFileKeyRaw, err := crypto.EncodeKeyToString(inviteFileKey)
+	inviteFileKeyRaw, err := EncodeKeyToBase58(inviteFileKey)
 	if err != nil {
 		return nil, fmt.Errorf("encode invite file key: %w", err)
 	}
@@ -321,4 +322,20 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		InviteFileCid: inviteFileCid.String(),
 		InviteFileKey: inviteFileKeyRaw,
 	}, err
+}
+
+func EncodeKeyToBase58(key crypto.SymKey) (string, error) {
+	raw, err := key.Raw()
+	if err != nil {
+		return "", err
+	}
+	return base58.Encode(raw), nil
+}
+
+func DecodeKeyFromBase58(rawString string) (crypto.SymKey, error) {
+	raw, err := base58.Decode(rawString)
+	if err != nil {
+		return nil, err
+	}
+	return crypto.UnmarshallAESKey(raw)
 }

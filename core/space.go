@@ -100,11 +100,9 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 }
 
 func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceInviteViewRequest) (*acl.InviteView, error) {
-	inviteFileKey, err := crypto.DecodeKeyFromString(req.InviteFileKey, func(bytes []byte) (crypto.SymKey, error) {
-		return crypto.UnmarshallAESKey(bytes)
-	}, nil)
+	inviteFileKey, err := acl.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode key: %w", err)
 	}
 	inviteCid, err := cid.Decode(req.InviteCid)
 	if err != nil {
@@ -180,9 +178,7 @@ func (mw *Middleware) SpaceParticipantRemove(cctx context.Context, req *pb.RpcSp
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
-	inviteFileKey, err := crypto.DecodeKeyFromString(req.InviteFileKey, func(bytes []byte) (crypto.SymKey, error) {
-		return crypto.UnmarshallAESKey(bytes)
-	}, nil)
+	inviteFileKey, err := acl.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
 		return
 	}
