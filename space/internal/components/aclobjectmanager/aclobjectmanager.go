@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -39,18 +40,19 @@ func New(ownerMetadata []byte) AclObjectManager {
 }
 
 type aclObjectManager struct {
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wait            chan struct{}
-	waitLoad        chan struct{}
-	sp              clientspace.Space
-	loadErr         error
-	spaceLoader     spaceloader.SpaceLoader
-	status          spacestatus.SpaceStatus
-	modifier        dependencies.DetailsModifier
-	identityService dependencies.IdentityService
-	indexer         dependencies.SpaceIndexer
-	started         bool
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	wait                chan struct{}
+	waitLoad            chan struct{}
+	sp                  clientspace.Space
+	loadErr             error
+	spaceLoader         spaceloader.SpaceLoader
+	status              spacestatus.SpaceStatus
+	modifier            dependencies.DetailsModifier
+	identityService     dependencies.IdentityService
+	indexer             dependencies.SpaceIndexer
+	notificationService notifications.Notifications
+	started             bool
 
 	ownerMetadata     []byte
 	mx                sync.Mutex
@@ -71,6 +73,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
 	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
+	a.notificationService = app.MustComponent[notifications.Notifications](ap)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil
@@ -260,6 +263,26 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 		bundle.RelationKeyIconImage.String(): pbtypes.String(profile.IconCid),
 	}}
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+		status := pbtypes.GetInt64(current, bundle.RelationKeyParticipantStatus.String())
+		if model.ParticipantStatus(status) == model.ParticipantStatus_Joining {
+			err := a.notificationService.CreateAndSendLocal(&model.Notification{
+				Status:  model.Notification_Created,
+				IsLocal: true,
+				Space:   a.sp.Id(),
+				Payload: &model.NotificationPayloadOfRequestToJoin{
+					RequestToJoin: &model.NotificationRequestToJoin{
+						SpaceId:      a.sp.Id(),
+						Identity:     identity,
+						IdentityName: profile.Name,
+						IdentityIcon: profile.IconCid,
+					},
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		return pbtypes.StructMerge(current, details, false), nil
 	})
 }
