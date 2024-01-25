@@ -9,6 +9,7 @@ type reindexFlags struct {
 	objects                 bool
 	fileObjects             bool
 	fulltext                bool
+	fulltextErase           bool
 	bundledTemplates        bool
 	bundledObjects          bool
 	fileKeys                bool
@@ -21,6 +22,7 @@ func (f *reindexFlags) any() bool {
 		f.objects ||
 		f.fileObjects ||
 		f.fulltext ||
+		f.fulltextErase ||
 		f.bundledTemplates ||
 		f.bundledObjects ||
 		f.fileKeys
@@ -33,6 +35,7 @@ func (f *reindexFlags) enableAll() {
 	f.objects = true
 	f.fileObjects = true
 	f.fulltext = true
+	f.fulltextErase = true
 	f.bundledTemplates = true
 	f.bundledObjects = true
 	f.fileKeys = true

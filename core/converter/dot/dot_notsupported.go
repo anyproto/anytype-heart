@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
@@ -48,7 +48,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(_ model.SmartBlockType) []byte {
+func (d *dot) Convert(_ smartblock.SmartBlock) []byte {
 	panic("not supported on windows")
 	return nil
 }
@@ -56,3 +56,5 @@ func (d *dot) Convert(_ model.SmartBlockType) []byte {
 func (d *dot) Ext() string {
 	return ""
 }
+
+func (d *dot) SetFileKeys(fileKeys *files.FileKeys) {}

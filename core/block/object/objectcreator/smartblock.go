@@ -93,7 +93,7 @@ func (s *service) CreateSmartBlockFromStateInSpace(
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
-	metrics.SharedClient.RecordEvent(*ev)
+	metrics.Service.Send(ev)
 	return id, newDetails, nil
 }
 
