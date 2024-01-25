@@ -93,6 +93,7 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 }
 
 type InviteView struct {
+	SpaceId      string
 	SpaceName    string
 	SpaceIconCid string
 	CreatorName  string
@@ -104,6 +105,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 		return nil, fmt.Errorf("get invite payload: %w", err)
 	}
 	return &InviteView{
+		SpaceId:      invitePayload.SpaceId,
 		SpaceName:    invitePayload.SpaceName,
 		SpaceIconCid: invitePayload.SpaceIconCid,
 		CreatorName:  invitePayload.CreatorName,
@@ -206,6 +208,7 @@ func (a *aclService) buildInvitePayload(ctx context.Context, space clientspace.S
 		return nil, fmt.Errorf("marshal invite priv key: %w", err)
 	}
 	invitePayload := &model.InvitePayload{
+		SpaceId:         space.Id(),
 		CreatorIdentity: a.accountService.AccountID(),
 		CreatorName:     profile.Name,
 		InviteKey:       rawInviteKey,

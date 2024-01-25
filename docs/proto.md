@@ -14874,6 +14874,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Space.InviteView.Response.Error](#anytype-Rpc-Space-InviteView-Response-Error) |  |  |
+| spaceId | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
