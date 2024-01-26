@@ -335,8 +335,9 @@ func (s *service) getFileIdFromObjectInSpace(space smartblock.Space, objectId st
 	}, nil
 }
 
-func (s *service) migrate(space clientspace.Space, keys []*pb.ChangeFileKeys, fileId string) string {
-	if fileId == "" {
+func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.ChangeFileKeys, fileId string) string {
+	// Don't migrate empty or its own id
+	if fileId == "" || objectId == fileId {
 		return fileId
 	}
 	var fileKeys map[string]string
@@ -389,7 +390,7 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.Ch
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			fh.MigrateFile(func(oldHash string) (newHash string) {
-				return s.migrate(spc.(clientspace.Space), keys, oldHash)
+				return s.migrate(spc.(clientspace.Space), st.RootId(), keys, oldHash)
 			})
 		}
 		return true
@@ -398,7 +399,7 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.Ch
 
 func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
 	st.ModifyLinkedFilesInDetails(func(id string) string {
-		return s.migrate(spc.(clientspace.Space), keys, id)
+		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id)
 	})
 }
 
