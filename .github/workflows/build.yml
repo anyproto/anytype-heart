@@ -35,8 +35,10 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: '~1.21.6'
+        if: github.event.inputs.run-on-runner != 'self-hosted'
       - name: Setup GO
         run: |
+          go version
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
