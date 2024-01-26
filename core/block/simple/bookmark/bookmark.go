@@ -169,6 +169,15 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	return
 }
 
+func (b *Bookmark) IterateLinkedFiles(iter func(id string)) {
+	if b.content.ImageHash != "" {
+		iter(b.content.ImageHash)
+	}
+	if b.content.FaviconHash != "" {
+		iter(b.content.FaviconHash)
+	}
+}
+
 func (b *Bookmark) FillFileHashes(hashes []string) []string {
 	if b.content.ImageHash != "" {
 		hashes = append(hashes, b.content.ImageHash)
@@ -186,7 +195,6 @@ func (b *Bookmark) MigrateFile(replacer func(oldHash string) (newHash string)) {
 	if b.content.FaviconHash != "" {
 		b.content.FaviconHash = replacer(b.content.FaviconHash)
 	}
-	return
 }
 
 func (l *Bookmark) ReplaceLinkIds(replacer func(oldId string) (newId string)) {

@@ -33,6 +33,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -59,6 +61,7 @@ type Import struct {
 	oc              creator.Service
 	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
+	fileStore       filestore.FileStore
 	fileSync        filesync.FileSync
 	sync.Mutex
 }
@@ -88,13 +91,14 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[c.Name()] = c
 	}
 	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
-	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.idProvider = objectid.NewIDProvider(store, spaceService)
-	fileStore := app.MustComponent[filestore.FileStore](a)
-	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
+	i.fileStore = app.MustComponent[filestore.FileStore](a)
+	fileObjectService := app.MustComponent[fileobject.Service](a)
+	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, i.fileStore, fileObjectService)
+	factory := syncer.New(syncer.NewFileSyncer(i.s, i.fileStore, fileObjectService, store), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver, i.fileStore, fileObjectService, store))
+	relationSyncer := syncer.NewFileRelationSyncer(i.s, i.fileStore, fileObjectService, store)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
-	i.oc = creator.New(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
+	i.oc = creator.New(i.s, factory, store, relationSyncer, i.fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
@@ -363,11 +367,35 @@ func (i *Import) getObjectID(
 	oldIDToNew map[string]string,
 	updateExisting bool,
 ) error {
+
+	// Preload file keys
+	for _, fileKeys := range snapshot.Snapshot.GetFileKeys() {
+		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+			FileId:         domain.FileId(fileKeys.Hash),
+			EncryptionKeys: fileKeys.Keys,
+		})
+		if err != nil {
+			return fmt.Errorf("add file keys: %w", err)
+		}
+	}
+	if fileInfo := snapshot.Snapshot.GetData().GetFileInfo(); fileInfo != nil {
+		keys := make(map[string]string, len(fileInfo.EncryptionKeys))
+		for _, key := range fileInfo.EncryptionKeys {
+			keys[key.Path] = key.Key
+		}
+		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+			FileId:         domain.FileId(fileInfo.FileId),
+			EncryptionKeys: keys,
+		})
+		if err != nil {
+			return fmt.Errorf("add file keys from file info: %w", err)
+		}
+	}
+
 	var (
 		id      string
 		payload treestorage.TreeStorageCreatePayload
 	)
-
 	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting)
 	if err != nil {
 		return err

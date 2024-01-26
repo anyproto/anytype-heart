@@ -213,6 +213,12 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	return nil
 }
 
+func (f *File) IterateLinkedFiles(iter func(id string)) {
+	if f.content.TargetObjectId != "" {
+		iter(f.content.TargetObjectId)
+	}
+}
+
 func (f *File) FillFileHashes(hashes []string) []string {
 	if f.content.Hash != "" {
 		return append(hashes, f.content.Hash)

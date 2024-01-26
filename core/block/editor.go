@@ -503,6 +503,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 
 	upl.SetOrigin(req.Origin)
 	upl.SetStyle(req.Style)
+	upl.SetAdditionalDetails(req.Details)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	} else {

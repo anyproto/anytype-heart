@@ -335,14 +335,14 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 
 func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*types.Struct) error {
 	return space.Do(id, func(b sb.SmartBlock) error {
-		b.NewState().IterateLinkedFiles(func(fileObjectId string) bool {
+		b.NewState().IterateLinkedFiles(func(fileObjectId string) {
 			details, err := e.objectStore.GetDetails(fileObjectId)
 			if err != nil {
 				log.Errorf("failed to get details for file object id %s: %v", fileObjectId, err)
-				return true
+				return
 			}
 			docs[fileObjectId] = details.GetDetails()
-			return true
+
 		})
 		return nil
 	})

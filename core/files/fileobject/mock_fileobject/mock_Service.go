@@ -14,6 +14,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
 	pb "github.com/anyproto/anytype-heart/pb"
 
 	source "github.com/anyproto/anytype-heart/core/block/source"
@@ -99,6 +101,63 @@ func (_c *MockService_Create_Call) Return(id string, object *types.Struct, err e
 }
 
 func (_c *MockService_Create_Call) RunAndReturn(run func(context.Context, string, fileobject.CreateRequest) (string, *types.Struct, error)) *MockService_Create_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateFromImport provides a mock function with given fields: fileId, origin
+func (_m *MockService) CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error) {
+	ret := _m.Called(fileId, origin)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateFromImport")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(domain.FullFileId, model.ObjectOrigin) (string, error)); ok {
+		return rf(fileId, origin)
+	}
+	if rf, ok := ret.Get(0).(func(domain.FullFileId, model.ObjectOrigin) string); ok {
+		r0 = rf(fileId, origin)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(domain.FullFileId, model.ObjectOrigin) error); ok {
+		r1 = rf(fileId, origin)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_CreateFromImport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateFromImport'
+type MockService_CreateFromImport_Call struct {
+	*mock.Call
+}
+
+// CreateFromImport is a helper method to define mock.On call
+//   - fileId domain.FullFileId
+//   - origin model.ObjectOrigin
+func (_e *MockService_Expecter) CreateFromImport(fileId interface{}, origin interface{}) *MockService_CreateFromImport_Call {
+	return &MockService_CreateFromImport_Call{Call: _e.mock.On("CreateFromImport", fileId, origin)}
+}
+
+func (_c *MockService_CreateFromImport_Call) Run(run func(fileId domain.FullFileId, origin model.ObjectOrigin)) *MockService_CreateFromImport_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(domain.FullFileId), args[1].(model.ObjectOrigin))
+	})
+	return _c
+}
+
+func (_c *MockService_CreateFromImport_Call) Return(_a0 string, _a1 error) *MockService_CreateFromImport_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_CreateFromImport_Call) RunAndReturn(run func(domain.FullFileId, model.ObjectOrigin) (string, error)) *MockService_CreateFromImport_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -538,6 +597,41 @@ func (_c *MockService_MigrateBlocks_Call) Return() *MockService_MigrateBlocks_Ca
 }
 
 func (_c *MockService_MigrateBlocks_Call) RunAndReturn(run func(*state.State, source.Space, []*pb.ChangeFileKeys)) *MockService_MigrateBlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MigrateDetails provides a mock function with given fields: st, spc, keys
+func (_m *MockService) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
+	_m.Called(st, spc, keys)
+}
+
+// MockService_MigrateDetails_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MigrateDetails'
+type MockService_MigrateDetails_Call struct {
+	*mock.Call
+}
+
+// MigrateDetails is a helper method to define mock.On call
+//   - st *state.State
+//   - spc source.Space
+//   - keys []*pb.ChangeFileKeys
+func (_e *MockService_Expecter) MigrateDetails(st interface{}, spc interface{}, keys interface{}) *MockService_MigrateDetails_Call {
+	return &MockService_MigrateDetails_Call{Call: _e.mock.On("MigrateDetails", st, spc, keys)}
+}
+
+func (_c *MockService_MigrateDetails_Call) Run(run func(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)) *MockService_MigrateDetails_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*state.State), args[1].(source.Space), args[2].([]*pb.ChangeFileKeys))
+	})
+	return _c
+}
+
+func (_c *MockService_MigrateDetails_Call) Return() *MockService_MigrateDetails_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockService_MigrateDetails_Call) RunAndReturn(run func(*state.State, source.Space, []*pb.ChangeFileKeys)) *MockService_MigrateDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

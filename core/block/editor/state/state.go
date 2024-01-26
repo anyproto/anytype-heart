@@ -9,10 +9,8 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -45,8 +43,6 @@ const (
 var (
 	ErrRestricted = errors.New("restricted")
 )
-
-var DetailsFileFields = [...]string{bundle.RelationKeyCoverId.String(), bundle.RelationKeyIconImage.String()}
 
 type Doc interface {
 	RootId() string
@@ -1105,92 +1101,58 @@ func (s *State) FileRelationKeys() []string {
 	return keys
 }
 
-func (s *State) IterateLinkedFiles(proc func(id string) bool) {
-	var stop bool
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if fh, ok := b.(file.Block); ok {
-			cont := proc(fh.TargetObjectId())
-			if !cont {
-				stop = true
-				return false
-			}
+// IterateLinkedFiles iterates over all file object ids in blocks and details
+func (s *State) IterateLinkedFiles(proc func(id string)) {
+	s.Iterate(func(block simple.Block) (isContinue bool) {
+		if iter, ok := block.(simple.LinkedFilesIterator); ok {
+			iter.IterateLinkedFiles(proc)
 		}
 		return true
 	})
-	if stop {
-		return
-	}
+	s.IterateLinkedFilesInDetails(proc)
+}
+
+func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
+	s.ModifyLinkedFilesInDetails(func(id string) string {
+		proc(id)
+		return id
+	})
+}
+
+// ModifyLinkedFilesInDetails iterates over all file object ids in details and modifies them using modifier function.
+// Detail is saved only if at least one id is changed
+func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 	det := s.Details()
 	if det == nil || det.Fields == nil {
 		return
 	}
+
 	for _, key := range s.FileRelationKeys() {
 		if key == bundle.RelationKeyCoverId.String() {
 			v := pbtypes.GetString(det, key)
 			_, err := cid.Decode(v)
 			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
+				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
 		}
-		if fileObjectIds := pbtypes.GetStringList(det, key); fileObjectIds != nil {
-			for _, id := range fileObjectIds {
-				if id == "" {
+		if ids := pbtypes.GetStringList(det, key); len(ids) > 0 {
+			var anyChanges bool
+			for i, oldId := range ids {
+				if oldId == "" {
 					continue
 				}
-				cont := proc(id)
-				if !cont {
-					return
+				newId := modifier(oldId)
+				if oldId != newId {
+					ids[i] = newId
+					anyChanges = true
 				}
+			}
+			if anyChanges {
+				s.SetDetail(key, pbtypes.StringList(ids))
 			}
 		}
 	}
-	return
-}
-
-// DEPRECATED, use only for backward compatibility and migration purposes
-func (s *State) GetAllFileHashes(detailsKeys []string) []string {
-	hashes := s.GetFileHashes(detailsKeys)
-	return slice.FilterCID(hashes)
-}
-
-// GetFileHashes iterates over all file hashes in the state and updates them with the provided function
-// Can be used just for iteration, if update return the same hash
-// DEPRECATED, use only for backward compatibility and migration purposes
-func (s *State) GetFileHashes(detailsKeys []string) []string {
-	var hashes []string
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if fh, ok := b.(simple.FileHashes); ok {
-			hashes = fh.FillFileHashes(hashes)
-		}
-		return true
-	})
-	det := s.Details()
-	if det == nil || det.Fields == nil {
-		return hashes
-	}
-
-	for _, key := range detailsKeys {
-		if key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, key)
-			_, err := cid.Decode(v)
-			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
-				continue
-			}
-		}
-		if hashList := pbtypes.GetStringList(det, key); hashList != nil {
-			for _, hash := range hashList {
-				if hash == "" {
-					continue
-				}
-				if !slices.Contains(hashes, hash) {
-					hashes = append(hashes, hashList...)
-				}
-			}
-		}
-	}
-	return hashes
 }
 
 func (s *State) blockInit(b simple.Block) {

@@ -1557,6 +1557,7 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [Export.Format](#anytype-model-Export-Format)
+    - [ImageKind](#anytype-model-ImageKind)
     - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
@@ -10120,6 +10121,7 @@ Get marks list in the selected range in text block.
 | type | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
 | disableEncryption | [bool](#bool) |  | deprecated, has no affect, GO-1926 |
 | style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 
 
 
@@ -24152,8 +24154,8 @@ stored |
 | ----- | ---- | ----- | ----------- |
 | blocks | [Block](#anytype-model-Block) | repeated |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| fileKeys | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| extraRelations | [Relation](#anytype-model-Relation) | repeated | deprecated |
+| fileKeys | [google.protobuf.Struct](#google-protobuf-Struct) |  | **Deprecated.**  |
+| extraRelations | [Relation](#anytype-model-Relation) | repeated | **Deprecated.**  |
 | objectTypes | [string](#string) | repeated |  |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
@@ -24611,6 +24613,19 @@ stored |
 | DOT | 3 |  |
 | SVG | 4 |  |
 | GRAPH_JSON | 5 |  |
+
+
+
+<a name="anytype-model-ImageKind"></a>
+
+### ImageKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Basic | 0 |  |
+| Cover | 1 |  |
+| Icon | 2 |  |
 
 
 

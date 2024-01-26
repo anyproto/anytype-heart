@@ -84,6 +84,11 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	var err error
 	newID := oldIDtoNew[sn.Id]
+
+	if sn.SbType == coresb.SmartBlockTypeFile {
+		return nil, newID, nil
+	}
+
 	oc.setRootBlock(snapshot, newID)
 
 	oc.injectImportDetails(sn, origin, spaceID)
@@ -110,15 +115,15 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	if sn.SbType == coresb.SmartBlockTypeWidget {
 		return oc.updateWidgetObject(st)
 	}
-	// TODO Fix this
-	// converter.UpdateObjectType(oldIDtoNew, st)
-	for _, link := range st.GetRelationLinks() {
-		if link.Format == model.RelationFormat_file {
-			filesToDelete = oc.relationSyncer.Sync(spaceID, st, link.Key, origin)
+
+	st.ModifyLinkedFilesInDetails(func(fileId string) string {
+		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.createPayloads, origin)
+		if newFileId != fileId {
+			filesToDelete = append(filesToDelete, fileId)
 		}
-	}
-	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
-	oc.setFileImportedFlagAndOrigin(st, origin)
+		return newFileId
+	})
+
 	typeKeys := st.ObjectTypeKeys()
 	if sn.SbType == coresb.SmartBlockTypeObjectType {
 		// we widen typeKeys here to install bundled templates for imported object type
@@ -144,7 +149,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.setArchived(snapshot, newID)
 
-	syncErr := oc.syncFilesAndLinks(newID, origin)
+	syncErr := oc.syncFilesAndLinks(dataObject.createPayloads, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
 	if syncErr != nil {
 		if errors.Is(syncErr, common.ErrFileLoad) {
 			return respDetails, newID, syncErr
@@ -375,14 +380,6 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	}
 }
 
-func (oc *ObjectCreator) handleCoverRelation(spaceID string, st *state.State) []string {
-	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
-		return nil
-	}
-	filesToDelete := oc.relationSyncer.Sync(spaceID, st, bundle.RelationKeyCoverId.String(), 0)
-	return filesToDelete
-}
-
 func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
 	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
@@ -428,17 +425,17 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin model.ObjectOrigin) error {
+func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin model.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
-	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
+	err := block.Do(oc.service, id.ObjectID, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		return st.Iterate(func(bl simple.Block) (isContinue bool) {
 			s := oc.syncFactory.GetSyncer(bl)
 			if s != nil {
 				// We can't run syncer here because it will cause a deadlock, so we defer this operation
 				tasks = append(tasks, func() error {
-					err := s.Sync(newID, bl, origin)
+					err := s.Sync(id, snapshotPayloads, bl, origin)
 					if err != nil {
 						return err
 					}
@@ -455,7 +452,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin model.ObjectOrig
 	for _, task := range tasks {
 		err = task()
 		if err != nil {
-			log.With(zap.String("objectID", newID)).Errorf("failed to sync: %s", err)
+			log.With(zap.String("objectId", id.ObjectID)).Errorf("failed to sync: %s", err)
 			if errors.Is(err, common.ErrFileLoad) {
 				fileLoadErr = err
 			}
@@ -488,31 +485,6 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 	}
 	result := lo.Union(existedObjects, objectsInCollections)
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
-}
-
-func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin model.ObjectOrigin) {
-	var fileHashes []string
-	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if fh, ok := bl.(simple.FileHashes); ok {
-			fileHashes = fh.FillFileHashes(fileHashes)
-		}
-		return true
-	})
-	if err != nil {
-		log.Errorf("failed to collect file hashes in state, %s", err)
-	}
-
-	// TODO Fix
-	//for _, hash := range fileHashes {
-	//	err = oc.fileStore.SetIsFileImported(hash, true)
-	//	if err != nil {
-	//		log.Errorf("failed to set isFileImported for file %s: %s", hash, err)
-	//	}
-	//	err = oc.fileStore.SetFileOrigin(hash, origin)
-	//	if err != nil {
-	//		log.Errorf("failed to set origin for file %s: %s", hash, err)
-	//	}
-	//}
 }
 
 func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*types.Struct, string, error) {

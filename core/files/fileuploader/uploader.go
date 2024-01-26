@@ -87,6 +87,7 @@ type Uploader interface {
 	SetName(name string) Uploader
 	SetType(tp model.BlockContentFileType) Uploader
 	SetStyle(tp model.BlockContentFileStyle) Uploader
+	SetAdditionalDetails(details *types.Struct) Uploader
 	SetBytes(b []byte) Uploader
 	SetUrl(url string) Uploader
 	SetFile(path string) Uploader
@@ -148,9 +149,10 @@ type uploader struct {
 	opts              []files.AddOption
 	groupID           string
 
-	tempDirProvider core.TempDirProvider
-	fileService     files.Service
-	origin          model.ObjectOrigin
+	tempDirProvider   core.TempDirProvider
+	fileService       files.Service
+	origin            model.ObjectOrigin
+	additionalDetails *types.Struct
 }
 
 func NewUploader(
@@ -221,6 +223,11 @@ func (u *uploader) SetType(tp model.BlockContentFileType) Uploader {
 
 func (u *uploader) SetStyle(tp model.BlockContentFileStyle) Uploader {
 	u.fileStyle = tp
+	return u
+}
+
+func (u *uploader) SetAdditionalDetails(details *types.Struct) Uploader {
+	u.additionalDetails = details
 	return u
 }
 
@@ -528,9 +535,10 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToSt
 	}
 
 	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
-		FileId:         addResult.fileId,
-		EncryptionKeys: addResult.fileKeys.EncryptionKeys,
-		IsImported:     u.origin == model.ObjectOrigin_import,
+		FileId:            addResult.fileId,
+		EncryptionKeys:    addResult.fileKeys.EncryptionKeys,
+		IsImported:        u.origin == model.ObjectOrigin_import,
+		AdditionalDetails: u.additionalDetails,
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("create file object: %w", err)

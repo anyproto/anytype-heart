@@ -1602,5 +1602,15 @@
     "name": "Revision",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Describes how this image is used",
+    "format": "number",
+    "hidden": true,
+    "key": "imageKind",
+    "maxCount": 1,
+    "name": "Image kind",
+    "readonly": false,
+    "source": "details"
   }
 ]

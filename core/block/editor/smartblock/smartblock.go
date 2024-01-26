@@ -158,7 +158,6 @@ type SmartBlock interface {
 	SetRestrictions(r restriction.Restrictions)
 	ObjectClose(ctx session.Context)
 	ObjectCloseAllSessions()
-	FileRelationKeys(s *state.State) []string
 
 	Space() Space
 
@@ -169,14 +168,13 @@ type SmartBlock interface {
 }
 
 type DocInfo struct {
-	Id         string
-	Space      Space
-	Links      []string
-	FileHashes []string
-	Heads      []string
-	Creator    string
-	Type       domain.TypeKey
-	Details    *types.Struct
+	Id      string
+	Space   Space
+	Links   []string
+	Heads   []string
+	Creator string
+	Type    domain.TypeKey
+	Details *types.Struct
 
 	SmartblockType smartblock.SmartBlockType
 }
@@ -249,10 +247,6 @@ func (sb *smartBlock) SetLocker(locker Locker) {
 
 func (sb *smartBlock) Tree() objecttree.ObjectTree {
 	return sb.ObjectTree
-}
-
-func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
-	return s.FileRelationKeys()
 }
 
 func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
@@ -653,7 +647,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	pushChange := func() error {
-		fileDetailsKeys := sb.FileRelationKeys(st)
+		fileDetailsKeys := st.FileRelationKeys()
 		var fileDetailsKeysFiltered []string
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
@@ -1215,7 +1209,6 @@ func (sb *smartBlock) GetDocInfo() DocInfo {
 }
 
 func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
-	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
@@ -1245,7 +1238,6 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Space:          sb.Space(),
 		Links:          links,
 		Heads:          heads,
-		FileHashes:     fileHashes,
 		Creator:        creator,
 		Details:        sb.CombinedDetails(),
 		Type:           sb.ObjectTypeKey(),

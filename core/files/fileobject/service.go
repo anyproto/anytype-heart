@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -44,8 +43,10 @@ type Service interface {
 
 	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
+	CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
+	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 
 	FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error)
@@ -87,9 +88,11 @@ func (s *service) Init(a *app.App) error {
 }
 
 type CreateRequest struct {
-	FileId         domain.FileId
-	EncryptionKeys map[string]string
-	IsImported     bool
+	FileId            domain.FileId
+	EncryptionKeys    map[string]string
+	IsImported        bool
+	Origin            model.ObjectOrigin
+	AdditionalDetails *types.Struct
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
@@ -105,6 +108,10 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	err = s.addToSyncQueue(domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.IsImported)
 	if err != nil {
 		return "", nil, fmt.Errorf("add to sync queue: %w", err)
+	}
+	err = s.fileStore.SetFileOrigin(req.FileId, req.Origin)
+	if err != nil {
+		log.With("fileId", req.FileId, "origin", req.Origin).Errorf("set file origin: %v", err)
 	}
 
 	return id, object, nil
@@ -123,6 +130,14 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	}
 	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
 
+	if req.AdditionalDetails != nil {
+		for k, v := range req.AdditionalDetails.GetFields() {
+			if _, ok := details.Fields[k]; !ok {
+				details.Fields[k] = pbtypes.CopyVal(v)
+			}
+		}
+	}
+
 	createState := state.NewDoc("", nil).(*state.State)
 	createState.SetDetails(details)
 	createState.SetFileInfo(state.FileInfo{
@@ -135,6 +150,47 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		return "", nil, fmt.Errorf("create object: %w", err)
 	}
 	return id, object, nil
+}
+
+// CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
+func (s *service) CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error) {
+	// Check that fileId is not a file object id
+	recs, _, err := s.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.FileId.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.SpaceId),
+			},
+		},
+	})
+	if err == nil && len(recs) > 0 {
+		return recs[0], nil
+	}
+
+	fileObjectId, _, err := s.GetObjectDetailsByFileId(fileId)
+	if err == nil {
+		return fileObjectId, nil
+	}
+	keys, err := s.fileStore.GetFileKeys(fileId.FileId)
+	if err != nil {
+		return "", fmt.Errorf("get file keys: %w", err)
+	}
+	fileObjectId, _, err = s.Create(context.Background(), fileId.SpaceId, CreateRequest{
+		FileId:         fileId.FileId,
+		EncryptionKeys: keys,
+		IsImported:     true,
+		Origin:         origin,
+	})
+	if err != nil {
+		return "", fmt.Errorf("create object: %w", err)
+	}
+	return fileObjectId, nil
 }
 
 func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
@@ -341,37 +397,9 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.Ch
 }
 
 func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
-	det := st.Details()
-	if det == nil || det.Fields == nil {
-		return
-	}
-
-	for _, key := range st.FileRelationKeys() {
-		if key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, key)
-			_, err := cid.Decode(v)
-			if err != nil {
-				// this is an exception cause coverId can contain not a file hash but color
-				continue
-			}
-		}
-		if hashList := pbtypes.GetStringList(det, key); hashList != nil {
-			var anyChanges bool
-			for i, hash := range hashList {
-				if hash == "" {
-					continue
-				}
-				newHash := s.migrate(spc.(clientspace.Space), keys, hash)
-				if hash != newHash {
-					hashList[i] = newHash
-					anyChanges = true
-				}
-			}
-			if anyChanges {
-				st.SetDetail(key, pbtypes.StringList(hashList))
-			}
-		}
-	}
+	st.ModifyLinkedFilesInDetails(func(id string) string {
+		return s.migrate(spc.(clientspace.Space), keys, id)
+	})
 }
 
 func (s *service) FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error) {
@@ -497,6 +525,9 @@ func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, o
 			},
 		},
 	})
+	if err != nil {
+		return fmt.Errorf("list objects that use file id: %w", err)
+	}
 	if len(records) == 0 {
 		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
 			return err

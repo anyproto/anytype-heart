@@ -12,7 +12,8 @@ func migrateFilesToObjects(sb smartblock.SmartBlock, fileObjectService fileobjec
 		keys := sb.GetAndUnsetFileKeys()
 		converted := make([]*pb.ChangeFileKeys, 0, len(keys))
 		for _, k := range keys {
-			converted = append(converted, &k)
+			val := k
+			converted = append(converted, &val)
 		}
 		fileObjectService.MigrateBlocks(s, sb.Space(), converted)
 	}

@@ -211,13 +211,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		}
 		afterShowTime := time.Now()
 
-		_, err = s.syncStatus.Watch(id.SpaceID, id.ObjectID, func() []string {
-			ob.Lock()
-			defer ob.Unlock()
-			bs := ob.NewState()
-
-			return lo.Uniq(bs.GetAllFileHashes(ob.FileRelationKeys(bs)))
-		})
+		_, err = s.syncStatus.Watch(id.SpaceID, id.ObjectID, nil)
 
 		if err == nil {
 			ob.AddHook(func(_ smartblock.ApplyInfo) error {

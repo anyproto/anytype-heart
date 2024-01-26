@@ -67,5 +67,6 @@
   "fileBackupStatus",
   "fileId",
   "origin",
-  "revision"
+  "revision",
+  "imageKind"
 ]
