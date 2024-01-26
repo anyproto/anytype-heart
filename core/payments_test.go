@@ -201,3 +201,79 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		assert.Equal(t, "https://xxxx.com", resp.PaymentUrl)
 	})
 }
+
+func TestPaymentsGetPortalURL(t *testing.T) {
+	t.Run("fail if GetPortal method fails", func(t *testing.T) {
+		c := gomock.NewController(t)
+		defer c.Finish()
+
+		var pp *mock_ppclient.MockAnyPpClientService
+		pp = mock_ppclient.NewMockAnyPpClientService(c)
+
+		pp.EXPECT().GetSubscriptionPortalLink(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetSubscriptionPortalLinkResponse, error) {
+			return nil, errors.New("bad error")
+		}).MinTimes(1)
+
+		// mock the GetAccountPrivkey method
+		PeerKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedPeerKey, err := crypto.DecodeKeyFromString(
+			PeerKey,
+			crypto.UnmarshalEd25519PrivateKey,
+			nil)
+
+		assert.NoError(t, err)
+
+		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+
+		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().Account().Return(&ak)
+
+		// Create a test request
+		req := &pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest{}
+
+		// Call the function being tested
+		resp := getPortalLink(context.Background(), pp, w, req)
+
+		assert.Equal(t, "bad error", resp.Error.Description)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		c := gomock.NewController(t)
+		defer c.Finish()
+
+		var pp *mock_ppclient.MockAnyPpClientService
+		pp = mock_ppclient.NewMockAnyPpClientService(c)
+
+		pp.EXPECT().GetSubscriptionPortalLink(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetSubscriptionPortalLinkResponse, error) {
+			return &psp.GetSubscriptionPortalLinkResponse{
+				PortalUrl: "https://xxxx.com",
+			}, nil
+		}).MinTimes(1)
+
+		// mock the GetAccountPrivkey method
+		PeerKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedPeerKey, err := crypto.DecodeKeyFromString(
+			PeerKey,
+			crypto.UnmarshalEd25519PrivateKey,
+			nil)
+
+		assert.NoError(t, err)
+
+		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+
+		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().Account().Return(&ak)
+
+		// Create a test request
+		req := &pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest{}
+
+		// Call the function being tested
+		resp := getPortalLink(context.Background(), pp, w, req)
+
+		assert.Equal(t, "https://xxxx.com", resp.PortalUrl)
+	})
+}

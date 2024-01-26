@@ -19036,9 +19036,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | TierUnknown | 0 |  |
-| TierFriend | 1 |  |
-| TierSupporter1Year | 2 |  |
-| TierPatron1Year | 3 |  |
+| TierFriend | 1 | &#34;free&#34; tier |
+| TierSupporter1WeekTEST | 2 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
+| TierPatron1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
+| TierSupporter1Year | 4 |  |
+| TierPatron1Year | 5 |  |
 
 
 
