@@ -19,6 +19,7 @@ var (
 
 type client struct {
 	lock             sync.RWMutex
+	batcherLock      sync.RWMutex
 	telemetry        amplitude.Service
 	aggregatableMap  map[string]SamplableEvent
 	aggregatableChan chan SamplableEvent
@@ -51,7 +52,7 @@ func (c *client) startAggregating() {
 			case <-ctx.Done():
 				c.recordAggregatedData()
 				// we close here so that we are sure that we don't lose the aggregated data
-				clientBatcher := c.batcher
+				clientBatcher := c.getBatcher()
 				if clientBatcher != nil {
 					err := clientBatcher.Close()
 					if err != nil {
@@ -68,7 +69,7 @@ func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 	ctx := c.ctx
 	attempt := 0
 	for {
-		clientBatcher := c.batcher
+		clientBatcher := c.getBatcher()
 		if clientBatcher == nil {
 			return
 		}
@@ -102,21 +103,29 @@ func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 }
 
 func (c *client) Close() {
-	c.lock.Lock()
-	if c.batcher == nil {
-		c.lock.Unlock()
+	if c.getBatcher() == nil {
 		return
 	}
-	c.lock.Unlock()
+
 	c.cancel()
 
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.batcher = nil
+	c.setBatcher(nil)
+}
+
+func (c *client) getBatcher() *mb.MB[amplitude.Event] {
+	defer c.batcherLock.RUnlock()
+	c.batcherLock.RLock()
+	return c.batcher
+}
+
+func (c *client) setBatcher(batcher *mb.MB[amplitude.Event]) {
+	defer c.batcherLock.Unlock()
+	c.batcherLock.Lock()
+	c.batcher = batcher
 }
 
 func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[amplitude.Event], msgs []amplitude.Event) (err error) {
-	clientBatcher := c.batcher
+	clientBatcher := c.getBatcher()
 	if clientBatcher == nil || len(msgs) == 0 {
 		return nil
 	}
@@ -161,7 +170,7 @@ func (c *client) send(e amplitude.Event) {
 		return
 	}
 	e.SetTimestamp()
-	clientBatcher := c.batcher
+	clientBatcher := c.getBatcher()
 	if clientBatcher == nil {
 		return
 	}
