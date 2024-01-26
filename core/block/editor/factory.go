@@ -146,8 +146,6 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeIdentity,
-		coresb.SmartBlockTypeParticipant,
 		coresb.SmartBlockTypeRelationOption:
 		return f.newPage(sb), nil
 	case coresb.SmartBlockTypeArchive:
@@ -175,6 +173,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return NewWidgetObject(sb, f.objectStore, f.layoutConverter, f.accountService), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
+	case coresb.SmartBlockTypeParticipant:
+		return f.newParticipant(sb), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

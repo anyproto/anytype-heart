@@ -346,7 +346,8 @@ func buildParticipantDetails(
 	spaceId string,
 	identity string,
 	permissions model.ParticipantPermissions,
-	status model.ParticipantStatus) *types.Struct {
+	status model.ParticipantStatus,
+) *types.Struct {
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():                     pbtypes.String(id),
 		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
