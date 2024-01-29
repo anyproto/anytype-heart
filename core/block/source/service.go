@@ -139,10 +139,9 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 					ObjectID: id,
 					SpaceID:  space.Id(),
 				},
-				StayInCache: true,
-				State:       state.NewDoc(id, nil).(*state.State),
-				SbType:      smartblock.SmartBlockTypeParticipant,
-				CreatorId:   addr.AnytypeProfileId,
+				State:     state.NewDoc(id, nil).(*state.State),
+				SbType:    smartblock.SmartBlockTypeParticipant,
+				CreatorId: addr.AnytypeProfileId,
 			}
 			return s.NewStaticSource(params), nil
 		}

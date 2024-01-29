@@ -23,6 +23,7 @@ import (
 const (
 	SpacePrivate  = 0
 	SpacePersonal = 1
+	SpaceShared   = 2
 )
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")

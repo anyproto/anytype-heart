@@ -2,7 +2,6 @@ package source
 
 import (
 	"context"
-	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -11,34 +10,31 @@ import (
 )
 
 type StaticSourceParams struct {
-	Id          domain.FullID
-	SbType      smartblock.SmartBlockType
-	State       *state.State
-	CreatorId   string
-	StayInCache bool
-	PushChange  func(p PushChangeParams) (string, error)
+	Id         domain.FullID
+	SbType     smartblock.SmartBlockType
+	State      *state.State
+	CreatorId  string
+	PushChange func(p PushChangeParams) (string, error)
 }
 
 func (s *service) NewStaticSource(params StaticSourceParams) SourceWithType {
 	return &static{
-		id:          params.Id,
-		sbType:      params.SbType,
-		doc:         params.State,
-		s:           s,
-		creatorId:   params.CreatorId,
-		pushChange:  params.PushChange,
-		stayInCache: params.StayInCache,
+		id:         params.Id,
+		sbType:     params.SbType,
+		doc:        params.State,
+		s:          s,
+		creatorId:  params.CreatorId,
+		pushChange: params.PushChange,
 	}
 }
 
 type static struct {
-	id          domain.FullID
-	sbType      smartblock.SmartBlockType
-	doc         *state.State
-	creatorId   string
-	pushChange  func(p PushChangeParams) (string, error)
-	s           *service
-	stayInCache bool
+	id         domain.FullID
+	sbType     smartblock.SmartBlockType
+	doc        *state.State
+	creatorId  string
+	pushChange func(p PushChangeParams) (string, error)
+	s          *service
 }
 
 func (s *static) Id() string {
@@ -81,10 +77,6 @@ func (s *static) ListIds() (result []string, err error) {
 
 func (s *static) Close() (err error) {
 	return
-}
-
-func (s *static) TryClose(objectTTL time.Duration) (res bool, err error) {
-	return !s.stayInCache, nil
 }
 
 func (s *static) Heads() []string {
