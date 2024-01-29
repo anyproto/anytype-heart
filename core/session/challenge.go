@@ -6,22 +6,30 @@ import (
 	"math/rand"
 
 	"github.com/globalsign/mgo/bson"
+	"go.uber.org/atomic"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 const (
-	challengeMaxTries = 5
-	challengeDigits   = 4 // 0000 - 9999
+	challengeMaxTries     = 5
+	challengeDigits       = 4 // 0000 - 9999
+	maxChallengesRequests = 50
 )
 
 var (
-	ErrChallengeTriesExceeded = fmt.Errorf("challenge tries exceeded")
-	ErrChallengeIdNotFound    = fmt.Errorf("challenge id not found")
-	ErrChallengeSolutionWrong = fmt.Errorf("challenge solution is wrong")
+	ErrChallengeTriesExceeded   = fmt.Errorf("challenge tries exceeded")
+	ErrChallengeIdNotFound      = fmt.Errorf("challenge id not found")
+	ErrChallengeSolutionWrong   = fmt.Errorf("challenge solution is wrong")
+	ErrTooManyChallengeRequests = fmt.Errorf("too many challenge requests per session")
+	currentChallengesRequests   = atomic.NewInt32(0)
 )
 
-func (s *service) StartNewChallenge(info *pb.EventAccountLinkChallengeClientInfo) (challengeId string, challengeValue string) {
+func (s *service) StartNewChallenge(info *pb.EventAccountLinkChallengeClientInfo) (challengeId string, challengeValue string, err error) {
+	if currentChallengesRequests.Load() >= maxChallengesRequests {
+		// todo: add limits per process?
+		return "", "", ErrTooManyChallengeRequests
+	}
 	// generate random challenge id
 	id := bson.NewObjectId().Hex()
 	s.lock.Lock()
@@ -35,7 +43,8 @@ func (s *service) StartNewChallenge(info *pb.EventAccountLinkChallengeClientInfo
 		clientInfo: info,
 	}
 
-	return id, value
+	currentChallengesRequests.Inc()
+	return id, value, nil
 }
 
 func (s *service) SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, err error) {
