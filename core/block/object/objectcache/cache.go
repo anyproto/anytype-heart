@@ -2,7 +2,6 @@ package objectcache
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -143,28 +142,7 @@ func (c *objectCache) GetObject(ctx context.Context, id string) (sb smartblock.S
 		opts.spaceId = c.space.Id()
 		return opts
 	})
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	var (
-		done    = make(chan struct{})
-		closing bool
-	)
-	var start time.Time
-	go func() {
-		select {
-		case <-done:
-			cancel()
-		case <-c.closing:
-			start = time.Now()
-			cancel()
-			closing = true
-		}
-	}()
 	v, err := c.cache.Get(ctx, id)
-	close(done)
-	if closing && errors.Is(err, context.Canceled) {
-		log.With("close_delay", time.Since(start).Milliseconds()).With("objectID", id).Warnf("object was loading during closing")
-	}
 	if err != nil {
 		return
 	}

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/blevesearch/bleve/v2/search"
 	"github.com/dgraph-io/badger/v4"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -40,8 +42,9 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 			if err != nil {
 				return err
 			}
-
 			rec := database.Record{Details: details.Details}
+			// todo: pass the inner block/relation to the result
+
 			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {
 				records = append(records, rec)
 			}
@@ -89,11 +92,45 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 	if s.fts == nil {
 		return filters, fmt.Errorf("fullText search not configured")
 	}
-	ids, err := s.fts.Search(getSpaceIDFromFilter(filters.FilterObj), text)
+	results, err := s.fts.Search(getSpaceIDFromFilter(filters.FilterObj), text)
 	if err != nil {
-		return filters, err
+		return filters, fmt.Errorf("fullText search: %w", err)
 	}
-	idsQuery := newIdsFilter(ids)
+
+	var resultsByObjectId = make(map[string][]*search.DocumentMatch)
+	for _, result := range results {
+		path := domain.NewFromPath(result.ID)
+		if _, ok := resultsByObjectId[path.ObjectId]; !ok {
+			resultsByObjectId[path.ObjectId] = make([]*search.DocumentMatch, 0, 1)
+		}
+
+		resultsByObjectId[path.ObjectId] = append(resultsByObjectId[path.ObjectId], result)
+	}
+	for objectId := range resultsByObjectId {
+		sort.Slice(resultsByObjectId[objectId], func(i, j int) bool {
+			return results[i].Score > results[j].Score
+		})
+	}
+
+	// select only the best block/relation result for each object
+	var objectResults = make([]*search.DocumentMatch, 0, len(resultsByObjectId))
+	for _, objectPerBlockResults := range resultsByObjectId {
+		if len(objectPerBlockResults) == 0 {
+			continue
+		}
+		objectResults = append(objectResults, objectPerBlockResults[0])
+	}
+
+	sort.Slice(objectResults, func(i, j int) bool {
+		return objectResults[i].Score > objectResults[j].Score
+	})
+
+	var objectIds = make([]string, 0, len(objectResults))
+	for _, result := range objectResults {
+		objectIds = append(objectIds, domain.NewFromPath(result.ID).ObjectId)
+	}
+
+	idsQuery := newIdsFilter(objectIds)
 	filters.FilterObj = database.FiltersAnd{filters.FilterObj, idsQuery}
 	filters.Order = database.SetOrder(append([]database.Order{idsQuery}, filters.Order))
 	return filters, nil

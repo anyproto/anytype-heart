@@ -7,8 +7,10 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space"
 )
@@ -18,20 +20,22 @@ type IDProvider interface {
 }
 
 type Provider struct {
-	objectStore                objectstore.ObjectStore
 	idProviderBySmartBlockType map[sb.SmartBlockType]IDProvider
 }
 
-func NewIDProvider(objectStore objectstore.ObjectStore, spaceService space.Service) IDProvider {
+func NewIDProvider(objectStore objectstore.ObjectStore,
+	spaceService space.Service,
+	blockService *block.Service,
+	fileStore filestore.FileStore,
+) IDProvider {
 	p := &Provider{
-		objectStore:                objectStore,
 		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
-	initializeProviders(objectStore, p, spaceService)
+	initializeProviders(objectStore, p, spaceService, blockService, fileStore)
 	return p
 }
 
-func initializeProviders(objectStore objectstore.ObjectStore, p *Provider, spaceService space.Service) {
+func initializeProviders(objectStore objectstore.ObjectStore, p *Provider, spaceService space.Service, blockService *block.Service, fileStore filestore.FileStore) {
 	existingObject := newExistingObject(objectStore)
 	treeObject := newTreeObject(existingObject, spaceService)
 	derivedObject := newDerivedObject(existingObject, spaceService)
@@ -43,6 +47,7 @@ func initializeProviders(objectStore objectstore.ObjectStore, p *Provider, space
 	p.idProviderBySmartBlockType[sb.SmartBlockTypePage] = treeObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
+	p.idProviderBySmartBlockType[sb.SmartBlockTypeFile] = newFileObject(blockService, fileStore)
 }
 
 func (p *Provider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {

@@ -74,6 +74,7 @@ type Uploader interface {
 
 	Upload(ctx context.Context) (result UploadResult)
 	UploadAsync(ctx context.Context) (ch chan UploadResult)
+	SetFileKeys(keys map[string]string) Uploader
 }
 type UploadResult struct {
 	Name string
@@ -125,6 +126,7 @@ type uploader struct {
 	fileService     files.Service
 	origin          model.ObjectOrigin
 	importType      model.ImportType
+	fileKeys        map[string]string
 }
 
 type bufioSeekClose struct {
@@ -304,6 +306,11 @@ func (u *uploader) SetImportType(importType model.ImportType) Uploader {
 	return u
 }
 
+func (u *uploader) SetFileKeys(filesKeys map[string]string) Uploader {
+	u.fileKeys = filesKeys
+	return u
+}
+
 func (u *uploader) setLastModifiedDate(path string) {
 	stat, err := os.Stat(path)
 	if err == nil {
@@ -385,6 +392,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		files.WithReader(buf),
 		files.WithOrigin(u.origin),
 		files.WithImportType(u.importType),
+		files.WithFileKeys(u.fileKeys),
 	}
 
 	if len(u.opts) > 0 {

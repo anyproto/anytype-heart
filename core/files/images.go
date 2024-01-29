@@ -87,7 +87,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOp
 }
 
 func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
-	dir, err := s.fileBuildDirectory(ctx, spaceID, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
+	dir, err := s.fileBuildDirectory(ctx, spaceID, opts, schema.ImageNode())
 	if err != nil {
 		return "", nil, err
 	}

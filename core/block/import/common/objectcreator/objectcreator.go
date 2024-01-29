@@ -84,6 +84,10 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	var err error
 	newID := oldIDtoNew[sn.Id]
+
+	if sn.SbType == coresb.SmartBlockTypeFile {
+		return nil, newID, nil
+	}
 	oc.setRootBlock(snapshot, newID)
 
 	oc.injectImportDetails(sn, origin)
@@ -98,6 +102,9 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	common.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
 
+	// this function is needed to support old use cases
+	oc.setFileImportedFlagAndOrigin(st, origin, oldIDtoNew)
+
 	if err = common.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
@@ -110,6 +117,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	if sn.SbType == coresb.SmartBlockTypeWidget {
 		return oc.updateWidgetObject(st)
 	}
+
 	// TODO Fix this
 	// converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
@@ -118,13 +126,12 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		}
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st, origin)...)
-	oc.setFileImportedFlagAndOrigin(st, origin)
 	typeKeys := st.ObjectTypeKeys()
 	if sn.SbType == coresb.SmartBlockTypeObjectType {
 		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys, origin)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
@@ -193,6 +200,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	spaceID string,
 	links pbtypes.RelationLinks,
 	objectTypeKeys []domain.TypeKey,
+	origin model.ObjectOrigin,
 ) error {
 
 	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))
@@ -217,7 +225,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceID, err)
 	}
-	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, false)
+	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, origin == model.ObjectOrigin_usecase)
 	return err
 }
 
@@ -490,7 +498,7 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
 }
 
-func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin *domain.ObjectOrigin) {
+func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin *domain.ObjectOrigin, oldToNew map[string]string) {
 	var fileHashes []string
 	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if fh, ok := bl.(simple.FileHashes); ok {
@@ -503,6 +511,13 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin *d
 	}
 
 	for _, hash := range fileHashes {
+		// we have file objects, so skip this logic
+		if newID, ok := oldToNew[hash]; ok {
+			if oc.saveFileKeys(st, newID) {
+				return
+			}
+			continue
+		}
 		err = oc.fileStore.SetIsFileImported(hash, true)
 		if err != nil {
 			log.Errorf("failed to set isFileImported for file %s: %s", hash, err)
@@ -516,6 +531,18 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin *d
 			log.Errorf("failed to set origin for file %s: %s", hash, err)
 		}
 	}
+}
+
+func (oc *ObjectCreator) saveFileKeys(st *state.State, newHash string) bool {
+	fileKeys, err := oc.fileStore.GetFileKeys(newHash)
+	if err != nil {
+		return true
+	}
+	st.AddFileKeys(&pb.ChangeFileKeys{
+		Hash: newHash,
+		Keys: fileKeys,
+	})
+	return false
 }
 
 func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*types.Struct, string, error) {

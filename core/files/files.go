@@ -120,7 +120,8 @@ var ValidContentLinkNames = []string{"content"}
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
 func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) (string, *storage.FileInfo, error) {
-	fileInfo, err := s.fileAddWithConfig(ctx, spaceID, &m.Blob{}, opts)
+	key := s.getFileKeyForFile(opts)
+	fileInfo, err := s.fileAddWithConfig(ctx, spaceID, &m.Blob{}, opts, key)
 	if err != nil {
 		return "", nil, err
 	}
@@ -159,6 +160,17 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 		}
 	}
 	return nodeHash, fileInfo, nil
+}
+
+func (s *service) getFileKeyForFile(opts AddOptions) string {
+	var key string
+	if len(opts.FileKeys) > 0 {
+		for _, fileKey := range opts.FileKeys {
+			key = fileKey
+			break
+		}
+	}
+	return key
 }
 
 func (s *service) storeFileSize(spaceId string, hash string) error {
@@ -550,7 +562,7 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 	return dec.DecryptReader(fd)
 }
 
-func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions, fileKey string) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -624,19 +636,10 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 		encryptor     symmetric.EncryptorDecryptor
 	)
 	if mill.Encrypt() && !conf.Plaintext {
-		key, err := symmetric.NewRandom()
+		encryptor, contentReader, err = s.encryptFile(fileKey, res, fileInfo)
 		if err != nil {
 			return nil, err
 		}
-		encryptor = cfb.New(key, [aes.BlockSize]byte{})
-
-		contentReader, err = encryptor.EncryptReader(res.File)
-		if err != nil {
-			return nil, err
-		}
-
-		fileInfo.Key = key.String()
-		fileInfo.EncMode = storage.FileInfo_AES_CFB
 	} else {
 		contentReader = res.File
 	}
@@ -675,6 +678,42 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 	}
 
 	return fileInfo, nil
+}
+
+func (s *service) encryptFile(fileKey string, res *m.Result, fileInfo *storage.FileInfo) (symmetric.EncryptorDecryptor, io.Reader, error) {
+	var (
+		contentReader io.Reader
+		encryptor     symmetric.EncryptorDecryptor
+	)
+
+	key, err := s.getEncryptionKey(fileKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	encryptor = cfb.New(key, [aes.BlockSize]byte{})
+
+	contentReader, err = encryptor.EncryptReader(res.File)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fileInfo.Key = key.String()
+	fileInfo.EncMode = storage.FileInfo_AES_CFB
+	return encryptor, contentReader, nil
+}
+
+func (s *service) getEncryptionKey(fileKey string) (symmetric.Key, error) {
+	key, err := symmetric.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+	if fileKey != "" {
+		key, err = symmetric.FromString(fileKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return key, nil
 }
 
 // fileNode has structure:
@@ -719,7 +758,7 @@ func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.Fi
 	return helpers.AddLinkToDirectory(ctx, dagService, outerDir, link, node.Cid().String())
 }
 
-func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, options AddOptions, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
@@ -730,18 +769,18 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 	}
 	if mil != nil {
 		opts := AddOptions{
-			Reader:    reader,
+			Reader:    options.Reader,
 			Use:       "",
 			Media:     "",
-			Name:      filename,
-			Plaintext: sch.Plaintext || plaintext,
+			Name:      options.Name,
+			Plaintext: sch.Plaintext || options.Plaintext,
 		}
 		err := s.normalizeOptions(ctx, spaceID, &opts)
 		if err != nil {
 			return nil, err
 		}
 
-		added, err := s.fileAddWithConfig(ctx, spaceID, mil, opts)
+		added, err := s.fileAddWithConfig(ctx, spaceID, mil, opts, "")
 		if err != nil {
 			return nil, err
 		}
@@ -760,14 +799,15 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 			if err != nil {
 				return nil, err
 			}
+			key := s.getFileKeyForImage(options, step)
 			var opts *AddOptions
 			if step.Link.Use == schema.FileTag {
 				opts = &AddOptions{
-					Reader:    reader,
+					Reader:    options.Reader,
 					Use:       "",
 					Media:     "",
-					Name:      filename,
-					Plaintext: step.Link.Plaintext || plaintext,
+					Name:      options.Name,
+					Plaintext: step.Link.Plaintext || options.Plaintext,
 				}
 				err = s.normalizeOptions(ctx, spaceID, opts)
 				if err != nil {
@@ -783,8 +823,8 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 					Reader:    nil,
 					Use:       dir.Files[step.Link.Use].Hash,
 					Media:     "",
-					Name:      filename,
-					Plaintext: step.Link.Plaintext || plaintext,
+					Name:      options.Name,
+					Plaintext: step.Link.Plaintext || options.Plaintext,
 				}
 
 				err = s.normalizeOptions(ctx, spaceID, opts)
@@ -793,18 +833,34 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 				}
 			}
 
-			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts)
+			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts, key)
 			if err != nil {
 				return nil, err
 			}
 			dir.Files[step.Name] = added
-			reader.Seek(0, 0)
+			_, err = options.Reader.Seek(0, 0)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		return nil, schema.ErrEmptySchema
 	}
 
 	return dir, nil
+}
+
+func (s *service) getFileKeyForImage(options AddOptions, step storage.Step) string {
+	var key string
+	if len(options.FileKeys) > 0 {
+		for name, fileKeys := range options.FileKeys {
+			if strings.Contains(name, step.Name) {
+				key = fileKeys
+				break
+			}
+		}
+	}
+	return key
 }
 
 func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfExists bool) ([]*storage.FileInfo, error) {

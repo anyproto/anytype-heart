@@ -26,6 +26,7 @@ type AddOptions struct {
 	Plaintext        bool
 	Origin           model.ObjectOrigin
 	ImportType       model.ImportType
+	FileKeys         map[string]string
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -55,6 +56,12 @@ func WithOrigin(origin model.ObjectOrigin) AddOption {
 func WithImportType(importType model.ImportType) AddOption {
 	return func(args *AddOptions) {
 		args.ImportType = importType
+	}
+}
+
+func WithFileKeys(fileKeys map[string]string) AddOption {
+	return func(args *AddOptions) {
+		args.FileKeys = fileKeys
 	}
 }
 
