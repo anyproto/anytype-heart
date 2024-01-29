@@ -9,10 +9,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -25,7 +25,7 @@ func newFileObject(service *block.Service, fileStore filestore.FileStore) *file 
 	return &file{service: service, fileStore: fileStore}
 }
 
-func (f *file) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, _ bool) (string, treestorage.TreeStorageCreatePayload, error) {
+func (f *file) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, _ bool, origin *domain.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
 	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
 	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	fileKeys, err := f.fileStore.GetFileKeys(id)
@@ -44,7 +44,7 @@ func (f *file) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.S
 	}
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: params,
-		Origin:               model.ObjectOrigin_import,
+		ObjectOrigin:         origin,
 	}
 
 	filesKeys := make(map[string]string, 0)
