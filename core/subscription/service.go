@@ -241,13 +241,11 @@ func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*
 }
 
 func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
 	if err != nil {
 		return nil, err
 	}
-	if req.NoDepSubscription {
-		sub.sortedSub.disableDep = true
-	} else {
+	if !sub.sortedSub.disableDep {
 		sub.sortedSub.forceSubIds = filterDepIds
 	}
 	if err := sub.init(nil); err != nil {
