@@ -1,3 +1,5 @@
+//go:build anydebug
+
 package subscription
 
 import (
@@ -16,6 +18,16 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+func (s *service) initDebugger() {
+	s.subDebugger = newSubDebugger()
+}
+
+func (s *service) debugEvents(ev *pb.Event) {
+	for _, msg := range ev.Messages {
+		s.subDebugger.addEvent(msg)
+	}
+}
+
 func (s *service) DebugRouter(r chi.Router) {
 	r.Get("/per_object", debug.PlaintextHandler(s.debugPerObject))
 	r.Get("/per_subscription", debug.PlaintextHandler(s.debugPerSubscription))
@@ -29,141 +41,234 @@ func (s *service) debugPerSubscription(w io.Writer, req *http.Request) error {
 	return s.subDebugger.printPerSubscription(w, req)
 }
 
-type debugEntry struct {
-	rawMessage *pb.EventMessage
+type debugEntrySet pb.EventMessageValueOfObjectDetailsSet
+
+func (e *debugEntrySet) getObjectId() string {
+	return e.ObjectDetailsSet.Id
 }
 
-func (e debugEntry) getObjectId() string {
-	switch v := e.rawMessage.Value.(type) {
-	case *pb.EventMessageValueOfObjectDetailsSet:
-		return v.ObjectDetailsSet.Id
-	case *pb.EventMessageValueOfObjectDetailsUnset:
-		return v.ObjectDetailsUnset.Id
-	case *pb.EventMessageValueOfObjectDetailsAmend:
-		return v.ObjectDetailsAmend.Id
-	case *pb.EventMessageValueOfSubscriptionAdd:
-		return v.SubscriptionAdd.Id
-	case *pb.EventMessageValueOfSubscriptionRemove:
-		return v.SubscriptionRemove.Id
-	case *pb.EventMessageValueOfSubscriptionPosition:
-		return v.SubscriptionPosition.Id
-	default:
-		return fmt.Sprintf("UNKNOWN %T", e.rawMessage.Value)
+func (e *debugEntrySet) getSubscriptionIds() []string {
+	return e.ObjectDetailsSet.SubIds
+}
+
+func (e *debugEntrySet) perObjectString() string {
+	return fmt.Sprint("SET   ", e.getSubscriptionIds())
+}
+
+func (e *debugEntrySet) perSubscriptionString() string {
+	return fmt.Sprint("SET   ", e.getObjectId())
+}
+
+func (e *debugEntrySet) describe(w io.Writer) error {
+	marshaller := &jsonpb.Marshaler{}
+	keys := make([]string, 0, len(e.ObjectDetailsSet.Details.GetFields()))
+	for k := range e.ObjectDetailsSet.Details.GetFields() {
+		keys = append(keys, k)
 	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		value, err := marshaller.MarshalToString(e.ObjectDetailsSet.Details.GetFields()[k])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(w, "\t\t%s: %s\n", k, value)
+	}
+	return nil
 }
 
-func (e debugEntry) getSubscriptionIds() []string {
-	switch v := e.rawMessage.Value.(type) {
+type debugEntryUnset pb.EventMessageValueOfObjectDetailsUnset
+
+func (e *debugEntryUnset) getObjectId() string {
+	return e.ObjectDetailsUnset.Id
+}
+
+func (e *debugEntryUnset) getSubscriptionIds() []string {
+	return e.ObjectDetailsUnset.SubIds
+}
+
+func (e *debugEntryUnset) perObjectString() string {
+	return fmt.Sprint("UNSET ", e.getSubscriptionIds())
+}
+
+func (e *debugEntryUnset) perSubscriptionString() string {
+	return fmt.Sprint("UNSET ", e.getObjectId())
+}
+
+func (e *debugEntryUnset) describe(w io.Writer) error {
+	for _, k := range e.ObjectDetailsUnset.Keys {
+		fmt.Fprintf(w, "\t\t%s\n", k)
+	}
+	return nil
+}
+
+type debugEntryAmend pb.EventMessageValueOfObjectDetailsAmend
+
+func (e *debugEntryAmend) getObjectId() string {
+	return e.ObjectDetailsAmend.Id
+}
+
+func (e *debugEntryAmend) getSubscriptionIds() []string {
+	return e.ObjectDetailsAmend.SubIds
+}
+
+func (e *debugEntryAmend) perObjectString() string {
+	return fmt.Sprint("AMEND ", e.getSubscriptionIds())
+}
+
+func (e *debugEntryAmend) perSubscriptionString() string {
+	return fmt.Sprint("AMEND ", e.getObjectId())
+}
+
+func (e *debugEntryAmend) describe(w io.Writer) error {
+	marshaller := &jsonpb.Marshaler{}
+
+	converted := make([]keyValue, 0, len(e.ObjectDetailsAmend.Details))
+	for _, det := range e.ObjectDetailsAmend.Details {
+		value, err := marshaller.MarshalToString(det.Value)
+		if err != nil {
+			return err
+		}
+		converted = append(converted, keyValue{
+			key:   det.Key,
+			value: value,
+		})
+	}
+	sort.Slice(converted, func(i, j int) bool {
+		return converted[i].key < converted[j].key
+	})
+	for _, kv := range converted {
+		fmt.Fprintf(w, "\t\t%s: %s\n", kv.key, kv.value)
+	}
+	return nil
+}
+
+type debugEntryAdd pb.EventMessageValueOfSubscriptionAdd
+
+func (e *debugEntryAdd) getObjectId() string {
+	return e.SubscriptionAdd.Id
+}
+
+func (e *debugEntryAdd) getSubscriptionIds() []string {
+	return []string{e.SubscriptionAdd.SubId}
+}
+
+func (e *debugEntryAdd) perObjectString() string {
+	return fmt.Sprintf("[ADD] %s --- %q", e.getSubscriptionIds(), e.SubscriptionAdd.AfterId)
+}
+
+func (e *debugEntryAdd) perSubscriptionString() string {
+	return fmt.Sprintf("[ADD] %s --- %q", e.getObjectId(), e.SubscriptionAdd.AfterId)
+}
+
+func (e *debugEntryAdd) describe(w io.Writer) error {
+	return nil
+}
+
+type debugEntryRemove pb.EventMessageValueOfSubscriptionRemove
+
+func (e *debugEntryRemove) getObjectId() string {
+	return e.SubscriptionRemove.Id
+}
+
+func (e *debugEntryRemove) getSubscriptionIds() []string {
+	return []string{e.SubscriptionRemove.SubId}
+}
+
+func (e *debugEntryRemove) perObjectString() string {
+	return fmt.Sprint("[REM] ", e.getSubscriptionIds())
+}
+
+func (e *debugEntryRemove) perSubscriptionString() string {
+	return fmt.Sprintf("[REM] %s", e.getObjectId())
+}
+
+func (e *debugEntryRemove) describe(w io.Writer) error {
+	return nil
+}
+
+type debugEntryPosition pb.EventMessageValueOfSubscriptionPosition
+
+func (e *debugEntryPosition) getObjectId() string {
+	return e.SubscriptionPosition.Id
+}
+
+func (e *debugEntryPosition) getSubscriptionIds() []string {
+	return []string{e.SubscriptionPosition.SubId}
+}
+
+func (e *debugEntryPosition) perObjectString() string {
+	return fmt.Sprintf("[POS] %s --- %q", e.getSubscriptionIds(), e.SubscriptionPosition.AfterId)
+}
+
+func (e *debugEntryPosition) perSubscriptionString() string {
+	return fmt.Sprintf("[POS] %s --- %q", e.getObjectId(), e.SubscriptionPosition.AfterId)
+}
+
+func (e *debugEntryPosition) describe(w io.Writer) error {
+	return nil
+}
+
+type debugEntryCounters pb.EventMessageValueOfSubscriptionCounters
+
+func (e *debugEntryCounters) getObjectId() string {
+	return ""
+}
+
+func (e *debugEntryCounters) getSubscriptionIds() []string {
+	return []string{e.SubscriptionCounters.SubId}
+}
+
+func (e *debugEntryCounters) perObjectString() string {
+	return ""
+}
+
+func (e *debugEntryCounters) perSubscriptionString() string {
+	return fmt.Sprintf("[CNT] total=%d", e.SubscriptionCounters.Total)
+}
+
+func (e *debugEntryCounters) describe(w io.Writer) error {
+	fmt.Fprintf(w, "\t\tprev=%d next=%d total=%d\n", e.SubscriptionCounters.PrevCount, e.SubscriptionCounters.NextCount, e.SubscriptionCounters.Total)
+	return nil
+}
+
+func (e *debugEntryCounters) noObjectInfo() {}
+
+type withoutObjectInfo interface {
+	noObjectInfo()
+}
+
+type debugEntry interface {
+	getObjectId() string
+	getSubscriptionIds() []string
+	perObjectString() string
+	perSubscriptionString() string
+	describe(w io.Writer) error
+}
+
+func newDebugEntry(msg *pb.EventMessage) debugEntry {
+	switch v := msg.Value.(type) {
 	case *pb.EventMessageValueOfObjectDetailsSet:
-		return v.ObjectDetailsSet.SubIds
+		return (*debugEntrySet)(v)
 	case *pb.EventMessageValueOfObjectDetailsUnset:
-		return v.ObjectDetailsUnset.SubIds
+		return (*debugEntryUnset)(v)
 	case *pb.EventMessageValueOfObjectDetailsAmend:
-		return v.ObjectDetailsAmend.SubIds
+		return (*debugEntryAmend)(v)
 	case *pb.EventMessageValueOfSubscriptionAdd:
-		return []string{v.SubscriptionAdd.SubId}
+		return (*debugEntryAdd)(v)
 	case *pb.EventMessageValueOfSubscriptionRemove:
-		return []string{v.SubscriptionRemove.SubId}
+		return (*debugEntryRemove)(v)
 	case *pb.EventMessageValueOfSubscriptionPosition:
-		return []string{v.SubscriptionPosition.SubId}
+		return (*debugEntryPosition)(v)
+	case *pb.EventMessageValueOfSubscriptionCounters:
+		return (*debugEntryCounters)(v)
 	default:
 		return nil
-	}
-}
-
-func (e debugEntry) perObjectString() string {
-	switch v := e.rawMessage.Value.(type) {
-	case *pb.EventMessageValueOfObjectDetailsSet:
-		return fmt.Sprint("SET   ", e.getSubscriptionIds())
-	case *pb.EventMessageValueOfObjectDetailsUnset:
-		return fmt.Sprint("UNSET ", e.getSubscriptionIds())
-	case *pb.EventMessageValueOfObjectDetailsAmend:
-		return fmt.Sprint("AMEND ", e.getSubscriptionIds())
-	case *pb.EventMessageValueOfSubscriptionAdd:
-		return fmt.Sprintf("[ADD] %s --- %q", e.getSubscriptionIds(), v.SubscriptionAdd.AfterId)
-	case *pb.EventMessageValueOfSubscriptionRemove:
-		return fmt.Sprint("[REM] ", e.getSubscriptionIds())
-	case *pb.EventMessageValueOfSubscriptionPosition:
-		return fmt.Sprintf("[POS] %s --- %q", e.getSubscriptionIds(), v.SubscriptionPosition.AfterId)
-	default:
-		return fmt.Sprintf("UNKNOWN %T", e.rawMessage.Value)
-	}
-}
-
-func (e debugEntry) perSubscriptionString() string {
-	switch v := e.rawMessage.Value.(type) {
-	case *pb.EventMessageValueOfObjectDetailsSet:
-		return fmt.Sprint("SET   ", e.getObjectId())
-	case *pb.EventMessageValueOfObjectDetailsUnset:
-		return fmt.Sprint("UNSET ", e.getObjectId())
-	case *pb.EventMessageValueOfObjectDetailsAmend:
-		return fmt.Sprint("AMEND ", e.getObjectId())
-	case *pb.EventMessageValueOfSubscriptionAdd:
-		return fmt.Sprintf("[ADD] %s --- %q", e.getObjectId(), v.SubscriptionAdd.AfterId)
-	case *pb.EventMessageValueOfSubscriptionRemove:
-		return fmt.Sprint("[REM] ", v.SubscriptionRemove.SubId)
-	case *pb.EventMessageValueOfSubscriptionPosition:
-		return fmt.Sprintf("[POS] %s --- %q", e.getObjectId(), v.SubscriptionPosition.AfterId)
-	default:
-		return fmt.Sprintf("UNKNOWN %T", e.rawMessage.Value)
 	}
 }
 
 type keyValue struct {
 	key   string
 	value string
-}
-
-func (e debugEntry) printDetails(w io.Writer) error {
-	switch v := e.rawMessage.Value.(type) {
-	case *pb.EventMessageValueOfObjectDetailsSet:
-		marshaller := &jsonpb.Marshaler{}
-		keys := make([]string, 0, len(v.ObjectDetailsSet.Details.GetFields()))
-		for k := range v.ObjectDetailsSet.Details.GetFields() {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			value, err := marshaller.MarshalToString(v.ObjectDetailsSet.Details.GetFields()[k])
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(w, "\t\t%s: %s\n", k, value)
-		}
-	case *pb.EventMessageValueOfObjectDetailsUnset:
-		keys := make([]string, len(v.ObjectDetailsUnset.Keys))
-		copy(keys, v.ObjectDetailsUnset.Keys)
-		sort.Strings(keys)
-		for _, k := range keys {
-			fmt.Fprintf(w, "\t\t%s\n", k)
-		}
-	case *pb.EventMessageValueOfObjectDetailsAmend:
-		marshaller := &jsonpb.Marshaler{}
-
-		converted := make([]keyValue, 0, len(v.ObjectDetailsAmend.Details))
-		for _, det := range v.ObjectDetailsAmend.Details {
-			value, err := marshaller.MarshalToString(det.Value)
-			if err != nil {
-				return err
-			}
-			converted = append(converted, keyValue{
-				key:   det.Key,
-				value: value,
-			})
-		}
-		sort.Slice(converted, func(i, j int) bool {
-			return converted[i].key < converted[j].key
-		})
-		for _, kv := range converted {
-			fmt.Fprintf(w, "\t\t%s: %s\n", kv.key, kv.value)
-		}
-	case *pb.EventMessageValueOfSubscriptionAdd:
-	case *pb.EventMessageValueOfSubscriptionRemove:
-	case *pb.EventMessageValueOfSubscriptionPosition:
-	default:
-		return fmt.Errorf("UNKNOWN %T", e.rawMessage.Value)
-	}
-	return nil
 }
 
 type subDebugger struct {
@@ -190,11 +295,9 @@ func (d *subDebugger) addEvent(msg *pb.EventMessage) {
 		name = pbtypes.GetString(v.Details, bundle.RelationKeyName.String())
 	}
 
-	ev := debugEntry{
-		rawMessage: msg,
-	}
-	objectId := ev.getObjectId()
-	subscriptionIds := ev.getSubscriptionIds()
+	ent := newDebugEntry(msg)
+	objectId := ent.getObjectId()
+	subscriptionIds := ent.getSubscriptionIds()
 
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -203,20 +306,18 @@ func (d *subDebugger) addEvent(msg *pb.EventMessage) {
 		d.objectNames[objectId] = name
 	}
 
-	if _, ok := d.eventsPerObject[objectId]; !ok {
-		d.objectIds = append(d.objectIds, objectId)
+	if _, ok := ent.(withoutObjectInfo); !ok {
+		if _, ok := d.eventsPerObject[objectId]; !ok {
+			d.objectIds = append(d.objectIds, objectId)
+		}
+		d.eventsPerObject[objectId] = append(d.eventsPerObject[objectId], ent)
 	}
-	d.eventsPerObject[objectId] = append(d.eventsPerObject[objectId], debugEntry{
-		rawMessage: msg,
-	})
 
 	for _, subId := range subscriptionIds {
 		if _, ok := d.eventsPerSubscription[subId]; !ok {
 			d.subscriptionIds = append(d.subscriptionIds, subId)
 		}
-		d.eventsPerSubscription[subId] = append(d.eventsPerSubscription[subId], debugEntry{
-			rawMessage: msg,
-		})
+		d.eventsPerSubscription[subId] = append(d.eventsPerSubscription[subId], ent)
 	}
 }
 
@@ -225,9 +326,12 @@ func (d *subDebugger) printPerObject(w io.Writer, _ *http.Request) error {
 	defer d.lock.RUnlock()
 	for _, id := range d.objectIds {
 		fmt.Fprintf(w, "%s %s\n", id, d.objectNames[id])
-		for _, entry := range d.eventsPerObject[id] {
-			fmt.Fprintf(w, "\t%s\n", entry.perObjectString())
-			entry.printDetails(w)
+		for _, e := range d.eventsPerObject[id] {
+			fmt.Fprintf(w, "\t%s\n", e.perObjectString())
+			err := e.describe(w)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -240,7 +344,10 @@ func (d *subDebugger) printPerSubscription(w io.Writer, _ *http.Request) error {
 		fmt.Fprintf(w, "%s\n", subId)
 		for _, entry := range d.eventsPerSubscription[subId] {
 			fmt.Fprintf(w, "\t%s\n", entry.perSubscriptionString())
-			entry.printDetails(w)
+			err := entry.describe(w)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

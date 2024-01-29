@@ -94,7 +94,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.ctxBuf = &opCtx{c: s.cache}
-	s.subDebugger = newSubDebugger()
+	s.initDebugger()
 	return
 }
 
@@ -499,9 +499,7 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	event := s.ctxBuf.apply()
 	dur := time.Since(st)
 
-	for _, msg := range event.Messages {
-		s.subDebugger.addEvent(msg)
-	}
+	s.debugEvents(event)
 
 	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
 	s.eventSender.Broadcast(event)
