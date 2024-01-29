@@ -51,8 +51,11 @@ func (s *Service) ValidateSessionToken(token string) error {
 	return s.sessions.ValidateToken(s.sessionSigningKey, token)
 }
 
-func (s *Service) LinkLocalStartNewChallenge(clientInfo *pb.EventAccountLinkChallengeClientInfo) (id string) {
-	id, value := s.sessions.StartNewChallenge(clientInfo)
+func (s *Service) LinkLocalStartNewChallenge(clientInfo *pb.EventAccountLinkChallengeClientInfo) (id string, err error) {
+	id, value, err := s.sessions.StartNewChallenge(clientInfo)
+	if err != nil {
+		return "", err
+	}
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -65,7 +68,7 @@ func (s *Service) LinkLocalStartNewChallenge(clientInfo *pb.EventAccountLinkChal
 			},
 		},
 	})
-	return id
+	return id, nil
 }
 
 func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChallengeRequest) (token string, appKey string, err error) {

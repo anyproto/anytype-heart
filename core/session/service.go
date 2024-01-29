@@ -15,7 +15,7 @@ const CName = "session"
 type Service interface {
 	StartSession(privKey []byte) (string, error)
 	ValidateToken(privKey []byte, token string) error
-	StartNewChallenge(info *pb.EventAccountLinkChallengeClientInfo) (id string, value string)
+	StartNewChallenge(info *pb.EventAccountLinkChallengeClientInfo) (id string, value string, err error)
 	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, err error)
 
 	CloseSession(token string) error
