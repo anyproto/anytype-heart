@@ -113,6 +113,7 @@ message Rpc {
 
                         NO_SUCH_SPACE = 101;
                         SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
                     }
                 }
             }
@@ -165,6 +166,7 @@ message Rpc {
                         NO_SUCH_SPACE = 101;
                         SPACE_IS_DELETED = 102;
                         NO_ACTIVE_INVITE = 103;
+                        REQUEST_FAILED = 105;
                     }
                 }
             }
@@ -225,6 +227,7 @@ message Rpc {
                         SPACE_IS_DELETED = 102;
                         INVITE_NOT_FOUND = 103;
                         INVITE_BAD_SIGNATURE = 104;
+                        REQUEST_FAILED = 105;
                     }
                 }
             }
@@ -251,6 +254,7 @@ message Rpc {
 
                         NO_SUCH_SPACE = 101;
                         SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
                     }
                 }
             }
@@ -260,6 +264,7 @@ message Rpc {
             message Request {
                 string spaceId = 1;
                 string identity = 2;
+                model.ParticipantPermissions permissions = 3;
             }
 
             message Response {
@@ -276,6 +281,9 @@ message Rpc {
 
                         NO_SUCH_SPACE = 101;
                         SPACE_IS_DELETED = 102;
+                        NO_SUCH_IDENTITY = 103;
+                        INCORRECT_PERMISSIONS = 104;
+                        REQUEST_FAILED = 105;
                     }
                 }
             }
@@ -301,6 +309,7 @@ message Rpc {
 
                         NO_SUCH_SPACE = 101;
                         SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
                     }
                 }
             }
@@ -327,6 +336,7 @@ message Rpc {
                         NO_SUCH_SPACE = 101;
                         SPACE_IS_DELETED = 102;
                         PARTICIPANT_NOT_FOUND = 103;
+                        REQUEST_FAILED = 104;
                     }
                 }
             }
@@ -352,6 +362,7 @@ message Rpc {
 
                         NO_SUCH_SPACE = 101;
                         SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
                     }
                 }
             }
