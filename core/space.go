@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 )
 
@@ -35,6 +36,7 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
 			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteGenerateResponseError_NO_SUCH_SPACE),
 			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteGenerateResponseError_BAD_INPUT),
+			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteGenerateResponseError_REQUEST_FAILED),
 		)
 		return &pb.RpcSpaceInviteGenerateResponse{
 			Error: &pb.RpcSpaceInviteGenerateResponseError{
@@ -118,6 +120,7 @@ func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinReques
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceJoinResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceJoinResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceJoinResponseError_REQUEST_FAILED),
 	)
 	return &pb.RpcSpaceJoinResponse{
 		Error: &pb.RpcSpaceJoinResponseError{
@@ -147,10 +150,13 @@ func (mw *Middleware) SpaceExit(cctx context.Context, req *pb.RpcSpaceExitReques
 
 func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpaceRequestApproveRequest) *pb.RpcSpaceRequestApproveResponse {
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
-	err := accept(cctx, req.SpaceId, req.Identity, aclService)
+	err := accept(cctx, req.SpaceId, req.Identity, req.Permissions, aclService)
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceRequestApproveResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceRequestApproveResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrNoSuchUser, pb.RpcSpaceRequestApproveResponseError_NO_SUCH_IDENTITY),
+		errToCode(acl.ErrIncorrectPermissions, pb.RpcSpaceRequestApproveResponseError_INCORRECT_PERMISSIONS),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceRequestApproveResponseError_REQUEST_FAILED),
 	)
 	return &pb.RpcSpaceRequestApproveResponse{
 		Error: &pb.RpcSpaceRequestApproveResponseError{
@@ -190,10 +196,10 @@ func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRe
 	return aclService.Join(ctx, req.SpaceId, inviteCid, inviteFileKey)
 }
 
-func accept(ctx context.Context, spaceId, identity string, aclService acl.AclService) (err error) {
+func accept(ctx context.Context, spaceId, identity string, permissions model.ParticipantPermissions, aclService acl.AclService) (err error) {
 	key, err := crypto.DecodeAccountAddress(identity)
 	if err != nil {
 		return
 	}
-	return aclService.Accept(ctx, spaceId, key)
+	return aclService.Accept(ctx, spaceId, key, permissions)
 }

@@ -2,11 +2,11 @@ package acl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
-	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
@@ -29,16 +29,19 @@ import (
 const CName = "common.acl.aclservice"
 
 var (
-	ErrInviteNotExist     = fmt.Errorf("invite doesn't exist")
-	ErrPersonalSpace      = fmt.Errorf("sharing of personal space is forbidden")
-	ErrInviteBadSignature = fmt.Errorf("invite has bad signature")
+	ErrInviteNotExist       = errors.New("invite doesn't exist")
+	ErrPersonalSpace        = errors.New("sharing of personal space is forbidden")
+	ErrInviteBadSignature   = errors.New("invite has bad signature")
+	ErrIncorrectPermissions = errors.New("incorrect permissions")
+	ErrNoSuchUser           = errors.New("no such user")
+	ErrAclRequestFailed     = errors.New("acl request failed")
 )
 
 type AclService interface {
 	app.Component
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
-	Accept(ctx context.Context, spaceId string, identity crypto.PubKey) error
+	Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error
 	GetCurrentInvite(spaceId string) (*InviteInfo, error)
 	GenerateInvite(ctx context.Context, spaceId string) (*InviteInfo, error)
 }
@@ -87,7 +90,7 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 		Metadata:  a.spaceService.AccountMetadataPayload(),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
 	return a.spaceService.Join(ctx, spaceId)
 }
@@ -143,7 +146,11 @@ func (a *aclService) getInvitePayload(ctx context.Context, inviteCid cid.Cid, in
 	return &invitePayload, nil
 }
 
-func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey) error {
+func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error {
+	validPerms := permissions == model.ParticipantPermissions_Reader || permissions == model.ParticipantPermissions_Writer
+	if !validPerms {
+		return ErrIncorrectPermissions
+	}
 	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -165,13 +172,24 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	}
 	acl.RUnlock()
 	if recId == "" {
-		return fmt.Errorf("no record with requested identity: %s", identity.Account())
+		return fmt.Errorf("%w with identity: %s", ErrNoSuchUser, identity.Account())
 	}
 	cl := acceptSpace.CommonSpace().AclClient()
-	return cl.AcceptRequest(ctx, list.RequestAcceptPayload{
+	var aclPerms list.AclPermissions
+	switch permissions {
+	case model.ParticipantPermissions_Reader:
+		aclPerms = list.AclPermissionsReader
+	case model.ParticipantPermissions_Writer:
+		aclPerms = list.AclPermissionsWriter
+	}
+	err = cl.AcceptRequest(ctx, list.RequestAcceptPayload{
 		RequestRecordId: recId,
-		Permissions:     list.AclPermissions(aclrecordproto.AclUserPermissions_Writer),
+		Permissions:     aclPerms,
 	})
+	if err != nil {
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	return nil
 }
 
 type InviteInfo struct {
@@ -295,7 +313,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 	}
 	err = aclClient.AddRecord(ctx, res.InviteRec)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
 
 	invite, err := a.buildInvite(ctx, acceptSpace, res.InviteKey)
