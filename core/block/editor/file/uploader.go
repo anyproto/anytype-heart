@@ -67,6 +67,7 @@ type Uploader interface {
 	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
 	SetOrigin(origin model.ObjectOrigin) Uploader
+	SetImportType(origin model.ImportType) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
@@ -124,6 +125,7 @@ type uploader struct {
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
 	origin          model.ObjectOrigin
+	importType      model.ImportType
 	fileKeys        map[string]string
 }
 
@@ -299,6 +301,11 @@ func (u *uploader) SetOrigin(origin model.ObjectOrigin) Uploader {
 	return u
 }
 
+func (u *uploader) SetImportType(importType model.ImportType) Uploader {
+	u.importType = importType
+	return u
+}
+
 func (u *uploader) SetFileKeys(filesKeys map[string]string) Uploader {
 	u.fileKeys = filesKeys
 	return u
@@ -384,6 +391,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
 		files.WithOrigin(u.origin),
+		files.WithImportType(u.importType),
 		files.WithFileKeys(u.fileKeys),
 	}
 

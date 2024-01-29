@@ -25,6 +25,7 @@ type AddOptions struct {
 	LastModifiedDate int64
 	Plaintext        bool
 	Origin           model.ObjectOrigin
+	ImportType       model.ImportType
 	FileKeys         map[string]string
 }
 
@@ -49,6 +50,12 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 func WithOrigin(origin model.ObjectOrigin) AddOption {
 	return func(args *AddOptions) {
 		args.Origin = origin
+	}
+}
+
+func WithImportType(importType model.ImportType) AddOption {
+	return func(args *AddOptions) {
+		args.ImportType = importType
 	}
 }
 

@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/metrics/amplitude"
@@ -101,7 +102,11 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin, progress process.Progress) (string, string, error) {
+func (i *Import) Import(ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	origin *domain.ObjectOrigin,
+	progress process.Progress,
+) (string, string, error) {
 	if req.SpaceId == "" {
 		return "", "", fmt.Errorf("spaceId is empty")
 	}
@@ -149,7 +154,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c common.Converter,
 	progress process.Progress,
-	origin model.ObjectOrigin,
+	origin *domain.ObjectOrigin,
 ) (string, error) {
 	allErrors := common.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
@@ -192,7 +197,9 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		res := &common.Response{
 			Snapshots: sn,
 		}
-		i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
+
+		originImport := domain.ObjectOriginImport(model.ObjectOrigin_import, model.Import_External)
+		i.createObjects(ctx, res, progress, req, allErrors, originImport)
 		if !allErrors.IsEmpty() {
 			return allErrors.GetResultError(req.Type)
 		}
@@ -266,7 +273,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 	}
 
 	progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
+	details, _ := i.createObjects(ctx, res, progress, req, allErrors, domain.ObjectOriginNone())
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
@@ -278,9 +285,9 @@ func (i *Import) createObjects(ctx context.Context,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
 	allErrors *common.ConvertError,
-	origin model.ObjectOrigin,
+	origin *domain.ObjectOrigin,
 ) (map[string]*types.Struct, string) {
-	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req)
+	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req, origin)
 	if err != nil {
 		return nil, ""
 	}
@@ -312,6 +319,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	res *common.Response,
 	allErrors *common.ConvertError,
 	req *pb.RpcObjectImportRequest,
+	origin *domain.ObjectOrigin,
 ) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	relationOptions := make([]*common.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
@@ -322,7 +330,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
-		err := i.getObjectID(ctx, req.SpaceId, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects)
+		err := i.getObjectID(ctx, req.SpaceId, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects, origin)
 		if err != nil {
 			allErrors.Add(err)
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
@@ -333,7 +341,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	}
 	for _, option := range relationOptions {
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
-		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects)
+		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects, origin)
 		if err != nil {
 			allErrors.Add(err)
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
@@ -356,20 +364,20 @@ func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew m
 	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 }
 
-func (i *Import) getObjectID(
-	ctx context.Context,
+func (i *Import) getObjectID(ctx context.Context,
 	spaceID string,
 	snapshot *common.Snapshot,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	oldIDToNew map[string]string,
 	updateExisting bool,
+	origin *domain.ObjectOrigin,
 ) error {
 	var (
 		id      string
 		payload treestorage.TreeStorageCreatePayload
 	)
 
-	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting)
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting, origin)
 	if err != nil {
 		return err
 	}
