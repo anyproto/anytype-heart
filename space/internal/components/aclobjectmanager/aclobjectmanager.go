@@ -209,7 +209,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 func (a *aclObjectManager) processStates(states []list.AccountState) (err error) {
 	var numActiveUsers int
 	for _, state := range states {
-		if state.Status == list.StatusActive && !state.Permissions.IsOwner() {
+		if !(state.Permissions.IsOwner() || state.Permissions.NoPermissions()) {
 			numActiveUsers++
 		}
 		err := a.updateParticipantFromAclState(a.ctx, state)
