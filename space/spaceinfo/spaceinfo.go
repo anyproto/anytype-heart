@@ -51,3 +51,11 @@ type SpaceInfo struct {
 	RemoteStatus  RemoteStatus
 	AccountStatus AccountStatus
 }
+
+type AccessType int
+
+const (
+	AccessTypePrivate  = AccessType(model.SpaceAccessType_Private)
+	AccessTypePersonal = AccessType(model.SpaceAccessType_Personal)
+	AccessTypeShared   = AccessType(model.SpaceAccessType_Shared)
+)

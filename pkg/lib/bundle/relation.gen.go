@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5b5de3ce0614a5dcaf77c6286c9d088e2f868a85e3952f37eb0108f3f430ef8f"
+const RelationChecksum = "539d5c9efe90b6f5a1e3caab4f010c24450d13d8a2d7cc224d99cb49b54c4dd1"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -148,6 +148,7 @@ const (
 	RelationKeySpaceDashboardId          domain.RelationKey = "spaceDashboardId"
 	RelationKeyIconOption                domain.RelationKey = "iconOption"
 	RelationKeySpaceAccessibility        domain.RelationKey = "spaceAccessibility"
+	RelationKeySpaceAccessType           domain.RelationKey = "spaceAccessType"
 	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
 	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
@@ -1932,6 +1933,20 @@ var (
 			MaxCount:         1,
 			Name:             "Source object",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceAccessType: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space access type, see enum model.SpaceAccessType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceAccessType",
+			Key:              "spaceAccessType",
+			MaxCount:         1,
+			Name:             "Space access type",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

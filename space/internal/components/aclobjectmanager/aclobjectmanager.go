@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -206,7 +207,11 @@ func (a *aclObjectManager) processAcl() (err error) {
 }
 
 func (a *aclObjectManager) processStates(states []list.AccountState) (err error) {
+	var numActiveUsers int
 	for _, state := range states {
+		if state.Status == list.StatusActive && !state.Permissions.IsOwner() {
+			numActiveUsers++
+		}
 		err := a.updateParticipantFromAclState(a.ctx, state)
 		if err != nil {
 			return err
@@ -231,6 +236,17 @@ func (a *aclObjectManager) processStates(states []list.AccountState) (err error)
 			return err
 		}
 		a.addedParticipants[accKey] = struct{}{}
+	}
+	acc := spaceinfo.AccessTypePrivate
+	if len(a.sp.CommonSpace().Acl().AclState().Invites()) > 0 {
+		acc = spaceinfo.AccessTypeShared
+	}
+	if numActiveUsers > 0 {
+		acc = spaceinfo.AccessTypeShared
+	}
+	err = a.status.SetAccessType(a.ctx, acc)
+	if err != nil {
+		return err
 	}
 	return nil
 }
