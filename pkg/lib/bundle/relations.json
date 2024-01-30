@@ -1365,6 +1365,16 @@
     "source": "details"
   },
   {
+    "description": "Space access type, see enum model.SpaceAccessType",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceAccessType",
+    "maxCount": 1,
+    "name": "Space access type",
+    "readonly": false,
+    "source": "derived"
+  },
+  {
     "description": "File path or url with original object",
     "format": "longtext",
     "hidden": true,

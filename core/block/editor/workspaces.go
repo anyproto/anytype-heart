@@ -73,17 +73,11 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
 	}
 
-	spaceAccessibility := SpacePrivate
-	if w.Space().Id() == w.accountService.PersonalSpaceID() {
-		spaceAccessibility = SpacePersonal
-	}
-
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-		template.WithForcedDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(int64(spaceAccessibility))),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),

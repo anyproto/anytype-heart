@@ -1575,6 +1575,7 @@
     - [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction)
     - [Restrictions.ObjectRestriction](#anytype-model-Restrictions-ObjectRestriction)
     - [SmartBlockType](#anytype-model-SmartBlockType)
+    - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceStatus](#anytype-model-SpaceStatus)
   
 - [Scalar Value Types](#scalar-value-types)
@@ -24937,6 +24938,19 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Participant | 534 |  |
 | MissingObject | 519 |  |
 | FileObject | 533 |  |
+
+
+
+<a name="anytype-model-SpaceAccessType"></a>
+
+### SpaceAccessType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Private | 0 |  |
+| Personal | 1 |  |
+| Shared | 2 |  |
 
 
 

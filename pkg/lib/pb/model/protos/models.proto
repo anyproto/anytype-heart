@@ -927,6 +927,12 @@ enum ParticipantStatus {
     Removing = 4;
 }
 
+enum SpaceAccessType {
+    Private = 0;
+    Personal = 1;
+    Shared = 2;
+}
+
 message Metadata {
     oneof payload {
         Payload.IdentityPayload identity = 1;
