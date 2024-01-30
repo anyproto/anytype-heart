@@ -205,5 +205,10 @@
     "desc": "List with spans with new line items",
     "html": "<span>1. One\n</span><span>2. Two</span>",
     "blocks": [{"id":"1","Content":{"text":{"text":"One","style":10,"marks":{}}}},{"id":"2","Content":{"text":{"text":"Two","style":10,"marks":{}}}}]
+  },
+  {
+    "desc": "Paste table from notion",
+    "html": "<table>\n<thead>\n<tr>\n<th>1</th>\n<th>2</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>3</td>\n<td>4</td>\n</tr>\n</tbody>\n</table>\n<table>\n<thead>\n<tr>\n<th>1</th>\n<th>2</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>3</td>\n<td>4</td>\n</tr>\n</tbody>\n</table>",
+    "blocks": [{"id":"1","childrenIds":["2","3"],"Content":{"table":{}}},{"id":"2","childrenIds":["4","5"],"Content":{"layout":{"style":5}}},{"id":"3","childrenIds":["6","7"],"Content":{"layout":{"style":4}}},{"id":"4","Content":{"tableColumn":{}}},{"id":"5","Content":{"tableColumn":{}}},{"id":"6","childrenIds":["8","9"],"Content":{"tableRow":{"isHeader":true}}},{"id":"7","childrenIds":["10","11"],"Content":{"tableRow":{}}},{"id":"8","Content":{"text":{"text":"1","marks":{}}}},{"id":"9","Content":{"text":{"text":"2","marks":{}}}},{"id":"10","Content":{"text":{"text":"3","marks":{}}}},{"id":"11","Content":{"text":{"text":"4","marks":{}}}},{"id":"12","childrenIds":["13","14"],"Content":{"table":{}}},{"id":"13","childrenIds":["15","16"],"Content":{"layout":{"style":5}}},{"id":"14","childrenIds":["17","18"],"Content":{"layout":{"style":4}}},{"id":"15","Content":{"tableColumn":{}}},{"id":"16","Content":{"tableColumn":{}}},{"id":"17","childrenIds":["19","20"],"Content":{"tableRow":{"isHeader":true}}},{"id":"18","childrenIds":["21","22"],"Content":{"tableRow":{}}},{"id":"19","Content":{"text":{"text":"1","marks":{}}}},{"id":"20","Content":{"text":{"text":"2","marks":{}}}},{"id":"21","Content":{"text":{"text":"3","marks":{}}}},{"id":"22","Content":{"text":{"text":"4","marks":{}}}}]
   }
 ]
