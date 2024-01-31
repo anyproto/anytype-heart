@@ -376,7 +376,6 @@ func buildParticipantDetails(
 		bundle.RelationKeyType.String():                   pbtypes.String(bundle.TypeKeyParticipant.BundledURL()),
 		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_participant)),
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
-		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
 	}}
