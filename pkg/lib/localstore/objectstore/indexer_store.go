@@ -9,6 +9,7 @@ import (
 )
 
 func (s *dsObjectStore) AddToIndexQueue(id string) error {
+	return nil
 	return badgerhelper.SetValue(s.db, indexQueueBase.ChildString(id).Bytes(), nil)
 }
 
