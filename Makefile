@@ -282,7 +282,7 @@ install-dev-android: setup-go build-android
 	@cp -r pb/protos/*.proto $(client_android_path)/protocol/src/main/proto
 	@cp -r pkg/lib/pb/model/protos/*.proto $(client_android_path)/protocol/src/main/proto
 	# Compute the SHA hash of lib.aar
-	@$(eval hash := $$(shell sha1sum -b dist/android/lib.aar | cut -d' ' -f1))
+	@$(eval hash := $$(shell shasum -b dist/android/lib.aar | cut -d' ' -f1))
 	@echo "Version hash: ${hash}"
 	# Update the gradle file with the new version
 	@sed -i '' "s/version = '.*'/version = '${hash}'/g" $(client_android_path)/libs/build.gradle
