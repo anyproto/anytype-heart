@@ -33,17 +33,17 @@ var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
-	ObjectOrigin *domain.ObjectOrigin
+	ObjectOrigin domain.ObjectOrigin
 }
 
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
-	ObjectOrigin *domain.ObjectOrigin
+	ObjectOrigin domain.ObjectOrigin
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
-	ObjectOrigin *domain.ObjectOrigin
+	ObjectOrigin domain.ObjectOrigin
 }
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
@@ -495,7 +495,7 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest, fileKeys map[string]string) (objectId string, details *types.Struct, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *types.Struct, err error) {
 	upl := s.fileUploaderService.NewUploader(spaceId)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -515,7 +515,6 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 	} else if req.Url != "" {
 		upl.SetUrl(req.Url)
 	}
-	upl.SetFileKeys(fileKeys)
 	res := upl.Upload(ctx)
 	if res.Err != nil {
 		return "", nil, res.Err

@@ -12,12 +12,10 @@ import (
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -47,7 +45,7 @@ type MD struct {
 	fn FileNamer
 }
 
-func (h *MD) Convert(smartblock.SmartBlock) (result []byte) {
+func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 	if h.s.Pick(h.s.RootId()) == nil {
 		return
 	}
@@ -372,8 +370,6 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 func (h *MD) FileHashes() []string {
 	return h.fileHashes
 }
-
-func (h *MD) SetFileKeys(fileKeys *files.FileKeys) {}
 
 func (h *MD) ImageHashes() []string {
 	return h.imageHashes

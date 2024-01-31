@@ -13,12 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-type RelationSyncer interface {
-	Sync(spaceID string, fileId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, origin model.ObjectOrigin) string
-}
 
 type FileRelationSyncer struct {
 	service           *block.Service
@@ -27,7 +22,7 @@ type FileRelationSyncer struct {
 	fileObjectService fileobject.Service
 }
 
-func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore, fileObjectService fileobject.Service, objectStore objectstore.ObjectStore) RelationSyncer {
+func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore, fileObjectService fileobject.Service, objectStore objectstore.ObjectStore) *FileRelationSyncer {
 	return &FileRelationSyncer{
 		service:           service,
 		fileStore:         fileStore,
@@ -36,7 +31,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, origin model.ObjectOrigin) string {
+func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, origin domain.ObjectOrigin) string {
 	var (
 		fileObjectId string
 		err          error
@@ -44,7 +39,7 @@ func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloa
 	if strings.HasPrefix(fileId, "http://") || strings.HasPrefix(fileId, "https://") {
 		req := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: fileId},
-			Origin:               origin,
+			ObjectOrigin:         origin,
 		}
 		fileObjectId, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
@@ -65,7 +60,7 @@ func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloa
 		}
 		req := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: fileId},
-			Origin:               origin,
+			ObjectOrigin:         origin,
 		}
 		fileObjectId, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {

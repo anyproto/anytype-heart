@@ -19,7 +19,7 @@ func NewBookmarkSyncer(service *block.Service) *BookmarkSyncer {
 	return &BookmarkSyncer{service: service}
 }
 
-func (bs *BookmarkSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin *domain.ObjectOrigin) error {
+func (bs *BookmarkSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin domain.ObjectOrigin) error {
 	if b.Model().GetBookmark().TargetObjectId != "" {
 		return nil
 	}

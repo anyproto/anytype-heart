@@ -7,27 +7,34 @@ type ObjectOrigin struct {
 	ImportType model.ImportType
 }
 
-func ObjectOriginImport(origin model.ObjectOrigin, importType model.ImportType) *ObjectOrigin {
-	return &ObjectOrigin{
-		Origin:     origin,
+func ObjectOriginImport(importType model.ImportType) ObjectOrigin {
+	return ObjectOrigin{
+		Origin:     model.ObjectOrigin_import,
 		ImportType: importType,
 	}
 }
 
-func ObjectOriginNone() *ObjectOrigin {
-	return &ObjectOrigin{
+func ObjectOriginUsecase() ObjectOrigin {
+	return ObjectOrigin{
+		Origin:     model.ObjectOrigin_usecase,
+		ImportType: model.Import_Pb,
+	}
+}
+
+func ObjectOriginNone() ObjectOrigin {
+	return ObjectOrigin{
 		Origin: model.ObjectOrigin_none,
 	}
 }
 
-func ObjectOriginClipboard() *ObjectOrigin {
-	return &ObjectOrigin{
+func ObjectOriginClipboard() ObjectOrigin {
+	return ObjectOrigin{
 		Origin: model.ObjectOrigin_clipboard,
 	}
 }
 
-func ObjectOriginBookmark() *ObjectOrigin {
-	return &ObjectOrigin{
+func ObjectOriginBookmark() ObjectOrigin {
+	return ObjectOrigin{
 		Origin: model.ObjectOrigin_bookmark,
 	}
 }

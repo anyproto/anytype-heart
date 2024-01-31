@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -42,7 +41,7 @@ func NewFileSyncer(
 	}
 }
 
-func (s *FileSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin *domain.ObjectOrigin) error {
+func (s *FileSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin domain.ObjectOrigin) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
 		err := s.migrateFile(id.ObjectID, b.Model().Id, domain.FullFileId{
 			FileId:  domain.FileId(hash),
@@ -85,7 +84,7 @@ func (s *FileSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestor
 	return nil
 }
 
-func (s *FileSyncer) migrateFile(objectId string, fileBlockId string, fileId domain.FullFileId, origin model.ObjectOrigin) error {
+func (s *FileSyncer) migrateFile(objectId string, fileBlockId string, fileId domain.FullFileId, origin domain.ObjectOrigin) error {
 	fileObjectId, err := s.fileObjectService.CreateFromImport(fileId, origin)
 	if err != nil {
 		return fmt.Errorf("create file object: %w", err)

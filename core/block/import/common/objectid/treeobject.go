@@ -22,7 +22,7 @@ func newTreeObject(existingObject *existingObject, spaceService space.Service) *
 	return &treeObject{existingObject: existingObject, spaceService: spaceService}
 }
 
-func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, getExisting bool, _ *domain.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, getExisting bool, _ domain.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
 	id, payload, err := t.existingObject.GetIDAndPayload(ctx, spaceID, sn, getExisting)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err

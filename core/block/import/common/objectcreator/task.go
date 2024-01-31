@@ -15,7 +15,7 @@ type DataObject struct {
 	createPayloads map[string]treestorage.TreeStorageCreatePayload
 	fileIDs        []string
 	ctx            context.Context
-	origin         *domain.ObjectOrigin
+	origin         domain.ObjectOrigin
 	spaceID        string
 }
 
@@ -29,7 +29,7 @@ func NewDataObject(ctx context.Context,
 	oldIDtoNew map[string]string,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	filesIDs []string,
-	origin *domain.ObjectOrigin,
+	origin domain.ObjectOrigin,
 	spaceID string,
 ) *DataObject {
 	return &DataObject{

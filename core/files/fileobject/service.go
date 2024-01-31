@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+// TODO UNsugar
 var log = logging.Logger("fileobject")
 
 var ErrObjectNotFound = fmt.Errorf("file object not found")
@@ -43,7 +44,7 @@ type Service interface {
 
 	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
-	CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error)
+	CreateFromImport(fileId domain.FullFileId, origin domain.ObjectOrigin) (string, error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
 	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
@@ -91,7 +92,7 @@ type CreateRequest struct {
 	FileId            domain.FileId
 	EncryptionKeys    map[string]string
 	IsImported        bool
-	Origin            model.ObjectOrigin
+	ObjectOrigin      domain.ObjectOrigin
 	AdditionalDetails *types.Struct
 }
 
@@ -109,9 +110,10 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	if err != nil {
 		return "", nil, fmt.Errorf("add to sync queue: %w", err)
 	}
-	err = s.fileStore.SetFileOrigin(req.FileId, req.Origin)
+	// TODO FIX
+	err = s.fileStore.SetFileOrigin(req.FileId, req.ObjectOrigin.Origin)
 	if err != nil {
-		log.With("fileId", req.FileId, "origin", req.Origin).Errorf("set file origin: %v", err)
+		log.With("fileId", req.FileId, "origin", req.ObjectOrigin).Errorf("set file origin: %v", err)
 	}
 
 	return id, object, nil
@@ -153,7 +155,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 }
 
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
-func (s *service) CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error) {
+func (s *service) CreateFromImport(fileId domain.FullFileId, origin domain.ObjectOrigin) (string, error) {
 	// Check that fileId is not a file object id
 	recs, _, err := s.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -185,7 +187,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin model.Object
 		FileId:         fileId.FileId,
 		EncryptionKeys: keys,
 		IsImported:     true,
-		Origin:         origin,
+		ObjectOrigin:   origin,
 	})
 	if err != nil {
 		return "", fmt.Errorf("create object: %w", err)

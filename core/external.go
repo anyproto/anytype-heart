@@ -82,7 +82,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 				Style:     model.BlockContentFile_Embed,
 			},
 			ObjectOrigin: domain.ObjectOriginNone(),
-		}, nil)
+		})
 		if err != nil {
 			return err
 		}

@@ -32,7 +32,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
-	ToDetails(origin *domain.ObjectOrigin) *types.Struct
+	ToDetails(origin domain.ObjectOrigin) *types.Struct
 	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *model.BlockContentBookmark))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
@@ -47,7 +47,7 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
 }
 
-func (b *Bookmark) ToDetails(origin *domain.ObjectOrigin) *types.Struct {
+func (b *Bookmark) ToDetails(origin domain.ObjectOrigin) *types.Struct {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),

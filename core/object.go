@@ -792,7 +792,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	originImport := domain.ObjectOriginImport(model.ObjectOrigin_import, req.Type)
+	originImport := domain.ObjectOriginImport(req.Type)
 	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
 
 	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{

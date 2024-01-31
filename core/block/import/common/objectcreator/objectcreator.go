@@ -47,7 +47,7 @@ type ObjectCreator struct {
 	service        *block.Service
 	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
-	relationSyncer syncer.RelationSyncer
+	relationSyncer *syncer.FileRelationSyncer
 	syncFactory    *syncer.Factory
 	fileStore      filestore.FileStore
 	objectCreator  objectcreator.Service
@@ -57,7 +57,7 @@ type ObjectCreator struct {
 func New(service *block.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
-	relationSyncer syncer.RelationSyncer,
+	relationSyncer *syncer.FileRelationSyncer,
 	fileStore filestore.FileStore,
 	spaceService space.Service,
 	objectCreator objectcreator.Service,
@@ -91,7 +91,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.setRootBlock(snapshot, newID)
 
-	oc.injectImportDetails(sn, origin, spaceID)
+	oc.injectImportDetails(sn, origin)
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
 
@@ -163,7 +163,7 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin *domain.ObjectOrigin) {
+func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin domain.ObjectOrigin) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
@@ -426,7 +426,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin *domain.ObjectOrigin) error {
+func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin domain.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
 	err := block.Do(oc.service, id.ObjectID, func(b smartblock.SmartBlock) error {

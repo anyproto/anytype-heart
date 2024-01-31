@@ -29,7 +29,7 @@ func (_m *MockIDProvider) EXPECT() *MockIDProvider_Expecter {
 }
 
 // GetIDAndPayload provides a mock function with given fields: ctx, spaceID, sn, createdTime, getExisting
-func (_m *MockIDProvider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin *domain.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (_m *MockIDProvider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin domain.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
 	ret := _m.Called(ctx, spaceID, sn, createdTime, getExisting)
 
 	if len(ret) == 0 {

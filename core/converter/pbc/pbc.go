@@ -4,13 +4,10 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -25,12 +22,11 @@ func NewConverter(s state.Doc, isJSON bool) converter.Converter {
 }
 
 type pbc struct {
-	s        state.Doc
-	isJSON   bool
-	fileKeys *files.FileKeys
+	s      state.Doc
+	isJSON bool
 }
 
-func (p *pbc) Convert(sb smartblock.SmartBlock) []byte {
+func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 	st := p.s.NewState()
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
@@ -43,17 +39,6 @@ func (p *pbc) Convert(sb smartblock.SmartBlock) []byte {
 			FileInfo:      st.GetFileInfo().ToModel(),
 		},
 	}
-	var sbType model.SmartBlockType
-	if sb != nil {
-		for _, fk := range sb.GetAndUnsetFileKeys() {
-			snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
-		}
-		if sb.Type() == coresb.SmartBlockTypeFile && p.fileKeys != nil {
-			snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: p.fileKeys.Hash, Keys: p.fileKeys.Keys})
-		}
-		sbType = sb.Type().ToProto()
-	}
-
 	mo := &pb.SnapshotWithType{
 		SbType:   sbType,
 		Snapshot: snapshot,
@@ -86,10 +71,6 @@ func (p *pbc) SetKnownDocs(map[string]*types.Struct) converter.Converter {
 
 func (p *pbc) FileHashes() []string {
 	return nil
-}
-
-func (p *pbc) SetFileKeys(fileKeys *files.FileKeys) {
-	p.fileKeys = fileKeys
 }
 
 func (p *pbc) ImageHashes() []string {

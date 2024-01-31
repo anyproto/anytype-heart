@@ -66,7 +66,7 @@ type FileSource struct {
 	Bytes   []byte
 	Name    string
 	GroupID string
-	Origin  *domain.ObjectOrigin
+	Origin  domain.ObjectOrigin
 }
 
 type sfile struct {

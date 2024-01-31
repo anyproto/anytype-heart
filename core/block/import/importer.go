@@ -107,7 +107,7 @@ func (i *Import) Init(a *app.App) (err error) {
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
-	origin *domain.ObjectOrigin,
+	origin domain.ObjectOrigin,
 	progress process.Progress,
 ) (string, string, error) {
 	if req.SpaceId == "" {
@@ -157,7 +157,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c common.Converter,
 	progress process.Progress,
-	origin *domain.ObjectOrigin,
+	origin domain.ObjectOrigin,
 ) (string, error) {
 	allErrors := common.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
@@ -201,7 +201,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 			Snapshots: sn,
 		}
 
-		originImport := domain.ObjectOriginImport(model.ObjectOrigin_import, model.Import_External)
+		originImport := domain.ObjectOriginImport(model.Import_External)
 		i.createObjects(ctx, res, progress, req, allErrors, originImport)
 		if !allErrors.IsEmpty() {
 			return allErrors.GetResultError(req.Type)
@@ -288,7 +288,7 @@ func (i *Import) createObjects(ctx context.Context,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
 	allErrors *common.ConvertError,
-	origin *domain.ObjectOrigin,
+	origin domain.ObjectOrigin,
 ) (map[string]*types.Struct, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req, origin)
 	if err != nil {
@@ -322,7 +322,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	res *common.Response,
 	allErrors *common.ConvertError,
 	req *pb.RpcObjectImportRequest,
-	origin *domain.ObjectOrigin,
+	origin domain.ObjectOrigin,
 ) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	relationOptions := make([]*common.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
@@ -374,7 +374,7 @@ func (i *Import) getObjectID(
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	oldIDToNew map[string]string,
 	updateExisting bool,
-	origin *domain.ObjectOrigin,
+	origin domain.ObjectOrigin,
 ) error {
 
 	// Preload file keys

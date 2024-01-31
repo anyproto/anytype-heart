@@ -19,7 +19,7 @@ type Importer interface {
 	app.Component
 	Import(ctx context.Context,
 		req *pb.RpcObjectImportRequest,
-		origin *domain.ObjectOrigin,
+		origin domain.ObjectOrigin,
 		progress process.Progress,
 	) (rootCollectionId string, processId string, err error)
 

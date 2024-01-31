@@ -38,7 +38,7 @@ type Page struct {
 
 	objectStore       objectstore.ObjectStore
 	fileObjectService fileobject.Service
-	objectDeleter ObjectDeleter
+	objectDeleter     ObjectDeleter
 }
 
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
@@ -62,11 +62,12 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 			f.fileService,
 			f.fileObjectService,
 		),
-		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
-		Dataview:    dataview.NewDataview(sb, f.objectStore),
-		TableEditor: table.NewEditor(sb),
-		objectStore: f.objectStore,
-		objectDeleter: f.objectDeleter,
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		Dataview:          dataview.NewDataview(sb, f.objectStore),
+		TableEditor:       table.NewEditor(sb),
+		objectStore:       f.objectStore,
+		fileObjectService: f.fileObjectService,
+		objectDeleter:     f.objectDeleter,
 	}
 }
 
