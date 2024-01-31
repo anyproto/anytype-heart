@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -26,6 +27,8 @@ import (
 const CName = "client.space.techspace"
 
 var log = logger.NewNamed(CName)
+
+const spaceViewCheckTimeout = time.Second * 15
 
 var (
 	ErrSpaceViewExists    = errors.New("spaceView exists")
@@ -153,6 +156,8 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 	if err != nil {
 		return
 	}
+	ctx, cancel := context.WithTimeout(ctx, spaceViewCheckTimeout)
+	defer cancel()
 	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	_, getErr := s.objectCache.GetObject(ctx, viewId)
 	return getErr == nil, nil

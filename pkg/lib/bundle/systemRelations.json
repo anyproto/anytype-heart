@@ -68,5 +68,6 @@
   "fileId",
   "origin",
   "revision",
-  "imageKind"
+  "imageKind",
+  "importType"
 ]

@@ -140,7 +140,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(model.SmartBlockType) []byte {
+func (d *dot) Convert(sbType model.SmartBlockType) []byte {
 	var err error
 	for id, links := range d.linksByNode {
 		source, exists := d.nodes[id]

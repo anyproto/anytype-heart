@@ -132,7 +132,7 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 			Log:     log,
 		})
 	default:
-		panic("unknown mode")
+		return initial.New()
 	}
 }
 

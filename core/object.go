@@ -17,6 +17,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -791,7 +792,8 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
+	originImport := objectorigin.ObjectOriginImport(req.Type)
+	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
 
 	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
 		Status:  model.Notification_Created,

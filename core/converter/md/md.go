@@ -45,7 +45,7 @@ type MD struct {
 	fn FileNamer
 }
 
-func (h *MD) Convert(model.SmartBlockType) (result []byte) {
+func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 	if h.s.Pick(h.s.RootId()) == nil {
 		return
 	}

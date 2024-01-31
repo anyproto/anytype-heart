@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -28,6 +29,10 @@ import (
 )
 
 var log = logging.Logger("anytype-mw-editor")
+
+type ObjectDeleter interface {
+	DeleteObjectByFullID(id domain.FullID) (err error)
+}
 
 type accountService interface {
 	PersonalSpaceID() string
@@ -53,6 +58,7 @@ type ObjectFactory struct {
 	fileObjectService   fileobject.Service
 	processService      process.Service
 	fileUploaderService fileuploader.Service
+	objectDeleter      ObjectDeleter
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -78,7 +84,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
 	f.processService = app.MustComponent[process.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
-
+	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	return nil
 }
 

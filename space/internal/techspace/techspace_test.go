@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
@@ -90,13 +91,17 @@ func TestTechSpace_SpaceViewExists(t *testing.T) {
 		spaceId = "space.id"
 		viewId  = "viewId"
 		view    = newSpaceViewStub(viewId)
-		respCtx = peer.CtxWithPeerId(context.Background(), peer.CtxResponsiblePeers)
 	)
 	t.Run("exists", func(t *testing.T) {
 		fx := newFixture(t, nil)
 		defer fx.finish(t)
 		fx.expectDeriveTreePayload(viewId)
-		fx.objectCache.EXPECT().GetObject(respCtx, viewId).Return(view, nil)
+		fx.objectCache.EXPECT().GetObject(mock.Anything, viewId).RunAndReturn(func(peerCtx context.Context, s string) (smartblock.SmartBlock, error) {
+			id, err := peer.CtxPeerId(peerCtx)
+			require.NoError(t, err)
+			require.Equal(t, peer.CtxResponsiblePeers, id)
+			return view, nil
+		})
 		exists, err := fx.SpaceViewExists(ctx, spaceId)
 		require.NoError(t, err)
 		assert.True(t, exists)
@@ -105,7 +110,12 @@ func TestTechSpace_SpaceViewExists(t *testing.T) {
 		fx := newFixture(t, nil)
 		defer fx.finish(t)
 		fx.expectDeriveTreePayload(viewId)
-		fx.objectCache.EXPECT().GetObject(respCtx, viewId).Return(nil, fmt.Errorf("not found"))
+		fx.objectCache.EXPECT().GetObject(mock.Anything, viewId).RunAndReturn(func(peerCtx context.Context, s string) (smartblock.SmartBlock, error) {
+			id, err := peer.CtxPeerId(peerCtx)
+			require.NoError(t, err)
+			require.Equal(t, peer.CtxResponsiblePeers, id)
+			return nil, fmt.Errorf("not found")
+		})
 		exists, err := fx.SpaceViewExists(ctx, spaceId)
 		require.NoError(t, err)
 		assert.False(t, exists)

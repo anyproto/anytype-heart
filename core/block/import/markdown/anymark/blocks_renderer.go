@@ -39,13 +39,19 @@ type blocksRenderer struct {
 	rootBlockIDs     []string
 	curStyledBlock   model.BlockContentTextStyle
 
+	inTable       bool
 	listParentID  string
 	listNestIsNum []bool
 	listNestLevel uint
 }
 
-func newBlocksRenderer(baseFilepath string, allFileShortPaths []string) *blocksRenderer {
-	return &blocksRenderer{baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths, listNestLevel: 0}
+func newBlocksRenderer(baseFilepath string, allFileShortPaths []string, inTable bool) *blocksRenderer {
+	return &blocksRenderer{
+		baseFilepath:      baseFilepath,
+		allFileShortPaths: allFileShortPaths,
+		listNestLevel:     0,
+		inTable:           inTable,
+	}
 }
 
 func (r *blocksRenderer) GetAllFileShortPaths() []string {
@@ -246,6 +252,17 @@ func isBlockCanHaveChild(block model.Block) bool {
 	return false
 }
 
+func (r *blocksRenderer) openTextBlockWithStyle(entering bool, style model.BlockContentTextStyle, fields *types.Struct) {
+	if r.inTable {
+		style = model.BlockContentText_Paragraph
+	}
+	if entering {
+		r.OpenNewTextBlock(style, fields)
+	} else {
+		r.CloseTextBlock(style)
+	}
+}
+
 func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	var style = content
 	var closingBlock *textBlock
@@ -400,8 +417,7 @@ func (r *blocksRenderer) ForceCloseTextBlock() {
 	if len(r.openedTextBlocks) > 0 {
 		style, r.openedTextBlocks = s[len(s)-1].GetText().Style, s[:len(s)-1]
 	}
-
-	r.CloseTextBlock(style)
+	r.openTextBlockWithStyle(false, style, nil)
 }
 
 func (r *blocksRenderer) ProcessMarkdownArtifacts() {
