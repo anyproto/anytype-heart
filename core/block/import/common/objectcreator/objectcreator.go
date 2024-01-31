@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/syncer"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -281,36 +282,8 @@ func (oc *ObjectCreator) setRootBlock(snapshot *model.SmartBlockSnapshotBase, ne
 		}
 	}
 	if !found {
-		oc.addRootBlock(snapshot, newID)
+		snapshot.Blocks = anymark.AddRootBlock(snapshot.Blocks, newID)
 	}
-}
-
-func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
-	for i, b := range snapshot.Blocks {
-		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
-			snapshot.Blocks[i].Id = pageID
-			return
-		}
-	}
-	notRootBlockChild := make(map[string]bool, 0)
-	for _, b := range snapshot.Blocks {
-		for _, id := range b.ChildrenIds {
-			notRootBlockChild[id] = true
-		}
-	}
-	childrenIds := make([]string, 0)
-	for _, b := range snapshot.Blocks {
-		if _, ok := notRootBlockChild[b.Id]; !ok {
-			childrenIds = append(childrenIds, b.Id)
-		}
-	}
-	snapshot.Blocks = append(snapshot.Blocks, &model.Block{
-		Id: pageID,
-		Content: &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		},
-		ChildrenIds: childrenIds,
-	})
 }
 
 func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []string) {

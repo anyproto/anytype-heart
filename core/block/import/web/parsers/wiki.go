@@ -34,7 +34,7 @@ func (w *DumbWikiParser) ParseUrl(url string) (*model.SmartBlockSnapshotBase, er
 	if err != nil {
 		return nil, fmt.Errorf("WikiParser: ParseUrl: %w", err)
 	}
-	blocks, _, err := anymark.HTMLToBlocks(bytes)
+	blocks, _, err := anymark.HTMLToBlocks(bytes, "")
 	if err != nil {
 		return nil, fmt.Errorf("WikiParser: ParseUrl: %w", err)
 	}

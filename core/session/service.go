@@ -5,17 +5,19 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/golang-jwt/jwt"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 const CName = "session"
 
 type Service interface {
-	app.Component
-
 	StartSession(privKey []byte) (string, error)
 	ValidateToken(privKey []byte, token string) error
+	StartNewChallenge(info *pb.EventAccountLinkChallengeClientInfo) (id string, value string, err error)
+	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, err error)
+
 	CloseSession(token string) error
 }
 
@@ -24,19 +26,17 @@ type session struct {
 }
 
 type service struct {
-	lock     *sync.RWMutex
-	sessions map[string]session
+	lock       *sync.RWMutex
+	sessions   map[string]session
+	challenges map[string]challenge
 }
 
 func New() Service {
 	return &service{
-		lock:     &sync.RWMutex{},
-		sessions: map[string]session{},
+		lock:       &sync.RWMutex{},
+		sessions:   map[string]session{},
+		challenges: map[string]challenge{},
 	}
-}
-
-func (s *service) Init(a *app.App) (err error) {
-	return nil
 }
 
 func (s *service) Name() (name string) {
