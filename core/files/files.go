@@ -152,6 +152,13 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 	if err != nil {
 		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
 	}
+
+	if opts.Origin == model.ObjectOrigin_import {
+		err = s.fileStore.SetFileImportType(nodeHash, opts.ImportType)
+		if err != nil {
+			log.Errorf("failed to set file importType %s: %s", nodeHash, err)
+		}
+	}
 	return nodeHash, fileInfo, nil
 }
 
@@ -1019,16 +1026,18 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error
 		}
 	}
 	origin := s.getFileOrigin(id.ObjectID)
+	importType := s.getFileImportType(id.ObjectID)
 	if err := s.addToSyncQueue(id, false, false); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
 	}
 	fileIndex := fileList[0]
 	return &file{
-		spaceID: id.SpaceID,
-		hash:    id.ObjectID,
-		info:    fileIndex,
-		node:    s,
-		origin:  origin,
+		spaceID:    id.SpaceID,
+		hash:       id.ObjectID,
+		info:       fileIndex,
+		node:       s,
+		origin:     origin,
+		importType: importType,
 	}, nil
 }
 
@@ -1071,4 +1080,12 @@ func (s *service) getFileOrigin(hash string) model.ObjectOrigin {
 		return 0
 	}
 	return model.ObjectOrigin(fileOrigin)
+}
+
+func (s *service) getFileImportType(hash string) model.ImportType {
+	fileImportType, err := s.fileStore.GetFileImportType(hash)
+	if err != nil {
+		return 0
+	}
+	return model.ImportType(fileImportType)
 }

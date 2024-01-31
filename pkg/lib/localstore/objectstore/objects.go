@@ -268,7 +268,7 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 	}
 	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
 	if rawUniqueKey == "" {
-		return nil, fmt.Errorf("object %s does not have %s set in details", id, bundle.RelationKeyUniqueKey.String())
+		return nil, fmt.Errorf("object does not have unique key in details")
 	}
 	return domain.UnmarshalUniqueKey(rawUniqueKey)
 }

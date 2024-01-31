@@ -6,11 +6,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type Converter interface {
-	Convert(sbType model.SmartBlockType) (result []byte)
+	Convert(sbType smartblock.SmartBlock) (result []byte)
 	SetKnownDocs(docs map[string]*types.Struct) Converter
 	FileHashes() []string
 	SetFileKeys(fileKeys *files.FileKeys)

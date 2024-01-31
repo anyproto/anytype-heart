@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -507,7 +508,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes:  fs.Data,
 			Path:   fs.LocalPath,
 			Name:   fs.Name,
-			Origin: model.ObjectOrigin_clipboard,
+			Origin: domain.ObjectOriginClipboard(),
 		}, false); err != nil {
 			return
 		}
@@ -601,6 +602,16 @@ func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, 
 			texts = append(texts, blockText.Text)
 		} else {
 			switch blockText.Style {
+			case model.BlockContentText_Title:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "# ", blockText.Text))
+			case model.BlockContentText_Header1:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "## ", blockText.Text))
+			case model.BlockContentText_Header2:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "### ", blockText.Text))
+			case model.BlockContentText_Header3:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "#### ", blockText.Text))
+			case model.BlockContentText_Header4:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "##### ", blockText.Text))
 			case model.BlockContentText_Quote:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "> ", blockText.Text))
 			case model.BlockContentText_Code:

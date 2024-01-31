@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -119,7 +118,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (g *graphjson) Convert(model.SmartBlockType) []byte {
+func (g *graphjson) Convert(smartblock.SmartBlock) []byte {
 	d := &Graph{
 		Nodes: make([]*Node, 0, len(g.nodes)),
 		Edges: make([]*Edge, 0, len(g.linksByNode)),

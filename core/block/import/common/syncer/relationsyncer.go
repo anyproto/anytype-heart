@@ -8,14 +8,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type RelationSyncer interface {
-	Sync(spaceID string, state *state.State, relationName string, origin model.ObjectOrigin) []string
+	Sync(spaceID string, state *state.State, relationName string, origin *domain.ObjectOrigin) []string
 }
 
 type FileRelationSyncer struct {
@@ -27,7 +27,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	return &FileRelationSyncer{service: service, fileStore: fileStore}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationName string, origin model.ObjectOrigin) []string {
+func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationName string, origin *domain.ObjectOrigin) []string {
 	allFiles := fs.getFilesFromRelations(state, relationName)
 	var allFilesHashes, filesToDelete []string
 	for _, f := range allFiles {
@@ -62,7 +62,7 @@ func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string
 	return allFiles
 }
 
-func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin model.ObjectOrigin) string {
+func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin *domain.ObjectOrigin) string {
 	var (
 		hash string
 		err  error
@@ -70,7 +70,7 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
 		req := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
-			Origin:               origin,
+			ObjectOrigin:         origin,
 		}
 		hash, err = fs.service.UploadFile(context.Background(), spaceID, req, nil)
 		if err != nil {
@@ -83,7 +83,7 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		}
 		req := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
-			Origin:               origin,
+			ObjectOrigin:         origin,
 		}
 		hash, err = fs.service.UploadFile(context.Background(), spaceID, req, nil)
 		if err != nil {

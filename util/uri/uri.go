@@ -19,7 +19,7 @@ var (
 
 	// errors
 	errURLEmpty             = fmt.Errorf("url is empty")
-	errFilepathNotSupported = fmt.Errorf("filepath not supported")
+	ErrFilepathNotSupported = fmt.Errorf("filepath not supported")
 )
 
 func excludePathAndEmptyURIs(uri string) error {
@@ -27,11 +27,11 @@ func excludePathAndEmptyURIs(uri string) error {
 	case len(uri) == 0:
 		return errURLEmpty
 	case winFilepathPrefixRegex.MatchString(uri):
-		return errFilepathNotSupported
+		return ErrFilepathNotSupported
 	case strings.HasPrefix(uri, string(os.PathSeparator)):
-		return errFilepathNotSupported
+		return ErrFilepathNotSupported
 	case strings.HasPrefix(uri, "."):
-		return errFilepathNotSupported
+		return ErrFilepathNotSupported
 	}
 
 	return nil

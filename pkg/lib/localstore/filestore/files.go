@@ -30,6 +30,7 @@ var (
 	fileSizeBase    = dsCtx.NewKey("/" + filesPrefix + "/file_size")
 	isImportedBase  = dsCtx.NewKey("/" + filesPrefix + "/is_imported")
 	fileOrigin      = dsCtx.NewKey("/" + filesPrefix + "/origin")
+	fileImportType  = dsCtx.NewKey("/" + filesPrefix + "/importType")
 
 	indexMillSourceOpts = localstore.Index{
 		Prefix: filesPrefix,
@@ -109,6 +110,8 @@ type FileStore interface {
 	GetFileSize(hash string) (int, error)
 	SetFileOrigin(hash string, origin model.ObjectOrigin) error
 	GetFileOrigin(hash string) (int, error)
+	SetFileImportType(hash string, importType model.ImportType) error
+	GetFileImportType(hash string) (int, error)
 }
 
 func New() FileStore {
@@ -549,6 +552,16 @@ func (ls *dsFileStore) SetFileOrigin(hash string, origin model.ObjectOrigin) err
 
 func (ls *dsFileStore) GetFileOrigin(hash string) (int, error) {
 	key := fileOrigin.ChildString(hash)
+	return ls.getInt(key)
+}
+
+func (ls *dsFileStore) SetFileImportType(hash string, importType model.ImportType) error {
+	key := fileImportType.ChildString(hash)
+	return ls.setInt(key, int(importType))
+}
+
+func (ls *dsFileStore) GetFileImportType(hash string) (int, error) {
+	key := fileImportType.ChildString(hash)
 	return ls.getInt(key)
 }
 

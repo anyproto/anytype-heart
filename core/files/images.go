@@ -49,12 +49,14 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, err
 		}
 	}
 	origin := s.getFileOrigin(id.ObjectID)
+	importType := s.getFileImportType(id.ObjectID)
 	return &image{
 		spaceID:         id.SpaceID,
 		hash:            id.ObjectID,
 		variantsByWidth: variantsByWidth,
 		service:         s,
 		origin:          origin,
+		importType:      importType,
 	}, nil
 }
 
@@ -130,6 +132,12 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions)
 		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
 	}
 
+	if opts.Origin == model.ObjectOrigin_import {
+		err = s.fileStore.SetFileImportType(nodeHash, opts.ImportType)
+		if err != nil {
+			log.Errorf("failed to set file importType %s: %s", nodeHash, err)
+		}
+	}
 	return nodeHash, variantsByWidth, nil
 }
 

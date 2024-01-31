@@ -1381,6 +1381,11 @@ func Test_StyleAndTabExtractionIgnoreStyle(t *testing.T) {
 		emoji     string
 	}
 	testData := []*fixture{
+		{"title", model.BlockContentText_Title, "some text 1", ""},
+		{"header1", model.BlockContentText_Header1, "some text 1", ""},
+		{"header2", model.BlockContentText_Header2, "some text 1", ""},
+		{"header3", model.BlockContentText_Header3, "some text 1", ""},
+		{"header4", model.BlockContentText_Header4, "some text 1", ""},
 		{"quote", model.BlockContentText_Quote, "some text 1", ""},
 		{"code", model.BlockContentText_Code, "some text 1", ""},
 		{"checkbox", model.BlockContentText_Checkbox, "some text 1", ""},
@@ -1411,6 +1416,11 @@ func Test_StyleAndTabExtraction(t *testing.T) {
 		emoji     string
 	}
 	testDataWithStyle := []*fixture{
+		{"title", model.BlockContentText_Title, "\t# some text 1", ""},
+		{"header1", model.BlockContentText_Header1, "\t## some text 1", ""},
+		{"header2", model.BlockContentText_Header2, "\t### some text 1", ""},
+		{"header3", model.BlockContentText_Header3, "\t#### some text 1", ""},
+		{"header4", model.BlockContentText_Header4, "\t##### some text 1", ""},
 		{"quote", model.BlockContentText_Quote, "\t> some text 1", ""},
 		{"code", model.BlockContentText_Code, "\t```some text 1```", ""},
 		{"checkbox", model.BlockContentText_Checkbox, "\t- [ ] some text 1", ""},

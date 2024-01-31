@@ -23694,6 +23694,7 @@ stored |
 | Gallery | 2 |  |
 | Kanban | 3 |  |
 | Calendar | 4 |  |
+| Graph | 5 |  |
 
 
 

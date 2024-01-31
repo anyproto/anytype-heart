@@ -23,6 +23,7 @@ import (
 var (
 	reEmptyLinkText = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	reWikiCode      = regexp.MustCompile(`<span\s*?>(\s*?)</span>`)
+	reNotionTable   = regexp.MustCompile(`(?s)(<table>.*?</table>)`)
 
 	reWikiWbr = regexp.MustCompile(`<wbr[^>]*>`)
 )
@@ -41,7 +42,7 @@ func convertBlocks(source []byte, r ...renderer.NodeRenderer) error {
 func MarkdownToBlocks(markdownSource []byte,
 	baseFilepath string,
 	allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
-	br := newBlocksRenderer(baseFilepath, allFileShortPaths)
+	br := newBlocksRenderer(baseFilepath, allFileShortPaths, false)
 
 	r := NewRenderer(br)
 
@@ -66,6 +67,9 @@ func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockID
 
 	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
+	preprocessedSource = reNotionTable.ReplaceAllStringFunc(preprocessedSource, func(match string) string {
+		return strings.ReplaceAll(match, "\n", "")
+	})
 
 	converter := html2md.NewConverter("", true, &html2md.Options{
 		DisableEscaping:  true,
@@ -86,7 +90,7 @@ func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockID
 
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
-	blRenderer := newBlocksRenderer("", nil)
+	blRenderer := newBlocksRenderer("", nil, false)
 	r := NewRenderer(blRenderer)
 	tr := NewTableRenderer(blRenderer, table.NewEditor(nil))
 	err = convertBlocks([]byte(md), r, tr)

@@ -12,6 +12,7 @@ import (
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -46,7 +47,7 @@ type MD struct {
 	fn FileNamer
 }
 
-func (h *MD) Convert(model.SmartBlockType) (result []byte) {
+func (h *MD) Convert(smartblock.SmartBlock) (result []byte) {
 	if h.s.Pick(h.s.RootId()) == nil {
 		return
 	}

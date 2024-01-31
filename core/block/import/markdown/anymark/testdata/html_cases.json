@@ -216,7 +216,6 @@
     "html": "<img class=\"logo-icon\" src=\"//static.com/image.png\" alt=\"\">",
     "blocks": [{"id":"1","Content":{"file":{"name":"http://static.com/image.png","type":2}}}]
   },
-
   {
     "desc": "section linm",
     "html": "<img class=\"logo-icon\" src=\"#description\" alt=\"\">",
