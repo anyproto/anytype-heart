@@ -40,10 +40,18 @@ func init() {
 			http.ListenAndServe(debug, nil)
 		}()
 	}
+	// test
+	RunDebugServer()
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
 	mw.SetEventSender(event.NewCallbackSender(eh))
+}
+
+func RunDebugServer() {
+	go func() {
+		http.ListenAndServe("0.0.0.0:6060", nil)
+	}()
 }
 
 func SetEnv(key, value string) {

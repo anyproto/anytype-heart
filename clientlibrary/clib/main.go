@@ -36,6 +36,11 @@ func SetEventHandler(pf C.proxyFunc, ctx unsafe.Pointer) {
 	})
 }
 
+//export RunDebugServer
+func RunDebugServer() {
+	service.RunDebugServer()
+}
+
 //export Command
 func Command(cmd *C.char, data unsafe.Pointer, dataLen C.int, callback C.proxyFunc, callbackContext unsafe.Pointer) {
 	service.CommandAsync(C.GoString(cmd), C.GoBytes(data, dataLen), func(data []byte) {
