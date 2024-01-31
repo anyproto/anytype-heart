@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -511,7 +511,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes:  fs.Data,
 			Path:   fs.LocalPath,
 			Name:   fs.Name,
-			Origin: domain.ObjectOriginClipboard(),
+			Origin: objectorigin.ObjectOriginClipboard(),
 		}, false); err != nil {
 			return
 		}

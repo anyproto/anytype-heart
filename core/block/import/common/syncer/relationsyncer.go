@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -31,7 +32,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, origin domain.ObjectOrigin) string {
+func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, origin objectorigin.ObjectOrigin) string {
 	var (
 		fileObjectId string
 		err          error

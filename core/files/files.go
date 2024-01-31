@@ -38,7 +38,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -158,10 +157,6 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
-	err = s.fileStore.SetFileOrigin(fileId, opts.Origin)
-	if err != nil {
-		log.Errorf("failed to set file origin %s: %s", fileId, err)
-	}
 	return &FileAddResult{
 		FileId:         fileId,
 		File:           s.newFile(spaceId, fileId, fileInfo),
@@ -738,23 +733,13 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 			}
 		}
 	}
-	origin := s.getFileOrigin(id.FileId)
 	fileIndex := fileList[0]
 	return &file{
 		spaceID: id.SpaceId,
 		fileId:  id.FileId,
 		info:    fileIndex,
 		node:    s,
-		origin:  origin,
 	}, nil
-}
-
-func (s *service) getFileOrigin(fileId domain.FileId) model.ObjectOrigin {
-	fileOrigin, err := s.fileStore.GetFileOrigin(fileId)
-	if err != nil {
-		return 0
-	}
-	return model.ObjectOrigin(fileOrigin)
 }
 
 func encryptionKeyPath(linkName string) string {

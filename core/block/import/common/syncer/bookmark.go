@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -19,7 +20,7 @@ func NewBookmarkSyncer(service *block.Service) *BookmarkSyncer {
 	return &BookmarkSyncer{service: service}
 }
 
-func (bs *BookmarkSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin domain.ObjectOrigin) error {
+func (bs *BookmarkSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin objectorigin.ObjectOrigin) error {
 	if b.Model().GetBookmark().TargetObjectId != "" {
 		return nil
 	}

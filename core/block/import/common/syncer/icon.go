@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -43,7 +44,7 @@ func NewIconSyncer(service *block.Service, resolver idresolver.Resolver, fileSto
 	}
 }
 
-func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin domain.ObjectOrigin) error {
+func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin objectorigin.ObjectOrigin) error {
 	iconImage := b.Model().GetText().GetIconImage()
 	newId, err := s.handleIconImage(id.SpaceID, snapshotPayloads, iconImage, origin)
 	if err != nil {
@@ -70,7 +71,7 @@ func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestor
 	return nil
 }
 
-func (s *IconSyncer) handleIconImage(spaceId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, iconImage string, origin domain.ObjectOrigin) (string, error) {
+func (s *IconSyncer) handleIconImage(spaceId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, iconImage string, origin objectorigin.ObjectOrigin) (string, error) {
 	if _, ok := snapshotPayloads[iconImage]; ok {
 		return iconImage, nil
 	}

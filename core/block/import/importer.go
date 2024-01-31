@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -107,7 +108,7 @@ func (i *Import) Init(a *app.App) (err error) {
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
-	origin domain.ObjectOrigin,
+	origin objectorigin.ObjectOrigin,
 	progress process.Progress,
 ) (string, string, error) {
 	if req.SpaceId == "" {
@@ -157,7 +158,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c common.Converter,
 	progress process.Progress,
-	origin domain.ObjectOrigin,
+	origin objectorigin.ObjectOrigin,
 ) (string, error) {
 	allErrors := common.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
@@ -201,7 +202,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 			Snapshots: sn,
 		}
 
-		originImport := domain.ObjectOriginImport(model.Import_External)
+		originImport := objectorigin.ObjectOriginImport(model.Import_External)
 		i.createObjects(ctx, res, progress, req, allErrors, originImport)
 		if !allErrors.IsEmpty() {
 			return allErrors.GetResultError(req.Type)
@@ -276,7 +277,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 	}
 
 	progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, progress, req, allErrors, domain.ObjectOriginNone())
+	details, _ := i.createObjects(ctx, res, progress, req, allErrors, objectorigin.ObjectOriginNone())
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
@@ -288,7 +289,7 @@ func (i *Import) createObjects(ctx context.Context,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
 	allErrors *common.ConvertError,
-	origin domain.ObjectOrigin,
+	origin objectorigin.ObjectOrigin,
 ) (map[string]*types.Struct, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req, origin)
 	if err != nil {
@@ -322,7 +323,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	res *common.Response,
 	allErrors *common.ConvertError,
 	req *pb.RpcObjectImportRequest,
-	origin domain.ObjectOrigin,
+	origin objectorigin.ObjectOrigin,
 ) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	relationOptions := make([]*common.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
@@ -374,7 +375,7 @@ func (i *Import) getObjectID(
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	oldIDToNew map[string]string,
 	updateExisting bool,
-	origin domain.ObjectOrigin,
+	origin objectorigin.ObjectOrigin,
 ) error {
 
 	// Preload file keys

@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -38,7 +39,7 @@ var log = logging.Logger("file-uploader")
 type Service interface {
 	app.Component
 
-	NewUploader(spaceId string) Uploader
+	NewUploader(spaceId string, origin objectorigin.ObjectOrigin) Uploader
 }
 
 type service struct {
@@ -52,8 +53,15 @@ func New() Service {
 	return &service{}
 }
 
-func (f *service) NewUploader(spaceId string) Uploader {
-	return NewUploader(spaceId, f.fileService, f.tempDirProvider, f.picker, f.fileObjectService)
+func (f *service) NewUploader(spaceId string, origin objectorigin.ObjectOrigin) Uploader {
+	return &uploader{
+		spaceId:           spaceId,
+		picker:            f.picker,
+		fileService:       f.fileService,
+		tempDirProvider:   f.tempDirProvider,
+		fileObjectService: f.fileObjectService,
+		origin:            origin,
+	}
 }
 
 const CName = "file-uploader"
@@ -93,8 +101,6 @@ type Uploader interface {
 	SetFile(path string) Uploader
 	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
-	SetOrigin(origin model.ObjectOrigin) Uploader
-	SetImportType(origin model.ImportType) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
@@ -152,25 +158,8 @@ type uploader struct {
 
 	tempDirProvider   core.TempDirProvider
 	fileService       files.Service
-	origin            model.ObjectOrigin
-	importType      model.ImportType
+	origin            objectorigin.ObjectOrigin
 	additionalDetails *types.Struct
-}
-
-func NewUploader(
-	spaceID string,
-	fileService files.Service,
-	provider core.TempDirProvider,
-	picker getblock.ObjectGetter,
-	fileObjectService fileobject.Service,
-) Uploader {
-	return &uploader{
-		spaceId:           spaceID,
-		picker:            picker,
-		fileService:       fileService,
-		tempDirProvider:   provider,
-		fileObjectService: fileObjectService,
-	}
 }
 
 type bufioSeekClose struct {
@@ -345,16 +334,6 @@ func (u *uploader) SetLastModifiedDate() Uploader {
 	return u
 }
 
-func (u *uploader) SetOrigin(origin model.ObjectOrigin) Uploader {
-	u.origin = origin
-	return u
-}
-
-func (u *uploader) SetImportType(importType model.ImportType) Uploader {
-	u.importType = importType
-	return u
-}
-
 func (u *uploader) setLastModifiedDate(path string) {
 	stat, err := os.Stat(path)
 	if err == nil {
@@ -434,8 +413,6 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		files.WithName(u.name),
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
-		files.WithOrigin(u.origin),
-		files.WithImportType(u.importType),
 	}
 
 	if len(u.opts) > 0 {
@@ -545,7 +522,7 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToSt
 	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
 		FileId:            addResult.fileId,
 		EncryptionKeys:    addResult.fileKeys.EncryptionKeys,
-		IsImported:        u.origin == model.ObjectOrigin_import,
+		ObjectOrigin:      u.origin,
 		AdditionalDetails: u.additionalDetails,
 	})
 	if err != nil {

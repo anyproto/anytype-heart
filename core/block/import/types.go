@@ -10,7 +10,7 @@ import (
 	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -19,7 +19,7 @@ type Importer interface {
 	app.Component
 	Import(ctx context.Context,
 		req *pb.RpcObjectImportRequest,
-		origin domain.ObjectOrigin,
+		origin objectorigin.ObjectOrigin,
 		progress process.Progress,
 	) (rootCollectionId string, processId string, err error)
 

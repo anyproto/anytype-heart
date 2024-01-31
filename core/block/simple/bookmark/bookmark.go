@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -32,7 +32,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
-	ToDetails(origin domain.ObjectOrigin) *types.Struct
+	ToDetails(origin objectorigin.ObjectOrigin) *types.Struct
 	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *model.BlockContentBookmark))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
@@ -47,18 +47,13 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
 }
 
-func (b *Bookmark) ToDetails(origin domain.ObjectOrigin) *types.Struct {
+func (b *Bookmark) ToDetails(origin objectorigin.ObjectOrigin) *types.Struct {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),
 		},
 	}
-	if origin.Origin != model.ObjectOrigin_none {
-		details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin.Origin))
-		if origin.Origin == model.ObjectOrigin_import {
-			details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(origin.ImportType))
-		}
-	}
+	origin.AddToDetails(details)
 	return details
 }
 

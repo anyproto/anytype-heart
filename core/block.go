@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -200,7 +201,7 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
 			r.ContextId = req.ContextId
-			req := block.UploadRequest{ObjectOrigin: domain.ObjectOriginClipboard(), RpcBlockUploadRequest: r}
+			req := block.UploadRequest{ObjectOrigin: objectorigin.ObjectOriginClipboard(), RpcBlockUploadRequest: r}
 			if err = bs.UploadBlockFile(nil, req, groupId); err != nil {
 				return err
 			}
@@ -308,7 +309,7 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		req := block.UploadRequest{RpcBlockUploadRequest: *req, ObjectOrigin: domain.ObjectOriginNone()}
+		req := block.UploadRequest{RpcBlockUploadRequest: *req, ObjectOrigin: objectorigin.ObjectOriginNone()}
 		return bs.UploadBlockFile(nil, req, "")
 	})
 	if err != nil {
@@ -999,7 +1000,7 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		req := block.BookmarkFetchRequest{ObjectOrigin: domain.ObjectOriginBookmark(), RpcBlockBookmarkFetchRequest: *req}
+		req := block.BookmarkFetchRequest{ObjectOrigin: objectorigin.ObjectOriginBookmark(), RpcBlockBookmarkFetchRequest: *req}
 		return bs.BookmarkFetch(ctx, req)
 	})
 	if err != nil {
@@ -1021,7 +1022,7 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.
 	}
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		req := bookmark.CreateAndFetchRequest{Origin: domain.ObjectOriginBookmark(), RpcBlockBookmarkCreateAndFetchRequest: *req}
+		req := bookmark.CreateAndFetchRequest{Origin: objectorigin.ObjectOriginBookmark(), RpcBlockBookmarkCreateAndFetchRequest: *req}
 		id, err = bs.BookmarkCreateAndFetch(ctx, req)
 		return
 	})

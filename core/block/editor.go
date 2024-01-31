@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -33,17 +34,17 @@ var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
-	ObjectOrigin domain.ObjectOrigin
+	ObjectOrigin objectorigin.ObjectOrigin
 }
 
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
-	ObjectOrigin domain.ObjectOrigin
+	ObjectOrigin objectorigin.ObjectOrigin
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
-	ObjectOrigin domain.ObjectOrigin
+	ObjectOrigin objectorigin.ObjectOrigin
 }
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
@@ -496,14 +497,12 @@ func (s *Service) CreateAndUploadFile(
 }
 
 func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *types.Struct, err error) {
-	upl := s.fileUploaderService.NewUploader(spaceId)
+	upl := s.fileUploaderService.NewUploader(spaceId, req.ObjectOrigin)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
 
 	upl.SetStyle(req.Style)
-	upl.SetOrigin(req.ObjectOrigin.Origin)
-	upl.SetImportType(req.ObjectOrigin.ImportType)
 	upl.SetAdditionalDetails(req.Details)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)

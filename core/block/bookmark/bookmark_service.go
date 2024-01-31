@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -308,7 +309,7 @@ func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchP
 }
 
 func (s *service) loadImage(spaceId string, title, url string) (hash string, err error) {
-	uploader := s.fileUploaderFactory.NewUploader(spaceId)
+	uploader := s.fileUploaderFactory.NewUploader(spaceId, objectorigin.ObjectOriginBookmark())
 
 	tempDir := s.tempDirService.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
