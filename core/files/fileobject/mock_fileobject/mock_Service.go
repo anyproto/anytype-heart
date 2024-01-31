@@ -14,8 +14,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-
 	pb "github.com/anyproto/anytype-heart/pb"
 
 	source "github.com/anyproto/anytype-heart/core/block/source"
@@ -106,7 +104,7 @@ func (_c *MockService_Create_Call) RunAndReturn(run func(context.Context, string
 }
 
 // CreateFromImport provides a mock function with given fields: fileId, origin
-func (_m *MockService) CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error) {
+func (_m *MockService) CreateFromImport(fileId domain.FullFileId, origin domain.ObjectOrigin) (string, error) {
 	ret := _m.Called(fileId, origin)
 
 	if len(ret) == 0 {
@@ -115,16 +113,16 @@ func (_m *MockService) CreateFromImport(fileId domain.FullFileId, origin model.O
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(domain.FullFileId, model.ObjectOrigin) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullFileId, domain.ObjectOrigin) (string, error)); ok {
 		return rf(fileId, origin)
 	}
-	if rf, ok := ret.Get(0).(func(domain.FullFileId, model.ObjectOrigin) string); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullFileId, domain.ObjectOrigin) string); ok {
 		r0 = rf(fileId, origin)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(domain.FullFileId, model.ObjectOrigin) error); ok {
+	if rf, ok := ret.Get(1).(func(domain.FullFileId, domain.ObjectOrigin) error); ok {
 		r1 = rf(fileId, origin)
 	} else {
 		r1 = ret.Error(1)
@@ -140,14 +138,14 @@ type MockService_CreateFromImport_Call struct {
 
 // CreateFromImport is a helper method to define mock.On call
 //   - fileId domain.FullFileId
-//   - origin model.ObjectOrigin
+//   - origin domain.ObjectOrigin
 func (_e *MockService_Expecter) CreateFromImport(fileId interface{}, origin interface{}) *MockService_CreateFromImport_Call {
 	return &MockService_CreateFromImport_Call{Call: _e.mock.On("CreateFromImport", fileId, origin)}
 }
 
-func (_c *MockService_CreateFromImport_Call) Run(run func(fileId domain.FullFileId, origin model.ObjectOrigin)) *MockService_CreateFromImport_Call {
+func (_c *MockService_CreateFromImport_Call) Run(run func(fileId domain.FullFileId, origin domain.ObjectOrigin)) *MockService_CreateFromImport_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(domain.FullFileId), args[1].(model.ObjectOrigin))
+		run(args[0].(domain.FullFileId), args[1].(domain.ObjectOrigin))
 	})
 	return _c
 }
@@ -157,7 +155,7 @@ func (_c *MockService_CreateFromImport_Call) Return(_a0 string, _a1 error) *Mock
 	return _c
 }
 
-func (_c *MockService_CreateFromImport_Call) RunAndReturn(run func(domain.FullFileId, model.ObjectOrigin) (string, error)) *MockService_CreateFromImport_Call {
+func (_c *MockService_CreateFromImport_Call) RunAndReturn(run func(domain.FullFileId, domain.ObjectOrigin) (string, error)) *MockService_CreateFromImport_Call {
 	_c.Call.Return(run)
 	return _c
 }
