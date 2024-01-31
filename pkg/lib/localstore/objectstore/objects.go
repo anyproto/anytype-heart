@@ -88,7 +88,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 func (s *dsObjectStore) initCache() error {
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10_000_000,
-		MaxCost:     100_000_000,
+		MaxCost:     10_000_000,
 		BufferItems: 64,
 	})
 	if err != nil {
