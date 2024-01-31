@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -99,7 +100,7 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 	s := cb.blocksToState(req.Blocks)
 
-	textSlot = renderText(s)
+	textSlot = renderText(s, len(req.Blocks) == 1)
 
 	var firstTextBlock, lastTextBlock *model.Block
 	for _, b := range req.Blocks {
@@ -211,7 +212,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	for _, b := range req.Blocks {
 		ids = append(ids, b.Id)
 	}
-	textSlot = renderText(state)
+	textSlot = renderText(state, len(req.Blocks) == 1)
 
 	htmlSlot = cb.newHTMLConverter(state).Convert()
 	anySlot = req.Blocks
@@ -510,7 +511,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes:  fs.Data,
 			Path:   fs.LocalPath,
 			Name:   fs.Name,
-			Origin: model.ObjectOrigin_clipboard,
+			Origin: domain.ObjectOriginClipboard(),
 		}, false); err != nil {
 			return
 		}
@@ -571,9 +572,9 @@ func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
 	return html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s, cb.fileObjectService)
 }
 
-func renderText(s *state.State) string {
+func renderText(s *state.State, ignoreStyle bool) string {
 	texts := make([]string, 0)
-	texts, _ = renderBlock(s, texts, s.RootId(), -1, 0)
+	texts, _ = renderBlock(s, texts, s.RootId(), -1, 0, ignoreStyle)
 
 	if len(texts) > 0 {
 		return strings.Join(texts, "\n")
@@ -582,19 +583,19 @@ func renderText(s *state.State) string {
 	return ""
 }
 
-func renderBlock(s *state.State, texts []string, id string, level int, numberedCount int) ([]string, int) {
+func renderBlock(s *state.State, texts []string, id string, level int, numberedCount int, ignoreStyle bool) ([]string, int) {
 	block := s.Pick(id).Model()
-	texts, numberedCount = extractTextWithStyleAndTabs(block, texts, level, numberedCount)
+	texts, numberedCount = extractTextWithStyleAndTabs(block, texts, level, numberedCount, ignoreStyle)
 	childrenIds := s.Pick(id).Model().ChildrenIds
-	texts = renderChildren(s, texts, childrenIds, level, 0)
+	texts = renderChildren(s, texts, childrenIds, level, 0, ignoreStyle)
 	return texts, numberedCount
 }
 
-func renderChildren(s *state.State, texts []string, childrenIds []string, level int, numberedCount int) []string {
+func renderChildren(s *state.State, texts []string, childrenIds []string, level int, numberedCount int, ignoreStyle bool) []string {
 	var oldNumberedCount int
 	for _, id := range childrenIds {
 		oldNumberedCount = numberedCount
-		texts, numberedCount = renderBlock(s, texts, id, level+1, numberedCount)
+		texts, numberedCount = renderBlock(s, texts, id, level+1, numberedCount, ignoreStyle)
 		if oldNumberedCount == numberedCount {
 			numberedCount = 0
 		}
@@ -602,24 +603,38 @@ func renderChildren(s *state.State, texts []string, childrenIds []string, level 
 	return texts
 }
 
-func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, numberedCount int) ([]string, int) {
-	if text := block.GetText(); text != nil {
-		switch text.Style {
-		case model.BlockContentText_Quote:
-			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "> ", text.Text))
-		case model.BlockContentText_Code:
-			texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), "```", text.Text, "```"))
-		case model.BlockContentText_Checkbox:
-			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- [ ] ", text.Text))
-		case model.BlockContentText_Marked:
-			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- ", text.Text))
-		case model.BlockContentText_Numbered:
-			numberedCount++
-			texts = append(texts, fmt.Sprintf("%s%d%s%s", strings.Repeat("\t", level), numberedCount, ". ", text.Text))
-		case model.BlockContentText_Callout:
-			texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), text.IconEmoji, " ", text.Text))
-		default:
-			texts = append(texts, fmt.Sprintf("%s%s", strings.Repeat("\t", level), text.Text))
+func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, numberedCount int, ignoreStyle bool) ([]string, int) {
+	if blockText := block.GetText(); blockText != nil {
+		if ignoreStyle {
+			texts = append(texts, blockText.Text)
+		} else {
+			switch blockText.Style {
+			case model.BlockContentText_Title:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "# ", blockText.Text))
+			case model.BlockContentText_Header1:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "## ", blockText.Text))
+			case model.BlockContentText_Header2:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "### ", blockText.Text))
+			case model.BlockContentText_Header3:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "#### ", blockText.Text))
+			case model.BlockContentText_Header4:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "##### ", blockText.Text))
+			case model.BlockContentText_Quote:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "> ", blockText.Text))
+			case model.BlockContentText_Code:
+				texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), "```", blockText.Text, "```"))
+			case model.BlockContentText_Checkbox:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- [ ] ", blockText.Text))
+			case model.BlockContentText_Marked:
+				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- ", blockText.Text))
+			case model.BlockContentText_Numbered:
+				numberedCount++
+				texts = append(texts, fmt.Sprintf("%s%d%s%s", strings.Repeat("\t", level), numberedCount, ". ", blockText.Text))
+			case model.BlockContentText_Callout:
+				texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), blockText.IconEmoji, " ", blockText.Text))
+			default:
+				texts = append(texts, fmt.Sprintf("%s%s", strings.Repeat("\t", level), blockText.Text))
+			}
 		}
 	}
 	return texts, numberedCount

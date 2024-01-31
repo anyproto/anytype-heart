@@ -28,11 +28,12 @@ type File interface {
 var _ File = (*file)(nil)
 
 type file struct {
-	spaceID string
+	spaceID    string
 	fileId  domain.FileId
-	info    *storage.FileInfo
-	node    *service
-	origin  model.ObjectOrigin
+	info       *storage.FileInfo
+	node       *service
+	origin     model.ObjectOrigin
+	importType model.ImportType
 }
 
 func (s *service) newFile(spaceId string, fileId domain.FileId, info *storage.FileInfo) File {
@@ -104,6 +105,9 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 
 	if f.origin != 0 {
 		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(f.origin))
+		if f.origin == model.ObjectOrigin_import {
+			commonDetails[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(f.importType))
+		}
 	}
 
 	t := &types.Struct{

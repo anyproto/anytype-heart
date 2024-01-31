@@ -33,17 +33,17 @@ var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
-	Origin model.ObjectOrigin
+	ObjectOrigin *domain.ObjectOrigin
 }
 
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
-	Origin model.ObjectOrigin
+	ObjectOrigin *domain.ObjectOrigin
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
-	Origin model.ObjectOrigin
+	ObjectOrigin *domain.ObjectOrigin
 }
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
@@ -468,7 +468,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupI
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: groupID,
-			Origin:  req.Origin,
+			Origin:  req.ObjectOrigin,
 		}, false)
 		return err
 	})
@@ -479,7 +479,7 @@ func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (e
 		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
 			Url:    req.Url,
-			Origin: req.Origin,
+			Origin: req.ObjectOrigin,
 		}, true)
 		return err
 	})
@@ -495,14 +495,15 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *types.Struct, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest, fileKeys map[string]string) (objectId string, details *types.Struct, err error) {
 	upl := s.fileUploaderService.NewUploader(spaceId)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
 
-	upl.SetOrigin(req.Origin)
 	upl.SetStyle(req.Style)
+	upl.SetOrigin(req.ObjectOrigin.Origin)
+	upl.SetImportType(req.ObjectOrigin.ImportType)
 	upl.SetAdditionalDetails(req.Details)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
@@ -514,6 +515,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 	} else if req.Url != "" {
 		upl.SetUrl(req.Url)
 	}
+	upl.SetFileKeys(fileKeys)
 	res := upl.Upload(ctx)
 	if res.Err != nil {
 		return "", nil, res.Err
@@ -543,7 +545,7 @@ func (s *Service) UploadFileBlock(
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: "",
-			Origin:  req.Origin,
+			Origin:  req.ObjectOrigin,
 		}, true)
 		if err != nil {
 			return err
@@ -575,7 +577,7 @@ func (s *Service) Redo(
 
 func (s *Service) BookmarkFetch(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, req.Origin)
+		return b.Fetch(ctx, req.BlockId, req.Url, req.ObjectOrigin)
 	})
 }
 

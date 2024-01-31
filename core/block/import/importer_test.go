@@ -19,6 +19,7 @@ import (
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -68,7 +69,7 @@ func Test_ImportSuccess(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.Nil(t, err)
 }
@@ -97,7 +98,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "converter error")
@@ -144,7 +145,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	// assert.Contains(t, res.Error(), "creator error")
@@ -191,7 +192,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  1,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), "converter error")
@@ -240,7 +241,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		Type:                  0,
 		Mode:                  1,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), "converter error")
@@ -292,7 +293,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		Type:                  model.Import_External,
 		Mode:                  2,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 	assert.Nil(t, res)
 }
 
@@ -317,7 +318,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		Type:                  model.Import_External,
 		Mode:                  2,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), common.ErrNoObjectsToImport.Error())
 }
@@ -325,7 +326,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 func Test_ListImports(t *testing.T) {
 	i := Import{}
 	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = pbc.New(nil, nil)
+	i.converters["Notion"] = pbc.New(nil, nil, nil)
 	creator := mock_objectcreator.NewMockService(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
@@ -483,7 +484,7 @@ func Test_ImportCancelError(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrCancel))
@@ -507,7 +508,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
@@ -546,7 +547,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
@@ -593,7 +594,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
@@ -633,7 +634,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrLimitExceeded))
@@ -673,7 +674,7 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrLimitExceeded))
@@ -787,7 +788,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import, nil)
+		}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 		// then
 		assert.Nil(t, err)
@@ -833,7 +834,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import, nil)
+		}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 		// then
 		assert.NotNil(t, err)
@@ -871,7 +872,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import, nil)
+		}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 		// then
 		assert.NotNil(t, err)
@@ -917,7 +918,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import, nil)
+		}, domain.ObjectOriginImport(model.ObjectOrigin_import, 0), nil)
 
 		// then
 		assert.NotNil(t, err)

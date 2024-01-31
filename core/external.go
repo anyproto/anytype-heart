@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -80,7 +81,8 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 				Type:      model.BlockContentFile_Image,
 				Style:     model.BlockContentFile_Embed,
 			},
-		})
+			ObjectOrigin: domain.ObjectOriginNone(),
+		}, nil)
 		if err != nil {
 			return err
 		}

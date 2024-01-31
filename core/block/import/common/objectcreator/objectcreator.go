@@ -129,7 +129,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys, origin.Origin)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
@@ -163,7 +163,7 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin model.ObjectOrigin, spaceID string) {
+func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin *domain.ObjectOrigin) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
@@ -181,9 +181,9 @@ func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin model.O
 		sn.Snapshot.Data.OriginalCreatedTimestamp = createdDate
 	}
 
-	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin.Origin))
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(origin.ImportType))
 	// we don't need to inject relatonLinks, they will be automatically injected for bundled relations
-
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -198,6 +198,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	spaceID string,
 	links pbtypes.RelationLinks,
 	objectTypeKeys []domain.TypeKey,
+	origin model.ObjectOrigin,
 ) error {
 
 	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))
@@ -222,7 +223,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceID, err)
 	}
-	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, false)
+	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, origin == model.ObjectOrigin_usecase)
 	return err
 }
 
@@ -425,7 +426,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin model.ObjectOrigin) error {
+func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin *domain.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
 	err := block.Do(oc.service, id.ObjectID, func(b smartblock.SmartBlock) error {

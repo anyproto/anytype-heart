@@ -112,18 +112,18 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	a.SetVersionName(complexAppVersion)
 	logging.SetVersion(complexAppVersion)
 	Bootstrap(a, components...)
-	metrics.SharedClient.SetAppVersion(a.Version())
-	metrics.SharedClient.Run()
+	metrics.Service.SetAppVersion(a.VersionName())
+	metrics.Service.Run()
 	startTime := time.Now()
 	if err = a.Start(ctx); err != nil {
-		metrics.SharedClient.Close()
+		metrics.Service.Close()
 		a = nil
 		return
 	}
 	totalSpent := time.Since(startTime)
 	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
 	stat := a.StartStat()
-	event := metrics.AppStart{
+	event := &metrics.AppStart{
 		TotalMs:   stat.SpentMsTotal,
 		PerCompMs: stat.SpentMsPerComp,
 		Extra:     map[string]interface{}{},
@@ -158,7 +158,7 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	})
 
 	if metrics.Enabled {
-		metrics.SharedClient.RecordEvent(event)
+		metrics.Service.Send(event)
 	}
 	if totalSpent > WarningAfter {
 		l.Warn("app started")
