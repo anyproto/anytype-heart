@@ -200,7 +200,7 @@ func (e *export) sendNotification(err error, req pb.RpcObjectListExportRequest) 
 	if err != nil {
 		errCode = model.NotificationExport_UNKNOWN_ERROR
 	}
-	notificationSendErr := e.notificationService.CreateAndSendLocal(&model.Notification{
+	notificationSendErr := e.notificationService.CreateAndSend(&model.Notification{
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Payload: &model.NotificationPayloadOfExport{Export: &model.NotificationExport{

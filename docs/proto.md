@@ -18,6 +18,8 @@
     - [Change.DetailsUnset](#anytype-Change-DetailsUnset)
     - [Change.FileKeys](#anytype-Change-FileKeys)
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
+    - [Change.NotificationCreate](#anytype-Change-NotificationCreate)
+    - [Change.NotificationUpdate](#anytype-Change-NotificationUpdate)
     - [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd)
     - [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove)
     - [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet)
@@ -1958,6 +1960,8 @@ the element of change tree used to store and internal apply smartBlock history
 | storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
 | originalCreatedTimestampSet | [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet) |  |  |
 | setFileInfo | [Change.SetFileInfo](#anytype-Change-SetFileInfo) |  |  |
+| notificationCreate | [Change.NotificationCreate](#anytype-Change-NotificationCreate) |  |  |
+| notificationUpdate | [Change.NotificationUpdate](#anytype-Change-NotificationUpdate) |  |  |
 
 
 
@@ -2021,6 +2025,37 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-NotificationCreate"></a>
+
+### Change.NotificationCreate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| notification | [model.Notification](#anytype-model-Notification) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-NotificationUpdate"></a>
+
+### Change.NotificationUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [model.Notification.Status](#anytype-model-Notification-Status) |  |  |
 
 
 
@@ -24938,6 +24973,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Participant | 534 |  |
 | MissingObject | 519 |  |
 | FileObject | 533 |  |
+| NotificationObject | 535 |  |
 
 
 

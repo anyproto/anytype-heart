@@ -11,16 +11,17 @@ import (
 const uniqueKeySeparator = "-"
 
 var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
-	smartblock.SmartBlockTypeObjectType:     "ot",
-	smartblock.SmartBlockTypeRelation:       "rel",
-	smartblock.SmartBlockTypeRelationOption: "opt",
-	smartblock.SmartBlockTypeWorkspace:      "ws",
-	smartblock.SmartBlockTypeHome:           "home",
-	smartblock.SmartBlockTypeArchive:        "archive",
-	smartblock.SmartBlockTypeProfilePage:    "profile",
-	smartblock.SmartBlockTypeWidget:         "widget",
-	smartblock.SmartBlockTypeSpaceView:      "spaceview",
-	smartblock.SmartBlockTypeFileObject:     "file", // For migration purposes only
+	smartblock.SmartBlockTypeObjectType:         "ot",
+	smartblock.SmartBlockTypeRelation:           "rel",
+	smartblock.SmartBlockTypeRelationOption:     "opt",
+	smartblock.SmartBlockTypeWorkspace:          "ws",
+	smartblock.SmartBlockTypeHome:               "home",
+	smartblock.SmartBlockTypeArchive:            "archive",
+	smartblock.SmartBlockTypeProfilePage:        "profile",
+	smartblock.SmartBlockTypeWidget:             "widget",
+	smartblock.SmartBlockTypeSpaceView:          "spaceview",
+	smartblock.SmartBlockTypeFileObject:         "file", // For migration purposes only
+	smartblock.SmartBlockTypeNotificationObject: "notification",
 }
 
 // UniqueKey is unique key composed of two parts: smartblock type and internal key.

@@ -48,6 +48,8 @@ enum SmartBlockType {
     MissingObject = 0x207;
 
     FileObject = 0x215;
+
+    NotificationObject = 0x217;
 }
 
 message Block {

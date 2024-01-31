@@ -793,7 +793,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 
 	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
 
-	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
+	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Space:   req.SpaceId,

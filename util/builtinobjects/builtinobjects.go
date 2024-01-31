@@ -225,7 +225,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
 
-	err = b.notifications.CreateAndSendLocal(&model.Notification{
+	err = b.notifications.CreateAndSend(&model.Notification{
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Space:   spaceID,
