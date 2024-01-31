@@ -20,6 +20,12 @@ func ObjectOriginNone() *ObjectOrigin {
 	}
 }
 
+func ObjectWebclipper() *ObjectOrigin {
+	return &ObjectOrigin{
+		Origin: model.ObjectOrigin_webclipper,
+	}
+}
+
 func ObjectOriginClipboard() *ObjectOrigin {
 	return &ObjectOrigin{
 		Origin: model.ObjectOrigin_clipboard,
