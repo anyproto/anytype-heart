@@ -327,6 +327,8 @@ func convertStatus(status list.AclStatus) model.ParticipantStatus {
 		return model.ParticipantStatus_Declined
 	case list.StatusRemoving:
 		return model.ParticipantStatus_Removing
+	case list.StatusCanceled:
+		return model.ParticipantStatus_Canceled
 	}
 	return model.ParticipantStatus_Active
 }

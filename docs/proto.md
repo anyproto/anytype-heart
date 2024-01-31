@@ -24915,6 +24915,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Removed | 2 |  |
 | Declined | 3 |  |
 | Removing | 4 |  |
+| Canceled | 5 |  |
 
 
 
