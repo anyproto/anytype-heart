@@ -3,6 +3,7 @@ package anymark
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -56,7 +57,7 @@ func MarkdownToBlocks(markdownSource []byte,
 	return r.GetBlocks(), r.GetRootBlockIDs(), nil
 }
 
-func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, err error) {
+func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	preprocessedSource := string(source)
 
 	preprocessedSource = transformCSSUnderscore(preprocessedSource)
@@ -74,6 +75,9 @@ func HTMLToBlocks(source []byte) (blocks []*model.Block, rootBlockIDs []string, 
 		DisableEscaping:  true,
 		AllowHeaderBreak: true,
 		EmDelimiter:      "*",
+		GetAbsoluteURL: func(selec *goquery.Selection, src string, domain string) string {
+			return getAbsolutePath(url, src)
+		},
 	})
 	converter.Use(plugin.GitHubFlavored())
 	converter.AddRules(getCustomHTMLRules()...)
@@ -200,8 +204,10 @@ func getCustomHTMLRules() []html2md.Rule {
 			if title == "" {
 				title = "image"
 			}
+
+			absolutePath := options.GetAbsoluteURL(selec, src, "")
 			// if we simply return link, BlockPaste command will not recognize it as image
-			return html2md.String(fmt.Sprintf("![%s](%s)", title, src))
+			return html2md.String(fmt.Sprintf("![%s](%s)", title, absolutePath))
 		},
 	}
 
@@ -301,4 +307,34 @@ func isHeadingRow(s *goquery.Selection) (bool, bool) {
 	}
 
 	return false, isContinue
+}
+
+func getAbsolutePath(rawUrl, relativeSrc string) string {
+	parsedUrl, err := url.Parse(rawUrl)
+	if err != nil {
+		return relativeSrc
+	}
+
+	// cases like //upload.com/picture.png where we should add scheme
+	if strings.HasPrefix(relativeSrc, "//") {
+		if parsedUrl.Scheme == "" {
+			parsedUrl.Scheme = "http"
+		}
+		return strings.Join([]string{parsedUrl.Scheme, relativeSrc}, ":")
+	}
+
+	// cases like /static/example.png where we should add root path
+	if strings.HasPrefix(relativeSrc, "/") {
+		if parsedUrl.Host != "" {
+			parsedUrl.Path = relativeSrc
+			return parsedUrl.String()
+		}
+	}
+
+	// link to section of html page
+	if strings.HasPrefix(relativeSrc, "#") {
+		parsedUrl.Fragment = strings.TrimLeft(relativeSrc, "#")
+		return parsedUrl.String()
+	}
+	return relativeSrc
 }

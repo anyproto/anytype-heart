@@ -15,6 +15,8 @@ service ClientCommands {
     rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
     rpc WalletRecover (anytype.Rpc.Wallet.Recover.Request) returns (anytype.Rpc.Wallet.Recover.Response);
     rpc WalletConvert (anytype.Rpc.Wallet.Convert.Request) returns (anytype.Rpc.Wallet.Convert.Response);
+    rpc AccountLocalLinkNewChallenge (anytype.Rpc.Account.LocalLink.NewChallenge.Request) returns (anytype.Rpc.Account.LocalLink.NewChallenge.Response);
+    rpc AccountLocalLinkSolveChallenge (anytype.Rpc.Account.LocalLink.SolveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.SolveChallenge.Response);
     rpc WalletCreateSession (anytype.Rpc.Wallet.CreateSession.Request) returns (anytype.Rpc.Wallet.CreateSession.Response);
     rpc WalletCloseSession (anytype.Rpc.Wallet.CloseSession.Request) returns (anytype.Rpc.Wallet.CloseSession.Response);
     // Workspace
@@ -68,6 +70,7 @@ service ClientCommands {
     // ObjectCreate just creates the new page, without adding the link to it from some other page
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
+    rpc ObjectCreateFromUrl (anytype.Rpc.Object.CreateFromUrl.Request) returns (anytype.Rpc.Object.CreateFromUrl.Response);
 
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
@@ -179,6 +182,7 @@ service ClientCommands {
     rpc BlockSetFields (anytype.Rpc.Block.SetFields.Request) returns (anytype.Rpc.Block.SetFields.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);
     rpc BlockSetCarriage (anytype.Rpc.Block.SetCarriage.Request) returns (anytype.Rpc.Block.SetCarriage.Response);
+    rpc BlockPreview (anytype.Rpc.Block.Preview.Request) returns (anytype.Rpc.Block.Preview.Response);
 
 
     rpc BlockListDelete (anytype.Rpc.Block.ListDelete.Request) returns (anytype.Rpc.Block.ListDelete.Response);

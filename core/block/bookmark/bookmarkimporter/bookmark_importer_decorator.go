@@ -50,7 +50,7 @@ func (bd *BookmarkImporterDecorator) CreateBookmarkObject(ctx context.Context, s
 		).Error(err)
 		return bd.Service.CreateBookmarkObject(ctx, spaceID, details, getContent)
 	}
-	err = bd.Service.UpdateBookmarkObject(objectId, getContent)
+	err = bd.Service.UpdateObject(objectId, getContent())
 	if err != nil {
 		return "", nil, err
 	}

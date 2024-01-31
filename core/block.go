@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -1114,4 +1115,20 @@ func (mw *Middleware) BlockListTurnInto(cctx context.Context, req *pb.RpcBlockLi
 		return response(pb.RpcBlockListTurnIntoResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListTurnIntoResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockPreview(cctx context.Context, req *pb.RpcBlockPreviewRequest) *pb.RpcBlockPreviewResponse {
+	response := func(code pb.RpcBlockPreviewResponseErrorCode, blocks []*model.Block, err error) *pb.RpcBlockPreviewResponse {
+		m := &pb.RpcBlockPreviewResponse{Error: &pb.RpcBlockPreviewResponseError{Code: code}, Blocks: blocks}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	blocks, _, err := anymark.HTMLToBlocks([]byte(req.Html), "")
+	if err != nil {
+		return response(pb.RpcBlockPreviewResponseError_UNKNOWN_ERROR, nil, err)
+	}
+	blocks = anymark.AddRootBlock(blocks, "preview")
+	return response(pb.RpcBlockPreviewResponseError_NULL, blocks, nil)
 }

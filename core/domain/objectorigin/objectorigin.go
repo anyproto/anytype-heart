@@ -33,6 +33,12 @@ func ObjectOriginImport(importType model.ImportType) ObjectOrigin {
 	}
 }
 
+func ObjectWebclipper() ObjectOrigin {
+	return ObjectOrigin{
+		Origin: model.ObjectOrigin_webclipper,
+	}
+}
+
 func ObjectOriginUsecase() ObjectOrigin {
 	return ObjectOrigin{
 		Origin:     model.ObjectOrigin_usecase,

@@ -63,7 +63,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -255,7 +254,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
-		Register(session.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
