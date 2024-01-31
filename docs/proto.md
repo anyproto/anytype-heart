@@ -908,6 +908,10 @@
     - [Rpc.Space.JoinCancel.Request](#anytype-Rpc-Space-JoinCancel-Request)
     - [Rpc.Space.JoinCancel.Response](#anytype-Rpc-Space-JoinCancel-Response)
     - [Rpc.Space.JoinCancel.Response.Error](#anytype-Rpc-Space-JoinCancel-Response-Error)
+    - [Rpc.Space.ParticipantPermissionsChange](#anytype-Rpc-Space-ParticipantPermissionsChange)
+    - [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request)
+    - [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response)
+    - [Rpc.Space.ParticipantPermissionsChange.Response.Error](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error)
     - [Rpc.Space.ParticipantRemove](#anytype-Rpc-Space-ParticipantRemove)
     - [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request)
     - [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response)
@@ -1222,6 +1226,7 @@
     - [Rpc.Space.InviteView.Response.Error.Code](#anytype-Rpc-Space-InviteView-Response-Error-Code)
     - [Rpc.Space.Join.Response.Error.Code](#anytype-Rpc-Space-Join-Response-Error-Code)
     - [Rpc.Space.JoinCancel.Response.Error.Code](#anytype-Rpc-Space-JoinCancel-Response-Error-Code)
+    - [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code)
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
@@ -1518,6 +1523,7 @@
     - [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet)
     - [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize)
     - [ObjectView.RelationWithValuePerObject](#anytype-model-ObjectView-RelationWithValuePerObject)
+    - [ParticipantPermissionChange](#anytype-model-ParticipantPermissionChange)
     - [Range](#anytype-model-Range)
     - [Relation](#anytype-model-Relation)
     - [Relation.Option](#anytype-model-Relation-Option)
@@ -1642,6 +1648,7 @@
 | SpaceRequestApprove | [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request) | [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response) |  |
 | SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
+| SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
@@ -15021,6 +15028,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange"></a>
+
+### Rpc.Space.ParticipantPermissionsChange
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange-Request"></a>
+
+### Rpc.Space.ParticipantPermissionsChange.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| changes | [model.ParticipantPermissionChange](#anytype-model-ParticipantPermissionChange) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange-Response"></a>
+
+### Rpc.Space.ParticipantPermissionsChange.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.ParticipantPermissionsChange.Response.Error](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error"></a>
+
+### Rpc.Space.ParticipantPermissionsChange.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-ParticipantRemove"></a>
 
 ### Rpc.Space.ParticipantRemove
@@ -15040,7 +15104,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| identity | [string](#string) |  |  |
+| identities | [string](#string) | repeated |  |
 
 
 
@@ -19312,6 +19376,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Space-JoinCancel-Response-Error-Code"></a>
 
 ### Rpc.Space.JoinCancel.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code"></a>
+
+### Rpc.Space.ParticipantPermissionsChange.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -23985,6 +24065,22 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | objectId | [string](#string) |  |  |
 | relations | [RelationWithValue](#anytype-model-RelationWithValue) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ParticipantPermissionChange"></a>
+
+### ParticipantPermissionChange
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| perms | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 

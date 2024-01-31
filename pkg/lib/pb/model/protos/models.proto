@@ -912,6 +912,11 @@ enum SpaceStatus {
     SpaceJoining = 9;
 }
 
+message ParticipantPermissionChange {
+    string identity = 1;
+    ParticipantPermissions perms = 2;
+}
+
 enum ParticipantPermissions {
     Reader = 0;
     Writer = 1;
