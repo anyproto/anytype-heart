@@ -395,15 +395,10 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
-	ns := s.NewState()
 	for _, id := range move.Ids {
-		ns.Unlink(id)
+		s.Unlink(id)
 	}
-	if err := ns.InsertTo(move.TargetId, move.Position, move.Ids...); err != nil {
-		return err
-	}
-	_, _, err := ApplyStateFastOne(ns)
-	return err
+	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
 }
 
 func (s *State) changeStoreKeySet(set *pb.ChangeStoreKeySet) error {
