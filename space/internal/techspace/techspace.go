@@ -89,7 +89,7 @@ func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache
 	s.idsWakedUp = make(chan struct{})
 	go func() {
 		defer close(s.idsWakedUp)
-		s.wakeUpViews()
+		//s.wakeUpViews()
 	}()
 	return
 }
