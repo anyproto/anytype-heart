@@ -215,7 +215,7 @@ func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request 
 			},
 		}
 	}
-	
+
 	// todo: implement errors
 	return &pb.RpcAccountLocalLinkNewChallengeResponse{
 		ChallengeId: challengeId,
