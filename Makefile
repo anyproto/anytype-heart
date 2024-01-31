@@ -1,6 +1,10 @@
 export GOLANGCI_LINT_VERSION=v1.54.2
 export custom_network_file=./core/anytype/config/nodes/custom.yml
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow
+export client_desktop_path = ../anytype-ts
+export client_android_path = ../anytype-kotlin
+export client_ios_path = ../anytype-swift
+
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
     export GOPATH
@@ -269,6 +273,41 @@ endif
 
 build-js: setup-go build-server protos-js
 	@echo "Run 'make install-dev-js' instead if you want to build & install into ../anytype-ts"
+
+
+install-dev-android: setup-go build-android
+	@echo 'Installing android lib locally in $(client_android_path)...'
+	@rm -f $(client_android_path)/libs/lib.aar
+	@cp -r dist/android/lib.aar $(client_android_path)/libs/lib.aar
+	@cp -r pb/protos/*.proto $(client_android_path)/protocol/src/main/proto
+	@cp -r pkg/lib/pb/model/protos/*.proto $(client_android_path)/protocol/src/main/proto
+	# Compute the SHA hash of lib.aar
+	@$(eval hash := $$(shell sha1sum -b dist/android/lib.aar | cut -d' ' -f1))
+	@echo "Version hash: ${hash}"
+	# Update the gradle file with the new version
+	@sed -i '' "s/version = '.*'/version = '${hash}'/g" $(client_android_path)/libs/build.gradle
+	@cat $(client_android_path)/libs/build.gradle
+
+	@sed -i '' "s/middlewareVersion = \".*\"/middlewareVersion = \"${hash}\"/" $(client_android_path)/gradle/libs.versions.toml
+	@cat $(client_android_path)/gradle/libs.versions.toml
+
+	# Print the updated gradle file (for verification)
+	@cd $(client_android_path) && make setup_local_mw
+	@cd $(client_android_path) && make normalize_mw_imports
+
+
+install-dev-ios: setup-go build-ios protos-swift
+	@echo 'Installing iOS framework locally at $(client_ios_path)...'
+	@rm -rf $(client_ios_path)/Dependencies/Middleware/*
+	@cp -r dist/ios/Lib.xcframework $(client_ios_path)/Dependencies/Middleware
+	@rm -rf Modules/ProtobufMessages/Sources/Protocol/*
+	@cp -r dist/ios/protobuf/*.swift $(client_ios_path)/Modules/ProtobufMessages/Sources/Protocol
+	@mkdir -p $(client_ios_path)/Dependencies/Middleware/protobuf/protos
+	@cp -r pb/protos/*.proto $(client_ios_path)/ncies/Middleware/protobuf/protos
+	@cp -r pkg/lib/pb/model/protos/*.proto $(client_ios_path)/Dependencies/Middleware/protobuf/protos
+	@cp -r pkg/lib/pb/model/protos/service/*.proto $(client_ios_path)/Dependencies/Middleware/protobuf/protos
+	@mkdir -p $(client_ios_path)/Dependencies/Middleware/protobuf/json
+	@cp -r pkg/lib/bundle/*.json $(client_ios_path)/Dependencies/Middleware/json
 
 install-linter:
 	@go install github.com/daixiang0/gci@latest
