@@ -150,7 +150,10 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if !ok {
 		return UploadResult{Err: fmt.Errorf("not a file block")}
 	}
-	upl := sf.newUploader().SetBlock(f).SetOrigin(source.Origin.Origin).SetImportType(source.Origin.ImportType)
+	upl := sf.newUploader().SetBlock(f)
+	if source.Origin != nil {
+		upl.SetOrigin(source.Origin.Origin).SetImportType(source.Origin.ImportType)
+	}
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {

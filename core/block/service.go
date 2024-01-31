@@ -785,6 +785,7 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 	if err != nil {
 		return "", nil, err
 	}
+	s.enrichDetailsWithOrigin(req.Details, model.ObjectOrigin_webclipper)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: objectTypeKey,
 		Details:       req.Details,
@@ -824,7 +825,7 @@ func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error 
 	}
 	for _, r := range uploadArr {
 		r.ContextId = id
-		uploadReq := UploadRequest{RpcBlockUploadRequest: r}
+		uploadReq := UploadRequest{RpcBlockUploadRequest: r, ObjectOrigin: domain.ObjectWebclipper()}
 		if err = s.UploadBlockFile(nil, uploadReq, groupID); err != nil {
 			return err
 		}
@@ -868,4 +869,11 @@ func (s *Service) GetLogFields() []zap.Field {
 		fields = append(fields, zap.Bool("predefined_object_was_missing", true))
 	}
 	return fields
+}
+
+func (s *Service) enrichDetailsWithOrigin(details *types.Struct, origin model.ObjectOrigin) {
+	if details == nil || details.Fields == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
 }
