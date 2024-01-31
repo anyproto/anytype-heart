@@ -494,13 +494,17 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 	}
 	for _, record := range records {
 		size, err := s.fileOffload(ctx, record.Details, includeNotPinned)
+		objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
 		if err != nil {
-			objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
 			log.Errorf("failed to offload file %s: %v", objectId, err)
 			continue
 		}
 		if size > 0 {
 			filesOffloaded++
+			err = s.fileStore.DeleteFile(domain.FileId(objectId))
+			if err != nil {
+				return 0, 0, fmt.Errorf("failed to delete file from store: %w", err)
+			}
 		}
 		totalSize += size
 	}
