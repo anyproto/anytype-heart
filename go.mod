@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-sync v0.3.19-alpha.0.20240201141255-adac306d8633
+	github.com/anyproto/any-sync v0.3.19-alpha.0.20240201153711-141ab46e389c
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.10
@@ -82,6 +82,7 @@ require (
 	github.com/vektra/mockery/v2 v2.38.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yuin/goldmark v1.6.0
+	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.4.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.26.0
@@ -250,7 +251,6 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
