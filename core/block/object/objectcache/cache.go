@@ -47,6 +47,7 @@ type Cache interface {
 	CreateTreeObject(ctx context.Context, params TreeCreationParams) (sb smartblock.SmartBlock, err error)
 	CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
 	DeriveTreeObject(ctx context.Context, params TreeDerivationParams) (sb smartblock.SmartBlock, err error)
+	DeriveTreeObjectWithAccountSignature(ctx context.Context, params TreeDerivationParams) (sb smartblock.SmartBlock, err error)
 	GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 	GetObjectWithTimeout(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 	DoLockedIfNotExists(objectID string, proc func() error) error

@@ -134,6 +134,7 @@ service ClientCommands {
     // Files
     // ***
     rpc FileOffload (anytype.Rpc.File.Offload.Request) returns (anytype.Rpc.File.Offload.Response);
+    rpc FileSpaceOffload (anytype.Rpc.File.SpaceOffload.Request) returns (anytype.Rpc.File.SpaceOffload.Response);
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);

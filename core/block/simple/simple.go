@@ -32,8 +32,13 @@ type Block interface {
 	Validate() error
 }
 
+type LinkedFilesIterator interface {
+	IterateLinkedFiles(func(id string))
+}
+
 type FileHashes interface {
-	FillFileHashes(hashes []string) []string
+	FillFileHashes(hashes []string) []string // DEPRECATED, use only for migration and backward compatibility purposes
+	MigrateFile(replacer func(oldHash string) (newHash string))
 }
 
 type DetailsService interface {

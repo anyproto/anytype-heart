@@ -20,7 +20,7 @@ func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
 	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
 }
 
-func (s *service) addFile(ctx context.Context, spaceID string, r io.Reader) (ipld.Node, error) {
+func (s *service) addFileData(ctx context.Context, spaceID string, r io.Reader) (ipld.Node, error) {
 	cctx := fileblockstore.CtxWithSpaceId(ctx, spaceID)
 	return s.commonFile.AddFile(cctx, r)
 }

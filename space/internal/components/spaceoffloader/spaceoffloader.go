@@ -133,7 +133,7 @@ func (o *spaceOffloader) offload(ctx context.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
-	err = o.fileOffloader.FilesSpaceOffload(ctx, id)
+	_, _, err = o.fileOffloader.FileSpaceOffload(ctx, id, true)
 	if err != nil {
 		return err
 	}

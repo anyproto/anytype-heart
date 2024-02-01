@@ -16,9 +16,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -83,8 +83,6 @@ func (d *dot) FileHashes() []string {
 	return d.fileHashes
 }
 
-func (d *dot) SetFileKeys(fileKeys *files.FileKeys) {}
-
 func (d *dot) ImageHashes() []string {
 	return d.imageHashes
 }
@@ -142,7 +140,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(smartblock.SmartBlock) []byte {
+func (d *dot) Convert(sbType model.SmartBlockType) []byte {
 	var err error
 	for id, links := range d.linksByNode {
 		source, exists := d.nodes[id]

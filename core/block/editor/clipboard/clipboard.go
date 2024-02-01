@@ -18,8 +18,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -44,22 +45,24 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
-func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service) Clipboard {
+func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service, fileObjectService fileobject.Service) Clipboard {
 	return &clipboard{
-		SmartBlock:      sb,
-		file:            file,
-		tempDirProvider: tempDirProvider,
-		objectStore:     objectStore,
-		fileService:     fileService,
+		SmartBlock:        sb,
+		file:              file,
+		tempDirProvider:   tempDirProvider,
+		objectStore:       objectStore,
+		fileService:       fileService,
+		fileObjectService: fileObjectService,
 	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
-	file            file.File
-	tempDirProvider core.TempDirProvider
-	objectStore     objectstore.ObjectStore
-	fileService     files.Service
+	file              file.File
+	tempDirProvider   core.TempDirProvider
+	objectStore       objectstore.ObjectStore
+	fileService       files.Service
+	fileObjectService fileobject.Service
 }
 
 func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
@@ -127,14 +130,14 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
+		htmlSlot = cb.newHTMLConverter(s).Convert()
 		textSlot = cutBlock.GetText().Text
 		anySlot = cb.stateToBlocks(s)
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
-	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
+	htmlSlot = cb.newHTMLConverter(s).Convert()
 	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
 }
@@ -198,7 +201,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
 		cbs.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, cbs).Convert()
+		htmlSlot = cb.newHTMLConverter(cbs).Convert()
 
 		return textSlot, htmlSlot, anySlot, cb.Apply(s)
 	}
@@ -211,7 +214,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	}
 	textSlot = renderText(state, len(req.Blocks) == 1)
 
-	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, state).Convert()
+	htmlSlot = cb.newHTMLConverter(state).Convert()
 	anySlot = req.Blocks
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
@@ -268,7 +271,7 @@ func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map
 
 func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	s := cb.blocksToState(req.Blocks)
-	htmlData := html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Export()
+	htmlData := cb.newHTMLConverter(s).Export()
 
 	dir := cb.tempDirProvider.TempDir()
 	fileName := "export-" + cb.Id() + ".html"
@@ -508,7 +511,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes:  fs.Data,
 			Path:   fs.LocalPath,
 			Name:   fs.Name,
-			Origin: domain.ObjectOriginClipboard(),
+			Origin: objectorigin.Clipboard(),
 		}, false); err != nil {
 			return
 		}
@@ -563,6 +566,10 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 
 	d.RelationLinks = links
 	return
+}
+
+func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
+	return html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s, cb.fileObjectService)
 }
 
 func renderText(s *state.State, ignoreStyle bool) string {

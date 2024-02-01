@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -37,7 +37,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
-	ToDetails(origin *domain.ObjectOrigin) *types.Struct
+	ToDetails(origin objectorigin.ObjectOrigin) *types.Struct
 	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *ObjectContent))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
@@ -52,18 +52,13 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
 }
 
-func (b *Bookmark) ToDetails(origin *domain.ObjectOrigin) *types.Struct {
+func (b *Bookmark) ToDetails(origin objectorigin.ObjectOrigin) *types.Struct {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),
 		},
 	}
-	if origin.Origin != model.ObjectOrigin_none {
-		details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin.Origin))
-		if origin.Origin == model.ObjectOrigin_import {
-			details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(origin.ImportType))
-		}
-	}
+	origin.AddToDetails(details)
 	return details
 }
 
@@ -178,6 +173,15 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	return
 }
 
+func (b *Bookmark) IterateLinkedFiles(iter func(id string)) {
+	if b.content.ImageHash != "" {
+		iter(b.content.ImageHash)
+	}
+	if b.content.FaviconHash != "" {
+		iter(b.content.FaviconHash)
+	}
+}
+
 func (b *Bookmark) FillFileHashes(hashes []string) []string {
 	if b.content.ImageHash != "" {
 		hashes = append(hashes, b.content.ImageHash)
@@ -186,6 +190,15 @@ func (b *Bookmark) FillFileHashes(hashes []string) []string {
 		hashes = append(hashes, b.content.FaviconHash)
 	}
 	return hashes
+}
+
+func (b *Bookmark) MigrateFile(replacer func(oldHash string) (newHash string)) {
+	if b.content.ImageHash != "" {
+		b.content.ImageHash = replacer(b.content.ImageHash)
+	}
+	if b.content.FaviconHash != "" {
+		b.content.FaviconHash = replacer(b.content.FaviconHash)
+	}
 }
 
 func (l *Bookmark) ReplaceLinkIds(replacer func(oldId string) (newId string)) {

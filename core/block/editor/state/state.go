@@ -44,8 +44,6 @@ var (
 	ErrRestricted = errors.New("restricted")
 )
 
-var DetailsFileFields = [...]string{bundle.RelationKeyCoverId.String(), bundle.RelationKeyIconImage.String()}
-
 type Doc interface {
 	RootId() string
 	NewState() *State
@@ -80,7 +78,6 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
-	// todo: injectDerivedRelations has been removed, it shouldn't be here. Check if this produced any side effects
 	return s
 }
 
@@ -115,7 +112,8 @@ type State struct {
 	newIds            []string
 	changeId          string
 	changes           []*pb.ChangeContent
-	fileKeys          []pb.ChangeFileKeys
+	fileInfo          FileInfo
+	fileKeys          []pb.ChangeFileKeys // Deprecated
 	details           *types.Struct
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
@@ -164,11 +162,21 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return s.NewStateCtx(nil)
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return &State{
+		parent:                   s,
+		blocks:                   make(map[string]simple.Block),
+		rootId:                   s.rootId,
+		ctx:                      ctx,
+		noObjectType:             s.noObjectType,
+		migrationVersion:         s.migrationVersion,
+		uniqueKeyInternal:        s.uniqueKeyInternal,
+		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		fileInfo:                 s.fileInfo,
+	}
 }
 
 func (s *State) Context() session.Context {
@@ -628,6 +636,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
+	if s.parent != nil {
+		s.parent.fileInfo = s.fileInfo
+	}
+
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -718,6 +730,7 @@ func (s *State) intermediateApply() {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
+	s.parent.fileInfo = s.fileInfo
 	return
 }
 
@@ -1088,44 +1101,58 @@ func (s *State) FileRelationKeys() []string {
 	return keys
 }
 
-func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
-	hashes = s.getAllFileHashesOrTempLink(detailsKeys)
-	return slice.FilterCID(hashes)
-}
-
-func (s *State) getAllFileHashesOrTempLink(detailsKeys []string) (hashes []string) {
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if fh, ok := b.(simple.FileHashes); ok {
-			hashes = fh.FillFileHashes(hashes)
+// IterateLinkedFiles iterates over all file object ids in blocks and details
+func (s *State) IterateLinkedFiles(proc func(id string)) {
+	s.Iterate(func(block simple.Block) (isContinue bool) {
+		if iter, ok := block.(simple.LinkedFilesIterator); ok {
+			iter.IterateLinkedFiles(proc)
 		}
 		return true
 	})
+	s.IterateLinkedFilesInDetails(proc)
+}
+
+func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
+	s.ModifyLinkedFilesInDetails(func(id string) string {
+		proc(id)
+		return id
+	})
+}
+
+// ModifyLinkedFilesInDetails iterates over all file object ids in details and modifies them using modifier function.
+// Detail is saved only if at least one id is changed
+func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 	det := s.Details()
 	if det == nil || det.Fields == nil {
 		return
 	}
 
-	for _, key := range detailsKeys {
+	for _, key := range s.FileRelationKeys() {
 		if key == bundle.RelationKeyCoverId.String() {
 			v := pbtypes.GetString(det, key)
 			_, err := cid.Decode(v)
 			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
+				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
 		}
-		if v := pbtypes.GetStringList(det, key); v != nil {
-			for _, hash := range v {
-				if hash == "" {
+		if ids := pbtypes.GetStringList(det, key); len(ids) > 0 {
+			var anyChanges bool
+			for i, oldId := range ids {
+				if oldId == "" {
 					continue
 				}
-				if slice.FindPos(hashes, hash) == -1 {
-					hashes = append(hashes, hash)
+				newId := modifier(oldId)
+				if oldId != newId {
+					ids[i] = newId
+					anyChanges = true
 				}
+			}
+			if anyChanges {
+				s.SetDetail(key, pbtypes.StringList(ids))
 			}
 		}
 	}
-	return
 }
 
 func (s *State) blockInit(b simple.Block) {
@@ -1271,6 +1298,7 @@ func (s *State) Copy() *State {
 		storeKeyRemoved:          storeKeyRemovedCopy,
 		uniqueKeyInternal:        s.uniqueKeyInternal,
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		fileInfo:                 s.fileInfo,
 	}
 	return copy
 }

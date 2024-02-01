@@ -2,6 +2,7 @@ package syncstatus
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
@@ -10,53 +11,73 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
 type updateReceiver struct {
 	eventSender event.Sender
 
-	linkedFilesWatcher *linkedFilesWatcher
-	nodeConfService    nodeconf.Service
+	nodeConfService nodeconf.Service
 	sync.Mutex
 	nodeConnected bool
 	lastStatus    map[string]pb.EventStatusThreadSyncStatus
+	objectStore   objectstore.ObjectStore
 }
 
-func newUpdateReceiver(linkedFilesWatcher *linkedFilesWatcher, nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender) *updateReceiver {
+func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender, objectStore objectstore.ObjectStore) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		eventSender = nil
 	}
 	return &updateReceiver{
-		linkedFilesWatcher: linkedFilesWatcher,
-		nodeConfService:    nodeConfService,
-		lastStatus:         make(map[string]pb.EventStatusThreadSyncStatus),
-		eventSender:        eventSender,
+		nodeConfService: nodeConfService,
+		lastStatus:      make(map[string]pb.EventStatusThreadSyncStatus),
+		eventSender:     eventSender,
+		objectStore:     objectStore,
 	}
 }
 
 func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status syncstatus.SyncStatus) error {
-	filesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
-	objStatus := r.getObjectStatus(status)
+	objStatus := r.getObjectStatus(objId, status)
 
-	if !r.isStatusUpdated(objId, objStatus, filesSummary) {
+	if !r.isStatusUpdated(objId, objStatus) {
 		return nil
 	}
-	r.notify(objId, objStatus, filesSummary.pinStatus)
+	r.notify(objId, objStatus)
 
 	return nil
 }
 
-func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStatusThreadSyncStatus, filesSummary linkedFilesSummary) bool {
+func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStatusThreadSyncStatus) bool {
 	r.Lock()
 	defer r.Unlock()
-	if lastObjStatus, ok := r.lastStatus[objectID]; ok && objStatus == lastObjStatus && !filesSummary.isUpdated {
+	if lastObjStatus, ok := r.lastStatus[objectID]; ok && objStatus == lastObjStatus {
 		return false
 	}
 	r.lastStatus[objectID] = objStatus
 	return true
 }
 
-func (r *updateReceiver) getObjectStatus(status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) getFileStatus(fileId string) (FileStatus, error) {
+	details, err := r.objectStore.GetDetails(fileId)
+	if err != nil {
+		return FileStatusUnknown, fmt.Errorf("get file details: %w", err)
+	}
+	if v, ok := details.GetDetails().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+		return FileStatus(v.GetNumberValue()), nil
+	}
+	return FileStatusUnknown, fmt.Errorf("no backup status")
+}
+
+func (r *updateReceiver) getObjectStatus(objectId string, status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+	fileStatus, err := r.getFileStatus(objectId)
+	if err == nil {
+		// Prefer file backup status
+		if fileStatus != FileStatusSynced {
+			status = fileStatus.ToSyncStatus()
+		}
+	}
+
 	if r.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
 		return pb.EventStatusThread_IncompatibleVersion
 	}
@@ -101,13 +122,12 @@ func (r *updateReceiver) UpdateNodeStatus(status syncstatus.ConnectionStatus) {
 func (r *updateReceiver) notify(
 	objId string,
 	objStatus pb.EventStatusThreadSyncStatus,
-	pinStatus pb.EventStatusThreadCafePinStatus,
 ) {
 	r.sendEvent(objId, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 		Summary: &pb.EventStatusThreadSummary{Status: objStatus},
 		Cafe: &pb.EventStatusThreadCafe{
 			Status: objStatus,
-			Files:  &pinStatus,
+			Files:  &pb.EventStatusThreadCafePinStatus{},
 		},
 	}})
 }

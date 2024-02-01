@@ -78,10 +78,6 @@ func (m *ImageResize) ID() string {
 	return "/image/resize"
 }
 
-func (m *ImageResize) Encrypt() bool {
-	return true
-}
-
 func (m *ImageResize) Pin() bool {
 	return false
 }

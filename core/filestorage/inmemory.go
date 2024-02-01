@@ -2,7 +2,6 @@ package filestorage
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -64,7 +63,6 @@ func (i *inMemBlockStore) Add(ctx context.Context, bs []blocks.Block) error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	for _, b := range bs {
-		fmt.Println("add", b.Cid().String())
 		i.data[b.Cid().KeyString()] = b
 	}
 	return nil
