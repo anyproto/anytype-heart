@@ -22,7 +22,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
-const CName = "linkpreview"
+const (
+	CName       = "linkpreview"
+	utfEncoding = "utf-8"
+)
 
 func New() LinkPreview {
 	return &linkPreview{}
@@ -86,9 +89,6 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	if !utf8.ValidString(res.Description) {
 		res.Description = ""
 	}
-	if utf8.Valid(rt.lastBody) {
-		return res, rt.lastBody, err
-	}
 	decodedResponse, err := decodeResponse(rt)
 	if err != nil {
 		log.Errorf("failed to decode request %s", err)
@@ -98,7 +98,10 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 
 func decodeResponse(response *proxyRoundTripper) ([]byte, error) {
 	contentType := response.lastResponse.Header.Get("Content-Type")
-	enc, _, _ := charset.DetermineEncoding(response.lastBody, contentType)
+	enc, name, _ := charset.DetermineEncoding(response.lastBody, contentType)
+	if name == utfEncoding {
+		return response.lastBody, nil
+	}
 	decodedResponse, err := enc.NewDecoder().Bytes(response.lastBody)
 	if err != nil {
 		return response.lastBody, err
