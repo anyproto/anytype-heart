@@ -260,25 +260,6 @@ func isKeyExists(txn *badger.Txn, key []byte) (bool, error) {
 	return true, nil
 }
 
-func (s *fileSyncStore) isFileQueued(spaceId string, fileId domain.FileId) (ok bool, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
-		if err != nil {
-			return fmt.Errorf("check upload key: %w", err)
-		}
-		if ok {
-			return nil
-		}
-
-		ok, err = isKeyExists(txn, discardedKey(spaceId, fileId))
-		if err != nil {
-			return fmt.Errorf("check discarded key: %w", err)
-		}
-		return nil
-	})
-	return
-}
-
 func (s *fileSyncStore) HasUpload(spaceId string, fileId domain.FileId) (ok bool, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
