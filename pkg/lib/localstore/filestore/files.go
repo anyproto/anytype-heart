@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -28,6 +29,8 @@ var (
 	chunksCountBase = dsCtx.NewKey("/" + filesPrefix + "/chunks_count")
 	fileSizeBase    = dsCtx.NewKey("/" + filesPrefix + "/file_size")
 	isImportedBase  = dsCtx.NewKey("/" + filesPrefix + "/is_imported")
+	fileOrigin      = dsCtx.NewKey("/" + filesPrefix + "/origin")
+	fileImportType  = dsCtx.NewKey("/" + filesPrefix + "/importType")
 
 	indexMillSourceOpts = localstore.Index{
 		Prefix: filesPrefix,
@@ -107,6 +110,10 @@ type FileStore interface {
 	SetIsFileImported(fileId domain.FileId, isImported bool) error
 	SetFileSize(fileId domain.FileId, size int) error
 	GetFileSize(fileId domain.FileId) (int, error)
+	SetFileOrigin(fileId domain.FileId, origin model.ObjectOrigin) error
+	GetFileOrigin(fileId domain.FileId) (int, error)
+	SetFileImportType(hash string, importType model.ImportType) error
+	GetFileImportType(hash string) (int, error)
 }
 
 func New() FileStore {
@@ -523,6 +530,26 @@ func (m *dsFileStore) GetFileSize(fileId domain.FileId) (int, error) {
 func (m *dsFileStore) SetFileSize(fileId domain.FileId, status int) error {
 	key := fileSizeBase.ChildString(fileId.String())
 	return m.setInt(key, status)
+}
+
+func (ls *dsFileStore) SetFileOrigin(fileId domain.FileId, origin model.ObjectOrigin) error {
+	key := fileOrigin.ChildString(fileId.String())
+	return ls.setInt(key, int(origin))
+}
+
+func (ls *dsFileStore) GetFileOrigin(fileId domain.FileId) (int, error) {
+	key := fileOrigin.ChildString(fileId.String())
+	return ls.getInt(key)
+}
+
+func (ls *dsFileStore) SetFileImportType(hash string, importType model.ImportType) error {
+	key := fileImportType.ChildString(hash)
+	return ls.setInt(key, int(importType))
+}
+
+func (ls *dsFileStore) GetFileImportType(hash string) (int, error) {
+	key := fileImportType.ChildString(hash)
+	return ls.getInt(key)
 }
 
 func (ls *dsFileStore) Close(ctx context.Context) (err error) {
