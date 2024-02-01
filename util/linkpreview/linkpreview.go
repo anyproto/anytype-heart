@@ -86,6 +86,9 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	if !utf8.ValidString(res.Description) {
 		res.Description = ""
 	}
+	if utf8.Valid(rt.lastBody) {
+		return res, rt.lastBody, err
+	}
 	decodedResponse, err := decodeResponse(rt)
 	if err != nil {
 		log.Errorf("failed to decode request %s", err)
