@@ -141,3 +141,32 @@ func ConvertTextToFile(block *model.Block) {
 		}
 	}
 }
+
+func AddRootBlock(blocks []*model.Block, rootBlockID string) []*model.Block {
+	for i, b := range blocks {
+		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
+			blocks[i].Id = rootBlockID
+			return nil
+		}
+	}
+	notRootBlockChild := make(map[string]bool, 0)
+	for _, b := range blocks {
+		for _, id := range b.ChildrenIds {
+			notRootBlockChild[id] = true
+		}
+	}
+	childrenIds := make([]string, 0)
+	for _, b := range blocks {
+		if _, ok := notRootBlockChild[b.Id]; !ok {
+			childrenIds = append(childrenIds, b.Id)
+		}
+	}
+	blocks = append(blocks, &model.Block{
+		Id: rootBlockID,
+		Content: &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		},
+		ChildrenIds: childrenIds,
+	})
+	return blocks
+}

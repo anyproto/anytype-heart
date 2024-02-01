@@ -63,3 +63,9 @@ func ObjectOriginDragAndDrop() ObjectOrigin {
 		Origin: model.ObjectOrigin_dragAndDrop,
 	}
 }
+
+func ObjectWebclipper() ObjectOrigin {
+	return ObjectOrigin{
+		Origin: model.ObjectOrigin_webclipper,
+	}
+}
