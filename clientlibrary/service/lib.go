@@ -40,18 +40,20 @@ func init() {
 			http.ListenAndServe(debug, nil)
 		}()
 	}
-	// test
-	RunDebugServer()
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
 	mw.SetEventSender(event.NewCallbackSender(eh))
 }
 
-func RunDebugServer() {
+func RunDebugServer(addr string) {
 	go func() {
-		http.ListenAndServe("0.0.0.0:6060", nil)
+		http.ListenAndServe(addr, nil)
 	}()
+}
+
+func SetLogLevels(levels string) {
+	logging.SetLogLevels(levels)
 }
 
 func SetEnv(key, value string) {

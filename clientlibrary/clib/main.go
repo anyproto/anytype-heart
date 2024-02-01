@@ -37,8 +37,13 @@ func SetEventHandler(pf C.proxyFunc, ctx unsafe.Pointer) {
 }
 
 //export RunDebugServer
-func RunDebugServer() {
-	service.RunDebugServer()
+func RunDebugServer(addr *C.char) {
+	service.RunDebugServer(C.GoString(addr))
+}
+
+//export SetLogLevels
+func SetLogLevels(levels *C.char) {
+	service.SetLogLevels(C.GoString(levels))
 }
 
 //export Command
