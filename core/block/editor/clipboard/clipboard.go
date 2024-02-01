@@ -511,7 +511,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes:  fs.Data,
 			Path:   fs.LocalPath,
 			Name:   fs.Name,
-			Origin: objectorigin.ObjectOriginClipboard(),
+			Origin: objectorigin.Clipboard(),
 		}, false); err != nil {
 			return
 		}

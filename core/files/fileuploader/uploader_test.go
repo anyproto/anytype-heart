@@ -172,7 +172,7 @@ func newFixture(t *testing.T) *uplFixture {
 		picker:            picker,
 		fileObjectService: fx.fileObjectService,
 	}
-	fx.Uploader = uploaderProvider.NewUploader("space1", objectorigin.ObjectOriginNone())
+	fx.Uploader = uploaderProvider.NewUploader("space1", objectorigin.None())
 	fx.file = testMock.NewMockFile(fx.ctrl)
 	fx.file.EXPECT().FileId().Return(domain.FileId("123")).AnyTimes()
 	return fx
