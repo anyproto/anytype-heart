@@ -288,7 +288,7 @@ func (b *builtinObjects) importArchive(
 	progress process.Progress,
 	isNewSpace bool,
 ) (err error) {
-	origin := objectorigin.ObjectOriginUsecase()
+	origin := objectorigin.Usecase()
 	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,

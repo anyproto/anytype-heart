@@ -14,6 +14,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	objectorigin "github.com/anyproto/anytype-heart/core/domain/objectorigin"
+
 	pb "github.com/anyproto/anytype-heart/pb"
 
 	source "github.com/anyproto/anytype-heart/core/block/source"

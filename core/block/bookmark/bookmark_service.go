@@ -336,7 +336,7 @@ func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchP
 }
 
 func (s *service) loadImage(spaceId string, title, url string) (hash string, err error) {
-	uploader := s.fileUploaderFactory.NewUploader(spaceId, objectorigin.ObjectOriginBookmark())
+	uploader := s.fileUploaderFactory.NewUploader(spaceId, objectorigin.Bookmark())
 
 	tempDir := s.tempDirService.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

@@ -133,7 +133,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 		details  *types.Struct
 	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		dto := block.FileUploadRequest{RpcFileUploadRequest: *req, ObjectOrigin: objectorigin.ObjectOriginNone()}
+		dto := block.FileUploadRequest{RpcFileUploadRequest: *req, ObjectOrigin: objectorigin.None()}
 		objectId, details, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		return
 	})

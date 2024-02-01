@@ -26,46 +26,46 @@ func (o ObjectOrigin) AddToDetails(details *types.Struct) {
 	}
 }
 
-func ObjectOriginImport(importType model.ImportType) ObjectOrigin {
+func Import(importType model.ImportType) ObjectOrigin {
 	return ObjectOrigin{
 		Origin:     model.ObjectOrigin_import,
 		ImportType: importType,
 	}
 }
 
-func ObjectWebclipper() ObjectOrigin {
-	return ObjectOrigin{
-		Origin: model.ObjectOrigin_webclipper,
-	}
-}
-
-func ObjectOriginUsecase() ObjectOrigin {
+func Usecase() ObjectOrigin {
 	return ObjectOrigin{
 		Origin:     model.ObjectOrigin_usecase,
 		ImportType: model.Import_Pb,
 	}
 }
 
-func ObjectOriginNone() ObjectOrigin {
+func None() ObjectOrigin {
 	return ObjectOrigin{
 		Origin: model.ObjectOrigin_none,
 	}
 }
 
-func ObjectOriginClipboard() ObjectOrigin {
+func Clipboard() ObjectOrigin {
 	return ObjectOrigin{
 		Origin: model.ObjectOrigin_clipboard,
 	}
 }
 
-func ObjectOriginBookmark() ObjectOrigin {
+func Bookmark() ObjectOrigin {
 	return ObjectOrigin{
 		Origin: model.ObjectOrigin_bookmark,
 	}
 }
 
-func ObjectOriginDragAndDrop() ObjectOrigin {
+func DragAndDrop() ObjectOrigin {
 	return ObjectOrigin{
 		Origin: model.ObjectOrigin_dragAndDrop,
+	}
+}
+
+func Webclipper() ObjectOrigin {
+	return ObjectOrigin{
+		Origin: model.ObjectOrigin_webclipper,
 	}
 }

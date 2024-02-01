@@ -525,7 +525,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 }
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
-	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.ObjectOriginDragAndDrop())
+	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.DragAndDrop())
 	res := upl.
 		SetName(f.name).
 		AutoType(true).

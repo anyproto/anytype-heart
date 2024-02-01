@@ -202,7 +202,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 			Snapshots: sn,
 		}
 
-		originImport := objectorigin.ObjectOriginImport(model.Import_External)
+		originImport := objectorigin.Import(model.Import_External)
 		i.createObjects(ctx, res, progress, req, allErrors, originImport)
 		if !allErrors.IsEmpty() {
 			return allErrors.GetResultError(req.Type)
@@ -277,7 +277,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 	}
 
 	progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, progress, req, allErrors, objectorigin.ObjectOriginNone())
+	details, _ := i.createObjects(ctx, res, progress, req, allErrors, objectorigin.None())
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}

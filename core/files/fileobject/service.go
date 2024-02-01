@@ -377,7 +377,7 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 	err = s.migrateDeriveObject(context.Background(), space, CreateRequest{
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: fileKeys,
-		ObjectOrigin:   objectorigin.ObjectOriginNone(), // TODO what to do? Probably need to copy origin detail
+		ObjectOrigin:   objectorigin.None(), // TODO what to do? Probably need to copy origin detail
 	}, uniqueKey)
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", fileId, err)

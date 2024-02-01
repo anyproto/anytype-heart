@@ -6,7 +6,7 @@ import (
 	context "context"
 
 	common "github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 
 	mock "github.com/stretchr/testify/mock"
 
