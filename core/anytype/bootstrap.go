@@ -87,7 +87,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/unsplash"
 	"github.com/anyproto/anytype-heart/util/vcs"
 
-	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 )
 
 var (
@@ -257,7 +258,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(identity.New()).
 		Register(templateservice.New()).
 		Register(notifications.New()).
-		Register(ppclient.New())
+		Register(paymentserviceclient.New()).
+		Register(nameserviceclient.New())
 }
 
 func MiddlewareVersion() string {
