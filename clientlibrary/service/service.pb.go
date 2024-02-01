@@ -5204,7 +5204,10 @@ func (h *ClientCommandsHandlerProxy) AppGetVersion(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AppGetVersion", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AppGetVersion", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcAppGetVersionResponse)
@@ -5215,8 +5218,9 @@ func (h *ClientCommandsHandlerProxy) AppSetDeviceState(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AppSetDeviceState", toCall)
+			return currentInterceptor(ctx, req, "AppSetDeviceState", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5228,7 +5232,10 @@ func (h *ClientCommandsHandlerProxy) AppShutdown(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AppShutdown", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AppShutdown", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcAppShutdownResponse)
@@ -5239,7 +5246,10 @@ func (h *ClientCommandsHandlerProxy) WalletCreate(ctx context.Context, req *pb.R
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "WalletCreate", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WalletCreate", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcWalletCreateResponse)
@@ -5250,7 +5260,10 @@ func (h *ClientCommandsHandlerProxy) WalletRecover(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "WalletRecover", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WalletRecover", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcWalletRecoverResponse)
@@ -5261,7 +5274,10 @@ func (h *ClientCommandsHandlerProxy) WalletConvert(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "WalletConvert", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WalletConvert", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcWalletConvertResponse)
@@ -5272,8 +5288,9 @@ func (h *ClientCommandsHandlerProxy) AccountLocalLinkNewChallenge(ctx context.Co
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountLocalLinkNewChallenge", toCall)
+			return currentInterceptor(ctx, req, "AccountLocalLinkNewChallenge", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5285,8 +5302,9 @@ func (h *ClientCommandsHandlerProxy) AccountLocalLinkSolveChallenge(ctx context.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountLocalLinkSolveChallenge", toCall)
+			return currentInterceptor(ctx, req, "AccountLocalLinkSolveChallenge", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5298,8 +5316,9 @@ func (h *ClientCommandsHandlerProxy) WalletCreateSession(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WalletCreateSession", toCall)
+			return currentInterceptor(ctx, req, "WalletCreateSession", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5311,8 +5330,9 @@ func (h *ClientCommandsHandlerProxy) WalletCloseSession(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WalletCloseSession", toCall)
+			return currentInterceptor(ctx, req, "WalletCloseSession", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5324,8 +5344,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceCreate(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceCreate", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceCreate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5337,7 +5358,10 @@ func (h *ClientCommandsHandlerProxy) WorkspaceOpen(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "WorkspaceOpen", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceOpen", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcWorkspaceOpenResponse)
@@ -5348,8 +5372,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceObjectAdd(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceObjectAdd", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceObjectAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5361,8 +5386,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceObjectListAdd(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceObjectListAdd", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceObjectListAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5374,8 +5400,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceObjectListRemove(ctx context.Conte
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceObjectListRemove", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceObjectListRemove", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5387,8 +5414,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceSelect(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceSelect", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceSelect", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5400,8 +5428,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceGetCurrent(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceGetCurrent", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceGetCurrent", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5413,8 +5442,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceGetAll(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceGetAll", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceGetAll", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5426,8 +5456,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceSetInfo(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceSetInfo", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceSetInfo", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5439,8 +5470,9 @@ func (h *ClientCommandsHandlerProxy) WorkspaceExport(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "WorkspaceExport", toCall)
+			return currentInterceptor(ctx, req, "WorkspaceExport", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5452,8 +5484,9 @@ func (h *ClientCommandsHandlerProxy) AccountRecover(ctx context.Context, req *pb
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountRecover", toCall)
+			return currentInterceptor(ctx, req, "AccountRecover", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5465,7 +5498,10 @@ func (h *ClientCommandsHandlerProxy) AccountCreate(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountCreate", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountCreate", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcAccountCreateResponse)
@@ -5476,7 +5512,10 @@ func (h *ClientCommandsHandlerProxy) AccountDelete(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountDelete", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountDelete", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcAccountDeleteResponse)
@@ -5487,8 +5526,9 @@ func (h *ClientCommandsHandlerProxy) AccountRevertDeletion(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountRevertDeletion", toCall)
+			return currentInterceptor(ctx, req, "AccountRevertDeletion", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5500,7 +5540,10 @@ func (h *ClientCommandsHandlerProxy) AccountSelect(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountSelect", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountSelect", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcAccountSelectResponse)
@@ -5511,8 +5554,9 @@ func (h *ClientCommandsHandlerProxy) AccountEnableLocalNetworkSync(ctx context.C
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountEnableLocalNetworkSync", toCall)
+			return currentInterceptor(ctx, req, "AccountEnableLocalNetworkSync", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5524,7 +5568,10 @@ func (h *ClientCommandsHandlerProxy) AccountStop(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountStop", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountStop", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcAccountStopResponse)
@@ -5535,7 +5582,10 @@ func (h *ClientCommandsHandlerProxy) AccountMove(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "AccountMove", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountMove", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcAccountMoveResponse)
@@ -5546,8 +5596,9 @@ func (h *ClientCommandsHandlerProxy) AccountConfigUpdate(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountConfigUpdate", toCall)
+			return currentInterceptor(ctx, req, "AccountConfigUpdate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5559,8 +5610,9 @@ func (h *ClientCommandsHandlerProxy) AccountRecoverFromLegacyExport(ctx context.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountRecoverFromLegacyExport", toCall)
+			return currentInterceptor(ctx, req, "AccountRecoverFromLegacyExport", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5572,8 +5624,9 @@ func (h *ClientCommandsHandlerProxy) AccountChangeNetworkConfigAndRestart(ctx co
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "AccountChangeNetworkConfigAndRestart", toCall)
+			return currentInterceptor(ctx, req, "AccountChangeNetworkConfigAndRestart", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5585,7 +5638,10 @@ func (h *ClientCommandsHandlerProxy) SpaceDelete(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "SpaceDelete", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "SpaceDelete", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcSpaceDeleteResponse)
@@ -5596,7 +5652,10 @@ func (h *ClientCommandsHandlerProxy) ObjectOpen(ctx context.Context, req *pb.Rpc
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectOpen", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectOpen", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectOpenResponse)
@@ -5607,7 +5666,10 @@ func (h *ClientCommandsHandlerProxy) ObjectClose(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectClose", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectClose", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectCloseResponse)
@@ -5618,7 +5680,10 @@ func (h *ClientCommandsHandlerProxy) ObjectShow(ctx context.Context, req *pb.Rpc
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectShow", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectShow", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectShowResponse)
@@ -5629,7 +5694,10 @@ func (h *ClientCommandsHandlerProxy) ObjectCreate(ctx context.Context, req *pb.R
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectCreate", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCreate", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectCreateResponse)
@@ -5640,8 +5708,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCreateBookmark(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateBookmark", toCall)
+			return currentInterceptor(ctx, req, "ObjectCreateBookmark", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5653,8 +5722,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCreateFromUrl(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateFromUrl", toCall)
+			return currentInterceptor(ctx, req, "ObjectCreateFromUrl", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5666,8 +5736,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCreateSet(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateSet", toCall)
+			return currentInterceptor(ctx, req, "ObjectCreateSet", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5679,7 +5750,10 @@ func (h *ClientCommandsHandlerProxy) ObjectGraph(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectGraph", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectGraph", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectGraphResponse)
@@ -5690,7 +5764,10 @@ func (h *ClientCommandsHandlerProxy) ObjectSearch(ctx context.Context, req *pb.R
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectSearch", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSearch", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectSearchResponse)
@@ -5701,8 +5778,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSearchSubscribe(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSearchSubscribe", toCall)
+			return currentInterceptor(ctx, req, "ObjectSearchSubscribe", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5714,8 +5792,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSubscribeIds(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSubscribeIds", toCall)
+			return currentInterceptor(ctx, req, "ObjectSubscribeIds", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5727,8 +5806,9 @@ func (h *ClientCommandsHandlerProxy) ObjectGroupsSubscribe(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectGroupsSubscribe", toCall)
+			return currentInterceptor(ctx, req, "ObjectGroupsSubscribe", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5740,8 +5820,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSearchUnsubscribe(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSearchUnsubscribe", toCall)
+			return currentInterceptor(ctx, req, "ObjectSearchUnsubscribe", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5753,8 +5834,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSetDetails(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetDetails", toCall)
+			return currentInterceptor(ctx, req, "ObjectSetDetails", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5766,8 +5848,9 @@ func (h *ClientCommandsHandlerProxy) ObjectDuplicate(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectDuplicate", toCall)
+			return currentInterceptor(ctx, req, "ObjectDuplicate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5779,8 +5862,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSetObjectType(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetObjectType", toCall)
+			return currentInterceptor(ctx, req, "ObjectSetObjectType", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5792,8 +5876,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSetLayout(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetLayout", toCall)
+			return currentInterceptor(ctx, req, "ObjectSetLayout", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5805,8 +5890,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSetInternalFlags(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetInternalFlags", toCall)
+			return currentInterceptor(ctx, req, "ObjectSetInternalFlags", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5818,8 +5904,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSetIsFavorite(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetIsFavorite", toCall)
+			return currentInterceptor(ctx, req, "ObjectSetIsFavorite", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5831,8 +5918,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSetIsArchived(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetIsArchived", toCall)
+			return currentInterceptor(ctx, req, "ObjectSetIsArchived", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5844,8 +5932,9 @@ func (h *ClientCommandsHandlerProxy) ObjectSetSource(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectSetSource", toCall)
+			return currentInterceptor(ctx, req, "ObjectSetSource", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5857,8 +5946,9 @@ func (h *ClientCommandsHandlerProxy) ObjectWorkspaceSetDashboard(ctx context.Con
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectWorkspaceSetDashboard", toCall)
+			return currentInterceptor(ctx, req, "ObjectWorkspaceSetDashboard", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5870,8 +5960,9 @@ func (h *ClientCommandsHandlerProxy) ObjectListDuplicate(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListDuplicate", toCall)
+			return currentInterceptor(ctx, req, "ObjectListDuplicate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5883,8 +5974,9 @@ func (h *ClientCommandsHandlerProxy) ObjectListDelete(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListDelete", toCall)
+			return currentInterceptor(ctx, req, "ObjectListDelete", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5896,8 +5988,9 @@ func (h *ClientCommandsHandlerProxy) ObjectListSetIsArchived(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListSetIsArchived", toCall)
+			return currentInterceptor(ctx, req, "ObjectListSetIsArchived", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5909,8 +6002,9 @@ func (h *ClientCommandsHandlerProxy) ObjectListSetIsFavorite(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListSetIsFavorite", toCall)
+			return currentInterceptor(ctx, req, "ObjectListSetIsFavorite", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5922,8 +6016,9 @@ func (h *ClientCommandsHandlerProxy) ObjectListSetObjectType(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListSetObjectType", toCall)
+			return currentInterceptor(ctx, req, "ObjectListSetObjectType", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5935,8 +6030,9 @@ func (h *ClientCommandsHandlerProxy) ObjectApplyTemplate(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectApplyTemplate", toCall)
+			return currentInterceptor(ctx, req, "ObjectApplyTemplate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5948,7 +6044,10 @@ func (h *ClientCommandsHandlerProxy) ObjectToSet(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectToSet", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectToSet", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectToSetResponse)
@@ -5959,8 +6058,9 @@ func (h *ClientCommandsHandlerProxy) ObjectToCollection(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectToCollection", toCall)
+			return currentInterceptor(ctx, req, "ObjectToCollection", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5972,8 +6072,9 @@ func (h *ClientCommandsHandlerProxy) ObjectShareByLink(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectShareByLink", toCall)
+			return currentInterceptor(ctx, req, "ObjectShareByLink", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -5985,7 +6086,10 @@ func (h *ClientCommandsHandlerProxy) ObjectUndo(ctx context.Context, req *pb.Rpc
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectUndo", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectUndo", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectUndoResponse)
@@ -5996,7 +6100,10 @@ func (h *ClientCommandsHandlerProxy) ObjectRedo(ctx context.Context, req *pb.Rpc
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectRedo", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectRedo", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectRedoResponse)
@@ -6007,8 +6114,9 @@ func (h *ClientCommandsHandlerProxy) ObjectListExport(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectListExport", toCall)
+			return currentInterceptor(ctx, req, "ObjectListExport", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6020,8 +6128,9 @@ func (h *ClientCommandsHandlerProxy) ObjectBookmarkFetch(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectBookmarkFetch", toCall)
+			return currentInterceptor(ctx, req, "ObjectBookmarkFetch", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6033,8 +6142,9 @@ func (h *ClientCommandsHandlerProxy) ObjectToBookmark(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectToBookmark", toCall)
+			return currentInterceptor(ctx, req, "ObjectToBookmark", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6046,7 +6156,10 @@ func (h *ClientCommandsHandlerProxy) ObjectImport(ctx context.Context, req *pb.R
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ObjectImport", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectImport", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcObjectImportResponse)
@@ -6057,8 +6170,9 @@ func (h *ClientCommandsHandlerProxy) ObjectImportList(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectImportList", toCall)
+			return currentInterceptor(ctx, req, "ObjectImportList", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6070,8 +6184,9 @@ func (h *ClientCommandsHandlerProxy) ObjectImportNotionValidateToken(ctx context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectImportNotionValidateToken", toCall)
+			return currentInterceptor(ctx, req, "ObjectImportNotionValidateToken", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6083,8 +6198,9 @@ func (h *ClientCommandsHandlerProxy) ObjectImportUseCase(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectImportUseCase", toCall)
+			return currentInterceptor(ctx, req, "ObjectImportUseCase", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6096,8 +6212,9 @@ func (h *ClientCommandsHandlerProxy) ObjectImportExperience(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectImportExperience", toCall)
+			return currentInterceptor(ctx, req, "ObjectImportExperience", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6109,8 +6226,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCollectionAdd(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCollectionAdd", toCall)
+			return currentInterceptor(ctx, req, "ObjectCollectionAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6122,8 +6240,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCollectionRemove(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCollectionRemove", toCall)
+			return currentInterceptor(ctx, req, "ObjectCollectionRemove", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6135,8 +6254,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCollectionSort(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCollectionSort", toCall)
+			return currentInterceptor(ctx, req, "ObjectCollectionSort", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6148,8 +6268,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCreateRelation(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateRelation", toCall)
+			return currentInterceptor(ctx, req, "ObjectCreateRelation", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6161,8 +6282,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCreateRelationOption(ctx context.Cont
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateRelationOption", toCall)
+			return currentInterceptor(ctx, req, "ObjectCreateRelationOption", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6174,8 +6296,9 @@ func (h *ClientCommandsHandlerProxy) RelationListRemoveOption(ctx context.Contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "RelationListRemoveOption", toCall)
+			return currentInterceptor(ctx, req, "RelationListRemoveOption", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6187,8 +6310,9 @@ func (h *ClientCommandsHandlerProxy) RelationOptions(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "RelationOptions", toCall)
+			return currentInterceptor(ctx, req, "RelationOptions", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6200,8 +6324,9 @@ func (h *ClientCommandsHandlerProxy) ObjectRelationAdd(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationAdd", toCall)
+			return currentInterceptor(ctx, req, "ObjectRelationAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6213,8 +6338,9 @@ func (h *ClientCommandsHandlerProxy) ObjectRelationDelete(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationDelete", toCall)
+			return currentInterceptor(ctx, req, "ObjectRelationDelete", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6226,8 +6352,9 @@ func (h *ClientCommandsHandlerProxy) ObjectRelationAddFeatured(ctx context.Conte
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationAddFeatured", toCall)
+			return currentInterceptor(ctx, req, "ObjectRelationAddFeatured", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6239,8 +6366,9 @@ func (h *ClientCommandsHandlerProxy) ObjectRelationRemoveFeatured(ctx context.Co
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationRemoveFeatured", toCall)
+			return currentInterceptor(ctx, req, "ObjectRelationRemoveFeatured", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6252,8 +6380,9 @@ func (h *ClientCommandsHandlerProxy) ObjectRelationListAvailable(ctx context.Con
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectRelationListAvailable", toCall)
+			return currentInterceptor(ctx, req, "ObjectRelationListAvailable", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6265,8 +6394,9 @@ func (h *ClientCommandsHandlerProxy) ObjectCreateObjectType(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectCreateObjectType", toCall)
+			return currentInterceptor(ctx, req, "ObjectCreateObjectType", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6278,8 +6408,9 @@ func (h *ClientCommandsHandlerProxy) ObjectTypeRelationAdd(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectTypeRelationAdd", toCall)
+			return currentInterceptor(ctx, req, "ObjectTypeRelationAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6291,8 +6422,9 @@ func (h *ClientCommandsHandlerProxy) ObjectTypeRelationRemove(ctx context.Contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "ObjectTypeRelationRemove", toCall)
+			return currentInterceptor(ctx, req, "ObjectTypeRelationRemove", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6304,8 +6436,9 @@ func (h *ClientCommandsHandlerProxy) HistoryShowVersion(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "HistoryShowVersion", toCall)
+			return currentInterceptor(ctx, req, "HistoryShowVersion", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6317,8 +6450,9 @@ func (h *ClientCommandsHandlerProxy) HistoryGetVersions(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "HistoryGetVersions", toCall)
+			return currentInterceptor(ctx, req, "HistoryGetVersions", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6330,8 +6464,9 @@ func (h *ClientCommandsHandlerProxy) HistorySetVersion(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "HistorySetVersion", toCall)
+			return currentInterceptor(ctx, req, "HistorySetVersion", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6343,7 +6478,10 @@ func (h *ClientCommandsHandlerProxy) FileOffload(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileOffload", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileOffload", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcFileOffloadResponse)
@@ -6354,8 +6492,9 @@ func (h *ClientCommandsHandlerProxy) FileSpaceOffload(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "FileSpaceOffload", toCall)
+			return currentInterceptor(ctx, req, "FileSpaceOffload", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6367,8 +6506,9 @@ func (h *ClientCommandsHandlerProxy) FileListOffload(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "FileListOffload", toCall)
+			return currentInterceptor(ctx, req, "FileListOffload", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6380,7 +6520,10 @@ func (h *ClientCommandsHandlerProxy) FileUpload(ctx context.Context, req *pb.Rpc
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileUpload", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileUpload", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcFileUploadResponse)
@@ -6391,7 +6534,10 @@ func (h *ClientCommandsHandlerProxy) FileDownload(ctx context.Context, req *pb.R
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileDownload", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileDownload", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcFileDownloadResponse)
@@ -6402,7 +6548,10 @@ func (h *ClientCommandsHandlerProxy) FileDrop(ctx context.Context, req *pb.RpcFi
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileDrop", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileDrop", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcFileDropResponse)
@@ -6413,8 +6562,9 @@ func (h *ClientCommandsHandlerProxy) FileSpaceUsage(ctx context.Context, req *pb
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "FileSpaceUsage", toCall)
+			return currentInterceptor(ctx, req, "FileSpaceUsage", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6426,7 +6576,10 @@ func (h *ClientCommandsHandlerProxy) FileNodeUsage(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "FileNodeUsage", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileNodeUsage", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcFileNodeUsageResponse)
@@ -6437,8 +6590,9 @@ func (h *ClientCommandsHandlerProxy) NavigationListObjects(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "NavigationListObjects", toCall)
+			return currentInterceptor(ctx, req, "NavigationListObjects", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6450,8 +6604,9 @@ func (h *ClientCommandsHandlerProxy) NavigationGetObjectInfoWithLinks(ctx contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "NavigationGetObjectInfoWithLinks", toCall)
+			return currentInterceptor(ctx, req, "NavigationGetObjectInfoWithLinks", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6463,8 +6618,9 @@ func (h *ClientCommandsHandlerProxy) TemplateCreateFromObject(ctx context.Contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "TemplateCreateFromObject", toCall)
+			return currentInterceptor(ctx, req, "TemplateCreateFromObject", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6476,7 +6632,10 @@ func (h *ClientCommandsHandlerProxy) TemplateClone(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "TemplateClone", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "TemplateClone", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcTemplateCloneResponse)
@@ -6487,8 +6646,9 @@ func (h *ClientCommandsHandlerProxy) TemplateExportAll(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "TemplateExportAll", toCall)
+			return currentInterceptor(ctx, req, "TemplateExportAll", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6500,7 +6660,10 @@ func (h *ClientCommandsHandlerProxy) LinkPreview(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "LinkPreview", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "LinkPreview", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcLinkPreviewResponse)
@@ -6511,8 +6674,9 @@ func (h *ClientCommandsHandlerProxy) UnsplashSearch(ctx context.Context, req *pb
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "UnsplashSearch", toCall)
+			return currentInterceptor(ctx, req, "UnsplashSearch", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6524,8 +6688,9 @@ func (h *ClientCommandsHandlerProxy) UnsplashDownload(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "UnsplashDownload", toCall)
+			return currentInterceptor(ctx, req, "UnsplashDownload", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6537,8 +6702,9 @@ func (h *ClientCommandsHandlerProxy) DownloadManifest(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DownloadManifest", toCall)
+			return currentInterceptor(ctx, req, "DownloadManifest", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6550,7 +6716,10 @@ func (h *ClientCommandsHandlerProxy) BlockUpload(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockUpload", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockUpload", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockUploadResponse)
@@ -6561,7 +6730,10 @@ func (h *ClientCommandsHandlerProxy) BlockReplace(ctx context.Context, req *pb.R
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockReplace", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockReplace", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockReplaceResponse)
@@ -6572,7 +6744,10 @@ func (h *ClientCommandsHandlerProxy) BlockCreate(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockCreate", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockCreate", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockCreateResponse)
@@ -6583,7 +6758,10 @@ func (h *ClientCommandsHandlerProxy) BlockSplit(ctx context.Context, req *pb.Rpc
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockSplit", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockSplit", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockSplitResponse)
@@ -6594,7 +6772,10 @@ func (h *ClientCommandsHandlerProxy) BlockMerge(ctx context.Context, req *pb.Rpc
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockMerge", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockMerge", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockMergeResponse)
@@ -6605,7 +6786,10 @@ func (h *ClientCommandsHandlerProxy) BlockCopy(ctx context.Context, req *pb.RpcB
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockCopy", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockCopy", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockCopyResponse)
@@ -6616,7 +6800,10 @@ func (h *ClientCommandsHandlerProxy) BlockPaste(ctx context.Context, req *pb.Rpc
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockPaste", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockPaste", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockPasteResponse)
@@ -6627,7 +6814,10 @@ func (h *ClientCommandsHandlerProxy) BlockCut(ctx context.Context, req *pb.RpcBl
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockCut", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockCut", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockCutResponse)
@@ -6638,8 +6828,9 @@ func (h *ClientCommandsHandlerProxy) BlockSetFields(ctx context.Context, req *pb
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockSetFields", toCall)
+			return currentInterceptor(ctx, req, "BlockSetFields", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6651,7 +6842,10 @@ func (h *ClientCommandsHandlerProxy) BlockExport(ctx context.Context, req *pb.Rp
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockExport", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockExport", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockExportResponse)
@@ -6662,8 +6856,9 @@ func (h *ClientCommandsHandlerProxy) BlockSetCarriage(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockSetCarriage", toCall)
+			return currentInterceptor(ctx, req, "BlockSetCarriage", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6675,7 +6870,10 @@ func (h *ClientCommandsHandlerProxy) BlockPreview(ctx context.Context, req *pb.R
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "BlockPreview", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockPreview", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcBlockPreviewResponse)
@@ -6686,8 +6884,9 @@ func (h *ClientCommandsHandlerProxy) BlockListDelete(ctx context.Context, req *p
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListDelete", toCall)
+			return currentInterceptor(ctx, req, "BlockListDelete", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6699,8 +6898,9 @@ func (h *ClientCommandsHandlerProxy) BlockListMoveToExistingObject(ctx context.C
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListMoveToExistingObject", toCall)
+			return currentInterceptor(ctx, req, "BlockListMoveToExistingObject", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6712,8 +6912,9 @@ func (h *ClientCommandsHandlerProxy) BlockListMoveToNewObject(ctx context.Contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListMoveToNewObject", toCall)
+			return currentInterceptor(ctx, req, "BlockListMoveToNewObject", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6725,8 +6926,9 @@ func (h *ClientCommandsHandlerProxy) BlockListConvertToObjects(ctx context.Conte
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListConvertToObjects", toCall)
+			return currentInterceptor(ctx, req, "BlockListConvertToObjects", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6738,8 +6940,9 @@ func (h *ClientCommandsHandlerProxy) BlockListSetFields(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListSetFields", toCall)
+			return currentInterceptor(ctx, req, "BlockListSetFields", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6751,8 +6954,9 @@ func (h *ClientCommandsHandlerProxy) BlockListDuplicate(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListDuplicate", toCall)
+			return currentInterceptor(ctx, req, "BlockListDuplicate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6764,8 +6968,9 @@ func (h *ClientCommandsHandlerProxy) BlockListSetBackgroundColor(ctx context.Con
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListSetBackgroundColor", toCall)
+			return currentInterceptor(ctx, req, "BlockListSetBackgroundColor", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6777,8 +6982,9 @@ func (h *ClientCommandsHandlerProxy) BlockListSetAlign(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListSetAlign", toCall)
+			return currentInterceptor(ctx, req, "BlockListSetAlign", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6790,8 +6996,9 @@ func (h *ClientCommandsHandlerProxy) BlockListSetVerticalAlign(ctx context.Conte
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListSetVerticalAlign", toCall)
+			return currentInterceptor(ctx, req, "BlockListSetVerticalAlign", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6803,8 +7010,9 @@ func (h *ClientCommandsHandlerProxy) BlockListTurnInto(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockListTurnInto", toCall)
+			return currentInterceptor(ctx, req, "BlockListTurnInto", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6816,8 +7024,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextSetText(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetText", toCall)
+			return currentInterceptor(ctx, req, "BlockTextSetText", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6829,8 +7038,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextSetColor(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetColor", toCall)
+			return currentInterceptor(ctx, req, "BlockTextSetColor", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6842,8 +7052,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextSetStyle(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetStyle", toCall)
+			return currentInterceptor(ctx, req, "BlockTextSetStyle", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6855,8 +7066,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextSetChecked(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetChecked", toCall)
+			return currentInterceptor(ctx, req, "BlockTextSetChecked", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6868,8 +7080,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextSetIcon(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextSetIcon", toCall)
+			return currentInterceptor(ctx, req, "BlockTextSetIcon", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6881,8 +7094,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextListSetColor(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListSetColor", toCall)
+			return currentInterceptor(ctx, req, "BlockTextListSetColor", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6894,8 +7108,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextListSetMark(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListSetMark", toCall)
+			return currentInterceptor(ctx, req, "BlockTextListSetMark", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6907,8 +7122,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextListSetStyle(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListSetStyle", toCall)
+			return currentInterceptor(ctx, req, "BlockTextListSetStyle", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6920,8 +7136,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextListClearStyle(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListClearStyle", toCall)
+			return currentInterceptor(ctx, req, "BlockTextListClearStyle", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6933,8 +7150,9 @@ func (h *ClientCommandsHandlerProxy) BlockTextListClearContent(ctx context.Conte
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTextListClearContent", toCall)
+			return currentInterceptor(ctx, req, "BlockTextListClearContent", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6946,8 +7164,9 @@ func (h *ClientCommandsHandlerProxy) BlockFileSetName(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockFileSetName", toCall)
+			return currentInterceptor(ctx, req, "BlockFileSetName", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6959,8 +7178,9 @@ func (h *ClientCommandsHandlerProxy) BlockImageSetName(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockImageSetName", toCall)
+			return currentInterceptor(ctx, req, "BlockImageSetName", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6972,8 +7192,9 @@ func (h *ClientCommandsHandlerProxy) BlockVideoSetName(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockVideoSetName", toCall)
+			return currentInterceptor(ctx, req, "BlockVideoSetName", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6985,8 +7206,9 @@ func (h *ClientCommandsHandlerProxy) BlockFileCreateAndUpload(ctx context.Contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockFileCreateAndUpload", toCall)
+			return currentInterceptor(ctx, req, "BlockFileCreateAndUpload", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -6998,8 +7220,9 @@ func (h *ClientCommandsHandlerProxy) BlockFileListSetStyle(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockFileListSetStyle", toCall)
+			return currentInterceptor(ctx, req, "BlockFileListSetStyle", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7011,8 +7234,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewCreate(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewCreate", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewCreate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7024,8 +7248,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewDelete(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewDelete", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewDelete", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7037,8 +7262,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewUpdate(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewUpdate", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewUpdate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7050,8 +7276,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewSetActive(ctx context.Cont
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewSetActive", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewSetActive", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7063,8 +7290,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewSetPosition(ctx context.Co
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewSetPosition", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewSetPosition", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7076,8 +7304,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewSetSource(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSetSource", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewSetSource", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7089,8 +7318,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewRelationAdd(ctx context.Contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewRelationAdd", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewRelationAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7102,8 +7332,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewRelationDelete(ctx context.Con
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewRelationDelete", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewRelationDelete", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7115,8 +7346,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewRelationListAvailable(ctx cont
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewRelationListAvailable", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewRelationListAvailable", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7128,8 +7360,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewGroupOrderUpdate(ctx context.C
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewGroupOrderUpdate", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewGroupOrderUpdate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7141,8 +7374,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewObjectOrderUpdate(ctx context.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewObjectOrderUpdate", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewObjectOrderUpdate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7154,8 +7388,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewObjectOrderMove(ctx context.Co
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewObjectOrderMove", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewObjectOrderMove", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7167,8 +7402,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewCreateFromExistingObject(ctx c
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewCreateFromExistingObject", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewCreateFromExistingObject", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7180,8 +7416,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewFilterAdd(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewFilterAdd", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewFilterAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7193,8 +7430,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewFilterRemove(ctx context.Conte
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewFilterRemove", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewFilterRemove", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7206,8 +7444,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewFilterReplace(ctx context.Cont
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewFilterReplace", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewFilterReplace", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7219,8 +7458,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewFilterSort(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewFilterSort", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewFilterSort", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7232,8 +7472,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewSortAdd(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSortAdd", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewSortAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7245,8 +7486,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewSortRemove(ctx context.Context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSortRemove", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewSortRemove", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7258,8 +7500,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewSortReplace(ctx context.Contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSortReplace", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewSortReplace", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7271,8 +7514,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewSortSort(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewSortSort", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewSortSort", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7284,8 +7528,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationAdd(ctx context.Co
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewRelationAdd", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewRelationAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7297,8 +7542,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationRemove(ctx context
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewRelationRemove", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewRelationRemove", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7310,8 +7556,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationReplace(ctx contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewRelationReplace", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewRelationReplace", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7323,8 +7570,9 @@ func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationSort(ctx context.C
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDataviewViewRelationSort", toCall)
+			return currentInterceptor(ctx, req, "BlockDataviewViewRelationSort", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7336,8 +7584,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableCreate(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableCreate", toCall)
+			return currentInterceptor(ctx, req, "BlockTableCreate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7349,8 +7598,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableExpand(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableExpand", toCall)
+			return currentInterceptor(ctx, req, "BlockTableExpand", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7362,8 +7612,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableRowCreate(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowCreate", toCall)
+			return currentInterceptor(ctx, req, "BlockTableRowCreate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7375,8 +7626,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableRowDelete(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowDelete", toCall)
+			return currentInterceptor(ctx, req, "BlockTableRowDelete", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7388,8 +7640,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableRowDuplicate(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowDuplicate", toCall)
+			return currentInterceptor(ctx, req, "BlockTableRowDuplicate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7401,8 +7654,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableRowSetHeader(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowSetHeader", toCall)
+			return currentInterceptor(ctx, req, "BlockTableRowSetHeader", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7414,8 +7668,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableColumnCreate(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnCreate", toCall)
+			return currentInterceptor(ctx, req, "BlockTableColumnCreate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7427,8 +7682,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableColumnMove(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnMove", toCall)
+			return currentInterceptor(ctx, req, "BlockTableColumnMove", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7440,8 +7696,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableColumnDelete(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnDelete", toCall)
+			return currentInterceptor(ctx, req, "BlockTableColumnDelete", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7453,8 +7710,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableColumnDuplicate(ctx context.Conte
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnDuplicate", toCall)
+			return currentInterceptor(ctx, req, "BlockTableColumnDuplicate", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7466,8 +7724,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableRowListFill(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowListFill", toCall)
+			return currentInterceptor(ctx, req, "BlockTableRowListFill", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7479,8 +7738,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableRowListClean(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableRowListClean", toCall)
+			return currentInterceptor(ctx, req, "BlockTableRowListClean", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7492,8 +7752,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableColumnListFill(ctx context.Contex
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableColumnListFill", toCall)
+			return currentInterceptor(ctx, req, "BlockTableColumnListFill", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7505,8 +7766,9 @@ func (h *ClientCommandsHandlerProxy) BlockTableSort(ctx context.Context, req *pb
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockTableSort", toCall)
+			return currentInterceptor(ctx, req, "BlockTableSort", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7518,8 +7780,9 @@ func (h *ClientCommandsHandlerProxy) BlockCreateWidget(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockCreateWidget", toCall)
+			return currentInterceptor(ctx, req, "BlockCreateWidget", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7531,8 +7794,9 @@ func (h *ClientCommandsHandlerProxy) BlockWidgetSetTargetId(ctx context.Context,
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockWidgetSetTargetId", toCall)
+			return currentInterceptor(ctx, req, "BlockWidgetSetTargetId", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7544,8 +7808,9 @@ func (h *ClientCommandsHandlerProxy) BlockWidgetSetLayout(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockWidgetSetLayout", toCall)
+			return currentInterceptor(ctx, req, "BlockWidgetSetLayout", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7557,8 +7822,9 @@ func (h *ClientCommandsHandlerProxy) BlockWidgetSetLimit(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockWidgetSetLimit", toCall)
+			return currentInterceptor(ctx, req, "BlockWidgetSetLimit", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7570,8 +7836,9 @@ func (h *ClientCommandsHandlerProxy) BlockWidgetSetViewId(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockWidgetSetViewId", toCall)
+			return currentInterceptor(ctx, req, "BlockWidgetSetViewId", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7583,8 +7850,9 @@ func (h *ClientCommandsHandlerProxy) BlockLinkCreateWithObject(ctx context.Conte
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockLinkCreateWithObject", toCall)
+			return currentInterceptor(ctx, req, "BlockLinkCreateWithObject", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7596,8 +7864,9 @@ func (h *ClientCommandsHandlerProxy) BlockLinkListSetAppearance(ctx context.Cont
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockLinkListSetAppearance", toCall)
+			return currentInterceptor(ctx, req, "BlockLinkListSetAppearance", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7609,8 +7878,9 @@ func (h *ClientCommandsHandlerProxy) BlockBookmarkFetch(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockBookmarkFetch", toCall)
+			return currentInterceptor(ctx, req, "BlockBookmarkFetch", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7622,8 +7892,9 @@ func (h *ClientCommandsHandlerProxy) BlockBookmarkCreateAndFetch(ctx context.Con
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockBookmarkCreateAndFetch", toCall)
+			return currentInterceptor(ctx, req, "BlockBookmarkCreateAndFetch", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7635,8 +7906,9 @@ func (h *ClientCommandsHandlerProxy) BlockRelationSetKey(ctx context.Context, re
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockRelationSetKey", toCall)
+			return currentInterceptor(ctx, req, "BlockRelationSetKey", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7648,8 +7920,9 @@ func (h *ClientCommandsHandlerProxy) BlockRelationAdd(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockRelationAdd", toCall)
+			return currentInterceptor(ctx, req, "BlockRelationAdd", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7661,8 +7934,9 @@ func (h *ClientCommandsHandlerProxy) BlockDivListSetStyle(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockDivListSetStyle", toCall)
+			return currentInterceptor(ctx, req, "BlockDivListSetStyle", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7674,8 +7948,9 @@ func (h *ClientCommandsHandlerProxy) BlockLatexSetText(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "BlockLatexSetText", toCall)
+			return currentInterceptor(ctx, req, "BlockLatexSetText", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7687,7 +7962,10 @@ func (h *ClientCommandsHandlerProxy) ProcessCancel(ctx context.Context, req *pb.
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "ProcessCancel", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ProcessCancel", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcProcessCancelResponse)
@@ -7698,7 +7976,10 @@ func (h *ClientCommandsHandlerProxy) LogSend(ctx context.Context, req *pb.RpcLog
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "LogSend", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "LogSend", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcLogSendResponse)
@@ -7709,7 +7990,10 @@ func (h *ClientCommandsHandlerProxy) DebugTree(ctx context.Context, req *pb.RpcD
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "DebugTree", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugTree", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcDebugTreeResponse)
@@ -7720,8 +8004,9 @@ func (h *ClientCommandsHandlerProxy) DebugTreeHeads(ctx context.Context, req *pb
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugTreeHeads", toCall)
+			return currentInterceptor(ctx, req, "DebugTreeHeads", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7733,8 +8018,9 @@ func (h *ClientCommandsHandlerProxy) DebugSpaceSummary(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugSpaceSummary", toCall)
+			return currentInterceptor(ctx, req, "DebugSpaceSummary", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7746,8 +8032,9 @@ func (h *ClientCommandsHandlerProxy) DebugStackGoroutines(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugStackGoroutines", toCall)
+			return currentInterceptor(ctx, req, "DebugStackGoroutines", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7759,8 +8046,9 @@ func (h *ClientCommandsHandlerProxy) DebugExportLocalstore(ctx context.Context, 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugExportLocalstore", toCall)
+			return currentInterceptor(ctx, req, "DebugExportLocalstore", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7772,7 +8060,10 @@ func (h *ClientCommandsHandlerProxy) DebugPing(ctx context.Context, req *pb.RpcD
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
-		actualCall = func(ctx context.Context, req any) (any, error) { return interceptor(ctx, req, "DebugPing", toCall) }
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugPing", toCall)
+		}
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcDebugPingResponse)
@@ -7783,8 +8074,9 @@ func (h *ClientCommandsHandlerProxy) DebugSubscriptions(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugSubscriptions", toCall)
+			return currentInterceptor(ctx, req, "DebugSubscriptions", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7796,8 +8088,9 @@ func (h *ClientCommandsHandlerProxy) DebugOpenedObjects(ctx context.Context, req
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "DebugOpenedObjects", toCall)
+			return currentInterceptor(ctx, req, "DebugOpenedObjects", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7809,8 +8102,9 @@ func (h *ClientCommandsHandlerProxy) MetricsSetParameters(ctx context.Context, r
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "MetricsSetParameters", toCall)
+			return currentInterceptor(ctx, req, "MetricsSetParameters", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7822,8 +8116,9 @@ func (h *ClientCommandsHandlerProxy) NotificationList(ctx context.Context, req *
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "NotificationList", toCall)
+			return currentInterceptor(ctx, req, "NotificationList", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)
@@ -7835,8 +8130,9 @@ func (h *ClientCommandsHandlerProxy) NotificationReply(ctx context.Context, req 
 	}
 	for _, interceptor := range h.interceptors {
 		toCall := actualCall
+		currentInterceptor := interceptor
 		actualCall = func(ctx context.Context, req any) (any, error) {
-			return interceptor(ctx, req, "NotificationReply", toCall)
+			return currentInterceptor(ctx, req, "NotificationReply", toCall)
 		}
 	}
 	call, _ := actualCall(ctx, req)

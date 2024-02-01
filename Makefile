@@ -81,7 +81,7 @@ clear-test-deps:
 
 build-lib:
 	@echo 'Building library...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
+	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@GO111MODULE=on go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./clientlibrary/clib
 
 build-js-addon:
@@ -111,7 +111,7 @@ build-ios: setup-go setup-gomobile
 	@echo 'Clear xcframework'
 	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
-	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
+	@$(eval FLAGS += $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar timetzdata)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
@@ -127,7 +127,7 @@ endif
 build-android: setup-go setup-gomobile
 	$(DEPS_PATH)/gomobile init
 	@echo 'Building library for Android...'
-	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
+	@$(eval FLAGS += $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar timetzdata)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
@@ -234,7 +234,7 @@ protos-java:
 
 build-server: setup-network-config
 	@echo 'Building anytype-heart server...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
+	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@$(eval TAGS := nosigar nowatchdog)
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
