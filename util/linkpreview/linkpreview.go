@@ -14,7 +14,9 @@ import (
 	"github.com/go-shiori/go-readability"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/otiai10/opengraph/v2"
+	"golang.org/x/net/html/charset"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/text"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -31,6 +33,8 @@ const (
 	maxBytesToRead     = 400000
 	maxDescriptionSize = 200
 )
+
+var log = logging.Logger("link-preview")
 
 type LinkPreview interface {
 	Fetch(ctx context.Context, url string) (model.LinkPreview, []byte, error)
@@ -82,7 +86,21 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	if !utf8.ValidString(res.Description) {
 		res.Description = ""
 	}
-	return res, rt.lastBody, nil
+	decodedResponse, err := decodeResponse(rt)
+	if err != nil {
+		log.Errorf("failed to decode request %s", err)
+	}
+	return res, decodedResponse, err
+}
+
+func decodeResponse(response *proxyRoundTripper) ([]byte, error) {
+	contentType := response.lastResponse.Header.Get("Content-Type")
+	enc, _, _ := charset.DetermineEncoding(response.lastBody, contentType)
+	decodedResponse, err := enc.NewDecoder().Bytes(response.lastBody)
+	if err != nil {
+		return response.lastBody, err
+	}
+	return decodedResponse, nil
 }
 
 func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) (i model.LinkPreview) {
