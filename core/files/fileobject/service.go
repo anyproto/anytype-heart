@@ -493,7 +493,7 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 	}
 	for _, record := range records {
 		fileId := pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())
-		size, err := s.offloadFileIfNotExist(ctx, spaceId, fileId, record, includeNotPinned)
+		size, err := s.offloadFileSafe(ctx, spaceId, fileId, record, includeNotPinned)
 		if err != nil {
 			log.Errorf("failed to offload file %s: %v", fileId, err)
 			return 0, 0, err
@@ -547,8 +547,8 @@ func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, o
 	return nil
 }
 
-func (s *service) offloadFileIfNotExist(ctx context.Context,
-	spaceID string,
+func (s *service) offloadFileSafe(ctx context.Context,
+	spaceId string,
 	fileId string,
 	record database.Record,
 	includeNotPinned bool,
@@ -563,7 +563,7 @@ func (s *service) offloadFileIfNotExist(ctx context.Context,
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(spaceID),
+				Value:       pbtypes.String(spaceId),
 			},
 		},
 	})
