@@ -146,7 +146,7 @@ func AddRootBlock(blocks []*model.Block, rootBlockID string) []*model.Block {
 	for i, b := range blocks {
 		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
 			blocks[i].Id = rootBlockID
-			return nil
+			return blocks
 		}
 	}
 	notRootBlockChild := make(map[string]bool, 0)
