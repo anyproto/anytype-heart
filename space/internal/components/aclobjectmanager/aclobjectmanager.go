@@ -326,6 +326,8 @@ func convertStatus(status list.AclStatus) model.ParticipantStatus {
 		return model.ParticipantStatus_Declined
 	case list.StatusRemoving:
 		return model.ParticipantStatus_Removing
+	case list.StatusCanceled:
+		return model.ParticipantStatus_Canceled
 	}
 	return model.ParticipantStatus_Active
 }
@@ -373,7 +375,6 @@ func buildParticipantDetails(
 		bundle.RelationKeyType.String():                   pbtypes.String(bundle.TypeKeyParticipant.BundledURL()),
 		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_participant)),
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
-		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
 	}}

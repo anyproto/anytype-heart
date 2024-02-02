@@ -50,7 +50,7 @@ type ConfigRequired struct {
 	HostAddr            string `json:",omitempty"`
 	CustomFileStorePath string `json:",omitempty"`
 	LegacyFileStorePath string `json:",omitempty"`
-	NetworkId           string `json:",omitempty"` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
 }
 
 type Config struct {
@@ -345,7 +345,6 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 	if conf.NetworkId != "" && c.NetworkId == "" {
 		log.Infof("Network id is not set in config; set to %s", conf.NetworkId)
 		c.NetworkId = conf.NetworkId
-		WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 	}
 	return
 }
@@ -372,4 +371,16 @@ func (c *Config) GetQuic() quic.Config {
 		WriteTimeoutSec: 10,
 		DialTimeoutSec:  10,
 	}
+}
+
+func (c *Config) ResetStoredNetworkId() error {
+	configCopy := c.ConfigRequired
+	configCopy.NetworkId = ""
+	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+}
+
+func (c *Config) PersistAccountNetworkId() error {
+	configCopy := c.ConfigRequired
+	configCopy.NetworkId = c.NetworkId
+	return WriteJsonConfig(c.GetConfigPath(), configCopy)
 }

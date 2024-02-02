@@ -348,6 +348,7 @@ message Block {
                     Gallery = 2;
                     Kanban = 3;
                     Calendar = 4;
+                    Graph = 5;
                 }
 
                 enum Size {
@@ -914,6 +915,11 @@ enum SpaceStatus {
     SpaceJoining = 9;
 }
 
+message ParticipantPermissionChange {
+    string identity = 1;
+    ParticipantPermissions perms = 2;
+}
+
 enum ParticipantPermissions {
     Reader = 0;
     Writer = 1;
@@ -927,6 +933,7 @@ enum ParticipantStatus {
     Removed = 2;
     Declined = 3;
     Removing = 4;
+    Canceled = 5;
 }
 
 enum SpaceAccessType {

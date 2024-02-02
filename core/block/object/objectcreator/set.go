@@ -51,7 +51,7 @@ func (s *service) createSet(ctx context.Context, space clientspace.Space, req *p
 }
 
 func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
-	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
+	viewRels := make([]*model.BlockContentDataviewRelation, 0, len(rels))
 	for _, rel := range rels {
 		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
 			continue

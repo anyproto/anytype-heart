@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -84,7 +85,7 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
-		if errors.Is(err, treechangeproto.ErrGetTree) || errors.Is(err, objecttree.ErrHasInvalidChanges) {
+		if errors.Is(err, treechangeproto.ErrGetTree) || errors.Is(err, objecttree.ErrHasInvalidChanges) || errors.Is(err, list.ErrNoReadKey) {
 			if ls.stopIfMandatoryFail {
 				ls.loadErr = err
 				return true

@@ -32,7 +32,6 @@ type file struct {
 	fileId  domain.FileId
 	info    *storage.FileInfo
 	node    *service
-	origin  model.ObjectOrigin
 }
 
 func (s *service) newFile(spaceId string, fileId domain.FileId, info *storage.FileInfo) File {
@@ -101,10 +100,6 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 	commonDetails[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(meta.Name), "."))
 	commonDetails[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(meta.Size))
 	commonDetails[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(meta.Added.Unix()))
-
-	if f.origin != 0 {
-		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(f.origin))
-	}
 
 	t := &types.Struct{
 		Fields: commonDetails,

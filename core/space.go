@@ -140,10 +140,17 @@ func (mw *Middleware) SpaceJoinCancel(cctx context.Context, req *pb.RpcSpaceJoin
 }
 
 func (mw *Middleware) SpaceExit(cctx context.Context, req *pb.RpcSpaceExitRequest) *pb.RpcSpaceExitResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.Exit(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceExitResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceExitResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceExitResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceExitResponse{
 		Error: &pb.RpcSpaceExitResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
@@ -167,19 +174,49 @@ func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpace
 }
 
 func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpaceRequestDeclineRequest) *pb.RpcSpaceRequestDeclineResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := decline(cctx, req.SpaceId, req.Identity, aclService)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceRequestDeclineResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceRequestDeclineResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceRequestDeclineResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceRequestDeclineResponse{
 		Error: &pb.RpcSpaceRequestDeclineResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
 
 func (mw *Middleware) SpaceParticipantRemove(cctx context.Context, req *pb.RpcSpaceParticipantRemoveRequest) *pb.RpcSpaceParticipantRemoveResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := remove(cctx, req.SpaceId, req.Identities, aclService)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceParticipantRemoveResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceParticipantRemoveResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceParticipantRemoveResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceParticipantRemoveResponse{
 		Error: &pb.RpcSpaceParticipantRemoveResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) SpaceParticipantPermissionsChange(cctx context.Context, req *pb.RpcSpaceParticipantPermissionsChangeRequest) *pb.RpcSpaceParticipantPermissionsChangeResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := permissionsChange(cctx, req.SpaceId, req.Changes, aclService)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceParticipantPermissionsChangeResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceParticipantPermissionsChangeResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceParticipantPermissionsChangeResponseError_REQUEST_FAILED),
+	)
+	return &pb.RpcSpaceParticipantPermissionsChangeResponse{
+		Error: &pb.RpcSpaceParticipantPermissionsChangeResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
@@ -202,4 +239,39 @@ func accept(ctx context.Context, spaceId, identity string, permissions model.Par
 		return
 	}
 	return aclService.Accept(ctx, spaceId, key, permissions)
+}
+
+func decline(ctx context.Context, spaceId, identity string, aclService acl.AclService) (err error) {
+	key, err := crypto.DecodeAccountAddress(identity)
+	if err != nil {
+		return
+	}
+	return aclService.Decline(ctx, spaceId, key)
+}
+
+func remove(ctx context.Context, spaceId string, identities []string, aclService acl.AclService) error {
+	var keys []crypto.PubKey
+	for _, identity := range identities {
+		key, err := crypto.DecodeAccountAddress(identity)
+		if err != nil {
+			return err
+		}
+		keys = append(keys, key)
+	}
+	return aclService.Remove(ctx, spaceId, keys)
+}
+
+func permissionsChange(ctx context.Context, spaceId string, changes []*model.ParticipantPermissionChange, aclService acl.AclService) error {
+	var accPermissions []acl.AccountPermissions
+	for _, change := range changes {
+		key, err := crypto.DecodeAccountAddress(change.Identity)
+		if err != nil {
+			return err
+		}
+		accPermissions = append(accPermissions, acl.AccountPermissions{
+			Account:     key,
+			Permissions: change.Perms,
+		})
+	}
+	return aclService.ChangePermissions(ctx, spaceId, accPermissions)
 }

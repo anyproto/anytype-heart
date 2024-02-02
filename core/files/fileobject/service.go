@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
@@ -32,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+// TODO UNsugar
 var log = logging.Logger("fileobject")
 
 var ErrObjectNotFound = fmt.Errorf("file object not found")
@@ -43,7 +45,7 @@ type Service interface {
 
 	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
-	CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error)
+	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
 	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
@@ -90,8 +92,7 @@ func (s *service) Init(a *app.App) error {
 type CreateRequest struct {
 	FileId            domain.FileId
 	EncryptionKeys    map[string]string
-	IsImported        bool
-	Origin            model.ObjectOrigin
+	ObjectOrigin      objectorigin.ObjectOrigin
 	AdditionalDetails *types.Struct
 }
 
@@ -105,13 +106,9 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	if err != nil {
 		return "", nil, fmt.Errorf("create in space: %w", err)
 	}
-	err = s.addToSyncQueue(domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.IsImported)
+	err = s.addToSyncQueue(domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported())
 	if err != nil {
 		return "", nil, fmt.Errorf("add to sync queue: %w", err)
-	}
-	err = s.fileStore.SetFileOrigin(req.FileId, req.Origin)
-	if err != nil {
-		log.With("fileId", req.FileId, "origin", req.Origin).Errorf("set file origin: %v", err)
 	}
 
 	return id, object, nil
@@ -124,7 +121,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
 		SpaceId: space.Id(),
 		FileId:  req.FileId,
-	})
+	}, req.ObjectOrigin)
 	if err != nil {
 		return "", nil, fmt.Errorf("get details for file or image: %w", err)
 	}
@@ -153,7 +150,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 }
 
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
-func (s *service) CreateFromImport(fileId domain.FullFileId, origin model.ObjectOrigin) (string, error) {
+func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
 	// Check that fileId is not a file object id
 	recs, _, err := s.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -184,8 +181,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin model.Object
 	fileObjectId, _, err = s.Create(context.Background(), fileId.SpaceId, CreateRequest{
 		FileId:         fileId.FileId,
 		EncryptionKeys: keys,
-		IsImported:     true,
-		Origin:         origin,
+		ObjectOrigin:   origin,
 	})
 	if err != nil {
 		return "", fmt.Errorf("create object: %w", err)
@@ -200,7 +196,7 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
 		SpaceId: space.Id(),
 		FileId:  req.FileId,
-	})
+	}, req.ObjectOrigin)
 	if err != nil {
 		return fmt.Errorf("get details for file or image: %w", err)
 	}
@@ -221,7 +217,7 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 	return err
 }
 
-func (s *service) getDetailsForFileOrImage(ctx context.Context, id domain.FullFileId) (*types.Struct, domain.TypeKey, error) {
+func (s *service) getDetailsForFileOrImage(ctx context.Context, id domain.FullFileId, origin objectorigin.ObjectOrigin) (details *types.Struct, typeKey domain.TypeKey, err error) {
 	file, err := s.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, "", err
@@ -231,18 +227,21 @@ func (s *service) getDetailsForFileOrImage(ctx context.Context, id domain.FullFi
 		if err != nil {
 			return nil, "", err
 		}
-		details, err := image.Details(ctx)
+		details, err = image.Details(ctx)
 		if err != nil {
 			return nil, "", err
 		}
-		return details, bundle.TypeKeyImage, nil
+		typeKey = bundle.TypeKeyImage
+	} else {
+		details, typeKey, err = file.Details(ctx)
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
-	d, typeKey, err := file.Details(ctx)
-	if err != nil {
-		return nil, "", err
-	}
-	return d, typeKey, nil
+	origin.AddToDetails(details)
+
+	return details, typeKey, nil
 }
 
 func (s *service) addToSyncQueue(id domain.FullFileId, uploadedByUser bool, imported bool) error {
@@ -336,6 +335,7 @@ func (s *service) getFileIdFromObjectInSpace(space smartblock.Space, objectId st
 }
 
 func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.ChangeFileKeys, fileId string) string {
+	// Don't migrate empty or its own id
 	if fileId == "" || objectId == fileId {
 		return fileId
 	}
@@ -377,7 +377,7 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 	err = s.migrateDeriveObject(context.Background(), space, CreateRequest{
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: fileKeys,
-		IsImported:     false, // TODO what to do? Probably need to copy origin detail
+		ObjectOrigin:   objectorigin.None(), // TODO what to do? Probably need to copy origin detail
 	}, uniqueKey)
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", fileId, err)

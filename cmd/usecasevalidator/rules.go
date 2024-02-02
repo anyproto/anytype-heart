@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
@@ -16,9 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
-
-//go:embed rules.json
-var rulesJSON []byte
 
 type action string
 
@@ -56,11 +55,22 @@ var (
 	errInvalidAction = "invalid action %s in rule provided"
 )
 
-func processRules(s *pb.ChangeSnapshot) {
-	if err := json.Unmarshal(rulesJSON, &rules); err != nil {
-		fmt.Println("Failed to unmarshal rules.json:", err)
-		return
+func readRules(fileName string) error {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return fmt.Errorf("failed to open %s to get processing rules: %w", fileName, err)
 	}
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("failed to read rules from file: %w", err)
+	}
+	if err = json.Unmarshal(data, &rules); err != nil {
+		return fmt.Errorf("failed to unmarshal json in file %s: %w", fileName, err)
+	}
+	return nil
+}
+
+func processRules(s *pb.ChangeSnapshot) {
 	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 
 	for i, r := range rules {
@@ -70,22 +80,22 @@ func processRules(s *pb.ChangeSnapshot) {
 
 		switch r.Entity {
 		case relationLink:
-			doRelationLinkRule(s, &r)
+			doRelationLinkRule(s, r)
 		case detail:
-			doDetailRule(s, &r)
+			doDetailRule(s, r)
 		case objectType:
-			doObjectTypeRule(s, &r)
+			doObjectTypeRule(s, r)
 		case dataViewTarget:
-			doDataViewTargetRule(s, &r)
+			doDataViewTargetRule(s, r)
 		case linkTarget:
-			doLinkTargetRule(s, &r)
+			doLinkTargetRule(s, r)
 		default:
 			fmt.Println("Invalid entity in rule", i, ":", r.Entity)
 		}
 	}
 }
 
-func doRelationLinkRule(s *pb.ChangeSnapshot, r *rule) {
+func doRelationLinkRule(s *pb.ChangeSnapshot, r rule) {
 	if r.RelationLink == nil || r.RelationLink.Key == "" {
 		fmt.Println("Invalid Relation link provided in relation-rule")
 		return
@@ -106,7 +116,7 @@ func doRelationLinkRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 }
 
-func doDetailRule(s *pb.ChangeSnapshot, r *rule) {
+func doDetailRule(s *pb.ChangeSnapshot, r rule) {
 	if r.DetailKey == "" {
 		fmt.Println("No detail key provided in detail-rule")
 		return
@@ -121,7 +131,7 @@ func doDetailRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 }
 
-func doObjectTypeRule(s *pb.ChangeSnapshot, r *rule) {
+func doObjectTypeRule(s *pb.ChangeSnapshot, r rule) {
 	if r.ObjectType == "" {
 		fmt.Println("No object type provided in objectType-rule")
 		return
@@ -138,7 +148,7 @@ func doObjectTypeRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 }
 
-func doDataViewTargetRule(s *pb.ChangeSnapshot, r *rule) {
+func doDataViewTargetRule(s *pb.ChangeSnapshot, r rule) {
 	if r.BlockID == "" {
 		fmt.Println("Block id is not provided for dataViewTarget-rule")
 		return
@@ -167,7 +177,7 @@ func doDataViewTargetRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 }
 
-func doLinkTargetRule(s *pb.ChangeSnapshot, r *rule) {
+func doLinkTargetRule(s *pb.ChangeSnapshot, r rule) {
 	if r.BlockID == "" {
 		fmt.Println("Block id is not provided for linkTarget-rule")
 		return

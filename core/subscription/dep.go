@@ -105,8 +105,15 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 	return
 }
 
+var ignoredKeys = map[string]struct{}{
+	bundle.RelationKeyId.String():                {},
+	bundle.RelationKeySpaceId.String():           {}, // relation format for spaceId has mistakenly set to Object instead of shorttext
+	bundle.RelationKeyFeaturedRelations.String(): {}, // relation format for featuredRelations has mistakenly set to Object instead of shorttext
+	bundle.RelationKeyLinks.String():             {}, // skip links because it's aggregated from other relations and blocks
+}
+
 func (ds *dependencyService) isRelationObject(key string) bool {
-	if key == bundle.RelationKeySpaceId.String() {
+	if _, ok := ignoredKeys[key]; ok {
 		return false
 	}
 	if strings.ContainsRune(key, '.') {
@@ -128,13 +135,6 @@ func (ds *dependencyService) isRelationObject(key string) bool {
 
 func (ds *dependencyService) depKeys(keys []string) (depKeys []string) {
 	for _, key := range keys {
-		if key == bundle.RelationKeyId.String() || key == bundle.RelationKeySpaceId.String() {
-			continue
-		}
-		if key == bundle.RelationKeyLinks.String() {
-			// skip links because it's aggregated from other relations and blocks
-			continue
-		}
 		if ds.isRelationObject(key) {
 			depKeys = append(depKeys, key)
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -29,8 +30,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -224,7 +227,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		}
 
 		afterHashesTime := time.Now()
-		metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
+		metrics.Service.Send(&metrics.OpenBlockEvent{
 			ObjectId:       id.ObjectID,
 			GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
 			DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
@@ -728,9 +731,9 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}
-	res := s.bookmark.FetchBookmarkContent(spaceID, url)
+	res := s.bookmark.FetchBookmarkContent(spaceID, url, false)
 	go func() {
-		if err := s.bookmark.UpdateBookmarkObject(req.ContextId, res); err != nil {
+		if err := s.bookmark.UpdateObject(req.ContextId, res()); err != nil {
 			log.Errorf("update bookmark object %s: %s", req.ContextId, err)
 		}
 	}()
@@ -775,6 +778,88 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 	return
 }
 
+func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest,
+) (id string, objectDetails *types.Struct, err error) {
+	url, err := uri.NormalizeURI(req.Url)
+	if err != nil {
+		return "", nil, err
+	}
+	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+	if err != nil {
+		return "", nil, err
+	}
+	s.enrichDetailsWithOrigin(req.Details, model.ObjectOrigin_webclipper)
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: objectTypeKey,
+		Details:       req.Details,
+	}
+	id, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
+	if err != nil {
+		return "", nil, err
+	}
+
+	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, true)
+	content := res()
+	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(req.Details, objectDetails, content)
+	if shouldUpdateDetails {
+		err = s.bookmark.UpdateObject(id, content)
+		if err != nil {
+			return "", nil, err
+		}
+	}
+
+	if content != nil && len(content.Blocks) > 0 {
+		err := s.pasteBlocks(id, content)
+		if err != nil {
+			return "", nil, err
+		}
+	}
+	return id, objectDetails, nil
+}
+
+func (s *Service) pasteBlocks(id string, content *bookmark.ObjectContent) error {
+	groupID := bson.NewObjectId().Hex()
+	_, uploadArr, _, _, err := s.Paste(nil, pb.RpcBlockPasteRequest{
+		ContextId: id,
+		AnySlot:   content.Blocks,
+	}, groupID)
+	if err != nil {
+		return err
+	}
+	for _, r := range uploadArr {
+		r.ContextId = id
+		uploadReq := UploadRequest{RpcBlockUploadRequest: r, ObjectOrigin: objectorigin.Webclipper()}
+		if err = s.UploadBlockFile(nil, uploadReq, groupID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetails *types.Struct, content *bookmark.ObjectContent) bool {
+	shouldUpdate := false
+	bookmarkRelationToValue := map[string]*string{
+		bundle.RelationKeyName.String():        &content.BookmarkContent.Title,
+		bundle.RelationKeyDescription.String(): &content.BookmarkContent.Description,
+		bundle.RelationKeySource.String():      &content.BookmarkContent.Url,
+		bundle.RelationKeyPicture.String():     &content.BookmarkContent.ImageHash,
+		bundle.RelationKeyIconImage.String():   &content.BookmarkContent.FaviconHash,
+	}
+
+	for relation, valueFromBookmark := range bookmarkRelationToValue {
+		// Don't change details of the object, if they are provided by client in request
+		if userValue := pbtypes.GetString(userDetails, relation); userValue != "" {
+			*valueFromBookmark = userValue
+		} else {
+			// if detail wasn't provided in request, we get it from bookmark and set it later in bookmark.UpdateObject
+			// and add to response details
+			shouldUpdate = true
+			objectDetails.Fields[relation] = pbtypes.String(*valueFromBookmark)
+		}
+	}
+	return shouldUpdate
+}
+
 func (s *Service) replaceLink(id, oldId, newId string) error {
 	return Do(s, id, func(b basic.CommonOperations) error {
 		return b.ReplaceLink(oldId, newId)
@@ -787,4 +872,11 @@ func (s *Service) GetLogFields() []zap.Field {
 		fields = append(fields, zap.Bool("predefined_object_was_missing", true))
 	}
 	return fields
+}
+
+func (s *Service) enrichDetailsWithOrigin(details *types.Struct, origin model.ObjectOrigin) {
+	if details == nil || details.Fields == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
 }

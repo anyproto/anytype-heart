@@ -2,6 +2,9 @@ package space
 
 import (
 	"context"
+
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 func (s *service) Join(ctx context.Context, id string) error {
@@ -10,7 +13,16 @@ func (s *service) Join(ctx context.Context, id string) error {
 	if exists {
 		s.mu.Unlock()
 		<-waiter.wait
-		return waiter.err
+		if waiter.err != nil {
+			return waiter.err
+		}
+		s.mu.Lock()
+		ctrl := s.spaceControllers[id]
+		s.mu.Unlock()
+		if ctrl.Mode() != mode.ModeJoining {
+			return ctrl.UpdateStatus(ctx, spaceinfo.AccountStatusJoining)
+		}
+		return nil
 	}
 	wait := make(chan struct{})
 	s.waiting[id] = controllerWaiter{

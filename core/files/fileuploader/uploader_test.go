@@ -1,4 +1,4 @@
-package fileuploader_test
+package fileuploader
 
 import (
 	"context"
@@ -17,9 +17,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	file2 "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
-	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/testMock"
@@ -166,14 +166,20 @@ func newFixture(t *testing.T) *uplFixture {
 	fx.fileService = testMock.NewMockFileService(fx.ctrl)
 	fx.fileObjectService = mock_fileobject.NewMockService(t)
 
-	fx.Uploader = fileuploader.NewUploader("space1", fx.fileService, core.NewTempDirService(), picker, fx.fileObjectService)
+	uploaderProvider := &service{
+		fileService:       fx.fileService,
+		tempDirProvider:   core.NewTempDirService(),
+		picker:            picker,
+		fileObjectService: fx.fileObjectService,
+	}
+	fx.Uploader = uploaderProvider.NewUploader("space1", objectorigin.None())
 	fx.file = testMock.NewMockFile(fx.ctrl)
 	fx.file.EXPECT().FileId().Return(domain.FileId("123")).AnyTimes()
 	return fx
 }
 
 type uplFixture struct {
-	fileuploader.Uploader
+	Uploader
 	file              *testMock.MockFile
 	fileService       *testMock.MockFileService
 	ctrl              *gomock.Controller

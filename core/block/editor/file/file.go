@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -65,7 +66,7 @@ type FileSource struct {
 	Bytes   []byte
 	Name    string
 	GroupID string
-	Origin  model.ObjectOrigin
+	Origin  objectorigin.ObjectOrigin
 }
 
 type sfile struct {
@@ -148,7 +149,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if !ok {
 		return fileuploader.UploadResult{Err: fmt.Errorf("not a file block")}
 	}
-	upl := sf.newUploader().SetBlock(f).SetOrigin(source.Origin)
+	upl := sf.newUploader(source.Origin).SetBlock(f)
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {
@@ -168,8 +169,8 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	return
 }
 
-func (sf *sfile) newUploader() fileuploader.Uploader {
-	return sf.fileUploaderFactory.NewUploader(sf.SpaceID())
+func (sf *sfile) newUploader(origin objectorigin.ObjectOrigin) fileuploader.Uploader {
+	return sf.fileUploaderFactory.NewUploader(sf.SpaceID(), origin)
 }
 
 func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) (err error) {
@@ -298,7 +299,7 @@ type dropFileInfo struct {
 type dropFilesHandler interface {
 	dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error)
 	dropFilesSetInfo(info dropFileInfo) (err error)
-	newUploader() fileuploader.Uploader
+	newUploader(origin objectorigin.ObjectOrigin) fileuploader.Uploader
 }
 
 type dropFilesProcess struct {
@@ -524,12 +525,11 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 }
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
-	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID)
+	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.DragAndDrop())
 	res := upl.
 		SetName(f.name).
 		AutoType(true).
 		SetFile(f.path).
-		SetOrigin(model.ObjectOrigin_dragAndDrop).
 		Upload(context.Background())
 
 	if res.Err != nil {

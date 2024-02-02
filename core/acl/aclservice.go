@@ -37,11 +37,21 @@ var (
 	ErrAclRequestFailed     = errors.New("acl request failed")
 )
 
+type AccountPermissions struct {
+	Account     crypto.PubKey
+	Permissions model.ParticipantPermissions
+}
+
 type AclService interface {
 	app.Component
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error
+	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
+	Exit(ctx context.Context, spaceId string) (err error)
+	Cancel(ctx context.Context, spaceId string) (err error)
+	Decline(ctx context.Context, spaceId string, identity crypto.PubKey) (err error)
+	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
 	GetCurrentInvite(spaceId string) (*InviteInfo, error)
 	GenerateInvite(ctx context.Context, spaceId string) (*InviteInfo, error)
 }
@@ -71,6 +81,112 @@ func (a *aclService) Init(ap *app.App) (err error) {
 
 func (a *aclService) Name() (name string) {
 	return CName
+}
+
+func (a *aclService) Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) error {
+	removeSpace, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	newPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return err
+	}
+	cl := removeSpace.CommonSpace().AclClient()
+	err = cl.RemoveAccounts(ctx, list.AccountRemovePayload{
+		Identities: identities,
+		Change: list.ReadKeyChangePayload{
+			MetadataKey: newPrivKey,
+			ReadKey:     crypto.NewAES(),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	return nil
+}
+
+func (a *aclService) Cancel(ctx context.Context, spaceId string) (err error) {
+	// TODO: finish this by implementing space offload for join cancelled spaces (?)
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	cl := sp.CommonSpace().AclClient()
+	err = cl.CancelRequest(ctx)
+	if err != nil {
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	return nil
+}
+
+func (a *aclService) Decline(ctx context.Context, spaceId string, identity crypto.PubKey) (err error) {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	cl := sp.CommonSpace().AclClient()
+	err = cl.DeclineRequest(ctx, identity)
+	if err != nil {
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	return nil
+}
+
+func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	var listPerms []list.PermissionChangePayload
+	acl := sp.CommonSpace().Acl()
+	acl.RLock()
+	for _, perm := range perms {
+		var aclPerms list.AclPermissions
+		switch perm.Permissions {
+		case model.ParticipantPermissions_Reader:
+			aclPerms = list.AclPermissionsReader
+		case model.ParticipantPermissions_Writer:
+			aclPerms = list.AclPermissionsWriter
+		default:
+			acl.RUnlock()
+			return ErrIncorrectPermissions
+		}
+		curPerms := acl.AclState().Permissions(perm.Account)
+		if curPerms.NoPermissions() {
+			acl.RUnlock()
+			return ErrNoSuchUser
+		}
+		if curPerms == aclPerms {
+			continue
+		}
+		listPerms = append(listPerms, list.PermissionChangePayload{
+			Identity:    perm.Account,
+			Permissions: aclPerms,
+		})
+	}
+	acl.RUnlock()
+	cl := sp.CommonSpace().AclClient()
+	err = cl.ChangePermissions(ctx, list.PermissionChangesPayload{
+		Changes: listPerms,
+	})
+	if err != nil {
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	return nil
+}
+
+func (a *aclService) Exit(ctx context.Context, spaceId string) error {
+	removeSpace, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	cl := removeSpace.CommonSpace().AclClient()
+	err = cl.RequestSelfRemove(ctx)
+	if err != nil {
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	return nil
 }
 
 func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
