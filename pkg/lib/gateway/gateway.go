@@ -333,6 +333,9 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 		if err != nil && errors.Is(err, domain.ErrFileNotFound) {
 			return g.handleSVGFile(ctx, id, err)
 		}
+		if err != nil {
+			return nil, nil, fmt.Errorf("get image file: %w", err)
+		}
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
 		if err != nil {
@@ -342,13 +345,16 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 		if err != nil && errors.Is(err, domain.ErrFileNotFound) {
 			return g.handleSVGFile(ctx, id, err)
 		}
+		if err != nil {
+			return nil, nil, fmt.Errorf("get image file: %w", err)
+		}
 	}
 
 	reader, err := file.Reader(ctx)
 	return file, reader, err
 }
 
-func (g *gateway) handleSVGFile(ctx context.Context, id domain.FullID, err error) (files.File, io.ReadSeeker, error) {
+func (g *gateway) handleSVGFile(ctx context.Context, id domain.FullFileId, err error) (files.File, io.ReadSeeker, error) {
 	file, fErr := g.fileService.FileByHash(ctx, id)
 	if fErr != nil {
 		return nil, nil, fmt.Errorf("get image by hash: %w", err)
