@@ -1,5 +1,6 @@
 dir: "{{.InterfaceDir}}/mock_{{.PackageName}}"
 with-expecter: True
+disable-version-string: True
 all: False
 outpkg: "mock_{{.PackageName}}"
 packages:
@@ -49,6 +50,9 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:
+  github.com/anyproto/anytype-heart/metrics/amplitude:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/core/indexer:
     interfaces:
       Indexer:
@@ -71,4 +75,6 @@ packages:
   github.com/anyproto/anytype-heart/space/clientspace:
     interfaces:
       Space:
-
+  github.com/anyproto/anytype-heart/core/files/fileobject:
+    interfaces:
+      Service:

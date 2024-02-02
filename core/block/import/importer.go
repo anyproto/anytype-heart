@@ -33,8 +33,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/metrics/amplitude"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -59,6 +63,7 @@ type Import struct {
 	oc              creator.Service
 	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
+	fileStore       filestore.FileStore
 	fileSync        filesync.FileSync
 	sync.Mutex
 }
@@ -78,7 +83,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	converters := []common.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
-		pbc.New(col, accountService),
+		pbc.New(col, accountService, i.tempDirProvider),
 		web.NewConverter(),
 		html.New(col, i.tempDirProvider),
 		txt.New(col),
@@ -88,19 +93,24 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[c.Name()] = c
 	}
 	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
-	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.idProvider = objectid.NewIDProvider(store, spaceService)
-	fileStore := app.MustComponent[filestore.FileStore](a)
-	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
+	i.fileStore = app.MustComponent[filestore.FileStore](a)
+	fileObjectService := app.MustComponent[fileobject.Service](a)
+	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, i.fileStore, fileObjectService)
+	factory := syncer.New(syncer.NewFileSyncer(i.s, i.fileStore, fileObjectService, store), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver, i.fileStore, fileObjectService, store))
+	relationSyncer := syncer.NewFileRelationSyncer(i.s, i.fileStore, fileObjectService, store)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
-	i.oc = creator.New(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
+	i.oc = creator.New(i.s, factory, store, relationSyncer, i.fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin, progress process.Progress) (string, string, error) {
+func (i *Import) Import(ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	origin objectorigin.ObjectOrigin,
+	progress process.Progress,
+) (string, string, error) {
 	if req.SpaceId == "" {
 		return "", "", fmt.Errorf("spaceId is empty")
 	}
@@ -148,7 +158,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c common.Converter,
 	progress process.Progress,
-	origin model.ObjectOrigin,
+	origin objectorigin.ObjectOrigin,
 ) (string, error) {
 	allErrors := common.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
@@ -191,7 +201,9 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		res := &common.Response{
 			Snapshots: sn,
 		}
-		i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
+
+		originImport := objectorigin.Import(model.Import_External)
+		i.createObjects(ctx, res, progress, req, allErrors, originImport)
 		if !allErrors.IsEmpty() {
 			return allErrors.GetResultError(req.Type)
 		}
@@ -265,7 +277,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 	}
 
 	progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
+	details, _ := i.createObjects(ctx, res, progress, req, allErrors, objectorigin.None())
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
@@ -277,9 +289,9 @@ func (i *Import) createObjects(ctx context.Context,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
 	allErrors *common.ConvertError,
-	origin model.ObjectOrigin,
+	origin objectorigin.ObjectOrigin,
 ) (map[string]*types.Struct, string) {
-	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req)
+	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req, origin)
 	if err != nil {
 		return nil, ""
 	}
@@ -311,6 +323,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	res *common.Response,
 	allErrors *common.ConvertError,
 	req *pb.RpcObjectImportRequest,
+	origin objectorigin.ObjectOrigin,
 ) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	relationOptions := make([]*common.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
@@ -321,7 +334,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
-		err := i.getObjectID(ctx, req.SpaceId, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects)
+		err := i.getObjectID(ctx, req.SpaceId, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects, origin)
 		if err != nil {
 			allErrors.Add(err)
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
@@ -332,7 +345,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	}
 	for _, option := range relationOptions {
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
-		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects)
+		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects, origin)
 		if err != nil {
 			allErrors.Add(err)
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
@@ -362,13 +375,38 @@ func (i *Import) getObjectID(
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	oldIDToNew map[string]string,
 	updateExisting bool,
+	origin objectorigin.ObjectOrigin,
 ) error {
+
+	// Preload file keys
+	for _, fileKeys := range snapshot.Snapshot.GetFileKeys() {
+		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+			FileId:         domain.FileId(fileKeys.Hash),
+			EncryptionKeys: fileKeys.Keys,
+		})
+		if err != nil {
+			return fmt.Errorf("add file keys: %w", err)
+		}
+	}
+	if fileInfo := snapshot.Snapshot.GetData().GetFileInfo(); fileInfo != nil {
+		keys := make(map[string]string, len(fileInfo.EncryptionKeys))
+		for _, key := range fileInfo.EncryptionKeys {
+			keys[key.Path] = key.Key
+		}
+		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+			FileId:         domain.FileId(fileInfo.FileId),
+			EncryptionKeys: keys,
+		})
+		if err != nil {
+			return fmt.Errorf("add file keys from file info: %w", err)
+		}
+	}
+
 	var (
 		id      string
 		payload treestorage.TreeStorageCreatePayload
 	)
-
-	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting)
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting, origin)
 	if err != nil {
 		return err
 	}
@@ -414,8 +452,9 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	}
 	return details
 }
-func (i *Import) recordEvent(event metrics.EventRepresentable) {
-	metrics.SharedClient.RecordEvent(event)
+
+func (i *Import) recordEvent(event amplitude.Event) {
+	metrics.Service.Send(event)
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

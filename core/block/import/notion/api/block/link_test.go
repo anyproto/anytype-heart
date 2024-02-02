@@ -289,4 +289,89 @@ func Test_EmbedBlockGetBlocks(t *testing.T) {
 		assert.Len(t, bl.Blocks, 1)
 		assert.NotNil(t, bl.Blocks[0].GetLatex())
 	})
+
+	t.Run("github gist url like github.gist.com/user/gist - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://gist.github.com/username/123456789abcdef",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, model.BlockContentLatex_GithubGist, bl.Blocks[0].GetLatex().GetProcessor())
+	})
+	t.Run("github gist url like github.gist.com - not create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://gist.github.com/",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.Nil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("github gist url like github.gist.com/user - not create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://gist.github.com/",
+			},
+		}
+
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.Nil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("codepen url like codepen.io - not create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://codepen.io/",
+			},
+		}
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.Nil(t, bl.Blocks[0].GetLatex())
+	})
+	t.Run("codepen url like codepen.io/user/pen/id - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://codepen.io/user/pen/id",
+			},
+		}
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, model.BlockContentLatex_Codepen, bl.Blocks[0].GetLatex().GetProcessor())
+	})
+	t.Run("codepen url like codepen.io/user/details/id - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://codepen.io/user/details/id",
+			},
+		}
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, model.BlockContentLatex_Codepen, bl.Blocks[0].GetLatex().GetProcessor())
+	})
+	t.Run("codepen url like codepen.io/user/details/id/edit - we create embed block", func(t *testing.T) {
+		vo := &EmbedBlock{
+			Embed: LinkToWeb{
+				URL: "https://codepen.io/user/details/id/edit",
+			},
+		}
+		bl := vo.GetBlocks(nil, "")
+		assert.NotNil(t, bl)
+		assert.Len(t, bl.Blocks, 1)
+		assert.NotNil(t, bl.Blocks[0].GetLatex())
+		assert.Equal(t, model.BlockContentLatex_Codepen, bl.Blocks[0].GetLatex().GetProcessor())
+	})
 }

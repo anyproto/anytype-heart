@@ -15,9 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var log = logging.Logger("anytype-logger")
+var log = logging.Logger("anytype-telemetry")
 
-var DefaultAmplitudeKey = ""
+var (
+	DefaultAmplitudeKey string
+	DefaultInHouseKey   string
+)
 
 func GenerateAnalyticsId() string {
 	return uuid.New().String()
@@ -147,6 +150,10 @@ func MetricTimeBuckets(scale []time.Duration) []float64 {
 func init() {
 	if DefaultAmplitudeKey == "" {
 		DefaultAmplitudeKey = loadenv.Get("AMPLITUDE_KEY")
+	}
+
+	if DefaultInHouseKey == "" {
+		DefaultInHouseKey = loadenv.Get("INHOUSE_KEY")
 	}
 
 	if addr := os.Getenv("ANYTYPE_PROM"); addr != "" {

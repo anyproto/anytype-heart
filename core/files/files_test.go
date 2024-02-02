@@ -2,16 +2,19 @@ package files
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -21,14 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
-
-type dummySyncStatusWatcher struct{}
-
-func (w *dummySyncStatusWatcher) Watch(spaceID string, id string, fileFunc func() []string) (new bool, err error) {
-	return false, nil
-}
-func (w *dummySyncStatusWatcher) Init(a *app.App) error { return nil }
-func (w *dummySyncStatusWatcher) Name() string          { return "dummySyncStatusWatcher" }
 
 type personalSpaceIdStub struct {
 	personalSpaceId string
@@ -62,6 +57,12 @@ func TestFileAdd(t *testing.T) {
 
 	fileSyncService := filesync.New()
 
+	uploaded := make(chan struct{})
+	fileSyncService.OnUploaded(func(fileId domain.FileId) error {
+		close(uploaded)
+		return nil
+	})
+
 	spaceId := "space1"
 	personalSpaceIdGetter := &personalSpaceIdStub{personalSpaceId: spaceId}
 	spaceIdResolver := &spaceResolverStub{spaceId: spaceId}
@@ -81,7 +82,7 @@ func TestFileAdd(t *testing.T) {
 	a.Register(objectStore)
 	a.Register(personalSpaceIdGetter)
 	a.Register(spaceIdResolver)
-	a.Register(&dummySyncStatusWatcher{})
+	//a.Register(&dummySyncStatusWatcher{})
 	a.Register(rpcStoreService)
 	err := a.Start(ctx)
 	require.NoError(t, err)
@@ -93,7 +94,8 @@ func TestFileAdd(t *testing.T) {
 
 	fileName := "myFile"
 	lastModifiedDate := time.Now()
-	buf := strings.NewReader("it's my favorite file")
+	fileContent := "it's my favorite file"
+	buf := strings.NewReader(fileContent)
 	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	opts := []AddOption{
@@ -104,8 +106,36 @@ func TestFileAdd(t *testing.T) {
 	got, err := s.FileAdd(context.Background(), spaceId, opts...)
 
 	require.NoError(t, err)
-	assert.NotEmpty(t, got.Hash())
+	assert.NotEmpty(t, got.FileId)
 
-	// TODO Check that file is in RpcStore (Cloud Storage)
-	// TODO Check that file is in BlockStore (DAG)
+	t.Run("want to decrypt file content", func(t *testing.T) {
+		reader, err := got.File.Reader(context.Background())
+		require.NoError(t, err)
+
+		gotContent, err := io.ReadAll(reader)
+		require.NoError(t, err)
+		assert.Equal(t, fileContent, string(gotContent))
+
+	})
+
+	t.Run("want to store encrypted content in DAG", func(t *testing.T) {
+		encryptedContent, err := commonFileService.GetFile(context.Background(), cid.MustParse(got.File.Info().Hash))
+		require.NoError(t, err)
+		gotEncryptedContent, err := io.ReadAll(encryptedContent)
+		require.NoError(t, err)
+		assert.NotEqual(t, fileContent, string(gotEncryptedContent))
+
+	})
+
+	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
+		err = fileSyncService.AddFile(spaceId, got.FileId, true, false)
+		require.NoError(t, err)
+		<-uploaded
+		infos, err := rpcStore.FilesInfo(context.Background(), spaceId, got.FileId)
+		require.NoError(t, err)
+
+		require.Len(t, infos, 1)
+
+		assert.Equal(t, got.FileId.String(), infos[0].FileId)
+	})
 }

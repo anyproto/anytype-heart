@@ -25,258 +25,264 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 func init() { proto.RegisterFile("pb/protos/service/service.proto", fileDescriptor_93a29dc403579097) }
 
 var fileDescriptor_93a29dc403579097 = []byte{
-	// 4002 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x9c, 0xdd, 0x6f, 0x1d, 0x47,
-	0xd9, 0xc0, 0x7b, 0x6e, 0xde, 0xbe, 0xef, 0xf6, 0x6d, 0x29, 0x5b, 0x08, 0x6d, 0x68, 0x9d, 0x34,
-	0x4d, 0x6c, 0x27, 0x8e, 0x8f, 0xdd, 0x24, 0xfd, 0xa0, 0x45, 0x42, 0x8e, 0x1d, 0xa7, 0x56, 0x63,
-	0x27, 0xf8, 0x38, 0x89, 0x54, 0x09, 0x89, 0xf5, 0x9e, 0xf1, 0xf1, 0xe2, 0x3d, 0x3b, 0xdb, 0xdd,
-	0x39, 0x76, 0x0c, 0x02, 0x81, 0x40, 0x20, 0x10, 0x08, 0xc4, 0xc7, 0x15, 0x17, 0x48, 0xfc, 0x05,
-	0xfc, 0x19, 0x5c, 0xf6, 0x92, 0x4b, 0x68, 0xff, 0x11, 0xb4, 0x3b, 0xcf, 0xce, 0xc7, 0xb3, 0xf3,
-	0xcc, 0xee, 0xe9, 0x55, 0xa2, 0xf3, 0xfc, 0x9e, 0x8f, 0xd9, 0x79, 0x66, 0xe6, 0x99, 0x99, 0x5d,
-	0x07, 0x97, 0xf2, 0xc3, 0xb5, 0xbc, 0xe0, 0x82, 0x97, 0x6b, 0x25, 0x2b, 0x4e, 0x93, 0x98, 0x35,
-	0xff, 0x0e, 0xeb, 0x9f, 0xc3, 0xe7, 0xa3, 0xec, 0x5c, 0x9c, 0xe7, 0xec, 0xe2, 0xab, 0x9a, 0x8c,
-	0xf9, 0x74, 0x1a, 0x65, 0xe3, 0x52, 0x22, 0x17, 0x2f, 0x68, 0x09, 0x3b, 0x65, 0x99, 0x80, 0xdf,
-	0x6f, 0xfd, 0xe7, 0x1f, 0x83, 0xe0, 0xa5, 0xcd, 0x34, 0x61, 0x99, 0xd8, 0x04, 0x8d, 0xf0, 0x93,
-	0xe0, 0xc5, 0x8d, 0x3c, 0xbf, 0xcf, 0xc4, 0x13, 0x56, 0x94, 0x09, 0xcf, 0xc2, 0xb7, 0x86, 0xe0,
-	0x60, 0xb8, 0x9f, 0xc7, 0xc3, 0x8d, 0x3c, 0x1f, 0x6a, 0xe1, 0x70, 0x9f, 0x7d, 0x3a, 0x63, 0xa5,
-	0xb8, 0x78, 0xd5, 0x0f, 0x95, 0x39, 0xcf, 0x4a, 0x16, 0x1e, 0x05, 0x5f, 0xdd, 0xc8, 0xf3, 0x11,
-	0x13, 0x5b, 0xac, 0x6a, 0xc0, 0x48, 0x44, 0x82, 0x85, 0x4b, 0x2d, 0x55, 0x1b, 0x50, 0x3e, 0x96,
-	0xbb, 0x41, 0xf0, 0x73, 0x10, 0xbc, 0x50, 0xf9, 0x39, 0x9e, 0x89, 0x31, 0x3f, 0xcb, 0xc2, 0x37,
-	0xdb, 0x8a, 0x20, 0x52, 0xb6, 0xaf, 0xf8, 0x10, 0xb0, 0xfa, 0x34, 0xf8, 0xff, 0xa7, 0x51, 0x9a,
-	0x32, 0xb1, 0x59, 0xb0, 0x2a, 0x70, 0x5b, 0x47, 0x8a, 0x86, 0x52, 0xa6, 0xec, 0xbe, 0xe5, 0x65,
-	0xc0, 0xf0, 0x27, 0xc1, 0x8b, 0x52, 0xb2, 0xcf, 0x62, 0x7e, 0xca, 0x8a, 0xd0, 0xa9, 0x05, 0x42,
-	0xe2, 0x91, 0xb7, 0x20, 0x6c, 0x7b, 0x93, 0x67, 0xa7, 0xac, 0x10, 0x6e, 0xdb, 0x20, 0xf4, 0xdb,
-	0xd6, 0x10, 0xd8, 0x4e, 0x83, 0x57, 0xcc, 0x07, 0x32, 0x62, 0x65, 0x9d, 0x30, 0xd7, 0xe9, 0x36,
-	0x03, 0xa2, 0xfc, 0xdc, 0xe8, 0x83, 0x82, 0xb7, 0x24, 0x08, 0xc1, 0x5b, 0xca, 0x4b, 0xe5, 0x6c,
-	0xd9, 0x69, 0xc1, 0x20, 0x94, 0xaf, 0xeb, 0x3d, 0x48, 0x70, 0xf5, 0xfd, 0xe0, 0x2b, 0x4f, 0x79,
-	0x71, 0x52, 0xe6, 0x51, 0xcc, 0xa0, 0xb3, 0xaf, 0xd9, 0xda, 0x8d, 0x14, 0xf7, 0xf7, 0x62, 0x17,
-	0x66, 0x74, 0x4b, 0x23, 0x7c, 0x98, 0x33, 0x3c, 0xca, 0xb4, 0x62, 0x25, 0xa4, 0xba, 0x05, 0x43,
-	0x60, 0xfb, 0x24, 0x08, 0xb5, 0xed, 0xc3, 0x1f, 0xb0, 0x58, 0x6c, 0x8c, 0xc7, 0xb8, 0x57, 0xb4,
-	0x6e, 0x4d, 0x0c, 0x37, 0xc6, 0x63, 0xaa, 0x57, 0xdc, 0x28, 0x38, 0x3b, 0x0b, 0x2e, 0x20, 0x67,
-	0x0f, 0x92, 0xb2, 0x76, 0xb8, 0xea, 0xb7, 0x02, 0x98, 0x72, 0x3a, 0xec, 0x8b, 0x83, 0xe3, 0x9f,
-	0x0e, 0x82, 0xd7, 0x1c, 0x9e, 0xf7, 0xd9, 0x94, 0x9f, 0xb2, 0x70, 0xbd, 0xdb, 0x9a, 0x24, 0x95,
-	0xff, 0xb7, 0xe7, 0xd0, 0x70, 0xa4, 0xc9, 0x88, 0xa5, 0x2c, 0x16, 0x64, 0x9a, 0x48, 0x71, 0x67,
-	0x9a, 0x28, 0xcc, 0x18, 0x61, 0x8d, 0xf0, 0x3e, 0x13, 0x9b, 0xb3, 0xa2, 0x60, 0x99, 0x20, 0xfb,
-	0x52, 0x23, 0x9d, 0x7d, 0x69, 0xa1, 0x8e, 0xf6, 0xdc, 0x67, 0x62, 0x23, 0x4d, 0xc9, 0xf6, 0x48,
-	0x71, 0x67, 0x7b, 0x14, 0x06, 0x1e, 0xe2, 0xe0, 0x65, 0xe3, 0x89, 0x89, 0x9d, 0xec, 0x88, 0x87,
-	0xf4, 0xb3, 0xa8, 0xe5, 0xca, 0xc7, 0x52, 0x27, 0xe7, 0x68, 0xc6, 0xbd, 0x67, 0x39, 0x2f, 0xe8,
-	0x6e, 0x91, 0xe2, 0xce, 0x66, 0x28, 0x0c, 0x3c, 0x7c, 0x2f, 0x78, 0x69, 0x23, 0x8e, 0xf9, 0x2c,
-	0x53, 0x33, 0x36, 0x5a, 0xff, 0xa4, 0xb0, 0x35, 0x65, 0x5f, 0xeb, 0xa0, 0xf4, 0xe4, 0x00, 0x32,
-	0x98, 0x7c, 0xde, 0x72, 0xea, 0xa1, 0xa9, 0xe7, 0xaa, 0x1f, 0x6a, 0xd9, 0xde, 0x62, 0x29, 0x23,
-	0x6d, 0x4b, 0x61, 0x87, 0x6d, 0x05, 0x81, 0xed, 0x22, 0xf8, 0xba, 0x7a, 0x2c, 0xd5, 0x4a, 0x51,
-	0xcb, 0xab, 0x49, 0x7a, 0x85, 0x68, 0xb7, 0x09, 0x29, 0x5f, 0x37, 0xfb, 0xc1, 0xad, 0xf6, 0xc0,
-	0x08, 0x74, 0xb7, 0x07, 0x8d, 0xbf, 0xab, 0x7e, 0x08, 0x6c, 0xff, 0x66, 0x10, 0xbc, 0x01, 0xb2,
-	0x7b, 0x59, 0x74, 0x98, 0xb2, 0x07, 0x3c, 0x8e, 0xd2, 0x3d, 0x26, 0xce, 0x78, 0x71, 0x32, 0x3a,
-	0xcf, 0xe2, 0xf0, 0xb6, 0xd3, 0x8e, 0x1b, 0x56, 0xce, 0xef, 0xcc, 0xa7, 0x64, 0xd4, 0x34, 0xd0,
-	0x50, 0xc1, 0x73, 0x5c, 0xd3, 0x34, 0x2d, 0x10, 0x3c, 0xa7, 0x6a, 0x1a, 0x1b, 0x69, 0x59, 0xdd,
-	0xad, 0xa6, 0x4d, 0xb7, 0xd5, 0x5d, 0x73, 0x9e, 0xbc, 0xe2, 0x43, 0xf4, 0xb4, 0xd5, 0x24, 0x30,
-	0xcf, 0x8e, 0x92, 0xc9, 0xe3, 0x7c, 0x5c, 0xa5, 0xf1, 0x75, 0x77, 0x86, 0x1a, 0x08, 0x31, 0x6d,
-	0x11, 0x28, 0x78, 0xfb, 0xdd, 0x20, 0x58, 0xb0, 0x87, 0xe3, 0x76, 0xc1, 0xa7, 0x0f, 0xd8, 0x24,
-	0x8a, 0xcf, 0x61, 0xfc, 0xdf, 0xf1, 0x0d, 0x3c, 0x4c, 0xab, 0x20, 0xde, 0x99, 0x53, 0x0b, 0xe2,
-	0xf9, 0xdb, 0x20, 0xb8, 0xda, 0x34, 0xff, 0x38, 0xca, 0x26, 0x0c, 0xfa, 0x53, 0x46, 0xbf, 0x91,
-	0x8d, 0xf7, 0x59, 0x29, 0xa2, 0x42, 0x84, 0x1f, 0xb8, 0x1b, 0xe9, 0xd3, 0x51, 0xb1, 0x7d, 0xf8,
-	0xa5, 0x74, 0x75, 0xaf, 0x8f, 0xaa, 0x89, 0x0d, 0xa6, 0x00, 0xbb, 0xd7, 0x6b, 0x09, 0x9e, 0x00,
-	0xae, 0xf8, 0x10, 0xb0, 0xfa, 0xdd, 0x20, 0x90, 0x8b, 0x65, 0x5d, 0xd0, 0x5c, 0xb6, 0x34, 0x60,
-	0x15, 0xb5, 0xaa, 0x99, 0x37, 0x3d, 0x84, 0x0e, 0x54, 0xfe, 0x5e, 0xd7, 0x69, 0xa1, 0x53, 0xa3,
-	0x16, 0x11, 0x81, 0x22, 0x04, 0x07, 0x3a, 0x3a, 0xe6, 0x67, 0xee, 0x40, 0x2b, 0x89, 0x3f, 0x50,
-	0x20, 0xf4, 0xde, 0x00, 0x02, 0x75, 0xed, 0x0d, 0x9a, 0x30, 0x7c, 0x7b, 0x03, 0xcc, 0x80, 0x61,
-	0x1e, 0x7c, 0xcd, 0x34, 0x7c, 0x97, 0xf3, 0x93, 0x69, 0x54, 0x9c, 0x84, 0x37, 0x68, 0xe5, 0x86,
-	0x51, 0x8e, 0x56, 0x7a, 0xb1, 0x7a, 0xf5, 0x34, 0x1d, 0x8e, 0x18, 0x5e, 0x3d, 0x2d, 0xfd, 0x11,
-	0xa3, 0x56, 0x4f, 0x07, 0x86, 0x3b, 0xf5, 0x7e, 0x11, 0xe5, 0xc7, 0xee, 0x4e, 0xad, 0x45, 0xfe,
-	0x4e, 0x6d, 0x10, 0xdc, 0x03, 0x23, 0x16, 0x15, 0xf1, 0xb1, 0xbb, 0x07, 0xa4, 0xcc, 0xdf, 0x03,
-	0x8a, 0xd1, 0xab, 0x9a, 0x69, 0x78, 0x34, 0x3b, 0x2c, 0xe3, 0x22, 0x39, 0x64, 0xe1, 0x0a, 0xad,
-	0xad, 0x20, 0x62, 0x55, 0x23, 0x61, 0xbd, 0xd7, 0x01, 0x9f, 0x8d, 0x6c, 0x67, 0x5c, 0xa2, 0xbd,
-	0x4e, 0x63, 0xc3, 0x20, 0x88, 0xbd, 0x8e, 0x9b, 0xc4, 0xcd, 0xbb, 0x5f, 0xf0, 0x59, 0x5e, 0x76,
-	0x34, 0x0f, 0x41, 0xfe, 0xe6, 0xb5, 0x61, 0xf0, 0xf9, 0x2c, 0xf8, 0x86, 0xf9, 0x48, 0x1f, 0x67,
-	0xa5, 0xf2, 0xba, 0x4a, 0x3f, 0x27, 0x03, 0x23, 0x76, 0x0d, 0x1e, 0x5c, 0x17, 0xa0, 0x8d, 0x67,
-	0xb1, 0xc5, 0x44, 0x94, 0xa4, 0x65, 0xb8, 0xe8, 0xb6, 0xd1, 0xc8, 0x89, 0x02, 0xd4, 0xc5, 0xe1,
-	0x21, 0xb4, 0x35, 0xcb, 0xd3, 0x24, 0x6e, 0x6f, 0x1f, 0x41, 0x57, 0x89, 0xfd, 0x43, 0xc8, 0xc4,
-	0xf4, 0x02, 0xab, 0x9a, 0x21, 0xff, 0x73, 0x70, 0x9e, 0xe3, 0x05, 0x56, 0x47, 0xa8, 0x11, 0x62,
-	0x81, 0x25, 0x50, 0xdc, 0x9e, 0x11, 0x13, 0x0f, 0xa2, 0x73, 0x3e, 0x23, 0xa6, 0x04, 0x25, 0xf6,
-	0xb7, 0xc7, 0xc4, 0xc0, 0xc3, 0x2c, 0xb8, 0xa0, 0x3c, 0xec, 0x64, 0x82, 0x15, 0x59, 0x94, 0x6e,
-	0xa7, 0xd1, 0xa4, 0x0c, 0x89, 0x71, 0x63, 0x53, 0xca, 0xdf, 0x6a, 0x4f, 0xda, 0xf1, 0x18, 0x77,
-	0xca, 0xed, 0xe8, 0x94, 0x17, 0x89, 0xa0, 0x1f, 0xa3, 0x46, 0x3a, 0x1f, 0xa3, 0x85, 0x3a, 0xbd,
-	0x6d, 0x14, 0xf1, 0x71, 0x72, 0xca, 0xc6, 0x1e, 0x6f, 0x0d, 0xd2, 0xc3, 0x9b, 0x81, 0x3a, 0x3a,
-	0x6d, 0xc4, 0x67, 0x45, 0xcc, 0xc8, 0x4e, 0x93, 0xe2, 0xce, 0x4e, 0x53, 0x18, 0x78, 0xf8, 0xc5,
-	0x20, 0xf8, 0xa6, 0x94, 0x9a, 0x7b, 0xba, 0xad, 0xa8, 0x3c, 0x3e, 0xe4, 0x51, 0x31, 0x0e, 0xdf,
-	0x76, 0xd9, 0x71, 0xa2, 0xca, 0xf5, 0xad, 0x79, 0x54, 0xf0, 0x63, 0xad, 0xb6, 0xe8, 0x7a, 0xc4,
-	0x39, 0x1f, 0xab, 0x85, 0xf8, 0x1f, 0x2b, 0x46, 0xf1, 0x04, 0x52, 0xcb, 0x65, 0xfd, 0xb4, 0x48,
-	0xea, 0xdb, 0x45, 0xd4, 0x52, 0x27, 0x87, 0xe7, 0xc7, 0x4a, 0x68, 0x67, 0xcb, 0x2a, 0x65, 0xc3,
-	0x9d, 0x31, 0xc3, 0xbe, 0x38, 0xe9, 0x59, 0x8d, 0x0a, 0xbf, 0xe7, 0xd6, 0xc8, 0x18, 0xf6, 0xc5,
-	0x09, 0xcf, 0xc6, 0xb4, 0xe6, 0xf3, 0xec, 0x98, 0xda, 0x86, 0x7d, 0x71, 0x9c, 0x40, 0x1b, 0x79,
-	0x9e, 0x9e, 0x1f, 0xb0, 0x69, 0x9e, 0x92, 0x09, 0x64, 0x21, 0xfe, 0x04, 0xc2, 0x28, 0xae, 0x7e,
-	0x0e, 0x78, 0x55, 0x5b, 0x39, 0xab, 0x9f, 0x5a, 0xe4, 0xaf, 0x7e, 0x1a, 0x04, 0x17, 0x0c, 0x07,
-	0x7c, 0x93, 0xa7, 0xd5, 0x36, 0xb6, 0x7d, 0x38, 0xaa, 0x34, 0x35, 0xe1, 0x2f, 0x18, 0x10, 0xa9,
-	0x0f, 0xf1, 0x9b, 0xea, 0x39, 0x2a, 0xd8, 0xdd, 0xf3, 0x07, 0x49, 0x76, 0x12, 0xba, 0xd7, 0x46,
-	0x0d, 0x10, 0x87, 0xf8, 0x4e, 0x10, 0x57, 0xe9, 0x8f, 0xb3, 0x31, 0x77, 0x57, 0xe9, 0x95, 0xc4,
-	0x5f, 0xa5, 0x03, 0x81, 0x4d, 0xee, 0x33, 0xca, 0x64, 0x25, 0xf1, 0x9b, 0x04, 0xc2, 0x35, 0x1f,
-	0xc0, 0x6e, 0x93, 0x9c, 0x0f, 0xd0, 0xfe, 0x72, 0xa9, 0x93, 0xc3, 0x19, 0xda, 0x94, 0xeb, 0xdb,
-	0x4c, 0xc4, 0xc7, 0xee, 0x0c, 0xb5, 0x10, 0x7f, 0x86, 0x62, 0x14, 0x37, 0xe9, 0x80, 0xab, 0xed,
-	0xc6, 0xa2, 0x3b, 0x3f, 0x5a, 0x5b, 0x8d, 0xa5, 0x4e, 0x0e, 0x97, 0xeb, 0x3b, 0xd3, 0xfa, 0x99,
-	0x39, 0x93, 0x5c, 0xca, 0xfc, 0xe5, 0xba, 0x62, 0x70, 0xf4, 0x52, 0x50, 0x3d, 0x4e, 0x77, 0xf4,
-	0x5a, 0xee, 0x8f, 0xde, 0xe2, 0xc0, 0xc9, 0x9f, 0x07, 0xc1, 0x25, 0xd3, 0xcb, 0x1e, 0xaf, 0xc6,
-	0xc8, 0x93, 0x28, 0x4d, 0xc6, 0x91, 0x60, 0x07, 0xfc, 0x84, 0x65, 0xe1, 0x7b, 0x9e, 0x68, 0x25,
-	0x3f, 0xb4, 0x14, 0x54, 0x14, 0xef, 0xcf, 0xaf, 0x88, 0xf3, 0x44, 0xd2, 0x8f, 0x4b, 0xb6, 0x19,
-	0x95, 0xc4, 0x4c, 0x66, 0x21, 0xfe, 0x3c, 0xc1, 0x28, 0x2e, 0xda, 0xa4, 0xfc, 0xde, 0xb3, 0x9c,
-	0x15, 0x09, 0xcb, 0x62, 0xe6, 0x2e, 0xda, 0x30, 0xe5, 0x2f, 0xda, 0x1c, 0x34, 0x6e, 0xa4, 0x9e,
-	0x9c, 0xda, 0xf7, 0x1b, 0x98, 0xf0, 0xdc, 0x6f, 0x10, 0x28, 0x6e, 0xa4, 0x06, 0xe0, 0x8a, 0xe1,
-	0xa6, 0xdf, 0x0a, 0xba, 0x5e, 0x58, 0xed, 0x49, 0xb7, 0xb6, 0xfd, 0x8a, 0x19, 0x55, 0xc3, 0xa4,
-	0x23, 0xf4, 0x91, 0x39, 0x5c, 0x56, 0x7a, 0xb1, 0xee, 0x73, 0x86, 0x7d, 0x96, 0x46, 0xf5, 0x12,
-	0xe2, 0x39, 0x67, 0x68, 0x98, 0x3e, 0xe7, 0x0c, 0x06, 0x0b, 0x0e, 0x7f, 0x36, 0x08, 0x2e, 0xba,
-	0x3c, 0x3e, 0xcc, 0x6b, 0xbf, 0xeb, 0xdd, 0xb6, 0x24, 0x49, 0x5c, 0xe0, 0xf8, 0x35, 0x20, 0x86,
-	0x1f, 0x05, 0xaf, 0x36, 0x22, 0x7d, 0xbf, 0x03, 0x01, 0xd8, 0x55, 0x84, 0x8a, 0x1f, 0x73, 0xca,
-	0xfd, 0x5a, 0x6f, 0x5e, 0x17, 0xe8, 0x76, 0x5c, 0x25, 0x2a, 0xd0, 0x95, 0x0d, 0x10, 0x13, 0x05,
-	0xba, 0x03, 0xc3, 0x2b, 0x75, 0x83, 0x54, 0xe3, 0xc4, 0x35, 0xc7, 0x29, 0x13, 0xe6, 0x28, 0x59,
-	0xee, 0x06, 0x71, 0xee, 0x34, 0x62, 0xa8, 0x8b, 0x6f, 0xf8, 0x2c, 0xa0, 0xda, 0x78, 0xa5, 0x17,
-	0x0b, 0x0e, 0x7f, 0x12, 0xbc, 0xd6, 0x6a, 0xd8, 0x36, 0x8b, 0xc4, 0xac, 0x60, 0xe3, 0x70, 0xad,
-	0x23, 0xee, 0x06, 0x54, 0xae, 0xd7, 0xfb, 0x2b, 0x80, 0xff, 0x5f, 0x0d, 0x82, 0xd7, 0x6d, 0x4e,
-	0x76, 0xb1, 0x8a, 0xe1, 0x96, 0xcf, 0xa4, 0xcd, 0xaa, 0x30, 0x6e, 0xcf, 0xa5, 0xd3, 0xda, 0x83,
-	0x99, 0x89, 0xbc, 0x71, 0x1a, 0x25, 0x69, 0x74, 0x98, 0x32, 0xe7, 0x1e, 0xcc, 0xca, 0x4d, 0x85,
-	0x7a, 0xf7, 0x60, 0xa4, 0x4a, 0x6b, 0x96, 0xac, 0xc7, 0x9b, 0x51, 0xbb, 0xdf, 0xa4, 0x47, 0xa5,
-	0xa3, 0x74, 0x5f, 0xed, 0x49, 0x83, 0x5b, 0xd1, 0x9c, 0x5d, 0x55, 0x3f, 0x9b, 0x49, 0xee, 0xf2,
-	0x0a, 0xaa, 0x8e, 0x4c, 0x5f, 0xed, 0x49, 0x83, 0xd7, 0x1f, 0x07, 0xaf, 0xb6, 0xbd, 0xc2, 0xa2,
-	0xb0, 0xd6, 0x69, 0x0a, 0xad, 0x0b, 0xeb, 0xfd, 0x15, 0x74, 0xa9, 0xff, 0x51, 0x52, 0x0a, 0x5e,
-	0x9c, 0x8f, 0x8e, 0xf9, 0x59, 0xf3, 0x96, 0x8e, 0x3d, 0x5a, 0x01, 0x18, 0x1a, 0x04, 0x51, 0xea,
-	0xbb, 0xc9, 0x96, 0x2b, 0xfd, 0x36, 0x4f, 0x49, 0xb8, 0x32, 0x88, 0x0e, 0x57, 0x36, 0xa9, 0xe7,
-	0xaa, 0xa6, 0x55, 0xfa, 0xd5, 0xa3, 0x25, 0x77, 0xa8, 0xed, 0xd7, 0x8f, 0x96, 0xbb, 0x41, 0xbd,
-	0xfd, 0xda, 0x4e, 0x52, 0xf6, 0xf0, 0xe8, 0x28, 0xe5, 0xd1, 0x18, 0x6d, 0xbf, 0x2a, 0xc9, 0x10,
-	0x44, 0xc4, 0xf6, 0x0b, 0x21, 0x7a, 0x2e, 0xaf, 0x04, 0xd5, 0xe8, 0x68, 0x2c, 0x5f, 0x6b, 0xab,
-	0x19, 0x62, 0x62, 0x2e, 0x77, 0x60, 0x7a, 0xeb, 0x52, 0x09, 0x1f, 0xe7, 0xb5, 0xf1, 0xcb, 0x6d,
-	0x2d, 0x29, 0x21, 0xb6, 0x2e, 0x36, 0xa1, 0x4b, 0xf0, 0xea, 0xf7, 0x2d, 0x7e, 0x96, 0xd5, 0x46,
-	0x1d, 0x0d, 0x6d, 0x64, 0x44, 0x09, 0x8e, 0x19, 0x30, 0xfc, 0x71, 0xf0, 0xbf, 0xb5, 0xe1, 0x82,
-	0xe7, 0xe1, 0x82, 0x43, 0xa1, 0x30, 0x2e, 0x29, 0x2f, 0x91, 0x72, 0x7d, 0xd7, 0x5e, 0xfd, 0x5a,
-	0x5f, 0x39, 0x3d, 0x2e, 0xa3, 0x09, 0x43, 0x77, 0xed, 0xb5, 0x8a, 0x96, 0x12, 0x77, 0xed, 0x6d,
-	0x4a, 0xdf, 0x1f, 0x57, 0xb2, 0x3d, 0x3e, 0x06, 0xeb, 0x8e, 0x16, 0x2a, 0x21, 0x71, 0x7f, 0xdc,
-	0x82, 0xf4, 0xd1, 0xfa, 0x5e, 0x74, 0x9a, 0x4c, 0xd4, 0xbc, 0x2c, 0x87, 0x77, 0x89, 0x8e, 0xd6,
-	0x35, 0x33, 0x34, 0x20, 0xe2, 0x68, 0x9d, 0x84, 0xc1, 0xe7, 0x9f, 0x06, 0xc1, 0x65, 0xcd, 0xdc,
-	0x6f, 0x4e, 0x3c, 0x76, 0xb2, 0x23, 0xfe, 0x34, 0x11, 0xc7, 0xd5, 0x16, 0xbb, 0x0c, 0xdf, 0xa5,
-	0x4c, 0xba, 0x79, 0x15, 0xca, 0x7b, 0x73, 0xeb, 0xe9, 0x42, 0xab, 0x39, 0x09, 0x91, 0xb3, 0xf9,
-	0x76, 0xc1, 0xa7, 0x52, 0x03, 0x15, 0x5a, 0xea, 0xc0, 0x04, 0x73, 0x44, 0xa1, 0xe5, 0xe3, 0x75,
-	0x17, 0x2b, 0xe7, 0x29, 0xcf, 0x70, 0x17, 0x6b, 0x0b, 0x95, 0x90, 0xe8, 0xe2, 0x16, 0xa4, 0xa7,
-	0xad, 0x46, 0x24, 0x37, 0xed, 0x1b, 0x69, 0x8a, 0xa6, 0x2d, 0xa5, 0xaa, 0x00, 0x62, 0xda, 0x72,
-	0x82, 0xe0, 0x67, 0x3f, 0x78, 0xa1, 0x7a, 0xa4, 0x8f, 0x0a, 0x76, 0x9a, 0x30, 0x7c, 0x67, 0x69,
-	0x48, 0x88, 0xf1, 0x6f, 0x13, 0x7a, 0x64, 0x3d, 0xce, 0xca, 0x3c, 0x8d, 0xca, 0x63, 0xb8, 0x33,
-	0xb3, 0xdb, 0xdc, 0x08, 0xf1, 0xad, 0xd9, 0xb5, 0x0e, 0x4a, 0x6f, 0xc4, 0x1b, 0x99, 0x9a, 0x62,
-	0x16, 0xdd, 0xaa, 0xad, 0x69, 0x66, 0xa9, 0x93, 0x03, 0x27, 0x51, 0xf0, 0x72, 0xf3, 0xe3, 0x6e,
-	0x94, 0x25, 0x47, 0xac, 0xc4, 0x77, 0x13, 0x58, 0x4c, 0xcc, 0xbc, 0x0e, 0x4c, 0xaf, 0x18, 0x77,
-	0x53, 0x1e, 0x9f, 0xc0, 0xd4, 0x6b, 0x3f, 0xd8, 0x5a, 0x82, 0xe7, 0xde, 0x2b, 0x3e, 0x44, 0x4f,
-	0xbe, 0xb5, 0x60, 0x9f, 0xe5, 0x69, 0x14, 0xe3, 0x0b, 0x63, 0xa9, 0x03, 0x32, 0x62, 0xf2, 0xc5,
-	0x0c, 0x0a, 0x17, 0x2e, 0xa2, 0x5d, 0xe1, 0xa2, 0x7b, 0xe8, 0x2b, 0x3e, 0x44, 0x2f, 0x3f, 0xb5,
-	0x60, 0x94, 0xa7, 0x89, 0x40, 0xe9, 0x27, 0x35, 0x6a, 0x09, 0x91, 0x7e, 0x36, 0x81, 0x4c, 0xee,
-	0xb2, 0x62, 0xc2, 0x9c, 0x26, 0x6b, 0x89, 0xd7, 0x64, 0x43, 0x80, 0xc9, 0xbd, 0xe0, 0xff, 0x64,
-	0xdb, 0x79, 0x7e, 0x1e, 0x5e, 0x72, 0x35, 0x8b, 0xe7, 0xe7, 0xca, 0xe0, 0x65, 0x1a, 0x40, 0x21,
-	0x3e, 0x8a, 0x4a, 0xe1, 0x0e, 0xb1, 0x96, 0x78, 0x43, 0x6c, 0x08, 0xbd, 0x36, 0xca, 0x10, 0x67,
-	0x02, 0xad, 0x8d, 0x10, 0x80, 0x71, 0x7b, 0x76, 0x89, 0x94, 0xeb, 0x11, 0x2c, 0x7b, 0x85, 0x89,
-	0xed, 0x84, 0xa5, 0xe3, 0x12, 0x8d, 0x60, 0x78, 0xee, 0x8d, 0x94, 0x18, 0xc1, 0x6d, 0x0a, 0xa5,
-	0x12, 0x1c, 0x6b, 0xba, 0x5a, 0x87, 0x4e, 0x34, 0xaf, 0xf8, 0x10, 0x3d, 0x2f, 0x34, 0x41, 0x6f,
-	0x46, 0x45, 0x91, 0x54, 0x8b, 0xee, 0xa2, 0x3b, 0xa0, 0x46, 0x4e, 0xcc, 0x0b, 0x2e, 0x4e, 0x17,
-	0x64, 0xb5, 0xd4, 0xb8, 0xa5, 0x71, 0x35, 0xda, 0x71, 0x49, 0xb3, 0xd8, 0x85, 0x19, 0x2f, 0x87,
-	0x29, 0x17, 0xbb, 0xfc, 0x94, 0x1d, 0xf0, 0x7b, 0xcf, 0x92, 0x52, 0x24, 0xd9, 0x04, 0x16, 0xb6,
-	0xdb, 0x84, 0x25, 0x17, 0x4c, 0xbc, 0x1c, 0xd6, 0xa9, 0xa4, 0xd7, 0x57, 0x14, 0xcb, 0x1e, 0x3b,
-	0x73, 0xae, 0xaf, 0xd8, 0xa2, 0xe2, 0x88, 0xf5, 0xd5, 0xc7, 0xeb, 0xdd, 0xb8, 0x72, 0x0e, 0xef,
-	0x88, 0x1f, 0xf0, 0xa6, 0xd4, 0xa1, 0xac, 0x61, 0x90, 0xd8, 0x10, 0x79, 0x15, 0xf4, 0x2e, 0x45,
-	0xf9, 0xd7, 0x23, 0x61, 0x99, 0xb0, 0xd3, 0x1e, 0x0d, 0xd7, 0x7b, 0x90, 0x0e, 0x57, 0xfa, 0xaa,
-	0x91, 0x72, 0xd5, 0xbe, 0x69, 0xbc, 0xde, 0x83, 0x34, 0x76, 0xf6, 0x66, 0xb3, 0xee, 0x46, 0xf1,
-	0xc9, 0xa4, 0xe0, 0xb3, 0x6c, 0xbc, 0xc9, 0x53, 0x5e, 0xa0, 0x9d, 0xbd, 0x15, 0x35, 0x42, 0x89,
-	0x9d, 0x7d, 0x87, 0x8a, 0x2e, 0x70, 0xcc, 0x28, 0x36, 0xd2, 0x64, 0x82, 0xf7, 0x65, 0x96, 0xa1,
-	0x1a, 0x20, 0x0a, 0x1c, 0x27, 0xe8, 0x48, 0x22, 0xb9, 0x6f, 0x13, 0x49, 0x1c, 0xa5, 0xd2, 0xdf,
-	0x1a, 0x6d, 0xc6, 0x02, 0x3b, 0x93, 0xc8, 0xa1, 0xe0, 0x68, 0xe7, 0xc1, 0xac, 0xc8, 0x76, 0x32,
-	0xc1, 0xc9, 0x76, 0x36, 0x40, 0x67, 0x3b, 0x0d, 0x10, 0xcd, 0x7e, 0x07, 0xec, 0x59, 0x15, 0x4d,
-	0xf5, 0x8f, 0x6b, 0xf6, 0xab, 0x7e, 0x1f, 0x82, 0xdc, 0x37, 0xfb, 0x21, 0x0e, 0x35, 0x06, 0x9c,
-	0xc8, 0x84, 0xf1, 0x68, 0xdb, 0x69, 0xb2, 0xdc, 0x0d, 0xba, 0xfd, 0x8c, 0xc4, 0x79, 0xca, 0x7c,
-	0x7e, 0x6a, 0xa0, 0x8f, 0x9f, 0x06, 0xd4, 0x47, 0xfe, 0x56, 0x7b, 0x8e, 0x59, 0x7c, 0xd2, 0x7a,
-	0x73, 0xc2, 0x0e, 0x54, 0x22, 0xc4, 0x91, 0x3f, 0x81, 0xba, 0xbb, 0x68, 0x27, 0xe6, 0x99, 0xaf,
-	0x8b, 0x2a, 0x79, 0x9f, 0x2e, 0x02, 0x4e, 0xef, 0x0d, 0x95, 0x14, 0x32, 0x53, 0x76, 0xd3, 0x0a,
-	0x61, 0xc1, 0x84, 0x88, 0xbd, 0x21, 0x09, 0xeb, 0x73, 0x5a, 0xec, 0x73, 0xb7, 0xfd, 0x2e, 0x61,
-	0xcb, 0xca, 0x2e, 0xfd, 0x2e, 0x21, 0xc5, 0xd2, 0x8d, 0x94, 0x39, 0xd2, 0x61, 0xc5, 0xce, 0x93,
-	0x9b, 0xfd, 0x60, 0xfd, 0x1e, 0x81, 0xe5, 0x73, 0x33, 0x65, 0x51, 0x21, 0xbd, 0xae, 0x7a, 0x0c,
-	0x69, 0x8c, 0x78, 0x8f, 0xc0, 0x83, 0xa3, 0x29, 0xcc, 0xf2, 0xbc, 0xc9, 0x33, 0xc1, 0x32, 0xe1,
-	0x9a, 0xc2, 0x6c, 0x63, 0x00, 0xfa, 0xa6, 0x30, 0x4a, 0x01, 0xe5, 0x6d, 0x7d, 0x5c, 0xc2, 0xc4,
-	0x5e, 0x34, 0x75, 0x16, 0x56, 0xf2, 0x28, 0x44, 0xca, 0x7d, 0x79, 0x8b, 0x38, 0x34, 0xe4, 0x77,
-	0xa6, 0xd1, 0x44, 0x79, 0x71, 0x68, 0xd7, 0xf2, 0x96, 0x9b, 0xe5, 0x6e, 0x10, 0xf9, 0x79, 0x92,
-	0x8c, 0x19, 0xf7, 0xf8, 0xa9, 0xe5, 0x7d, 0xfc, 0x60, 0x10, 0x55, 0x4e, 0x55, 0x6b, 0xe5, 0xa6,
-	0x67, 0x23, 0x1b, 0xc3, 0x56, 0x6f, 0x48, 0x3c, 0x14, 0xc4, 0xf9, 0x2a, 0x27, 0x82, 0x47, 0xe3,
-	0xa3, 0x39, 0x3b, 0xf4, 0x8d, 0x0f, 0x75, 0x34, 0xd8, 0x67, 0x7c, 0xb8, 0x60, 0xf0, 0xf9, 0x43,
-	0x18, 0x1f, 0x5b, 0x91, 0x88, 0x4e, 0x13, 0x76, 0xf6, 0x24, 0x61, 0x67, 0xb0, 0x57, 0x74, 0xb4,
-	0xb7, 0xa1, 0x86, 0x15, 0x86, 0x37, 0x8e, 0x6b, 0xbd, 0x79, 0x8f, 0x6f, 0xa8, 0xce, 0x3b, 0x7d,
-	0xa3, 0x32, 0x7d, 0xad, 0x37, 0xef, 0xf1, 0x0d, 0xdf, 0x25, 0x74, 0xfa, 0x46, 0x1f, 0x27, 0xac,
-	0xf5, 0xe6, 0xc1, 0xf7, 0xcf, 0x07, 0xc1, 0xc5, 0x96, 0xf3, 0xaa, 0x06, 0x8a, 0x45, 0x72, 0xca,
-	0x5c, 0xa5, 0x9c, 0x6d, 0x4f, 0xa1, 0xbe, 0x52, 0x8e, 0x56, 0x81, 0x28, 0x7e, 0x3d, 0x08, 0x5e,
-	0x77, 0x45, 0xf1, 0x88, 0x97, 0x49, 0x7d, 0xe5, 0x79, 0xbb, 0x87, 0xd1, 0x06, 0xf6, 0x6d, 0x58,
-	0x7c, 0x4a, 0xfa, 0xc2, 0xc8, 0x42, 0xf5, 0x4b, 0x8a, 0x37, 0x3d, 0xf6, 0xda, 0xef, 0x2a, 0xae,
-	0xf6, 0xa4, 0xf5, 0xd5, 0x8d, 0xc5, 0x98, 0x77, 0x46, 0xbe, 0x5e, 0x75, 0x5e, 0x1b, 0xad, 0xf7,
-	0x57, 0x00, 0xf7, 0xbf, 0x6c, 0x6a, 0x7a, 0xec, 0x1f, 0x06, 0xc1, 0xad, 0x3e, 0x16, 0xd1, 0x40,
-	0xb8, 0x3d, 0x97, 0x0e, 0x04, 0xf2, 0xd7, 0x41, 0x70, 0xc5, 0x19, 0x88, 0x7d, 0x7b, 0xf8, 0xad,
-	0x3e, 0xb6, 0xdd, 0xb7, 0x88, 0x1f, 0x7c, 0x19, 0x55, 0x88, 0xee, 0xb7, 0xcd, 0xd6, 0xba, 0xd1,
-	0xa8, 0x5f, 0x24, 0x7f, 0x58, 0x8c, 0x59, 0x01, 0x23, 0xd6, 0x97, 0x74, 0x1a, 0xc6, 0xe3, 0xf6,
-	0x9d, 0x39, 0xb5, 0x20, 0x9c, 0xdf, 0x0f, 0x82, 0x05, 0x0b, 0x86, 0xaf, 0x5c, 0x8c, 0x78, 0x7c,
-	0x96, 0x0d, 0x1a, 0x07, 0xf4, 0xee, 0xbc, 0x6a, 0xd4, 0x48, 0x36, 0xe0, 0xfa, 0x3b, 0xae, 0xdb,
-	0x3d, 0x0d, 0x5b, 0x5f, 0x76, 0xdd, 0x99, 0x4f, 0x09, 0x62, 0xf9, 0xfb, 0x20, 0xb8, 0x66, 0xb1,
-	0xfa, 0x20, 0x1e, 0x9d, 0x87, 0x7c, 0xe8, 0xb1, 0x4f, 0x29, 0xa9, 0xe0, 0xbe, 0xfd, 0xe5, 0x94,
-	0xf5, 0x57, 0xca, 0x96, 0xca, 0x76, 0x92, 0x0a, 0x56, 0xb4, 0xbf, 0x52, 0xb6, 0xed, 0x4a, 0x6a,
-	0x48, 0x7f, 0xa5, 0xec, 0xc1, 0x8d, 0xaf, 0x94, 0x1d, 0x9e, 0x9d, 0x5f, 0x29, 0x3b, 0xad, 0x79,
-	0xbf, 0x52, 0xf6, 0x6b, 0x50, 0x8b, 0x4f, 0x13, 0x82, 0x3c, 0x78, 0xee, 0x65, 0xd1, 0x3e, 0x87,
-	0xbe, 0x35, 0x8f, 0x0a, 0xb1, 0xfc, 0x4a, 0xae, 0x7e, 0xa7, 0xa9, 0xc7, 0x33, 0xb5, 0xde, 0x6b,
-	0x5a, 0xeb, 0xcd, 0x83, 0xef, 0x4f, 0x61, 0xdf, 0xa3, 0x16, 0x1b, 0x5e, 0xd4, 0x5f, 0xa8, 0xaf,
-	0xf8, 0x16, 0x8f, 0xca, 0x82, 0xd9, 0xf3, 0x37, 0xfb, 0xc1, 0x44, 0x73, 0x2b, 0x02, 0x3a, 0x7d,
-	0xd8, 0x65, 0x08, 0x75, 0xf9, 0x5a, 0x6f, 0x9e, 0x58, 0xe4, 0xa4, 0x6f, 0xd9, 0xdb, 0x3d, 0x8c,
-	0xd9, 0x7d, 0xbd, 0xde, 0x5f, 0x41, 0xbf, 0x94, 0xd1, 0x72, 0x5f, 0xf7, 0x73, 0xe7, 0x13, 0xb4,
-	0x7a, 0x79, 0xb5, 0x27, 0xed, 0x2b, 0x6e, 0xcc, 0xe5, 0xbd, 0xab, 0xb8, 0x71, 0x2e, 0xf1, 0x77,
-	0xe6, 0x53, 0x82, 0x58, 0xfe, 0x38, 0x08, 0x2e, 0x91, 0xb1, 0x40, 0x16, 0xbc, 0xdb, 0xd7, 0x32,
-	0xca, 0x86, 0xf7, 0xe6, 0xd6, 0x83, 0xa0, 0xfe, 0x32, 0x08, 0x2e, 0x7b, 0x82, 0x92, 0xe9, 0x31,
-	0x87, 0x75, 0x3b, 0x4d, 0xde, 0x9f, 0x5f, 0x91, 0x5a, 0xec, 0x4d, 0x7c, 0xd4, 0xfe, 0x78, 0xd7,
-	0x63, 0x7b, 0x44, 0x7f, 0xbc, 0xdb, 0xad, 0x85, 0x0f, 0x7f, 0xaa, 0x92, 0x04, 0xf6, 0x45, 0xae,
-	0xc3, 0x9f, 0xba, 0x62, 0x41, 0xfb, 0xa1, 0xa5, 0x4e, 0xce, 0xe5, 0xe4, 0xde, 0xb3, 0x3c, 0xca,
-	0xc6, 0xb4, 0x13, 0x29, 0xef, 0x76, 0xa2, 0x38, 0x7c, 0x68, 0x56, 0x49, 0xf7, 0x79, 0xb3, 0xc9,
-	0xbb, 0x4e, 0xe9, 0x2b, 0xc4, 0x7b, 0x68, 0xd6, 0x42, 0x09, 0x6f, 0x50, 0xd1, 0xfa, 0xbc, 0xa1,
-	0x42, 0xf6, 0x46, 0x1f, 0x14, 0x6d, 0x1f, 0x94, 0x37, 0x75, 0x16, 0x7f, 0xd3, 0x67, 0xa5, 0x75,
-	0x1e, 0xbf, 0xda, 0x93, 0x26, 0xdc, 0x8e, 0x98, 0xf8, 0x88, 0x45, 0x63, 0x56, 0x78, 0xdd, 0x2a,
-	0xaa, 0x97, 0x5b, 0x93, 0x76, 0xb9, 0xdd, 0xe4, 0xe9, 0x6c, 0x9a, 0x41, 0x67, 0x92, 0x6e, 0x4d,
-	0xaa, 0xdb, 0x2d, 0xa2, 0xf1, 0x71, 0xa1, 0x76, 0x5b, 0x17, 0x97, 0x37, 0xfc, 0x66, 0xac, 0x9a,
-	0x72, 0xa5, 0x17, 0x4b, 0xb7, 0x13, 0xd2, 0xa8, 0xa3, 0x9d, 0x28, 0x93, 0x56, 0x7b, 0xd2, 0xf8,
-	0xdc, 0xce, 0x70, 0xab, 0xf2, 0x69, 0xad, 0xc3, 0x56, 0x2b, 0xa5, 0xd6, 0xfb, 0x2b, 0xe0, 0x53,
-	0x52, 0xc8, 0xaa, 0x6a, 0x57, 0xb4, 0x9d, 0xa4, 0x69, 0xb8, 0xe2, 0x49, 0x93, 0x06, 0xf2, 0x9e,
-	0x92, 0x3a, 0x60, 0x22, 0x93, 0x9b, 0x53, 0xc5, 0x2c, 0xec, 0xb2, 0x53, 0x53, 0xbd, 0x32, 0xd9,
-	0xa4, 0xd1, 0x69, 0x9b, 0xf1, 0xa8, 0x55, 0x6b, 0x87, 0xfe, 0x07, 0xd7, 0x6a, 0xf0, 0x5a, 0x6f,
-	0x1e, 0xdd, 0x96, 0xd7, 0x54, 0xbd, 0xb2, 0x5c, 0xa5, 0x4c, 0x58, 0x2b, 0xc9, 0xb5, 0x0e, 0x0a,
-	0x9d, 0x58, 0xca, 0x61, 0xf4, 0x34, 0x19, 0x4f, 0x98, 0x70, 0xde, 0x20, 0x99, 0x80, 0xf7, 0x06,
-	0x09, 0x81, 0xa8, 0xeb, 0xe4, 0xef, 0x23, 0x26, 0x0e, 0xa2, 0x62, 0xc2, 0xc4, 0xce, 0xd8, 0xd5,
-	0x75, 0xa0, 0x6c, 0x50, 0xbe, 0xae, 0x73, 0xd2, 0x68, 0x36, 0x50, 0x6e, 0xe1, 0x4b, 0xe0, 0x1b,
-	0x3e, 0x33, 0xe8, 0x73, 0xe0, 0x95, 0x5e, 0x2c, 0x5a, 0x51, 0xb4, 0xc3, 0x64, 0x9a, 0x08, 0xd7,
-	0x8a, 0x62, 0xd8, 0xa8, 0x10, 0xdf, 0x8a, 0xd2, 0x46, 0xa9, 0xe6, 0x55, 0x35, 0xc2, 0xce, 0xd8,
-	0xdf, 0x3c, 0xc9, 0xf4, 0x6b, 0x9e, 0x62, 0x5b, 0x17, 0x9e, 0x99, 0x4a, 0x19, 0x71, 0x0c, 0x5b,
-	0x65, 0x47, 0x6e, 0xd7, 0x1f, 0xc7, 0x61, 0xd0, 0x37, 0xeb, 0x50, 0x0a, 0xc6, 0xf7, 0x17, 0x8a,
-	0x6b, 0xee, 0x64, 0xf3, 0x9c, 0x45, 0x45, 0x94, 0xc5, 0xce, 0xad, 0x69, 0x6d, 0xb0, 0x45, 0xfa,
-	0xb6, 0xa6, 0xa4, 0x06, 0xba, 0x4e, 0xb7, 0x3f, 0x6b, 0x73, 0x0c, 0x05, 0xf5, 0xfd, 0x98, 0xfd,
-	0x55, 0xdb, 0xf5, 0x1e, 0x24, 0xbe, 0x4e, 0x6f, 0x00, 0x75, 0x28, 0x2f, 0x9d, 0xbe, 0xed, 0x31,
-	0x65, 0xa3, 0xbe, 0x6d, 0x30, 0xad, 0x82, 0x92, 0x5a, 0x15, 0xb8, 0x4c, 0x7c, 0xcc, 0xce, 0x5d,
-	0x49, 0xad, 0xeb, 0xd3, 0x1a, 0xf1, 0x25, 0x75, 0x1b, 0x45, 0x75, 0xa6, 0xb9, 0x0f, 0x5a, 0xf4,
-	0xe8, 0x9b, 0x5b, 0x9f, 0xa5, 0x4e, 0x0e, 0x8d, 0x9c, 0xad, 0xe4, 0xd4, 0xba, 0xc3, 0x70, 0x04,
-	0xba, 0x95, 0x9c, 0xba, 0xaf, 0x30, 0x56, 0x7a, 0xb1, 0xf8, 0xaa, 0x3e, 0x12, 0xec, 0x59, 0x73,
-	0x87, 0xee, 0x08, 0xb7, 0x96, 0xb7, 0x2e, 0xd1, 0x97, 0xbb, 0x41, 0xfd, 0xde, 0xe8, 0xa3, 0x82,
-	0xc7, 0xac, 0x2c, 0x37, 0xab, 0xb4, 0x4d, 0xd1, 0x7b, 0xa3, 0x20, 0x1b, 0x4a, 0x21, 0xf1, 0xde,
-	0x68, 0x0b, 0x02, 0xdb, 0x1f, 0x05, 0xcf, 0x3f, 0xe0, 0x93, 0x11, 0xcb, 0xc6, 0xe1, 0x1b, 0xf6,
-	0x9b, 0x9a, 0x7c, 0x32, 0xac, 0x7e, 0x56, 0xf6, 0x16, 0x28, 0xb1, 0x7e, 0xe7, 0x6d, 0x8b, 0x1d,
-	0xce, 0x26, 0x07, 0x05, 0x63, 0xe8, 0x9d, 0xb7, 0xfa, 0xf7, 0x61, 0x25, 0x20, 0xde, 0x79, 0xb3,
-	0x00, 0xbd, 0x4a, 0x2a, 0x7b, 0x55, 0x21, 0x8a, 0xdf, 0x29, 0xd3, 0x3a, 0xb5, 0x94, 0x58, 0x25,
-	0xdb, 0x94, 0xee, 0xbc, 0x5a, 0x56, 0xbf, 0x8b, 0x3d, 0x9a, 0x4d, 0xa7, 0x51, 0x71, 0x8e, 0x3a,
-	0x4f, 0xea, 0x9a, 0x00, 0xd1, 0x79, 0x4e, 0x50, 0x67, 0xa5, 0xf4, 0x23, 0xa2, 0xf8, 0xe4, 0x3e,
-	0x2f, 0xf8, 0x4c, 0x24, 0x19, 0x2b, 0x51, 0x56, 0x82, 0x05, 0x9b, 0x21, 0xb2, 0x92, 0x62, 0x75,
-	0x15, 0x57, 0x13, 0xf2, 0x75, 0xb7, 0xfa, 0xef, 0x78, 0x95, 0x82, 0x17, 0xf8, 0x2e, 0x4f, 0x5a,
-	0xc1, 0x10, 0x51, 0xc5, 0x91, 0x30, 0xea, 0xfb, 0x47, 0x49, 0x36, 0x71, 0xf6, 0x7d, 0x25, 0xf0,
-	0xf6, 0x3d, 0x00, 0x7a, 0x3e, 0x96, 0x0f, 0x4d, 0xfe, 0xe1, 0x14, 0xf8, 0x2a, 0xcd, 0xf9, 0xd0,
-	0x4d, 0x82, 0x98, 0x8f, 0xdd, 0x24, 0x72, 0xf5, 0x30, 0x67, 0x19, 0x1b, 0x37, 0x6f, 0x8b, 0xb9,
-	0x5c, 0x59, 0x84, 0xd7, 0x15, 0x26, 0x75, 0x2a, 0xec, 0x32, 0x51, 0x24, 0x71, 0x39, 0x62, 0xe2,
-	0x51, 0x54, 0x44, 0x53, 0x26, 0x58, 0x81, 0x53, 0x01, 0x90, 0xa1, 0xc5, 0x10, 0xa9, 0x40, 0xb1,
-	0xe0, 0xf0, 0x3b, 0xc1, 0x2b, 0xd5, 0xcc, 0xc5, 0x32, 0xf8, 0xc3, 0xa2, 0xf7, 0xea, 0xbf, 0xb9,
-	0x1b, 0x5e, 0x50, 0x36, 0x46, 0xa2, 0x60, 0xd1, 0xb4, 0xb1, 0xfd, 0x92, 0xfa, 0xbd, 0x06, 0xd7,
-	0x07, 0xd5, 0xbc, 0xbd, 0xc7, 0x45, 0x72, 0x54, 0x6d, 0x14, 0xe0, 0x52, 0x06, 0xcd, 0xdb, 0xa6,
-	0x78, 0xe8, 0xf9, 0x86, 0xd9, 0xc5, 0xe9, 0x91, 0x68, 0x4a, 0xf7, 0x59, 0x9e, 0xe2, 0x91, 0x68,
-	0x69, 0xd7, 0x00, 0x31, 0x12, 0x9d, 0xa0, 0xf4, 0x73, 0xf7, 0xcd, 0x7f, 0x7e, 0xbe, 0x30, 0xf8,
-	0xec, 0xf3, 0x85, 0xc1, 0xbf, 0x3f, 0x5f, 0x18, 0xfc, 0xe1, 0x8b, 0x85, 0xe7, 0x3e, 0xfb, 0x62,
-	0xe1, 0xb9, 0x7f, 0x7d, 0xb1, 0xf0, 0xdc, 0x27, 0xcf, 0xc3, 0x1f, 0x32, 0x3e, 0xfc, 0x9f, 0xfa,
-	0xcf, 0x11, 0xdf, 0xfe, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x65, 0x99, 0x84, 0x62, 0xec, 0x58,
-	0x00, 0x00,
+	// 4102 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x9c, 0xcd, 0x6f, 0x1c, 0xc7,
+	0x95, 0xc0, 0x3d, 0x97, 0xf5, 0x6e, 0x7b, 0xed, 0xf5, 0x8e, 0x77, 0xb5, 0xb6, 0xd6, 0xa6, 0x64,
+	0x7d, 0x90, 0x94, 0x28, 0x0e, 0x69, 0x49, 0x96, 0xbd, 0xf6, 0x02, 0x01, 0x45, 0x8a, 0x32, 0x61,
+	0x92, 0x52, 0x38, 0xa4, 0x04, 0x18, 0x08, 0x90, 0x66, 0x4f, 0x71, 0xd8, 0x61, 0x4f, 0x57, 0xbb,
+	0xbb, 0x66, 0x28, 0x26, 0x48, 0x90, 0x20, 0x41, 0x82, 0x04, 0x09, 0x12, 0xe4, 0xe3, 0x94, 0x43,
+	0x80, 0x5c, 0x73, 0xce, 0xff, 0x90, 0xa3, 0x8f, 0x39, 0x06, 0xf6, 0x3f, 0x12, 0x74, 0xd7, 0xeb,
+	0xfa, 0x78, 0x5d, 0xaf, 0xba, 0xc7, 0x27, 0x09, 0xf3, 0x7e, 0xef, 0xa3, 0xba, 0x5e, 0x55, 0xbd,
+	0xaa, 0xea, 0x66, 0x70, 0x25, 0x3b, 0x5e, 0xcb, 0x72, 0x2e, 0x78, 0xb1, 0x56, 0xb0, 0x7c, 0x16,
+	0x47, 0xac, 0xfe, 0x77, 0x50, 0xfd, 0xdc, 0x7f, 0x39, 0x4c, 0x2f, 0xc4, 0x45, 0xc6, 0x2e, 0xbf,
+	0xa9, 0xc9, 0x88, 0x4f, 0x26, 0x61, 0x3a, 0x2a, 0x24, 0x72, 0xf9, 0x92, 0x96, 0xb0, 0x19, 0x4b,
+	0x05, 0xfc, 0x7e, 0xf7, 0x2f, 0x7f, 0xed, 0x05, 0xaf, 0x6d, 0x26, 0x31, 0x4b, 0xc5, 0x26, 0x68,
+	0xf4, 0x3f, 0x0b, 0x5e, 0xdd, 0xc8, 0xb2, 0xc7, 0x4c, 0x3c, 0x63, 0x79, 0x11, 0xf3, 0xb4, 0x7f,
+	0x7d, 0x00, 0x0e, 0x06, 0x07, 0x59, 0x34, 0xd8, 0xc8, 0xb2, 0x81, 0x16, 0x0e, 0x0e, 0xd8, 0xe7,
+	0x53, 0x56, 0x88, 0xcb, 0x37, 0xfc, 0x50, 0x91, 0xf1, 0xb4, 0x60, 0xfd, 0x93, 0xe0, 0x3f, 0x37,
+	0xb2, 0x6c, 0xc8, 0xc4, 0x16, 0x2b, 0x1b, 0x30, 0x14, 0xa1, 0x60, 0xfd, 0xa5, 0x86, 0xaa, 0x0d,
+	0x28, 0x1f, 0xcb, 0xed, 0x20, 0xf8, 0x39, 0x0c, 0x5e, 0x29, 0xfd, 0x9c, 0x4e, 0xc5, 0x88, 0x9f,
+	0xa7, 0xfd, 0x77, 0x9b, 0x8a, 0x20, 0x52, 0xb6, 0xaf, 0xf9, 0x10, 0xb0, 0xfa, 0x3c, 0xf8, 0xf7,
+	0xe7, 0x61, 0x92, 0x30, 0xb1, 0x99, 0xb3, 0x32, 0x70, 0x5b, 0x47, 0x8a, 0x06, 0x52, 0xa6, 0xec,
+	0x5e, 0xf7, 0x32, 0x60, 0xf8, 0xb3, 0xe0, 0x55, 0x29, 0x39, 0x60, 0x11, 0x9f, 0xb1, 0xbc, 0xef,
+	0xd4, 0x02, 0x21, 0xf1, 0xc8, 0x1b, 0x10, 0xb6, 0xbd, 0xc9, 0xd3, 0x19, 0xcb, 0x85, 0xdb, 0x36,
+	0x08, 0xfd, 0xb6, 0x35, 0x04, 0xb6, 0x7f, 0xde, 0x0b, 0xde, 0xde, 0x88, 0x22, 0x3e, 0x4d, 0xc5,
+	0x2e, 0x8f, 0xc2, 0x64, 0x37, 0x4e, 0xcf, 0xf6, 0xd9, 0xf9, 0xe6, 0x69, 0xc9, 0xa7, 0x63, 0xd6,
+	0xbf, 0x67, 0x3f, 0x55, 0x89, 0x0e, 0x14, 0x3b, 0x30, 0x61, 0xe5, 0xfb, 0xfe, 0x7c, 0x4a, 0x10,
+	0xcb, 0xaf, 0x7b, 0xc1, 0x02, 0x8e, 0x65, 0xc8, 0x93, 0x19, 0xd3, 0xd1, 0xbc, 0xdf, 0x62, 0xd8,
+	0xc6, 0x55, 0x3c, 0x0f, 0xe6, 0x55, 0x83, 0x88, 0x92, 0xe0, 0x0d, 0x33, 0x5d, 0x86, 0xac, 0xa8,
+	0x86, 0xd3, 0x2d, 0x3a, 0x23, 0x00, 0x51, 0x9e, 0x6f, 0x77, 0x41, 0xc1, 0x5b, 0x1c, 0xf4, 0xc1,
+	0x5b, 0xc2, 0x0b, 0xe5, 0x6c, 0xd9, 0x69, 0xc1, 0x20, 0x94, 0xaf, 0x5b, 0x1d, 0x48, 0x70, 0xf5,
+	0xed, 0xe0, 0x3f, 0x9e, 0xf3, 0xfc, 0xac, 0xc8, 0xc2, 0x88, 0xc1, 0x50, 0xb8, 0x69, 0x6b, 0xd7,
+	0x52, 0x3c, 0x1a, 0x16, 0xdb, 0x30, 0x23, 0x69, 0x6b, 0xe1, 0x93, 0x8c, 0xe1, 0x39, 0x48, 0x2b,
+	0x96, 0x42, 0x2a, 0x69, 0x31, 0x04, 0xb6, 0xcf, 0x82, 0xbe, 0xb6, 0x7d, 0xfc, 0x1d, 0x16, 0x89,
+	0x8d, 0xd1, 0x08, 0xf7, 0x8a, 0xd6, 0xad, 0x88, 0xc1, 0xc6, 0x68, 0x44, 0xf5, 0x8a, 0x1b, 0x05,
+	0x67, 0xe7, 0xc1, 0x25, 0xe4, 0x6c, 0x37, 0x2e, 0x2a, 0x87, 0xab, 0x7e, 0x2b, 0x80, 0x29, 0xa7,
+	0x83, 0xae, 0x38, 0x38, 0xfe, 0x61, 0x2f, 0x78, 0xcb, 0xe1, 0xf9, 0x80, 0x4d, 0xf8, 0x8c, 0xf5,
+	0xd7, 0xdb, 0xad, 0x49, 0x52, 0xf9, 0x7f, 0x6f, 0x0e, 0x0d, 0x47, 0x9a, 0x0c, 0x59, 0xc2, 0x22,
+	0x41, 0xa6, 0x89, 0x14, 0xb7, 0xa6, 0x89, 0xc2, 0x8c, 0x11, 0x56, 0x0b, 0x1f, 0x33, 0xb1, 0x39,
+	0xcd, 0x73, 0x96, 0x0a, 0xb2, 0x2f, 0x35, 0xd2, 0xda, 0x97, 0x16, 0xea, 0x68, 0xcf, 0x63, 0x26,
+	0x36, 0x92, 0x84, 0x6c, 0x8f, 0x14, 0xb7, 0xb6, 0x47, 0x61, 0xe0, 0x21, 0x0a, 0x5e, 0x37, 0x9e,
+	0x98, 0xd8, 0x49, 0x4f, 0x78, 0x9f, 0x7e, 0x16, 0x95, 0x5c, 0xf9, 0x58, 0x6a, 0xe5, 0x1c, 0xcd,
+	0x78, 0xf4, 0x22, 0xe3, 0x39, 0xdd, 0x2d, 0x52, 0xdc, 0xda, 0x0c, 0x85, 0x81, 0x87, 0x6f, 0x05,
+	0xaf, 0xc1, 0x2c, 0x59, 0xaf, 0x67, 0x37, 0x9c, 0x53, 0x28, 0x5e, 0xd0, 0x6e, 0xb6, 0x50, 0x7a,
+	0x72, 0x00, 0x19, 0x4c, 0x3e, 0xd7, 0x9d, 0x7a, 0x68, 0xea, 0xb9, 0xe1, 0x87, 0x1a, 0xb6, 0xb7,
+	0x58, 0xc2, 0x48, 0xdb, 0x52, 0xd8, 0x62, 0x5b, 0x41, 0x60, 0x3b, 0x0f, 0xfe, 0x5b, 0x3d, 0x96,
+	0x72, 0x1d, 0xad, 0xe4, 0xe5, 0x24, 0xbd, 0x42, 0xb4, 0xdb, 0x84, 0x94, 0xaf, 0x3b, 0xdd, 0xe0,
+	0x46, 0x7b, 0x60, 0x04, 0xba, 0xdb, 0x83, 0xc6, 0xdf, 0x0d, 0x3f, 0x04, 0xb6, 0x7f, 0xd1, 0x0b,
+	0xde, 0x01, 0xd9, 0xa3, 0x34, 0x3c, 0x4e, 0x58, 0xb5, 0x24, 0xee, 0x33, 0x71, 0xce, 0xf3, 0xb3,
+	0xe1, 0x45, 0x1a, 0x11, 0xcb, 0xbf, 0x1b, 0x6e, 0x59, 0xfe, 0x49, 0x25, 0xa3, 0xe2, 0x83, 0x86,
+	0x0a, 0x9e, 0xe1, 0x8a, 0xaf, 0x6e, 0x81, 0xe0, 0x19, 0x55, 0xf1, 0xd9, 0x48, 0xc3, 0xea, 0x5e,
+	0x39, 0x6d, 0xba, 0xad, 0xee, 0x99, 0xf3, 0xe4, 0x35, 0x1f, 0xa2, 0xa7, 0xad, 0x3a, 0x81, 0x79,
+	0x7a, 0x12, 0x8f, 0x8f, 0xb2, 0x51, 0x99, 0xc6, 0xb7, 0xdc, 0x19, 0x6a, 0x20, 0xc4, 0xb4, 0x45,
+	0xa0, 0xe0, 0xed, 0x57, 0xba, 0x30, 0x82, 0xa1, 0xb4, 0x9d, 0xf3, 0xc9, 0x2e, 0x1b, 0x87, 0xd1,
+	0x05, 0x8c, 0xff, 0xfb, 0xbe, 0x81, 0x87, 0x69, 0x15, 0xc4, 0xfb, 0x73, 0x6a, 0x41, 0x3c, 0x7f,
+	0xea, 0x05, 0x37, 0xea, 0xe6, 0x9f, 0x86, 0xe9, 0x98, 0x41, 0x7f, 0xca, 0xe8, 0x37, 0xd2, 0xd1,
+	0x01, 0x2b, 0x44, 0x98, 0x8b, 0xfe, 0x47, 0xee, 0x46, 0xfa, 0x74, 0x54, 0x6c, 0x1f, 0x7f, 0x2d,
+	0x5d, 0xdd, 0xeb, 0xc3, 0x72, 0x62, 0x83, 0x29, 0xc0, 0xee, 0xf5, 0x4a, 0x82, 0x27, 0x80, 0x6b,
+	0x3e, 0x04, 0xac, 0x7e, 0x33, 0x08, 0xe4, 0x62, 0x59, 0x15, 0x34, 0x57, 0x2d, 0x0d, 0x58, 0x45,
+	0xad, 0x6a, 0xe6, 0x5d, 0x0f, 0xa1, 0x03, 0x95, 0xbf, 0x57, 0x75, 0x5a, 0xdf, 0xa9, 0x51, 0x89,
+	0x88, 0x40, 0x11, 0x82, 0x03, 0x1d, 0x9e, 0xf2, 0x73, 0x77, 0xa0, 0xa5, 0xc4, 0x1f, 0x28, 0x10,
+	0x7a, 0xe7, 0x04, 0x81, 0xba, 0x76, 0x4e, 0x75, 0x18, 0xbe, 0x9d, 0x13, 0x66, 0xc0, 0x30, 0x0f,
+	0xfe, 0xcb, 0x34, 0xfc, 0x90, 0xf3, 0xb3, 0x49, 0x98, 0x9f, 0xf5, 0x6f, 0xd3, 0xca, 0x35, 0xa3,
+	0x1c, 0xad, 0x74, 0x62, 0xf5, 0xd8, 0x35, 0x1d, 0x96, 0x69, 0x7e, 0x94, 0x27, 0x68, 0xec, 0x5a,
+	0x36, 0x00, 0x21, 0xc6, 0x2e, 0x81, 0xea, 0xb5, 0xda, 0xf4, 0x36, 0x64, 0x78, 0xad, 0xb6, 0xd4,
+	0x87, 0x8c, 0x5a, 0xab, 0x1d, 0x18, 0x4e, 0xa1, 0xc7, 0x79, 0x98, 0x9d, 0xba, 0x53, 0xa8, 0x12,
+	0xf9, 0x53, 0xa8, 0x46, 0x70, 0x7f, 0x0f, 0x59, 0x98, 0x47, 0xa7, 0xee, 0xfe, 0x96, 0x32, 0x7f,
+	0x7f, 0x2b, 0x46, 0xaf, 0xa1, 0xa6, 0xe1, 0xe1, 0xf4, 0xb8, 0x88, 0xf2, 0xf8, 0x98, 0xf5, 0x57,
+	0x68, 0x6d, 0x05, 0x11, 0x6b, 0x28, 0x09, 0xeb, 0x9d, 0x15, 0xf8, 0xac, 0x65, 0x3b, 0xa3, 0x02,
+	0xed, 0xac, 0x6a, 0x1b, 0x06, 0x41, 0xec, 0xac, 0xdc, 0x24, 0x6e, 0xde, 0xe3, 0x9c, 0x4f, 0xb3,
+	0xa2, 0xa5, 0x79, 0x08, 0xf2, 0x37, 0xaf, 0x09, 0x83, 0xcf, 0x17, 0xc1, 0xff, 0x98, 0x8f, 0xf4,
+	0x28, 0x2d, 0x94, 0xd7, 0x55, 0xfa, 0x39, 0x19, 0x18, 0xb1, 0x47, 0xf1, 0xe0, 0xba, 0xdc, 0xad,
+	0x3d, 0x8b, 0x2d, 0x26, 0xc2, 0x38, 0x29, 0xfa, 0x8b, 0x6e, 0x1b, 0xb5, 0x9c, 0x28, 0x77, 0x5d,
+	0x1c, 0x1e, 0x42, 0x5b, 0xd3, 0x2c, 0x89, 0xa3, 0xe6, 0x66, 0x15, 0x74, 0x95, 0xd8, 0x3f, 0x84,
+	0x4c, 0x0c, 0x4f, 0x09, 0x43, 0x26, 0xe4, 0x7f, 0x0e, 0x2f, 0x32, 0xe6, 0x9e, 0x12, 0x2c, 0xc4,
+	0x3f, 0x25, 0x60, 0x14, 0xb7, 0x67, 0xc8, 0xc4, 0x6e, 0x78, 0xc1, 0xa7, 0xc4, 0x94, 0xa0, 0xc4,
+	0xfe, 0xf6, 0x98, 0x18, 0x78, 0x98, 0x06, 0x97, 0x94, 0x87, 0x9d, 0x54, 0xb0, 0x3c, 0x0d, 0x93,
+	0xed, 0x24, 0x1c, 0x17, 0x7d, 0x62, 0xdc, 0xd8, 0x94, 0xf2, 0xb7, 0xda, 0x91, 0x76, 0x3c, 0xc6,
+	0x9d, 0x62, 0x3b, 0x9c, 0xf1, 0x3c, 0x16, 0xf4, 0x63, 0xd4, 0x48, 0xeb, 0x63, 0xb4, 0x50, 0xa7,
+	0xb7, 0x8d, 0x3c, 0x3a, 0x8d, 0x67, 0x6c, 0xe4, 0xf1, 0x56, 0x23, 0x1d, 0xbc, 0x19, 0xa8, 0xa3,
+	0xd3, 0x86, 0x7c, 0x9a, 0x47, 0x8c, 0xec, 0x34, 0x29, 0x6e, 0xed, 0x34, 0x85, 0x81, 0x87, 0x9f,
+	0xf4, 0x82, 0xff, 0x95, 0x52, 0x73, 0x07, 0xb9, 0x15, 0x16, 0xa7, 0xc7, 0x3c, 0xcc, 0x47, 0xfd,
+	0xf7, 0x5c, 0x76, 0x9c, 0xa8, 0x72, 0x7d, 0x77, 0x1e, 0x15, 0xfc, 0x58, 0x77, 0xe3, 0xc2, 0x18,
+	0x71, 0xce, 0xc7, 0x6a, 0x21, 0xfe, 0xc7, 0x8a, 0x51, 0x3c, 0x81, 0x54, 0x72, 0x59, 0xad, 0x2d,
+	0x92, 0xfa, 0x76, 0xc9, 0xb6, 0xd4, 0xca, 0xe1, 0xf9, 0xb1, 0x14, 0xda, 0xd9, 0xb2, 0x4a, 0xd9,
+	0x70, 0x67, 0xcc, 0xa0, 0x2b, 0x4e, 0x7a, 0x56, 0xa3, 0xc2, 0xef, 0xb9, 0x31, 0x32, 0x06, 0x5d,
+	0x71, 0xc2, 0xb3, 0x31, 0xad, 0xf9, 0x3c, 0x3b, 0xa6, 0xb6, 0x41, 0x57, 0x1c, 0x27, 0xd0, 0x46,
+	0x96, 0x25, 0x17, 0x87, 0x6c, 0x92, 0x25, 0x64, 0x02, 0x59, 0x88, 0x3f, 0x81, 0x30, 0x8a, 0xab,
+	0x9f, 0x43, 0x5e, 0xd6, 0x56, 0xce, 0xea, 0xa7, 0x12, 0xf9, 0xab, 0x9f, 0x1a, 0xc1, 0x05, 0xc3,
+	0x21, 0xdf, 0xe4, 0x49, 0xb9, 0x69, 0x6e, 0x1e, 0xc5, 0x2a, 0x4d, 0x4d, 0xf8, 0x0b, 0x06, 0x44,
+	0xea, 0x0b, 0x95, 0xba, 0x56, 0x0f, 0x73, 0xf6, 0xf0, 0x62, 0x37, 0x4e, 0xcf, 0xfa, 0xee, 0xb5,
+	0x51, 0x03, 0xc4, 0x85, 0x8a, 0x13, 0xc4, 0x7b, 0x82, 0xa3, 0x74, 0xc4, 0xdd, 0x7b, 0x82, 0x52,
+	0xe2, 0xdf, 0x13, 0x00, 0x81, 0x4d, 0x1e, 0x30, 0xca, 0x64, 0x29, 0xf1, 0x9b, 0x04, 0xc2, 0x35,
+	0x1f, 0xc0, 0xde, 0x96, 0x9c, 0x0f, 0xd0, 0x6e, 0x76, 0xa9, 0x95, 0xc3, 0x19, 0x5a, 0x6f, 0x0e,
+	0xb6, 0x99, 0x88, 0x4e, 0xdd, 0x19, 0x6a, 0x21, 0xfe, 0x0c, 0xc5, 0x28, 0x6e, 0xd2, 0x21, 0x57,
+	0x9b, 0x9b, 0x45, 0x77, 0x7e, 0x34, 0x36, 0x36, 0x4b, 0xad, 0x1c, 0x2e, 0xd7, 0x77, 0x26, 0xd5,
+	0x33, 0x73, 0x26, 0xb9, 0x94, 0xf9, 0xcb, 0x75, 0xc5, 0xe0, 0xe8, 0xa5, 0xa0, 0x7c, 0x9c, 0xee,
+	0xe8, 0xb5, 0xdc, 0x1f, 0xbd, 0xc5, 0x81, 0x93, 0xdf, 0xf7, 0x82, 0x2b, 0xa6, 0x97, 0x7d, 0x5e,
+	0x8e, 0x91, 0x67, 0x61, 0x12, 0x8f, 0x42, 0xc1, 0x0e, 0xf9, 0x19, 0x4b, 0xfb, 0x1f, 0x78, 0xa2,
+	0x95, 0xfc, 0xc0, 0x52, 0x50, 0x51, 0x7c, 0x38, 0xbf, 0x22, 0xce, 0x13, 0x49, 0x1f, 0x15, 0x6c,
+	0x33, 0x2c, 0x88, 0x99, 0xcc, 0x42, 0xfc, 0x79, 0x82, 0x51, 0x5c, 0xb4, 0x49, 0xf9, 0xa3, 0x17,
+	0x19, 0xcb, 0x63, 0x96, 0x46, 0xcc, 0x5d, 0xb4, 0x61, 0xca, 0x5f, 0xb4, 0x39, 0xe8, 0xc6, 0x76,
+	0x58, 0x4d, 0x4e, 0xcd, 0xdb, 0x14, 0x4c, 0x78, 0x6e, 0x53, 0x08, 0x14, 0x37, 0x52, 0x03, 0x70,
+	0xa1, 0x71, 0xc7, 0x6f, 0x05, 0x5d, 0x66, 0xac, 0x76, 0xa4, 0x1b, 0x87, 0x0c, 0x8a, 0x19, 0x96,
+	0xc3, 0xa4, 0x25, 0xf4, 0xa1, 0x39, 0x5c, 0x56, 0x3a, 0xb1, 0xee, 0x53, 0x8d, 0x03, 0x96, 0x84,
+	0xd5, 0x12, 0xe2, 0x39, 0x3a, 0xa8, 0x99, 0x2e, 0xa7, 0x1a, 0x06, 0x0b, 0x0e, 0x7f, 0xd4, 0x0b,
+	0x2e, 0xbb, 0x3c, 0x3e, 0xc9, 0x2a, 0xbf, 0xeb, 0xed, 0xb6, 0x24, 0x49, 0x5c, 0x17, 0xf9, 0x35,
+	0x20, 0x86, 0xef, 0x05, 0x6f, 0xd6, 0x22, 0x7d, 0x9b, 0x04, 0x01, 0xd8, 0x55, 0x84, 0x8a, 0x1f,
+	0x73, 0xca, 0xfd, 0x5a, 0x67, 0x5e, 0x17, 0xe8, 0x76, 0x5c, 0x05, 0x2a, 0xd0, 0x95, 0x0d, 0x10,
+	0x13, 0x05, 0xba, 0x03, 0xc3, 0x2b, 0x75, 0x8d, 0x94, 0xe3, 0xc4, 0x35, 0xc7, 0x29, 0x13, 0xe6,
+	0x28, 0x59, 0x6e, 0x07, 0x71, 0xee, 0xd4, 0x62, 0xa8, 0x8b, 0x6f, 0xfb, 0x2c, 0xa0, 0xda, 0x78,
+	0xa5, 0x13, 0x0b, 0x0e, 0x7f, 0x10, 0xbc, 0xd5, 0x68, 0xd8, 0x36, 0x0b, 0xc5, 0x34, 0x67, 0xa3,
+	0xfe, 0x5a, 0x4b, 0xdc, 0x35, 0xa8, 0x5c, 0xaf, 0x77, 0x57, 0x00, 0xff, 0x3f, 0xeb, 0x05, 0x6f,
+	0xdb, 0x9c, 0xec, 0x62, 0x15, 0xc3, 0x5d, 0x9f, 0x49, 0x9b, 0x55, 0x61, 0xdc, 0x9b, 0x4b, 0xa7,
+	0xb1, 0x07, 0x33, 0x13, 0x79, 0x63, 0x16, 0xc6, 0x49, 0x78, 0x9c, 0x30, 0xe7, 0x1e, 0xcc, 0xca,
+	0x4d, 0x85, 0x7a, 0xf7, 0x60, 0xa4, 0x4a, 0x63, 0x96, 0xac, 0xc6, 0x9b, 0x51, 0xbb, 0xdf, 0xa1,
+	0x47, 0xa5, 0xa3, 0x74, 0x5f, 0xed, 0x48, 0x83, 0x5b, 0x51, 0x9f, 0x5d, 0x95, 0x3f, 0x9b, 0x49,
+	0xee, 0xf2, 0x0a, 0xaa, 0x8e, 0x4c, 0x5f, 0xed, 0x48, 0x83, 0xd7, 0xef, 0x07, 0x6f, 0x36, 0xbd,
+	0xc2, 0xa2, 0xb0, 0xd6, 0x6a, 0x0a, 0xad, 0x0b, 0xeb, 0xdd, 0x15, 0x74, 0xa9, 0xff, 0x49, 0x5c,
+	0x08, 0x9e, 0x5f, 0x0c, 0x4f, 0xf9, 0x79, 0xfd, 0xc6, 0x94, 0x3d, 0x5a, 0x01, 0x18, 0x18, 0x04,
+	0x51, 0xea, 0xbb, 0xc9, 0x86, 0x2b, 0xfd, 0x66, 0x55, 0x41, 0xb8, 0x32, 0x88, 0x16, 0x57, 0x36,
+	0xa9, 0xe7, 0xaa, 0xba, 0x55, 0xfa, 0x35, 0xb0, 0x25, 0x77, 0xa8, 0xcd, 0x57, 0xc1, 0x96, 0xdb,
+	0x41, 0xbd, 0xfd, 0xda, 0x8e, 0x13, 0xf6, 0xe4, 0xe4, 0x24, 0xe1, 0xe1, 0x08, 0x6d, 0xbf, 0x4a,
+	0xc9, 0x00, 0x44, 0xc4, 0xf6, 0x0b, 0x21, 0xba, 0xe8, 0x2c, 0x05, 0xd5, 0x2d, 0x4c, 0x6d, 0x7a,
+	0xb1, 0xa9, 0x67, 0xca, 0x89, 0xa2, 0xd3, 0xc5, 0xe9, 0x05, 0xa3, 0x94, 0x96, 0x43, 0xb0, 0xf6,
+	0x71, 0xb3, 0xa9, 0x6b, 0x88, 0x89, 0x05, 0xc3, 0x81, 0xe9, 0xfd, 0x51, 0x29, 0x3c, 0xca, 0x2a,
+	0xe3, 0x57, 0x9b, 0x5a, 0x52, 0x42, 0xec, 0x8f, 0x6c, 0x42, 0xd7, 0xf9, 0xe5, 0xef, 0x5b, 0xfc,
+	0x3c, 0xad, 0x8c, 0x3a, 0x9e, 0x66, 0x2d, 0x23, 0xea, 0x7c, 0xcc, 0x80, 0xe1, 0x4f, 0x83, 0x7f,
+	0xad, 0x0c, 0xe7, 0x3c, 0xeb, 0x2f, 0x38, 0x14, 0x72, 0xe3, 0xde, 0xf5, 0x0a, 0x29, 0xd7, 0xaf,
+	0x0f, 0xa8, 0xfe, 0x3b, 0x2a, 0xc2, 0x31, 0x43, 0xaf, 0x0f, 0xe8, 0x5e, 0xa9, 0xa4, 0xc4, 0xeb,
+	0x03, 0x4d, 0x4a, 0x5f, 0x89, 0x97, 0xb2, 0x7d, 0x3e, 0x02, 0xeb, 0x8e, 0x16, 0x2a, 0x21, 0x71,
+	0x25, 0xde, 0x80, 0xf4, 0xf9, 0xfd, 0x7e, 0x38, 0x8b, 0xc7, 0x6a, 0xf2, 0x97, 0x73, 0x48, 0x81,
+	0xce, 0xef, 0x35, 0x33, 0x30, 0x20, 0xe2, 0xfc, 0x9e, 0x84, 0xc1, 0xe7, 0xef, 0x7a, 0xc1, 0x55,
+	0xcd, 0x3c, 0xae, 0x8f, 0x55, 0x76, 0xd2, 0x13, 0xfe, 0x3c, 0x16, 0xa7, 0xe5, 0x3e, 0xbe, 0xe8,
+	0x3f, 0xa0, 0x4c, 0xba, 0x79, 0x15, 0xca, 0x07, 0x73, 0xeb, 0xe9, 0x6a, 0xae, 0x3e, 0x6e, 0xd1,
+	0x77, 0x5b, 0x52, 0x03, 0x55, 0x73, 0xea, 0x54, 0x06, 0x73, 0x44, 0x35, 0xe7, 0xe3, 0x75, 0x17,
+	0x2b, 0xe7, 0x09, 0x4f, 0x71, 0x17, 0x6b, 0x0b, 0xa5, 0x90, 0xe8, 0xe2, 0x06, 0xa4, 0xe7, 0xc6,
+	0x5a, 0x24, 0x4f, 0x06, 0x36, 0x92, 0x04, 0xcd, 0x8d, 0x4a, 0x55, 0x01, 0xc4, 0xdc, 0xe8, 0x04,
+	0xc1, 0xcf, 0x41, 0xf0, 0x4a, 0xf9, 0x48, 0x9f, 0xe6, 0x6c, 0x16, 0x33, 0x7c, 0x0d, 0x6b, 0x48,
+	0x88, 0xf1, 0x6f, 0x13, 0x7a, 0x64, 0x1d, 0xa5, 0x45, 0x96, 0x84, 0xc5, 0x29, 0x5c, 0xcc, 0xd9,
+	0x6d, 0xae, 0x85, 0xf8, 0x6a, 0xee, 0x66, 0x0b, 0xa5, 0x27, 0xde, 0x5a, 0xa6, 0xa6, 0x98, 0x45,
+	0xb7, 0x6a, 0x63, 0x9a, 0x59, 0x6a, 0xe5, 0xc0, 0x49, 0x18, 0xbc, 0x5e, 0xff, 0xb8, 0x17, 0xa6,
+	0xf1, 0x09, 0x2b, 0xf0, 0x05, 0x08, 0x16, 0x13, 0x33, 0xaf, 0x03, 0xd3, 0xcb, 0xd2, 0xc3, 0x84,
+	0x47, 0x67, 0x30, 0xf5, 0xda, 0x0f, 0xb6, 0x92, 0xe0, 0xb9, 0xf7, 0x9a, 0x0f, 0xd1, 0x93, 0x6f,
+	0x25, 0x38, 0x60, 0x59, 0x12, 0x46, 0xf8, 0x0e, 0x5c, 0xea, 0x80, 0x8c, 0x98, 0x7c, 0x31, 0x83,
+	0xc2, 0x85, 0xbb, 0x75, 0x57, 0xb8, 0xe8, 0x6a, 0xfd, 0x9a, 0x0f, 0xd1, 0xcb, 0x4f, 0x25, 0x18,
+	0x66, 0x49, 0x2c, 0x50, 0xfa, 0x49, 0x8d, 0x4a, 0x42, 0xa4, 0x9f, 0x4d, 0x20, 0x93, 0x7b, 0x2c,
+	0x1f, 0x33, 0xa7, 0xc9, 0x4a, 0xe2, 0x35, 0x59, 0x13, 0x60, 0x72, 0x3f, 0xf8, 0x37, 0xd9, 0x76,
+	0x9e, 0x5d, 0xf4, 0xaf, 0xb8, 0x9a, 0xc5, 0xb3, 0x0b, 0x65, 0xf0, 0x2a, 0x0d, 0xa0, 0x10, 0x9f,
+	0x86, 0x85, 0x70, 0x87, 0x58, 0x49, 0xbc, 0x21, 0xd6, 0x84, 0x5e, 0x1b, 0x65, 0x88, 0x53, 0x81,
+	0xd6, 0x46, 0x08, 0xc0, 0xb8, 0xa2, 0xbb, 0x42, 0xca, 0xf5, 0x08, 0x96, 0xbd, 0xc2, 0xc4, 0x76,
+	0xcc, 0x92, 0x51, 0x81, 0x46, 0x30, 0x3c, 0xf7, 0x5a, 0x4a, 0x8c, 0xe0, 0x26, 0x85, 0x52, 0x09,
+	0xce, 0x4e, 0x5d, 0xad, 0x43, 0xc7, 0xa6, 0xd7, 0x7c, 0x88, 0x9e, 0x17, 0xea, 0xa0, 0x37, 0xc3,
+	0x3c, 0x8f, 0xcb, 0x45, 0x77, 0xd1, 0x1d, 0x50, 0x2d, 0x27, 0xe6, 0x05, 0x17, 0x87, 0x86, 0x57,
+	0x3d, 0x61, 0xba, 0x02, 0xc3, 0x53, 0xe6, 0x75, 0x2f, 0xa3, 0x2b, 0xbd, 0x4a, 0x62, 0xdc, 0x31,
+	0xb9, 0x9e, 0xa6, 0xe3, 0x8a, 0x69, 0xb1, 0x0d, 0x33, 0x5e, 0xa4, 0x53, 0x2e, 0xf6, 0xf8, 0x8c,
+	0x1d, 0xf2, 0x47, 0x2f, 0xe2, 0x42, 0xc4, 0xe9, 0x18, 0x56, 0xcc, 0x7b, 0x84, 0x25, 0x17, 0x4c,
+	0xbc, 0x48, 0xd7, 0xaa, 0xa4, 0x17, 0x6e, 0x14, 0xcb, 0x3e, 0x3b, 0x77, 0x2e, 0xdc, 0xd8, 0xa2,
+	0xe2, 0x88, 0x85, 0xdb, 0xc7, 0xeb, 0xb3, 0x04, 0xe5, 0x1c, 0xbe, 0x36, 0x38, 0xe4, 0x75, 0x0d,
+	0x45, 0x59, 0xc3, 0x20, 0xb1, 0x9d, 0xf3, 0x2a, 0xe8, 0x3d, 0x96, 0xf2, 0xaf, 0x87, 0xd8, 0x32,
+	0x61, 0xa7, 0x39, 0xcc, 0x6e, 0x75, 0x20, 0x1d, 0xae, 0xf4, 0x45, 0x29, 0xe5, 0xaa, 0x79, 0x4f,
+	0x7a, 0xab, 0x03, 0x69, 0x9c, 0x4b, 0x98, 0xcd, 0x7a, 0x18, 0x46, 0x67, 0xe3, 0x9c, 0x4f, 0xd3,
+	0xd1, 0x26, 0x4f, 0x78, 0x8e, 0xce, 0x25, 0xac, 0xa8, 0x11, 0x4a, 0x9c, 0x4b, 0xb4, 0xa8, 0xe8,
+	0xca, 0xc9, 0x8c, 0x62, 0x23, 0x89, 0xc7, 0x78, 0x57, 0x69, 0x19, 0xaa, 0x00, 0xa2, 0x72, 0x72,
+	0x82, 0x8e, 0x24, 0x92, 0xbb, 0x4e, 0x11, 0x47, 0x61, 0x22, 0xfd, 0xad, 0xd1, 0x66, 0x2c, 0xb0,
+	0x35, 0x89, 0x1c, 0x0a, 0x8e, 0x76, 0x1e, 0x4e, 0xf3, 0x74, 0x27, 0x15, 0x9c, 0x6c, 0x67, 0x0d,
+	0xb4, 0xb6, 0xd3, 0x00, 0xd1, 0xb4, 0x7a, 0xc8, 0x5e, 0x94, 0xd1, 0x94, 0xff, 0xb8, 0xa6, 0xd5,
+	0xf2, 0xf7, 0x01, 0xc8, 0x7d, 0xd3, 0x2a, 0xe2, 0x50, 0x63, 0xc0, 0x89, 0x4c, 0x18, 0x8f, 0xb6,
+	0x9d, 0x26, 0xcb, 0xed, 0xa0, 0xdb, 0xcf, 0x50, 0x5c, 0x24, 0xcc, 0xe7, 0xa7, 0x02, 0xba, 0xf8,
+	0xa9, 0x41, 0x7d, 0x61, 0x61, 0xb5, 0xe7, 0x94, 0x45, 0x67, 0x8d, 0xf7, 0x3e, 0xec, 0x40, 0x25,
+	0x42, 0x5c, 0x58, 0x10, 0xa8, 0xbb, 0x8b, 0x76, 0x22, 0x9e, 0xfa, 0xba, 0xa8, 0x94, 0x77, 0xe9,
+	0x22, 0xe0, 0xf4, 0xa6, 0x53, 0x49, 0x21, 0x33, 0x65, 0x37, 0xad, 0x10, 0x16, 0x4c, 0x88, 0xd8,
+	0x74, 0x92, 0xb0, 0x3e, 0x65, 0xc6, 0x3e, 0xf7, 0x9a, 0xef, 0x5d, 0x36, 0xac, 0xec, 0xd1, 0xef,
+	0x5d, 0x52, 0x2c, 0xdd, 0x48, 0x99, 0x23, 0x2d, 0x56, 0xec, 0x3c, 0xb9, 0xd3, 0x0d, 0xd6, 0x6f,
+	0x41, 0x58, 0x3e, 0x37, 0x13, 0x16, 0xe6, 0xd2, 0xeb, 0xaa, 0xc7, 0x90, 0xc6, 0x88, 0xb7, 0x20,
+	0x3c, 0x38, 0x9a, 0xc2, 0x2c, 0xcf, 0x9b, 0x3c, 0x15, 0x2c, 0x15, 0xae, 0x29, 0xcc, 0x36, 0x06,
+	0xa0, 0x6f, 0x0a, 0xa3, 0x14, 0x50, 0xde, 0x56, 0xe7, 0x30, 0x4c, 0xec, 0x87, 0x13, 0x67, 0xc5,
+	0x26, 0xcf, 0x58, 0xa4, 0xdc, 0x97, 0xb7, 0x88, 0x43, 0x43, 0x7e, 0x67, 0x12, 0x8e, 0x95, 0x17,
+	0x87, 0x76, 0x25, 0x6f, 0xb8, 0x59, 0x6e, 0x07, 0x91, 0x9f, 0x67, 0xf1, 0x88, 0x71, 0x8f, 0x9f,
+	0x4a, 0xde, 0xc5, 0x0f, 0x06, 0x51, 0xe5, 0x54, 0xb6, 0x56, 0xee, 0xa6, 0x36, 0xd2, 0x11, 0xec,
+	0x21, 0x07, 0xc4, 0x43, 0x41, 0x9c, 0xaf, 0x72, 0x22, 0x78, 0x34, 0x3e, 0xea, 0x43, 0x49, 0xdf,
+	0xf8, 0x50, 0x67, 0x8e, 0x5d, 0xc6, 0x87, 0x0b, 0x06, 0x9f, 0xdf, 0x85, 0xf1, 0xb1, 0x15, 0x8a,
+	0xb0, 0xac, 0x99, 0x9f, 0xc5, 0xec, 0x1c, 0x36, 0xa1, 0x8e, 0xf6, 0xd6, 0xd4, 0xa0, 0xc4, 0xf0,
+	0x8e, 0x74, 0xad, 0x33, 0xef, 0xf1, 0x0d, 0xd5, 0x79, 0xab, 0x6f, 0x54, 0xa6, 0xaf, 0x75, 0xe6,
+	0x3d, 0xbe, 0xe1, 0x1b, 0x8e, 0x56, 0xdf, 0xe8, 0x43, 0x8e, 0xb5, 0xce, 0x3c, 0xf8, 0xfe, 0x71,
+	0x2f, 0xb8, 0xdc, 0x70, 0x5e, 0xd6, 0x40, 0x91, 0x88, 0x67, 0xcc, 0x55, 0xca, 0xd9, 0xf6, 0x14,
+	0xea, 0x2b, 0xe5, 0x68, 0x15, 0xe3, 0xc3, 0x5f, 0x57, 0x14, 0x4f, 0x79, 0x11, 0x57, 0x17, 0xb6,
+	0xf7, 0x3a, 0x18, 0xad, 0x61, 0xdf, 0x86, 0xc5, 0xa7, 0xa4, 0xaf, 0xbb, 0x2c, 0x54, 0xbf, 0x62,
+	0x79, 0xc7, 0x63, 0xaf, 0xf9, 0xa6, 0xe5, 0x6a, 0x47, 0x5a, 0x5f, 0x3c, 0x59, 0x8c, 0x79, 0xe3,
+	0xe5, 0xeb, 0x55, 0xe7, 0xa5, 0xd7, 0x7a, 0x77, 0x05, 0x70, 0xff, 0xd3, 0xba, 0xa6, 0xc7, 0xfe,
+	0x61, 0x10, 0xdc, 0xed, 0x62, 0x11, 0x0d, 0x84, 0x7b, 0x73, 0xe9, 0x40, 0x20, 0x7f, 0xec, 0x05,
+	0xd7, 0x9c, 0x81, 0xd8, 0x77, 0x9f, 0xff, 0xd7, 0xc5, 0xb6, 0xfb, 0x0e, 0xf4, 0xa3, 0xaf, 0xa3,
+	0x0a, 0xd1, 0xfd, 0xb2, 0xde, 0x5a, 0xd7, 0x1a, 0xd5, 0x6b, 0xf0, 0x4f, 0xf2, 0x11, 0xcb, 0x61,
+	0xc4, 0xfa, 0x92, 0x4e, 0xc3, 0x78, 0xdc, 0xbe, 0x3f, 0xa7, 0x96, 0xf1, 0x91, 0xba, 0x05, 0xc3,
+	0x17, 0x41, 0x46, 0x3c, 0x3e, 0xcb, 0x06, 0x8d, 0x03, 0x7a, 0x30, 0xaf, 0x1a, 0x35, 0x92, 0x0d,
+	0xb8, 0xfa, 0xe6, 0xed, 0x5e, 0x47, 0xc3, 0xd6, 0x57, 0x70, 0xf7, 0xe7, 0x53, 0x82, 0x58, 0xfe,
+	0xdc, 0x0b, 0x6e, 0x5a, 0xac, 0x3e, 0xe1, 0x47, 0xe7, 0x21, 0x1f, 0x7b, 0xec, 0x53, 0x4a, 0x2a,
+	0xb8, 0xff, 0xff, 0x7a, 0xca, 0xfa, 0x8b, 0x6e, 0x4b, 0x65, 0x3b, 0x4e, 0x04, 0xcb, 0x9b, 0x5f,
+	0x74, 0xdb, 0x76, 0x25, 0x35, 0xa0, 0xbf, 0xe8, 0xf6, 0xe0, 0xc6, 0x17, 0xdd, 0x0e, 0xcf, 0xce,
+	0x2f, 0xba, 0x9d, 0xd6, 0xbc, 0x5f, 0x74, 0xfb, 0x35, 0xa8, 0xc5, 0xa7, 0x0e, 0x41, 0x9e, 0x68,
+	0x77, 0xb2, 0x68, 0x1f, 0x70, 0xdf, 0x9d, 0x47, 0x85, 0x58, 0x7e, 0x25, 0x57, 0xbd, 0x91, 0xd5,
+	0xe1, 0x99, 0x5a, 0x6f, 0x65, 0xad, 0x75, 0xe6, 0xc1, 0xf7, 0xe7, 0xb0, 0xef, 0x51, 0x8b, 0x0d,
+	0xcf, 0xab, 0xaf, 0xf9, 0x57, 0x7c, 0x8b, 0x47, 0x69, 0xc1, 0xec, 0xf9, 0x3b, 0xdd, 0x60, 0xa2,
+	0xb9, 0x25, 0x01, 0x9d, 0x3e, 0x68, 0x33, 0x84, 0xba, 0x7c, 0xad, 0x33, 0x4f, 0x2c, 0x72, 0xd2,
+	0xb7, 0xec, 0xed, 0x0e, 0xc6, 0xec, 0xbe, 0x5e, 0xef, 0xae, 0xa0, 0x5f, 0x29, 0x69, 0xb8, 0xaf,
+	0xfa, 0xb9, 0xf5, 0x09, 0x5a, 0xbd, 0xbc, 0xda, 0x91, 0xf6, 0x15, 0x37, 0xe6, 0xf2, 0xde, 0x56,
+	0xdc, 0x38, 0x97, 0xf8, 0xfb, 0xf3, 0x29, 0x41, 0x2c, 0xbf, 0xed, 0x05, 0x57, 0xc8, 0x58, 0x20,
+	0x0b, 0x1e, 0x74, 0xb5, 0x8c, 0xb2, 0xe1, 0x83, 0xb9, 0xf5, 0x20, 0xa8, 0x3f, 0xf4, 0x82, 0xab,
+	0x9e, 0xa0, 0x64, 0x7a, 0xcc, 0x61, 0xdd, 0x4e, 0x93, 0x0f, 0xe7, 0x57, 0xa4, 0x16, 0x7b, 0x13,
+	0x1f, 0x36, 0x3f, 0x74, 0xf6, 0xd8, 0x1e, 0xd2, 0x1f, 0x3a, 0xb7, 0x6b, 0xe1, 0xc3, 0x9f, 0xb2,
+	0x24, 0x81, 0x7d, 0x91, 0xeb, 0xf0, 0xa7, 0xaa, 0x58, 0xd0, 0x7e, 0x68, 0xa9, 0x95, 0x73, 0x39,
+	0x79, 0xf4, 0x22, 0x0b, 0xd3, 0x11, 0xed, 0x44, 0xca, 0xdb, 0x9d, 0x28, 0x0e, 0x1f, 0x9a, 0x95,
+	0xd2, 0x03, 0x5e, 0x6f, 0xf2, 0x6e, 0x51, 0xfa, 0x0a, 0xf1, 0x1e, 0x9a, 0x35, 0x50, 0xc2, 0x1b,
+	0x54, 0xb4, 0x3e, 0x6f, 0xa8, 0x90, 0xbd, 0xdd, 0x05, 0x45, 0xdb, 0x07, 0xe5, 0x4d, 0x9d, 0xc5,
+	0xdf, 0xf1, 0x59, 0x69, 0x9c, 0xc7, 0xaf, 0x76, 0xa4, 0x09, 0xb7, 0x43, 0x26, 0x3e, 0x61, 0xe1,
+	0x88, 0xe5, 0x5e, 0xb7, 0x8a, 0xea, 0xe4, 0xd6, 0xa4, 0x5d, 0x6e, 0x37, 0x79, 0x32, 0x9d, 0xa4,
+	0xd0, 0x99, 0xa4, 0x5b, 0x93, 0x6a, 0x77, 0x8b, 0x68, 0x7c, 0x5c, 0xa8, 0xdd, 0x56, 0xc5, 0xe5,
+	0x6d, 0xbf, 0x19, 0xab, 0xa6, 0x5c, 0xe9, 0xc4, 0xd2, 0xed, 0x84, 0x34, 0x6a, 0x69, 0x27, 0xca,
+	0xa4, 0xd5, 0x8e, 0x34, 0x3e, 0xb7, 0x33, 0xdc, 0xaa, 0x7c, 0x5a, 0x6b, 0xb1, 0xd5, 0x48, 0xa9,
+	0xf5, 0xee, 0x0a, 0xf8, 0x94, 0x14, 0xb2, 0xaa, 0xdc, 0x15, 0x6d, 0xc7, 0x49, 0xd2, 0x5f, 0xf1,
+	0xa4, 0x49, 0x0d, 0x79, 0x4f, 0x49, 0x1d, 0x30, 0x91, 0xc9, 0xf5, 0xa9, 0x62, 0xda, 0x6f, 0xb3,
+	0x53, 0x51, 0x9d, 0x32, 0xd9, 0xa4, 0xd1, 0x69, 0x9b, 0xf1, 0xa8, 0x55, 0x6b, 0x07, 0xfe, 0x07,
+	0xd7, 0x68, 0xf0, 0x5a, 0x67, 0x1e, 0x5d, 0xc3, 0x57, 0x54, 0xb5, 0xb2, 0xdc, 0xa0, 0x4c, 0x58,
+	0x2b, 0xc9, 0xcd, 0x16, 0x0a, 0x9d, 0x58, 0xca, 0x61, 0xf4, 0x3c, 0x1e, 0x8d, 0x99, 0x70, 0xde,
+	0x20, 0x99, 0x80, 0xf7, 0x06, 0x09, 0x81, 0xa8, 0xeb, 0xe4, 0xef, 0x43, 0x26, 0x0e, 0xc3, 0x7c,
+	0xcc, 0xc4, 0xce, 0xc8, 0xd5, 0x75, 0xa0, 0x6c, 0x50, 0xbe, 0xae, 0x73, 0xd2, 0x68, 0x36, 0x50,
+	0x6e, 0xe1, 0x3b, 0xe6, 0xdb, 0x3e, 0x33, 0xe8, 0x63, 0xe6, 0x95, 0x4e, 0x2c, 0x5a, 0x51, 0xb4,
+	0xc3, 0x78, 0x12, 0x0b, 0xd7, 0x8a, 0x62, 0xd8, 0x28, 0x11, 0xdf, 0x8a, 0xd2, 0x44, 0xa9, 0xe6,
+	0x95, 0x35, 0xc2, 0xce, 0xc8, 0xdf, 0x3c, 0xc9, 0x74, 0x6b, 0x9e, 0x62, 0x1b, 0x17, 0x9e, 0xa9,
+	0x4a, 0x19, 0x71, 0x0a, 0x5b, 0x65, 0x47, 0x6e, 0x57, 0x9f, 0xf6, 0x61, 0xd0, 0x37, 0xeb, 0x50,
+	0x0a, 0xc6, 0xd7, 0x23, 0x8a, 0xab, 0xef, 0x64, 0xb3, 0x8c, 0x85, 0x79, 0x98, 0x46, 0xce, 0xad,
+	0x69, 0x65, 0xb0, 0x41, 0xfa, 0xb6, 0xa6, 0xa4, 0x06, 0xba, 0x4e, 0xb7, 0x3f, 0xca, 0x73, 0x0c,
+	0x05, 0xf5, 0xf5, 0x9b, 0xfd, 0x4d, 0xde, 0xad, 0x0e, 0x24, 0xbe, 0x4e, 0xaf, 0x01, 0x75, 0x28,
+	0x2f, 0x9d, 0xbe, 0xe7, 0x31, 0x65, 0xa3, 0xbe, 0x6d, 0x30, 0xad, 0x82, 0x92, 0x5a, 0x15, 0xb8,
+	0x4c, 0x7c, 0xca, 0x2e, 0x5c, 0x49, 0xad, 0xeb, 0xd3, 0x0a, 0xf1, 0x25, 0x75, 0x13, 0x45, 0x75,
+	0xa6, 0xb9, 0x0f, 0x5a, 0xf4, 0xe8, 0x9b, 0x5b, 0x9f, 0xa5, 0x56, 0x0e, 0x8d, 0x9c, 0xad, 0x78,
+	0x66, 0xdd, 0x61, 0x38, 0x02, 0xdd, 0x8a, 0x67, 0xee, 0x2b, 0x8c, 0x95, 0x4e, 0x2c, 0xbe, 0xaa,
+	0x0f, 0x05, 0x7b, 0x51, 0xdf, 0xa1, 0x3b, 0xc2, 0xad, 0xe4, 0x8d, 0x4b, 0xf4, 0xe5, 0x76, 0x50,
+	0xbf, 0x90, 0xfa, 0x34, 0xe7, 0x11, 0x2b, 0x8a, 0xcd, 0x32, 0x6d, 0x13, 0xf4, 0x42, 0x2a, 0xc8,
+	0x06, 0x52, 0x48, 0xbc, 0x90, 0xda, 0x80, 0xc0, 0xf6, 0x27, 0xc1, 0xcb, 0xbb, 0x7c, 0x3c, 0x64,
+	0xe9, 0xa8, 0xff, 0x8e, 0xfd, 0x0a, 0x28, 0x1f, 0x0f, 0xca, 0x9f, 0x95, 0xbd, 0x05, 0x4a, 0xac,
+	0x5f, 0xa6, 0xdb, 0x62, 0xc7, 0xd3, 0xf1, 0x61, 0xce, 0x18, 0x7a, 0x99, 0xae, 0xfa, 0x7d, 0x50,
+	0x0a, 0x88, 0x97, 0xe9, 0x2c, 0x40, 0xaf, 0x92, 0xca, 0x5e, 0x59, 0x88, 0xe2, 0x97, 0xd5, 0xb4,
+	0x4e, 0x25, 0x25, 0x56, 0xc9, 0x26, 0xa5, 0x3b, 0xaf, 0x92, 0x55, 0x2f, 0x79, 0x0f, 0xa7, 0x93,
+	0x49, 0x98, 0x5f, 0xa0, 0xce, 0x93, 0xba, 0x26, 0x40, 0x74, 0x9e, 0x13, 0xd4, 0x59, 0x29, 0xfd,
+	0x88, 0x30, 0x3a, 0x7b, 0xcc, 0x73, 0x3e, 0x15, 0x71, 0xca, 0x0a, 0x94, 0x95, 0x60, 0xc1, 0x66,
+	0x88, 0xac, 0xa4, 0x58, 0x5d, 0xc5, 0x55, 0x84, 0x7c, 0x8f, 0xae, 0xfa, 0x9b, 0x67, 0x85, 0xe0,
+	0x39, 0xbe, 0xcb, 0x93, 0x56, 0x30, 0x44, 0x54, 0x71, 0x24, 0x8c, 0xfa, 0xfe, 0x69, 0x9c, 0x8e,
+	0x9d, 0x7d, 0x5f, 0x0a, 0xbc, 0x7d, 0x0f, 0x80, 0x9e, 0x8f, 0xe5, 0x43, 0x93, 0x7f, 0xf6, 0x05,
+	0xbe, 0xa9, 0x73, 0x3e, 0x74, 0x93, 0x20, 0xe6, 0x63, 0x37, 0x89, 0x5c, 0x3d, 0xc9, 0x58, 0xca,
+	0x46, 0xf5, 0xdb, 0x62, 0x2e, 0x57, 0x16, 0xe1, 0x75, 0x85, 0x49, 0x9d, 0x0a, 0x7b, 0x4c, 0xe4,
+	0x71, 0x54, 0x0c, 0x99, 0x78, 0x1a, 0xe6, 0xe1, 0x84, 0x09, 0x96, 0xe3, 0x54, 0x00, 0x64, 0x60,
+	0x31, 0x44, 0x2a, 0x50, 0x2c, 0x38, 0xfc, 0x46, 0xf0, 0x46, 0x39, 0x73, 0xb1, 0x14, 0xfe, 0x08,
+	0xeb, 0xa3, 0xea, 0xaf, 0x37, 0xf7, 0x2f, 0x29, 0x1b, 0x43, 0x91, 0xb3, 0x70, 0x52, 0xdb, 0x7e,
+	0x4d, 0xfd, 0x5e, 0x81, 0xeb, 0xbd, 0x72, 0xde, 0xde, 0xe7, 0x22, 0x3e, 0x29, 0x37, 0x0a, 0x70,
+	0x29, 0x83, 0xe6, 0x6d, 0x53, 0x3c, 0xf0, 0x7c, 0x81, 0xed, 0xe2, 0xf4, 0x48, 0x34, 0xa5, 0x07,
+	0x2c, 0x4b, 0xf0, 0x48, 0xb4, 0xb4, 0x2b, 0x80, 0x18, 0x89, 0x4e, 0x50, 0xfa, 0x79, 0xf8, 0xee,
+	0xdf, 0xbe, 0x5c, 0xe8, 0x7d, 0xf1, 0xe5, 0x42, 0xef, 0x1f, 0x5f, 0x2e, 0xf4, 0x7e, 0xf3, 0xd5,
+	0xc2, 0x4b, 0x5f, 0x7c, 0xb5, 0xf0, 0xd2, 0xdf, 0xbf, 0x5a, 0x78, 0xe9, 0xb3, 0x97, 0xe1, 0x4f,
+	0x62, 0x1f, 0xff, 0x4b, 0xf5, 0x87, 0xad, 0xef, 0xfd, 0x33, 0x00, 0x00, 0xff, 0xff, 0x4c, 0xc4,
+	0xf9, 0x8f, 0x36, 0x5b, 0x00, 0x00,
 }
 
 // This is a compile-time assertion to ensure that this generated file
@@ -294,6 +300,8 @@ type ClientCommandsHandler interface {
 	WalletCreate(context.Context, *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
 	WalletRecover(context.Context, *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
 	WalletConvert(context.Context, *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse
+	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse
+	AccountLocalLinkSolveChallenge(context.Context, *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse
 	WalletCreateSession(context.Context, *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse
 	WalletCloseSession(context.Context, *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse
 	// Workspace
@@ -332,6 +340,7 @@ type ClientCommandsHandler interface {
 	// ObjectCreate just creates the new page, without adding the link to it from some other page
 	ObjectCreate(context.Context, *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse
 	ObjectCreateBookmark(context.Context, *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse
+	ObjectCreateFromUrl(context.Context, *pb.RpcObjectCreateFromUrlRequest) *pb.RpcObjectCreateFromUrlResponse
 	// ObjectCreateSet just creates the new set, without adding the link to it from some other page
 	ObjectCreateSet(context.Context, *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse
 	ObjectGraph(context.Context, *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse
@@ -399,6 +408,7 @@ type ClientCommandsHandler interface {
 	// Files
 	// ***
 	FileOffload(context.Context, *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse
+	FileSpaceOffload(context.Context, *pb.RpcFileSpaceOffloadRequest) *pb.RpcFileSpaceOffloadResponse
 	FileListOffload(context.Context, *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse
 	FileUpload(context.Context, *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse
 	FileDownload(context.Context, *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse
@@ -429,6 +439,7 @@ type ClientCommandsHandler interface {
 	BlockSetFields(context.Context, *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse
 	BlockExport(context.Context, *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse
 	BlockSetCarriage(context.Context, *pb.RpcBlockSetCarriageRequest) *pb.RpcBlockSetCarriageResponse
+	BlockPreview(context.Context, *pb.RpcBlockPreviewRequest) *pb.RpcBlockPreviewResponse
 	BlockListDelete(context.Context, *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse
 	BlockListMoveToExistingObject(context.Context, *pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse
 	BlockListMoveToNewObject(context.Context, *pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse
@@ -656,6 +667,46 @@ func WalletConvert(b []byte) (resp []byte) {
 	}
 
 	resp, _ = clientCommandsHandler.WalletConvert(context.Background(), in).Marshal()
+	return resp
+}
+
+func AccountLocalLinkNewChallenge(b []byte) (resp []byte) {
+	defer func() {
+		if PanicHandler != nil {
+			if r := recover(); r != nil {
+				resp, _ = (&pb.RpcAccountLocalLinkNewChallengeResponse{Error: &pb.RpcAccountLocalLinkNewChallengeResponseError{Code: pb.RpcAccountLocalLinkNewChallengeResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
+				PanicHandler(r)
+			}
+		}
+	}()
+
+	in := new(pb.RpcAccountLocalLinkNewChallengeRequest)
+	if err := in.Unmarshal(b); err != nil {
+		resp, _ = (&pb.RpcAccountLocalLinkNewChallengeResponse{Error: &pb.RpcAccountLocalLinkNewChallengeResponseError{Code: pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		return resp
+	}
+
+	resp, _ = clientCommandsHandler.AccountLocalLinkNewChallenge(context.Background(), in).Marshal()
+	return resp
+}
+
+func AccountLocalLinkSolveChallenge(b []byte) (resp []byte) {
+	defer func() {
+		if PanicHandler != nil {
+			if r := recover(); r != nil {
+				resp, _ = (&pb.RpcAccountLocalLinkSolveChallengeResponse{Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{Code: pb.RpcAccountLocalLinkSolveChallengeResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
+				PanicHandler(r)
+			}
+		}
+	}()
+
+	in := new(pb.RpcAccountLocalLinkSolveChallengeRequest)
+	if err := in.Unmarshal(b); err != nil {
+		resp, _ = (&pb.RpcAccountLocalLinkSolveChallengeResponse{Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{Code: pb.RpcAccountLocalLinkSolveChallengeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		return resp
+	}
+
+	resp, _ = clientCommandsHandler.AccountLocalLinkSolveChallenge(context.Background(), in).Marshal()
 	return resp
 }
 
@@ -1236,6 +1287,26 @@ func ObjectCreateBookmark(b []byte) (resp []byte) {
 	}
 
 	resp, _ = clientCommandsHandler.ObjectCreateBookmark(context.Background(), in).Marshal()
+	return resp
+}
+
+func ObjectCreateFromUrl(b []byte) (resp []byte) {
+	defer func() {
+		if PanicHandler != nil {
+			if r := recover(); r != nil {
+				resp, _ = (&pb.RpcObjectCreateFromUrlResponse{Error: &pb.RpcObjectCreateFromUrlResponseError{Code: pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
+				PanicHandler(r)
+			}
+		}
+	}()
+
+	in := new(pb.RpcObjectCreateFromUrlRequest)
+	if err := in.Unmarshal(b); err != nil {
+		resp, _ = (&pb.RpcObjectCreateFromUrlResponse{Error: &pb.RpcObjectCreateFromUrlResponseError{Code: pb.RpcObjectCreateFromUrlResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		return resp
+	}
+
+	resp, _ = clientCommandsHandler.ObjectCreateFromUrl(context.Background(), in).Marshal()
 	return resp
 }
 
@@ -2319,6 +2390,26 @@ func FileOffload(b []byte) (resp []byte) {
 	return resp
 }
 
+func FileSpaceOffload(b []byte) (resp []byte) {
+	defer func() {
+		if PanicHandler != nil {
+			if r := recover(); r != nil {
+				resp, _ = (&pb.RpcFileSpaceOffloadResponse{Error: &pb.RpcFileSpaceOffloadResponseError{Code: pb.RpcFileSpaceOffloadResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
+				PanicHandler(r)
+			}
+		}
+	}()
+
+	in := new(pb.RpcFileSpaceOffloadRequest)
+	if err := in.Unmarshal(b); err != nil {
+		resp, _ = (&pb.RpcFileSpaceOffloadResponse{Error: &pb.RpcFileSpaceOffloadResponseError{Code: pb.RpcFileSpaceOffloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		return resp
+	}
+
+	resp, _ = clientCommandsHandler.FileSpaceOffload(context.Background(), in).Marshal()
+	return resp
+}
+
 func FileListOffload(b []byte) (resp []byte) {
 	defer func() {
 		if PanicHandler != nil {
@@ -2836,6 +2927,26 @@ func BlockSetCarriage(b []byte) (resp []byte) {
 	}
 
 	resp, _ = clientCommandsHandler.BlockSetCarriage(context.Background(), in).Marshal()
+	return resp
+}
+
+func BlockPreview(b []byte) (resp []byte) {
+	defer func() {
+		if PanicHandler != nil {
+			if r := recover(); r != nil {
+				resp, _ = (&pb.RpcBlockPreviewResponse{Error: &pb.RpcBlockPreviewResponseError{Code: pb.RpcBlockPreviewResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
+				PanicHandler(r)
+			}
+		}
+	}()
+
+	in := new(pb.RpcBlockPreviewRequest)
+	if err := in.Unmarshal(b); err != nil {
+		resp, _ = (&pb.RpcBlockPreviewResponse{Error: &pb.RpcBlockPreviewResponseError{Code: pb.RpcBlockPreviewResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		return resp
+	}
+
+	resp, _ = clientCommandsHandler.BlockPreview(context.Background(), in).Marshal()
 	return resp
 }
 
@@ -4657,6 +4768,10 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = WalletRecover(data)
 		case "WalletConvert":
 			cd = WalletConvert(data)
+		case "AccountLocalLinkNewChallenge":
+			cd = AccountLocalLinkNewChallenge(data)
+		case "AccountLocalLinkSolveChallenge":
+			cd = AccountLocalLinkSolveChallenge(data)
 		case "WalletCreateSession":
 			cd = WalletCreateSession(data)
 		case "WalletCloseSession":
@@ -4715,6 +4830,8 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = ObjectCreate(data)
 		case "ObjectCreateBookmark":
 			cd = ObjectCreateBookmark(data)
+		case "ObjectCreateFromUrl":
+			cd = ObjectCreateFromUrl(data)
 		case "ObjectCreateSet":
 			cd = ObjectCreateSet(data)
 		case "ObjectGraph":
@@ -4823,6 +4940,8 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = HistorySetVersion(data)
 		case "FileOffload":
 			cd = FileOffload(data)
+		case "FileSpaceOffload":
+			cd = FileSpaceOffload(data)
 		case "FileListOffload":
 			cd = FileListOffload(data)
 		case "FileUpload":
@@ -4875,6 +4994,8 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = BlockExport(data)
 		case "BlockSetCarriage":
 			cd = BlockSetCarriage(data)
+		case "BlockPreview":
+			cd = BlockPreview(data)
 		case "BlockListDelete":
 			cd = BlockListDelete(data)
 		case "BlockListMoveToExistingObject":
@@ -5070,4 +5191,2950 @@ type MessageHandler interface {
 
 func CommandMobile(cmd string, data []byte, callback MessageHandler) {
 	CommandAsync(cmd, data, callback.Handle)
+}
+
+type ClientCommandsHandlerProxy struct {
+	client       ClientCommandsHandler
+	interceptors []func(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error)
+}
+
+func (h *ClientCommandsHandlerProxy) AppGetVersion(ctx context.Context, req *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AppGetVersion(ctx, req.(*pb.RpcAppGetVersionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AppGetVersion", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAppGetVersionResponse)
+}
+func (h *ClientCommandsHandlerProxy) AppSetDeviceState(ctx context.Context, req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AppSetDeviceState(ctx, req.(*pb.RpcAppSetDeviceStateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AppSetDeviceState", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAppSetDeviceStateResponse)
+}
+func (h *ClientCommandsHandlerProxy) AppShutdown(ctx context.Context, req *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AppShutdown(ctx, req.(*pb.RpcAppShutdownRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AppShutdown", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAppShutdownResponse)
+}
+func (h *ClientCommandsHandlerProxy) WalletCreate(ctx context.Context, req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WalletCreate(ctx, req.(*pb.RpcWalletCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WalletCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWalletCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) WalletRecover(ctx context.Context, req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WalletRecover(ctx, req.(*pb.RpcWalletRecoverRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WalletRecover", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWalletRecoverResponse)
+}
+func (h *ClientCommandsHandlerProxy) WalletConvert(ctx context.Context, req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WalletConvert(ctx, req.(*pb.RpcWalletConvertRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WalletConvert", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWalletConvertResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountLocalLinkNewChallenge(ctx context.Context, req *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountLocalLinkNewChallenge(ctx, req.(*pb.RpcAccountLocalLinkNewChallengeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountLocalLinkNewChallenge", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountLocalLinkNewChallengeResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountLocalLinkSolveChallenge(ctx context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountLocalLinkSolveChallenge(ctx, req.(*pb.RpcAccountLocalLinkSolveChallengeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountLocalLinkSolveChallenge", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountLocalLinkSolveChallengeResponse)
+}
+func (h *ClientCommandsHandlerProxy) WalletCreateSession(ctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WalletCreateSession(ctx, req.(*pb.RpcWalletCreateSessionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WalletCreateSession", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWalletCreateSessionResponse)
+}
+func (h *ClientCommandsHandlerProxy) WalletCloseSession(ctx context.Context, req *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WalletCloseSession(ctx, req.(*pb.RpcWalletCloseSessionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WalletCloseSession", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWalletCloseSessionResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceCreate(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceCreate(ctx, req.(*pb.RpcWorkspaceCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceOpen(ctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceOpen(ctx, req.(*pb.RpcWorkspaceOpenRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceOpen", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceOpenResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceObjectAdd(ctx context.Context, req *pb.RpcWorkspaceObjectAddRequest) *pb.RpcWorkspaceObjectAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceObjectAdd(ctx, req.(*pb.RpcWorkspaceObjectAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceObjectAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceObjectAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceObjectListAdd(ctx context.Context, req *pb.RpcWorkspaceObjectListAddRequest) *pb.RpcWorkspaceObjectListAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceObjectListAdd(ctx, req.(*pb.RpcWorkspaceObjectListAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceObjectListAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceObjectListAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceObjectListRemove(ctx context.Context, req *pb.RpcWorkspaceObjectListRemoveRequest) *pb.RpcWorkspaceObjectListRemoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceObjectListRemove(ctx, req.(*pb.RpcWorkspaceObjectListRemoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceObjectListRemove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceObjectListRemoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceSelect(ctx context.Context, req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceSelect(ctx, req.(*pb.RpcWorkspaceSelectRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceSelect", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceSelectResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceGetCurrent(ctx context.Context, req *pb.RpcWorkspaceGetCurrentRequest) *pb.RpcWorkspaceGetCurrentResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceGetCurrent(ctx, req.(*pb.RpcWorkspaceGetCurrentRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceGetCurrent", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceGetCurrentResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceGetAll(ctx context.Context, req *pb.RpcWorkspaceGetAllRequest) *pb.RpcWorkspaceGetAllResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceGetAll(ctx, req.(*pb.RpcWorkspaceGetAllRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceGetAll", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceGetAllResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceSetInfo(ctx context.Context, req *pb.RpcWorkspaceSetInfoRequest) *pb.RpcWorkspaceSetInfoResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceSetInfo(ctx, req.(*pb.RpcWorkspaceSetInfoRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceSetInfo", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceSetInfoResponse)
+}
+func (h *ClientCommandsHandlerProxy) WorkspaceExport(ctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.WorkspaceExport(ctx, req.(*pb.RpcWorkspaceExportRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "WorkspaceExport", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcWorkspaceExportResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountRecover(ctx context.Context, req *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountRecover(ctx, req.(*pb.RpcAccountRecoverRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountRecover", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountRecoverResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountCreate(ctx, req.(*pb.RpcAccountCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountDelete(ctx, req.(*pb.RpcAccountDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountRevertDeletion(ctx context.Context, req *pb.RpcAccountRevertDeletionRequest) *pb.RpcAccountRevertDeletionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountRevertDeletion(ctx, req.(*pb.RpcAccountRevertDeletionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountRevertDeletion", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountRevertDeletionResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountSelect(ctx, req.(*pb.RpcAccountSelectRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountSelect", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountSelectResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountEnableLocalNetworkSync(ctx context.Context, req *pb.RpcAccountEnableLocalNetworkSyncRequest) *pb.RpcAccountEnableLocalNetworkSyncResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountEnableLocalNetworkSync(ctx, req.(*pb.RpcAccountEnableLocalNetworkSyncRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountEnableLocalNetworkSync", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountEnableLocalNetworkSyncResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountStop(ctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountStop(ctx, req.(*pb.RpcAccountStopRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountStop", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountStopResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountMove(ctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountMove(ctx, req.(*pb.RpcAccountMoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountMove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountMoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountConfigUpdate(ctx context.Context, req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountConfigUpdate(ctx, req.(*pb.RpcAccountConfigUpdateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountConfigUpdate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountConfigUpdateResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountRecoverFromLegacyExport(ctx context.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountRecoverFromLegacyExport(ctx, req.(*pb.RpcAccountRecoverFromLegacyExportRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountRecoverFromLegacyExport", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountRecoverFromLegacyExportResponse)
+}
+func (h *ClientCommandsHandlerProxy) AccountChangeNetworkConfigAndRestart(ctx context.Context, req *pb.RpcAccountChangeNetworkConfigAndRestartRequest) *pb.RpcAccountChangeNetworkConfigAndRestartResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.AccountChangeNetworkConfigAndRestart(ctx, req.(*pb.RpcAccountChangeNetworkConfigAndRestartRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "AccountChangeNetworkConfigAndRestart", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcAccountChangeNetworkConfigAndRestartResponse)
+}
+func (h *ClientCommandsHandlerProxy) SpaceDelete(ctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.SpaceDelete(ctx, req.(*pb.RpcSpaceDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "SpaceDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcSpaceDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectOpen(ctx context.Context, req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectOpen(ctx, req.(*pb.RpcObjectOpenRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectOpen", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectOpenResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectClose(ctx context.Context, req *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectClose(ctx, req.(*pb.RpcObjectCloseRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectClose", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCloseResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectShow(ctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectShow(ctx, req.(*pb.RpcObjectShowRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectShow", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectShowResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCreate(ctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCreate(ctx, req.(*pb.RpcObjectCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCreateBookmark(ctx, req.(*pb.RpcObjectCreateBookmarkRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCreateBookmark", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCreateBookmarkResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCreateFromUrl(ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest) *pb.RpcObjectCreateFromUrlResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCreateFromUrl(ctx, req.(*pb.RpcObjectCreateFromUrlRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCreateFromUrl", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCreateFromUrlResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCreateSet(ctx, req.(*pb.RpcObjectCreateSetRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCreateSet", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCreateSetResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectGraph(ctx context.Context, req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectGraph(ctx, req.(*pb.RpcObjectGraphRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectGraph", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectGraphResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSearch(ctx context.Context, req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSearch(ctx, req.(*pb.RpcObjectSearchRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSearch", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSearchResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSearchSubscribe(ctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSearchSubscribe(ctx, req.(*pb.RpcObjectSearchSubscribeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSearchSubscribe", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSearchSubscribeResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSubscribeIds(ctx context.Context, req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSubscribeIds(ctx, req.(*pb.RpcObjectSubscribeIdsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSubscribeIds", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSubscribeIdsResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectGroupsSubscribe(ctx context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectGroupsSubscribe(ctx, req.(*pb.RpcObjectGroupsSubscribeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectGroupsSubscribe", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectGroupsSubscribeResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSearchUnsubscribe(ctx context.Context, req *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSearchUnsubscribe(ctx, req.(*pb.RpcObjectSearchUnsubscribeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSearchUnsubscribe", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSearchUnsubscribeResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSetDetails(ctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSetDetails(ctx, req.(*pb.RpcObjectSetDetailsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSetDetails", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSetDetailsResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectDuplicate(ctx context.Context, req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectDuplicate(ctx, req.(*pb.RpcObjectDuplicateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectDuplicate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectDuplicateResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSetObjectType(ctx context.Context, req *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSetObjectType(ctx, req.(*pb.RpcObjectSetObjectTypeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSetObjectType", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSetObjectTypeResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSetLayout(ctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSetLayout(ctx, req.(*pb.RpcObjectSetLayoutRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSetLayout", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSetLayoutResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSetInternalFlags(ctx context.Context, req *pb.RpcObjectSetInternalFlagsRequest) *pb.RpcObjectSetInternalFlagsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSetInternalFlags(ctx, req.(*pb.RpcObjectSetInternalFlagsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSetInternalFlags", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSetInternalFlagsResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSetIsFavorite(ctx context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSetIsFavorite(ctx, req.(*pb.RpcObjectSetIsFavoriteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSetIsFavorite", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSetIsFavoriteResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSetIsArchived(ctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSetIsArchived(ctx, req.(*pb.RpcObjectSetIsArchivedRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSetIsArchived", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSetIsArchivedResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectSetSource(ctx context.Context, req *pb.RpcObjectSetSourceRequest) *pb.RpcObjectSetSourceResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectSetSource(ctx, req.(*pb.RpcObjectSetSourceRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectSetSource", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectSetSourceResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectWorkspaceSetDashboard(ctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectWorkspaceSetDashboard(ctx, req.(*pb.RpcObjectWorkspaceSetDashboardRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectWorkspaceSetDashboard", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectWorkspaceSetDashboardResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectListDuplicate(ctx context.Context, req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectListDuplicate(ctx, req.(*pb.RpcObjectListDuplicateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectListDuplicate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectListDuplicateResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectListDelete(ctx context.Context, req *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectListDelete(ctx, req.(*pb.RpcObjectListDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectListDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectListDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectListSetIsArchived(ctx context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectListSetIsArchived(ctx, req.(*pb.RpcObjectListSetIsArchivedRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectListSetIsArchived", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectListSetIsArchivedResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectListSetIsFavorite(ctx context.Context, req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectListSetIsFavorite(ctx, req.(*pb.RpcObjectListSetIsFavoriteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectListSetIsFavorite", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectListSetIsFavoriteResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectListSetObjectType(ctx context.Context, req *pb.RpcObjectListSetObjectTypeRequest) *pb.RpcObjectListSetObjectTypeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectListSetObjectType(ctx, req.(*pb.RpcObjectListSetObjectTypeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectListSetObjectType", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectListSetObjectTypeResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectApplyTemplate(ctx context.Context, req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectApplyTemplate(ctx, req.(*pb.RpcObjectApplyTemplateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectApplyTemplate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectApplyTemplateResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectToSet(ctx context.Context, req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectToSet(ctx, req.(*pb.RpcObjectToSetRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectToSet", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectToSetResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectToCollection(ctx context.Context, req *pb.RpcObjectToCollectionRequest) *pb.RpcObjectToCollectionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectToCollection(ctx, req.(*pb.RpcObjectToCollectionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectToCollection", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectToCollectionResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectShareByLink(ctx context.Context, req *pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectShareByLink(ctx, req.(*pb.RpcObjectShareByLinkRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectShareByLink", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectShareByLinkResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectUndo(ctx context.Context, req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectUndo(ctx, req.(*pb.RpcObjectUndoRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectUndo", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectUndoResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectRedo(ctx context.Context, req *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectRedo(ctx, req.(*pb.RpcObjectRedoRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectRedo", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectRedoResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectListExport(ctx context.Context, req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectListExport(ctx, req.(*pb.RpcObjectListExportRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectListExport", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectListExportResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectBookmarkFetch(ctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectBookmarkFetch(ctx, req.(*pb.RpcObjectBookmarkFetchRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectBookmarkFetch", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectBookmarkFetchResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectToBookmark(ctx context.Context, req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectToBookmark(ctx, req.(*pb.RpcObjectToBookmarkRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectToBookmark", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectToBookmarkResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectImport(ctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectImport(ctx, req.(*pb.RpcObjectImportRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectImport", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectImportResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectImportList(ctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectImportList(ctx, req.(*pb.RpcObjectImportListRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectImportList", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectImportListResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectImportNotionValidateToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) *pb.RpcObjectImportNotionValidateTokenResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectImportNotionValidateToken(ctx, req.(*pb.RpcObjectImportNotionValidateTokenRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectImportNotionValidateToken", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectImportNotionValidateTokenResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectImportUseCase(ctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectImportUseCase(ctx, req.(*pb.RpcObjectImportUseCaseRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectImportUseCase", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectImportUseCaseResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectImportExperience(ctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectImportExperience(ctx, req.(*pb.RpcObjectImportExperienceRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectImportExperience", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectImportExperienceResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCollectionAdd(ctx context.Context, req *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCollectionAdd(ctx, req.(*pb.RpcObjectCollectionAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCollectionAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCollectionAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCollectionRemove(ctx context.Context, req *pb.RpcObjectCollectionRemoveRequest) *pb.RpcObjectCollectionRemoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCollectionRemove(ctx, req.(*pb.RpcObjectCollectionRemoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCollectionRemove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCollectionRemoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCollectionSort(ctx context.Context, req *pb.RpcObjectCollectionSortRequest) *pb.RpcObjectCollectionSortResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCollectionSort(ctx, req.(*pb.RpcObjectCollectionSortRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCollectionSort", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCollectionSortResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCreateRelation(ctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCreateRelation(ctx, req.(*pb.RpcObjectCreateRelationRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCreateRelation", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCreateRelationResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCreateRelationOption(ctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCreateRelationOption(ctx, req.(*pb.RpcObjectCreateRelationOptionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCreateRelationOption", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCreateRelationOptionResponse)
+}
+func (h *ClientCommandsHandlerProxy) RelationListRemoveOption(ctx context.Context, req *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.RelationListRemoveOption(ctx, req.(*pb.RpcRelationListRemoveOptionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "RelationListRemoveOption", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcRelationListRemoveOptionResponse)
+}
+func (h *ClientCommandsHandlerProxy) RelationOptions(ctx context.Context, req *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.RelationOptions(ctx, req.(*pb.RpcRelationOptionsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "RelationOptions", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcRelationOptionsResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectRelationAdd(ctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectRelationAdd(ctx, req.(*pb.RpcObjectRelationAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectRelationAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectRelationAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectRelationDelete(ctx context.Context, req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectRelationDelete(ctx, req.(*pb.RpcObjectRelationDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectRelationDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectRelationDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectRelationAddFeatured(ctx context.Context, req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectRelationAddFeatured(ctx, req.(*pb.RpcObjectRelationAddFeaturedRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectRelationAddFeatured", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectRelationAddFeaturedResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectRelationRemoveFeatured(ctx context.Context, req *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectRelationRemoveFeatured(ctx, req.(*pb.RpcObjectRelationRemoveFeaturedRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectRelationRemoveFeatured", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectRelationRemoveFeaturedResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectRelationListAvailable(ctx context.Context, req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectRelationListAvailable(ctx, req.(*pb.RpcObjectRelationListAvailableRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectRelationListAvailable", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectRelationListAvailableResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectCreateObjectType(ctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectCreateObjectType(ctx, req.(*pb.RpcObjectCreateObjectTypeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectCreateObjectType", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectCreateObjectTypeResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectTypeRelationAdd(ctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectTypeRelationAdd(ctx, req.(*pb.RpcObjectTypeRelationAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectTypeRelationAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectTypeRelationAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) ObjectTypeRelationRemove(ctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ObjectTypeRelationRemove(ctx, req.(*pb.RpcObjectTypeRelationRemoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ObjectTypeRelationRemove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcObjectTypeRelationRemoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) HistoryShowVersion(ctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.HistoryShowVersion(ctx, req.(*pb.RpcHistoryShowVersionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "HistoryShowVersion", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcHistoryShowVersionResponse)
+}
+func (h *ClientCommandsHandlerProxy) HistoryGetVersions(ctx context.Context, req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.HistoryGetVersions(ctx, req.(*pb.RpcHistoryGetVersionsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "HistoryGetVersions", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcHistoryGetVersionsResponse)
+}
+func (h *ClientCommandsHandlerProxy) HistorySetVersion(ctx context.Context, req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.HistorySetVersion(ctx, req.(*pb.RpcHistorySetVersionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "HistorySetVersion", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcHistorySetVersionResponse)
+}
+func (h *ClientCommandsHandlerProxy) FileOffload(ctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.FileOffload(ctx, req.(*pb.RpcFileOffloadRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileOffload", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcFileOffloadResponse)
+}
+func (h *ClientCommandsHandlerProxy) FileSpaceOffload(ctx context.Context, req *pb.RpcFileSpaceOffloadRequest) *pb.RpcFileSpaceOffloadResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.FileSpaceOffload(ctx, req.(*pb.RpcFileSpaceOffloadRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileSpaceOffload", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcFileSpaceOffloadResponse)
+}
+func (h *ClientCommandsHandlerProxy) FileListOffload(ctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.FileListOffload(ctx, req.(*pb.RpcFileListOffloadRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileListOffload", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcFileListOffloadResponse)
+}
+func (h *ClientCommandsHandlerProxy) FileUpload(ctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.FileUpload(ctx, req.(*pb.RpcFileUploadRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileUpload", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcFileUploadResponse)
+}
+func (h *ClientCommandsHandlerProxy) FileDownload(ctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.FileDownload(ctx, req.(*pb.RpcFileDownloadRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileDownload", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcFileDownloadResponse)
+}
+func (h *ClientCommandsHandlerProxy) FileDrop(ctx context.Context, req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.FileDrop(ctx, req.(*pb.RpcFileDropRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileDrop", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcFileDropResponse)
+}
+func (h *ClientCommandsHandlerProxy) FileSpaceUsage(ctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.FileSpaceUsage(ctx, req.(*pb.RpcFileSpaceUsageRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileSpaceUsage", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcFileSpaceUsageResponse)
+}
+func (h *ClientCommandsHandlerProxy) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.FileNodeUsage(ctx, req.(*pb.RpcFileNodeUsageRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "FileNodeUsage", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcFileNodeUsageResponse)
+}
+func (h *ClientCommandsHandlerProxy) NavigationListObjects(ctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.NavigationListObjects(ctx, req.(*pb.RpcNavigationListObjectsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "NavigationListObjects", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcNavigationListObjectsResponse)
+}
+func (h *ClientCommandsHandlerProxy) NavigationGetObjectInfoWithLinks(ctx context.Context, req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.NavigationGetObjectInfoWithLinks(ctx, req.(*pb.RpcNavigationGetObjectInfoWithLinksRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "NavigationGetObjectInfoWithLinks", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcNavigationGetObjectInfoWithLinksResponse)
+}
+func (h *ClientCommandsHandlerProxy) TemplateCreateFromObject(ctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.TemplateCreateFromObject(ctx, req.(*pb.RpcTemplateCreateFromObjectRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "TemplateCreateFromObject", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcTemplateCreateFromObjectResponse)
+}
+func (h *ClientCommandsHandlerProxy) TemplateClone(ctx context.Context, req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.TemplateClone(ctx, req.(*pb.RpcTemplateCloneRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "TemplateClone", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcTemplateCloneResponse)
+}
+func (h *ClientCommandsHandlerProxy) TemplateExportAll(ctx context.Context, req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.TemplateExportAll(ctx, req.(*pb.RpcTemplateExportAllRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "TemplateExportAll", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcTemplateExportAllResponse)
+}
+func (h *ClientCommandsHandlerProxy) LinkPreview(ctx context.Context, req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.LinkPreview(ctx, req.(*pb.RpcLinkPreviewRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "LinkPreview", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcLinkPreviewResponse)
+}
+func (h *ClientCommandsHandlerProxy) UnsplashSearch(ctx context.Context, req *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.UnsplashSearch(ctx, req.(*pb.RpcUnsplashSearchRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "UnsplashSearch", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcUnsplashSearchResponse)
+}
+func (h *ClientCommandsHandlerProxy) UnsplashDownload(ctx context.Context, req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.UnsplashDownload(ctx, req.(*pb.RpcUnsplashDownloadRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "UnsplashDownload", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcUnsplashDownloadResponse)
+}
+func (h *ClientCommandsHandlerProxy) DownloadManifest(ctx context.Context, req *pb.RpcDownloadManifestRequest) *pb.RpcDownloadManifestResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DownloadManifest(ctx, req.(*pb.RpcDownloadManifestRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DownloadManifest", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDownloadManifestResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockUpload(ctx context.Context, req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockUpload(ctx, req.(*pb.RpcBlockUploadRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockUpload", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockUploadResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockReplace(ctx context.Context, req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockReplace(ctx, req.(*pb.RpcBlockReplaceRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockReplace", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockReplaceResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockCreate(ctx context.Context, req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockCreate(ctx, req.(*pb.RpcBlockCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockSplit(ctx context.Context, req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockSplit(ctx, req.(*pb.RpcBlockSplitRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockSplit", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockSplitResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockMerge(ctx context.Context, req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockMerge(ctx, req.(*pb.RpcBlockMergeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockMerge", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockMergeResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockCopy(ctx context.Context, req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockCopy(ctx, req.(*pb.RpcBlockCopyRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockCopy", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockCopyResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockPaste(ctx context.Context, req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockPaste(ctx, req.(*pb.RpcBlockPasteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockPaste", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockPasteResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockCut(ctx context.Context, req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockCut(ctx, req.(*pb.RpcBlockCutRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockCut", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockCutResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockSetFields(ctx context.Context, req *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockSetFields(ctx, req.(*pb.RpcBlockSetFieldsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockSetFields", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockSetFieldsResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockExport(ctx context.Context, req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockExport(ctx, req.(*pb.RpcBlockExportRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockExport", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockExportResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockSetCarriage(ctx context.Context, req *pb.RpcBlockSetCarriageRequest) *pb.RpcBlockSetCarriageResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockSetCarriage(ctx, req.(*pb.RpcBlockSetCarriageRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockSetCarriage", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockSetCarriageResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockPreview(ctx context.Context, req *pb.RpcBlockPreviewRequest) *pb.RpcBlockPreviewResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockPreview(ctx, req.(*pb.RpcBlockPreviewRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockPreview", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockPreviewResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListDelete(ctx context.Context, req *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListDelete(ctx, req.(*pb.RpcBlockListDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListMoveToExistingObject(ctx context.Context, req *pb.RpcBlockListMoveToExistingObjectRequest) *pb.RpcBlockListMoveToExistingObjectResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListMoveToExistingObject(ctx, req.(*pb.RpcBlockListMoveToExistingObjectRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListMoveToExistingObject", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListMoveToExistingObjectResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListMoveToNewObject(ctx context.Context, req *pb.RpcBlockListMoveToNewObjectRequest) *pb.RpcBlockListMoveToNewObjectResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListMoveToNewObject(ctx, req.(*pb.RpcBlockListMoveToNewObjectRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListMoveToNewObject", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListMoveToNewObjectResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListConvertToObjects(ctx context.Context, req *pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListConvertToObjects(ctx, req.(*pb.RpcBlockListConvertToObjectsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListConvertToObjects", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListConvertToObjectsResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListSetFields(ctx context.Context, req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListSetFields(ctx, req.(*pb.RpcBlockListSetFieldsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListSetFields", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListSetFieldsResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListDuplicate(ctx context.Context, req *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListDuplicate(ctx, req.(*pb.RpcBlockListDuplicateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListDuplicate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListDuplicateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListSetBackgroundColor(ctx context.Context, req *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListSetBackgroundColor(ctx, req.(*pb.RpcBlockListSetBackgroundColorRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListSetBackgroundColor", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListSetBackgroundColorResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListSetAlign(ctx context.Context, req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListSetAlign(ctx, req.(*pb.RpcBlockListSetAlignRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListSetAlign", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListSetAlignResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListSetVerticalAlign(ctx context.Context, req *pb.RpcBlockListSetVerticalAlignRequest) *pb.RpcBlockListSetVerticalAlignResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListSetVerticalAlign(ctx, req.(*pb.RpcBlockListSetVerticalAlignRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListSetVerticalAlign", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListSetVerticalAlignResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockListTurnInto(ctx context.Context, req *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockListTurnInto(ctx, req.(*pb.RpcBlockListTurnIntoRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockListTurnInto", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockListTurnIntoResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextSetText(ctx context.Context, req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextSetText(ctx, req.(*pb.RpcBlockTextSetTextRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextSetText", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextSetTextResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextSetColor(ctx context.Context, req *pb.RpcBlockTextSetColorRequest) *pb.RpcBlockTextSetColorResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextSetColor(ctx, req.(*pb.RpcBlockTextSetColorRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextSetColor", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextSetColorResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextSetStyle(ctx context.Context, req *pb.RpcBlockTextSetStyleRequest) *pb.RpcBlockTextSetStyleResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextSetStyle(ctx, req.(*pb.RpcBlockTextSetStyleRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextSetStyle", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextSetStyleResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextSetChecked(ctx context.Context, req *pb.RpcBlockTextSetCheckedRequest) *pb.RpcBlockTextSetCheckedResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextSetChecked(ctx, req.(*pb.RpcBlockTextSetCheckedRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextSetChecked", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextSetCheckedResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextSetIcon(ctx context.Context, req *pb.RpcBlockTextSetIconRequest) *pb.RpcBlockTextSetIconResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextSetIcon(ctx, req.(*pb.RpcBlockTextSetIconRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextSetIcon", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextSetIconResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextListSetColor(ctx context.Context, req *pb.RpcBlockTextListSetColorRequest) *pb.RpcBlockTextListSetColorResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextListSetColor(ctx, req.(*pb.RpcBlockTextListSetColorRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextListSetColor", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextListSetColorResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextListSetMark(ctx context.Context, req *pb.RpcBlockTextListSetMarkRequest) *pb.RpcBlockTextListSetMarkResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextListSetMark(ctx, req.(*pb.RpcBlockTextListSetMarkRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextListSetMark", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextListSetMarkResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextListSetStyle(ctx context.Context, req *pb.RpcBlockTextListSetStyleRequest) *pb.RpcBlockTextListSetStyleResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextListSetStyle(ctx, req.(*pb.RpcBlockTextListSetStyleRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextListSetStyle", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextListSetStyleResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextListClearStyle(ctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextListClearStyle(ctx, req.(*pb.RpcBlockTextListClearStyleRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextListClearStyle", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextListClearStyleResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTextListClearContent(ctx context.Context, req *pb.RpcBlockTextListClearContentRequest) *pb.RpcBlockTextListClearContentResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTextListClearContent(ctx, req.(*pb.RpcBlockTextListClearContentRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTextListClearContent", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTextListClearContentResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockFileSetName(ctx context.Context, req *pb.RpcBlockFileSetNameRequest) *pb.RpcBlockFileSetNameResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockFileSetName(ctx, req.(*pb.RpcBlockFileSetNameRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockFileSetName", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockFileSetNameResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockImageSetName(ctx context.Context, req *pb.RpcBlockImageSetNameRequest) *pb.RpcBlockImageSetNameResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockImageSetName(ctx, req.(*pb.RpcBlockImageSetNameRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockImageSetName", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockImageSetNameResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockVideoSetName(ctx context.Context, req *pb.RpcBlockVideoSetNameRequest) *pb.RpcBlockVideoSetNameResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockVideoSetName(ctx, req.(*pb.RpcBlockVideoSetNameRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockVideoSetName", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockVideoSetNameResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockFileCreateAndUpload(ctx context.Context, req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockFileCreateAndUpload(ctx, req.(*pb.RpcBlockFileCreateAndUploadRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockFileCreateAndUpload", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockFileCreateAndUploadResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockFileListSetStyle(ctx context.Context, req *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockFileListSetStyle(ctx, req.(*pb.RpcBlockFileListSetStyleRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockFileListSetStyle", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockFileListSetStyleResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewCreate(ctx context.Context, req *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewCreate(ctx, req.(*pb.RpcBlockDataviewViewCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewDelete(ctx context.Context, req *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewDelete(ctx, req.(*pb.RpcBlockDataviewViewDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewUpdate(ctx context.Context, req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewUpdate(ctx, req.(*pb.RpcBlockDataviewViewUpdateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewUpdate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewUpdateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewSetActive(ctx context.Context, req *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewSetActive(ctx, req.(*pb.RpcBlockDataviewViewSetActiveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewSetActive", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewSetActiveResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewSetPosition(ctx context.Context, req *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewSetPosition(ctx, req.(*pb.RpcBlockDataviewViewSetPositionRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewSetPosition", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewSetPositionResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewSetSource(ctx context.Context, req *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewSetSource(ctx, req.(*pb.RpcBlockDataviewSetSourceRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewSetSource", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewSetSourceResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewRelationAdd(ctx context.Context, req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewRelationAdd(ctx, req.(*pb.RpcBlockDataviewRelationAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewRelationAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewRelationAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewRelationDelete(ctx context.Context, req *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewRelationDelete(ctx, req.(*pb.RpcBlockDataviewRelationDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewRelationDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewRelationDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewRelationListAvailable(ctx context.Context, req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewRelationListAvailable(ctx, req.(*pb.RpcBlockDataviewRelationListAvailableRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewRelationListAvailable", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewRelationListAvailableResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewGroupOrderUpdate(ctx context.Context, req *pb.RpcBlockDataviewGroupOrderUpdateRequest) *pb.RpcBlockDataviewGroupOrderUpdateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewGroupOrderUpdate(ctx, req.(*pb.RpcBlockDataviewGroupOrderUpdateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewGroupOrderUpdate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewGroupOrderUpdateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewObjectOrderUpdate(ctx context.Context, req *pb.RpcBlockDataviewObjectOrderUpdateRequest) *pb.RpcBlockDataviewObjectOrderUpdateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewObjectOrderUpdate(ctx, req.(*pb.RpcBlockDataviewObjectOrderUpdateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewObjectOrderUpdate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewObjectOrderUpdateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewObjectOrderMove(ctx context.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) *pb.RpcBlockDataviewObjectOrderMoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewObjectOrderMove(ctx, req.(*pb.RpcBlockDataviewObjectOrderMoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewObjectOrderMove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewObjectOrderMoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewCreateFromExistingObject(ctx context.Context, req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) *pb.RpcBlockDataviewCreateFromExistingObjectResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewCreateFromExistingObject(ctx, req.(*pb.RpcBlockDataviewCreateFromExistingObjectRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewCreateFromExistingObject", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewCreateFromExistingObjectResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewFilterAdd(ctx context.Context, req *pb.RpcBlockDataviewFilterAddRequest) *pb.RpcBlockDataviewFilterAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewFilterAdd(ctx, req.(*pb.RpcBlockDataviewFilterAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewFilterAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewFilterAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewFilterRemove(ctx context.Context, req *pb.RpcBlockDataviewFilterRemoveRequest) *pb.RpcBlockDataviewFilterRemoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewFilterRemove(ctx, req.(*pb.RpcBlockDataviewFilterRemoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewFilterRemove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewFilterRemoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewFilterReplace(ctx context.Context, req *pb.RpcBlockDataviewFilterReplaceRequest) *pb.RpcBlockDataviewFilterReplaceResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewFilterReplace(ctx, req.(*pb.RpcBlockDataviewFilterReplaceRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewFilterReplace", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewFilterReplaceResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewFilterSort(ctx context.Context, req *pb.RpcBlockDataviewFilterSortRequest) *pb.RpcBlockDataviewFilterSortResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewFilterSort(ctx, req.(*pb.RpcBlockDataviewFilterSortRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewFilterSort", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewFilterSortResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewSortAdd(ctx context.Context, req *pb.RpcBlockDataviewSortAddRequest) *pb.RpcBlockDataviewSortAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewSortAdd(ctx, req.(*pb.RpcBlockDataviewSortAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewSortAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewSortAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewSortRemove(ctx context.Context, req *pb.RpcBlockDataviewSortRemoveRequest) *pb.RpcBlockDataviewSortRemoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewSortRemove(ctx, req.(*pb.RpcBlockDataviewSortRemoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewSortRemove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewSortRemoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewSortReplace(ctx context.Context, req *pb.RpcBlockDataviewSortReplaceRequest) *pb.RpcBlockDataviewSortReplaceResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewSortReplace(ctx, req.(*pb.RpcBlockDataviewSortReplaceRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewSortReplace", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewSortReplaceResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewSortSort(ctx context.Context, req *pb.RpcBlockDataviewSortSortRequest) *pb.RpcBlockDataviewSortSortResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewSortSort(ctx, req.(*pb.RpcBlockDataviewSortSortRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewSortSort", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewSortSortResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationAdd(ctx context.Context, req *pb.RpcBlockDataviewViewRelationAddRequest) *pb.RpcBlockDataviewViewRelationAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewRelationAdd(ctx, req.(*pb.RpcBlockDataviewViewRelationAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewRelationAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewRelationAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationRemove(ctx context.Context, req *pb.RpcBlockDataviewViewRelationRemoveRequest) *pb.RpcBlockDataviewViewRelationRemoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewRelationRemove(ctx, req.(*pb.RpcBlockDataviewViewRelationRemoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewRelationRemove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewRelationRemoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationReplace(ctx context.Context, req *pb.RpcBlockDataviewViewRelationReplaceRequest) *pb.RpcBlockDataviewViewRelationReplaceResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewRelationReplace(ctx, req.(*pb.RpcBlockDataviewViewRelationReplaceRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewRelationReplace", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewRelationReplaceResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDataviewViewRelationSort(ctx context.Context, req *pb.RpcBlockDataviewViewRelationSortRequest) *pb.RpcBlockDataviewViewRelationSortResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDataviewViewRelationSort(ctx, req.(*pb.RpcBlockDataviewViewRelationSortRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDataviewViewRelationSort", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDataviewViewRelationSortResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableCreate(ctx context.Context, req *pb.RpcBlockTableCreateRequest) *pb.RpcBlockTableCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableCreate(ctx, req.(*pb.RpcBlockTableCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableExpand(ctx context.Context, req *pb.RpcBlockTableExpandRequest) *pb.RpcBlockTableExpandResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableExpand(ctx, req.(*pb.RpcBlockTableExpandRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableExpand", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableExpandResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableRowCreate(ctx context.Context, req *pb.RpcBlockTableRowCreateRequest) *pb.RpcBlockTableRowCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableRowCreate(ctx, req.(*pb.RpcBlockTableRowCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableRowCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableRowCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableRowDelete(ctx context.Context, req *pb.RpcBlockTableRowDeleteRequest) *pb.RpcBlockTableRowDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableRowDelete(ctx, req.(*pb.RpcBlockTableRowDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableRowDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableRowDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableRowDuplicate(ctx context.Context, req *pb.RpcBlockTableRowDuplicateRequest) *pb.RpcBlockTableRowDuplicateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableRowDuplicate(ctx, req.(*pb.RpcBlockTableRowDuplicateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableRowDuplicate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableRowDuplicateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableRowSetHeader(ctx context.Context, req *pb.RpcBlockTableRowSetHeaderRequest) *pb.RpcBlockTableRowSetHeaderResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableRowSetHeader(ctx, req.(*pb.RpcBlockTableRowSetHeaderRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableRowSetHeader", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableRowSetHeaderResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableColumnCreate(ctx context.Context, req *pb.RpcBlockTableColumnCreateRequest) *pb.RpcBlockTableColumnCreateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableColumnCreate(ctx, req.(*pb.RpcBlockTableColumnCreateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableColumnCreate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableColumnCreateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableColumnMove(ctx context.Context, req *pb.RpcBlockTableColumnMoveRequest) *pb.RpcBlockTableColumnMoveResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableColumnMove(ctx, req.(*pb.RpcBlockTableColumnMoveRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableColumnMove", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableColumnMoveResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableColumnDelete(ctx context.Context, req *pb.RpcBlockTableColumnDeleteRequest) *pb.RpcBlockTableColumnDeleteResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableColumnDelete(ctx, req.(*pb.RpcBlockTableColumnDeleteRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableColumnDelete", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableColumnDeleteResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableColumnDuplicate(ctx context.Context, req *pb.RpcBlockTableColumnDuplicateRequest) *pb.RpcBlockTableColumnDuplicateResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableColumnDuplicate(ctx, req.(*pb.RpcBlockTableColumnDuplicateRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableColumnDuplicate", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableColumnDuplicateResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableRowListFill(ctx context.Context, req *pb.RpcBlockTableRowListFillRequest) *pb.RpcBlockTableRowListFillResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableRowListFill(ctx, req.(*pb.RpcBlockTableRowListFillRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableRowListFill", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableRowListFillResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableRowListClean(ctx context.Context, req *pb.RpcBlockTableRowListCleanRequest) *pb.RpcBlockTableRowListCleanResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableRowListClean(ctx, req.(*pb.RpcBlockTableRowListCleanRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableRowListClean", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableRowListCleanResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableColumnListFill(ctx context.Context, req *pb.RpcBlockTableColumnListFillRequest) *pb.RpcBlockTableColumnListFillResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableColumnListFill(ctx, req.(*pb.RpcBlockTableColumnListFillRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableColumnListFill", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableColumnListFillResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockTableSort(ctx context.Context, req *pb.RpcBlockTableSortRequest) *pb.RpcBlockTableSortResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockTableSort(ctx, req.(*pb.RpcBlockTableSortRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockTableSort", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockTableSortResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockCreateWidget(ctx context.Context, req *pb.RpcBlockCreateWidgetRequest) *pb.RpcBlockCreateWidgetResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockCreateWidget(ctx, req.(*pb.RpcBlockCreateWidgetRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockCreateWidget", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockCreateWidgetResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockWidgetSetTargetId(ctx context.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) *pb.RpcBlockWidgetSetTargetIdResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockWidgetSetTargetId(ctx, req.(*pb.RpcBlockWidgetSetTargetIdRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockWidgetSetTargetId", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockWidgetSetTargetIdResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockWidgetSetLayout(ctx context.Context, req *pb.RpcBlockWidgetSetLayoutRequest) *pb.RpcBlockWidgetSetLayoutResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockWidgetSetLayout(ctx, req.(*pb.RpcBlockWidgetSetLayoutRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockWidgetSetLayout", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockWidgetSetLayoutResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockWidgetSetLimit(ctx context.Context, req *pb.RpcBlockWidgetSetLimitRequest) *pb.RpcBlockWidgetSetLimitResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockWidgetSetLimit(ctx, req.(*pb.RpcBlockWidgetSetLimitRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockWidgetSetLimit", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockWidgetSetLimitResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockWidgetSetViewId(ctx context.Context, req *pb.RpcBlockWidgetSetViewIdRequest) *pb.RpcBlockWidgetSetViewIdResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockWidgetSetViewId(ctx, req.(*pb.RpcBlockWidgetSetViewIdRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockWidgetSetViewId", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockWidgetSetViewIdResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockLinkCreateWithObject(ctx context.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockLinkCreateWithObject(ctx, req.(*pb.RpcBlockLinkCreateWithObjectRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockLinkCreateWithObject", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockLinkCreateWithObjectResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockLinkListSetAppearance(ctx context.Context, req *pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockLinkListSetAppearance(ctx, req.(*pb.RpcBlockLinkListSetAppearanceRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockLinkListSetAppearance", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockLinkListSetAppearanceResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockBookmarkFetch(ctx context.Context, req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockBookmarkFetch(ctx, req.(*pb.RpcBlockBookmarkFetchRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockBookmarkFetch", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockBookmarkFetchResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockBookmarkCreateAndFetch(ctx context.Context, req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockBookmarkCreateAndFetch(ctx, req.(*pb.RpcBlockBookmarkCreateAndFetchRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockBookmarkCreateAndFetch", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockBookmarkCreateAndFetchResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockRelationSetKey(ctx context.Context, req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockRelationSetKey(ctx, req.(*pb.RpcBlockRelationSetKeyRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockRelationSetKey", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockRelationSetKeyResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockRelationAdd(ctx context.Context, req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockRelationAdd(ctx, req.(*pb.RpcBlockRelationAddRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockRelationAdd", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockRelationAddResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockDivListSetStyle(ctx context.Context, req *pb.RpcBlockDivListSetStyleRequest) *pb.RpcBlockDivListSetStyleResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockDivListSetStyle(ctx, req.(*pb.RpcBlockDivListSetStyleRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockDivListSetStyle", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockDivListSetStyleResponse)
+}
+func (h *ClientCommandsHandlerProxy) BlockLatexSetText(ctx context.Context, req *pb.RpcBlockLatexSetTextRequest) *pb.RpcBlockLatexSetTextResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.BlockLatexSetText(ctx, req.(*pb.RpcBlockLatexSetTextRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "BlockLatexSetText", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcBlockLatexSetTextResponse)
+}
+func (h *ClientCommandsHandlerProxy) ProcessCancel(ctx context.Context, req *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ProcessCancel(ctx, req.(*pb.RpcProcessCancelRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ProcessCancel", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcProcessCancelResponse)
+}
+func (h *ClientCommandsHandlerProxy) LogSend(ctx context.Context, req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.LogSend(ctx, req.(*pb.RpcLogSendRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "LogSend", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcLogSendResponse)
+}
+func (h *ClientCommandsHandlerProxy) DebugTree(ctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DebugTree(ctx, req.(*pb.RpcDebugTreeRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugTree", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDebugTreeResponse)
+}
+func (h *ClientCommandsHandlerProxy) DebugTreeHeads(ctx context.Context, req *pb.RpcDebugTreeHeadsRequest) *pb.RpcDebugTreeHeadsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DebugTreeHeads(ctx, req.(*pb.RpcDebugTreeHeadsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugTreeHeads", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDebugTreeHeadsResponse)
+}
+func (h *ClientCommandsHandlerProxy) DebugSpaceSummary(ctx context.Context, req *pb.RpcDebugSpaceSummaryRequest) *pb.RpcDebugSpaceSummaryResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DebugSpaceSummary(ctx, req.(*pb.RpcDebugSpaceSummaryRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugSpaceSummary", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDebugSpaceSummaryResponse)
+}
+func (h *ClientCommandsHandlerProxy) DebugStackGoroutines(ctx context.Context, req *pb.RpcDebugStackGoroutinesRequest) *pb.RpcDebugStackGoroutinesResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DebugStackGoroutines(ctx, req.(*pb.RpcDebugStackGoroutinesRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugStackGoroutines", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDebugStackGoroutinesResponse)
+}
+func (h *ClientCommandsHandlerProxy) DebugExportLocalstore(ctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DebugExportLocalstore(ctx, req.(*pb.RpcDebugExportLocalstoreRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugExportLocalstore", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDebugExportLocalstoreResponse)
+}
+func (h *ClientCommandsHandlerProxy) DebugPing(ctx context.Context, req *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DebugPing(ctx, req.(*pb.RpcDebugPingRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugPing", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDebugPingResponse)
+}
+func (h *ClientCommandsHandlerProxy) DebugSubscriptions(ctx context.Context, req *pb.RpcDebugSubscriptionsRequest) *pb.RpcDebugSubscriptionsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DebugSubscriptions(ctx, req.(*pb.RpcDebugSubscriptionsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugSubscriptions", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDebugSubscriptionsResponse)
+}
+func (h *ClientCommandsHandlerProxy) DebugOpenedObjects(ctx context.Context, req *pb.RpcDebugOpenedObjectsRequest) *pb.RpcDebugOpenedObjectsResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.DebugOpenedObjects(ctx, req.(*pb.RpcDebugOpenedObjectsRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "DebugOpenedObjects", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcDebugOpenedObjectsResponse)
+}
+func (h *ClientCommandsHandlerProxy) MetricsSetParameters(ctx context.Context, req *pb.RpcMetricsSetParametersRequest) *pb.RpcMetricsSetParametersResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.MetricsSetParameters(ctx, req.(*pb.RpcMetricsSetParametersRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "MetricsSetParameters", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcMetricsSetParametersResponse)
+}
+func (h *ClientCommandsHandlerProxy) NotificationList(ctx context.Context, req *pb.RpcNotificationListRequest) *pb.RpcNotificationListResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.NotificationList(ctx, req.(*pb.RpcNotificationListRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "NotificationList", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcNotificationListResponse)
+}
+func (h *ClientCommandsHandlerProxy) NotificationReply(ctx context.Context, req *pb.RpcNotificationReplyRequest) *pb.RpcNotificationReplyResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.NotificationReply(ctx, req.(*pb.RpcNotificationReplyRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "NotificationReply", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcNotificationReplyResponse)
 }

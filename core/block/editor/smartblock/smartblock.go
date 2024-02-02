@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -34,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -88,7 +88,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 func New(
 	space Space,
 	currentProfileId string,
-	fileService files.Service,
+	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
@@ -102,7 +102,7 @@ func New(
 		Locker:           &sync.Mutex{},
 		sessions:         map[string]session.Context{},
 
-		fileService:        fileService,
+		fileStore:          fileStore,
 		restrictionService: restrictionService,
 		objectStore:        objectStore,
 		indexer:            indexer,
@@ -159,7 +159,6 @@ type SmartBlock interface {
 	SetRestrictions(r restriction.Restrictions)
 	ObjectClose(ctx session.Context)
 	ObjectCloseAllSessions()
-	FileRelationKeys(s *state.State) []string
 
 	Space() Space
 
@@ -170,14 +169,13 @@ type SmartBlock interface {
 }
 
 type DocInfo struct {
-	Id         string
-	Space      Space
-	Links      []string
-	FileHashes []string
-	Heads      []string
-	Creator    string
-	Type       domain.TypeKey
-	Details    *types.Struct
+	Id      string
+	Space   Space
+	Links   []string
+	Heads   []string
+	Creator string
+	Type    domain.TypeKey
+	Details *types.Struct
 
 	SmartblockType smartblock.SmartBlockType
 }
@@ -237,7 +235,7 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileService        files.Service
+	fileStore          filestore.FileStore
 	restrictionService restriction.Service
 	objectStore        objectstore.ObjectStore
 	indexer            Indexer
@@ -250,10 +248,6 @@ func (sb *smartBlock) SetLocker(locker Locker) {
 
 func (sb *smartBlock) Tree() objecttree.ObjectTree {
 	return sb.ObjectTree
-}
-
-func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {
-	return s.FileRelationKeys()
 }
 
 func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
@@ -654,7 +648,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	pushChange := func() error {
-		fileDetailsKeys := sb.FileRelationKeys(st)
+		fileDetailsKeys := st.FileRelationKeys()
 		var fileDetailsKeysFiltered []string
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
@@ -735,7 +729,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	afterApplyHookTime := time.Now()
 
-	metrics.SharedClient.RecordEvent(metrics.StateApply{
+	metrics.Service.Send(&metrics.StateApply{
 		BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
 		StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
 		PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
@@ -1153,14 +1147,14 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 	if len(keys) == 0 {
 		return
 	}
-	fileKeys := make([]files.FileKeys, len(keys))
+	fileKeys := make([]domain.FileEncryptionKeys, len(keys))
 	for i, k := range keys {
-		fileKeys[i] = files.FileKeys{
-			Hash: k.Hash,
-			Keys: k.Keys,
+		fileKeys[i] = domain.FileEncryptionKeys{
+			FileId:         domain.FileId(k.Hash),
+			EncryptionKeys: k.Keys,
 		}
 	}
-	if err := sb.fileService.StoreFileKeys(fileKeys...); err != nil {
+	if err := sb.fileStore.AddFileKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }
@@ -1216,7 +1210,6 @@ func (sb *smartBlock) GetDocInfo() DocInfo {
 }
 
 func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
-	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
@@ -1246,7 +1239,6 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Space:          sb.Space(),
 		Links:          links,
 		Heads:          heads,
-		FileHashes:     fileHashes,
 		Creator:        creator,
 		Details:        sb.CombinedDetails(),
 		Type:           sb.ObjectTypeKey(),
@@ -1354,6 +1346,20 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	id := s.RootId()
 	if id != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
+	}
+
+	if v, ok := s.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, v)
+	}
+
+	if info := s.GetFileInfo(); info.FileId != "" {
+		err := sb.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+			FileId:         info.FileId,
+			EncryptionKeys: info.EncryptionKeys,
+		})
+		if err != nil {
+			log.Errorf("failed to store file keys: %v", err)
+		}
 	}
 
 	if spaceID != "" {

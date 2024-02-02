@@ -33,7 +33,7 @@ const (
 )
 
 type LinkPreview interface {
-	Fetch(ctx context.Context, url string) (model.LinkPreview, error)
+	Fetch(ctx context.Context, url string) (model.LinkPreview, []byte, error)
 	app.Component
 }
 
@@ -50,7 +50,7 @@ func (l *linkPreview) Name() (name string) {
 	return CName
 }
 
-func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, error) {
+func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, []byte, error) {
 	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
 	client := &http.Client{Transport: rt}
 	og := opengraph.New(fetchUrl)
@@ -60,13 +60,17 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	err := og.Fetch()
 	if err != nil {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
-			return l.makeNonHtml(fetchUrl, resp)
+			preview, err := l.makeNonHtml(fetchUrl, resp)
+			if err != nil {
+				return preview, nil, err
+			}
+			return preview, rt.lastBody, nil
 		}
-		return model.LinkPreview{}, err
+		return model.LinkPreview{}, nil, err
 	}
 
 	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
-		return model.LinkPreview{}, fmt.Errorf("invalid http code %d", resp.StatusCode)
+		return model.LinkPreview{}, nil, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
 	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
@@ -78,7 +82,7 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	if !utf8.ValidString(res.Description) {
 		res.Description = ""
 	}
-	return res, nil
+	return res, rt.lastBody, nil
 }
 
 func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) (i model.LinkPreview) {

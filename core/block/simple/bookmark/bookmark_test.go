@@ -13,11 +13,11 @@ import (
 )
 
 func setLinkPreview(b Block, data model.LinkPreview) {
-	b.UpdateContent(func(c *model.BlockContentBookmark) {
-		c.Url = data.Url
-		c.Title = data.Title
-		c.Description = data.Description
-		c.Type = data.Type
+	b.UpdateContent(func(c *ObjectContent) {
+		c.BookmarkContent.Url = data.Url
+		c.BookmarkContent.Title = data.Title
+		c.BookmarkContent.Description = data.Description
+		c.BookmarkContent.Type = data.Type
 	})
 }
 
@@ -64,10 +64,10 @@ func TestBookmark_Diff(t *testing.T) {
 		b2 := testBlock()
 
 		setLinkPreview(b2, lp)
-		b2.UpdateContent(func(c *model.BlockContentBookmark) {
-			c.FaviconHash = "fh"
-			c.ImageHash = "ih"
-			c.TargetObjectId = "newobject"
+		b2.UpdateContent(func(c *ObjectContent) {
+			c.BookmarkContent.FaviconHash = "fh"
+			c.BookmarkContent.ImageHash = "ih"
+			c.BookmarkContent.TargetObjectId = "newobject"
 		})
 
 		diff, err := b1.Diff(b2)

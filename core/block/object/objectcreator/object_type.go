@@ -93,7 +93,7 @@ func (s *service) prepareRecommendedRelationIds(ctx context.Context, space clien
 		}
 		recommendedRelationIDs = append(recommendedRelationIDs, id)
 	}
-	_, _, err := s.InstallBundledObjects(ctx, space, relationsToInstall)
+	_, _, err := s.InstallBundledObjects(ctx, space, relationsToInstall, false)
 	if err != nil {
 		return nil, fmt.Errorf("install recommended relations: %w", err)
 	}

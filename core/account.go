@@ -2,11 +2,14 @@ package core
 
 import (
 	"context"
+	"errors"
 
 	"github.com/anyproto/any-sync/net"
+	"google.golang.org/grpc/peer"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/application"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -191,5 +194,65 @@ func (mw *Middleware) AccountEnableLocalNetworkSync(_ context.Context, req *pb.R
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
+	info := getClientInfo(ctx)
+
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(&info)
+	if err != nil {
+		var code pb.RpcAccountLocalLinkNewChallengeResponseErrorCode
+		if errors.Is(err, session.ErrTooManyChallengeRequests) {
+			code = pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS
+		} else {
+			code = pb.RpcAccountLocalLinkNewChallengeResponseError_UNKNOWN_ERROR
+		}
+		return &pb.RpcAccountLocalLinkNewChallengeResponse{
+			Error: &pb.RpcAccountLocalLinkNewChallengeResponseError{
+				Code:        code,
+				Description: err.Error(),
+			},
+		}
+	}
+
+	// todo: implement errors
+	return &pb.RpcAccountLocalLinkNewChallengeResponse{
+		ChallengeId: challengeId,
+		Error: &pb.RpcAccountLocalLinkNewChallengeResponseError{
+			Code:        0,
+			Description: "",
+		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
+	token, appKey, err := mw.applicationService.LinkLocalSolveChallenge(req)
+	code := mapErrorCode(err,
+		errToCode(session.ErrChallengeTriesExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
+		errToCode(session.ErrChallengeSolutionWrong, pb.RpcAccountLocalLinkSolveChallengeResponseError_INCORRECT_ANSWER),
+		errToCode(session.ErrChallengeIdNotFound, pb.RpcAccountLocalLinkSolveChallengeResponseError_INVALID_CHALLENGE_ID),
+	)
+	return &pb.RpcAccountLocalLinkSolveChallengeResponse{
+		SessionToken: token,
+		AppKey:       appKey,
+		Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func getClientInfo(ctx context.Context) pb.EventAccountLinkChallengeClientInfo {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return pb.EventAccountLinkChallengeClientInfo{}
+	}
+
+	// todo: get process info
+	return pb.EventAccountLinkChallengeClientInfo{
+		ProcessName:       p.Addr.String(),
+		ProcessPath:       "",
+		SignatureVerified: false,
 	}
 }

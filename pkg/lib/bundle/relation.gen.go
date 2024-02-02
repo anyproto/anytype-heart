@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9d13b57d26e1a12a93d497a0016a692457a39e7fa73797a1ba27a4957cb9b734"
+const RelationChecksum = "2e2ed6a492be58b3ec99d79e750a385085c8d4719543dbd585142853d24f8a04"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -150,6 +150,7 @@ const (
 	RelationKeySpaceAccessibility        domain.RelationKey = "spaceAccessibility"
 	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
+	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
 	RelationKeyLastChangeId              domain.RelationKey = "lastChangeId"
 	RelationKeyStarred                   domain.RelationKey = "starred"
 	RelationKeyDefaultTemplateId         domain.RelationKey = "defaultTemplateId"
@@ -163,8 +164,11 @@ const (
 	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
+	RelationKeyFileId                    domain.RelationKey = "fileId"
 	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                  domain.RelationKey = "revision"
+	RelationKeyImageKind                 domain.RelationKey = "imageKind"
+	RelationKeyImportType                domain.RelationKey = "importType"
 )
 
 var (
@@ -719,15 +723,42 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyFileBackupStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "File backup status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brfileBackupStatus",
+			Key:              "fileBackupStatus",
+			MaxCount:         1,
+			Name:             "File backup status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyFileExt: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
 			Id:               "_brfileExt",
 			Key:              "fileExt",
 			MaxCount:         1,
 			Name:             "File extension",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileId",
+			Key:              "fileId",
+			Name:             "Underlying file id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -908,6 +939,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyImageKind: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Describes how this image is used",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brimageKind",
+			Key:              "imageKind",
+			MaxCount:         1,
+			Name:             "Image kind",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyImdbRating: {
 
 			DataSource:       model.Relation_details,
@@ -918,6 +963,19 @@ var (
 			MaxCount:         1,
 			Name:             "IMDb rating",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyImportType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Import type, used to create object (notion, md and etc)",
+			Format:           model.RelationFormat_number,
+			Id:               "_brimportType",
+			Key:              "importType",
+			MaxCount:         1,
+			Name:             "Import Type",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

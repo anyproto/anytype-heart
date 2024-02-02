@@ -12,19 +12,17 @@ import (
 	ipfspath "github.com/ipfs/boxo/path"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 type AddOption func(*AddOptions)
+
 type AddOptions struct {
 	Reader           io.ReadSeeker
 	Use              string
 	Media            string
 	Name             string
 	LastModifiedDate int64
-	Plaintext        bool
-	Origin           model.ObjectOrigin
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -45,12 +43,6 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 	}
 }
 
-func WithOrigin(origin model.ObjectOrigin) AddOption {
-	return func(args *AddOptions) {
-		args.Origin = origin
-	}
-}
-
 func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *AddOptions) error {
 	if opts.Use != "" {
 		ref, err := ipfspath.ParsePath(opts.Use)
@@ -61,7 +53,7 @@ func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *Ad
 		hash := parts[len(parts)-1]
 		var file *storage.FileInfo
 
-		opts.Reader, file, err = s.fileContent(ctx, domain.FullID{SpaceID: spaceID, ObjectID: hash})
+		opts.Reader, file, err = s.fileContent(ctx, spaceID, domain.FileContentId(hash))
 		if err != nil {
 			/*if err == localstore.ErrNotFound{
 				// just cat the data from dagService

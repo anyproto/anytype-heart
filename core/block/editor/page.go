@@ -14,8 +14,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -34,11 +36,13 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore objectstore.ObjectStore
+	objectStore       objectstore.ObjectStore
+	fileObjectService fileobject.Service
+	objectDeleter     ObjectDeleter
 }
 
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
-	file := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker)
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
@@ -49,18 +53,21 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 			f.objectStore,
 			f.eventSender,
 		),
-		File: file,
+		File: fileComponent,
 		Clipboard: clipboard.NewClipboard(
 			sb,
-			file,
+			fileComponent,
 			f.tempDirProvider,
 			f.objectStore,
 			f.fileService,
+			f.fileObjectService,
 		),
-		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
-		Dataview:    dataview.NewDataview(sb, f.objectStore),
-		TableEditor: table.NewEditor(sb),
-		objectStore: f.objectStore,
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		Dataview:          dataview.NewDataview(sb, f.objectStore),
+		TableEditor:       table.NewEditor(sb),
+		objectStore:       f.objectStore,
+		fileObjectService: f.fileObjectService,
+		objectDeleter:     f.objectDeleter,
 	}
 }
 
@@ -71,6 +78,51 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
+	}
+
+	if !ctx.IsNewObject {
+		migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+	}
+
+	if p.isRelationDeleted(ctx) {
+		err = p.deleteRelationOptions(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
+	return p.Type() == coresb.SmartBlockTypeRelation &&
+		pbtypes.GetBool(ctx.State.Details(), bundle.RelationKeyIsUninstalled.String())
+}
+
+func (p *Page) deleteRelationOptions(ctx *smartblock.InitContext) error {
+	relationKey := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyRelationKey.String())
+	relationOptions, _, err := p.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(relationKey),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	spaceID := p.Space().Id()
+	for _, id := range relationOptions {
+		err := p.objectDeleter.DeleteObjectByFullID(domain.FullID{SpaceID: spaceID, ObjectID: id})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -162,19 +214,4 @@ func (p *Page) StateMigrations() migration.Migrations {
 			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 		},
 	})
-}
-
-func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
-	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
-	for _, rel := range rels {
-		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
-			continue
-		}
-		var visible bool
-		if rel.Key == bundle.RelationKeyName.String() {
-			visible = true
-		}
-		viewRels = append(viewRels, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
-	}
-	return viewRels
 }

@@ -45,7 +45,7 @@ type MD struct {
 	fn FileNamer
 }
 
-func (h *MD) Convert(model.SmartBlockType) (result []byte) {
+func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 	if h.s.Pick(h.s.RootId()) == nil {
 		return
 	}
@@ -221,11 +221,11 @@ func (h *MD) renderFile(buf writer, in *renderState, b *model.Block) {
 	name := escape.MarkdownCharacters(html.EscapeString(file.Name))
 	buf.WriteString(in.indent)
 	if file.Type != model.BlockContentFile_Image {
-		fmt.Fprintf(buf, "[%s](%s)    \n", name, h.fn.Get("files", file.Hash, filepath.Base(file.Name), filepath.Ext(file.Name)))
-		h.fileHashes = append(h.fileHashes, file.Hash)
+		fmt.Fprintf(buf, "[%s](%s)    \n", name, h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name)))
+		h.fileHashes = append(h.fileHashes, file.TargetObjectId)
 	} else {
-		fmt.Fprintf(buf, "![%s](%s)    \n", name, h.fn.Get("files", file.Hash, filepath.Base(file.Name), filepath.Ext(file.Name)))
-		h.imageHashes = append(h.imageHashes, file.Hash)
+		fmt.Fprintf(buf, "![%s](%s)    \n", name, h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name)))
+		h.imageHashes = append(h.imageHashes, file.TargetObjectId)
 	}
 }
 
