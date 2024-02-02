@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
+	"github.com/anyproto/anytype-heart/space/internal/components/notifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -40,19 +41,19 @@ func New(ownerMetadata []byte) AclObjectManager {
 }
 
 type aclObjectManager struct {
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wait            chan struct{}
-	waitLoad        chan struct{}
-	sp              clientspace.Space
-	loadErr         error
-	spaceLoader     spaceloader.SpaceLoader
-	status          spacestatus.SpaceStatus
-	modifier        dependencies.DetailsModifier
-	identityService dependencies.IdentityService
-	indexer         dependencies.SpaceIndexer
-	//notificationService notifications.Notifications
-	started bool
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	wait                chan struct{}
+	waitLoad            chan struct{}
+	sp                  clientspace.Space
+	loadErr             error
+	spaceLoader         spaceloader.SpaceLoader
+	status              spacestatus.SpaceStatus
+	modifier            dependencies.DetailsModifier
+	identityService     dependencies.IdentityService
+	indexer             dependencies.SpaceIndexer
+	started             bool
+	notificationService notifications.AclNotification
 
 	ownerMetadata     []byte
 	mx                sync.Mutex
@@ -61,6 +62,10 @@ type aclObjectManager struct {
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
+	a.mx.Lock()
+	commonSpace := a.sp.CommonSpace()
+	a.notificationService.SendNotification(commonSpace.Acl().Head(), commonSpace.Id())
+	a.mx.Unlock()
 	err := a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
@@ -73,7 +78,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
 	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
-	//a.notificationService = app.MustComponent[notifications.Notifications](ap)
+	a.notificationService = app.MustComponent[notifications.AclNotification](ap)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil

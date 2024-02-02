@@ -112,7 +112,9 @@ func (n *notificationService) Close(_ context.Context) (err error) {
 }
 
 func (n *notificationService) CreateAndSend(notification *model.Notification) error {
-	notification.Id = uuid.New().String()
+	if notification.Id == "" {
+		notification.Id = uuid.New().String()
+	}
 	notification.CreateTime = time.Now().Unix()
 	if !notification.IsLocal {
 		var exist bool

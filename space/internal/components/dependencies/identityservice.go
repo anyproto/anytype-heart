@@ -16,4 +16,6 @@ type IdentityService interface {
 	UnregisterIdentity(spaceId string, identity string)
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
+
+	GetIdentity(identity string) *model.IdentityProfile
 }
