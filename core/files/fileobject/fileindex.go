@@ -125,9 +125,11 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 	return nil
 }
 
+const indexingProviderPeriod = 60 * time.Second
+
 // runIndexingProvider provides worker with job to do
 func (ind *indexer) runIndexingProvider() {
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(indexingProviderPeriod)
 	run := func() {
 		if err := ind.addToQueueFromObjectStore(ind.indexCtx); err != nil {
 			log.Errorf("add to index queue from object store: %v", err)
@@ -170,7 +172,7 @@ func (ind *indexer) indexNext(ctx context.Context) error {
 func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId domain.FullFileId) error {
 	defer ind.markIndexingDone(id)
 
-	details, typeKey, err := ind.getDetailsForFileOrImage(ctx, fileId)
+	details, typeKey, err := ind.buildDetails(ctx, fileId)
 	if err != nil {
 		return fmt.Errorf("get details for file or image: %w", err)
 	}
@@ -180,9 +182,6 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	}
 	err = space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		if pbtypes.GetInt64(st.Details(), bundle.RelationKeyFileIndexingStatus.String()) == int64(model.FileIndexingStatus_Indexed) {
-			return nil
-		}
 		st.SetObjectTypeKey(typeKey)
 		prevDetails := st.CombinedDetails()
 		details = pbtypes.StructMerge(prevDetails, details, true)
@@ -195,7 +194,7 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	return nil
 }
 
-func (ind *indexer) getDetailsForFileOrImage(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {
+func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {
 	file, err := ind.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, "", err

@@ -129,15 +129,8 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	if req.FileId == "" {
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
-	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyFileId.String(): pbtypes.String(req.FileId.String()),
-			// Use general file layout. It will be changed for proper layout after indexing
-			bundle.RelationKeyLayout.String(): pbtypes.Int64(int64(model.ObjectType_file)),
-		},
-	}
-	req.ObjectOrigin.AddToDetails(details)
 
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
 	if req.AdditionalDetails != nil {
 		for k, v := range req.AdditionalDetails.GetFields() {
 			if _, ok := details.Fields[k]; !ok {
@@ -173,13 +166,8 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 	if req.FileId == "" {
 		return fmt.Errorf("file hash is empty")
 	}
-	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyFileId.String():           pbtypes.String(req.FileId.String()),
-			bundle.RelationKeyFileBackupStatus.String(): pbtypes.Int64(int64(syncstatus.StatusSynced)),
-		},
-	}
-	req.ObjectOrigin.AddToDetails(details)
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
+	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(details)
@@ -203,6 +191,19 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 		err = nil
 	}
 	return err
+}
+
+func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *types.Struct {
+	details := &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyFileId.String(): pbtypes.String(fileId.String()),
+			// Use general file layout. It will be changed for proper layout after indexing
+			bundle.RelationKeyLayout.String():             pbtypes.Int64(int64(model.ObjectType_file)),
+			bundle.RelationKeyFileIndexingStatus.String(): pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
+		},
+	}
+	origin.AddToDetails(details)
+	return details
 }
 
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
