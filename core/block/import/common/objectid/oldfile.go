@@ -11,11 +11,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -26,7 +26,7 @@ type oldFile struct {
 	fileObjectService fileobject.Service
 }
 
-func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool) (string, treestorage.TreeStorageCreatePayload, error) {
+func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
 	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
 	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
 
@@ -47,7 +47,7 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("add file keys: %w", err)
 		}
-		objectId, err := f.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(id)}, model.ObjectOrigin_import)
+		objectId, err := f.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(id)}, origin)
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create file object: %w", err)
 		}
@@ -66,7 +66,7 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 	}
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: params,
-		Origin:               model.ObjectOrigin_import,
+		ObjectOrigin:         origin,
 	}
 
 	hash, _, err := f.blockService.UploadFile(ctx, spaceId, dto)

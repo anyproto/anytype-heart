@@ -116,7 +116,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (g *graphjson) Convert(model.SmartBlockType) []byte {
+func (g *graphjson) Convert(sbType model.SmartBlockType) []byte {
 	d := &Graph{
 		Nodes: make([]*Node, 0, len(g.nodes)),
 		Edges: make([]*Edge, 0, len(g.linksByNode)),

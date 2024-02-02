@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -214,6 +216,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		path = url
 	} else {
 		if path, err = b.downloadZipToFile(url, progress); err != nil {
+			if errors.Is(err, uri.ErrFilepathNotSupported) {
+				return fmt.Errorf("invalid path to file: '%s'", url)
+			}
 			return err
 		}
 		removeFunc = func() {
@@ -283,6 +288,7 @@ func (b *builtinObjects) importArchive(
 	progress process.Progress,
 	isNewSpace bool,
 ) (err error) {
+	origin := objectorigin.Usecase()
 	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
@@ -298,7 +304,7 @@ func (b *builtinObjects) importArchive(
 				ImportType:      importType,
 			}},
 		IsNewSpace: isNewSpace,
-	}, model.ObjectOrigin_usecase, progress)
+	}, origin, progress)
 
 	return err
 }

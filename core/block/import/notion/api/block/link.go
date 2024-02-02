@@ -25,6 +25,8 @@ const (
 var (
 	miroRegexp       = regexp.MustCompile(`https?:\/\/(?:www\.)?miro\.com\/app\/board\/[a-zA-Z0-9_=-]+\/?`)
 	googleMapsRegexp = regexp.MustCompile(`https?:\/\/(?:www\.)?google\.com\/maps(?:\/[^\/\n\s]+)?(?:\/@(-?\d+\.\d+),(-?\d+\.\d+),\d+z?)?(?:\/[^\/\n\s]+)?`)
+	githubGistRegexp = regexp.MustCompile(`https:\/\/gist\.github\.com\/[a-zA-Z0-9_-]+\/([a-fA-F0-9]+)`)
+	codepenRegexp    = regexp.MustCompile(`https:\/\/codepen\.io\/[a-zA-Z0-9_-]+\/(?:pen\/([a-zA-Z0-9_-]+)|details\/([a-zA-Z0-9_-]+)(?:\/[a-zA-Z0-9_-]+)?)\/?`)
 )
 
 type EmbedBlock struct {
@@ -40,16 +42,7 @@ func (b *EmbedBlock) GetBlocks(req *api.NotionImportContext, _ string) *MapRespo
 }
 
 func (b *EmbedBlock) provideEmbedBlock() *MapResponse {
-	var processor model.BlockContentLatexProcessor
-	if googleMapsRegexp.MatchString(b.Embed.URL) {
-		processor = model.BlockContentLatex_GoogleMaps
-	}
-	if miroRegexp.MatchString(b.Embed.URL) {
-		processor = model.BlockContentLatex_Miro
-	}
-	if soundCloudRegexp.MatchString(b.Embed.URL) {
-		processor = model.BlockContentLatex_Soundcloud
-	}
+	processor := b.getProcessor()
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id:          id,
@@ -67,8 +60,29 @@ func (b *EmbedBlock) provideEmbedBlock() *MapResponse {
 	}
 }
 
+func (b *EmbedBlock) getProcessor() model.BlockContentLatexProcessor {
+	var processor model.BlockContentLatexProcessor
+	if googleMapsRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_GoogleMaps
+	}
+	if miroRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_Miro
+	}
+	if soundCloudRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_Soundcloud
+	}
+	if githubGistRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_GithubGist
+	}
+	if codepenRegexp.MatchString(b.Embed.URL) {
+		processor = model.BlockContentLatex_Codepen
+	}
+	return processor
+}
+
 func (b *EmbedBlock) isEmbedBlock() bool {
-	return miroRegexp.MatchString(b.Embed.URL) || googleMapsRegexp.MatchString(b.Embed.URL) || soundCloudRegexp.MatchString(b.Embed.URL)
+	return miroRegexp.MatchString(b.Embed.URL) || googleMapsRegexp.MatchString(b.Embed.URL) || soundCloudRegexp.MatchString(b.Embed.URL) ||
+		codepenRegexp.MatchString(b.Embed.URL) || githubGistRegexp.MatchString(b.Embed.URL)
 }
 
 type LinkToWeb struct {

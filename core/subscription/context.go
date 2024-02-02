@@ -171,11 +171,6 @@ func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
 			diff := pbtypes.StructDiff(prevData, curr.data)
 			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
 		} else {
-			// save info for every sub because we don't want to send the details events again
-			for _, sub := range info.subIds {
-				curr.SetSub(sub, true, true)
-			}
-
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectDetailsSet{
 					ObjectDetailsSet: &pb.EventObjectDetailsSet{
@@ -186,7 +181,10 @@ func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
 				},
 			})
 		}
-
+		// save info for every sub because we don't want to send the details events again
+		for _, sub := range info.subIds {
+			curr.SetSub(sub, true, true)
+		}
 	}
 	return
 }

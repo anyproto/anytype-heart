@@ -1562,5 +1562,15 @@
     "name": "Image kind",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Import type, used to create object (notion, md and etc)",
+    "format": "number",
+    "hidden": false,
+    "key": "importType",
+    "maxCount": 1,
+    "name": "Import Type",
+    "readonly": true,
+    "source": "details"
   }
 ]

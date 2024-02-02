@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "89f8475020c56ccd43009676a5924f0a8da64bcdc88a24638c37326b2aafb396"
+const RelationChecksum = "2e2ed6a492be58b3ec99d79e750a385085c8d4719543dbd585142853d24f8a04"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -168,6 +168,7 @@ const (
 	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                  domain.RelationKey = "revision"
 	RelationKeyImageKind                 domain.RelationKey = "imageKind"
+	RelationKeyImportType                domain.RelationKey = "importType"
 )
 
 var (
@@ -962,6 +963,19 @@ var (
 			MaxCount:         1,
 			Name:             "IMDb rating",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyImportType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Import type, used to create object (notion, md and etc)",
+			Format:           model.RelationFormat_number,
+			Id:               "_brimportType",
+			Key:              "importType",
+			MaxCount:         1,
+			Name:             "Import Type",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

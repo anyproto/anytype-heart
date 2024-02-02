@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -37,6 +38,7 @@ type Page struct {
 
 	objectStore       objectstore.ObjectStore
 	fileObjectService fileobject.Service
+	objectDeleter     ObjectDeleter
 }
 
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
@@ -65,6 +67,7 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 		TableEditor:       table.NewEditor(sb),
 		objectStore:       f.objectStore,
 		fileObjectService: f.fileObjectService,
+		objectDeleter:     f.objectDeleter,
 	}
 }
 
@@ -81,6 +84,46 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
 	}
 
+	if p.isRelationDeleted(ctx) {
+		err = p.deleteRelationOptions(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
+	return p.Type() == coresb.SmartBlockTypeRelation &&
+		pbtypes.GetBool(ctx.State.Details(), bundle.RelationKeyIsUninstalled.String())
+}
+
+func (p *Page) deleteRelationOptions(ctx *smartblock.InitContext) error {
+	relationKey := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyRelationKey.String())
+	relationOptions, _, err := p.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(relationKey),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	spaceID := p.Space().Id()
+	for _, id := range relationOptions {
+		err := p.objectDeleter.DeleteObjectByFullID(domain.FullID{SpaceID: spaceID, ObjectID: id})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

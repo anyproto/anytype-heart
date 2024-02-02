@@ -82,7 +82,7 @@ func (a *Anytype) start() {
 }
 
 func (a *Anytype) Close(ctx context.Context) (err error) {
-	metrics.SharedClient.Close()
+	metrics.Service.Close()
 	return a.Stop()
 }
 

@@ -12,18 +12,17 @@ import (
 	ipfspath "github.com/ipfs/boxo/path"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 type AddOption func(*AddOptions)
+
 type AddOptions struct {
 	Reader           io.ReadSeeker
 	Use              string
 	Media            string
 	Name             string
 	LastModifiedDate int64
-	Origin           model.ObjectOrigin
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -41,12 +40,6 @@ func WithName(name string) AddOption {
 func WithLastModifiedDate(timestamp int64) AddOption {
 	return func(args *AddOptions) {
 		args.LastModifiedDate = timestamp
-	}
-}
-
-func WithOrigin(origin model.ObjectOrigin) AddOption {
-	return func(args *AddOptions) {
-		args.Origin = origin
 	}
 }
 

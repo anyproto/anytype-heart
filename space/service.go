@@ -16,6 +16,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
@@ -61,8 +62,8 @@ type service struct {
 	factory        spacefactory.SpaceFactory
 	spaceCore      spacecore.SpaceCoreService
 	accountService accountservice.Service
-
-	delController *deletionController
+	config         *config.Config
+	delController  *deletionController
 
 	personalSpaceId  string
 	newAccount       bool
@@ -102,6 +103,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.factory = app.MustComponent[spacefactory.SpaceFactory](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
+	s.config = app.MustComponent[*config.Config](a)
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.waiting = make(map[string]controllerWaiter)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
@@ -135,9 +137,19 @@ func (s *service) Run(ctx context.Context) (err error) {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 			err = ErrSpaceNotExists
 		}
+		// fix for the users that have wrong network id stored in the folder
+		err2 := s.config.ResetStoredNetworkId()
+		if err2 != nil {
+			log.Error("reset network id", zap.Error(err2))
+		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
 	s.delController.Run()
+	// only persist networkId after successful space init
+	err = s.config.PersistAccountNetworkId()
+	if err != nil {
+		log.Error("persist network id to config", zap.Error(err))
+	}
 	return nil
 }
 

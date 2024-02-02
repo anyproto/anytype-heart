@@ -81,10 +81,6 @@ func (s *State) doCustomBlockNormalizations() (err error) {
 
 func (s *State) normalizeLayout() {
 	s.removeEmptyLayoutBlocks(s.blocks)
-	if s.parent != nil {
-		s.removeEmptyLayoutBlocks(s.parent.blocks)
-	}
-
 	for _, b := range s.blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
 			s.normalizeLayoutRow(b)
@@ -247,9 +243,11 @@ func (s *State) divBalance(d1, d2 *model.Block) (overflow bool) {
 		div = maxChildrenThreshold / 2
 	}
 
-	d2.ChildrenIds = make([]string, len(d1.ChildrenIds[div:]))
-	copy(d2.ChildrenIds, d1.ChildrenIds[div:])
-	d1.ChildrenIds = d1.ChildrenIds[:div]
+	d1ChildrenIds := make([]string, div)
+	copy(d1ChildrenIds, d1.ChildrenIds[:div])
+
+	d2.ChildrenIds = d1.ChildrenIds[div:]
+	d1.ChildrenIds = d1ChildrenIds
 	return len(d2.ChildrenIds) > maxChildrenThreshold
 }
 

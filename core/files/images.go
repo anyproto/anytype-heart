@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
@@ -42,13 +41,11 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}
 	}
-	origin := s.getFileOrigin(id.FileId)
 	return &image{
 		spaceID:         id.SpaceId,
 		fileId:          id.FileId,
 		variantsByWidth: variantsByWidth,
 		service:         s,
-		origin:          origin,
 	}, nil
 }
 
@@ -103,11 +100,6 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	err = s.storeFileSize(spaceId, fileId)
 	if err != nil {
 		return nil, fmt.Errorf("store file size: %w", err)
-	}
-
-	err = s.fileStore.SetFileOrigin(fileId, opts.Origin)
-	if err != nil {
-		log.Errorf("failed to set file origin %s: %s", fileId.String(), err)
 	}
 
 	return &ImageAddResult{
@@ -226,10 +218,6 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 		return nil, nil, err
 	}
 	return outerNode, keys, nil
-}
-
-func (s *service) isImported(origin model.ObjectOrigin) bool {
-	return origin == model.ObjectOrigin_import
 }
 
 func (s *service) newExisingImageResult(spaceId string, dirEntries []dirEntry) (*ImageAddResult, error) {

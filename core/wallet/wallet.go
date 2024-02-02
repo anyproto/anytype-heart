@@ -3,6 +3,7 @@ package wallet
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -70,12 +71,18 @@ func (r *wallet) Init(a *app.App) (err error) {
 			return fmt.Errorf("failed to unmarshall device keyfile: %w", err)
 		}
 	}
+
+	err = os.MkdirAll(filepath.Join(r.repoPath, appLinkKeysDirectory), 0700)
+	if err != nil {
+		return fmt.Errorf("failed to create app link directory: %w", err)
+	}
+
 	peerId := r.deviceKey.GetPublic().PeerId()
 	accountId := r.accountKey.GetPublic().Account()
 	logging.SetHost(peerId)
-	metrics.SharedClient.SetDeviceId(peerId)
+	metrics.Service.SetDeviceId(peerId)
 	logging.SetAccount(accountId)
-	metrics.SharedClient.SetUserId(accountId)
+	metrics.Service.SetUserId(accountId)
 
 	r.accountData = accountdata.New(r.deviceKey, r.accountKey)
 	return nil
@@ -131,6 +138,9 @@ type Wallet interface {
 	GetDevicePrivkey() crypto.PrivKey
 	GetOldAccountKey() crypto.PrivKey
 	GetMasterKey() crypto.PrivKey
+	ReadAppLink(appKey string) (*AppLinkPayload, error)
+	PersistAppLink(payload *AppLinkPayload) (appKey string, err error)
+
 	accountservice.Service
 	app.Component
 }

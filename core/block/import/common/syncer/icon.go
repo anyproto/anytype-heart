@@ -15,12 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
@@ -44,7 +44,7 @@ func NewIconSyncer(service *block.Service, resolver idresolver.Resolver, fileSto
 	}
 }
 
-func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin model.ObjectOrigin) error {
+func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin objectorigin.ObjectOrigin) error {
 	iconImage := b.Model().GetText().GetIconImage()
 	newId, err := s.handleIconImage(id.SpaceID, snapshotPayloads, iconImage, origin)
 	if err != nil {
@@ -71,7 +71,7 @@ func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestor
 	return nil
 }
 
-func (s *IconSyncer) handleIconImage(spaceId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, iconImage string, origin model.ObjectOrigin) (string, error) {
+func (s *IconSyncer) handleIconImage(spaceId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, iconImage string, origin objectorigin.ObjectOrigin) (string, error) {
 	if _, ok := snapshotPayloads[iconImage]; ok {
 		return iconImage, nil
 	}
@@ -91,7 +91,7 @@ func (s *IconSyncer) handleIconImage(spaceId string, snapshotPayloads map[string
 	}
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: req,
-		Origin:               origin,
+		ObjectOrigin:         origin,
 	}
 	fileObjectId, _, err := s.service.UploadFile(context.Background(), spaceId, dto)
 	if err != nil {

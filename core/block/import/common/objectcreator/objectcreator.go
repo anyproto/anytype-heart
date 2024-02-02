@@ -20,9 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/syncer"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -47,7 +49,7 @@ type ObjectCreator struct {
 	service        *block.Service
 	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
-	relationSyncer syncer.RelationSyncer
+	relationSyncer *syncer.FileRelationSyncer
 	syncFactory    *syncer.Factory
 	fileStore      filestore.FileStore
 	objectCreator  objectcreator.Service
@@ -57,7 +59,7 @@ type ObjectCreator struct {
 func New(service *block.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
-	relationSyncer syncer.RelationSyncer,
+	relationSyncer *syncer.FileRelationSyncer,
 	fileStore filestore.FileStore,
 	spaceService space.Service,
 	objectCreator objectcreator.Service,
@@ -91,7 +93,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.setRootBlock(snapshot, newID)
 
-	oc.injectImportDetails(sn, origin, spaceID)
+	oc.injectImportDetails(sn, origin)
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
 
@@ -129,7 +131,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys, origin)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
@@ -163,7 +165,7 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin model.ObjectOrigin, spaceID string) {
+func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objectorigin.ObjectOrigin) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
@@ -181,9 +183,9 @@ func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin model.O
 		sn.Snapshot.Data.OriginalCreatedTimestamp = createdDate
 	}
 
-	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin.Origin))
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(origin.ImportType))
 	// we don't need to inject relatonLinks, they will be automatically injected for bundled relations
-
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -198,6 +200,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	spaceID string,
 	links pbtypes.RelationLinks,
 	objectTypeKeys []domain.TypeKey,
+	origin objectorigin.ObjectOrigin,
 ) error {
 
 	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))
@@ -222,7 +225,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceID, err)
 	}
-	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, false)
+	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, origin.Origin == model.ObjectOrigin_usecase)
 	return err
 }
 
@@ -278,36 +281,8 @@ func (oc *ObjectCreator) setRootBlock(snapshot *model.SmartBlockSnapshotBase, ne
 		}
 	}
 	if !found {
-		oc.addRootBlock(snapshot, newID)
+		snapshot.Blocks = anymark.AddRootBlock(snapshot.Blocks, newID)
 	}
-}
-
-func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pageID string) {
-	for i, b := range snapshot.Blocks {
-		if _, ok := b.Content.(*model.BlockContentOfSmartblock); ok {
-			snapshot.Blocks[i].Id = pageID
-			return
-		}
-	}
-	notRootBlockChild := make(map[string]bool, 0)
-	for _, b := range snapshot.Blocks {
-		for _, id := range b.ChildrenIds {
-			notRootBlockChild[id] = true
-		}
-	}
-	childrenIds := make([]string, 0)
-	for _, b := range snapshot.Blocks {
-		if _, ok := notRootBlockChild[b.Id]; !ok {
-			childrenIds = append(childrenIds, b.Id)
-		}
-	}
-	snapshot.Blocks = append(snapshot.Blocks, &model.Block{
-		Id: pageID,
-		Content: &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		},
-		ChildrenIds: childrenIds,
-	})
 }
 
 func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []string) {
@@ -425,7 +400,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin model.ObjectOrigin) error {
+func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin objectorigin.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
 	err := block.Do(oc.service, id.ObjectID, func(b smartblock.SmartBlock) error {
