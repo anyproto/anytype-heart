@@ -492,15 +492,15 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
 	}
 	for _, record := range records {
-		objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-		size, err := s.offloadFileIfNotExist(ctx, spaceId, record, includeNotPinned)
+		fileId := pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())
+		size, err := s.offloadFileIfNotExist(ctx, spaceId, fileId, record, includeNotPinned)
 		if err != nil {
-			log.Errorf("failed to offload file %s: %v", objectId, err)
+			log.Errorf("failed to offload file %s: %v", fileId, err)
 			return 0, 0, err
 		}
 		if size > 0 {
 			filesOffloaded++
-			err = s.fileStore.DeleteFile(domain.FileId(objectId))
+			err = s.fileStore.DeleteFile(domain.FileId(fileId))
 			if err != nil {
 				return 0, 0, fmt.Errorf("failed to delete file from store: %w", err)
 			}
@@ -549,9 +549,10 @@ func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, o
 
 func (s *service) offloadFileIfNotExist(ctx context.Context,
 	spaceID string,
+	fileId string,
 	record database.Record,
-	includeNotPinned bool) (uint64, error) {
-	fileId := pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())
+	includeNotPinned bool,
+) (uint64, error) {
 	existingObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
