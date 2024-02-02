@@ -492,14 +492,18 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
 	}
 	for _, record := range records {
-		size, err := s.fileOffload(ctx, record.Details, includeNotPinned)
+		fileId := pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())
+		size, err := s.offloadFileSafe(ctx, spaceId, fileId, record, includeNotPinned)
 		if err != nil {
-			objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-			log.Errorf("failed to offload file %s: %v", objectId, err)
-			continue
+			log.Errorf("failed to offload file %s: %v", fileId, err)
+			return 0, 0, err
 		}
 		if size > 0 {
 			filesOffloaded++
+			err = s.fileStore.DeleteFile(domain.FileId(fileId))
+			if err != nil {
+				return 0, 0, fmt.Errorf("failed to delete file from store: %w", err)
+			}
 		}
 		totalSize += size
 	}
@@ -511,7 +515,6 @@ func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, o
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
-
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -542,4 +545,33 @@ func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, o
 		return nil
 	}
 	return nil
+}
+
+func (s *service) offloadFileSafe(ctx context.Context,
+	spaceId string,
+	fileId string,
+	record database.Record,
+	includeNotPinned bool,
+) (uint64, error) {
+	existingObjects, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		return 0, err
+	}
+	if len(existingObjects) > 0 {
+		return s.fileOffload(ctx, record.Details, false)
+	}
+	return s.fileOffload(ctx, record.Details, includeNotPinned)
 }
