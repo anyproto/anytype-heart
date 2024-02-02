@@ -83,6 +83,7 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context) (clientspace.Space, error
 		AccountService:  b.accountService,
 		PersonalSpaceId: b.personalSpaceId,
 		StorageService:  b.storageService,
+		SpaceCore:       b.spaceCore,
 		LoadCtx:         b.ctx,
 	}
 	space, err := clientspace.BuildSpace(ctx, deps)

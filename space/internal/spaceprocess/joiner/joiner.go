@@ -31,6 +31,7 @@ type Params struct {
 func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
 	child.Register(params.Status).
+		Register(newStatusChanger()).
 		Register(aclwaiter.New(params.SpaceId, func() error {
 			params.Status.Lock()
 			defer params.Status.Unlock()
