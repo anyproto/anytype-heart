@@ -189,6 +189,38 @@ func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpace
 	}
 }
 
+func (mw *Middleware) SpaceGuestAdd(cctx context.Context, req *pb.RpcSpaceGuestAddRequest) *pb.RpcSpaceGuestAddResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := addGuest(cctx, req.SpaceId, req.Identity, req.Metadata, aclService)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceGuestAddResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceGuestAddResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceGuestAddResponseError_REQUEST_FAILED),
+	)
+	return &pb.RpcSpaceGuestAddResponse{
+		Error: &pb.RpcSpaceGuestAddResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) SpacePublicAdd(cctx context.Context, req *pb.RpcSpacePublicAddRequest) *pb.RpcSpacePublicAddResponse {
+	spaceService := mw.applicationService.GetApp().MustComponent(space.CName).(space.Service)
+	err := publicAdd(cctx, req.SpaceId, req.GuestKey, spaceService)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpacePublicAddResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpacePublicAddResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpacePublicAddResponseError_REQUEST_FAILED),
+	)
+	return &pb.RpcSpacePublicAddResponse{
+		Error: &pb.RpcSpacePublicAddResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) SpaceParticipantRemove(cctx context.Context, req *pb.RpcSpaceParticipantRemoveRequest) *pb.RpcSpaceParticipantRemoveResponse {
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
 	err := remove(cctx, req.SpaceId, req.Identities, aclService)
@@ -239,6 +271,28 @@ func accept(ctx context.Context, spaceId, identity string, permissions model.Par
 		return
 	}
 	return aclService.Accept(ctx, spaceId, key, permissions)
+}
+
+func addGuest(ctx context.Context, spaceId, identity, metadata string, aclService acl.AclService) (err error) {
+	key, err := crypto.DecodeAccountAddress(identity)
+	if err != nil {
+		return
+	}
+	bytes, err := crypto.DecodeBytesFromString(metadata)
+	if err != nil {
+		return
+	}
+	return aclService.AddGuest(ctx, spaceId, key, bytes)
+}
+
+func publicAdd(ctx context.Context, spaceId, privKey string, spaceService space.Service) (err error) {
+	key, err := crypto.DecodeKeyFromString(privKey, func(bytes []byte) (crypto.PrivKey, error) {
+		return crypto.NewSigningEd25519PrivKeyFromBytes(bytes)
+	}, nil)
+	if err != nil {
+		return
+	}
+	return spaceService.AddPublic(ctx, spaceId, key)
 }
 
 func decline(ctx context.Context, spaceId, identity string, aclService acl.AclService) (err error) {

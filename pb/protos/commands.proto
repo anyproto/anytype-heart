@@ -203,6 +203,59 @@ message Rpc {
             }
         }
 
+        message GuestAdd {
+            message Request {
+                string identity = 1;
+                string spaceId = 2;
+                string metadata = 3;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 105;
+                    }
+                }
+            }
+        }
+
+        message PublicAdd {
+            message Request {
+                string guestKey = 1;
+                string spaceId = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 105;
+                    }
+                }
+            }
+        }
+
         message Join {
             message Request {
                 string networkId = 1; // not-empty only for self-hosting

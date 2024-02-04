@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -24,20 +25,23 @@ type SpaceBuilder interface {
 	BuildSpace(ctx context.Context) (clientspace.Space, error)
 }
 
-func New() SpaceBuilder {
-	return &spaceBuilder{}
+func New(customAccountKey crypto.PrivKey) SpaceBuilder {
+	return &spaceBuilder{
+		customAccountKey: customAccountKey,
+	}
 }
 
 type spaceBuilder struct {
-	indexer         dependencies2.SpaceIndexer
-	installer       dependencies2.BundledObjectsInstaller
-	spaceCore       spacecore.SpaceCoreService
-	techSpace       techspace.TechSpace
-	accountService  accountservice.Service
-	objectFactory   objectcache.ObjectFactory
-	storageService  storage.ClientStorage
-	personalSpaceId string
-	status          spacestatus.SpaceStatus
+	indexer          dependencies2.SpaceIndexer
+	installer        dependencies2.BundledObjectsInstaller
+	spaceCore        spacecore.SpaceCoreService
+	techSpace        techspace.TechSpace
+	accountService   accountservice.Service
+	objectFactory    objectcache.ObjectFactory
+	storageService   storage.ClientStorage
+	personalSpaceId  string
+	status           spacestatus.SpaceStatus
+	customAccountKey crypto.PrivKey
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -71,6 +75,7 @@ func (b *spaceBuilder) Close(ctx context.Context) (err error) {
 }
 
 func (b *spaceBuilder) BuildSpace(ctx context.Context) (clientspace.Space, error) {
+	ctx = context.WithValue(ctx, spacecore.OptsKey, spacecore.Opts{SignKey: b.customAccountKey})
 	coreSpace, err := b.spaceCore.Get(ctx, b.status.SpaceId())
 	if err != nil {
 		return nil, err

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/util/crypto"
+
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
@@ -15,7 +17,7 @@ type controllerWaiter struct {
 	err  error
 }
 
-func (s *service) startStatus(ctx context.Context, spaceId string, status spaceinfo.AccountStatus) (ctrl spacecontroller.SpaceController, err error) {
+func (s *service) startStatus(ctx context.Context, spaceId string, signKey crypto.PrivKey, status spaceinfo.AccountStatus) (ctrl spacecontroller.SpaceController, err error) {
 	s.mu.Lock()
 	if ctrl, ok := s.spaceControllers[spaceId]; ok {
 		s.mu.Unlock()
@@ -43,7 +45,11 @@ func (s *service) startStatus(ctx context.Context, spaceId string, status spacei
 		wait: wait,
 	}
 	s.mu.Unlock()
-	ctrl, err = s.factory.NewShareableSpace(ctx, spaceId, status)
+	if signKey == nil {
+		ctrl, err = s.factory.NewShareableSpace(ctx, spaceId, status)
+	} else {
+		ctrl, err = s.factory.NewPublicSpace(ctx, signKey, spaceId)
+	}
 	s.mu.Lock()
 	close(wait)
 	if err != nil {

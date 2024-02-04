@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
@@ -31,12 +32,13 @@ type Params struct {
 	Status              spacestatus.SpaceStatus
 	StopIfMandatoryFail bool
 	OwnerMetadata       []byte
+	GuestKey            crypto.PrivKey
 }
 
 func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
 	child.Register(params.Status).
-		Register(builder.New()).
+		Register(builder.New(params.GuestKey)).
 		Register(spaceloader.New(params.StopIfMandatoryFail)).
 		Register(aclobjectmanager.New(params.OwnerMetadata))
 	return &loader{

@@ -43,6 +43,7 @@ type SpaceLocalInfo struct {
 type SpacePersistentInfo struct {
 	SpaceID       string
 	AccountStatus AccountStatus
+	EncodedKey    string
 }
 
 type SpaceInfo struct {

@@ -57,6 +57,7 @@ type Service interface {
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
+	AddPublic(ctx context.Context, id string, guestKey crypto.PrivKey) (err error)
 
 	app.ComponentRunnable
 }
@@ -161,6 +162,14 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		log.Error("persist network id to config", zap.Error(err))
 	}
+	metadata := crypto.EncodeBytesToString(s.accountMetadataPayload)
+	privKey, err := crypto.EncodeKeyToString(s.accountService.Account().SignKey)
+	if err != nil {
+		return err
+	}
+	fmt.Println("My identity:", s.accountService.Account().SignKey.GetPublic().Account())
+	fmt.Println("My metadata:", metadata)
+	fmt.Println("My key:", privKey)
 	return nil
 }
 
@@ -175,7 +184,7 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 	if spaceId == s.techSpace.TechSpaceId() {
 		return s.techSpace, nil
 	}
-	ctrl, err := s.startStatus(ctx, spaceId, spaceinfo.AccountStatusUnknown)
+	ctrl, err := s.startStatus(ctx, spaceId, nil, spaceinfo.AccountStatusUnknown)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +201,20 @@ func (s *service) IsPersonal(id string) bool {
 
 func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 	go func() {
-		ctrl, err := s.startStatus(s.ctx, info.SpaceID, info.AccountStatus)
+		var (
+			decKey crypto.PrivKey
+			err    error
+		)
+		if info.EncodedKey != "" {
+			decKey, err = crypto.DecodeKeyFromString(info.EncodedKey, func(bytes []byte) (crypto.PrivKey, error) {
+				return crypto.NewSigningEd25519PrivKeyFromBytes(bytes)
+			}, nil)
+			if err != nil {
+				log.Error("failed to decode key", zap.Error(err))
+				return
+			}
+		}
+		ctrl, err := s.startStatus(s.ctx, info.SpaceID, decKey, info.AccountStatus)
 		if err != nil && !errors.Is(err, ErrSpaceDeleted) {
 			log.Warn("OnViewUpdated.startStatus error", zap.Error(err))
 			return

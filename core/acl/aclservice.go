@@ -44,6 +44,7 @@ type AccountPermissions struct {
 
 type AclService interface {
 	app.Component
+	AddGuest(ctx context.Context, spaceId string, guestKey crypto.PubKey, metadata []byte) (err error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error
@@ -174,6 +175,25 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
 	return nil
+}
+
+func (a *aclService) AddGuest(ctx context.Context, spaceId string, guestKey crypto.PubKey, metadata []byte) (err error) {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return
+	}
+	cl := sp.CommonSpace().AclClient()
+	err = cl.AddAccounts(ctx, list.AccountsAddPayload{Additions: []list.AccountAdd{
+		{
+			Identity:    guestKey,
+			Permissions: list.AclPermissionsWriter,
+			Metadata:    metadata,
+		},
+	}})
+	if err != nil {
+		err = fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	return
 }
 
 func (a *aclService) Exit(ctx context.Context, spaceId string) error {

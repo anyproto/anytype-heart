@@ -9,10 +9,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "89b7a871034f0c16463ae7d5814b72638734186f7b07ca7944b5e9487c8e992e"
+const RelationChecksum = "4d36052f0c028de6dd6d77d90b25b116946c5b3a33fab02caab783ab0f871dcc"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
+	RelationKeyGuestKey                  domain.RelationKey = "guestKey"
 	RelationKeyHeightInPixels            domain.RelationKey = "heightInPixels"
 	RelationKeyCreatedDate               domain.RelationKey = "createdDate"
 	RelationKeyToBeDeletedDate           domain.RelationKey = "toBeDeletedDate"
@@ -831,6 +832,20 @@ var (
 			Id:               "_brgenre",
 			Key:              "genre",
 			Name:             "Genre",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyGuestKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "guest key to read public space",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brguestKey",
+			Key:              "guestKey",
+			MaxCount:         1,
+			Name:             "Guest key",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

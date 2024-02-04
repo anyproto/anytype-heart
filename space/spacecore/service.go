@@ -234,8 +234,29 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 	return
 }
 
+type ctxKey int
+
+const OptsKey ctxKey = iota
+
+type Opts struct {
+	SignKey crypto.PrivKey
+}
+
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id)})
+	deps := commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id)}
+	if res, ok := ctx.Value(OptsKey).(Opts); ok && res.SignKey != nil {
+		pk, _, err := crypto.GenerateRandomEd25519KeyPair()
+		if err != nil {
+			return nil, err
+		}
+		acc := &accountdata.AccountKeys{
+			PeerKey: pk,
+			SignKey: res.SignKey,
+			PeerId:  pk.GetPublic().PeerId(),
+		}
+		deps.AccountService = &customAccountService{acc}
+	}
+	cc, err := s.commonSpace.NewSpace(ctx, id, deps)
 	if err != nil {
 		return
 	}

@@ -69,5 +69,6 @@
   "origin",
   "revision",
   "imageKind",
-  "importType"
+  "importType",
+  "guestKey"
 ]

@@ -164,6 +164,7 @@ func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpacePersisten
 	return spaceinfo.SpacePersistentInfo{
 		SpaceID:       pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()),
 		AccountStatus: spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String())),
+		EncodedKey:    pbtypes.GetString(details, bundle.RelationKeyGuestKey.String()),
 	}
 }
 
