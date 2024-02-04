@@ -33,10 +33,9 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
-		// mock the GetAccountPrivkey method
-		PeerKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
-		decodedPeerKey, err := crypto.DecodeKeyFromString(
-			PeerKey,
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
 			crypto.UnmarshalEd25519PrivateKey,
 			nil)
 
@@ -45,8 +44,10 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		w := mock_wallet.NewMockWallet(t)
 		var ak accountdata.AccountKeys
 		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
 
-		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		// just return something
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
 		w.EXPECT().Account().Return(&ak)
 
 		// Create a test request
@@ -80,9 +81,9 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		// mock the GetAccountPrivkey method
-		PeerKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
-		decodedPeerKey, err := crypto.DecodeKeyFromString(
-			PeerKey,
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
 			crypto.UnmarshalEd25519PrivateKey,
 			nil)
 
@@ -91,8 +92,9 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		w := mock_wallet.NewMockWallet(t)
 		var ak accountdata.AccountKeys
 		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
 
-		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
 		w.EXPECT().Account().Return(&ak)
 
 		// Create a test request
@@ -123,9 +125,9 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		}).MinTimes(1)
 
 		// mock the GetAccountPrivkey method
-		PeerKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
-		decodedPeerKey, err := crypto.DecodeKeyFromString(
-			PeerKey,
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
 			crypto.UnmarshalEd25519PrivateKey,
 			nil)
 
@@ -134,8 +136,9 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		w := mock_wallet.NewMockWallet(t)
 		var ak accountdata.AccountKeys
 		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
 
-		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
 		w.EXPECT().Account().Return(&ak)
 
 		w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
@@ -171,9 +174,9 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		}).MinTimes(1)
 
 		// mock the GetAccountPrivkey method
-		PeerKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
-		decodedPeerKey, err := crypto.DecodeKeyFromString(
-			PeerKey,
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
 			crypto.UnmarshalEd25519PrivateKey,
 			nil)
 
@@ -182,8 +185,9 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		w := mock_wallet.NewMockWallet(t)
 		var ak accountdata.AccountKeys
 		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
 
-		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
 		w.EXPECT().Account().Return(&ak)
 		w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
 		//ethPrivateKey := ecdsa.PrivateKey{}
@@ -215,9 +219,9 @@ func TestPaymentsGetPortalURL(t *testing.T) {
 		}).MinTimes(1)
 
 		// mock the GetAccountPrivkey method
-		PeerKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
-		decodedPeerKey, err := crypto.DecodeKeyFromString(
-			PeerKey,
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
 			crypto.UnmarshalEd25519PrivateKey,
 			nil)
 
@@ -226,8 +230,9 @@ func TestPaymentsGetPortalURL(t *testing.T) {
 		w := mock_wallet.NewMockWallet(t)
 		var ak accountdata.AccountKeys
 		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
 
-		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
 		w.EXPECT().Account().Return(&ak)
 
 		// Create a test request
@@ -253,9 +258,9 @@ func TestPaymentsGetPortalURL(t *testing.T) {
 		}).MinTimes(1)
 
 		// mock the GetAccountPrivkey method
-		PeerKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
-		decodedPeerKey, err := crypto.DecodeKeyFromString(
-			PeerKey,
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
 			crypto.UnmarshalEd25519PrivateKey,
 			nil)
 
@@ -264,8 +269,9 @@ func TestPaymentsGetPortalURL(t *testing.T) {
 		w := mock_wallet.NewMockWallet(t)
 		var ak accountdata.AccountKeys
 		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
 
-		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
 		w.EXPECT().Account().Return(&ak)
 
 		// Create a test request

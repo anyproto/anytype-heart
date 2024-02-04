@@ -109,7 +109,7 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 	// 1 - create request
 	gsr := psp.GetSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyID: w.Account().PeerId,
+		OwnerAnyID: w.Account().SignKey.GetPublic().Account(),
 	}
 
 	// 2 - sign it with the wallet
@@ -123,8 +123,8 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 		}
 	}
 
-	privKey := w.GetDevicePrivkey()
-
+	// this is the SignKey
+	privKey := w.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
@@ -170,7 +170,7 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 	// 1 - create request
 	bsr := psp.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId: w.Account().PeerId,
+		OwnerAnyId: w.Account().SignKey.GetPublic().Account(),
 
 		// including 0x
 		OwnerEthAddress: w.GetAccountEthAddress().Hex(),
@@ -192,7 +192,7 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 		}
 	}
 
-	privKey := w.GetDevicePrivkey()
+	privKey := w.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
@@ -229,7 +229,7 @@ func getPortalLink(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 	// 1 - create request
 	bsr := psp.GetSubscriptionPortalLinkRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId: w.Account().PeerId,
+		OwnerAnyId: w.Account().SignKey.GetPublic().Account(),
 	}
 
 	// 2 - sign it with the wallet
@@ -243,7 +243,7 @@ func getPortalLink(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 		}
 	}
 
-	privKey := w.GetDevicePrivkey()
+	privKey := w.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse{
