@@ -100,7 +100,6 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			template.InitTemplate(s,
 				template.WithEmpty,
 				template.WithTitle,
-				template.WithDescription,
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,
 				template.WithRootBlocks(blocks),
