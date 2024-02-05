@@ -334,7 +334,7 @@ func (s *service) getFileIdFromObjectInSpace(space smartblock.Space, objectId st
 	}, nil
 }
 
-func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.ChangeFileKeys, fileId string) string {
+func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.ChangeFileKeys, fileId string, origin objectorigin.ObjectOrigin) string {
 	// Don't migrate empty or its own id
 	if fileId == "" || objectId == fileId {
 		return fileId
@@ -374,10 +374,15 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 		log.Errorf("can't derive object id for fileId %s: %v", fileId, err)
 		return fileId
 	}
+
+	storedOrigin, err := s.fileStore.GetFileOrigin(domain.FileId(fileId))
+	if err == nil {
+		origin = storedOrigin
+	}
 	err = s.migrateDeriveObject(context.Background(), space, CreateRequest{
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: fileKeys,
-		ObjectOrigin:   objectorigin.None(), // TODO what to do? Probably need to copy origin detail
+		ObjectOrigin:   origin,
 	}, uniqueKey)
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", fileId, err)
@@ -386,10 +391,11 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 }
 
 func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
+	origin := objectorigin.FromDetails(st.Details())
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			fh.MigrateFile(func(oldHash string) (newHash string) {
-				return s.migrate(spc.(clientspace.Space), st.RootId(), keys, oldHash)
+				return s.migrate(spc.(clientspace.Space), st.RootId(), keys, oldHash, origin)
 			})
 		}
 		return true
@@ -397,8 +403,9 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.Ch
 }
 
 func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
+	origin := objectorigin.FromDetails(st.Details())
 	st.ModifyLinkedFilesInDetails(func(id string) string {
-		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id)
+		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id, origin)
 	})
 }
 
