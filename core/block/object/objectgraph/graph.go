@@ -32,6 +32,7 @@ var relationsSkipList = []domain.RelationKey{
 	bundle.RelationKeyCoverId,
 	bundle.RelationKeyBacklinks,
 	bundle.RelationKeyLinks,
+	bundle.RelationKeySourceObject,
 }
 
 type Service interface {
