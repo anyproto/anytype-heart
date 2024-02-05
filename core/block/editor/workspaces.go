@@ -53,7 +53,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	if err != nil {
 		return err
 	}
-	w.initTemplate(ctx)
+	w.initAnalyticsId(ctx)
 
 	subObjectMigration := subObjectsMigration{
 		workspace: w,
@@ -64,7 +64,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
-func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
+func (w *Workspaces) initAnalyticsId(ctx *smartblock.InitContext) {
 	if w.config.AnalyticsId != "" {
 		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(w.config.AnalyticsId))
 	} else if ctx.State.GetSetting(state.SettingsAnalyticsId) == nil {
@@ -72,24 +72,21 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		log.Warnf("analyticsID is missing, generating new one")
 		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
 	}
-
-	template.InitTemplate(ctx.State,
-		template.WithEmpty,
-		template.WithTitle,
-		template.WithFeaturedRelations,
-		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
-		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
-		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
-	)
 }
 
 func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
-	// TODO Maybe move init logic here?
 	return migration.Migration{
-		Version: 0,
+		Version: 1,
 		Proc: func(s *state.State) {
-			// no-op
+			template.InitTemplate(ctx.State,
+				template.WithEmpty,
+				template.WithTitle,
+				template.WithFeaturedRelations,
+				template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+				template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
+				template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
+				template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
+			)
 		},
 	}
 }

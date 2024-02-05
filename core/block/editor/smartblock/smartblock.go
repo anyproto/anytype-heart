@@ -210,7 +210,9 @@ type Indexer interface {
 }
 
 type smartBlock struct {
-	state.Doc
+	state        *state.State
+	pendingState *state.State
+
 	objecttree.ObjectTree
 	Locker
 	currentParticipantId string
@@ -272,22 +274,8 @@ func (sb *smartBlock) Space() Space {
 
 // UniqueKey returns the unique key for types that support it. For example, object types, relations and relation options
 func (sb *smartBlock) UniqueKey() domain.UniqueKey {
-	uk, _ := domain.NewUniqueKey(sb.Type(), sb.Doc.UniqueKeyInternal())
+	uk, _ := domain.NewUniqueKey(sb.Type(), sb.currentState().UniqueKeyInternal())
 	return uk
-}
-
-func (sb *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
-	keys2 := sb.source.GetFileKeysSnapshot()
-	for _, key := range keys2 {
-		if key == nil {
-			continue
-		}
-		keys = append(keys, pb.ChangeFileKeys{
-			Hash: key.Hash,
-			Keys: key.Keys,
-		})
-	}
-	return
 }
 
 func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
@@ -299,12 +287,18 @@ func (sb *smartBlock) Type() smartblock.SmartBlockType {
 }
 
 func (sb *smartBlock) ObjectTypeID() string {
-	return pbtypes.GetString(sb.Doc.Details(), bundle.RelationKeyType.String())
+	return pbtypes.GetString(sb.currentState().Details(), bundle.RelationKeyType.String())
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
+	doc, err := ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil)
+	if err != nil {
 		return fmt.Errorf("reading document: %w", err)
+	}
+	var ok bool
+	sb.state, ok = doc.(*state.State)
+	if !ok {
+		return fmt.Errorf("unexpected result from ReadDoc, got type %T", doc)
 	}
 
 	sb.source = ctx.Source
@@ -318,16 +312,16 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
 	}
-	sb.Doc.BlocksInit(sb.Doc.(simple.DetailsService))
+	sb.currentState().BlocksInit(sb.currentState())
 
 	if ctx.State == nil {
 		ctx.State = sb.NewState()
-		sb.storeFileKeys(sb.Doc)
+		sb.storeFileKeys(sb.currentState())
 	} else {
-		if !sb.Doc.(*state.State).IsEmpty(true) {
+		if !sb.currentState().IsEmpty(true) {
 			return ErrCantInitExistingSmartblockWithNonEmptyState
 		}
-		ctx.State.SetParent(sb.Doc.(*state.State))
+		ctx.State.SetParent(sb.currentState())
 	}
 
 	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
@@ -517,7 +511,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
-	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), true, true, includeRelations, includeObjTypes, includeCreatorModifier)
+	return objectlink.DependentObjectIDs(sb.currentState(), sb.Space(), true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
 func (sb *smartBlock) RegisterSession(ctx session.Context) {
@@ -632,7 +626,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	sb.setRestrictionsDetail(s)
 
 	afterApplyStateTime := time.Now()
-	st := sb.Doc.(*state.State)
+	st := sb.currentState()
 
 	changes := st.GetChanges()
 	var changeId string
@@ -669,7 +663,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 
 		if changeId != "" {
-			sb.Doc.(*state.State).SetChangeId(changeId)
+			sb.currentState().SetChangeId(changeId)
 		}
 		return nil
 	}
@@ -722,7 +716,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	afterReportChangeTime := time.Now()
 	if hooks {
-		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
+		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.currentState(), Events: msgs, Changes: changes}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
@@ -742,7 +736,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(s)
-	s.SetParent(sb.Doc.(*state.State))
+	s.SetParent(sb.currentState())
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
@@ -785,18 +779,6 @@ func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
 	}
 	sb.depIds = depIDs
 	return true
-}
-
-func (sb *smartBlock) NewState() *state.State {
-	s := sb.Doc.NewState().SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
-	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
-	return s
-}
-
-func (sb *smartBlock) NewStateCtx(ctx session.Context) *state.State {
-	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
-	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
-	return s
 }
 
 func (sb *smartBlock) History() undo.History {
@@ -952,7 +934,8 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	s, changes, err := f(sb.Doc)
+	// TODO Do we need to discard pending state here and reapply migrations?
+	s, changes, err := f(sb.currentState())
 	if err != nil {
 		return err
 	}
@@ -991,7 +974,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
 	}
-	d.(*state.State).SetParent(sb.Doc.(*state.State))
+	d.(*state.State).SetParent(sb.currentState())
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
 	msgs, _, err := state.ApplyState(d.(*state.State), !sb.disableLayouts)
@@ -1009,18 +992,18 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
-	sb.runIndexer(sb.Doc.(*state.State))
-	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
+	sb.runIndexer(sb.currentState())
+	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.currentState(), Events: msgs, Changes: d.(*state.State).GetChanges()})
 	return nil
 }
 
 func (sb *smartBlock) ObjectClose(ctx session.Context) {
-	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
+	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.currentState()})
 	delete(sb.sessions, ctx.ID())
 }
 
 func (sb *smartBlock) ObjectCloseAllSessions() {
-	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
+	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.currentState()})
 	sb.sessions = make(map[string]session.Context)
 }
 
@@ -1041,7 +1024,7 @@ func (sb *smartBlock) Close() (err error) {
 }
 
 func (sb *smartBlock) closeLocked() (err error) {
-	sb.execHooks(HookOnClose, ApplyInfo{State: sb.Doc.(*state.State)})
+	sb.execHooks(HookOnClose, ApplyInfo{State: sb.currentState()})
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -1185,7 +1168,7 @@ func (sb *smartBlock) baseRelations() []*model.Relation {
 func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	var links []*model.RelationLink
 	if s == nil {
-		links = sb.Doc.GetRelationLinks()
+		links = sb.currentState().GetRelationLinks()
 	} else {
 		links = s.GetRelationLinks()
 	}

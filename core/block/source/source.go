@@ -107,7 +107,7 @@ type Source interface {
 	Heads() []string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
-	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
+	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) // TODO Return state.State
 	PushChange(params PushChangeParams) (id string, err error)
 	Close() (err error)
 	GetCreationInfo() (creatorObjectId string, createdDate int64, err error)
