@@ -1080,3 +1080,8 @@ enum ImageKind {
     Cover = 1;
     Icon = 2;
 }
+
+enum FileIndexingStatus {
+    NotIndexed = 0;
+    Indexed = 1;
+}

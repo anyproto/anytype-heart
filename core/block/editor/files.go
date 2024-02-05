@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
@@ -22,15 +23,16 @@ import (
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
 	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
 	return &File{
-		SmartBlock: sb,
-		// TODO TEMP
+		SmartBlock:    sb,
 		AllOperations: basicComponent,
+		Text:          stext.NewText(sb, f.objectStore, f.eventSender),
 	}
 }
 
 type File struct {
 	smartblock.SmartBlock
 	basic.AllOperations
+	stext.Text
 }
 
 func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
