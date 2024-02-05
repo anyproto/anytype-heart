@@ -158,7 +158,7 @@ type SmartBlock interface {
 	SetRestrictions(r restriction.Restrictions)
 	ObjectClose(ctx session.Context)
 	ObjectCloseAllSessions()
-
+	SetPendingState(s *state.State)
 	Space() Space
 
 	ocache.Object
@@ -630,7 +630,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	changes := st.GetChanges()
 	var changeId string
-	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
+	if skipIfNoChanges && len(changes) == 0 /*&& !migrationVersionUpdated*/ {
 		if hasDetailsMsgs(msgs) {
 			// means we have only local details changed, so lets index but skip full text
 			sb.runIndexer(st, SkipFullTextIfHeadsNotChanged)
@@ -665,6 +665,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		if changeId != "" {
 			sb.currentState().SetChangeId(changeId)
 		}
+
+		sb.pendingState = nil
+
 		return nil
 	}
 

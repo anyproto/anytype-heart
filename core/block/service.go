@@ -205,9 +205,10 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
-		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags); err != nil {
-			log.Errorf("failed to update lastOpenedDate: %s", err)
-		}
+		ob.SetPendingState(st)
+		//if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags); err != nil {
+		//	log.Errorf("failed to update lastOpenedDate: %s", err)
+		//}
 		afterApplyTime := time.Now()
 		if obj, err = ob.Show(); err != nil {
 			return fmt.Errorf("show: %w", err)

@@ -20,6 +20,11 @@ func (sb *smartBlock) currentState() *state.State {
 	return sb.state
 }
 
+func (sb *smartBlock) SetPendingState(s *state.State) {
+	sb.pendingState = s
+	sb.runIndexer(s)
+}
+
 var _ state.Doc = (*smartBlock)(nil)
 
 /*

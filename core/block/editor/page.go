@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -12,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -212,6 +215,26 @@ func (p *Page) StateMigrations() migration.Migrations {
 		{
 			Version: 2,
 			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
+		},
+		{
+			Version: 4,
+			Proc: func(s *state.State) {
+				rootBlock := s.Get(s.RootId())
+				if rootBlock == nil || rootBlock.Model() == nil {
+					return
+				}
+				newId := bson.NewObjectId().Hex()
+				b := simple.New(&model.Block{
+					Id: newId,
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text: "Test of virtual migration",
+						},
+					},
+				})
+				rootBlock.Model().ChildrenIds = append(rootBlock.Model().ChildrenIds, b.Model().Id)
+				s.Add(b)
+			},
 		},
 	})
 }
