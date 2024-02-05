@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -63,12 +64,13 @@ func (r *wallet) GetAccountEthPrivkey() *ecdsa.PrivateKey {
 }
 
 func (r *wallet) GetAccountEthAddress() EthAddress {
-	/*
-		publicKey := r.ethereumKey.Public()
-		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-		ethAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	*/
-	return common.HexToAddress(r.ethereumKey.PublicKey.X.String())
+	publicKey := r.ethereumKey.Public()
+
+	// eat the error, we know it's an ecdsa.PublicKey
+	publicKeyECDSA, _ := publicKey.(*ecdsa.PublicKey)
+	ethAddress := ethcrypto.PubkeyToAddress(*publicKeyECDSA)
+
+	return common.HexToAddress(ethAddress.String())
 }
 
 func (r *wallet) Init(a *app.App) (err error) {
