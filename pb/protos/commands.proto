@@ -5834,18 +5834,18 @@ message Rpc {
                 TierUnknown = 0;
                 
                 // "free" tier
-                TierFriend = 1;
+                TierExplorer = 1;
 
                 // this tier can be used just for testing in debug mode
                 // it will still create an active subscription, but with NO features
-                TierSupporter1WeekTEST = 2;
+                TierBuilder1WeekTEST = 2;
                 
                 // this tier can be used just for testing in debug mode
                 // it will still create an active subscription, but with NO features
-                TierPatron1WeekTEST = 3;
+                TierCoCreator1WeekTEST = 3;
 
-                TierSupporter1Year = 4;
-                TierPatron1Year = 5;
+                TierBuilder1Year = 4;
+                TierCoCreator1Year = 5;
             }
             
             enum SubscriptionStatus {
