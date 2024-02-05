@@ -964,6 +964,8 @@ message Notification {
         Export export = 8;
         GalleryImport galleryImport = 9;
         RequestToJoin requestToJoin = 10;
+        RequestResponse requestResponse = 11;
+        ParticipantRequestApproved participantRequestApproved = 12;
     }
     string space = 7;
 
@@ -997,6 +999,19 @@ message Notification {
         string identity = 2;
         string identityName = 3;
         string identityIcon = 4;
+    }
+
+    message RequestResponse {
+        string identity = 1;
+        string identityName = 2;
+        string identityIcon = 3;
+        bool isApproved = 4;
+        ParticipantPermissions permission = 5;
+    }
+
+    message ParticipantRequestApproved {
+        string spaceID = 1;
+        ParticipantPermissions permission = 2;
     }
 
     enum Status {

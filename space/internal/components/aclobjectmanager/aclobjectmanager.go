@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
-	"github.com/anyproto/anytype-heart/space/internal/components/notifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -53,7 +53,7 @@ type aclObjectManager struct {
 	identityService     dependencies.IdentityService
 	indexer             dependencies.SpaceIndexer
 	started             bool
-	notificationService notifications.AclNotification
+	notificationService aclnotifications.AclNotification
 
 	ownerMetadata     []byte
 	mx                sync.Mutex
@@ -64,6 +64,8 @@ type aclObjectManager struct {
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 	a.mx.Lock()
 	commonSpace := a.sp.CommonSpace()
+	// TODO should I move it after a.processAcl(), because accountState is in a.processAcl()
+	// TODO how it works during big account recovery, is it consistent?
 	a.notificationService.SendNotification(commonSpace.Acl().Head(), commonSpace.Id())
 	a.mx.Unlock()
 	err := a.processAcl()
@@ -78,7 +80,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
 	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
-	a.notificationService = app.MustComponent[notifications.AclNotification](ap)
+	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil

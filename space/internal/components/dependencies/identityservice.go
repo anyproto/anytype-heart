@@ -1,6 +1,8 @@
 package dependencies
 
 import (
+	"context"
+
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 
@@ -17,5 +19,5 @@ type IdentityService interface {
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
 
-	GetIdentity(identity string) *model.IdentityProfile
+	GetDetails(ctx context.Context, identity string) (details *types.Struct, err error)
 }

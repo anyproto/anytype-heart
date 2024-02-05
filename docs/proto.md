@@ -1540,6 +1540,8 @@
     - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
+    - [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved)
+    - [Notification.RequestResponse](#anytype-model-Notification-RequestResponse)
     - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
@@ -24268,6 +24270,8 @@ Used to decode block meta only, without the content itself
 | export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
 | galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
 | requestToJoin | [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin) |  |  |
+| requestResponse | [Notification.RequestResponse](#anytype-model-Notification-RequestResponse) |  |  |
+| participantRequestApproved | [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved) |  |  |
 | space | [string](#string) |  |  |
 
 
@@ -24322,6 +24326,41 @@ Used to decode block meta only, without the content itself
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-ParticipantRequestApproved"></a>
+
+### Notification.ParticipantRequestApproved
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceID | [string](#string) |  |  |
+| permission | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-RequestResponse"></a>
+
+### Notification.RequestResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| identityName | [string](#string) |  |  |
+| identityIcon | [string](#string) |  |  |
+| isApproved | [bool](#bool) |  |  |
+| permission | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 
