@@ -46,6 +46,8 @@ type notificationService struct {
 	spaceService       space.Service
 	picker             block.ObjectGetter
 	spaceCore          spacecore.SpaceCoreService
+
+	lastNotificationId string
 }
 
 func New() Notifications {
@@ -97,10 +99,14 @@ func (n *notificationService) updateNotificationsInLocalStore() {
 	if err != nil {
 		log.Errorf("failed to get notifications from object: %s", err)
 	}
+	var lastNotificationTimestamp int64
 	for _, notification := range notifications {
 		err := n.notificationStore.SaveNotification(notification)
 		if err != nil {
 			log.Errorf("failed to save notification %s: %s", notification.Id, err)
+		}
+		if notification.GetCreateTime() > lastNotificationTimestamp {
+			n.lastNotificationId = notification.Id
 		}
 	}
 }
@@ -121,7 +127,7 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 		var exist bool
 		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 			stateNotification := s.GetNotificationById(notification.Id)
-			s.SetLastNotificationsId(notification.Id)
+			n.lastNotificationId = notification.Id
 			if stateNotification != nil {
 				exist = true
 				return nil
@@ -233,6 +239,10 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 		addCount++
 	}
 	return result, nil
+}
+
+func (n *notificationService) GetLastNotificationId() string {
+	return n.lastNotificationId
 }
 
 func (n *notificationService) isNotificationRead(notification *model.Notification) bool {

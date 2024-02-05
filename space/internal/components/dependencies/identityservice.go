@@ -3,6 +3,7 @@ package dependencies
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 
@@ -20,4 +21,6 @@ type IdentityService interface {
 	UnregisterIdentitiesInSpace(spaceId string)
 
 	GetDetails(ctx context.Context, identity string) (details *types.Struct, err error)
+	GetIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error)
+	GetProfile(identityData *identityrepoproto.DataWithIdentity) ([]byte, *model.IdentityProfile, error)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/crypto/cryptoproto"
 	"github.com/gogo/protobuf/types"
@@ -69,7 +70,7 @@ func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
-	err = a.sendNotifications(a.ctx, commonSpace, []*list.AclRecord{commonSpace.Acl().Head()})
+	err = a.sendNotifications(a.ctx, commonSpace, commonSpace.Acl(), false)
 	if err != nil {
 		log.Error("failed to send notifications", zap.Error(err))
 	}
@@ -144,19 +145,17 @@ func (a *aclObjectManager) process() {
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
-	err = a.sendNotifications(a.ctx, common, common.Acl().Records())
+	err = a.sendNotifications(a.ctx, common, common.Acl(), true)
 	if err != nil {
 		log.Error("failed to send notifications", zap.Error(err))
 	}
 }
 
-func (a *aclObjectManager) sendNotifications(ctx context.Context, common commonspace.Space, aclRecords []*list.AclRecord) error {
+func (a *aclObjectManager) sendNotifications(ctx context.Context, common commonspace.Space, acl syncacl.SyncAcl, fullScan bool) error {
 	permissions := common.Acl().AclState().Permissions(common.Acl().AclState().AccountKey().GetPublic())
-	for _, record := range aclRecords {
-		err := a.notificationService.SendNotification(ctx, record, a.sp, permissions)
-		if err != nil {
-			return err
-		}
+	err := a.notificationService.SendNotification(ctx, a.sp, permissions, acl, fullScan)
+	if err != nil {
+		return err
 	}
 	return nil
 }

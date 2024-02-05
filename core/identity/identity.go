@@ -395,7 +395,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		}
 		identities = append(identities, identity)
 	}
-	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
+	identitiesData, err := s.GetIdentitiesDataFromRepo(ctx, identities)
 	if err != nil {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
@@ -409,7 +409,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 	return nil
 }
 
-func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
+func (s *service) GetIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
 	res, err := s.coordinatorClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
 	if err == nil {
 		return res, nil
@@ -452,27 +452,9 @@ func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 }
 
 func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIdentity) error {
-	var (
-		rawProfile []byte
-		profile    *model.IdentityProfile
-	)
-	for _, data := range identityData.Data {
-		if data.Kind == identityRepoDataKind {
-			rawProfile = data.Data
-			symKey := s.identityEncryptionKeys[identityData.Identity]
-			rawProfile, err := symKey.Decrypt(data.Data)
-			if err != nil {
-				return fmt.Errorf("decrypt identity profile: %w", err)
-			}
-			profile = new(model.IdentityProfile)
-			err = proto.Unmarshal(rawProfile, profile)
-			if err != nil {
-				return fmt.Errorf("unmarshal identity profile: %w", err)
-			}
-		}
-	}
-	if profile == nil {
-		return fmt.Errorf("no profile data found")
+	rawProfile, profile, err := s.GetProfile(identityData)
+	if err != nil {
+		return err
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
@@ -500,6 +482,32 @@ func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIde
 		}
 	}
 	return nil
+}
+
+func (s *service) GetProfile(identityData *identityrepoproto.DataWithIdentity) ([]byte, *model.IdentityProfile, error) {
+	var (
+		rawProfile []byte
+		profile    *model.IdentityProfile
+	)
+	for _, data := range identityData.Data {
+		if data.Kind == identityRepoDataKind {
+			rawProfile = data.Data
+			symKey := s.identityEncryptionKeys[identityData.Identity]
+			rawProfile, err := symKey.Decrypt(data.Data)
+			if err != nil {
+				return nil, nil, fmt.Errorf("decrypt identity profile: %w", err)
+			}
+			profile = new(model.IdentityProfile)
+			err = proto.Unmarshal(rawProfile, profile)
+			if err != nil {
+				return nil, nil, fmt.Errorf("unmarshal identity profile: %w", err)
+			}
+		}
+	}
+	if profile == nil {
+		return nil, nil, fmt.Errorf("no profile data found")
+	}
+	return rawProfile, profile, nil
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {
