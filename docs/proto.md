@@ -1526,6 +1526,7 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [Export.Format](#anytype-model-Export-Format)
+    - [FileIndexingStatus](#anytype-model-FileIndexingStatus)
     - [ImageKind](#anytype-model-ImageKind)
     - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
@@ -24105,6 +24106,18 @@ stored |
 | DOT | 3 |  |
 | SVG | 4 |  |
 | GRAPH_JSON | 5 |  |
+
+
+
+<a name="anytype-model-FileIndexingStatus"></a>
+
+### FileIndexingStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NotIndexed | 0 |  |
+| Indexed | 1 |  |
 
 
 
