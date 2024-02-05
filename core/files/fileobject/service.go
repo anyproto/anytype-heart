@@ -361,6 +361,18 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 		return fileObjectId
 	}
 
+	// If due to some reason fileId is a file object id from another space, we should not migrate it
+	// This is definitely a bug, but we should not break things further.
+	exists, err := s.isFileExistInAnotherSpace(space.Id(), fileId)
+	if err != nil {
+		log.Errorf("checking that file exist in another space: %v", err)
+		return fileId
+	}
+	if exists {
+		log.With("fileObjectId", fileId).Error("found file object in another space")
+		return fileId
+	}
+
 	if len(fileKeys) == 0 {
 		log.Warnf("no encryption keys for fileId %s", fileId)
 	}
@@ -388,6 +400,27 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 		log.Errorf("create file object for fileId %s: %v", fileId, err)
 	}
 	return fileObjectId
+}
+
+func (s *service) isFileExistInAnotherSpace(spaceId string, fileObjectId string) (bool, error) {
+	recs, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileObjectId),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		return false, fmt.Errorf("query objects by file hash: %w", err)
+	}
+	return len(recs) > 0, nil
 }
 
 func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
