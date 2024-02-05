@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -99,7 +100,8 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener: b.Listener,
+		Listener:    b.Listener,
+		TreeBuilder: objecttree.BuildKeyVerifiableObjectTree,
 	}
 }
 

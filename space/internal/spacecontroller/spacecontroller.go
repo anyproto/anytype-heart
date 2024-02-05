@@ -13,6 +13,7 @@ type SpaceController interface {
 	Mode() mode.Mode
 	Current() any
 	UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error
+	SetStatus(ctx context.Context, status spaceinfo.AccountStatus) error
 	UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error
 	Close(ctx context.Context) error
 }

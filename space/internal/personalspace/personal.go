@@ -99,6 +99,10 @@ func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.Acc
 	return nil
 }
 
+func (s *spaceController) SetStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
+	return nil
+}
+
 func (s *spaceController) Close(ctx context.Context) error {
 	return s.loader.Close(ctx)
 }

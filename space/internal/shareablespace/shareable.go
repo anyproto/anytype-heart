@@ -72,6 +72,17 @@ func (s *spaceController) Current() any {
 	return s.sm.GetProcess()
 }
 
+func (s *spaceController) SetStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
+	s.status.Lock()
+	err := s.status.SetPersistentStatus(ctx, status)
+	if err != nil {
+		s.status.Unlock()
+		return err
+	}
+	s.status.Unlock()
+	return s.UpdateStatus(ctx, status)
+}
+
 func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
 	s.status.Lock()
 	if s.lastUpdatedStatus == status {
