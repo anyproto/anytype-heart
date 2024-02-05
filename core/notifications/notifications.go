@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -120,6 +121,7 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 		var exist bool
 		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 			stateNotification := s.GetNotificationById(notification.Id)
+			s.SetLastNotificationsId(notification.Id)
 			if stateNotification != nil {
 				exist = true
 				return nil
@@ -206,6 +208,15 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 	if err != nil {
 		return nil, fmt.Errorf("failed to list notifications: %w", err)
 	}
+
+	sort.SliceStable(notifications, func(i, j int) bool {
+		leftTime := time.Unix(notifications[j].GetCreateTime(), 0)
+		rightTime := time.Unix(notifications[i].GetCreateTime(), 0)
+		if leftTime.After(rightTime) {
+			return true
+		}
+		return false
+	})
 
 	var (
 		result   []*model.Notification

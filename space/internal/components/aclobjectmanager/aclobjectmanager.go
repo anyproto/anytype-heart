@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -62,16 +63,17 @@ type aclObjectManager struct {
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
-	a.mx.Lock()
 	commonSpace := a.sp.CommonSpace()
-	// TODO should I move it after a.processAcl(), because accountState is in a.processAcl()
-	// TODO how it works during big account recovery, is it consistent?
-	a.notificationService.SendNotification(commonSpace.Acl().Head(), commonSpace.Id())
-	a.mx.Unlock()
+	a.mx.Lock()
 	err := a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
+	err = a.sendNotifications(a.ctx, commonSpace, []*list.AclRecord{commonSpace.Acl().Head()})
+	if err != nil {
+		log.Error("failed to send notifications", zap.Error(err))
+	}
+	a.mx.Unlock()
 }
 
 func (a *aclObjectManager) Init(ap *app.App) (err error) {
@@ -142,6 +144,21 @@ func (a *aclObjectManager) process() {
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
+	err = a.sendNotifications(a.ctx, common, common.Acl().Records())
+	if err != nil {
+		log.Error("failed to send notifications", zap.Error(err))
+	}
+}
+
+func (a *aclObjectManager) sendNotifications(ctx context.Context, common commonspace.Space, aclRecords []*list.AclRecord) error {
+	permissions := common.Acl().AclState().Permissions(common.Acl().AclState().AccountKey().GetPublic())
+	for _, record := range aclRecords {
+		err := a.notificationService.SendNotification(ctx, record, a.sp, permissions)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error {

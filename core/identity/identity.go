@@ -563,7 +563,3 @@ func (s *service) UnregisterIdentitiesInSpace(spaceId string) {
 		delete(observers, spaceId)
 	}
 }
-
-func (s *service) GetIdentity(identity string) *model.IdentityProfile {
-	return s.identityProfileCache[identity]
-}

@@ -4,25 +4,31 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/util/crypto"
 	"golang.org/x/net/context"
 
-	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const Cname = "spaceNotification"
 
+type NotificationSender interface {
+	CreateAndSend(notification *model.Notification) error
+}
+
 type AclNotification interface {
-	SendNotification(aclRecord *list.AclRecord, spaceId string) error
+	SendNotification(ctx context.Context, aclRecord *list.AclRecord, space clientspace.Space, permissions list.AclPermissions) error
 }
 
 type AclNotificationSender struct {
 	app.Component
 	identityService     dependencies.IdentityService
-	notificationService notifications.Notifications
+	notificationService NotificationSender
 }
 
 func NewAclNotificationSender() *AclNotificationSender {
@@ -31,7 +37,7 @@ func NewAclNotificationSender() *AclNotificationSender {
 
 func (n *AclNotificationSender) Init(a *app.App) (err error) {
 	n.identityService = app.MustComponent[dependencies.IdentityService](a)
-	n.notificationService = app.MustComponent[notifications.Notifications](a)
+	n.notificationService = app.MustComponent[NotificationSender](a)
 	return nil
 }
 
@@ -39,15 +45,13 @@ func (n *AclNotificationSender) Name() (name string) {
 	return Cname
 }
 
-func (n *AclNotificationSender) SendNotification(aclRecord *list.AclRecord, spaceId string) error {
-	_, _, details := n.identityService.GetMyProfileDetails()
-	permission := model.ParticipantPermissions(pbtypes.GetInt64(details, bundle.RelationKeyParticipantPermissions.String()))
+func (n *AclNotificationSender) SendNotification(ctx context.Context, aclRecord *list.AclRecord, space clientspace.Space, permissions list.AclPermissions) error {
 	if aclData, ok := aclRecord.Model.(*aclrecordproto.AclData); ok {
 		for _, content := range aclData.AclContent {
-			if err := n.sendJoinRequest(content, permission, spaceId); err != nil {
+			if err := n.sendJoinRequest(ctx, content, permissions, space); err != nil {
 				return err
 			}
-			if err := n.sendParticipantRequestApprove(content, spaceId); err != nil {
+			if err := n.sendParticipantRequestApprove(content, space); err != nil {
 				return err
 			}
 		}
@@ -55,24 +59,33 @@ func (n *AclNotificationSender) SendNotification(aclRecord *list.AclRecord, spac
 	return nil
 }
 
-func (n *AclNotificationSender) sendJoinRequest(content *aclrecordproto.AclContentValue, permission model.ParticipantPermissions, spaceId string) error {
-	if reqJoin := content.GetRequestJoin(); reqJoin != nil && permission == model.ParticipantPermissions_Owner {
-		details, err := n.identityService.GetDetails(context.Background(), string(reqJoin.InviteIdentity))
+func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
+	content *aclrecordproto.AclContentValue,
+	permission list.AclPermissions,
+	space clientspace.Space,
+) error {
+	if reqJoin := content.GetRequestJoin(); reqJoin != nil && permission.IsOwner() {
+		pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqJoin.InviteIdentity)
 		if err != nil {
 			return err
 		}
-		name := pbtypes.GetString(details, bundle.RelationKeyName.String())
-		image := pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
+		participantId := domain.NewParticipantId(space.Id(), pubKey.Account())
+		identity, err := space.GetObjectWithTimeout(ctx, participantId)
+		if err != nil {
+			return err
+		}
+		name := pbtypes.GetString(identity.Details(), bundle.RelationKeyName.String())
+		image := pbtypes.GetString(identity.Details(), bundle.RelationKeyIconImage.String())
 		err = n.notificationService.CreateAndSend(&model.Notification{
 			Id:      reqJoin.InviteRecordId,
 			IsLocal: false,
 			Payload: &model.NotificationPayloadOfRequestToJoin{RequestToJoin: &model.NotificationRequestToJoin{
-				SpaceId:      spaceId,
+				SpaceId:      space.Id(),
 				Identity:     string(reqJoin.InviteIdentity),
 				IdentityName: name,
 				IdentityIcon: image,
 			}},
-			Space: spaceId,
+			Space: space.Id(),
 		})
 		if err != nil {
 			return err
@@ -81,7 +94,7 @@ func (n *AclNotificationSender) sendJoinRequest(content *aclrecordproto.AclConte
 	return nil
 }
 
-func (n *AclNotificationSender) sendParticipantRequestApprove(content *aclrecordproto.AclContentValue, spaceId string) error {
+func (n *AclNotificationSender) sendParticipantRequestApprove(content *aclrecordproto.AclContentValue, space clientspace.Space) error {
 	if reqApprove := content.GetRequestAccept(); reqApprove != nil {
 		identity, _, _ := n.identityService.GetMyProfileDetails()
 		if string(reqApprove.Identity) != identity {
@@ -92,11 +105,11 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(content *aclrecord
 			IsLocal: false,
 			Payload: &model.NotificationPayloadOfParticipantRequestApproved{
 				ParticipantRequestApproved: &model.NotificationParticipantRequestApproved{
-					SpaceID:    spaceId,
+					SpaceID:    space.Id(),
 					Permission: mapProtoPermissionToAcl(reqApprove.Permissions),
 				},
 			},
-			Space: spaceId,
+			Space: space.Id(),
 		})
 		if err != nil {
 			return err

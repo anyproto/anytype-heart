@@ -108,16 +108,17 @@ type State struct {
 	rootId string
 	// uniqueKeyInternal is used together with smartblock type for the ID derivation
 	// which will be unique and reproducible within the same space
-	uniqueKeyInternal string
-	newIds            []string
-	changeId          string
-	changes           []*pb.ChangeContent
-	fileInfo          FileInfo
-	fileKeys          []pb.ChangeFileKeys // Deprecated
-	details           *types.Struct
-	localDetails      *types.Struct
-	relationLinks     pbtypes.RelationLinks
-	notifications     map[string]*model.Notification
+	uniqueKeyInternal   string
+	newIds              []string
+	changeId            string
+	changes             []*pb.ChangeContent
+	fileInfo            FileInfo
+	fileKeys            []pb.ChangeFileKeys // Deprecated
+	details             *types.Struct
+	localDetails        *types.Struct
+	relationLinks       pbtypes.RelationLinks
+	notifications       map[string]*model.Notification
+	lastNotificationsId string
 
 	migrationVersion uint32
 
@@ -1875,6 +1876,14 @@ func (s *State) ListNotifications() map[string]*model.Notification {
 		return nil
 	}
 	return iterState.notifications
+}
+
+func (s *State) LastNotificationsId() string {
+	return s.lastNotificationsId
+}
+
+func (s *State) SetLastNotificationsId(lastNotificationsId string) {
+	s.lastNotificationsId = lastNotificationsId
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation
