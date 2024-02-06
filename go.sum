@@ -129,8 +129,8 @@ github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139 h1:Wp9z0
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139/go.mod h1:1zaDDQVWTRwNksmTUTkcVXqgNF28YHiEUIm8FL9Z+II=
 github.com/anyproto/protobuf v1.3.3-0.20240115180122-702dd61fb919 h1:ol+p5mJyx3n1xdifHYkcov2vlMXFQje+HYEjJL3gA64=
 github.com/anyproto/protobuf v1.3.3-0.20240115180122-702dd61fb919/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
-github.com/anyproto/ristretto v0.1.2-0.20240111154712-6cff3b2dc485 h1:jDrwIuNwHbmNVmToIe+wVnsIOTmBvrYSnHs6Q6h4Wkc=
-github.com/anyproto/ristretto v0.1.2-0.20240111154712-6cff3b2dc485/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
+github.com/anyproto/ristretto v0.1.2-0.20240206201651-43b6ac4c41bf h1:4M5223J0RSOelU4UPyaru8qEVTtdRoLwNd6ZVTPACq4=
+github.com/anyproto/ristretto v0.1.2-0.20240206201651-43b6ac4c41bf/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941 h1:sXnKo0P45QWddNR4Gfh9CgbgdQXiKjry+KJjU8evoyw=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/arrow/go/arrow v0.0.0-20191024131854-af6fa24be0db/go.mod h1:VTxUBvSJ3s3eHAg65PNgrsn5BtqCRPdmyXh6rAfdxN0=
