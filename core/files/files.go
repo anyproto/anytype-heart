@@ -55,6 +55,7 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
+	IsFileExistOnNode(ctx context.Context, id domain.FileId) (bool, error)
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*FileAddResult, error)
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
 	FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error)
@@ -705,6 +706,14 @@ func getEncryptorDecryptor(key symmetric.Key, mode storage.FileInfoEncryptionMod
 	default:
 		return nil, fmt.Errorf("unsupported encryption mode")
 	}
+}
+
+func (s *service) IsFileExistOnNode(ctx context.Context, id domain.FileId) (bool, error) {
+	cid, err := cid.Decode(id.String())
+	if err != nil {
+		return false, fmt.Errorf("decode cid: %w", err)
+	}
+	return s.commonFile.HasCid(ctx, cid)
 }
 
 func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, error) {

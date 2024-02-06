@@ -54,14 +54,22 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		return objectId, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
+	fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, filePath, origin)
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("upload file: %w", err)
+	}
+	return fileObjectId, treestorage.TreeStorageCreatePayload{}, nil
+}
+
+func uploadFile(ctx context.Context, blockService *block.Service, spaceId string, filePath string, origin objectorigin.ObjectOrigin) (string, error) {
 	params := pb.RpcFileUploadRequest{
 		SpaceId:   spaceId,
 		LocalPath: filePath,
 	}
 	if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
 		params = pb.RpcFileUploadRequest{
-			SpaceId:   spaceId,
-			LocalPath: filePath,
+			SpaceId: spaceId,
+			Url:     filePath,
 		}
 	}
 	dto := block.FileUploadRequest{
@@ -69,9 +77,9 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		ObjectOrigin:         origin,
 	}
 
-	hash, _, err := f.blockService.UploadFile(ctx, spaceId, dto)
+	fileObjectId, _, err := blockService.UploadFile(ctx, spaceId, dto)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
+		return "", err
 	}
-	return hash, treestorage.TreeStorageCreatePayload{}, nil
+	return fileObjectId, nil
 }
