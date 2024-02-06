@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -57,6 +58,7 @@ type service struct {
 	spaceService      space.Service
 	templateService   TemplateService
 	fileService       files.Service
+	accountService    account.Service
 }
 
 func NewCreator() Service {
@@ -70,6 +72,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
 	s.fileService = app.MustComponent[files.Service](a)
+	s.accountService = app.MustComponent[account.Service](a)
 	s.app = a
 	return nil
 }

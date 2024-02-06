@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
@@ -27,6 +28,14 @@ func (s *service) InstallBundledObjects(
 	sourceObjectIds []string,
 	isNewSpace bool,
 ) (ids []string, objects []*types.Struct, err error) {
+	identity, err := crypto.DecodeAccountAddress(s.accountService.AccountID())
+	if err != nil {
+		return nil, nil, fmt.Errorf("decode account address: %w", err)
+	}
+	perms := space.CommonSpace().Acl().AclState().Permissions(identity)
+	if !perms.CanWrite() {
+		return nil, nil, nil
+	}
 
 	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
@@ -85,7 +94,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 	})
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		// we don't want to stop adding other objects
-		log.Errorf("error while block create: %v", err)
+		log.With("uniqueKey", uk.Marshal()).Errorf("error while object create: %v", err)
 		return "", nil, nil
 	}
 	return id, newDetails, nil

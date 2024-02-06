@@ -128,9 +128,12 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	}
 
 	migration.RunMigrations(sb, initCtx)
-	sb.SetPendingState(initCtx.State)
+	if initCtx.IsNewObject {
+		return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
+	} else {
+		sb.SetPendingState(initCtx.State)
+	}
 	return sb, nil
-	//return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {
