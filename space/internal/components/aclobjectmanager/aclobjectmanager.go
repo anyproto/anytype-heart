@@ -65,11 +65,11 @@ type aclObjectManager struct {
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 	commonSpace := a.sp.CommonSpace()
-	a.mx.Lock()
 	err := a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
+	a.mx.Lock()
 	err = a.sendNotifications(a.ctx, commonSpace, commonSpace.Acl(), false)
 	if err != nil {
 		log.Error("failed to send notifications", zap.Error(err))
@@ -303,7 +303,7 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		status := pbtypes.GetInt64(current, bundle.RelationKeyParticipantStatus.String())
 		if model.ParticipantStatus(status) == model.ParticipantStatus_Joining {
-			//err := a.notificationService.CreateAndSendLocal(&model.Notification{
+			//err := a.notificationService.(&model.Notification{
 			//	Status:  model.Notification_Created,
 			//	IsLocal: true,
 			//	Space:   a.sp.Id(),

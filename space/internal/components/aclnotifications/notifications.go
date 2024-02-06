@@ -26,7 +26,6 @@ type AclNotification interface {
 
 type AclNotificationSender struct {
 	app.Component
-	lastNotificationId  string
 	identityService     dependencies.IdentityService
 	notificationService NotificationSender
 }
@@ -123,7 +122,7 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 			IsLocal: false,
 			Payload: &model.NotificationPayloadOfRequestToJoin{RequestToJoin: &model.NotificationRequestToJoin{
 				SpaceId:      space.Id(),
-				Identity:     string(reqJoin.InviteIdentity),
+				Identity:     pubKey.Account(),
 				IdentityName: name,
 				IdentityIcon: icon,
 			}},
@@ -139,10 +138,15 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 func (n *AclNotificationSender) sendParticipantRequestApprove(content *aclrecordproto.AclContentValue, space clientspace.Space, id string) error {
 	if reqApprove := content.GetRequestAccept(); reqApprove != nil {
 		identity, _, _ := n.identityService.GetMyProfileDetails()
-		if string(reqApprove.Identity) != identity {
+		pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqApprove.Identity)
+		if err != nil {
+			return err
+		}
+		account := pubKey.Account()
+		if account != identity {
 			return nil
 		}
-		err := n.notificationService.CreateAndSend(&model.Notification{
+		err = n.notificationService.CreateAndSend(&model.Notification{
 			Id:      id,
 			IsLocal: false,
 			Payload: &model.NotificationPayloadOfParticipantRequestApproved{

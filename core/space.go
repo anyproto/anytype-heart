@@ -210,7 +210,7 @@ func (mw *Middleware) sendResponseNotification(cctx context.Context, id, spaceId
 	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
 	image := pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
 	err = app.MustComponent[notifications.Notifications](mw.GetApp()).CreateAndSend(&model.Notification{
-		//Id:     TODO что тут за id???,
+		Id:      id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfRequestResponse{RequestResponse: &model.NotificationRequestResponse{
 			Identity:     id,
