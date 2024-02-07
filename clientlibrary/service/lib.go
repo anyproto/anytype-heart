@@ -6,6 +6,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -24,6 +25,9 @@ var mw = core.New()
 func init() {
 	fixTZ()
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
+	fmt.Printf("num of cpus: %d\n", runtime.NumCPU())
+	fmt.Printf("set GOMAXPROCS to 2\n")
+	runtime.GOMAXPROCS(2)
 
 	PanicHandler = mw.OnPanic
 	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
