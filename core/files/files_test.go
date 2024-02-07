@@ -101,33 +101,6 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-func TestIsFileExistOnNode(t *testing.T) {
-	t.Run("file not exist", func(t *testing.T) {
-		fx := newFixture(t)
-
-		fileId := domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
-		got, err := fx.IsFileExistOnNode(context.Background(), fileId)
-		require.NoError(t, err)
-		assert.False(t, got)
-	})
-
-	t.Run("file exists", func(t *testing.T) {
-		fx := newFixture(t)
-
-		ctx := context.Background()
-		buf := strings.NewReader("file content")
-
-		node, err := fx.commonFileService.AddFile(ctx, buf)
-		require.NoError(t, err)
-
-		fileId := domain.FileId(node.Cid().String())
-
-		got, err := fx.IsFileExistOnNode(context.Background(), fileId)
-		require.NoError(t, err)
-		assert.True(t, got)
-	})
-}
-
 func TestFileAdd(t *testing.T) {
 	fx := newFixture(t)
 
