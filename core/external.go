@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -110,24 +109,16 @@ func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGall
 }
 
 func (mw *Middleware) GalleryDownloadIndex(_ context.Context, _ *pb.RpcGalleryDownloadIndexRequest) *pb.RpcGalleryDownloadIndexResponse {
-	response := func(resp *pb.RpcGalleryDownloadIndexResponse, err error) *pb.RpcGalleryDownloadIndexResponse {
-		if resp == nil {
-			resp = &pb.RpcGalleryDownloadIndexResponse{}
-		}
-		resp.Error = &pb.RpcGalleryDownloadIndexResponseError{
-			Code: pb.RpcGalleryDownloadIndexResponseError_NULL,
-		}
-		if err != nil {
-			resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_UNKNOWN_ERROR
-			if errors.Is(err, gallery.ErrUnmarshalJson) {
-				resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_UNMARSHALLING_ERROR
-			} else if errors.Is(err, gallery.ErrDownloadIndex) {
-				resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_DOWNLOAD_ERROR
-			}
-			resp.Error.Description = err.Error()
-		}
-		return resp
+	response, err := gallery.DownloadGalleryIndex()
+	if response == nil {
+		response = &pb.RpcGalleryDownloadIndexResponse{}
 	}
-	index, err := gallery.DownloadGalleryIndex()
-	return response(index, err)
+	response.Error = &pb.RpcGalleryDownloadIndexResponseError{
+		Code: mapErrorCode(err,
+			errToCode(gallery.ErrUnmarshalJson, pb.RpcGalleryDownloadIndexResponseError_UNMARSHALLING_ERROR),
+			errToCode(gallery.ErrDownloadIndex, pb.RpcGalleryDownloadIndexResponseError_DOWNLOAD_ERROR),
+		),
+		Description: getErrorDescription(err),
+	}
+	return response
 }
