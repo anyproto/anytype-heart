@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -168,6 +169,32 @@ func (r *clientds) Init(a *app.App) (err error) {
 func (r *clientds) Run(context.Context) error {
 	go r.syncer()
 	return nil
+}
+
+func (r *clientds) StateChange(state int) {
+	switch pb.RpcAppSetDeviceStateRequestDeviceState(state) {
+	case pb.RpcAppSetDeviceStateRequest_BACKGROUND:
+		// prioritize spacestore sync, cause it's almost safe to loose localstore
+		start := time.Now()
+		err := r.spaceDS.Sync()
+		if err != nil {
+			log.Errorf("state(Background) failed to sync spacestore: %v", err.Error())
+		}
+
+		if time.Since(start).Milliseconds() > 10 {
+			log.Warnf("state(Background) spent %d ms to sync spacestore", time.Since(start).Milliseconds())
+		}
+
+		start = time.Now()
+		err = r.localstoreDS.Sync()
+		if err != nil {
+			log.Errorf("state(Background) failed to sync localstore: %v", err.Error())
+		}
+		if time.Since(start).Milliseconds() > 10 {
+			log.Warnf("state(Background) spent %d ms to sync localstore", time.Since(start).Milliseconds())
+		}
+
+	}
 }
 
 func (r *clientds) SpaceStorage() (*badger.DB, error) {

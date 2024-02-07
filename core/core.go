@@ -37,7 +37,8 @@ func New() *Middleware {
 }
 
 func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
-	mw.applicationService.Stop()
+	// no need to handle error here, it's already logged inside
+	_ = mw.applicationService.Stop()
 	return &pb.RpcAppShutdownResponse{
 		Error: &pb.RpcAppShutdownResponseError{
 			Code: pb.RpcAppShutdownResponseError_NULL,
@@ -46,6 +47,16 @@ func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdo
 }
 
 func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
+	if req.DeviceState == pb.RpcAppSetDeviceStateRequest_TERMINATING {
+		// no need to handle error here, it's already logged inside
+		_ = mw.applicationService.Stop()
+
+		return &pb.RpcAppSetDeviceStateResponse{
+			Error: &pb.RpcAppSetDeviceStateResponseError{
+				Code: pb.RpcAppSetDeviceStateResponseError_NULL,
+			},
+		}
+	}
 	mw.applicationService.GetApp().SetDeviceState(int(req.DeviceState))
 
 	return &pb.RpcAppSetDeviceStateResponse{

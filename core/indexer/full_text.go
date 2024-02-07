@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -31,6 +32,15 @@ func (i *indexer) ForceFTIndex() {
 	}
 }
 
+func (i *indexer) StateChange(state int) {
+	switch pb.RpcAppSetDeviceStateRequestDeviceState(state) {
+	case pb.RpcAppSetDeviceStateRequest_FOREGROUND:
+		i.ftPaused.Store(false)
+	case pb.RpcAppSetDeviceStateRequest_BACKGROUND, pb.RpcAppSetDeviceStateRequest_PAUSING:
+		i.ftPaused.Store(true)
+	}
+}
+
 func (i *indexer) ftLoop() {
 	ticker := time.NewTicker(ftIndexInterval)
 	i.runFullTextIndexer()
@@ -40,8 +50,14 @@ func (i *indexer) ftLoop() {
 		case <-i.quit:
 			return
 		case <-ticker.C:
+			if i.ftPaused.Load() {
+				continue
+			}
 			i.runFullTextIndexer()
 		case <-i.forceFt:
+			if i.ftPaused.Load() {
+				continue
+			}
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
 				i.runFullTextIndexer()
 				lastForceIndex = time.Now()
