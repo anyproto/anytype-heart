@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -32,6 +33,7 @@ func NewIDProvider(
 	blockService *block.Service,
 	fileStore filestore.FileStore,
 	fileObjectService fileobject.Service,
+	fileService files.Service,
 ) IDProvider {
 	p := &Provider{
 		objectStore:                objectStore,
@@ -40,6 +42,12 @@ func NewIDProvider(
 	existingObject := newExistingObject(objectStore)
 	treeObject := newTreeObject(existingObject, spaceService)
 	derivedObject := newDerivedObject(existingObject, spaceService)
+	fileObject := &fileObject{
+		treeObject:        treeObject,
+		blockService:      blockService,
+		fileService:       fileService,
+		fileObjectService: fileObjectService,
+	}
 	oldFile := &oldFile{
 		blockService:      blockService,
 		fileStore:         fileStore,
@@ -51,7 +59,7 @@ func NewIDProvider(
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeObjectType] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeRelationOption] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypePage] = treeObject
-	p.idProviderBySmartBlockType[sb.SmartBlockTypeFileObject] = treeObject
+	p.idProviderBySmartBlockType[sb.SmartBlockTypeFileObject] = fileObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeFile] = oldFile
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject

@@ -38,6 +38,52 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
+// Close provides a mock function with given fields: ctx
+func (_m *MockService) Close(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
+type MockService_Close_Call struct {
+	*mock.Call
+}
+
+// Close is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) Close(ctx interface{}) *MockService_Close_Call {
+	return &MockService_Close_Call{Call: _e.mock.On("Close", ctx)}
+}
+
+func (_c *MockService_Close_Call) Run(run func(ctx context.Context)) *MockService_Close_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_Close_Call) Return(err error) *MockService_Close_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) *MockService_Close_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function with given fields: ctx, spaceId, req
 func (_m *MockService) Create(ctx context.Context, spaceId string, req fileobject.CreateRequest) (string, *types.Struct, error) {
 	ret := _m.Called(ctx, spaceId, req)
@@ -677,6 +723,52 @@ func (_c *MockService_Name_Call) Return(name string) *MockService_Name_Call {
 }
 
 func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Run provides a mock function with given fields: ctx
+func (_m *MockService) Run(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Run")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_Run_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Run'
+type MockService_Run_Call struct {
+	*mock.Call
+}
+
+// Run is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) Run(ctx interface{}) *MockService_Run_Call {
+	return &MockService_Run_Call{Call: _e.mock.On("Run", ctx)}
+}
+
+func (_c *MockService_Run_Call) Run(run func(ctx context.Context)) *MockService_Run_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_Run_Call) Return(err error) *MockService_Run_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_Run_Call) RunAndReturn(run func(context.Context) error) *MockService_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }
