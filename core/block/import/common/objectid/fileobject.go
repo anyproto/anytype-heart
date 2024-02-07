@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -31,16 +30,8 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
 
-	fileId := sn.Snapshot.Data.GetFileInfo().GetFileId()
-	exist, err := o.fileService.IsFileExistOnNode(ctx, domain.FileId(fileId))
-	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
-	}
 	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
-	if !exist {
-		if filePath == "" {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("file is not found in IPFS and file path is empty, so it can't be uploaded")
-		}
+	if filePath != "" {
 		fileObjectId, err := uploadFile(ctx, o.blockService, spaceId, filePath, origin)
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("upload file: %w", err)
