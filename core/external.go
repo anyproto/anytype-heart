@@ -93,7 +93,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 }
 
 func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadManifestRequest) *pb.RpcDownloadManifestResponse {
-	response := func(info *pb.RpcDownloadManifestResponseManifestInfo, err error) *pb.RpcDownloadManifestResponse {
+	response := func(info *model.ManifestInfo, err error) *pb.RpcDownloadManifestResponse {
 		m := &pb.RpcDownloadManifestResponse{
 			Error: &pb.RpcDownloadManifestResponseError{Code: pb.RpcDownloadManifestResponseError_NULL},
 			Info:  info,
@@ -117,8 +117,15 @@ func (mw *Middleware) DownloadGalleryIndex(_ context.Context, _ *pb.RpcDownloadG
 			Code: pb.RpcDownloadGalleryIndexResponseError_NULL,
 		}
 		if err != nil {
-			resp.Error.Code = pb.RpcDownloadGalleryIndexResponseError_UNKNOWN_ERROR
-			resp.Error.Description = err.Error()
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "failed to unmarshall json") {
+				resp.Error.Code = pb.RpcDownloadGalleryIndexResponseError_UNMARSHALLING_ERROR
+			} else if strings.Contains(errMsg, "failed to download") {
+				resp.Error.Code = pb.RpcDownloadGalleryIndexResponseError_DOWNLOAD_ERROR
+			} else {
+				resp.Error.Code = pb.RpcDownloadGalleryIndexResponseError_UNKNOWN_ERROR
+			}
+			resp.Error.Description = errMsg
 		}
 		return resp
 	}

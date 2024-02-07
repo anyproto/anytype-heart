@@ -3081,7 +3081,7 @@ message Rpc {
 
         message Response {
             Error error = 1;
-            ManifestInfo info = 2;
+            anytype.model.ManifestInfo info = 2;
 
             message Error {
                 Code code = 1;
@@ -3093,21 +3093,6 @@ message Rpc {
                     BAD_INPUT = 2;
                 }
             }
-
-            message ManifestInfo {
-                string schema = 1;
-                string id = 2;
-                string name = 3;
-                string author = 4;
-                string license = 5;
-                string title = 6;
-                string description = 7;
-                repeated string screenshots = 8;
-                string downloadLink = 9;
-                int32 fileSize = 10;
-                repeated string categories = 11;
-                string language = 12;
-            }
         }
     }
 
@@ -3118,7 +3103,7 @@ message Rpc {
         message Response {
             Error error = 1;
             repeated Category categories = 2;
-            map<string, anytype.Rpc.DownloadManifest.Response.ManifestInfo> experiences = 3;
+            repeated anytype.model.ManifestInfo experiences = 3;
 
             message Error {
                 Code code = 1;
@@ -3127,7 +3112,8 @@ message Rpc {
                 enum Code {
                     NULL = 0;
                     UNKNOWN_ERROR = 1;
-                    BAD_INPUT = 2;
+                    UNMARSHALLING_ERROR = 2;
+                    DOWNLOAD_ERROR = 3;
                 }
             }
 

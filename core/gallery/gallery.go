@@ -15,6 +15,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -39,14 +40,14 @@ var whitelist = map[string]*regexp.Regexp{
 	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
-func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
+func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
 	if checkWhitelist && !IsInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
-	raw, err := getRawManifest(url)
+	raw, err := getRawJson(url)
 	if err != nil {
 		return nil, err
 	}
@@ -77,23 +78,24 @@ func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadMani
 }
 
 func DownloadGalleryIndex() (*pb.RpcDownloadGalleryIndexResponse, error) {
-	raw, err := getRawManifest(indexURI)
+	raw, err := getRawJson(indexURI)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to download gallery index: %w", err)
 	}
 
 	manifests := struct {
-		Experiences map[string]*pb.RpcDownloadManifestResponseManifestInfo `json:"experiences"`
+		Experiences map[string]*model.ManifestInfo `json:"experiences"`
 	}{}
 	err = json.Unmarshal(raw, &manifests)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall json to get list of manifests from gallery index: %w", err)
 	}
-	response := &pb.RpcDownloadGalleryIndexResponse{
-		Experiences: manifests.Experiences,
+	response := &pb.RpcDownloadGalleryIndexResponse{}
+
+	for _, manifest := range manifests.Experiences {
+		response.Experiences = append(response.Experiences, manifest)
 	}
 
-	// we unmarshal categories separately because protobuf does not support maps of string arrays (map[string][]string)
 	categories := struct {
 		Categories map[string][]string `json:"categories"`
 	}{}
@@ -128,7 +130,7 @@ func IsInWhitelist(url string) bool {
 	return false
 }
 
-func getRawManifest(url string) ([]byte, error) {
+func getRawJson(url string) ([]byte, error) {
 	client := http.Client{Timeout: timeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -141,7 +143,7 @@ func getRawManifest(url string) ([]byte, error) {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get manifest. Status: %s", res.Status)
+		return nil, fmt.Errorf("failed to get json file. Status: %s", res.Status)
 	}
 
 	if res.Body != nil {
@@ -155,7 +157,7 @@ func getRawManifest(url string) ([]byte, error) {
 	return body, nil
 }
 
-func validateSchema(schemaResp schemaResponse, info *pb.RpcDownloadManifestResponseManifestInfo) (err error) {
+func validateSchema(schemaResp schemaResponse, info *model.ManifestInfo) (err error) {
 	if schemaResp.Schema == "" {
 		return
 	}

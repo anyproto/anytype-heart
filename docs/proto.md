@@ -552,12 +552,10 @@
     - [Rpc.DownloadGalleryIndex.Response](#anytype-Rpc-DownloadGalleryIndex-Response)
     - [Rpc.DownloadGalleryIndex.Response.Category](#anytype-Rpc-DownloadGalleryIndex-Response-Category)
     - [Rpc.DownloadGalleryIndex.Response.Error](#anytype-Rpc-DownloadGalleryIndex-Response-Error)
-    - [Rpc.DownloadGalleryIndex.Response.ExperiencesEntry](#anytype-Rpc-DownloadGalleryIndex-Response-ExperiencesEntry)
     - [Rpc.DownloadManifest](#anytype-Rpc-DownloadManifest)
     - [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request)
     - [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response)
     - [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error)
-    - [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -1480,6 +1478,7 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [ManifestInfo](#anytype-model-ManifestInfo)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -9726,7 +9725,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.DownloadGalleryIndex.Response.Error](#anytype-Rpc-DownloadGalleryIndex-Response-Error) |  |  |
 | categories | [Rpc.DownloadGalleryIndex.Response.Category](#anytype-Rpc-DownloadGalleryIndex-Response-Category) | repeated |  |
-| experiences | [Rpc.DownloadGalleryIndex.Response.ExperiencesEntry](#anytype-Rpc-DownloadGalleryIndex-Response-ExperiencesEntry) | repeated |  |
+| experiences | [model.ManifestInfo](#anytype-model-ManifestInfo) | repeated |  |
 
 
 
@@ -9759,22 +9758,6 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.DownloadGalleryIndex.Response.Error.Code](#anytype-Rpc-DownloadGalleryIndex-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadGalleryIndex-Response-ExperiencesEntry"></a>
-
-### Rpc.DownloadGalleryIndex.Response.ExperiencesEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo) |  |  |
 
 
 
@@ -9815,7 +9798,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error) |  |  |
-| info | [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo) |  |  |
+| info | [model.ManifestInfo](#anytype-model-ManifestInfo) |  |  |
 
 
 
@@ -9832,32 +9815,6 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Response-ManifestInfo"></a>
-
-### Rpc.DownloadManifest.Response.ManifestInfo
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| schema | [string](#string) |  |  |
-| id | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| author | [string](#string) |  |  |
-| license | [string](#string) |  |  |
-| title | [string](#string) |  |  |
-| description | [string](#string) |  |  |
-| screenshots | [string](#string) | repeated |  |
-| downloadLink | [string](#string) |  |  |
-| fileSize | [int32](#int32) |  |  |
-| categories | [string](#string) | repeated |  |
-| language | [string](#string) |  |  |
 
 
 
@@ -17821,7 +17778,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
+| UNMARSHALLING_ERROR | 2 |  |
+| DOWNLOAD_ERROR | 3 |  |
 
 
 
@@ -23330,6 +23288,32 @@ Used to decode block meta only, without the content itself
 | imageUrl | [string](#string) |  |  |
 | faviconUrl | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype-model-LinkPreview-Type) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ManifestInfo"></a>
+
+### ManifestInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| schema | [string](#string) |  |  |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| author | [string](#string) |  |  |
+| license | [string](#string) |  |  |
+| title | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+| screenshots | [string](#string) | repeated |  |
+| downloadLink | [string](#string) |  |  |
+| fileSize | [int32](#int32) |  |  |
+| categories | [string](#string) | repeated |  |
+| language | [string](#string) |  |  |
 
 
 
