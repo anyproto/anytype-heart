@@ -3,6 +3,7 @@ package fileobject
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,6 +11,9 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -184,8 +188,16 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 		st := sb.NewState()
 		st.SetObjectTypeKey(typeKey)
 		prevDetails := st.CombinedDetails()
+
+		keys := make([]domain.RelationKey, 0, len(details.Fields))
+		for k := range details.Fields {
+			keys = append(keys, domain.RelationKey(k))
+		}
+		st.AddBundledRelations(keys...)
+
 		details = pbtypes.StructMerge(prevDetails, details, true)
 		st.SetDetails(details)
+		ind.addBlocks(st, details, id.ObjectID)
 		return sb.Apply(st)
 	})
 	if err != nil {
@@ -217,4 +229,83 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 	}
 	details.Fields[bundle.RelationKeyFileIndexingStatus.String()] = pbtypes.Int64(int64(model.FileIndexingStatus_Indexed))
 	return details, typeKey, nil
+}
+
+func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId string) error {
+	fileType := fileblock.DetectTypeByMIME(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
+
+	fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	ext := pbtypes.GetString(details, bundle.RelationKeyFileExt.String())
+
+	if ext != "" && !strings.HasSuffix(fname, "."+ext) {
+		fname = fname + "." + ext
+	}
+
+	var blocks []*model.Block
+	blocks = append(blocks, &model.Block{
+		Id: "file",
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
+				Name:           fname,
+				Mime:           pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
+				TargetObjectId: objectId,
+				Type:           fileType,
+				Size_:          int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
+				State:          model.BlockContentFile_Done,
+				AddedAt:        int64(pbtypes.GetFloat64(details, bundle.RelationKeyFileMimeType.String())),
+			},
+		}})
+
+	switch fileType {
+	case model.BlockContentFile_Image:
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(objectId))
+
+		if pbtypes.GetInt64(details, bundle.RelationKeyWidthInPixels.String()) != 0 {
+			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))
+		}
+
+		if pbtypes.GetInt64(details, bundle.RelationKeyHeightInPixels.String()) != 0 {
+			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyHeightInPixels))
+		}
+
+		if pbtypes.GetString(details, bundle.RelationKeyCamera.String()) != "" {
+			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyCamera))
+		}
+
+		if pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()) != 0 {
+			blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
+		}
+		if pbtypes.GetString(details, bundle.RelationKeyMediaArtistName.String()) != "" {
+			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistName))
+		}
+		if pbtypes.GetString(details, bundle.RelationKeyMediaArtistURL.String()) != "" {
+			blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistURL))
+		}
+	default:
+		blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
+	}
+
+	for _, b := range blocks {
+		if st.Exists(b.Id) {
+			st.Set(simple.New(b))
+		} else {
+			st.Add(simple.New(b))
+			err := st.InsertTo(st.RootId(), model.Block_Inner, b.Id)
+			if err != nil {
+				return fmt.Errorf("failed to insert file block: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func makeRelationBlock(relationKey domain.RelationKey) *model.Block {
+	return &model.Block{
+		Id: relationKey.String(),
+		Content: &model.BlockContentOfRelation{
+			Relation: &model.BlockContentRelation{
+				Key: relationKey.String(),
+			},
+		},
+	}
 }
