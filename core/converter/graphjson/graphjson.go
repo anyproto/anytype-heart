@@ -10,9 +10,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -75,8 +75,6 @@ func (g *graphjson) FileHashes() []string {
 	return g.fileHashes
 }
 
-func (g *graphjson) SetFileKeys(fileKeys *files.FileKeys) {}
-
 func (g *graphjson) ImageHashes() []string {
 	return g.imageHashes
 }
@@ -118,7 +116,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (g *graphjson) Convert(smartblock.SmartBlock) []byte {
+func (g *graphjson) Convert(sbType model.SmartBlockType) []byte {
 	d := &Graph{
 		Nodes: make([]*Node, 0, len(g.nodes)),
 		Edges: make([]*Edge, 0, len(g.linksByNode)),

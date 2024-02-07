@@ -23,7 +23,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -288,7 +288,7 @@ func (b *builtinObjects) importArchive(
 	progress process.Progress,
 	isNewSpace bool,
 ) (err error) {
-	originImport := domain.ObjectOriginImport(model.ObjectOrigin_usecase, model.Import_Pb)
+	origin := objectorigin.Usecase()
 	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
@@ -304,7 +304,7 @@ func (b *builtinObjects) importArchive(
 				ImportType:      importType,
 			}},
 		IsNewSpace: isNewSpace,
-	}, originImport, progress)
+	}, origin, progress)
 
 	return err
 }

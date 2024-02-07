@@ -175,6 +175,19 @@ func (t *Text) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
+func (t *Text) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	if t.content.IconImage != "" {
+		t.content.IconImage = migrateFunc(t.content.IconImage)
+		return
+	}
+}
+
+func (t *Text) IterateLinkedFiles(iter func(id string)) {
+	if h := t.content.IconImage; h != "" {
+		iter(h)
+	}
+}
+
 func (t *Text) SetMarkForAllText(mark *model.BlockContentTextMark) {
 	mRange := &model.Range{
 		To: int32(textutil.UTF16RuneCountString(t.content.Text)),

@@ -1246,7 +1246,7 @@
     "maxCount": 1,
     "name": "File extension",
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "format": "longtext",
@@ -1385,6 +1385,26 @@
     "source": "derived"
   },
   {
+    "description": "File backup status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileBackupStatus",
+    "maxCount": 1,
+    "name": "File backup status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "File indexing status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileIndexingStatus",
+    "maxCount": 1,
+    "name": "File indexing status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Last change ID",
     "format": "longtext",
     "hidden": true,
@@ -1515,6 +1535,15 @@
     "source": "derived"
   },
   {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileId",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Last time object type was used",
     "format": "date",
     "hidden": true,
@@ -1532,6 +1561,16 @@
     "maxCount": 1,
     "name": "Revision",
     "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Describes how this image is used",
+    "format": "number",
+    "hidden": true,
+    "key": "imageKind",
+    "maxCount": 1,
+    "name": "Image kind",
+    "readonly": false,
     "source": "details"
   },
   {

@@ -77,7 +77,7 @@ func (uw *UpdateWatcher) Close(context.Context) error {
 func (uw *UpdateWatcher) Run(context.Context) error {
 	uw.updater.SubscribeLinksUpdate(func(info objectstore.LinksUpdateInfo) {
 		if err := uw.infoBatch.Add(info); err != nil {
-			log.With("objectID", info.LinksFromId).Errorf("failed to add backlinks update info to message batch: %v", err)
+			log.With("objectId", info.LinksFromId).Errorf("failed to add backlinks update info to message batch: %v", err)
 		}
 	})
 
@@ -176,12 +176,12 @@ func (uw *UpdateWatcher) backlinksUpdateHandler() {
 func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksUpdate) {
 	spaceId, err := uw.resolver.ResolveSpaceID(id)
 	if err != nil {
-		log.With("objectID", id).Errorf("failed to resolve space id for object %s: %v", id, err)
+		log.With("objectId", id).Errorf("failed to resolve space id for object: %v", err)
 		return
 	}
 	spc, err := uw.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
-		log.With("objectID", id).Errorf("failed get space %s: %v", spaceId, err)
+		log.With("objectId", id, "spaceId", spaceId).Errorf("failed to get space: %v", err)
 		return
 	}
 
@@ -214,9 +214,9 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 	if err == nil {
 		return
 	}
-	
+
 	if !errors.Is(err, ocache.ErrExists) {
-		log.With("objectID", id).Errorf("failed to update backlinks for not cached object %s: %v", id, err)
+		log.With("objectId", id).Errorf("failed to update backlinks for not cached object: %v", err)
 	}
 	if err = spc.Do(id, func(b smartblock.SmartBlock) error {
 		if cr, ok := b.(source.ChangeReceiver); ok {
@@ -227,7 +227,7 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 		// do no do apply, stateAppend send the event and run the index
 		return nil
 	}); err != nil {
-		log.With("objectID", id).Errorf("failed to update backlinks for object %s: %v", id, err)
+		log.With("objectId", id).Errorf("failed to update backlinks: %v", err)
 	}
 
 }

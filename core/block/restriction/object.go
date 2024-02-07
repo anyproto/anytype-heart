@@ -26,8 +26,6 @@ var (
 	}
 	objFileRestrictions = ObjectRestrictions{
 		model.Restrictions_Blocks,
-		model.Restrictions_Relations,
-		model.Restrictions_Details,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
@@ -71,7 +69,7 @@ var (
 		model.ObjectType_collection: collectionRestrictions,
 		model.ObjectType_objectType: objRestrictEdit,
 		model.ObjectType_relation:   objRestrictEdit,
-		model.ObjectType_file:       objRestrictAll,
+		model.ObjectType_file:       objFileRestrictions,
 		model.ObjectType_dashboard: {
 			model.Restrictions_Details,
 			model.Restrictions_Relations,
@@ -124,7 +122,7 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		smartblock.SmartBlockTypeFile:            objFileRestrictions,
+		smartblock.SmartBlockTypeFileObject:      objFileRestrictions,
 		smartblock.SmartBlockTypeArchive:         objRestrictAll,
 		smartblock.SmartBlockTypeBundledRelation: objRestrictAll,
 		smartblock.SmartBlockTypeSubObject: {

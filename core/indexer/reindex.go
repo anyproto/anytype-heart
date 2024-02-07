@@ -26,7 +26,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 13
+	ForceObjectsReindexCounter int32 = 14
 
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
 	ForceFilesReindexCounter int32 = 11 //
@@ -36,7 +36,7 @@ const (
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 62
+	ForceIdxRebuildCounter int32 = 63
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 6
@@ -127,14 +127,17 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.objects {
 		types := []smartblock2.SmartBlockType{
+			// System types first
+			smartblock2.SmartBlockTypeObjectType,
+			smartblock2.SmartBlockTypeRelation,
+			smartblock2.SmartBlockTypeRelationOption,
+			smartblock2.SmartBlockTypeFileObject,
+
 			smartblock2.SmartBlockTypePage,
 			smartblock2.SmartBlockTypeTemplate,
 			smartblock2.SmartBlockTypeArchive,
 			smartblock2.SmartBlockTypeHome,
 			smartblock2.SmartBlockTypeWorkspace,
-			smartblock2.SmartBlockTypeObjectType,
-			smartblock2.SmartBlockTypeRelation,
-			smartblock2.SmartBlockTypeRelationOption,
 			smartblock2.SmartBlockTypeSpaceView,
 			smartblock2.SmartBlockTypeProfilePage,
 		}
@@ -178,17 +181,10 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}()
 	}
 
-	if flags.fileObjects {
-		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, smartblock2.SmartBlockTypeFile)
-		if err != nil {
-			return err
-		}
-	}
-
 	if flags.fulltext || flags.fulltextErase {
 		ids, err := i.getIdsForTypes(space.Id(),
 			smartblock2.SmartBlockTypePage,
-			smartblock2.SmartBlockTypeFile,
+			smartblock2.SmartBlockTypeFileObject,
 			smartblock2.SmartBlockTypeBundledRelation,
 			smartblock2.SmartBlockTypeBundledObjectType,
 			smartblock2.SmartBlockTypeAnytypeProfile,
@@ -320,13 +316,6 @@ func (i *indexer) removeOldObjects() (err error) {
 func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
-	}
-	if flags.objects && flags.fileObjects {
-		// files will be indexed within object indexing (see indexLinkedFiles)
-		// because we need to do it in the background.
-		// otherwise it will lead to the situation when files loading called from the reindex with DisableRemoteFlag
-		// will be waiting for the linkedFiles background indexing without this flag
-		flags.fileObjects = false
 	}
 
 	if flags.fileKeys {

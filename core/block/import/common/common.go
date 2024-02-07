@@ -62,31 +62,21 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 
 func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
+		// TODO I think we should use some kind of iterator by object ids
 		switch block := bl.(type) {
 		case link.Block:
 			handleLinkBlock(oldIDtoNew, block, st, filesIDs)
 		case bookmark.Block:
 			handleBookmarkBlock(oldIDtoNew, block, st)
 		case text.Block:
-			handleMarkdownTest(oldIDtoNew, block, st, filesIDs)
+			handleTextBlock(oldIDtoNew, block, st, filesIDs)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
 		case file.Block:
-			handleFileBlock(block, oldIDtoNew, st)
+			handleFileBlock(oldIDtoNew, block, st)
 		}
 		return true
 	})
-}
-
-func handleFileBlock(block file.Block, oldIDtoNew map[string]string, st *state.State) {
-	newTarget := oldIDtoNew[block.Model().GetFile().GetHash()]
-	if newTarget == "" {
-		log.Errorf("failed to find bookmark object")
-		return
-	}
-
-	block.Model().GetFile().Hash = newTarget
-	st.Set(simple.New(block.Model()))
 }
 
 func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {
@@ -177,6 +167,19 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	st.Set(simple.New(block.Model()))
 }
 
+func handleFileBlock(oldIdToNew map[string]string, block simple.Block, st *state.State) {
+	targetObjectId := block.Model().GetFile().TargetObjectId
+	if targetObjectId == "" {
+		return
+	}
+	newId := oldIdToNew[targetObjectId]
+	if newId == "" {
+		newId = addr.MissingObject
+	}
+	block.Model().GetFile().TargetObjectId = newId
+	st.Set(simple.New(block.Model()))
+}
+
 func isBundledObjects(targetObjectID string) bool {
 	ot, err := bundle.TypeKeyFromUrl(targetObjectID)
 	if err == nil && bundle.HasObjectTypeByKey(ot) {
@@ -193,7 +196,14 @@ func isBundledObjects(targetObjectID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
+func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
+	if iconImage := block.Model().GetText().GetIconImage(); iconImage != "" {
+		newTarget := oldIDtoNew[iconImage]
+		if newTarget == "" {
+			newTarget = addr.MissingObject
+		}
+		block.Model().GetText().IconImage = newTarget
+	}
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
@@ -222,9 +232,7 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 		if relLink == nil {
 			continue
 		}
-		if relLink.Format != model.RelationFormat_object &&
-			relLink.Format != model.RelationFormat_tag &&
-			relLink.Format != model.RelationFormat_status {
+		if !isLinkToObject(relLink) {
 			continue
 		}
 		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {
@@ -235,6 +243,14 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 		// For example, RelationKeySetOf is handled here
 		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
 	}
+}
+
+func isLinkToObject(relLink *model.RelationLink) bool {
+	return relLink.Key == bundle.RelationKeyCoverId.String() || // Special case because cover could either be a color or image
+		relLink.Format == model.RelationFormat_object ||
+		relLink.Format == model.RelationFormat_tag ||
+		relLink.Format == model.RelationFormat_status ||
+		relLink.Format == model.RelationFormat_file
 }
 
 func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string, filesIDs []string) {

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -55,6 +56,7 @@ type service struct {
 	app               *app.App
 	spaceService      space.Service
 	templateService   TemplateService
+	fileService       files.Service
 }
 
 func NewCreator() Service {
@@ -67,6 +69,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
+	s.fileService = app.MustComponent[files.Service](a)
 	s.app = a
 	return nil
 }
@@ -138,6 +141,8 @@ func (s *service) createObjectInSpace(
 		return s.createRelation(ctx, space, details)
 	case bundle.TypeKeyRelationOption:
 		return s.createRelationOption(ctx, space, details)
+	case bundle.TypeKeyFile:
+		return "", nil, fmt.Errorf("files must be created via fileobject service")
 	}
 
 	return s.createObjectFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)

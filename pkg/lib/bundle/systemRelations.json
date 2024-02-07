@@ -64,7 +64,11 @@
   "uniqueKey",
   "backlinks",
   "profileOwnerIdentity",
+  "fileBackupStatus",
+  "fileId",
+  "fileIndexingStatus",
   "origin",
   "revision",
+  "imageKind",
   "importType"
 ]

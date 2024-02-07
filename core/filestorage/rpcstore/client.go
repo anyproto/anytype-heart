@@ -12,6 +12,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"storj.io/drpc"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func newClient(ctx context.Context, s *service, peerId string, tq *mb.MB[*task]) (*client, error) {
@@ -74,15 +76,19 @@ func (c *client) opLoop(ctx context.Context) {
 	}
 }
 
-func (c *client) delete(ctx context.Context, spaceID string, fileIds ...string) (err error) {
+func (c *client) delete(ctx context.Context, spaceID string, fileIds ...domain.FileId) (err error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
 	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		rawFileIds := make([]string, 0, len(fileIds))
+		for _, id := range fileIds {
+			rawFileIds = append(rawFileIds, id.String())
+		}
 		if _, err = fileproto.NewDRPCFileClient(conn).FilesDelete(ctx, &fileproto.FilesDeleteRequest{
 			SpaceId: spaceID,
-			FileIds: fileIds,
+			FileIds: rawFileIds,
 		}); err != nil {
 			return rpcerr.Unwrap(err)
 		}
@@ -91,7 +97,7 @@ func (c *client) delete(ctx context.Context, spaceID string, fileIds ...string) 
 	})
 }
 
-func (c *client) put(ctx context.Context, spaceID string, fileID string, cd cid.Cid, data []byte) (err error) {
+func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, cd cid.Cid, data []byte) (err error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
@@ -100,7 +106,7 @@ func (c *client) put(ctx context.Context, spaceID string, fileID string, cd cid.
 	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
 		if _, err = fileproto.NewDRPCFileClient(conn).BlockPush(ctx, &fileproto.BlockPushRequest{
 			SpaceId: spaceID,
-			FileId:  fileID,
+			FileId:  fileId.String(),
 			Cid:     cd.Bytes(),
 			Data:    data,
 		}); err != nil {
@@ -161,7 +167,7 @@ func (c *client) checkBlocksAvailability(ctx context.Context, spaceID string, ci
 	return resp.BlocksAvailability, nil
 }
 
-func (c *client) bind(ctx context.Context, spaceID string, fileID string, cids ...cid.Cid) error {
+func (c *client) bind(ctx context.Context, spaceID string, fileId domain.FileId, cids ...cid.Cid) error {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return err
@@ -173,7 +179,7 @@ func (c *client) bind(ctx context.Context, spaceID string, fileID string, cids .
 	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
 		_, err = fileproto.NewDRPCFileClient(conn).BlocksBind(ctx, &fileproto.BlocksBindRequest{
 			SpaceId: spaceID,
-			FileId:  fileID,
+			FileId:  fileId.String(),
 			Cids:    cidsB,
 		})
 		return err
@@ -206,16 +212,20 @@ func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto
 	return
 }
 
-func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []string) (info []*fileproto.FileInfo, err error) {
+func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []domain.FileId) (info []*fileproto.FileInfo, err error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
 	var resp *fileproto.FilesInfoResponse
 	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		rawFileIds := make([]string, 0, len(fileIds))
+		for _, id := range fileIds {
+			rawFileIds = append(rawFileIds, id.String())
+		}
 		resp, err = fileproto.NewDRPCFileClient(conn).FilesInfo(ctx, &fileproto.FilesInfoRequest{
 			SpaceId: spaceId,
-			FileIds: fileIds,
+			FileIds: rawFileIds,
 		})
 		return err
 	})

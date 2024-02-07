@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "80b7fb9b1f0179e538713e0d2f8dd17035cbe181e29bb7cf29bce0c786d0254c"
+const RelationChecksum = "f807329637be32ded3325b484c621d9af9620f4991a416ac58356002e36bb0d6"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -150,6 +150,8 @@ const (
 	RelationKeySpaceAccessibility        domain.RelationKey = "spaceAccessibility"
 	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
+	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
+	RelationKeyFileIndexingStatus        domain.RelationKey = "fileIndexingStatus"
 	RelationKeyLastChangeId              domain.RelationKey = "lastChangeId"
 	RelationKeyStarred                   domain.RelationKey = "starred"
 	RelationKeyDefaultTemplateId         domain.RelationKey = "defaultTemplateId"
@@ -163,8 +165,10 @@ const (
 	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
+	RelationKeyFileId                    domain.RelationKey = "fileId"
 	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                  domain.RelationKey = "revision"
+	RelationKeyImageKind                 domain.RelationKey = "imageKind"
 	RelationKeyImportType                domain.RelationKey = "importType"
 )
 
@@ -720,15 +724,56 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyFileBackupStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "File backup status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brfileBackupStatus",
+			Key:              "fileBackupStatus",
+			MaxCount:         1,
+			Name:             "File backup status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyFileExt: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
 			Id:               "_brfileExt",
 			Key:              "fileExt",
 			MaxCount:         1,
 			Name:             "File extension",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileId",
+			Key:              "fileId",
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileIndexingStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "File indexing status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brfileIndexingStatus",
+			Key:              "fileIndexingStatus",
+			MaxCount:         1,
+			Name:             "File indexing status",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -906,6 +951,20 @@ var (
 			MaxCount:         1,
 			Name:             "Profile link",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyImageKind: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Describes how this image is used",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brimageKind",
+			Key:              "imageKind",
+			MaxCount:         1,
+			Name:             "Image kind",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

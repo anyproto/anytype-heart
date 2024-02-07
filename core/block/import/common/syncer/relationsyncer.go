@@ -4,107 +4,72 @@ import (
 	"context"
 	"strings"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
-type RelationSyncer interface {
-	Sync(spaceID string, state *state.State, relationName string, origin *domain.ObjectOrigin) []string
-}
-
 type FileRelationSyncer struct {
-	service   *block.Service
-	fileStore filestore.FileStore
+	service           *block.Service
+	objectStore       objectstore.ObjectStore
+	fileStore         filestore.FileStore
+	fileObjectService fileobject.Service
 }
 
-func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore) RelationSyncer {
-	return &FileRelationSyncer{service: service, fileStore: fileStore}
-}
-
-func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationName string, origin *domain.ObjectOrigin) []string {
-	allFiles := fs.getFilesFromRelations(state, relationName)
-	var allFilesHashes, filesToDelete []string
-	for _, f := range allFiles {
-		if f == "" {
-			continue
-		}
-		var hash string
-		if hash = fs.uploadFile(spaceID, f, origin); hash != "" {
-			allFilesHashes = append(allFilesHashes, hash)
-			filesToDelete = append(filesToDelete, hash)
-		}
-		if hash == "" {
-			if targets, err := fs.fileStore.ListByTarget(f); err == nil && len(targets) > 0 {
-				allFilesHashes = append(allFilesHashes, f)
-				continue
-			}
-		}
+func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore, fileObjectService fileobject.Service, objectStore objectstore.ObjectStore) *FileRelationSyncer {
+	return &FileRelationSyncer{
+		service:           service,
+		fileStore:         fileStore,
+		fileObjectService: fileObjectService,
+		objectStore:       objectStore,
 	}
-	fs.updateFileRelationsDetails(state, relationName, allFilesHashes)
-	return filesToDelete
 }
 
-func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string) []string {
-	var allFiles []string
-	if files := pbtypes.GetStringList(st.Details(), name); len(files) > 0 {
-		allFiles = append(allFiles, files...)
+func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, origin objectorigin.ObjectOrigin) string {
+	// If file is created during import, do nothing
+	if _, ok := snapshotPayloads[fileId]; ok {
+		return fileId
 	}
 
-	if files := pbtypes.GetString(st.Details(), name); files != "" {
-		allFiles = append(allFiles, files)
-	}
-	return allFiles
-}
-
-func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin *domain.ObjectOrigin) string {
 	var (
-		hash string
-		err  error
+		fileObjectId string
+		err          error
 	)
-	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
+	if strings.HasPrefix(fileId, "http://") || strings.HasPrefix(fileId, "https://") {
 		req := block.FileUploadRequest{
-			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
+			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: fileId},
 			ObjectOrigin:         origin,
 		}
-		hash, err = fs.service.UploadFile(context.Background(), spaceID, req, nil)
+		fileObjectId, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			log.Errorf("file uploading %s", err)
 		}
-	} else {
-		_, err = cid.Decode(file)
-		if err == nil {
-			return file
-		}
-		req := block.FileUploadRequest{
-			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
-			ObjectOrigin:         origin,
-		}
-		hash, err = fs.service.UploadFile(context.Background(), spaceID, req, nil)
-		if err != nil {
-			log.Errorf("file uploading %s", err)
-		}
+		return fileObjectId
 	}
-	return hash
-}
 
-func (fs *FileRelationSyncer) updateFileRelationsDetails(st *state.State, name string, allFilesHashes []string) {
-	if st.Details() == nil || st.Details().GetFields() == nil {
-		return
+	_, err = cid.Decode(fileId)
+	if err == nil {
+		fileObjectId, err = fs.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(fileId)}, origin)
+		if err != nil {
+			log.With("fileId", fileId).Errorf("create file object: %v", err)
+			return fileId
+		}
+		return fileObjectId
 	}
-	if st.Details().Fields[name].GetListValue() != nil {
-		st.SetDetail(name, pbtypes.StringList(allFilesHashes))
+	req := block.FileUploadRequest{
+		RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: fileId},
+		ObjectOrigin:         origin,
 	}
-	hash := ""
-	if len(allFilesHashes) > 0 {
-		hash = allFilesHashes[0]
+	fileObjectId, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
+	if err != nil {
+		log.Errorf("file uploading %s", err)
 	}
-	if st.Details().Fields[name].GetStringValue() != "" {
-		st.SetDetail(name, pbtypes.String(hash))
-	}
+	return fileObjectId
 }
