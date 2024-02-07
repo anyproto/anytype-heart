@@ -17896,8 +17896,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| UNMARSHALLING_ERROR | 2 |  |
-| DOWNLOAD_ERROR | 3 |  |
+| BAD_INPUT | 2 |  |
+| UNMARSHALLING_ERROR | 3 |  |
+| DOWNLOAD_ERROR | 4 |  |
 
 
 

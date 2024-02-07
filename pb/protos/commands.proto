@@ -3113,8 +3113,9 @@ message Rpc {
                     enum Code {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
-                        UNMARSHALLING_ERROR = 2;
-                        DOWNLOAD_ERROR = 3;
+                        BAD_INPUT = 2;
+                        UNMARSHALLING_ERROR = 3;
+                        DOWNLOAD_ERROR = 4;
                     }
                 }
 

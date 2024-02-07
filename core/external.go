@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -117,15 +118,13 @@ func (mw *Middleware) GalleryDownloadIndex(_ context.Context, _ *pb.RpcGalleryDo
 			Code: pb.RpcGalleryDownloadIndexResponseError_NULL,
 		}
 		if err != nil {
-			errMsg := err.Error()
-			if strings.Contains(errMsg, "failed to unmarshall json") {
+			resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_UNKNOWN_ERROR
+			if errors.Is(err, gallery.ErrUnmarshalJson) {
 				resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_UNMARSHALLING_ERROR
-			} else if strings.Contains(errMsg, "failed to download") {
+			} else if errors.Is(err, gallery.ErrDownloadIndex) {
 				resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_DOWNLOAD_ERROR
-			} else {
-				resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_UNKNOWN_ERROR
 			}
-			resp.Error.Description = errMsg
+			resp.Error.Description = err.Error()
 		}
 		return resp
 	}

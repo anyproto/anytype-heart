@@ -29,6 +29,11 @@ type schemaResponse struct {
 	Schema string `json:"$schema"`
 }
 
+var (
+	ErrUnmarshalJson = fmt.Errorf("failed to unmarshall json")
+	ErrDownloadIndex = fmt.Errorf("failed to download gallery index")
+)
+
 // whitelist maps allowed hosts to regular expressions of URL paths
 var whitelist = map[string]*regexp.Regexp{
 	"raw.githubusercontent.com": regexp.MustCompile(`^/anyproto.*`),
@@ -80,7 +85,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
 	raw, err := getRawJson(indexURI)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download gallery index: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrDownloadIndex, err)
 	}
 
 	manifests := struct {
@@ -88,7 +93,7 @@ func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
 	}{}
 	err = json.Unmarshal(raw, &manifests)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshall json to get list of manifests from gallery index: %w", err)
+		return nil, fmt.Errorf("%w to get list of manifests from gallery index: %w", ErrUnmarshalJson, err)
 	}
 	response := &pb.RpcGalleryDownloadIndexResponse{}
 
@@ -101,7 +106,7 @@ func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
 	}{}
 	err = json.Unmarshal(raw, &categories)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshall json to get list of categories from gallery index: %w", err)
+		return nil, fmt.Errorf("%w to get list of categories from gallery index: %w", ErrUnmarshalJson, err)
 	}
 
 	for name, experiences := range categories.Categories {
