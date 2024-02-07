@@ -3242,6 +3242,7 @@ message Rpc {
                 string htmlSlot = 7;
                 repeated anytype.model.Block anySlot = 8;
                 repeated File fileSlot = 9;
+                string url = 10;
 
                 message File {
                     string name = 1;
@@ -3786,6 +3787,7 @@ message Rpc {
         message Preview {
             message Request {
                 string html = 1;
+                string url = 2;
             }
 
             message Response {
