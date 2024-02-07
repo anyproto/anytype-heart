@@ -107,3 +107,21 @@ func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadMan
 	info, err := gallery.DownloadManifest(req.Url, true)
 	return response(info, err)
 }
+
+func (mw *Middleware) DownloadGalleryIndex(_ context.Context, _ *pb.RpcDownloadGalleryIndexRequest) *pb.RpcDownloadGalleryIndexResponse {
+	response := func(resp *pb.RpcDownloadGalleryIndexResponse, err error) *pb.RpcDownloadGalleryIndexResponse {
+		if resp == nil {
+			resp = &pb.RpcDownloadGalleryIndexResponse{}
+		}
+		resp.Error = &pb.RpcDownloadGalleryIndexResponseError{
+			Code: pb.RpcDownloadGalleryIndexResponseError_NULL,
+		}
+		if err != nil {
+			resp.Error.Code = pb.RpcDownloadGalleryIndexResponseError_UNKNOWN_ERROR
+			resp.Error.Description = err.Error()
+		}
+		return resp
+	}
+	index, err := gallery.DownloadGalleryIndex()
+	return response(index, err)
+}

@@ -157,6 +157,7 @@ service ClientCommands {
     rpc UnsplashDownload (anytype.Rpc.Unsplash.Download.Request) returns (anytype.Rpc.Unsplash.Download.Response);
 
     rpc DownloadManifest (anytype.Rpc.DownloadManifest.Request) returns (anytype.Rpc.DownloadManifest.Response);
+    rpc DownloadGalleryIndex (anytype.Rpc.DownloadGalleryIndex.Request) returns (anytype.Rpc.DownloadGalleryIndex.Response);
 
     // General Block commands
     // ***

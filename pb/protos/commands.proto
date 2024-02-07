@@ -3111,6 +3111,33 @@ message Rpc {
         }
     }
 
+    message DownloadGalleryIndex {
+        message Request {
+        }
+
+        message Response {
+            Error error = 1;
+            repeated Category categories = 2;
+            map<string, anytype.Rpc.DownloadManifest.Response.ManifestInfo> experiences = 3;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                }
+            }
+
+            message Category {
+                string name = 1;
+                repeated string experiences = 2;
+            }
+        }
+    }
+
     // Block commands
     message Block {
         message Replace {

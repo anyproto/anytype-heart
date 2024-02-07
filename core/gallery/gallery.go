@@ -18,7 +18,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
-const timeout = time.Second * 30
+const (
+	timeout = time.Second * 30
+
+	indexURI = "https://tools.gallery.any.coop/index.json"
+)
 
 type schemaResponse struct {
 	Schema string `json:"$schema"`
@@ -70,6 +74,42 @@ func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadMani
 
 	info.Description = stripTags(info.Description)
 	return info, nil
+}
+
+func DownloadGalleryIndex() (*pb.RpcDownloadGalleryIndexResponse, error) {
+	raw, err := getRawManifest(indexURI)
+	if err != nil {
+		return nil, err
+	}
+
+	manifests := struct {
+		Experiences map[string]*pb.RpcDownloadManifestResponseManifestInfo `json:"experiences"`
+	}{}
+	err = json.Unmarshal(raw, &manifests)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshall json to get list of manifests from gallery index: %w", err)
+	}
+	response := &pb.RpcDownloadGalleryIndexResponse{
+		Experiences: manifests.Experiences,
+	}
+
+	// we unmarshal categories separately because protobuf does not support maps of string arrays (map[string][]string)
+	categories := struct {
+		Categories map[string][]string `json:"categories"`
+	}{}
+	err = json.Unmarshal(raw, &categories)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshall json to get list of categories from gallery index: %w", err)
+	}
+
+	for name, experiences := range categories.Categories {
+		response.Categories = append(response.Categories, &pb.RpcDownloadGalleryIndexResponseCategory{
+			Name:        name,
+			Experiences: experiences,
+		})
+	}
+
+	return response, nil
 }
 
 func IsInWhitelist(url string) bool {

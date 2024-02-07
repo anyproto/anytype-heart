@@ -547,6 +547,12 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
+    - [Rpc.DownloadGalleryIndex](#anytype-Rpc-DownloadGalleryIndex)
+    - [Rpc.DownloadGalleryIndex.Request](#anytype-Rpc-DownloadGalleryIndex-Request)
+    - [Rpc.DownloadGalleryIndex.Response](#anytype-Rpc-DownloadGalleryIndex-Response)
+    - [Rpc.DownloadGalleryIndex.Response.Category](#anytype-Rpc-DownloadGalleryIndex-Response-Category)
+    - [Rpc.DownloadGalleryIndex.Response.Error](#anytype-Rpc-DownloadGalleryIndex-Response-Error)
+    - [Rpc.DownloadGalleryIndex.Response.ExperiencesEntry](#anytype-Rpc-DownloadGalleryIndex-Response-ExperiencesEntry)
     - [Rpc.DownloadManifest](#anytype-Rpc-DownloadManifest)
     - [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request)
     - [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response)
@@ -1108,6 +1114,7 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
+    - [Rpc.DownloadGalleryIndex.Response.Error.Code](#anytype-Rpc-DownloadGalleryIndex-Response-Error-Code)
     - [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
@@ -1677,6 +1684,7 @@
 | UnsplashSearch | [Rpc.Unsplash.Search.Request](#anytype-Rpc-Unsplash-Search-Request) | [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response) |  |
 | UnsplashDownload | [Rpc.Unsplash.Download.Request](#anytype-Rpc-Unsplash-Download-Request) | [Rpc.Unsplash.Download.Response](#anytype-Rpc-Unsplash-Download-Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
 | DownloadManifest | [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request) | [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response) |  |
+| DownloadGalleryIndex | [Rpc.DownloadGalleryIndex.Request](#anytype-Rpc-DownloadGalleryIndex-Request) | [Rpc.DownloadGalleryIndex.Response](#anytype-Rpc-DownloadGalleryIndex-Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype-Rpc-Block-Upload-Request) | [Rpc.Block.Upload.Response](#anytype-Rpc-Block-Upload-Response) | General Block commands *** |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype-Rpc-Block-Replace-Request) | [Rpc.Block.Replace.Response](#anytype-Rpc-Block-Replace-Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype-Rpc-Block-Create-Request) | [Rpc.Block.Create.Response](#anytype-Rpc-Block-Create-Response) |  |
@@ -9682,6 +9690,91 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | treeId | [string](#string) |  |  |
 | headIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadGalleryIndex"></a>
+
+### Rpc.DownloadGalleryIndex
+
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadGalleryIndex-Request"></a>
+
+### Rpc.DownloadGalleryIndex.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadGalleryIndex-Response"></a>
+
+### Rpc.DownloadGalleryIndex.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.DownloadGalleryIndex.Response.Error](#anytype-Rpc-DownloadGalleryIndex-Response-Error) |  |  |
+| categories | [Rpc.DownloadGalleryIndex.Response.Category](#anytype-Rpc-DownloadGalleryIndex-Response-Category) | repeated |  |
+| experiences | [Rpc.DownloadGalleryIndex.Response.ExperiencesEntry](#anytype-Rpc-DownloadGalleryIndex-Response-ExperiencesEntry) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadGalleryIndex-Response-Category"></a>
+
+### Rpc.DownloadGalleryIndex.Response.Category
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| experiences | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadGalleryIndex-Response-Error"></a>
+
+### Rpc.DownloadGalleryIndex.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.DownloadGalleryIndex.Response.Error.Code](#anytype-Rpc-DownloadGalleryIndex-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadGalleryIndex-Response-ExperiencesEntry"></a>
+
+### Rpc.DownloadGalleryIndex.Response.ExperiencesEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo) |  |  |
 
 
 
@@ -17716,6 +17809,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-DownloadGalleryIndex-Response-Error-Code"></a>
+
+### Rpc.DownloadGalleryIndex.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
