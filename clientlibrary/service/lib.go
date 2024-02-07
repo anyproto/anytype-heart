@@ -40,6 +40,7 @@ func init() {
 			http.ListenAndServe(debug, nil)
 		}()
 	}
+	RunDebugServer("0.0.0.0:6060")
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
