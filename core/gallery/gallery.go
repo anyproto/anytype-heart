@@ -77,7 +77,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 	return info, nil
 }
 
-func DownloadGalleryIndex() (*pb.RpcDownloadGalleryIndexResponse, error) {
+func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
 	raw, err := getRawJson(indexURI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download gallery index: %w", err)
@@ -90,7 +90,7 @@ func DownloadGalleryIndex() (*pb.RpcDownloadGalleryIndexResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall json to get list of manifests from gallery index: %w", err)
 	}
-	response := &pb.RpcDownloadGalleryIndexResponse{}
+	response := &pb.RpcGalleryDownloadIndexResponse{}
 
 	for _, manifest := range manifests.Experiences {
 		response.Experiences = append(response.Experiences, manifest)
@@ -105,7 +105,7 @@ func DownloadGalleryIndex() (*pb.RpcDownloadGalleryIndexResponse, error) {
 	}
 
 	for name, experiences := range categories.Categories {
-		response.Categories = append(response.Categories, &pb.RpcDownloadGalleryIndexResponseCategory{
+		response.Categories = append(response.Categories, &pb.RpcGalleryDownloadIndexResponseCategory{
 			Name:        name,
 			Experiences: experiences,
 		})

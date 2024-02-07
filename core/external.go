@@ -92,14 +92,14 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	return response(objectId, err)
 }
 
-func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadManifestRequest) *pb.RpcDownloadManifestResponse {
-	response := func(info *model.ManifestInfo, err error) *pb.RpcDownloadManifestResponse {
-		m := &pb.RpcDownloadManifestResponse{
-			Error: &pb.RpcDownloadManifestResponseError{Code: pb.RpcDownloadManifestResponseError_NULL},
+func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGalleryDownloadManifestRequest) *pb.RpcGalleryDownloadManifestResponse {
+	response := func(info *model.ManifestInfo, err error) *pb.RpcGalleryDownloadManifestResponse {
+		m := &pb.RpcGalleryDownloadManifestResponse{
+			Error: &pb.RpcGalleryDownloadManifestResponseError{Code: pb.RpcGalleryDownloadManifestResponseError_NULL},
 			Info:  info,
 		}
 		if err != nil {
-			m.Error.Code = pb.RpcDownloadManifestResponseError_UNKNOWN_ERROR
+			m.Error.Code = pb.RpcGalleryDownloadManifestResponseError_UNKNOWN_ERROR
 			m.Error.Description = err.Error()
 		}
 		return m
@@ -108,22 +108,22 @@ func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadMan
 	return response(info, err)
 }
 
-func (mw *Middleware) DownloadGalleryIndex(_ context.Context, _ *pb.RpcDownloadGalleryIndexRequest) *pb.RpcDownloadGalleryIndexResponse {
-	response := func(resp *pb.RpcDownloadGalleryIndexResponse, err error) *pb.RpcDownloadGalleryIndexResponse {
+func (mw *Middleware) GalleryDownloadIndex(_ context.Context, _ *pb.RpcGalleryDownloadIndexRequest) *pb.RpcGalleryDownloadIndexResponse {
+	response := func(resp *pb.RpcGalleryDownloadIndexResponse, err error) *pb.RpcGalleryDownloadIndexResponse {
 		if resp == nil {
-			resp = &pb.RpcDownloadGalleryIndexResponse{}
+			resp = &pb.RpcGalleryDownloadIndexResponse{}
 		}
-		resp.Error = &pb.RpcDownloadGalleryIndexResponseError{
-			Code: pb.RpcDownloadGalleryIndexResponseError_NULL,
+		resp.Error = &pb.RpcGalleryDownloadIndexResponseError{
+			Code: pb.RpcGalleryDownloadIndexResponseError_NULL,
 		}
 		if err != nil {
 			errMsg := err.Error()
 			if strings.Contains(errMsg, "failed to unmarshall json") {
-				resp.Error.Code = pb.RpcDownloadGalleryIndexResponseError_UNMARSHALLING_ERROR
+				resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_UNMARSHALLING_ERROR
 			} else if strings.Contains(errMsg, "failed to download") {
-				resp.Error.Code = pb.RpcDownloadGalleryIndexResponseError_DOWNLOAD_ERROR
+				resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_DOWNLOAD_ERROR
 			} else {
-				resp.Error.Code = pb.RpcDownloadGalleryIndexResponseError_UNKNOWN_ERROR
+				resp.Error.Code = pb.RpcGalleryDownloadIndexResponseError_UNKNOWN_ERROR
 			}
 			resp.Error.Description = errMsg
 		}

@@ -3074,52 +3074,54 @@ message Rpc {
         }
     }
 
-    message DownloadManifest {
-        message Request {
-            string url = 1;
-        }
+    message Gallery {
+        message DownloadManifest {
+            message Request {
+                string url = 1;
+            }
 
-        message Response {
-            Error error = 1;
-            anytype.model.ManifestInfo info = 2;
+            message Response {
+                Error error = 1;
+                anytype.model.ManifestInfo info = 2;
 
-            message Error {
-                Code code = 1;
-                string description = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
 
-                enum Code {
-                    NULL = 0;
-                    UNKNOWN_ERROR = 1;
-                    BAD_INPUT = 2;
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
                 }
             }
         }
-    }
 
-    message DownloadGalleryIndex {
-        message Request {
-        }
-
-        message Response {
-            Error error = 1;
-            repeated Category categories = 2;
-            repeated anytype.model.ManifestInfo experiences = 3;
-
-            message Error {
-                Code code = 1;
-                string description = 2;
-
-                enum Code {
-                    NULL = 0;
-                    UNKNOWN_ERROR = 1;
-                    UNMARSHALLING_ERROR = 2;
-                    DOWNLOAD_ERROR = 3;
-                }
+        message DownloadIndex {
+            message Request {
             }
 
-            message Category {
-                string name = 1;
-                repeated string experiences = 2;
+            message Response {
+                Error error = 1;
+                repeated Category categories = 2;
+                repeated anytype.model.ManifestInfo experiences = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        UNMARSHALLING_ERROR = 2;
+                        DOWNLOAD_ERROR = 3;
+                    }
+                }
+
+                message Category {
+                    string name = 1;
+                    repeated string experiences = 2;
+                }
             }
         }
     }

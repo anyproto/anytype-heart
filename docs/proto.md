@@ -547,15 +547,6 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
-    - [Rpc.DownloadGalleryIndex](#anytype-Rpc-DownloadGalleryIndex)
-    - [Rpc.DownloadGalleryIndex.Request](#anytype-Rpc-DownloadGalleryIndex-Request)
-    - [Rpc.DownloadGalleryIndex.Response](#anytype-Rpc-DownloadGalleryIndex-Response)
-    - [Rpc.DownloadGalleryIndex.Response.Category](#anytype-Rpc-DownloadGalleryIndex-Response-Category)
-    - [Rpc.DownloadGalleryIndex.Response.Error](#anytype-Rpc-DownloadGalleryIndex-Response-Error)
-    - [Rpc.DownloadManifest](#anytype-Rpc-DownloadManifest)
-    - [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request)
-    - [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response)
-    - [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -592,6 +583,16 @@
     - [Rpc.File.Upload.Request](#anytype-Rpc-File-Upload-Request)
     - [Rpc.File.Upload.Response](#anytype-Rpc-File-Upload-Response)
     - [Rpc.File.Upload.Response.Error](#anytype-Rpc-File-Upload-Response-Error)
+    - [Rpc.Gallery](#anytype-Rpc-Gallery)
+    - [Rpc.Gallery.DownloadIndex](#anytype-Rpc-Gallery-DownloadIndex)
+    - [Rpc.Gallery.DownloadIndex.Request](#anytype-Rpc-Gallery-DownloadIndex-Request)
+    - [Rpc.Gallery.DownloadIndex.Response](#anytype-Rpc-Gallery-DownloadIndex-Response)
+    - [Rpc.Gallery.DownloadIndex.Response.Category](#anytype-Rpc-Gallery-DownloadIndex-Response-Category)
+    - [Rpc.Gallery.DownloadIndex.Response.Error](#anytype-Rpc-Gallery-DownloadIndex-Response-Error)
+    - [Rpc.Gallery.DownloadManifest](#anytype-Rpc-Gallery-DownloadManifest)
+    - [Rpc.Gallery.DownloadManifest.Request](#anytype-Rpc-Gallery-DownloadManifest-Request)
+    - [Rpc.Gallery.DownloadManifest.Response](#anytype-Rpc-Gallery-DownloadManifest-Response)
+    - [Rpc.Gallery.DownloadManifest.Response.Error](#anytype-Rpc-Gallery-DownloadManifest-Response-Error)
     - [Rpc.GenericErrorResponse](#anytype-Rpc-GenericErrorResponse)
     - [Rpc.GenericErrorResponse.Error](#anytype-Rpc-GenericErrorResponse-Error)
     - [Rpc.History](#anytype-Rpc-History)
@@ -1112,8 +1113,6 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
-    - [Rpc.DownloadGalleryIndex.Response.Error.Code](#anytype-Rpc-DownloadGalleryIndex-Response-Error-Code)
-    - [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1122,6 +1121,8 @@
     - [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
+    - [Rpc.Gallery.DownloadIndex.Response.Error.Code](#anytype-Rpc-Gallery-DownloadIndex-Response-Error-Code)
+    - [Rpc.Gallery.DownloadManifest.Response.Error.Code](#anytype-Rpc-Gallery-DownloadManifest-Response-Error-Code)
     - [Rpc.GenericErrorResponse.Error.Code](#anytype-Rpc-GenericErrorResponse-Error-Code)
     - [Rpc.History.GetVersions.Response.Error.Code](#anytype-Rpc-History-GetVersions-Response-Error-Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype-Rpc-History-SetVersion-Response-Error-Code)
@@ -1682,8 +1683,8 @@
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
 | UnsplashSearch | [Rpc.Unsplash.Search.Request](#anytype-Rpc-Unsplash-Search-Request) | [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response) |  |
 | UnsplashDownload | [Rpc.Unsplash.Download.Request](#anytype-Rpc-Unsplash-Download-Request) | [Rpc.Unsplash.Download.Response](#anytype-Rpc-Unsplash-Download-Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
-| DownloadManifest | [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request) | [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response) |  |
-| DownloadGalleryIndex | [Rpc.DownloadGalleryIndex.Request](#anytype-Rpc-DownloadGalleryIndex-Request) | [Rpc.DownloadGalleryIndex.Response](#anytype-Rpc-DownloadGalleryIndex-Response) |  |
+| GalleryDownloadManifest | [Rpc.Gallery.DownloadManifest.Request](#anytype-Rpc-Gallery-DownloadManifest-Request) | [Rpc.Gallery.DownloadManifest.Response](#anytype-Rpc-Gallery-DownloadManifest-Response) |  |
+| GalleryDownloadIndex | [Rpc.Gallery.DownloadIndex.Request](#anytype-Rpc-Gallery-DownloadIndex-Request) | [Rpc.Gallery.DownloadIndex.Response](#anytype-Rpc-Gallery-DownloadIndex-Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype-Rpc-Block-Upload-Request) | [Rpc.Block.Upload.Response](#anytype-Rpc-Block-Upload-Response) | General Block commands *** |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype-Rpc-Block-Replace-Request) | [Rpc.Block.Replace.Response](#anytype-Rpc-Block-Replace-Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype-Rpc-Block-Create-Request) | [Rpc.Block.Create.Response](#anytype-Rpc-Block-Create-Response) |  |
@@ -9695,132 +9696,6 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype-Rpc-DownloadGalleryIndex"></a>
-
-### Rpc.DownloadGalleryIndex
-
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadGalleryIndex-Request"></a>
-
-### Rpc.DownloadGalleryIndex.Request
-
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadGalleryIndex-Response"></a>
-
-### Rpc.DownloadGalleryIndex.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.DownloadGalleryIndex.Response.Error](#anytype-Rpc-DownloadGalleryIndex-Response-Error) |  |  |
-| categories | [Rpc.DownloadGalleryIndex.Response.Category](#anytype-Rpc-DownloadGalleryIndex-Response-Category) | repeated |  |
-| experiences | [model.ManifestInfo](#anytype-model-ManifestInfo) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadGalleryIndex-Response-Category"></a>
-
-### Rpc.DownloadGalleryIndex.Response.Category
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| experiences | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadGalleryIndex-Response-Error"></a>
-
-### Rpc.DownloadGalleryIndex.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.DownloadGalleryIndex.Response.Error.Code](#anytype-Rpc-DownloadGalleryIndex-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest"></a>
-
-### Rpc.DownloadManifest
-
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Request"></a>
-
-### Rpc.DownloadManifest.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| url | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Response"></a>
-
-### Rpc.DownloadManifest.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error) |  |  |
-| info | [model.ManifestInfo](#anytype-model-ManifestInfo) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Response-Error"></a>
-
-### Rpc.DownloadManifest.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-File"></a>
 
 ### Rpc.File
@@ -10349,6 +10224,142 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery"></a>
+
+### Rpc.Gallery
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex"></a>
+
+### Rpc.Gallery.DownloadIndex
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Request"></a>
+
+### Rpc.Gallery.DownloadIndex.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Response"></a>
+
+### Rpc.Gallery.DownloadIndex.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Gallery.DownloadIndex.Response.Error](#anytype-Rpc-Gallery-DownloadIndex-Response-Error) |  |  |
+| categories | [Rpc.Gallery.DownloadIndex.Response.Category](#anytype-Rpc-Gallery-DownloadIndex-Response-Category) | repeated |  |
+| experiences | [model.ManifestInfo](#anytype-model-ManifestInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Response-Category"></a>
+
+### Rpc.Gallery.DownloadIndex.Response.Category
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| experiences | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Response-Error"></a>
+
+### Rpc.Gallery.DownloadIndex.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Gallery.DownloadIndex.Response.Error.Code](#anytype-Rpc-Gallery-DownloadIndex-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest"></a>
+
+### Rpc.Gallery.DownloadManifest
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest-Request"></a>
+
+### Rpc.Gallery.DownloadManifest.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest-Response"></a>
+
+### Rpc.Gallery.DownloadManifest.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Gallery.DownloadManifest.Response.Error](#anytype-Rpc-Gallery-DownloadManifest-Response-Error) |  |  |
+| info | [model.ManifestInfo](#anytype-model-ManifestInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest-Response-Error"></a>
+
+### Rpc.Gallery.DownloadManifest.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Gallery.DownloadManifest.Response.Error.Code](#anytype-Rpc-Gallery-DownloadManifest-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -17769,33 +17780,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-DownloadGalleryIndex-Response-Error-Code"></a>
-
-### Rpc.DownloadGalleryIndex.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| UNMARSHALLING_ERROR | 2 |  |
-| DOWNLOAD_ERROR | 3 |  |
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Response-Error-Code"></a>
-
-### Rpc.DownloadManifest.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -17893,6 +17877,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-File-Upload-Response-Error-Code"></a>
 
 ### Rpc.File.Upload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Response-Error-Code"></a>
+
+### Rpc.Gallery.DownloadIndex.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| UNMARSHALLING_ERROR | 2 |  |
+| DOWNLOAD_ERROR | 3 |  |
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest-Response-Error-Code"></a>
+
+### Rpc.Gallery.DownloadManifest.Response.Error.Code
 
 
 | Name | Number | Description |
