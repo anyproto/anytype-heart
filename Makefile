@@ -1,6 +1,12 @@
+CUSTOM_NETWORK_FILE ?= ./core/anytype/config/nodes/custom.yml
+CLIENT_DESKTOP_PATH ?= ../anytype-ts
+CLIENT_ANDROID_PATH ?= ../anytype-kotlin
+CLIENT_IOS_PATH ?= ../anytype-swift
+BUILD_FLAGS ?=
+
 export GOLANGCI_LINT_VERSION=v1.54.2
-export custom_network_file=./core/anytype/config/nodes/custom.yml
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow
+
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
     export GOPATH
@@ -36,7 +42,7 @@ endif
         exit 1; \
     else \
         echo "Using Any Sync Network configuration at $$ANY_SYNC_NETWORK"; \
-        cp $$ANY_SYNC_NETWORK $(custom_network_file); \
+        cp $$ANY_SYNC_NETWORK $(CUSTOM_NETWORK_FILE); \
     fi
 
 setup-go: setup-network-config
@@ -116,13 +122,26 @@ build-ios: setup-go setup-gomobile
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
+	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" $(BUILD_FLAGS) -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 	@mkdir -p dist/ios/json/
 	@cp pkg/lib/bundle/system*.json dist/ios/json/
 	@cp pkg/lib/bundle/relations.json dist/ios/json/
 	@cp pkg/lib/bundle/internal*.json dist/ios/json/
 	@go mod tidy
+
+install-dev-ios: setup-go build-ios protos-swift
+	@echo 'Installing iOS framework locally at $(CLIENT_IOS_PATH)...'
+	@rm -rf $(CLIENT_IOS_PATH)/Dependencies/Middleware/*
+	@cp -r dist/ios/Lib.xcframework $(CLIENT_IOS_PATH)/Dependencies/Middleware
+	@rm -rf $(CLIENT_IOS_PATH)/Modules/ProtobufMessages/Sources/Protocol/*
+	@cp -r dist/ios/protobuf/*.swift $(CLIENT_IOS_PATH)/Modules/ProtobufMessages/Sources/Protocol
+	@mkdir -p $(CLIENT_IOS_PATH)/Dependencies/Middleware/protobuf/protos
+	@cp -r pb/protos/*.proto $(CLIENT_IOS_PATH)/Dependencies/Middleware/protobuf/protos
+	@cp -r pb/protos/service/*.proto $(CLIENT_IOS_PATH)/Dependencies/Middleware/protobuf/protos
+	@cp -r pkg/lib/pb/model/protos/*.proto $(CLIENT_IOS_PATH)/Dependencies/Middleware/protobuf/protos
+	@mkdir -p $(CLIENT_IOS_PATH)/Dependencies/Middleware/json
+	@cp -r pkg/lib/bundle/*.json $(CLIENT_IOS_PATH)/Dependencies/Middleware/json
 
 build-android: setup-go setup-gomobile
 	$(DEPS_PATH)/gomobile init
@@ -132,9 +151,29 @@ build-android: setup-go setup-gomobile
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
+	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" $(BUILD_FLAGS) -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
 	@go mod tidy
+
+install-dev-android: setup-go build-android
+	@echo 'Installing android lib locally in $(CLIENT_ANDROID_PATH)...'
+	@rm -f $(CLIENT_ANDROID_PATH)/libs/lib.aar
+	@cp -r dist/android/lib.aar $(CLIENT_ANDROID_PATH)/libs/lib.aar
+	@cp -r pb/protos/*.proto $(CLIENT_ANDROID_PATH)/protocol/src/main/proto
+	@cp -r pkg/lib/pb/model/protos/*.proto $(CLIENT_ANDROID_PATH)/protocol/src/main/proto
+	# Compute the SHA hash of lib.aar
+	@$(eval hash := $$(shell shasum -b dist/android/lib.aar | cut -d' ' -f1))
+	@echo "Version hash: ${hash}"
+	# Update the gradle file with the new version
+	@sed -i '' "s/version = '.*'/version = '${hash}'/g" $(CLIENT_ANDROID_PATH)/libs/build.gradle
+	@cat $(CLIENT_ANDROID_PATH)/libs/build.gradle
+
+	@sed -i '' "s/middlewareVersion = \".*\"/middlewareVersion = \"${hash}\"/" $(CLIENT_ANDROID_PATH)/gradle/libs.versions.toml
+	@cat $(CLIENT_ANDROID_PATH)/gradle/libs.versions.toml
+
+	# Print the updated gradle file (for verification)
+	@cd $(CLIENT_ANDROID_PATH) && make setup_local_mw
+	@cd $(CLIENT_ANDROID_PATH) && make normalize_mw_imports
 
 setup-gomobile:
 	go build -o deps golang.org/x/mobile/cmd/gomobile
@@ -239,36 +278,36 @@ build-server: setup-network-config
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
+	go build -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" $(BUILD_FLAGS) github.com/anyproto/anytype-heart/cmd/grpcserver
 
 run-server: build-server
 	@echo 'Running server...'
 	@./dist/server
 
 install-dev-js-addon: setup build-lib build-js-addon protos-js
-	@echo 'Installing JS-addon (dev-mode)...'
-	@rm -rf ../anytype-ts/build
-	@cp -r clientlibrary/jsaddon/build ../anytype-ts/
-	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
+	@echo 'Installing JS-addon (dev-mode) in ${CLIENT_DESKTOP_PATH}...'
+	@rm -rf $(CLIENT_DESKTOP_PATH)/build
+	@cp -r clientlibrary/jsaddon/build $(CLIENT_DESKTOP_PATH)/
+	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
 
 install-dev-js: setup-go build-server protos-js
-	@echo 'Installing JS-server (dev-mode)...'
-	@rm -f ../anytype-ts/dist/anytypeHelper
+	@echo 'Installing JS-server (dev-mode) in $(CLIENT_DESKTOP_PATH)...'
+	@rm -f $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper
 
 ifeq ($(OS),Windows_NT)
-	@cp -r dist/server ../anytype-ts/dist/anytypeHelper.exe
+	@cp -r dist/server $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper.exe
 else
-	@cp -r dist/server ../anytype-ts/dist/anytypeHelper
+	@cp -r dist/server $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper
 endif
 
-	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
-	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
-	@mkdir -p ../anytype-ts/dist/lib/json/generated
-	@cp pkg/lib/bundle/system*.json ../anytype-ts/dist/lib/json/generated
-	@cp pkg/lib/bundle/internal*.json ../anytype-ts/dist/lib/json/generated
+	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
+	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
+	@mkdir -p $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
+	@cp pkg/lib/bundle/system*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
+	@cp pkg/lib/bundle/internal*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
 
 build-js: setup-go build-server protos-js
-	@echo "Run 'make install-dev-js' instead if you want to build & install into ../anytype-ts"
+	@echo "Run 'make install-dev-js' instead if you want to build & install into $(CLIENT_DESKTOP_PATH)"
 
 install-linter:
 	@go install github.com/daixiang0/gci@latest

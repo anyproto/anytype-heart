@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -96,7 +97,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	fileObjectService := app.MustComponent[fileobject.Service](a)
-	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, i.fileStore, fileObjectService)
+	fileService := app.MustComponent[files.Service](a)
+	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, i.fileStore, fileObjectService, fileService)
 	factory := syncer.New(syncer.NewFileSyncer(i.s, i.fileStore, fileObjectService, store), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver, i.fileStore, fileObjectService, store))
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, i.fileStore, fileObjectService, store)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
