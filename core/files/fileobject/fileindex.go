@@ -197,7 +197,11 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 
 		details = pbtypes.StructMerge(prevDetails, details, true)
 		st.SetDetails(details)
-		ind.addBlocks(st, details, id.ObjectID)
+
+		err = ind.addBlocks(st, details, id.ObjectID)
+		if err != nil {
+			return fmt.Errorf("add blocks: %w", err)
+		}
 		return sb.Apply(st)
 	})
 	if err != nil {
