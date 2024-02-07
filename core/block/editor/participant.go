@@ -16,13 +16,18 @@ func (f *ObjectFactory) newParticipant(sb smartblock.SmartBlock) *participant {
 		SmartBlock: sb,
 	}
 }
+
 func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
+	// Details come from aclobjectmanager, see buildParticipantDetails
+
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
 
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
+		template.WithTitle,
+		template.WithFeaturedRelations,
 	)
 	return nil
 }
