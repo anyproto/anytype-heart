@@ -5966,6 +5966,56 @@ message Rpc {
                     }
                 }
             }
+
+            message GetVerificationEmail {
+                message Request {
+                    string email = 1;
+
+                    bool subscribeToNewsletter = 2;
+                }
+    
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                        }
+                    }
+                }
+            }
+
+            message VerifyEmailCode {
+                message Request {
+                    string code = 1;
+                }
+    
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                        }
+                    }
+                }
+            }
         }
     }
 

@@ -888,6 +888,14 @@
     - [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request)
     - [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response)
     - [Rpc.Payments.Subscription.GetStatus.Response.Error](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error)
+    - [Rpc.Payments.Subscription.GetVerificationEmail](#anytype-Rpc-Payments-Subscription-GetVerificationEmail)
+    - [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request)
+    - [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response)
+    - [Rpc.Payments.Subscription.GetVerificationEmail.Response.Error](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error)
+    - [Rpc.Payments.Subscription.VerifyEmailCode](#anytype-Rpc-Payments-Subscription-VerifyEmailCode)
+    - [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request)
+    - [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response)
+    - [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
@@ -1204,9 +1212,11 @@
     - [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code)
     - [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Payments.Subscription.GetStatus.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code)
+    - [Rpc.Payments.Subscription.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error-Code)
     - [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod)
     - [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus)
     - [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier)
+    - [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1786,6 +1796,8 @@
 | PaymentsSubscriptionGetStatus | [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request) | [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response) |  |
 | PaymentsSubscriptionGetPaymentUrl | [Rpc.Payments.Subscription.GetPaymentUrl.Request](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request) | [Rpc.Payments.Subscription.GetPaymentUrl.Response](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response) |  |
 | PaymentsSubscriptionGetPortalLinkUrl | [Rpc.Payments.Subscription.GetPortalLinkUrl.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request) | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response) |  |
+| PaymentsSubscriptionGetVerificationEmail | [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request) | [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response) |  |
+| PaymentsSubscriptionVerifyEmailCode | [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request) | [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response) |  |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | hello.any -&gt; data |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | NameServiceResolveSpaceId | [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request) | [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
@@ -14698,6 +14710,119 @@ c) cancel the subscription
 
 
 
+<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail"></a>
+
+### Rpc.Payments.Subscription.GetVerificationEmail
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request"></a>
+
+### Rpc.Payments.Subscription.GetVerificationEmail.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| email | [string](#string) |  |  |
+| subscribeToNewsletter | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response"></a>
+
+### Rpc.Payments.Subscription.GetVerificationEmail.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Payments.Subscription.GetVerificationEmail.Response.Error](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error"></a>
+
+### Rpc.Payments.Subscription.GetVerificationEmail.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Payments.Subscription.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode"></a>
+
+### Rpc.Payments.Subscription.VerifyEmailCode
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request"></a>
+
+### Rpc.Payments.Subscription.VerifyEmailCode.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response"></a>
+
+### Rpc.Payments.Subscription.VerifyEmailCode.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error"></a>
+
+### Rpc.Payments.Subscription.VerifyEmailCode.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Process"></a>
 
 ### Rpc.Process
@@ -19001,6 +19126,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error-Code"></a>
+
+### Rpc.Payments.Subscription.GetVerificationEmail.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| ALREADY_SENT | 5 |  |
+| ALREADY_SUBSCRIPTION | 6 |  |
+
+
+
 <a name="anytype-Rpc-Payments-Subscription-PaymentMethod"></a>
 
 ### Rpc.Payments.Subscription.PaymentMethod
@@ -19041,6 +19183,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
 | TierBuilder1Year | 4 |  |
 | TierCoCreator1Year | 5 |  |
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error-Code"></a>
+
+### Rpc.Payments.Subscription.VerifyEmailCode.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| WRONG_CODE | 5 |  |
+| ALREADY_SUBSCRIPTION | 6 |  |
 
 
 

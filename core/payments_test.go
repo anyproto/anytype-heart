@@ -283,3 +283,161 @@ func TestPaymentsGetPortalURL(t *testing.T) {
 		assert.Equal(t, "https://xxxx.com", resp.PortalUrl)
 	})
 }
+
+func TestPaymentsGetVerificationEmail(t *testing.T) {
+	t.Run("fail if GetVerificationEmail method fails", func(t *testing.T) {
+		c := gomock.NewController(t)
+		defer c.Finish()
+
+		var pp *mock_ppclient.MockAnyPpClientService
+		pp = mock_ppclient.NewMockAnyPpClientService(c)
+
+		pp.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
+			return nil, errors.New("bad error")
+		}).MinTimes(1)
+
+		// mock the GetAccountPrivkey method
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
+			crypto.UnmarshalEd25519PrivateKey,
+			nil)
+
+		assert.NoError(t, err)
+
+		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
+
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
+		w.EXPECT().Account().Return(&ak)
+
+		// Create a test request
+		req := &pb.RpcPaymentsSubscriptionGetVerificationEmailRequest{}
+		req.Email = "some@mail.com"
+		req.SubscribeToNewsletter = true
+
+		// Call the function being tested
+		resp := getVerificationEmail(context.Background(), pp, w, req)
+		assert.True(t, resp.Error != nil)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		c := gomock.NewController(t)
+		defer c.Finish()
+
+		var pp *mock_ppclient.MockAnyPpClientService
+		pp = mock_ppclient.NewMockAnyPpClientService(c)
+
+		pp.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
+			return &psp.GetVerificationEmailResponse{}, nil
+		}).MinTimes(1)
+
+		// mock the GetAccountPrivkey method
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
+			crypto.UnmarshalEd25519PrivateKey,
+			nil)
+
+		assert.NoError(t, err)
+
+		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
+
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
+		w.EXPECT().Account().Return(&ak)
+
+		// Create a test request
+		req := &pb.RpcPaymentsSubscriptionGetVerificationEmailRequest{}
+		req.Email = "some@mail.com"
+		req.SubscribeToNewsletter = true
+
+		// Call the function being tested
+		resp := getVerificationEmail(context.Background(), pp, w, req)
+		assert.True(t, resp.Error == nil)
+	})
+}
+
+func TestPaymentsVerifyEmailCode(t *testing.T) {
+	t.Run("fail if VerifyEmail method fails", func(t *testing.T) {
+		c := gomock.NewController(t)
+		defer c.Finish()
+
+		var pp *mock_ppclient.MockAnyPpClientService
+		pp = mock_ppclient.NewMockAnyPpClientService(c)
+
+		// no errors
+		pp.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyEmailResponse, error) {
+			return nil, errors.New("bad error")
+		}).MinTimes(1)
+
+		// mock the GetAccountPrivkey method
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
+			crypto.UnmarshalEd25519PrivateKey,
+			nil)
+
+		assert.NoError(t, err)
+
+		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
+
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
+		w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		w.EXPECT().Account().Return(&ak)
+
+		// Create a test request
+		req := &pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest{}
+		req.Code = "1234"
+
+		// Call the function being tested
+		resp := verifyEmailCode(context.Background(), pp, w, req)
+		assert.True(t, resp.Error != nil)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		c := gomock.NewController(t)
+		defer c.Finish()
+
+		var pp *mock_ppclient.MockAnyPpClientService
+		pp = mock_ppclient.NewMockAnyPpClientService(c)
+
+		// no errors
+		pp.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyEmailResponse, error) {
+			return &psp.VerifyEmailResponse{}, nil
+		}).MinTimes(1)
+
+		// mock the GetAccountPrivkey method
+		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
+		decodedSignKey, err := crypto.DecodeKeyFromString(
+			SignKey,
+			crypto.UnmarshalEd25519PrivateKey,
+			nil)
+
+		assert.NoError(t, err)
+
+		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+		ak.SignKey = decodedSignKey
+
+		w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
+		w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		w.EXPECT().Account().Return(&ak)
+
+		// Create a test request
+		req := &pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest{}
+		req.Code = "1234"
+
+		// Call the function being tested
+		resp := verifyEmailCode(context.Background(), pp, w, req)
+		assert.True(t, resp.Error == nil)
+	})
+}

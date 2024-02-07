@@ -294,6 +294,8 @@ service ClientCommands {
     rpc PaymentsSubscriptionGetStatus (anytype.Rpc.Payments.Subscription.GetStatus.Request) returns (anytype.Rpc.Payments.Subscription.GetStatus.Response);
     rpc PaymentsSubscriptionGetPaymentUrl (anytype.Rpc.Payments.Subscription.GetPaymentUrl.Request) returns (anytype.Rpc.Payments.Subscription.GetPaymentUrl.Response);
     rpc PaymentsSubscriptionGetPortalLinkUrl (anytype.Rpc.Payments.Subscription.GetPortalLinkUrl.Request) returns (anytype.Rpc.Payments.Subscription.GetPortalLinkUrl.Response);
+    rpc PaymentsSubscriptionGetVerificationEmail (anytype.Rpc.Payments.Subscription.GetVerificationEmail.Request) returns (anytype.Rpc.Payments.Subscription.GetVerificationEmail.Response);
+    rpc PaymentsSubscriptionVerifyEmailCode (anytype.Rpc.Payments.Subscription.VerifyEmailCode.Request) returns (anytype.Rpc.Payments.Subscription.VerifyEmailCode.Response);
 
     // hello.any -> data
     rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
