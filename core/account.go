@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
 
 	"github.com/anyproto/any-sync/net"
 	"google.golang.org/grpc/peer"
@@ -201,27 +200,16 @@ func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request 
 	info := getClientInfo(ctx)
 
 	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(&info)
-	if err != nil {
-		var code pb.RpcAccountLocalLinkNewChallengeResponseErrorCode
-		if errors.Is(err, session.ErrTooManyChallengeRequests) {
-			code = pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS
-		} else {
-			code = pb.RpcAccountLocalLinkNewChallengeResponseError_UNKNOWN_ERROR
-		}
-		return &pb.RpcAccountLocalLinkNewChallengeResponse{
-			Error: &pb.RpcAccountLocalLinkNewChallengeResponseError{
-				Code:        code,
-				Description: err.Error(),
-			},
-		}
-	}
+	code := mapErrorCode(err,
+		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
 
-	// todo: implement errors
 	return &pb.RpcAccountLocalLinkNewChallengeResponse{
 		ChallengeId: challengeId,
 		Error: &pb.RpcAccountLocalLinkNewChallengeResponseError{
-			Code:        0,
-			Description: "",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
