@@ -220,6 +220,7 @@ func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.
 		errToCode(session.ErrChallengeTriesExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
 		errToCode(session.ErrChallengeSolutionWrong, pb.RpcAccountLocalLinkSolveChallengeResponseError_INCORRECT_ANSWER),
 		errToCode(session.ErrChallengeIdNotFound, pb.RpcAccountLocalLinkSolveChallengeResponseError_INVALID_CHALLENGE_ID),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkSolveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
 	return &pb.RpcAccountLocalLinkSolveChallengeResponse{
 		SessionToken: token,
