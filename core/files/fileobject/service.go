@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -41,7 +40,7 @@ var ErrObjectNotFound = fmt.Errorf("file object not found")
 const CName = "fileobject"
 
 type Service interface {
-	app.Component
+	app.ComponentRunnable
 
 	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
@@ -68,6 +67,8 @@ type service struct {
 	fileSync      filesync.FileSync
 	fileStore     filestore.FileStore
 	objectStore   objectstore.ObjectStore
+
+	indexer *indexer
 }
 
 func New() Service {
@@ -86,7 +87,17 @@ func (s *service) Init(a *app.App) error {
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.indexer = s.newIndexer()
 	return nil
+}
+
+func (s *service) Run(_ context.Context) error {
+	s.indexer.run()
+	return nil
+}
+
+func (s *service) Close(ctx context.Context) error {
+	return s.indexer.close()
 }
 
 type CreateRequest struct {
@@ -118,15 +129,8 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	if req.FileId == "" {
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
-	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
-		SpaceId: space.Id(),
-		FileId:  req.FileId,
-	}, req.ObjectOrigin)
-	if err != nil {
-		return "", nil, fmt.Errorf("get details for file or image: %w", err)
-	}
-	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
 
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
 	if req.AdditionalDetails != nil {
 		for k, v := range req.AdditionalDetails.GetFields() {
 			if _, ok := details.Fields[k]; !ok {
@@ -142,11 +146,64 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		EncryptionKeys: req.EncryptionKeys,
 	})
 
-	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
+	// Type will be changed after indexing, just use general type File for now
+	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState)
 	if err != nil {
 		return "", nil, fmt.Errorf("create object: %w", err)
 	}
+
+	err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId})
+	if err != nil {
+		// Will be retried in background, so don't return error
+		log.Errorf("add to index queue: %v", err)
+		err = nil
+	}
+
 	return id, object, nil
+}
+
+func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
+	if req.FileId == "" {
+		return fmt.Errorf("file hash is empty")
+	}
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
+	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
+
+	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
+	createState.SetDetails(details)
+	createState.SetFileInfo(state.FileInfo{
+		FileId:         req.FileId,
+		EncryptionKeys: req.EncryptionKeys,
+	})
+
+	// Type will be changed after indexing, just use general type File for now
+	id, _, err := s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState)
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("create object: %w", err)
+	}
+	err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId})
+	if err != nil {
+		// Will be retried in background, so don't return error
+		log.Errorf("add to index queue: %v", err)
+		err = nil
+	}
+	return err
+}
+
+func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *types.Struct {
+	details := &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyFileId.String(): pbtypes.String(fileId.String()),
+			// Use general file layout. It will be changed for proper layout after indexing
+			bundle.RelationKeyLayout.String():             pbtypes.Int64(int64(model.ObjectType_file)),
+			bundle.RelationKeyFileIndexingStatus.String(): pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
+		},
+	}
+	origin.AddToDetails(details)
+	return details
 }
 
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
@@ -187,61 +244,6 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 		return "", fmt.Errorf("create object: %w", err)
 	}
 	return fileObjectId, nil
-}
-
-func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
-	if req.FileId == "" {
-		return fmt.Errorf("file hash is empty")
-	}
-	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
-		SpaceId: space.Id(),
-		FileId:  req.FileId,
-	}, req.ObjectOrigin)
-	if err != nil {
-		return fmt.Errorf("get details for file or image: %w", err)
-	}
-	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
-	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
-
-	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
-	createState.SetDetails(details)
-	createState.SetFileInfo(state.FileInfo{
-		FileId:         req.FileId,
-		EncryptionKeys: req.EncryptionKeys,
-	})
-
-	_, _, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		return nil
-	}
-	return err
-}
-
-func (s *service) getDetailsForFileOrImage(ctx context.Context, id domain.FullFileId, origin objectorigin.ObjectOrigin) (details *types.Struct, typeKey domain.TypeKey, err error) {
-	file, err := s.fileService.FileByHash(ctx, id)
-	if err != nil {
-		return nil, "", err
-	}
-	if mill.IsImage(file.Info().Media) {
-		image, err := s.fileService.ImageByHash(ctx, id)
-		if err != nil {
-			return nil, "", err
-		}
-		details, err = image.Details(ctx)
-		if err != nil {
-			return nil, "", err
-		}
-		typeKey = bundle.TypeKeyImage
-	} else {
-		details, typeKey, err = file.Details(ctx)
-		if err != nil {
-			return nil, "", err
-		}
-	}
-
-	origin.AddToDetails(details)
-
-	return details, typeKey, nil
 }
 
 func (s *service) addToSyncQueue(id domain.FullFileId, uploadedByUser bool, imported bool) error {
