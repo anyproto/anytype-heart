@@ -15,14 +15,24 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
-const timeout = time.Second * 30
+const (
+	timeout = time.Second * 30
+
+	indexURI = "https://tools.gallery.any.coop/index.json"
+)
 
 type schemaResponse struct {
 	Schema string `json:"$schema"`
 }
+
+var (
+	ErrUnmarshalJson = fmt.Errorf("failed to unmarshall json")
+	ErrDownloadIndex = fmt.Errorf("failed to download gallery index")
+)
 
 // whitelist maps allowed hosts to regular expressions of URL paths
 var whitelist = map[string]*regexp.Regexp{
@@ -35,14 +45,14 @@ var whitelist = map[string]*regexp.Regexp{
 	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
-func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
+func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
 	if checkWhitelist && !IsInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
-	raw, err := getRawManifest(url)
+	raw, err := getRawJson(url)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +82,43 @@ func DownloadManifest(url string, checkWhitelist bool) (info *pb.RpcDownloadMani
 	return info, nil
 }
 
+func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
+	raw, err := getRawJson(indexURI)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrDownloadIndex, err)
+	}
+
+	manifests := struct {
+		Experiences map[string]*model.ManifestInfo `json:"experiences"`
+	}{}
+	err = json.Unmarshal(raw, &manifests)
+	if err != nil {
+		return nil, fmt.Errorf("%w to get list of manifests from gallery index: %w", ErrUnmarshalJson, err)
+	}
+	response := &pb.RpcGalleryDownloadIndexResponse{}
+
+	for _, manifest := range manifests.Experiences {
+		response.Experiences = append(response.Experiences, manifest)
+	}
+
+	categories := struct {
+		Categories map[string][]string `json:"categories"`
+	}{}
+	err = json.Unmarshal(raw, &categories)
+	if err != nil {
+		return nil, fmt.Errorf("%w to get list of categories from gallery index: %w", ErrUnmarshalJson, err)
+	}
+
+	for name, experiences := range categories.Categories {
+		response.Categories = append(response.Categories, &pb.RpcGalleryDownloadIndexResponseCategory{
+			Name:        name,
+			Experiences: experiences,
+		})
+	}
+
+	return response, nil
+}
+
 func IsInWhitelist(url string) bool {
 	if len(whitelist) == 0 {
 		return true
@@ -88,7 +135,7 @@ func IsInWhitelist(url string) bool {
 	return false
 }
 
-func getRawManifest(url string) ([]byte, error) {
+func getRawJson(url string) ([]byte, error) {
 	client := http.Client{Timeout: timeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -101,7 +148,7 @@ func getRawManifest(url string) ([]byte, error) {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get manifest. Status: %s", res.Status)
+		return nil, fmt.Errorf("failed to get json file. Status: %s", res.Status)
 	}
 
 	if res.Body != nil {
@@ -115,7 +162,7 @@ func getRawManifest(url string) ([]byte, error) {
 	return body, nil
 }
 
-func validateSchema(schemaResp schemaResponse, info *pb.RpcDownloadManifestResponseManifestInfo) (err error) {
+func validateSchema(schemaResp schemaResponse, info *model.ManifestInfo) (err error) {
 	if schemaResp.Schema == "" {
 		return
 	}
