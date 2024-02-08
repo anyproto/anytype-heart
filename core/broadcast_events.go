@@ -10,8 +10,8 @@ import (
 func (mw *Middleware) BroadcastPayloadEvent(cctx context.Context, req *pb.RpcBroadcastPayloadEventRequest) *pb.RpcBroadcastPayloadEventResponse {
 	messages := []*pb.EventMessage{
 		{
-			Value: &pb.EventMessageValueOfExtensionBroadcast{
-				ExtensionBroadcast: &pb.EventExtensionBroadcast{Payload: req.Payload},
+			Value: &pb.EventMessageValueOfPayloadBroadcast{
+				PayloadBroadcast: &pb.EventPayloadBroadcast{Payload: req.Payload},
 			},
 		},
 	}

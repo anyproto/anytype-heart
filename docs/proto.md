@@ -1369,8 +1369,6 @@
     - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
     - [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit)
     - [Event.Block.Set.Widget.ViewId](#anytype-Event-Block-Set-Widget-ViewId)
-    - [Event.Extension](#anytype-Event-Extension)
-    - [Event.Extension.Broadcast](#anytype-Event-Extension-Broadcast)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
@@ -1397,6 +1395,8 @@
     - [Event.Object.Subscription.Groups](#anytype-Event-Object-Subscription-Groups)
     - [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position)
     - [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove)
+    - [Event.Payload](#anytype-Event-Payload)
+    - [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast)
     - [Event.Ping](#anytype-Event-Ping)
     - [Event.Process](#anytype-Event-Process)
     - [Event.Process.Done](#anytype-Event-Process-Done)
@@ -21522,31 +21522,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype-Event-Extension"></a>
-
-### Event.Extension
-
-
-
-
-
-
-
-<a name="anytype-Event-Extension-Broadcast"></a>
-
-### Event.Extension.Broadcast
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| payload | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Event-File"></a>
 
 ### Event.File
@@ -21675,7 +21650,7 @@ Precondition: user A opened a block
 | fileLocalUsage | [Event.File.LocalUsage](#anytype-Event-File-LocalUsage) |  |  |
 | notificationSend | [Event.Notification.Send](#anytype-Event-Notification-Send) |  |  |
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
-| extensionBroadcast | [Event.Extension.Broadcast](#anytype-Event-Extension-Broadcast) |  |  |
+| payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 
 
 
@@ -21981,6 +21956,31 @@ Removes document from subscription
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | subId | [string](#string) |  | subscription id |
+
+
+
+
+
+
+<a name="anytype-Event-Payload"></a>
+
+### Event.Payload
+
+
+
+
+
+
+
+<a name="anytype-Event-Payload-Broadcast"></a>
+
+### Event.Payload.Broadcast
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| payload | [string](#string) |  |  |
 
 
 
