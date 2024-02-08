@@ -48,14 +48,14 @@ func (m *MockFileService) EXPECT() *MockFileServiceMockRecorder {
 }
 
 // FileAdd mocks base method.
-func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (*files.FileAddResult, error) {
+func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (*files.AddResult, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "FileAdd", varargs...)
-	ret0, _ := ret[0].(*files.FileAddResult)
+	ret0, _ := ret[0].(*files.AddResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -143,14 +143,14 @@ func (mr *MockFileServiceMockRecorder) GetSpaceUsage(arg0, arg1 any) *gomock.Cal
 }
 
 // ImageAdd mocks base method.
-func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (*files.ImageAddResult, error) {
+func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (*files.AddResult, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ImageAdd", varargs...)
-	ret0, _ := ret[0].(*files.ImageAddResult)
+	ret0, _ := ret[0].(*files.AddResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

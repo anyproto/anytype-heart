@@ -2718,6 +2718,7 @@ message Rpc {
                 bool disableEncryption = 4; // deprecated, has no affect, GO-1926
                 anytype.model.Block.Content.File.Style style = 5;
                 google.protobuf.Struct details = 7; // additional details for file object
+                anytype.model.ObjectOrigin origin = 8;
             }
 
             message Response {
