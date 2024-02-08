@@ -182,7 +182,7 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Image:
-		fileId, err := h.fileObjectService.GetFileIdFromObject(context.Background(), file.TargetObjectId)
+		fileId, err := h.fileObjectService.GetFileIdFromObject(file.TargetObjectId)
 		if err == nil {
 			baseImg := h.getImageBase64(fileId)
 			fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
