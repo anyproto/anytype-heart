@@ -36,6 +36,8 @@ type spaceStatusMock struct {
 	persistentUpdater func(status spaceinfo.AccountStatus)
 }
 
+var _ spacestatus.SpaceStatus = (*spaceStatusMock)(nil)
+
 func (s *spaceStatusMock) Init(a *app.App) (err error) {
 	return nil
 }
@@ -93,6 +95,10 @@ func (s *spaceStatusMock) SetLocalStatus(ctx context.Context, status spaceinfo.L
 func (s *spaceStatusMock) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
 	s.localStatus = info.LocalStatus
 	s.remoteStatus = info.RemoteStatus
+	return nil
+}
+
+func (s *spaceStatusMock) SetAccessType(ctx context.Context, status spaceinfo.AccessType) (err error) {
 	return nil
 }
 

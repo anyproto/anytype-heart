@@ -41,6 +41,8 @@ type spaceViewStub struct {
 	*smarttest.SmartTest
 }
 
+var _ SpaceView = (*spaceViewStub)(nil)
+
 func newSpaceViewStub(id string) *spaceViewStub {
 	return &spaceViewStub{SmartTest: smarttest.New(id)}
 }
@@ -54,6 +56,10 @@ func (s *spaceViewStub) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err er
 }
 
 func (s *spaceViewStub) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
+	return nil
+}
+
+func (s *spaceViewStub) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	return nil
 }
 
