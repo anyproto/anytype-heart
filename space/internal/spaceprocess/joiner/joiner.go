@@ -15,7 +15,6 @@ import (
 
 type joiner struct {
 	app *app.App
-	log logger.CtxLogger
 }
 
 type Joiner interface {

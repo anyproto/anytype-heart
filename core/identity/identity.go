@@ -74,7 +74,6 @@ type service struct {
 	fileAclService    fileacl.Service
 	closing           chan struct{}
 	startedCh         chan struct{}
-	identities        []string
 	techSpaceId       string
 	personalSpaceId   string
 

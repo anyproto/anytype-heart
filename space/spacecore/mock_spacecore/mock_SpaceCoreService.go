@@ -73,6 +73,53 @@ func (_c *MockSpaceCoreService_Close_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// CloseSpace provides a mock function with given fields: ctx, id
+func (_m *MockSpaceCoreService) CloseSpace(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CloseSpace")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceCoreService_CloseSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CloseSpace'
+type MockSpaceCoreService_CloseSpace_Call struct {
+	*mock.Call
+}
+
+// CloseSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockSpaceCoreService_Expecter) CloseSpace(ctx interface{}, id interface{}) *MockSpaceCoreService_CloseSpace_Call {
+	return &MockSpaceCoreService_CloseSpace_Call{Call: _e.mock.On("CloseSpace", ctx, id)}
+}
+
+func (_c *MockSpaceCoreService_CloseSpace_Call) Run(run func(ctx context.Context, id string)) *MockSpaceCoreService_CloseSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceCoreService_CloseSpace_Call) Return(_a0 error) *MockSpaceCoreService_CloseSpace_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceCoreService_CloseSpace_Call) RunAndReturn(run func(context.Context, string) error) *MockSpaceCoreService_CloseSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function with given fields: ctx, replicationKey, metadataPayload
 func (_m *MockSpaceCoreService) Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*spacecore.AnySpace, error) {
 	ret := _m.Called(ctx, replicationKey, metadataPayload)

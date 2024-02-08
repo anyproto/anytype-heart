@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -136,12 +137,14 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		case smartblock.SmartBlockTypeIdentity:
 			return NewIdentity(s.identityService, id), nil
 		case smartblock.SmartBlockTypeParticipant:
+			participantState := state.NewDoc(id, nil).(*state.State)
+			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
 			params := StaticSourceParams{
 				Id: domain.FullID{
 					ObjectID: id,
 					SpaceID:  space.Id(),
 				},
-				State:     state.NewDoc(id, nil).(*state.State),
+				State:     participantState,
 				SbType:    smartblock.SmartBlockTypeParticipant,
 				CreatorId: addr.AnytypeProfileId,
 			}

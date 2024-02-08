@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "4d36052f0c028de6dd6d77d90b25b116946c5b3a33fab02caab783ab0f871dcc"
+const RelationChecksum = "a7a34b9897b6f68ea57163664b24f5b49891f9ab7b999c2e45d5675b2a1ac8ab"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -153,6 +153,7 @@ const (
 	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
 	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
+	RelationKeyFileIndexingStatus        domain.RelationKey = "fileIndexingStatus"
 	RelationKeyLastChangeId              domain.RelationKey = "lastChangeId"
 	RelationKeyStarred                   domain.RelationKey = "starred"
 	RelationKeyDefaultTemplateId         domain.RelationKey = "defaultTemplateId"
@@ -766,6 +767,20 @@ var (
 			Id:               "_brfileId",
 			Key:              "fileId",
 			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileIndexingStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "File indexing status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brfileIndexingStatus",
+			Key:              "fileIndexingStatus",
+			MaxCount:         1,
+			Name:             "File indexing status",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

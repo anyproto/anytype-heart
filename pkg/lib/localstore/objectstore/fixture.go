@@ -40,8 +40,14 @@ func NewStoreFixture(t *testing.T) *StoreFixture {
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	db, err := badger.Open(badger.DefaultOptions(filepath.Join(t.TempDir(), "badger")))
+	badgerDir := filepath.Join(t.TempDir(), "badger")
+	db, err := badger.Open(badger.DefaultOptions(badgerDir))
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
 
 	ds := &dsObjectStore{
 		fts:           fullText,

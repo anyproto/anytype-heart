@@ -13,6 +13,16 @@ type ObjectOrigin struct {
 	ImportType model.ImportType
 }
 
+func FromDetails(details *types.Struct) ObjectOrigin {
+	origin := pbtypes.GetInt64(details, bundle.RelationKeyOrigin.String())
+	importType := pbtypes.GetInt64(details, bundle.RelationKeyImportType.String())
+
+	return ObjectOrigin{
+		Origin:     model.ObjectOrigin(origin),
+		ImportType: model.ImportType(importType),
+	}
+}
+
 func (o ObjectOrigin) IsImported() bool {
 	return o.Origin == model.ObjectOrigin_import
 }

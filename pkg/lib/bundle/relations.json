@@ -1415,6 +1415,16 @@
     "source": "details"
   },
   {
+    "description": "File indexing status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileIndexingStatus",
+    "maxCount": 1,
+    "name": "File indexing status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Last change ID",
     "format": "longtext",
     "hidden": true,

@@ -11,6 +11,13 @@ on:
         description: 'Specify the runner to use'
         required: true
         default: 'self-hosted'
+      perf-test:
+        description: 'Run perf test times'
+        required: true
+        default: '0'
+
+permissions:
+  actions: 'write'
 
 name: Build
 jobs:
@@ -58,6 +65,7 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install grpcurl
           brew tap --custom-remote filosottile/musl-cross https://github.com/anyproto/homebrew-musl-cross.git
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
@@ -75,9 +83,10 @@ jobs:
         env:
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
+          INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
           GIT_SUMMARY=$(git describe --tags --always)
-          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION=${{ github.event.inputs.alpha_version }}
             if [ -z "$VERSION" ]; then
@@ -114,6 +123,19 @@ jobs:
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
         if: github.event_name == 'push'
+      - name: run perf tests
+        run: |
+          cd cmd/perftester/
+          go run main.go ${{ github.event.inputs.perf-test }}
+          gh run cancel ${{ github.run_id }}
+          gh run watch ${{ github.run_id }}
+        env:
+          ANYTYPE_REPORT_MEMORY: 'true'
+          TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
+          PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
+          PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.event.inputs.perf-test != '0'
       - name: Make JS protos
         run: |
           make protos-js
@@ -293,10 +315,11 @@ jobs:
         env:
           AMPLITUDE_KEY: ${{ secrets.AMPLITUDE_KEY }}
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
+          INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
           GIT_SUMMARY=$(git describe --tags --always)
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
-          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download

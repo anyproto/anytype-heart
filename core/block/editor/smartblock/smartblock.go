@@ -11,6 +11,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
@@ -58,6 +60,7 @@ const (
 	DoSnapshot
 	SkipIfNoChanges
 	KeepInternalFlags
+	IgnoreNoPermissions // Used only for read-only actions like InitObject or OpenObject
 )
 
 type Hook int
@@ -548,13 +551,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return ErrIsDeleted
 	}
 	var (
-		sendEvent         = true
-		addHistory        = true
-		doSnapshot        = false
-		checkRestrictions = true
-		hooks             = true
-		skipIfNoChanges   = false
-		keepInternalFlags = false
+		sendEvent           = true
+		addHistory          = true
+		doSnapshot          = false
+		checkRestrictions   = true
+		hooks               = true
+		skipIfNoChanges     = false
+		keepInternalFlags   = false
+		ignoreNoPermissions = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -572,6 +576,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			skipIfNoChanges = true
 		case KeepInternalFlags:
 			keepInternalFlags = true
+		case IgnoreNoPermissions:
+			ignoreNoPermissions = true
 		}
 	}
 
@@ -664,6 +670,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			DoSnapshot:        doSnapshot,
 		}
 		changeId, err = sb.source.PushChange(pushChangeParams)
+		// For read-only mode
+		if errors.Is(err, list.ErrInsufficientPermissions) && ignoreNoPermissions {
+			return nil
+		}
 		if err != nil {
 			return err
 		}

@@ -1,28 +1,24 @@
 package files
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/h2non/filetype"
-	ipfspath "github.com/ipfs/boxo/path"
-
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 type AddOption func(*AddOptions)
 
 type AddOptions struct {
 	Reader           io.ReadSeeker
-	Use              string
 	Media            string
 	Name             string
 	LastModifiedDate int64
+
+	// checksum of original file, calculated from Reader
+	checksum string
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -43,30 +39,16 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 	}
 }
 
-func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *AddOptions) error {
-	if opts.Use != "" {
-		ref, err := ipfspath.ParsePath(opts.Use)
+func (s *service) normalizeOptions(opts *AddOptions) error {
+	if opts.checksum == "" && opts.Reader != nil {
+		var err error
+		opts.checksum, err = checksum(opts.Reader, false)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to calculate checksum: %w", err)
 		}
-		parts := strings.Split(ref.String(), "/")
-		hash := parts[len(parts)-1]
-		var file *storage.FileInfo
-
-		opts.Reader, file, err = s.fileContent(ctx, spaceID, domain.FileContentId(hash))
+		_, err = opts.Reader.Seek(0, io.SeekStart)
 		if err != nil {
-			/*if err == localstore.ErrNotFound{
-				// just cat the data from dagService
-				b, err := ipfsutil.DataAtCid(s.dagService, ref.String())
-				if err != nil {
-					return nil, err
-				}
-				reader = bytes.NewReader(b)
-				conf.Use = ref.String()
-			} else {*/
-			return err
-		} else {
-			opts.Use = file.Checksum
+			return fmt.Errorf("failed to seek reader: %w", err)
 		}
 	}
 

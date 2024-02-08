@@ -304,7 +304,7 @@ func decline(ctx context.Context, spaceId, identity string, aclService acl.AclSe
 }
 
 func remove(ctx context.Context, spaceId string, identities []string, aclService acl.AclService) error {
-	var keys []crypto.PubKey
+	keys := make([]crypto.PubKey, 0, len(identities))
 	for _, identity := range identities {
 		key, err := crypto.DecodeAccountAddress(identity)
 		if err != nil {
@@ -316,7 +316,7 @@ func remove(ctx context.Context, spaceId string, identities []string, aclService
 }
 
 func permissionsChange(ctx context.Context, spaceId string, changes []*model.ParticipantPermissionChange, aclService acl.AclService) error {
-	var accPermissions []acl.AccountPermissions
+	accPermissions := make([]acl.AccountPermissions, 0, len(changes))
 	for _, change := range changes {
 		key, err := crypto.DecodeAccountAddress(change.Identity)
 		if err != nil {

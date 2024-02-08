@@ -3073,6 +3073,7 @@ message Rpc {
                 bool disableEncryption = 4; // deprecated, has no affect, GO-1926
                 anytype.model.Block.Content.File.Style style = 5;
                 google.protobuf.Struct details = 7; // additional details for file object
+                anytype.model.ObjectOrigin origin = 8;
             }
 
             message Response {
@@ -3429,39 +3430,55 @@ message Rpc {
         }
     }
 
-    message DownloadManifest {
-        message Request {
-            string url = 1;
-        }
-
-        message Response {
-            Error error = 1;
-            ManifestInfo info = 2;
-
-            message Error {
-                Code code = 1;
-                string description = 2;
-
-                enum Code {
-                    NULL = 0;
-                    UNKNOWN_ERROR = 1;
-                    BAD_INPUT = 2;
-                }
+    message Gallery {
+        message DownloadManifest {
+            message Request {
+                string url = 1;
             }
 
-            message ManifestInfo {
-                string schema = 1;
-                string id = 2;
-                string name = 3;
-                string author = 4;
-                string license = 5;
-                string title = 6;
-                string description = 7;
-                repeated string screenshots = 8;
-                string downloadLink = 9;
-                int32 fileSize = 10;
-                repeated string categories = 11;
-                string language = 12;
+            message Response {
+                Error error = 1;
+                anytype.model.ManifestInfo info = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message DownloadIndex {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                repeated Category categories = 2;
+                repeated anytype.model.ManifestInfo experiences = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNMARSHALLING_ERROR = 3;
+                        DOWNLOAD_ERROR = 4;
+                    }
+                }
+
+                message Category {
+                    string name = 1;
+                    repeated string experiences = 2;
+                }
             }
         }
     }
@@ -3597,6 +3614,7 @@ message Rpc {
                 string htmlSlot = 7;
                 repeated anytype.model.Block anySlot = 8;
                 repeated File fileSlot = 9;
+                string url = 10;
 
                 message File {
                     string name = 1;
@@ -4141,6 +4159,7 @@ message Rpc {
         message Preview {
             message Request {
                 string html = 1;
+                string url = 2;
             }
 
             message Response {

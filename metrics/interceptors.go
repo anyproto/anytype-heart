@@ -13,18 +13,17 @@ import (
 )
 
 const (
-	BlockSetCarriage         = "BlockSetCarriage"
-	BlockTextSetText         = "BlockTextSetText"
-	ObjectSearchSubscribe    = "ObjectSearchSubscribe"
 	unexpectedErrorCode      = -1
 	parsingErrorCode         = -2
 	defaultUnaryWarningAfter = time.Second * 3
 )
 
 var excludedMethods = []string{
-	BlockSetCarriage,
-	BlockTextSetText,
-	ObjectSearchSubscribe,
+	"BlockSetCarriage",
+	"BlockTextSetText",
+	"ObjectSearchSubscribe",
+	"ObjectSearchUnsubscribe",
+	"ObjectSubscribeIds",
 }
 
 func UnaryTraceInterceptor(

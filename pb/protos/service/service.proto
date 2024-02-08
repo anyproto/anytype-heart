@@ -169,7 +169,8 @@ service ClientCommands {
     // The artist info is available in the object details
     rpc UnsplashDownload (anytype.Rpc.Unsplash.Download.Request) returns (anytype.Rpc.Unsplash.Download.Response);
 
-    rpc DownloadManifest (anytype.Rpc.DownloadManifest.Request) returns (anytype.Rpc.DownloadManifest.Response);
+    rpc GalleryDownloadManifest (anytype.Rpc.Gallery.DownloadManifest.Request) returns (anytype.Rpc.Gallery.DownloadManifest.Response);
+    rpc GalleryDownloadIndex (anytype.Rpc.Gallery.DownloadIndex.Request) returns (anytype.Rpc.Gallery.DownloadIndex.Response);
 
     // General Block commands
     // ***
