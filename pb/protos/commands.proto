@@ -5961,6 +5961,16 @@ message Rpc {
             }
         }
     }
+    message Extension {
+        message Broadcast {
+            message Request {
+                string json = 1;
+            }
+            message Response {
+                ResponseEvent event = 1;
+            }
+        }
+    }
 }
 
 message Empty {
