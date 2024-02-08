@@ -5979,8 +5979,8 @@ message Rpc {
             }
         }
     }
-    message Extension {
-        message Broadcast {
+    message Broadcast {
+        message PayloadEvent {
             message Request {
                 string payload = 1;
             }

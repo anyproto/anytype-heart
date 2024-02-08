@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (mw *Middleware) ExtensionBroadcast(cctx context.Context, req *pb.RpcExtensionBroadcastRequest) *pb.RpcExtensionBroadcastResponse {
+func (mw *Middleware) BroadcastPayloadEvent(cctx context.Context, req *pb.RpcBroadcastPayloadEventRequest) *pb.RpcBroadcastPayloadEventResponse {
 	messages := []*pb.EventMessage{
 		{
 			Value: &pb.EventMessageValueOfExtensionBroadcast{
@@ -18,12 +18,12 @@ func (mw *Middleware) ExtensionBroadcast(cctx context.Context, req *pb.RpcExtens
 	getService[event.Sender](mw).Broadcast(&pb.Event{
 		Messages: messages,
 	})
-	return &pb.RpcExtensionBroadcastResponse{
+	return &pb.RpcBroadcastPayloadEventResponse{
 		Event: &pb.ResponseEvent{
 			Messages: messages,
 		},
-		Error: &pb.RpcExtensionBroadcastResponseError{
-			Code: pb.RpcExtensionBroadcastResponseError_NULL,
+		Error: &pb.RpcBroadcastPayloadEventResponseError{
+			Code: pb.RpcBroadcastPayloadEventResponseError_NULL,
 		},
 	}
 }

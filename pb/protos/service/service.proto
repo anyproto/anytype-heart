@@ -296,5 +296,5 @@ service ClientCommands {
     rpc NotificationList (anytype.Rpc.Notification.List.Request) returns (anytype.Rpc.Notification.List.Response);
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
 
-    rpc ExtensionBroadcast (anytype.Rpc.Extension.Broadcast.Request) returns (anytype.Rpc.Extension.Broadcast.Response);
+    rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
 }

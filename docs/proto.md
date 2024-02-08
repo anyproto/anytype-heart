@@ -513,6 +513,11 @@
     - [Rpc.BlockWidget.SetViewId.Request](#anytype-Rpc-BlockWidget-SetViewId-Request)
     - [Rpc.BlockWidget.SetViewId.Response](#anytype-Rpc-BlockWidget-SetViewId-Response)
     - [Rpc.BlockWidget.SetViewId.Response.Error](#anytype-Rpc-BlockWidget-SetViewId-Response-Error)
+    - [Rpc.Broadcast](#anytype-Rpc-Broadcast)
+    - [Rpc.Broadcast.PayloadEvent](#anytype-Rpc-Broadcast-PayloadEvent)
+    - [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request)
+    - [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response)
+    - [Rpc.Broadcast.PayloadEvent.Response.Error](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
@@ -547,11 +552,6 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
-    - [Rpc.Extension](#anytype-Rpc-Extension)
-    - [Rpc.Extension.Broadcast](#anytype-Rpc-Extension-Broadcast)
-    - [Rpc.Extension.Broadcast.Request](#anytype-Rpc-Extension-Broadcast-Request)
-    - [Rpc.Extension.Broadcast.Response](#anytype-Rpc-Extension-Broadcast-Response)
-    - [Rpc.Extension.Broadcast.Response.Error](#anytype-Rpc-Extension-Broadcast-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -1110,6 +1110,7 @@
     - [Rpc.BlockWidget.SetLimit.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code)
     - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
+    - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
@@ -1118,7 +1119,6 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
-    - [Rpc.Extension.Broadcast.Response.Error.Code](#anytype-Rpc-Extension-Broadcast-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1796,7 +1796,7 @@
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
-| ExtensionBroadcast | [Rpc.Extension.Broadcast.Request](#anytype-Rpc-Extension-Broadcast-Request) | [Rpc.Extension.Broadcast.Response](#anytype-Rpc-Extension-Broadcast-Response) |  |
+| BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
 
  
 
@@ -9227,6 +9227,73 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Broadcast"></a>
+
+### Rpc.Broadcast
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Broadcast-PayloadEvent"></a>
+
+### Rpc.Broadcast.PayloadEvent
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Broadcast-PayloadEvent-Request"></a>
+
+### Rpc.Broadcast.PayloadEvent.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| payload | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Broadcast-PayloadEvent-Response"></a>
+
+### Rpc.Broadcast.PayloadEvent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| error | [Rpc.Broadcast.PayloadEvent.Response.Error](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Broadcast-PayloadEvent-Response-Error"></a>
+
+### Rpc.Broadcast.PayloadEvent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug"></a>
 
 ### Rpc.Debug
@@ -9701,73 +9768,6 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | treeId | [string](#string) |  |  |
 | headIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Extension"></a>
-
-### Rpc.Extension
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Extension-Broadcast"></a>
-
-### Rpc.Extension.Broadcast
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Extension-Broadcast-Request"></a>
-
-### Rpc.Extension.Broadcast.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| payload | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Extension-Broadcast-Response"></a>
-
-### Rpc.Extension.Broadcast.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-| error | [Rpc.Extension.Broadcast.Response.Error](#anytype-Rpc-Extension-Broadcast-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Extension-Broadcast-Response-Error"></a>
-
-### Rpc.Extension.Broadcast.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Extension.Broadcast.Response.Error.Code](#anytype-Rpc-Extension-Broadcast-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -17754,6 +17754,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code"></a>
+
+### Rpc.Broadcast.PayloadEvent.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -17855,20 +17869,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-Extension-Broadcast-Response-Error-Code"></a>
-
-### Rpc.Extension.Broadcast.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| INTERNAL_ERROR | 3 |  |
 
 
 
