@@ -1,6 +1,7 @@
 package source
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,8 @@ import (
 )
 
 var log = logging.Logger("import-source")
+
+var ErrFileNotFound = fmt.Errorf("file not found")
 
 var extensions = []string{".md", ".csv", ".txt", ".pb", ".json", ".html"}
 

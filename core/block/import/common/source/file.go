@@ -37,7 +37,7 @@ func (f *File) ProcessFile(fileName string, callback func(fileReader io.ReadClos
 	fileReader, err := os.Open(fileName)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return ErrFileNotFound
 		}
 		return oserror.TransformError(err)
 	}

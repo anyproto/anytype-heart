@@ -2,6 +2,7 @@ package common
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -27,7 +28,7 @@ func ProvideFileName(fileName string, filesSource source.Source, path string, te
 		return absolutePath, createFileBlock, nil
 	}
 	// second case for archive, when file is inside zip archive
-	if err := filesSource.ProcessFile(fileName, func(fileReader io.ReadCloser) error {
+	err := filesSource.ProcessFile(fileName, func(fileReader io.ReadCloser) error {
 		tempFile, err := extractFileFromArchiveToTempDirectory(fileName, fileReader, tempDirProvider)
 		if err != nil {
 			return err
@@ -35,7 +36,12 @@ func ProvideFileName(fileName string, filesSource source.Source, path string, te
 		createFileBlock = true
 		fileName = tempFile
 		return nil
-	}); err != nil {
+	})
+	if errors.Is(err, source.ErrFileNotFound) {
+		log.Errorf("file from block is not found in import source")
+		return "", false, nil
+	}
+	if err != nil {
 		return "", false, err
 	}
 	return fileName, createFileBlock, nil

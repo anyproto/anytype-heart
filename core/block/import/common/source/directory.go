@@ -55,16 +55,14 @@ func (d *Directory) ProcessFile(fileName string, callback func(fileReader io.Rea
 		fileReader, err := os.Open(fileName)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return nil
+				return ErrFileNotFound
 			}
 			return oserror.TransformError(err)
 		}
 		defer fileReader.Close()
-		if err = callback(fileReader); err != nil {
-			return err
-		}
+		return callback(fileReader)
 	}
-	return nil
+	return ErrFileNotFound
 }
 
 func (d *Directory) CountFilesWithGivenExtensions(extension []string) int {

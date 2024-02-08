@@ -68,11 +68,9 @@ func (z *Zip) ProcessFile(fileName string, callback func(fileReader io.ReadClose
 			return oserror.TransformError(err)
 		}
 		defer fileReader.Close()
-		if err = callback(fileReader); err != nil {
-			return err
-		}
+		return callback(fileReader)
 	}
-	return nil
+	return ErrFileNotFound
 }
 
 func (z *Zip) CountFilesWithGivenExtensions(extension []string) int {
