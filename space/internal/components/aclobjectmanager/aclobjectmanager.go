@@ -389,14 +389,11 @@ func buildParticipantDetails(
 	status model.ParticipantStatus,
 ) *types.Struct {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():                     pbtypes.String(id),
-		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
-		bundle.RelationKeyIsReadonly.String():             pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String():             pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():               pbtypes.Bool(false),
-		bundle.RelationKeySpaceId.String():                pbtypes.String(spaceId),
-		bundle.RelationKeyType.String():                   pbtypes.String(bundle.TypeKeyParticipant.BundledURL()),
-		bundle.RelationKeyLayout.String():                 pbtypes.Float64(float64(model.ObjectType_participant)),
+		bundle.RelationKeyId.String():       pbtypes.String(id),
+		bundle.RelationKeyIdentity.String(): pbtypes.String(identity),
+
+		bundle.RelationKeySpaceId.String(): pbtypes.String(spaceId),
+
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),

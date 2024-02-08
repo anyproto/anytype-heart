@@ -383,14 +383,16 @@ func (e *export) writeMultiDoc(ctx context.Context, spaceId string, mw converter
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
 			werr := getblock.Do(e.picker, did, func(b sb.SmartBlock) error {
-				if err = mw.Add(b.Space(), b.NewState().Copy()); err != nil {
-					return err
-				}
+				st := b.NewState().Copy()
 				if includeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
-					err = e.saveFile(ctx, wr, b)
+					fileName, err := e.saveFile(ctx, wr, b)
 					if err != nil {
 						return fmt.Errorf("save file: %w", err)
 					}
+					st.SetDetailAndBundledRelation(bundle.RelationKeySource, pbtypes.String(fileName))
+				}
+				if err = mw.Add(b.Space(), st); err != nil {
+					return err
 				}
 				return nil
 			})
@@ -414,28 +416,31 @@ func (e *export) writeMultiDoc(ctx context.Context, spaceId string, mw converter
 
 func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
 	return getblock.Do(e.picker, docID, func(b sb.SmartBlock) error {
-		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
+		st := b.NewState()
+		if pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
-		}
-		var conv converter.Converter
-		switch format {
-		case model.Export_Markdown:
-			conv = md.NewMDConverter(b.NewState(), wr.Namer())
-		case model.Export_Protobuf:
-			conv = pbc.NewConverter(b, isJSON)
-		case model.Export_JSON:
-			conv = pbjson.NewConverter(b)
 		}
 
 		if exportFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
-			err = e.saveFile(ctx, wr, b)
+			fileName, err := e.saveFile(ctx, wr, b)
 			if err != nil {
 				return fmt.Errorf("save file: %w", err)
 			}
+			st.SetDetailAndBundledRelation(bundle.RelationKeySource, pbtypes.String(fileName))
 			// Don't save file objects in markdown
 			if format == model.Export_Markdown {
 				return nil
 			}
+		}
+
+		var conv converter.Converter
+		switch format {
+		case model.Export_Markdown:
+			conv = md.NewMDConverter(st, wr.Namer())
+		case model.Export_Protobuf:
+			conv = pbc.NewConverter(st, isJSON)
+		case model.Export_JSON:
+			conv = pbjson.NewConverter(st)
 		}
 
 		conv.SetKnownDocs(docInfo)
@@ -460,7 +465,7 @@ func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr wri
 	})
 }
 
-func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock) (err error) {
+func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock) (fileName string, err error) {
 	fullId := domain.FullFileId{
 		SpaceId: fileObject.Space().Id(),
 		FileId:  domain.FileId(pbtypes.GetString(fileObject.Details(), bundle.RelationKeyFileId.String())),
@@ -468,25 +473,25 @@ func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlo
 
 	file, err := e.fileService.FileByHash(ctx, fullId)
 	if err != nil {
-		return
+		return "", err
 	}
 	if strings.HasPrefix(file.Info().Media, "image") {
 		image, err := e.fileService.ImageByHash(context.TODO(), fullId)
 		if err != nil {
-			return err
+			return "", err
 		}
 		file, err = image.GetOriginalFile(context.TODO())
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	origName := file.Meta().Name
-	filename := wr.Namer().Get("files", fileObject.Id(), filepath.Base(origName), filepath.Ext(origName))
+	fileName = wr.Namer().Get("files", fileObject.Id(), filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.Background())
 	if err != nil {
-		return
+		return "", err
 	}
-	return wr.WriteFile(filename, rd, file.Info().LastModifiedDate)
+	return fileName, wr.WriteFile(fileName, rd, file.Info().LastModifiedDate)
 }
 
 func (e *export) createProfileFile(spaceID string, wr writer) error {

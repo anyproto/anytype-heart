@@ -58,7 +58,7 @@ type ObjectFactory struct {
 	fileObjectService   fileobject.Service
 	processService      process.Service
 	fileUploaderService fileuploader.Service
-	objectDeleter      ObjectDeleter
+	objectDeleter       ObjectDeleter
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -128,7 +128,7 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	}
 
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
+	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {

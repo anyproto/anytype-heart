@@ -366,6 +366,12 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 			return "", fmt.Errorf("failed to update file path in file snapshot %w", err)
 		}
 	}
+	if snapshot.SbType == model.SmartBlockType_FileObject {
+		err := p.normalizeFilePath(snapshot, pbFiles, path)
+		if err != nil {
+			return "", fmt.Errorf("failed to update file path in file snapshot %w", err)
+		}
+	}
 	return id, nil
 }
 
