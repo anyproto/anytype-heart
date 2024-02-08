@@ -24274,6 +24274,7 @@ Used to decode block meta only, without the content itself
 | requestResponse | [Notification.RequestResponse](#anytype-model-Notification-RequestResponse) |  |  |
 | participantRequestApproved | [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved) |  |  |
 | space | [string](#string) |  |  |
+| acl | [string](#string) |  |  |
 
 
 

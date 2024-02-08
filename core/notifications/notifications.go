@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -47,11 +47,14 @@ type notificationService struct {
 	picker             block.ObjectGetter
 	spaceCore          spacecore.SpaceCoreService
 
-	lastNotificationId string
+	sync.RWMutex
+	lastNotificationIdToAcl map[string]string
 }
 
 func New() Notifications {
-	return &notificationService{}
+	return &notificationService{
+		lastNotificationIdToAcl: make(map[string]string, 0),
+	}
 }
 
 func (n *notificationService) Init(a *app.App) (err error) {
@@ -99,14 +102,18 @@ func (n *notificationService) updateNotificationsInLocalStore() {
 	if err != nil {
 		log.Errorf("failed to get notifications from object: %s", err)
 	}
-	var lastNotificationTimestamp int64
+	lastNotificationTimestamp := make(map[string]int64, 0)
 	for _, notification := range notifications {
 		err := n.notificationStore.SaveNotification(notification)
 		if err != nil {
 			log.Errorf("failed to save notification %s: %s", notification.Id, err)
 		}
-		if notification.GetCreateTime() > lastNotificationTimestamp {
-			n.lastNotificationId = notification.Id
+		if notification.Acl != "" && notification.GetCreateTime() > lastNotificationTimestamp[notification.Acl] {
+			n.Lock()
+			n.lastNotificationIdToAcl[notification.Acl] = notification.Id
+			n.Unlock()
+			lastNotificationTimestamp[notification.Acl] = notification.GetCreateTime()
+
 		}
 	}
 }
@@ -127,7 +134,9 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 		var exist bool
 		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 			stateNotification := s.GetNotificationById(notification.Id)
-			n.lastNotificationId = notification.Id
+			n.Lock()
+			n.lastNotificationIdToAcl[notification.Acl] = notification.Id
+			n.Unlock()
 			if stateNotification != nil {
 				exist = true
 				return nil
@@ -215,15 +224,6 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 		return nil, fmt.Errorf("failed to list notifications: %w", err)
 	}
 
-	sort.SliceStable(notifications, func(i, j int) bool {
-		leftTime := time.Unix(notifications[j].GetCreateTime(), 0)
-		rightTime := time.Unix(notifications[i].GetCreateTime(), 0)
-		if leftTime.After(rightTime) {
-			return true
-		}
-		return false
-	})
-
 	var (
 		result   []*model.Notification
 		addCount int64
@@ -241,8 +241,10 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 	return result, nil
 }
 
-func (n *notificationService) GetLastNotificationId() string {
-	return n.lastNotificationId
+func (n *notificationService) GetLastNotificationId(acl string) string {
+	n.RLock()
+	defer n.RUnlock()
+	return n.lastNotificationIdToAcl[acl]
 }
 
 func (n *notificationService) isNotificationRead(notification *model.Notification) bool {

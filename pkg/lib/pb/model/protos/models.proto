@@ -968,6 +968,7 @@ message Notification {
         ParticipantRequestApproved participantRequestApproved = 12;
     }
     string space = 7;
+    string acl = 13;
 
     message Import {
         string processId = 1;

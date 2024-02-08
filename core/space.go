@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
@@ -164,7 +165,7 @@ func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpace
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
 	err := accept(cctx, req.SpaceId, req.Identity, req.Permissions, aclService)
 	if err == nil {
-		err = mw.sendResponseNotification(cctx, req.Identity, req.SpaceId, req.Permissions, true)
+		err = mw.sendResponseNotification(cctx, uuid.New().String(), req.SpaceId, req.Permissions, true)
 	}
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceRequestApproveResponseError_SPACE_IS_DELETED),
@@ -185,7 +186,7 @@ func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpace
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
 	err := decline(cctx, req.SpaceId, req.Identity, aclService)
 	if err == nil {
-		err = mw.sendResponseNotification(cctx, req.Identity, req.SpaceId, 0, false)
+		err = mw.sendResponseNotification(cctx, uuid.New().String(), req.SpaceId, 0, false)
 	}
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceRequestDeclineResponseError_SPACE_IS_DELETED),
