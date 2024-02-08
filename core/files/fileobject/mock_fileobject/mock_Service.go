@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
-	clientspace "github.com/anyproto/anytype-heart/space/clientspace"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
@@ -208,17 +207,17 @@ func (_c *MockService_CreateFromImport_Call) RunAndReturn(run func(domain.FullFi
 	return _c
 }
 
-// DeleteFileData provides a mock function with given fields: ctx, space, objectId
-func (_m *MockService) DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error {
-	ret := _m.Called(ctx, space, objectId)
+// DeleteFileData provides a mock function with given fields: objectId
+func (_m *MockService) DeleteFileData(objectId string) error {
+	ret := _m.Called(objectId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteFileData")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) error); ok {
-		r0 = rf(ctx, space, objectId)
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(objectId)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -232,16 +231,14 @@ type MockService_DeleteFileData_Call struct {
 }
 
 // DeleteFileData is a helper method to define mock.On call
-//   - ctx context.Context
-//   - space clientspace.Space
 //   - objectId string
-func (_e *MockService_Expecter) DeleteFileData(ctx interface{}, space interface{}, objectId interface{}) *MockService_DeleteFileData_Call {
-	return &MockService_DeleteFileData_Call{Call: _e.mock.On("DeleteFileData", ctx, space, objectId)}
+func (_e *MockService_Expecter) DeleteFileData(objectId interface{}) *MockService_DeleteFileData_Call {
+	return &MockService_DeleteFileData_Call{Call: _e.mock.On("DeleteFileData", objectId)}
 }
 
-func (_c *MockService_DeleteFileData_Call) Run(run func(ctx context.Context, space clientspace.Space, objectId string)) *MockService_DeleteFileData_Call {
+func (_c *MockService_DeleteFileData_Call) Run(run func(objectId string)) *MockService_DeleteFileData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(string))
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -251,7 +248,7 @@ func (_c *MockService_DeleteFileData_Call) Return(_a0 error) *MockService_Delete
 	return _c
 }
 
-func (_c *MockService_DeleteFileData_Call) RunAndReturn(run func(context.Context, clientspace.Space, string) error) *MockService_DeleteFileData_Call {
+func (_c *MockService_DeleteFileData_Call) RunAndReturn(run func(string) error) *MockService_DeleteFileData_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -444,9 +441,9 @@ func (_c *MockService_FilesOffload_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// GetFileIdFromObject provides a mock function with given fields: ctx, objectId
-func (_m *MockService) GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error) {
-	ret := _m.Called(ctx, objectId)
+// GetFileIdFromObject provides a mock function with given fields: objectId
+func (_m *MockService) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
+	ret := _m.Called(objectId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetFileIdFromObject")
@@ -454,17 +451,17 @@ func (_m *MockService) GetFileIdFromObject(ctx context.Context, objectId string)
 
 	var r0 domain.FullFileId
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (domain.FullFileId, error)); ok {
-		return rf(ctx, objectId)
+	if rf, ok := ret.Get(0).(func(string) (domain.FullFileId, error)); ok {
+		return rf(objectId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) domain.FullFileId); ok {
-		r0 = rf(ctx, objectId)
+	if rf, ok := ret.Get(0).(func(string) domain.FullFileId); ok {
+		r0 = rf(objectId)
 	} else {
 		r0 = ret.Get(0).(domain.FullFileId)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, objectId)
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(objectId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -478,15 +475,14 @@ type MockService_GetFileIdFromObject_Call struct {
 }
 
 // GetFileIdFromObject is a helper method to define mock.On call
-//   - ctx context.Context
 //   - objectId string
-func (_e *MockService_Expecter) GetFileIdFromObject(ctx interface{}, objectId interface{}) *MockService_GetFileIdFromObject_Call {
-	return &MockService_GetFileIdFromObject_Call{Call: _e.mock.On("GetFileIdFromObject", ctx, objectId)}
+func (_e *MockService_Expecter) GetFileIdFromObject(objectId interface{}) *MockService_GetFileIdFromObject_Call {
+	return &MockService_GetFileIdFromObject_Call{Call: _e.mock.On("GetFileIdFromObject", objectId)}
 }
 
-func (_c *MockService_GetFileIdFromObject_Call) Run(run func(ctx context.Context, objectId string)) *MockService_GetFileIdFromObject_Call {
+func (_c *MockService_GetFileIdFromObject_Call) Run(run func(objectId string)) *MockService_GetFileIdFromObject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -496,7 +492,7 @@ func (_c *MockService_GetFileIdFromObject_Call) Return(_a0 domain.FullFileId, _a
 	return _c
 }
 
-func (_c *MockService_GetFileIdFromObject_Call) RunAndReturn(run func(context.Context, string) (domain.FullFileId, error)) *MockService_GetFileIdFromObject_Call {
+func (_c *MockService_GetFileIdFromObject_Call) RunAndReturn(run func(string) (domain.FullFileId, error)) *MockService_GetFileIdFromObject_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -386,6 +386,20 @@ func (mr *MockFileStoreMockRecorder) SetChunksCount(arg0, arg1 any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetChunksCount", reflect.TypeOf((*MockFileStore)(nil).SetChunksCount), arg0, arg1)
 }
 
+// SetFileOrigin mocks base method.
+func (m *MockFileStore) SetFileOrigin(arg0 domain.FileId, arg1 objectorigin.ObjectOrigin) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetFileOrigin", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetFileOrigin indicates an expected call of SetFileOrigin.
+func (mr *MockFileStoreMockRecorder) SetFileOrigin(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetFileOrigin", reflect.TypeOf((*MockFileStore)(nil).SetFileOrigin), arg0, arg1)
+}
+
 // SetFileSize mocks base method.
 func (m *MockFileStore) SetFileSize(arg0 domain.FileId, arg1 int) error {
 	m.ctrl.T.Helper()

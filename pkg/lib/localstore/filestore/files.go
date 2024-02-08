@@ -113,6 +113,7 @@ type FileStore interface {
 	SetFileSize(fileId domain.FileId, size int) error
 	GetFileSize(fileId domain.FileId) (int, error)
 	GetFileOrigin(fileId domain.FileId) (objectorigin.ObjectOrigin, error)
+	SetFileOrigin(fileId domain.FileId, origin objectorigin.ObjectOrigin) error
 }
 
 func New() FileStore {
@@ -548,6 +549,18 @@ func (s *dsFileStore) GetFileOrigin(fileId domain.FileId) (objectorigin.ObjectOr
 		Origin:     model.ObjectOrigin(origin),
 		ImportType: model.ImportType(importType),
 	}, nil
+}
+
+func (s *dsFileStore) SetFileOrigin(fileId domain.FileId, origin objectorigin.ObjectOrigin) error {
+	err := s.setInt(fileOrigin.ChildString(fileId.String()), int(origin.Origin))
+	if err != nil {
+		return fmt.Errorf("failed to set file origin: %w", err)
+	}
+	err = s.setInt(fileImportType.ChildString(fileId.String()), int(origin.ImportType))
+	if err != nil {
+		return fmt.Errorf("failed to set file import type: %w", err)
+	}
+	return nil
 }
 
 func (s *dsFileStore) Close(ctx context.Context) (err error) {

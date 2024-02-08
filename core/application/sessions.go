@@ -52,6 +52,10 @@ func (s *Service) ValidateSessionToken(token string) error {
 }
 
 func (s *Service) LinkLocalStartNewChallenge(clientInfo *pb.EventAccountLinkChallengeClientInfo) (id string, err error) {
+	if s.app == nil {
+		return "", ErrApplicationIsNotRunning
+	}
+
 	id, value, err := s.sessions.StartNewChallenge(clientInfo)
 	if err != nil {
 		return "", err
@@ -72,6 +76,9 @@ func (s *Service) LinkLocalStartNewChallenge(clientInfo *pb.EventAccountLinkChal
 }
 
 func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChallengeRequest) (token string, appKey string, err error) {
+	if s.app == nil {
+		return "", "", ErrApplicationIsNotRunning
+	}
 	clientInfo, token, err := s.sessions.SolveChallenge(req.ChallengeId, req.Answer, s.sessionSigningKey)
 	if err != nil {
 		return "", "", err

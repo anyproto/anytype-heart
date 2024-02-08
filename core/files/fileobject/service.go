@@ -12,7 +12,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -42,10 +41,10 @@ const CName = "fileobject"
 type Service interface {
 	app.ComponentRunnable
 
-	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
+	DeleteFileData(objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
-	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
+	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
 	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
@@ -61,7 +60,6 @@ type objectCreatorService interface {
 
 type service struct {
 	spaceService  space.Service
-	resolver      idresolver.Resolver
 	objectCreator objectCreatorService
 	fileService   files.Service
 	fileSync      filesync.FileSync
@@ -81,7 +79,6 @@ func (s *service) Name() string {
 
 func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.objectCreator = app.MustComponent[objectCreatorService](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
@@ -303,35 +300,18 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *t
 	return pbtypes.GetString(details, bundle.RelationKeyId.String()), details, nil
 }
 
-func (s *service) GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error) {
-	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
+	details, err := s.objectStore.GetDetails(objectId)
 	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("resolve spaceId: %w", err)
+		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
-
-	space, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("get space: %w", err)
+	spaceId := pbtypes.GetString(details.Details, bundle.RelationKeySpaceId.String())
+	fileId := pbtypes.GetString(details.Details, bundle.RelationKeyFileId.String())
+	if fileId == "" {
+		return domain.FullFileId{}, fmt.Errorf("empty file hash")
 	}
-
-	return s.getFileIdFromObjectInSpace(space, objectId)
-}
-
-func (s *service) getFileIdFromObjectInSpace(space smartblock.Space, objectId string) (domain.FullFileId, error) {
-	var fileId string
-	err := space.Do(objectId, func(sb smartblock.SmartBlock) error {
-		fileId = pbtypes.GetString(sb.Details(), bundle.RelationKeyFileId.String())
-		if fileId == "" {
-			return fmt.Errorf("empty file hash")
-		}
-		return nil
-	})
-	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("get file object: %w", err)
-	}
-
 	return domain.FullFileId{
-		SpaceId: space.Id(),
+		SpaceId: spaceId,
 		FileId:  domain.FileId(fileId),
 	}, nil
 }
@@ -363,6 +343,18 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 		return fileObjectId
 	}
 
+	// If due to some reason fileId is a file object id from another space, we should not migrate it
+	// This is definitely a bug, but we should not break things further.
+	exists, err := s.isFileExistInAnotherSpace(space.Id(), fileId)
+	if err != nil {
+		log.Errorf("checking that file exist in another space: %v", err)
+		return fileId
+	}
+	if exists {
+		log.With("fileObjectId", fileId).Error("found file object in another space")
+		return fileId
+	}
+
 	if len(fileKeys) == 0 {
 		log.Warnf("no encryption keys for fileId %s", fileId)
 	}
@@ -390,6 +382,27 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 		log.Errorf("create file object for fileId %s: %v", fileId, err)
 	}
 	return fileObjectId
+}
+
+func (s *service) isFileExistInAnotherSpace(spaceId string, fileObjectId string) (bool, error) {
+	recs, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileObjectId),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		return false, fmt.Errorf("query objects by file hash: %w", err)
+	}
+	return len(recs) > 0, nil
 }
 
 func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
@@ -519,8 +532,8 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 	return filesOffloaded, totalSize, nil
 }
 
-func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error {
-	fullId, err := s.getFileIdFromObjectInSpace(space, objectId)
+func (s *service) DeleteFileData(objectId string) error {
+	fullId, err := s.GetFileIdFromObject(objectId)
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}

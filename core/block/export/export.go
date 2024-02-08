@@ -364,7 +364,8 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 	for _, info := range res {
 		sbType, err := e.sbtProvider.Type(spaceID, info.Id)
 		if err != nil {
-			return nil, fmt.Errorf("get smartblock type: %w", err)
+			log.With("objectId", info.Id).Errorf("failed to get smartblock type: %v", err)
+			continue
 		}
 		if !e.objectValid(sbType, info.Id, info, includeArchived, isProtobuf) {
 			continue
