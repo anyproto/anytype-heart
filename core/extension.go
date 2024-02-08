@@ -18,5 +18,12 @@ func (mw *Middleware) ExtensionBroadcast(cctx context.Context, req *pb.RpcExtens
 	getService[event.Sender](mw).Broadcast(&pb.Event{
 		Messages: messages,
 	})
-	return &pb.RpcExtensionBroadcastResponse{Event: &pb.ResponseEvent{Messages: messages}}
+	return &pb.RpcExtensionBroadcastResponse{
+		Event: &pb.ResponseEvent{
+			Messages: messages,
+		},
+		Error: &pb.RpcExtensionBroadcastResponseError{
+			Code: pb.RpcExtensionBroadcastResponseError_NULL,
+		},
+	}
 }

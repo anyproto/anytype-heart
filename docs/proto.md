@@ -551,6 +551,7 @@
     - [Rpc.Extension.Broadcast](#anytype-Rpc-Extension-Broadcast)
     - [Rpc.Extension.Broadcast.Request](#anytype-Rpc-Extension-Broadcast-Request)
     - [Rpc.Extension.Broadcast.Response](#anytype-Rpc-Extension-Broadcast-Response)
+    - [Rpc.Extension.Broadcast.Response.Error](#anytype-Rpc-Extension-Broadcast-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -1117,6 +1118,7 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
+    - [Rpc.Extension.Broadcast.Response.Error.Code](#anytype-Rpc-Extension-Broadcast-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -9747,6 +9749,23 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| error | [Rpc.Extension.Broadcast.Response.Error](#anytype-Rpc-Extension-Broadcast-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Extension-Broadcast-Response-Error"></a>
+
+### Rpc.Extension.Broadcast.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Extension.Broadcast.Response.Error.Code](#anytype-Rpc-Extension-Broadcast-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -17834,6 +17853,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Extension-Broadcast-Response-Error-Code"></a>
+
+### Rpc.Extension.Broadcast.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
 
 
 
