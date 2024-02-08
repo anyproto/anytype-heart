@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -31,9 +32,11 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 	if filePath != "" {
 		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, filePath, origin)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("upload file: %w", err)
+			log.Error("handling old file object: upload file", zap.Error(err))
 		}
-		return fileObjectId, treestorage.TreeStorageCreatePayload{}, nil
+		if err == nil {
+			return fileObjectId, treestorage.TreeStorageCreatePayload{}, nil
+		}
 	}
 
 	fileId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
