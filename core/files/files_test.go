@@ -123,9 +123,9 @@ func TestFileAdd(t *testing.T) {
 		WithReader(buf),
 	}
 	got, err := fx.FileAdd(ctx, spaceId, opts...)
-
 	require.NoError(t, err)
 	assert.NotEmpty(t, got.FileId)
+	got.Commit()
 
 	t.Run("expect decrypting content", func(t *testing.T) {
 		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
@@ -179,7 +179,8 @@ func testAddConcurrently(t *testing.T, addFunc func(t *testing.T, fx *fixture) *
 
 	for i := 0; i < numTimes; i++ {
 		go func() {
-			gotCh <- addFunc(t, fx)
+			got := addFunc(t, fx)
+			gotCh <- got
 		}()
 	}
 
@@ -213,6 +214,6 @@ func testAddFile(t *testing.T, fx *fixture) *AddResult {
 	}
 	got, err := fx.FileAdd(context.Background(), spaceId, opts...)
 	require.NoError(t, err)
-
+	got.Commit()
 	return got
 }

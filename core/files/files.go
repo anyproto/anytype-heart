@@ -120,6 +120,13 @@ type AddResult struct {
 
 	MIME string
 	Size int64
+
+	Lock *sync.Mutex
+}
+
+// Commit transaction of adding a file
+func (r *AddResult) Commit() {
+	r.Lock.Unlock()
 }
 
 func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
@@ -132,24 +139,27 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	if err != nil {
 		return nil, err
 	}
-	s.lockAddOperation(opts.checksum)
-	defer s.unlockAddOperation(opts.checksum)
+
+	addLock := s.lockAddOperation(opts.checksum)
 
 	fileInfo, fileNode, err := s.addFileNode(ctx, spaceId, &m.Blob{}, opts)
 	if errors.Is(err, errFileExists) {
-		return s.newExistingFileResult(spaceId, fileInfo)
+		return s.newExistingFileResult(addLock, fileInfo)
 	}
 	if err != nil {
+		addLock.Unlock()
 		return nil, err
 	}
 
 	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, fileInfo, fileNode)
 	if err != nil {
+		addLock.Unlock()
 		return nil, err
 	}
 	fileId := domain.FileId(rootNode.Cid().String())
 	err = s.fileStore.LinkFileVariantToFile(fileId, domain.FileContentId(fileInfo.Hash))
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("link file variant to file: %w", err)
 	}
 
@@ -159,11 +169,13 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	}
 	err = s.fileStore.AddFileKeys(fileKeys)
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
 	err = s.storeFileSize(spaceId, fileId)
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
@@ -172,10 +184,11 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		EncryptionKeys: &fileKeys,
 		Size:           fileInfo.Size_,
 		MIME:           opts.Media,
+		Lock:           addLock,
 	}, nil
 }
 
-func (s *service) newExistingFileResult(spaceId string, fileInfo *storage.FileInfo) (*AddResult, error) {
+func (s *service) newExistingFileResult(lock *sync.Mutex, fileInfo *storage.FileInfo) (*AddResult, error) {
 	fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(fileInfo)
 	if err != nil {
 		return nil, err
@@ -186,6 +199,8 @@ func (s *service) newExistingFileResult(spaceId string, fileInfo *storage.FileIn
 		EncryptionKeys: keys,
 		Size:           fileInfo.Size_,
 		MIME:           fileInfo.Media,
+
+		Lock: lock,
 	}, nil
 }
 
@@ -755,7 +770,7 @@ func (s *service) getInnerDirNode(ctx context.Context, dagService ipld.DAGServic
 	return node, dirLink, err
 }
 
-func (s *service) lockAddOperation(checksum string) {
+func (s *service) lockAddOperation(checksum string) *sync.Mutex {
 	s.lock.Lock()
 	opLock, ok := s.addOperationLocks[checksum]
 	if !ok {
@@ -765,14 +780,5 @@ func (s *service) lockAddOperation(checksum string) {
 	s.lock.Unlock()
 
 	opLock.Lock()
-}
-
-func (s *service) unlockAddOperation(checksum string) {
-	s.lock.Lock()
-	opLock, ok := s.addOperationLocks[checksum]
-	s.lock.Unlock()
-
-	if ok {
-		opLock.Unlock()
-	}
+	return opLock
 }

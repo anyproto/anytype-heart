@@ -55,6 +55,6 @@ func testAddImage(t *testing.T, fx *fixture) *AddResult {
 	}
 	got, err := fx.ImageAdd(context.Background(), spaceId, opts...)
 	require.NoError(t, err)
-
+	got.Commit()
 	return got
 }

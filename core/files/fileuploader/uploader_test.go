@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -162,6 +163,7 @@ func newFixture(t *testing.T) *uplFixture {
 		ctrl:   gomock.NewController(t),
 		picker: picker,
 	}
+	// TODO Use full-fledged file service (from files' package tests)
 	fx.fileService = testMock.NewMockFileService(fx.ctrl)
 	fx.fileObjectService = mock_fileobject.NewMockService(t)
 
@@ -204,6 +206,9 @@ func (fx *uplFixture) tearDown() {
 }
 
 func (fx *uplFixture) expectImageAdd() {
+	// Lock mutex to reflect the behavior of the file service
+	lock := &sync.Mutex{}
+	lock.Lock()
 	fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.AddResult{
 		FileId: "123",
 		MIME:   "image/jpg",
@@ -211,10 +216,14 @@ func (fx *uplFixture) expectImageAdd() {
 			FileId:         "123",
 			EncryptionKeys: map[string]string{},
 		},
+		Lock: lock,
 	}, nil)
 }
 
 func (fx *uplFixture) expectFileAdd() {
+	// Lock mutex to reflect the behavior of the file service
+	lock := &sync.Mutex{}
+	lock.Lock()
 	fx.fileService.EXPECT().FileAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.AddResult{
 		FileId: "123",
 		MIME:   "text/text",
@@ -223,6 +232,7 @@ func (fx *uplFixture) expectFileAdd() {
 			FileId:         "123",
 			EncryptionKeys: map[string]string{},
 		},
+		Lock: lock,
 	}, nil)
 }
 

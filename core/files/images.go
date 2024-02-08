@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -59,22 +60,24 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	if err != nil {
 		return nil, err
 	}
-	s.lockAddOperation(opts.checksum)
-	defer s.unlockAddOperation(opts.checksum)
+	addLock := s.lockAddOperation(opts.checksum)
 
 	dirEntries, err := s.addImageNodes(ctx, spaceId, opts.Reader, opts.Name)
 	if errors.Is(err, errFileExists) {
-		return s.newExisingImageResult(dirEntries)
+		return s.newExisingImageResult(addLock, dirEntries)
 	}
 	if err != nil {
+		addLock.Unlock()
 		return nil, err
 	}
 	if len(dirEntries) == 0 {
+		addLock.Unlock()
 		return nil, errors.New("no image variants")
 	}
 
 	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, dirEntries)
 	if err != nil {
+		addLock.Unlock()
 		return nil, err
 	}
 	fileId := domain.FileId(rootNode.Cid().String())
@@ -84,6 +87,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 	err = s.fileStore.AddFileKeys(fileKeys)
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
@@ -91,12 +95,14 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	for _, variant := range dirEntries {
 		err = s.fileStore.LinkFileVariantToFile(id.FileId, domain.FileContentId(variant.fileInfo.Hash))
 		if err != nil {
+			addLock.Unlock()
 			return nil, fmt.Errorf("failed to link file variant to file: %w", err)
 		}
 	}
 
 	err = s.storeFileSize(spaceId, fileId)
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
@@ -106,6 +112,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		MIME:           entry.fileInfo.Media,
 		Size:           entry.fileInfo.Size_,
 		EncryptionKeys: &fileKeys,
+		Lock:           addLock,
 	}, nil
 }
 
@@ -224,7 +231,7 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 	return outerNode, keys, nil
 }
 
-func (s *service) newExisingImageResult(dirEntries []dirEntry) (*AddResult, error) {
+func (s *service) newExisingImageResult(lock *sync.Mutex, dirEntries []dirEntry) (*AddResult, error) {
 	if len(dirEntries) == 0 {
 		return nil, errors.New("no image variants")
 	}
@@ -239,6 +246,7 @@ func (s *service) newExisingImageResult(dirEntries []dirEntry) (*AddResult, erro
 		MIME:           entry.fileInfo.Media,
 		Size:           entry.fileInfo.Size_,
 		EncryptionKeys: keys,
+		Lock:           lock,
 	}, nil
 
 }

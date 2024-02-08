@@ -434,6 +434,8 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			return UploadResult{Err: fmt.Errorf("add file to storage: %w", err)}
 		}
 	}
+	defer addResult.Commit()
+
 	result.MIME = addResult.MIME
 	result.Size = addResult.Size
 
