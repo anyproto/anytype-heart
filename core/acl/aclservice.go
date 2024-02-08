@@ -107,7 +107,7 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 }
 
 func (a *aclService) Cancel(ctx context.Context, spaceId string) (err error) {
-	// TODO: finish this by implementing space offload for join cancelled spaces (?)
+	// TODO: finish this by implementing space offload for join canceled spaces (?)
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
