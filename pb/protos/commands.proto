@@ -5886,6 +5886,9 @@ message Rpc {
                     // can be empty if user did not ask for any name
                     string requestedAnyName = 10;
 
+                    // if the email was verified by the user or set during the checkout - it will be here
+                    string userEmail = 11;
+
                     message Error {
                         Code code = 1;
                         string description = 2;

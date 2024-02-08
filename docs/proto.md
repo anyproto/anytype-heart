@@ -14688,6 +14688,7 @@ c) cancel the subscription
 | nextTierEnds | [uint64](#uint64) |  |  |
 | paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
 | requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
+| userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
 
 
 
@@ -19138,8 +19139,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
-| ALREADY_SENT | 5 |  |
-| ALREADY_SUBSCRIPTION | 6 |  |
 
 
 
@@ -19198,8 +19197,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
-| WRONG_CODE | 5 |  |
-| ALREADY_SUBSCRIPTION | 6 |  |
 
 
 

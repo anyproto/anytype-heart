@@ -216,6 +216,7 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 	out.NextTierEnds = status.NextTierEnds
 	out.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(status.PaymentMethod)
 	out.RequestedAnyName = status.RequestedAnyName
+	out.UserEmail = status.UserEmail
 
 	return &out
 }
