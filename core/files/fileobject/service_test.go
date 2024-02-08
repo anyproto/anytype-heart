@@ -2,10 +2,13 @@ package fileobject
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -14,25 +17,30 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/files/mock_files"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/filestorage"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	bb "github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
+	fileService   files.Service
 	objectStore   *objectstore.StoreFixture
-	fileService   *mock_files.MockService
 	objectCreator *objectCreatorStub
+	spaceService  *mock_space.MockService
 
 	*service
 }
@@ -40,32 +48,44 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	fileStore := filestore.New()
 	objectStore := objectstore.NewStoreFixture(t)
-	fileService := mock_files.NewMockService(t)
 	objectCreator := &objectCreatorStub{}
+	dataStoreProvider := datastore.NewInMemory()
+	blockStorage := filestorage.NewInMemory()
+	rpcStore := rpcstore.NewInMemoryStore(1024)
+	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
+	commonFileService := fileservice.New()
+	fileSyncService := filesync.New()
+	eventSender := mock_event.NewMockSender(t)
+	fileService := files.New()
+	spaceService := mock_space.NewMockService(t)
+
+	svc := New()
 
 	ctx := context.Background()
 	a := new(app.App)
-	a.Register(datastore.NewInMemory())
+	a.Register(dataStoreProvider)
 	a.Register(fileStore)
 	a.Register(objectStore)
-	a.Register(testutil.PrepareMock(ctx, a, fileService))
+	a.Register(commonFileService)
+	a.Register(fileSyncService)
+	a.Register(testutil.PrepareMock(ctx, a, eventSender))
+	a.Register(testutil.PrepareMock(ctx, a, spaceService))
+	a.Register(blockStorage)
+	a.Register(rpcStoreService)
+	a.Register(fileService)
+	a.Register(objectCreator)
+	a.Register(svc)
 
 	err := a.Start(ctx)
 	require.NoError(t, err)
 
-	svc := &service{
-		objectStore:   objectStore,
-		fileStore:     fileStore,
-		fileService:   fileService,
-		objectCreator: objectCreator,
-	}
-
 	fx := &fixture{
-		objectStore:   objectStore,
 		fileService:   fileService,
+		objectStore:   objectStore,
 		objectCreator: objectCreator,
+		spaceService:  spaceService,
 
-		service: svc,
+		service: svc.(*service),
 	}
 	return fx
 }
@@ -74,6 +94,14 @@ type objectCreatorStub struct {
 	objectId      string
 	creationState *state.State
 	details       *types.Struct
+}
+
+func (c *objectCreatorStub) Init(_ *app.App) error {
+	return nil
+}
+
+func (c *objectCreatorStub) Name() string {
+	return "objectCreatorStub"
 }
 
 func (c *objectCreatorStub) CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
@@ -216,8 +244,10 @@ func TestMigration(t *testing.T) {
 		fx := newFixture(t)
 
 		spaceId := "spaceId"
+		addedFile := testAddFile(t, fx, spaceId)
+
 		objectId := "objectId"
-		fileId := domain.FileId("fileId")
+		fileId := addedFile.FileId
 		expectedFileObjectId := "fileObjectId"
 		st := testutil.BuildStateFromAST(
 			bb.Root(
@@ -239,15 +269,9 @@ func TestMigration(t *testing.T) {
 		err := fx.fileStore.SetFileOrigin(fileId, origin)
 		require.NoError(t, err)
 
-		file := mock_files.NewMockFile(t)
-		file.EXPECT().Info().Return(&storage.FileInfo{
-			Media: "text/html",
-		})
-		file.EXPECT().Details(mock.Anything).Return(&types.Struct{Fields: map[string]*types.Value{}}, bundle.TypeKeyFile, nil)
-
-		fx.fileService.EXPECT().FileByHash(mock.Anything, domain.FullFileId{SpaceId: spaceId, FileId: fileId}).Return(file, nil)
-
 		fx.objectCreator.objectId = expectedFileObjectId
+
+		expectIndexerCalled(t, fx, expectedFileObjectId)
 
 		keys := map[string]string{
 			"filepath": "key",
@@ -282,4 +306,27 @@ func TestMigration(t *testing.T) {
 		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())
 	})
+}
+
+func testAddFile(t *testing.T, fx *fixture, spaceId string) *files.AddResult {
+	fileName := "myFile"
+	lastModifiedDate := time.Now()
+	fileContent := "it's my favorite file"
+	buf := strings.NewReader(fileContent)
+	opts := []files.AddOption{
+		files.WithName(fileName),
+		files.WithLastModifiedDate(lastModifiedDate.Unix()),
+		files.WithReader(buf),
+	}
+	got, err := fx.fileService.FileAdd(context.Background(), spaceId, opts...)
+	require.NoError(t, err)
+	got.Commit()
+	return got
+}
+
+func expectIndexerCalled(t *testing.T, fx *fixture, fileObjectId string) {
+	space := mock_clientspace.NewMockSpace(t)
+	space.EXPECT().Do(fileObjectId, mock.Anything).Return(nil)
+
+	fx.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(space, nil)
 }

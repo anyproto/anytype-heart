@@ -30,7 +30,7 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // FileAdd provides a mock function with given fields: ctx, spaceID, options
-func (_m *MockService) FileAdd(ctx context.Context, spaceID string, options ...files.AddOption) (*files.FileAddResult, error) {
+func (_m *MockService) FileAdd(ctx context.Context, spaceID string, options ...files.AddOption) (*files.AddResult, error) {
 	_va := make([]interface{}, len(options))
 	for _i := range options {
 		_va[_i] = options[_i]
@@ -44,16 +44,16 @@ func (_m *MockService) FileAdd(ctx context.Context, spaceID string, options ...f
 		panic("no return value specified for FileAdd")
 	}
 
-	var r0 *files.FileAddResult
+	var r0 *files.AddResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...files.AddOption) (*files.FileAddResult, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...files.AddOption) (*files.AddResult, error)); ok {
 		return rf(ctx, spaceID, options...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...files.AddOption) *files.FileAddResult); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...files.AddOption) *files.AddResult); ok {
 		r0 = rf(ctx, spaceID, options...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*files.FileAddResult)
+			r0 = ret.Get(0).(*files.AddResult)
 		}
 	}
 
@@ -93,12 +93,12 @@ func (_c *MockService_FileAdd_Call) Run(run func(ctx context.Context, spaceID st
 	return _c
 }
 
-func (_c *MockService_FileAdd_Call) Return(_a0 *files.FileAddResult, _a1 error) *MockService_FileAdd_Call {
+func (_c *MockService_FileAdd_Call) Return(_a0 *files.AddResult, _a1 error) *MockService_FileAdd_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_FileAdd_Call) RunAndReturn(run func(context.Context, string, ...files.AddOption) (*files.FileAddResult, error)) *MockService_FileAdd_Call {
+func (_c *MockService_FileAdd_Call) RunAndReturn(run func(context.Context, string, ...files.AddOption) (*files.AddResult, error)) *MockService_FileAdd_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -395,7 +395,7 @@ func (_c *MockService_GetSpaceUsage_Call) RunAndReturn(run func(context.Context,
 }
 
 // ImageAdd provides a mock function with given fields: ctx, spaceID, options
-func (_m *MockService) ImageAdd(ctx context.Context, spaceID string, options ...files.AddOption) (*files.ImageAddResult, error) {
+func (_m *MockService) ImageAdd(ctx context.Context, spaceID string, options ...files.AddOption) (*files.AddResult, error) {
 	_va := make([]interface{}, len(options))
 	for _i := range options {
 		_va[_i] = options[_i]
@@ -409,16 +409,16 @@ func (_m *MockService) ImageAdd(ctx context.Context, spaceID string, options ...
 		panic("no return value specified for ImageAdd")
 	}
 
-	var r0 *files.ImageAddResult
+	var r0 *files.AddResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...files.AddOption) (*files.ImageAddResult, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...files.AddOption) (*files.AddResult, error)); ok {
 		return rf(ctx, spaceID, options...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...files.AddOption) *files.ImageAddResult); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...files.AddOption) *files.AddResult); ok {
 		r0 = rf(ctx, spaceID, options...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*files.ImageAddResult)
+			r0 = ret.Get(0).(*files.AddResult)
 		}
 	}
 
@@ -458,12 +458,12 @@ func (_c *MockService_ImageAdd_Call) Run(run func(ctx context.Context, spaceID s
 	return _c
 }
 
-func (_c *MockService_ImageAdd_Call) Return(_a0 *files.ImageAddResult, _a1 error) *MockService_ImageAdd_Call {
+func (_c *MockService_ImageAdd_Call) Return(_a0 *files.AddResult, _a1 error) *MockService_ImageAdd_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_ImageAdd_Call) RunAndReturn(run func(context.Context, string, ...files.AddOption) (*files.ImageAddResult, error)) *MockService_ImageAdd_Call {
+func (_c *MockService_ImageAdd_Call) RunAndReturn(run func(context.Context, string, ...files.AddOption) (*files.AddResult, error)) *MockService_ImageAdd_Call {
 	_c.Call.Return(run)
 	return _c
 }
