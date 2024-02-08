@@ -25,26 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
-type personalSpaceIdStub struct {
-	personalSpaceId string
-}
-
-func (s *personalSpaceIdStub) Name() string          { return "personalSpaceIdStub" }
-func (s *personalSpaceIdStub) Init(a *app.App) error { return nil }
-func (s *personalSpaceIdStub) PersonalSpaceID() string {
-	return s.personalSpaceId
-}
-
-type spaceResolverStub struct {
-	spaceId string
-}
-
-func (s *spaceResolverStub) Name() string          { return "spaceResolverStub" }
-func (s *spaceResolverStub) Init(a *app.App) error { return nil }
-func (s *spaceResolverStub) ResolveSpaceID(objectID string) (string, error) {
-	return s.spaceId, nil
-}
-
 type fixture struct {
 	Service
 
@@ -64,14 +44,8 @@ func newFixture(t *testing.T) *fixture {
 	rpcStore := rpcstore.NewInMemoryStore(1024)
 	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
-
 	fileSyncService := filesync.New()
-
-	personalSpaceIdGetter := &personalSpaceIdStub{personalSpaceId: spaceId}
-	spaceIdResolver := &spaceResolverStub{spaceId: spaceId}
-
 	objectStore := objectstore.NewStoreFixture(t)
-
 	eventSender := mock_event.NewMockSender(t)
 
 	ctx := context.Background()
@@ -83,8 +57,6 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(blockStorage)
 	a.Register(objectStore)
-	a.Register(personalSpaceIdGetter)
-	a.Register(spaceIdResolver)
 	a.Register(rpcStoreService)
 	err := a.Start(ctx)
 	require.NoError(t, err)

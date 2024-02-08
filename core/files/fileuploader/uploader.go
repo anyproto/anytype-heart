@@ -224,9 +224,15 @@ func (u *uploader) SetAdditionalDetails(details *types.Struct) Uploader {
 
 func (u *uploader) SetBytes(b []byte) Uploader {
 	u.getReader = func(_ context.Context) (*fileReader, error) {
+		buf := bytes.NewReader(b)
+		bufReaderSize := bufio.NewReaderSize(buf, bufSize)
 		return &fileReader{
 			bufioSeekClose: &bufioSeekClose{
-				Reader: bufio.NewReaderSize(bytes.NewReader(b), bufSize),
+				Reader: bufReaderSize,
+				seek: func(offset int64, whence int) (int64, error) {
+					bufReaderSize.Reset(buf)
+					return buf.Seek(offset, whence)
+				},
 			},
 		}, nil
 	}

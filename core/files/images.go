@@ -112,7 +112,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		MIME:           entry.fileInfo.Media,
 		Size:           entry.fileInfo.Size_,
 		EncryptionKeys: &fileKeys,
-		Lock:           addLock,
+		lock:           addLock,
 	}, nil
 }
 
@@ -246,7 +246,7 @@ func (s *service) newExisingImageResult(lock *sync.Mutex, dirEntries []dirEntry)
 		MIME:           entry.fileInfo.Media,
 		Size:           entry.fileInfo.Size_,
 		EncryptionKeys: keys,
-		Lock:           lock,
+		lock:           lock,
 	}, nil
 
 }

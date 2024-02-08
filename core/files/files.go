@@ -24,7 +24,6 @@ import (
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -73,7 +72,6 @@ type service struct {
 	commonFile  fileservice.FileService
 	fileSync    filesync.FileSync
 	dagService  ipld.DAGService
-	resolver    idresolver.Resolver
 	fileStorage filestorage.FileStorage
 	objectStore objectstore.ObjectStore
 
@@ -94,7 +92,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
@@ -121,12 +118,12 @@ type AddResult struct {
 	MIME string
 	Size int64
 
-	Lock *sync.Mutex
+	lock *sync.Mutex
 }
 
 // Commit transaction of adding a file
 func (r *AddResult) Commit() {
-	r.Lock.Unlock()
+	r.lock.Unlock()
 }
 
 func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
@@ -184,7 +181,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		EncryptionKeys: &fileKeys,
 		Size:           fileInfo.Size_,
 		MIME:           opts.Media,
-		Lock:           addLock,
+		lock:           addLock,
 	}, nil
 }
 
@@ -200,7 +197,7 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileInfo *storage.File
 		Size:           fileInfo.Size_,
 		MIME:           fileInfo.Media,
 
-		Lock: lock,
+		lock: lock,
 	}, nil
 }
 
