@@ -134,14 +134,14 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 		var exist bool
 		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 			stateNotification := s.GetNotificationById(notification.Id)
-			n.Lock()
-			n.lastNotificationIdToAcl[notification.Acl] = notification.Id
-			n.Unlock()
 			if stateNotification != nil {
 				exist = true
 				return nil
 			}
 			s.AddNotification(notification)
+			n.Lock()
+			n.lastNotificationIdToAcl[notification.Acl] = notification.Id
+			n.Unlock()
 			return nil
 		})
 		if err != nil {
