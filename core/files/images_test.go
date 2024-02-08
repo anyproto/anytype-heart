@@ -3,7 +3,6 @@ package files
 import (
 	"context"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -18,32 +17,31 @@ func TestImageAdd(t *testing.T) {
 
 		assert.NotEmpty(t, got.MIME)
 		assert.True(t, got.Size > 0)
+		assert.False(t, got.IsExisting)
 
 		t.Run("add same image again", func(t *testing.T) {
-			got := testAddImage(t, fx)
+			got2 := testAddImage(t, fx)
 
-			assert.NotEmpty(t, got.MIME)
-			assert.True(t, got.Size > 0)
+			assert.NotEmpty(t, got2.MIME)
+			assert.True(t, got2.Size > 0)
+
+			assert.Equal(t, got.FileId, got2.FileId)
+			assert.Equal(t, got.EncryptionKeys, got2.EncryptionKeys)
+			assert.Equal(t, got.MIME, got2.MIME)
+			assert.Equal(t, got.Size, got2.Size)
+			assert.True(t, got2.IsExisting)
 		})
 	})
 
 	// We had a problem with concurrent adding of the same image, so test it
 	t.Run("concurrent adding of the same image", func(t *testing.T) {
-		fx := newFixture(t)
-		var wg sync.WaitGroup
-		for i := 0; i < 5; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				testAddImage(t, fx)
-			}()
-		}
-		wg.Wait()
+		testAddConcurrently(t, func(t *testing.T, fx *fixture) *AddResult {
+			return testAddImage(t, fx)
+		})
 	})
 }
 
-func testAddImage(t *testing.T, fx *fixture) *ImageAddResult {
+func testAddImage(t *testing.T, fx *fixture) *AddResult {
 	f, err := os.Open("../../pkg/lib/mill/testdata/image.jpeg")
 	require.NoError(t, err)
 	defer f.Close()

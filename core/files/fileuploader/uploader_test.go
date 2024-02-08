@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/magiconair/properties/assert"
@@ -205,30 +204,21 @@ func (fx *uplFixture) tearDown() {
 }
 
 func (fx *uplFixture) expectImageAdd() {
-	im := fx.newImage("123")
-	fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.ImageAddResult{
+	fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.AddResult{
 		FileId: "123",
-		Image:  im,
+		MIME:   "image/jpg",
 		EncryptionKeys: &domain.FileEncryptionKeys{
 			FileId:         "123",
 			EncryptionKeys: map[string]string{},
 		},
 	}, nil)
-	im.EXPECT().GetOriginalFile(gomock.Any()).Return(fx.file, nil)
-	fx.file.EXPECT().Meta().Return(&files.FileMeta{Media: "image/jpg"}).AnyTimes()
 }
 
 func (fx *uplFixture) expectFileAdd() {
-	meta := &files.FileMeta{
-		Media: "text/text",
-		Name:  "test.txt",
-		Size:  3,
-		Added: time.Now(),
-	}
-	file := fx.newFile("123", meta)
-	fx.fileService.EXPECT().FileAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.FileAddResult{
+	fx.fileService.EXPECT().FileAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.AddResult{
 		FileId: "123",
-		File:   file,
+		MIME:   "text/text",
+		Size:   3,
 		EncryptionKeys: &domain.FileEncryptionKeys{
 			FileId:         "123",
 			EncryptionKeys: map[string]string{},

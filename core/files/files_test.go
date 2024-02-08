@@ -103,6 +103,7 @@ func newFixture(t *testing.T) *fixture {
 
 func TestFileAdd(t *testing.T) {
 	fx := newFixture(t)
+	ctx := context.Background()
 
 	uploaded := make(chan struct{})
 	fx.fileSyncService.OnUploaded(func(fileId domain.FileId) error {
@@ -121,13 +122,16 @@ func TestFileAdd(t *testing.T) {
 		WithLastModifiedDate(lastModifiedDate.Unix()),
 		WithReader(buf),
 	}
-	got, err := fx.FileAdd(context.Background(), spaceId, opts...)
+	got, err := fx.FileAdd(ctx, spaceId, opts...)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, got.FileId)
 
-	t.Run("want to decrypt file content", func(t *testing.T) {
-		reader, err := got.File.Reader(context.Background())
+	t.Run("expect decrypting content", func(t *testing.T) {
+		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
+		require.NoError(t, err)
+
+		reader, err := file.Reader(ctx)
 		require.NoError(t, err)
 
 		gotContent, err := io.ReadAll(reader)
@@ -136,24 +140,79 @@ func TestFileAdd(t *testing.T) {
 
 	})
 
-	t.Run("want to store encrypted content in DAG", func(t *testing.T) {
-		encryptedContent, err := fx.commonFileService.GetFile(context.Background(), cid.MustParse(got.File.Info().Hash))
+	t.Run("expect that encrypted content stored in DAG", func(t *testing.T) {
+		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
+		require.NoError(t, err)
+
+		contentCid := cid.MustParse(file.Info().Hash)
+		encryptedContent, err := fx.commonFileService.GetFile(ctx, contentCid)
 		require.NoError(t, err)
 		gotEncryptedContent, err := io.ReadAll(encryptedContent)
 		require.NoError(t, err)
 		assert.NotEqual(t, fileContent, string(gotEncryptedContent))
-
 	})
 
 	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
 		err = fx.fileSyncService.AddFile(spaceId, got.FileId, true, false)
 		require.NoError(t, err)
 		<-uploaded
-		infos, err := fx.rpcStore.FilesInfo(context.Background(), spaceId, got.FileId)
+		infos, err := fx.rpcStore.FilesInfo(ctx, spaceId, got.FileId)
 		require.NoError(t, err)
 
 		require.Len(t, infos, 1)
 
 		assert.Equal(t, got.FileId.String(), infos[0].FileId)
 	})
+}
+
+func TestAddFilesConcurrently(t *testing.T) {
+	testAddConcurrently(t, func(t *testing.T, fx *fixture) *AddResult {
+		return testAddFile(t, fx)
+	})
+}
+
+func testAddConcurrently(t *testing.T, addFunc func(t *testing.T, fx *fixture) *AddResult) {
+	fx := newFixture(t)
+
+	const numTimes = 5
+	gotCh := make(chan *AddResult, numTimes)
+
+	for i := 0; i < numTimes; i++ {
+		go func() {
+			gotCh <- addFunc(t, fx)
+		}()
+	}
+
+	var prev *AddResult
+	for i := 0; i < numTimes; i++ {
+		got := <-gotCh
+
+		if prev == nil {
+			// The first file should be new
+			assert.False(t, got.IsExisting)
+			prev = got
+		} else {
+			assert.Equal(t, prev.FileId, got.FileId)
+			assert.Equal(t, prev.EncryptionKeys, got.EncryptionKeys)
+			assert.Equal(t, prev.MIME, got.MIME)
+			assert.Equal(t, prev.Size, got.Size)
+			assert.True(t, got.IsExisting)
+		}
+	}
+}
+
+func testAddFile(t *testing.T, fx *fixture) *AddResult {
+	fileName := "myFile"
+	lastModifiedDate := time.Now()
+	fileContent := "it's my favorite file"
+	buf := strings.NewReader(fileContent)
+	opts := []AddOption{
+		WithName(fileName),
+		WithLastModifiedDate(lastModifiedDate.Unix()),
+		WithReader(buf),
+	}
+	got, err := fx.FileAdd(context.Background(), spaceId, opts...)
+	require.NoError(t, err)
+
+	return got
 }

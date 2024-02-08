@@ -49,25 +49,18 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 	}, nil
 }
 
-type ImageAddResult struct {
-	FileId         domain.FileId
-	EncryptionKeys *domain.FileEncryptionKeys
-	IsExisting     bool
-
-	MIME string
-	Size int64
-}
-
-func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*ImageAddResult, error) {
+func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
 	}
 
-	err := s.normalizeOptions(ctx, spaceId, &opts)
+	err := s.normalizeOptions(&opts)
 	if err != nil {
 		return nil, err
 	}
+	s.lockAddOperation(opts.checksum)
+	defer s.unlockAddOperation(opts.checksum)
 
 	dirEntries, err := s.addImageNodes(ctx, spaceId, opts.Reader, opts.Name)
 	if errors.Is(err, errFileExists) {
@@ -108,7 +101,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 
 	entry := dirEntries[0]
-	return &ImageAddResult{
+	return &AddResult{
 		FileId:         fileId,
 		MIME:           entry.fileInfo.Media,
 		Size:           entry.fileInfo.Size_,
@@ -130,11 +123,10 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 		}
 		opts := &AddOptions{
 			Reader: reader,
-			Use:    "",
 			Media:  "",
 			Name:   filename,
 		}
-		err = s.normalizeOptions(ctx, spaceID, opts)
+		err = s.normalizeOptions(opts)
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +224,7 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 	return outerNode, keys, nil
 }
 
-func (s *service) newExisingImageResult(dirEntries []dirEntry) (*ImageAddResult, error) {
+func (s *service) newExisingImageResult(dirEntries []dirEntry) (*AddResult, error) {
 	if len(dirEntries) == 0 {
 		return nil, errors.New("no image variants")
 	}
@@ -241,7 +233,7 @@ func (s *service) newExisingImageResult(dirEntries []dirEntry) (*ImageAddResult,
 	if err != nil {
 		return nil, err
 	}
-	return &ImageAddResult{
+	return &AddResult{
 		IsExisting:     true,
 		FileId:         fileId,
 		MIME:           entry.fileInfo.Media,
