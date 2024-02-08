@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const port = ":7070"
@@ -133,8 +133,8 @@ func startHttpServer() *http.Server {
 	return server
 }
 
-func buildInfo() *pb.RpcDownloadManifestResponseManifestInfo {
-	return &pb.RpcDownloadManifestResponseManifestInfo{
+func buildInfo() *model.ManifestInfo {
+	return &model.ManifestInfo{
 		Id:           "id",
 		Name:         "name",
 		Author:       "https://github.com/anyproto",
