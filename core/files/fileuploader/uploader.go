@@ -476,11 +476,8 @@ func (u *uploader) addImageToStorage(ctx context.Context, addOptions []files.Add
 		fileId:     addResult.FileId,
 		fileKeys:   addResult.EncryptionKeys,
 		fileExists: addResult.IsExisting,
-	}
-	orig, _ := addResult.Image.GetOriginalFile(ctx)
-	if orig != nil {
-		res.mime = orig.Meta().Media
-		res.size = orig.Meta().Size
+		mime:       addResult.MIME,
+		size:       addResult.Size,
 	}
 	return res, nil
 }
