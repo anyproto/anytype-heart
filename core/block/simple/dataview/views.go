@@ -18,6 +18,7 @@ func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFi
 	if filter.Id == "" {
 		filter.Id = bson.NewObjectId().Hex()
 	}
+	l.setRelationFormat(filter)
 	view.Filters = append(view.Filters, filter)
 	return nil
 }
@@ -52,6 +53,7 @@ func (l *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.B
 	}
 
 	filter.Id = filterID
+	l.setRelationFormat(filter)
 	view.Filters[idx] = filter
 
 	return nil
@@ -206,4 +208,12 @@ func (l *Dataview) ReorderViewRelations(viewID string, relationKeys []string) er
 		}
 	}
 	return nil
+}
+
+func (l *Dataview) setRelationFormat(filter *model.BlockContentDataviewFilter) {
+	for _, relLink := range l.content.RelationLinks {
+		if relLink.Key == filter.RelationKey {
+			filter.Format = relLink.Format
+		}
+	}
 }

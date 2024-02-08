@@ -438,23 +438,6 @@ var WithAllBlocksEditsRestricted = StateTransformer(func(s *state.State) {
 	})
 })
 
-var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
-	return func(s *state.State) {
-		WithEmpty(s)
-
-		for _, block := range blocks {
-			if block.Id == "" {
-				panic("WithRootBlocks arg must contains exact ids for blocks")
-			}
-			s.Add(simple.New(block))
-			err := s.InsertTo(s.RootId(), model.Block_Inner, block.Id)
-			if err != nil {
-				log.Errorf("template WithDataview failed to insert: %v", err)
-			}
-		}
-	}
-}
-
 var WithDataviewID = func(id string, dataview *model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		WithEmpty(s)

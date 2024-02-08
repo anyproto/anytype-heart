@@ -92,18 +92,33 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	return response(objectId, err)
 }
 
-func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadManifestRequest) *pb.RpcDownloadManifestResponse {
-	response := func(info *pb.RpcDownloadManifestResponseManifestInfo, err error) *pb.RpcDownloadManifestResponse {
-		m := &pb.RpcDownloadManifestResponse{
-			Error: &pb.RpcDownloadManifestResponseError{Code: pb.RpcDownloadManifestResponseError_NULL},
+func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGalleryDownloadManifestRequest) *pb.RpcGalleryDownloadManifestResponse {
+	response := func(info *model.ManifestInfo, err error) *pb.RpcGalleryDownloadManifestResponse {
+		m := &pb.RpcGalleryDownloadManifestResponse{
+			Error: &pb.RpcGalleryDownloadManifestResponseError{Code: pb.RpcGalleryDownloadManifestResponseError_NULL},
 			Info:  info,
 		}
 		if err != nil {
-			m.Error.Code = pb.RpcDownloadManifestResponseError_UNKNOWN_ERROR
+			m.Error.Code = pb.RpcGalleryDownloadManifestResponseError_UNKNOWN_ERROR
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
 	info, err := gallery.DownloadManifest(req.Url, true)
 	return response(info, err)
+}
+
+func (mw *Middleware) GalleryDownloadIndex(_ context.Context, _ *pb.RpcGalleryDownloadIndexRequest) *pb.RpcGalleryDownloadIndexResponse {
+	response, err := gallery.DownloadGalleryIndex()
+	if response == nil {
+		response = &pb.RpcGalleryDownloadIndexResponse{}
+	}
+	response.Error = &pb.RpcGalleryDownloadIndexResponseError{
+		Code: mapErrorCode(err,
+			errToCode(gallery.ErrUnmarshalJson, pb.RpcGalleryDownloadIndexResponseError_UNMARSHALLING_ERROR),
+			errToCode(gallery.ErrDownloadIndex, pb.RpcGalleryDownloadIndexResponseError_DOWNLOAD_ERROR),
+		),
+		Description: getErrorDescription(err),
+	}
+	return response
 }
