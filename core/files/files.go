@@ -141,7 +141,12 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 
 	fileInfo, fileNode, err := s.addFileNode(ctx, spaceId, &m.Blob{}, opts)
 	if errors.Is(err, errFileExists) {
-		return s.newExistingFileResult(addLock, fileInfo)
+		res, err := s.newExistingFileResult(addLock, fileInfo)
+		if err != nil {
+			addLock.Unlock()
+			return nil, err
+		}
+		return res, nil
 	}
 	if err != nil {
 		addLock.Unlock()

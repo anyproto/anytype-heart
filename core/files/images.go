@@ -64,7 +64,12 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 
 	dirEntries, err := s.addImageNodes(ctx, spaceId, opts.Reader, opts.Name)
 	if errors.Is(err, errFileExists) {
-		return s.newExisingImageResult(addLock, dirEntries)
+		res, err := s.newExisingImageResult(addLock, dirEntries)
+		if err != nil {
+			addLock.Unlock()
+			return nil, err
+		}
+		return res, nil
 	}
 	if err != nil {
 		addLock.Unlock()
