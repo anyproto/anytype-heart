@@ -2,6 +2,7 @@ package fileobject
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -177,8 +179,12 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	defer ind.markIndexingDone(id)
 
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
+	if errors.Is(err, domain.ErrFileNotFound) {
+		log.Errorf("build details: %v", err)
+		return ind.markFileAsNotFound(id)
+	}
 	if err != nil {
-		return fmt.Errorf("get details for file or image: %w", err)
+		return fmt.Errorf("build details: %w", err)
 	}
 	space, err := ind.spaceService.Get(ctx, id.SpaceID)
 	if err != nil {
@@ -208,6 +214,18 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 		return fmt.Errorf("apply to smart block: %w", err)
 	}
 	return nil
+}
+
+func (ind *indexer) markFileAsNotFound(id domain.FullID) error {
+	space, err := ind.spaceService.Get(ind.indexCtx, id.SpaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	return space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyFileIndexingStatus, pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)))
+		return sb.Apply(st)
+	})
 }
 
 func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {
@@ -300,6 +318,7 @@ func (ind *indexer) addBlocks(st *state.State, details *types.Struct, objectId s
 			}
 		}
 	}
+	template.WithAllBlocksEditsRestricted(st)
 	return nil
 }
 

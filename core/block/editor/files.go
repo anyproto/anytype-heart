@@ -37,6 +37,7 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
 			}
 
+			// Other blocks added in file indexer (see fileobject package)
 			template.InitTemplate(s,
 				template.WithEmpty,
 				template.WithTitle,
