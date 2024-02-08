@@ -607,7 +607,8 @@ func validType(sbType smartblock.SmartBlockType) bool {
 
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 	return sbType == smartblock.SmartBlockTypeProfilePage ||
-		sbType == smartblock.SmartBlockTypePage
+		sbType == smartblock.SmartBlockTypePage ||
+		sbType == smartblock.SmartBlockTypeFileObject
 }
 
 func (e *export) cleanupFile(wr writer) {
