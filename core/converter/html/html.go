@@ -457,12 +457,11 @@ func (h *HTML) writeTextToBuf(text *model.BlockContentText) {
 			// iterate marks forwards to put closing tags
 			for _, m := range text.Marks.Marks {
 				if int(m.Range.To) == i {
-					// TODO: check lastOpenedTags on zero length ?
-					if lastOpenedTags[0] != m.Type {
-						h.closeTagsUntil(text, &lastOpenedTags, m.Type, i)
-					}
+					h.closeTagsUntil(text, &lastOpenedTags, m.Type, i)
 					h.writeTag(m, false)
-					lastOpenedTags = lastOpenedTags[1:]
+					if len(lastOpenedTags) != 0 {
+						lastOpenedTags = lastOpenedTags[1:]
+					}
 				}
 			}
 			// iterate marks backwards to put opening tags
