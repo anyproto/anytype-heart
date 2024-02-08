@@ -1045,7 +1045,7 @@ message Event {
 
     message Extension {
         message Broadcast {
-            string json = 1;
+            string payload = 1;
         }
     }
 }

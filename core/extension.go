@@ -11,7 +11,7 @@ func (mw *Middleware) ExtensionBroadcast(cctx context.Context, req *pb.RpcExtens
 	messages := []*pb.EventMessage{
 		{
 			Value: &pb.EventMessageValueOfExtensionBroadcast{
-				ExtensionBroadcast: &pb.EventExtensionBroadcast{Json: req.Json},
+				ExtensionBroadcast: &pb.EventExtensionBroadcast{Payload: req.Payload},
 			},
 		},
 	}

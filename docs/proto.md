@@ -9735,7 +9735,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| json | [string](#string) |  |  |
+| payload | [string](#string) |  |  |
 
 
 
@@ -21540,7 +21540,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| json | [string](#string) |  |  |
+| payload | [string](#string) |  |  |
 
 
 
