@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -49,34 +50,39 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 	}, nil
 }
 
-type ImageAddResult struct {
-	FileId         domain.FileId
-	Image          Image
-	EncryptionKeys *domain.FileEncryptionKeys
-	IsExisting     bool
-}
-
-func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*ImageAddResult, error) {
+func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
 	}
 
-	err := s.normalizeOptions(ctx, spaceId, &opts)
+	err := s.normalizeOptions(&opts)
 	if err != nil {
 		return nil, err
 	}
+	addLock := s.lockAddOperation(opts.checksum)
 
 	dirEntries, err := s.addImageNodes(ctx, spaceId, opts.Reader, opts.Name)
 	if errors.Is(err, errFileExists) {
-		return s.newExisingImageResult(spaceId, dirEntries)
+		res, err := s.newExisingImageResult(addLock, dirEntries)
+		if err != nil {
+			addLock.Unlock()
+			return nil, err
+		}
+		return res, nil
 	}
 	if err != nil {
+		addLock.Unlock()
 		return nil, err
+	}
+	if len(dirEntries) == 0 {
+		addLock.Unlock()
+		return nil, errors.New("no image variants")
 	}
 
 	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, dirEntries)
 	if err != nil {
+		addLock.Unlock()
 		return nil, err
 	}
 	fileId := domain.FileId(rootNode.Cid().String())
@@ -86,6 +92,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 	err = s.fileStore.AddFileKeys(fileKeys)
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
@@ -93,19 +100,24 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	for _, variant := range dirEntries {
 		err = s.fileStore.LinkFileVariantToFile(id.FileId, domain.FileContentId(variant.fileInfo.Hash))
 		if err != nil {
+			addLock.Unlock()
 			return nil, fmt.Errorf("failed to link file variant to file: %w", err)
 		}
 	}
 
 	err = s.storeFileSize(spaceId, fileId)
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
-	return &ImageAddResult{
+	entry := dirEntries[0]
+	return &AddResult{
 		FileId:         fileId,
-		Image:          s.newImage(spaceId, fileId, dirEntries),
+		MIME:           entry.fileInfo.Media,
+		Size:           entry.fileInfo.Size_,
 		EncryptionKeys: &fileKeys,
+		lock:           addLock,
 	}, nil
 }
 
@@ -115,7 +127,6 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 		return nil, schema.ErrEmptySchema
 	}
 
-	var isExisting bool
 	dirEntries := make([]dirEntry, 0, len(sch.Links))
 	for _, link := range sch.Links {
 		stepMill, err := schema.GetMill(link.Mill, link.Opts)
@@ -124,27 +135,36 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 		}
 		opts := &AddOptions{
 			Reader: reader,
-			Use:    "",
 			Media:  "",
 			Name:   filename,
 		}
-		err = s.normalizeOptions(ctx, spaceID, opts)
+		err = s.normalizeOptions(opts)
 		if err != nil {
 			return nil, err
 		}
 		added, fileNode, err := s.addFileNode(ctx, spaceID, stepMill, *opts)
 		if errors.Is(err, errFileExists) {
-			// If we found out that original variant is already exists, so we are trying to add the same file
+			// If we found out that original variant is already exists, so we are trying to add the same file.
 			if link.Name == "original" {
-				isExisting = true
+				return []dirEntry{
+					{
+						name:     link.Name,
+						fileInfo: added,
+					},
+				}, errFileExists
 			} else {
 				// If we have multiple variants with the same hash, for example "original" and "large",
 				// we need to find the previously added file node
+				var found bool
 				for _, entry := range dirEntries {
 					if entry.fileInfo.Hash == added.Hash {
 						fileNode = entry.fileNode
+						found = true
 						break
 					}
+				}
+				if !found {
+					return nil, fmt.Errorf("handling existing variant: failed to find file node for %s", link.Name)
 				}
 			}
 		} else if err != nil {
@@ -156,10 +176,6 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 			fileNode: fileNode,
 		})
 		reader.Seek(0, 0)
-	}
-
-	if isExisting {
-		return dirEntries, errFileExists
 	}
 	return dirEntries, nil
 }
@@ -220,20 +236,24 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 	return outerNode, keys, nil
 }
 
-func (s *service) newExisingImageResult(spaceId string, dirEntries []dirEntry) (*ImageAddResult, error) {
-	for _, entry := range dirEntries {
-		fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(entry.fileInfo)
-		if err != nil {
-			return nil, err
-		}
-		return &ImageAddResult{
-			IsExisting:     true,
-			FileId:         fileId,
-			Image:          s.newImage(spaceId, fileId, dirEntries),
-			EncryptionKeys: keys,
-		}, nil
+func (s *service) newExisingImageResult(lock *sync.Mutex, dirEntries []dirEntry) (*AddResult, error) {
+	if len(dirEntries) == 0 {
+		return nil, errors.New("no image variants")
 	}
-	return nil, errors.New("image directory is empty")
+	entry := dirEntries[0]
+	fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(entry.fileInfo)
+	if err != nil {
+		return nil, err
+	}
+	return &AddResult{
+		IsExisting:     true,
+		FileId:         fileId,
+		MIME:           entry.fileInfo.Media,
+		Size:           entry.fileInfo.Size_,
+		EncryptionKeys: keys,
+		lock:           lock,
+	}, nil
+
 }
 
 func newVariantsByWidth(dirEntries []dirEntry) map[int]*storage.FileInfo {

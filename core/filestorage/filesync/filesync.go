@@ -57,29 +57,24 @@ type QueueInfo struct {
 	RemovingQueue  []*QueueItem
 }
 
-type personalSpaceIDGetter interface {
-	PersonalSpaceID() string
-}
-
 type SyncStatus struct {
 	QueueLen int
 }
 
 type fileSync struct {
-	dbProvider       datastore.Datastore
-	rpcStore         rpcstore.RpcStore
-	queue            *fileSyncStore
-	loopCtx          context.Context
-	loopCancel       context.CancelFunc
-	uploadPingCh     chan struct{}
-	removePingCh     chan struct{}
-	dagService       ipld.DAGService
-	fileStore        filestore.FileStore
-	eventSender      event.Sender
-	onUploaded       func(fileId domain.FileId) error
-	onUploadStarted  func(fileId domain.FileId) error
-	onLimited        func(fileId domain.FileId) error
-	personalIDGetter personalSpaceIDGetter
+	dbProvider      datastore.Datastore
+	rpcStore        rpcstore.RpcStore
+	queue           *fileSyncStore
+	loopCtx         context.Context
+	loopCancel      context.CancelFunc
+	uploadPingCh    chan struct{}
+	removePingCh    chan struct{}
+	dagService      ipld.DAGService
+	fileStore       filestore.FileStore
+	eventSender     event.Sender
+	onUploaded      func(fileId domain.FileId) error
+	onUploadStarted func(fileId domain.FileId) error
+	onLimited       func(fileId domain.FileId) error
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -94,7 +89,6 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
-	f.personalIDGetter = app.MustComponent[personalSpaceIDGetter](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})

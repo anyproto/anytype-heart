@@ -159,16 +159,6 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	fx.waitEmptyQueue(t, time.Second*5)
 }
 
-type personalSpaceIdStub struct {
-	personalSpaceId string
-}
-
-func (s *personalSpaceIdStub) Name() string          { return "personalSpaceIdStub" }
-func (s *personalSpaceIdStub) Init(a *app.App) error { return nil }
-func (s *personalSpaceIdStub) PersonalSpaceID() string {
-	return s.personalSpaceId
-}
-
 func newFixture(t *testing.T, limit int) *fixture {
 	fx := &fixture{
 		FileSync:    New(),
@@ -183,8 +173,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 	fileStoreMock.EXPECT().Run(gomock.Any()).AnyTimes()
 	fileStoreMock.EXPECT().Close(gomock.Any()).AnyTimes()
 	fx.fileStoreMock = fileStoreMock
-
-	personalSpaceIdGetter := &personalSpaceIdStub{personalSpaceId: "space1"}
 
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Name().Return("event")
@@ -205,7 +193,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
-		Register(personalSpaceIdGetter).
 		Register(sender)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx

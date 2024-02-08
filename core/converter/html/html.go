@@ -182,7 +182,7 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Image:
-		fileId, err := h.fileObjectService.GetFileIdFromObject(context.Background(), file.TargetObjectId)
+		fileId, err := h.fileObjectService.GetFileIdFromObject(file.TargetObjectId)
 		if err == nil {
 			baseImg := h.getImageBase64(fileId)
 			fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
@@ -457,12 +457,11 @@ func (h *HTML) writeTextToBuf(text *model.BlockContentText) {
 			// iterate marks forwards to put closing tags
 			for _, m := range text.Marks.Marks {
 				if int(m.Range.To) == i {
-					// TODO: check lastOpenedTags on zero length ?
-					if lastOpenedTags[0] != m.Type {
-						h.closeTagsUntil(text, &lastOpenedTags, m.Type, i)
-					}
+					h.closeTagsUntil(text, &lastOpenedTags, m.Type, i)
 					h.writeTag(m, false)
-					lastOpenedTags = lastOpenedTags[1:]
+					if len(lastOpenedTags) != 0 {
+						lastOpenedTags = lastOpenedTags[1:]
+					}
 				}
 			}
 			// iterate marks backwards to put opening tags

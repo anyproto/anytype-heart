@@ -10270,6 +10270,7 @@ Get marks list in the selected range in text block.
 | disableEncryption | [bool](#bool) |  | deprecated, has no affect, GO-1926 |
 | style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
+| origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
 
 
 
