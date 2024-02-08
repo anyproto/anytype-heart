@@ -4374,6 +4374,7 @@ Makes blocks copy by given ids and paste it to shown place
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype-model-Block) | repeated |  |
 | fileSlot | [Rpc.Block.Paste.Request.File](#anytype-Rpc-Block-Paste-Request-File) | repeated |  |
+| url | [string](#string) |  |  |
 
 
 
@@ -4451,6 +4452,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | html | [string](#string) |  |  |
+| url | [string](#string) |  |  |
 
 
 
@@ -24336,6 +24338,7 @@ stored |
 | ---- | ------ | ----------- |
 | NotIndexed | 0 |  |
 | Indexed | 1 |  |
+| NotFound | 2 |  |
 
 
 

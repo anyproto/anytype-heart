@@ -2,10 +2,10 @@ package objectid
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -34,7 +34,8 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 	if filePath != "" {
 		fileObjectId, err := uploadFile(ctx, o.blockService, spaceId, filePath, origin)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("upload file: %w", err)
+			log.Error("handling file object: upload file", zap.Error(err))
+			return id, payload, nil
 		}
 		return fileObjectId, treestorage.TreeStorageCreatePayload{}, nil
 	}

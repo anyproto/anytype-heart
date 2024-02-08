@@ -221,6 +221,33 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 		if view.DefaultTemplateId != "" {
 			ids = append(ids, view.DefaultTemplateId)
 		}
+		ids = append(ids, getIdsFromFilters(view.Filters)...)
+	}
+
+	return ids
+}
+
+func getIdsFromFilters(filters []*model.BlockContentDataviewFilter) (ids []string) {
+	for _, filter := range filters {
+		if filter.Format != model.RelationFormat_object &&
+			filter.Format != model.RelationFormat_status &&
+			filter.Format != model.RelationFormat_tag {
+			continue
+		}
+
+		id := filter.Value.GetStringValue()
+		if id != "" {
+			ids = append(ids, id)
+			continue
+		}
+
+		list := filter.Value.GetListValue()
+		if list == nil {
+			continue
+		}
+		for _, value := range list.Values {
+			ids = append(ids, value.GetStringValue())
+		}
 	}
 
 	return ids

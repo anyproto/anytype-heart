@@ -1021,6 +1021,7 @@ enum ImageKind {
 enum FileIndexingStatus {
     NotIndexed = 0;
     Indexed = 1;
+    NotFound = 2;
 }
 
 message ManifestInfo {
