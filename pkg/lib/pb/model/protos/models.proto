@@ -1023,3 +1023,18 @@ enum FileIndexingStatus {
     Indexed = 1;
     NotFound = 2;
 }
+
+message ManifestInfo {
+    string schema = 1;
+    string id = 2;
+    string name = 3;
+    string author = 4;
+    string license = 5;
+    string title = 6;
+    string description = 7;
+    repeated string screenshots = 8;
+    string downloadLink = 9;
+    int32 fileSize = 10;
+    repeated string categories = 11;
+    string language = 12;
+}
