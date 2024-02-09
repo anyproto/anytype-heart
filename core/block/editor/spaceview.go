@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -30,14 +31,16 @@ type spaceService interface {
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
 type SpaceView struct {
 	smartblock.SmartBlock
-	spaceService spaceService
+	spaceService      spaceService
+	fileObjectService fileobject.Service
 }
 
 // newSpaceView creates a new SpaceView with given deps
-func newSpaceView(sb smartblock.SmartBlock, spaceService spaceService) *SpaceView {
+func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 	return &SpaceView{
-		SmartBlock:   sb,
-		spaceService: spaceService,
+		SmartBlock:        sb,
+		spaceService:      f.spaceService,
+		fileObjectService: f.fileObjectService,
 	}
 }
 
@@ -181,6 +184,22 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 	var changed bool
 	for k, v := range details.Fields {
 		if slices.Contains(workspaceKeysToCopy, k) {
+			// Special case for migration to Files as Objects to handle following situation:
+			// - We have an icon in Workspace that was created in pre-Files as Objects version
+			// - We migrate it, change old id to new id
+			// - Now we need to push details to SpaceView. But if we push NEW id, then old clients will not be able to display image
+			// - So we need to push old id
+			if k == bundle.RelationKeyIconImage.String() {
+				fileId, err := s.fileObjectService.GetFileIdFromObject(v.GetStringValue())
+				if err == nil {
+					switch v.Kind.(type) {
+					case *types.Value_StringValue:
+						v = pbtypes.String(fileId.FileId.String())
+					case *types.Value_ListValue:
+						v = pbtypes.StringList([]string{fileId.FileId.String()})
+					}
+				}
+			}
 			changed = true
 			st.SetDetailAndBundledRelation(domain.RelationKey(k), v)
 		}

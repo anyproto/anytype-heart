@@ -169,10 +169,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeWorkspace:
 		return f.newWorkspace(sb), nil
 	case coresb.SmartBlockTypeSpaceView:
-		return newSpaceView(
-			sb,
-			f.spaceService,
-		), nil
+		return f.newSpaceView(sb), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
