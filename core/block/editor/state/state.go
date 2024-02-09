@@ -1122,39 +1122,58 @@ func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
 // ModifyLinkedFilesInDetails iterates over all file object ids in details and modifies them using modifier function.
 // Detail is saved only if at least one id is changed
 func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
-	det := s.Details()
-	if det == nil || det.Fields == nil {
+	details := s.Details()
+	if details == nil || details.Fields == nil {
 		return
 	}
 
 	for _, key := range s.FileRelationKeys() {
 		if key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, key)
+			v := pbtypes.GetString(details, key)
 			_, err := cid.Decode(v)
 			if err != nil {
 				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
 		}
-		if ids := pbtypes.GetStringList(det, key); len(ids) > 0 {
-			var anyChanges bool
-			for i, oldId := range ids {
-				if oldId == "" {
-					continue
-				}
-				newId := modifier(oldId)
-				if oldId != newId {
-					ids[i] = newId
-					anyChanges = true
-				}
+
+		s.modifyIdsInDetail(details, key, modifier)
+	}
+}
+
+// ModifyLinkedObjectsInDetails iterates over all object ids in details and modifies them using modifier function.
+// Detail is saved only if at least one id is changed
+func (s *State) ModifyLinkedObjectsInDetails(modifier func(id string) string) {
+	details := s.Details()
+	if details == nil || details.Fields == nil {
+		return
+	}
+	for _, rel := range s.GetRelationLinks() {
+		if rel.Format == model.RelationFormat_object {
+			s.modifyIdsInDetail(details, rel.Key, modifier)
+		}
+	}
+}
+
+func (s *State) modifyIdsInDetail(details *types.Struct, key string, modifier func(id string) string) {
+	if ids := pbtypes.GetStringList(details, key); len(ids) > 0 {
+		var anyChanges bool
+		for i, oldId := range ids {
+			if oldId == "" {
+				continue
 			}
-			if anyChanges {
-				switch det.Fields[key].Kind.(type) {
-				case *types.Value_StringValue:
-					s.SetDetail(key, pbtypes.String(ids[0]))
-				case *types.Value_ListValue:
-					s.SetDetail(key, pbtypes.StringList(ids))
-				}
+			newId := modifier(oldId)
+			if oldId != newId {
+				ids[i] = newId
+				anyChanges = true
+			}
+		}
+		if anyChanges {
+			switch details.Fields[key].Kind.(type) {
+			case *types.Value_StringValue:
+				s.SetDetail(key, pbtypes.String(ids[0]))
+			case *types.Value_ListValue:
+				s.SetDetail(key, pbtypes.StringList(ids))
 			}
 		}
 	}
