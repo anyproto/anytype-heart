@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -312,10 +313,20 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	imageId := urlParts[2]
 	query := r.URL.Query()
 
-	id, err := g.fileObjectService.GetFileIdFromObject(imageId)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+	var id domain.FullFileId
+	c, err := cid.Decode(imageId)
+	// Treat id as fileId. We need to handle raw fileIds for backward compatibility in case of spaceview. See editor.SpaceView for details.
+	if err == nil && c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256 {
+		id = domain.FullFileId{
+			FileId: domain.FileId(imageId),
+		}
+	} else {
+		id, err = g.fileObjectService.GetFileIdFromObject(imageId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+		}
 	}
+
 	image, err := g.fileService.ImageByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get image by hash: %w", err)
