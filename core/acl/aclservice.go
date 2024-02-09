@@ -195,7 +195,6 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 		return fmt.Errorf("get invite payload: %w", err)
 	}
 
-	// TODO Setup space name and info
 	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.InviteKey)
 	if err != nil {
 		return fmt.Errorf("unmarshal invite key: %w", err)
