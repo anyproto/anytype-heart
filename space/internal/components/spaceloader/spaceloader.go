@@ -79,14 +79,6 @@ func (s *spaceLoader) Close(ctx context.Context) (err error) {
 func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 	s.status.Lock()
 	defer s.status.Unlock()
-	err = s.status.SetLocalStatus(ctx, spaceinfo.LocalStatusUnknown)
-	if err != nil {
-		return
-	}
-	persistentStatus := s.status.GetPersistentStatus()
-	if persistentStatus == spaceinfo.AccountStatusDeleted {
-		return ErrSpaceDeleted
-	}
 
 	exists, err := s.techSpace.SpaceViewExists(ctx, s.status.SpaceId())
 	if err != nil {
@@ -94,6 +86,14 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 	}
 	if !exists {
 		return ErrSpaceNotExists
+	}
+	err = s.status.SetLocalStatus(ctx, spaceinfo.LocalStatusUnknown)
+	if err != nil {
+		return
+	}
+	persistentStatus := s.status.GetPersistentStatus()
+	if persistentStatus == spaceinfo.AccountStatusDeleted {
+		return ErrSpaceDeleted
 	}
 	info := spaceinfo.SpaceLocalInfo{
 		SpaceID:     s.status.SpaceId(),
