@@ -1555,9 +1555,13 @@
     - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
+    - [Notification.LeaveRequest](#anytype-model-Notification-LeaveRequest)
+    - [Notification.LeaveRequestApprove](#anytype-model-Notification-LeaveRequestApprove)
+    - [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove)
     - [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved)
     - [Notification.RequestResponse](#anytype-model-Notification-RequestResponse)
     - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
+    - [Notification.SpaceStopShare](#anytype-model-Notification-SpaceStopShare)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -24494,6 +24498,10 @@ Used to decode block meta only, without the content itself
 | requestToJoin | [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin) |  |  |
 | requestResponse | [Notification.RequestResponse](#anytype-model-Notification-RequestResponse) |  |  |
 | participantRequestApproved | [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved) |  |  |
+| spaceStopShare | [Notification.SpaceStopShare](#anytype-model-Notification-SpaceStopShare) |  |  |
+| leaveRequest | [Notification.LeaveRequest](#anytype-model-Notification-LeaveRequest) |  |  |
+| participantRemove | [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove) |  |  |
+| leaveRequestApprove | [Notification.LeaveRequestApprove](#anytype-model-Notification-LeaveRequestApprove) |  |  |
 | space | [string](#string) |  |  |
 | acl | [string](#string) |  |  |
 
@@ -24555,6 +24563,54 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Notification-LeaveRequest"></a>
+
+### Notification.LeaveRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+| identityName | [string](#string) |  |  |
+| identityIcon | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-LeaveRequestApprove"></a>
+
+### Notification.LeaveRequestApprove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-ParticipantRemove"></a>
+
+### Notification.ParticipantRemove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identityName | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Notification-ParticipantRequestApproved"></a>
 
 ### Notification.ParticipantRequestApproved
@@ -24602,6 +24658,21 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-SpaceStopShare"></a>
+
+### Notification.SpaceStopShare
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceID | [string](#string) |  |  |
 
 
 

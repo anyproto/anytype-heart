@@ -89,6 +89,12 @@ func (n *AclNotificationSender) handleAclContent(ctx context.Context,
 			if err := n.sendParticipantRequestApprove(content, space, record.Id, aclId); err != nil {
 				return err
 			}
+			if err := n.sendAccountRemove(content, space, record.Id, aclId, permissions); err != nil {
+				return err
+			}
+			if err := n.sendInviteRevoke(content, space, record.Id, aclId, permissions); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -172,6 +178,44 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(content *aclrecord
 				ParticipantRequestApproved: &model.NotificationParticipantRequestApproved{
 					SpaceID:    space.Id(),
 					Permission: mapProtoPermissionToAcl(reqApprove.Permissions),
+				},
+			},
+			Space: space.Id(),
+			Acl:   aclId,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (n *AclNotificationSender) sendAccountRemove(content *aclrecordproto.AclContentValue,
+	space clientspace.Space,
+	id, aclId string,
+	permissions list.AclPermissions,
+) error {
+	if reqRemove := content.GetAccountRequestRemove(); reqRemove != nil {
+		if permissions.CanManageAccounts() {
+
+		}
+		// TODO else
+	}
+	return nil
+}
+
+func (n *AclNotificationSender) sendInviteRevoke(content *aclrecordproto.AclContentValue,
+	space clientspace.Space,
+	id, aclId string,
+	permissions list.AclPermissions,
+) error {
+	if inviteRevoke := content.GetInviteRevoke(); inviteRevoke != nil && permissions.CanManageAccounts() {
+		err := n.notificationService.CreateAndSend(&model.Notification{
+			Id:      id,
+			IsLocal: false,
+			Payload: &model.NotificationPayloadOfSpaceStopShare{
+				SpaceStopShare: &model.NotificationSpaceStopShare{
+					SpaceID: space.Id(),
 				},
 			},
 			Space: space.Id(),
