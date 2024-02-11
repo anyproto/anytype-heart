@@ -451,7 +451,7 @@ func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 }
 
 func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataWithIdentity) error {
-	profile, rawProfile, err := s.findProfile(identityData)
+	profile, rawProfile, err := s.FindProfile(identityData)
 	if err != nil {
 		return fmt.Errorf("find profile: %w", err)
 	}
@@ -483,7 +483,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	return nil
 }
 
-func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
+func (s *service) FindProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
 	for _, data := range identityData.Data {
 		if data.Kind == identityRepoDataKind {
 			rawProfile = data.Data

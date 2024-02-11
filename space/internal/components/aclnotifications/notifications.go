@@ -140,7 +140,7 @@ func (n *AclNotificationSender) getProfileData(ctx context.Context, reqJoin *acl
 		icon string
 	)
 	if len(identities) != 0 {
-		_, profile, err := n.identityService.GetProfile(identities[0])
+		profile, _, err := n.identityService.FindProfile(identities[0])
 		if err != nil {
 			return nil, "", "", err
 		}

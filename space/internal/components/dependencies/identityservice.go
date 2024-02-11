@@ -24,5 +24,5 @@ type IdentityService interface {
 
 	GetIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error)
 
-	GetProfile(identityData *identityrepoproto.DataWithIdentity) ([]byte, *model.IdentityProfile, error)
+	FindProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error)
 }
