@@ -2,11 +2,13 @@ package fileuploader
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gogo/protobuf/types"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,10 +20,20 @@ import (
 	file2 "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
+	"github.com/anyproto/anytype-heart/core/filestorage"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
@@ -40,7 +52,6 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
-		fx.expectImageAdd()
 		fileObjectId := fx.expectCreateObject()
 
 		b := newBlock(model.BlockContentFile_Image)
@@ -49,13 +60,12 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "unnamed.jpg")
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
-		assert.Equal(t, res.MIME, "image/jpg")
+		assert.Equal(t, res.MIME, "image/jpeg")
 	})
 	t.Run("image type detect", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
-		fx.expectImageAdd()
 		fx.expectCreateObject()
 
 		res := fx.Uploader.AutoType(true).SetFile("./testdata/unnamed.jpg").Upload(ctx)
@@ -65,7 +75,6 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
-		fx.expectFileAdd()
 		fileObjectId := fx.expectCreateObject()
 
 		b := newBlock(model.BlockContentFile_Image)
@@ -87,7 +96,6 @@ func TestUploader_Upload(t *testing.T) {
 		serv := httptest.NewServer(mux)
 		defer serv.Close()
 
-		fx.expectImageAdd()
 		fileObjectId := fx.expectCreateObject()
 
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
@@ -110,7 +118,6 @@ func TestUploader_Upload(t *testing.T) {
 		serv := httptest.NewServer(mux)
 		defer serv.Close()
 
-		fx.expectImageAdd()
 		fileObjectId := fx.expectCreateObject()
 
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
@@ -132,7 +139,6 @@ func TestUploader_Upload(t *testing.T) {
 		serv := httptest.NewServer(mux)
 		defer serv.Close()
 
-		fx.expectImageAdd()
 		fileObjectId := fx.expectCreateObject()
 
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
@@ -147,14 +153,58 @@ func TestUploader_Upload(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
-		fx.expectFileAdd()
 		fileObjectId := fx.expectCreateObject()
 
-		res := fx.Uploader.SetBytes([]byte("my bytes")).SetName("filename").Upload(ctx)
+		inputContent := "my bytes"
+		res := fx.Uploader.SetBytes([]byte(inputContent)).SetName("filename").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "filename")
+
+		fileId := domain.FileId(pbtypes.GetString(res.FileObjectDetails, bundle.RelationKeyFileId.String()))
+		file, err := fx.fileService.FileByHash(ctx, domain.FullFileId{FileId: fileId, SpaceId: "space1"})
+		require.NoError(t, err)
+
+		reader, err := file.Reader(ctx)
+		require.NoError(t, err)
+
+		gotContent, err := io.ReadAll(reader)
+		require.NoError(t, err)
+
+		assert.Equal(t, inputContent, string(gotContent))
 	})
+}
+
+func newFileServiceFixture(t *testing.T) files.Service {
+	dataStoreProvider := datastore.NewInMemory()
+
+	blockStorage := filestorage.NewInMemory()
+
+	rpcStore := rpcstore.NewInMemoryStore(1024)
+	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
+	commonFileService := fileservice.New()
+	fileSyncService := filesync.New()
+	objectStore := objectstore.NewStoreFixture(t)
+	eventSender := mock_event.NewMockSender(t)
+
+	ctx := context.Background()
+	a := new(app.App)
+	a.Register(dataStoreProvider)
+	a.Register(filestore.New())
+	a.Register(commonFileService)
+	a.Register(fileSyncService)
+	a.Register(testutil.PrepareMock(ctx, a, eventSender))
+	a.Register(blockStorage)
+	a.Register(objectStore)
+	a.Register(rpcStoreService)
+	err := a.Start(ctx)
+	require.NoError(t, err)
+
+	s := files.New()
+	err = s.Init(a)
+	require.NoError(t, err)
+
+	return s
 }
 
 func newFixture(t *testing.T) *uplFixture {
@@ -163,7 +213,7 @@ func newFixture(t *testing.T) *uplFixture {
 		ctrl:   gomock.NewController(t),
 		picker: picker,
 	}
-	fx.fileService = testMock.NewMockFileService(fx.ctrl)
+	fx.fileService = newFileServiceFixture(t)
 	fx.fileObjectService = mock_fileobject.NewMockService(t)
 
 	uploaderProvider := &service{
@@ -173,15 +223,12 @@ func newFixture(t *testing.T) *uplFixture {
 		fileObjectService: fx.fileObjectService,
 	}
 	fx.Uploader = uploaderProvider.NewUploader("space1", objectorigin.None())
-	fx.file = testMock.NewMockFile(fx.ctrl)
-	fx.file.EXPECT().FileId().Return(domain.FileId("123")).AnyTimes()
 	return fx
 }
 
 type uplFixture struct {
 	Uploader
-	file              *testMock.MockFile
-	fileService       *testMock.MockFileService
+	fileService       files.Service
 	ctrl              *gomock.Controller
 	picker            *mock_getblock.MockObjectGetter
 	fileObjectService *mock_fileobject.MockService
@@ -202,38 +249,6 @@ func (fx *uplFixture) newFile(fileId domain.FileId, meta *files.FileMeta) *testM
 
 func (fx *uplFixture) tearDown() {
 	fx.ctrl.Finish()
-}
-
-func (fx *uplFixture) expectImageAdd() {
-	im := fx.newImage("123")
-	fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.ImageAddResult{
-		FileId: "123",
-		Image:  im,
-		EncryptionKeys: &domain.FileEncryptionKeys{
-			FileId:         "123",
-			EncryptionKeys: map[string]string{},
-		},
-	}, nil)
-	im.EXPECT().GetOriginalFile(gomock.Any()).Return(fx.file, nil)
-	fx.file.EXPECT().Meta().Return(&files.FileMeta{Media: "image/jpg"}).AnyTimes()
-}
-
-func (fx *uplFixture) expectFileAdd() {
-	meta := &files.FileMeta{
-		Media: "text/text",
-		Name:  "test.txt",
-		Size:  3,
-		Added: time.Now(),
-	}
-	file := fx.newFile("123", meta)
-	fx.fileService.EXPECT().FileAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(&files.FileAddResult{
-		FileId: "123",
-		File:   file,
-		EncryptionKeys: &domain.FileEncryptionKeys{
-			FileId:         "123",
-			EncryptionKeys: map[string]string{},
-		},
-	}, nil)
 }
 
 func (fx *uplFixture) expectCreateObject() string {

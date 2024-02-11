@@ -107,7 +107,7 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 }
 
 func (a *aclService) Cancel(ctx context.Context, spaceId string) (err error) {
-	// TODO: finish this by implementing space offload for join cancelled spaces (?)
+	// TODO: finish this by implementing space offload for join canceled spaces (?)
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -195,7 +195,6 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 		return fmt.Errorf("get invite payload: %w", err)
 	}
 
-	// TODO Setup space name and info
 	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.InviteKey)
 	if err != nil {
 		return fmt.Errorf("unmarshal invite key: %w", err)

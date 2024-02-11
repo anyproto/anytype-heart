@@ -212,6 +212,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 		} else {
 			s.changesSinceSnapshot += sinceSnapshot
 		}
+		s.runTemporaryMigrations(st)
 		return st, changes, err
 	})
 
@@ -230,7 +231,9 @@ func (s *source) Rebuild(ot objecttree.ObjectTree) {
 		log.With(zap.Error(err)).Debug("failed to build state")
 		return
 	}
-	err = s.receiver.StateRebuild(doc.(*state.State))
+	st := doc.(*state.State)
+	s.runTemporaryMigrations(st)
+	err = s.receiver.StateRebuild(st)
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to send the state to receiver")
 	}
@@ -293,8 +296,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
 	}
-
-	s.fileObjectMigrator.MigrateDetails(st, s.space, s.GetFileKeysSnapshot())
+	s.runTemporaryMigrations(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
@@ -307,6 +309,14 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		return
 	}
 	return st, nil
+}
+
+func (s *source) runTemporaryMigrations(st *state.State) {
+	// Details in spaceview comes from Workspace object, so we don't need to migrate them
+	if s.Type() != smartblock.SmartBlockTypeSpaceView {
+		s.fileObjectMigrator.MigrateDetails(st, s.space, s.GetFileKeysSnapshot())
+	}
+
 }
 
 func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {

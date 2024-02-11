@@ -1157,7 +1157,12 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 				}
 			}
 			if anyChanges {
-				s.SetDetail(key, pbtypes.StringList(ids))
+				switch det.Fields[key].Kind.(type) {
+				case *types.Value_StringValue:
+					s.SetDetail(key, pbtypes.String(ids[0]))
+				case *types.Value_ListValue:
+					s.SetDetail(key, pbtypes.StringList(ids))
+				}
 			}
 		}
 	}

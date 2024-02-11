@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -49,7 +48,6 @@ func newFixture(t *testing.T) *fixture {
 
 	a := new(app.App)
 	a.Register(&spaceIdDeriverStub{})
-	a.Register(&detailsModifierStub{})
 	a.Register(dataStore)
 	a.Register(objectStore)
 	a.Register(testutil.PrepareMock(ctx, a, coordinatorClient))
@@ -209,17 +207,6 @@ func (s spaceIdDeriverStub) Init(a *app.App) (err error) { return nil }
 func (s spaceIdDeriverStub) Name() (name string) { return "spaceIdDeriverStub" }
 
 func (s spaceIdDeriverStub) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-type detailsModifierStub struct{}
-
-func (s detailsModifierStub) Init(a *app.App) (err error) { return nil }
-
-func (s detailsModifierStub) Name() (name string) { return "detailsModifierStub" }
-
-func (detailsModifierStub) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }

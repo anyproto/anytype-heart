@@ -129,6 +129,9 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 			},
 		},
 	})
+	if err != nil {
+		return
+	}
 	for _, id := range ids {
 		err = i.store.DeleteObject(id)
 		if err != nil {

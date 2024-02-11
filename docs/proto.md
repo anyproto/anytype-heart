@@ -515,6 +515,11 @@
     - [Rpc.BlockWidget.SetViewId.Request](#anytype-Rpc-BlockWidget-SetViewId-Request)
     - [Rpc.BlockWidget.SetViewId.Response](#anytype-Rpc-BlockWidget-SetViewId-Response)
     - [Rpc.BlockWidget.SetViewId.Response.Error](#anytype-Rpc-BlockWidget-SetViewId-Response-Error)
+    - [Rpc.Broadcast](#anytype-Rpc-Broadcast)
+    - [Rpc.Broadcast.PayloadEvent](#anytype-Rpc-Broadcast-PayloadEvent)
+    - [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request)
+    - [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response)
+    - [Rpc.Broadcast.PayloadEvent.Response.Error](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
@@ -549,11 +554,6 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
-    - [Rpc.DownloadManifest](#anytype-Rpc-DownloadManifest)
-    - [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request)
-    - [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response)
-    - [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error)
-    - [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -590,6 +590,16 @@
     - [Rpc.File.Upload.Request](#anytype-Rpc-File-Upload-Request)
     - [Rpc.File.Upload.Response](#anytype-Rpc-File-Upload-Response)
     - [Rpc.File.Upload.Response.Error](#anytype-Rpc-File-Upload-Response-Error)
+    - [Rpc.Gallery](#anytype-Rpc-Gallery)
+    - [Rpc.Gallery.DownloadIndex](#anytype-Rpc-Gallery-DownloadIndex)
+    - [Rpc.Gallery.DownloadIndex.Request](#anytype-Rpc-Gallery-DownloadIndex-Request)
+    - [Rpc.Gallery.DownloadIndex.Response](#anytype-Rpc-Gallery-DownloadIndex-Response)
+    - [Rpc.Gallery.DownloadIndex.Response.Category](#anytype-Rpc-Gallery-DownloadIndex-Response-Category)
+    - [Rpc.Gallery.DownloadIndex.Response.Error](#anytype-Rpc-Gallery-DownloadIndex-Response-Error)
+    - [Rpc.Gallery.DownloadManifest](#anytype-Rpc-Gallery-DownloadManifest)
+    - [Rpc.Gallery.DownloadManifest.Request](#anytype-Rpc-Gallery-DownloadManifest-Request)
+    - [Rpc.Gallery.DownloadManifest.Response](#anytype-Rpc-Gallery-DownloadManifest-Response)
+    - [Rpc.Gallery.DownloadManifest.Response.Error](#anytype-Rpc-Gallery-DownloadManifest-Response-Error)
     - [Rpc.GenericErrorResponse](#anytype-Rpc-GenericErrorResponse)
     - [Rpc.GenericErrorResponse.Error](#anytype-Rpc-GenericErrorResponse-Error)
     - [Rpc.History](#anytype-Rpc-History)
@@ -1146,6 +1156,7 @@
     - [Rpc.BlockWidget.SetLimit.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code)
     - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
+    - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
@@ -1154,7 +1165,6 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
-    - [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1163,6 +1173,8 @@
     - [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
+    - [Rpc.Gallery.DownloadIndex.Response.Error.Code](#anytype-Rpc-Gallery-DownloadIndex-Response-Error-Code)
+    - [Rpc.Gallery.DownloadManifest.Response.Error.Code](#anytype-Rpc-Gallery-DownloadManifest-Response-Error-Code)
     - [Rpc.GenericErrorResponse.Error.Code](#anytype-Rpc-GenericErrorResponse-Error-Code)
     - [Rpc.History.GetVersions.Response.Error.Code](#anytype-Rpc-History-GetVersions-Response-Error-Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype-Rpc-History-SetVersion-Response-Error-Code)
@@ -1440,6 +1452,8 @@
     - [Event.Object.Subscription.Groups](#anytype-Event-Object-Subscription-Groups)
     - [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position)
     - [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove)
+    - [Event.Payload](#anytype-Event-Payload)
+    - [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast)
     - [Event.Ping](#anytype-Event-Ping)
     - [Event.Process](#anytype-Event-Process)
     - [Event.Process.Done](#anytype-Event-Process-Done)
@@ -1533,6 +1547,7 @@
     - [InvitePayload](#anytype-model-InvitePayload)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [ManifestInfo](#anytype-model-ManifestInfo)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -1754,7 +1769,8 @@
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
 | UnsplashSearch | [Rpc.Unsplash.Search.Request](#anytype-Rpc-Unsplash-Search-Request) | [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response) |  |
 | UnsplashDownload | [Rpc.Unsplash.Download.Request](#anytype-Rpc-Unsplash-Download-Request) | [Rpc.Unsplash.Download.Response](#anytype-Rpc-Unsplash-Download-Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
-| DownloadManifest | [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request) | [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response) |  |
+| GalleryDownloadManifest | [Rpc.Gallery.DownloadManifest.Request](#anytype-Rpc-Gallery-DownloadManifest-Request) | [Rpc.Gallery.DownloadManifest.Response](#anytype-Rpc-Gallery-DownloadManifest-Response) |  |
+| GalleryDownloadIndex | [Rpc.Gallery.DownloadIndex.Request](#anytype-Rpc-Gallery-DownloadIndex-Request) | [Rpc.Gallery.DownloadIndex.Response](#anytype-Rpc-Gallery-DownloadIndex-Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype-Rpc-Block-Upload-Request) | [Rpc.Block.Upload.Response](#anytype-Rpc-Block-Upload-Response) | General Block commands *** |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype-Rpc-Block-Replace-Request) | [Rpc.Block.Replace.Response](#anytype-Rpc-Block-Replace-Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype-Rpc-Block-Create-Request) | [Rpc.Block.Create.Response](#anytype-Rpc-Block-Create-Response) |  |
@@ -1858,6 +1874,7 @@
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
+| BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
 
  
 
@@ -4468,6 +4485,7 @@ Makes blocks copy by given ids and paste it to shown place
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype-model-Block) | repeated |  |
 | fileSlot | [Rpc.Block.Paste.Request.File](#anytype-Rpc-Block-Paste-Request-File) | repeated |  |
+| url | [string](#string) |  |  |
 
 
 
@@ -4545,6 +4563,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | html | [string](#string) |  |  |
+| url | [string](#string) |  |  |
 
 
 
@@ -9319,6 +9338,73 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Broadcast"></a>
+
+### Rpc.Broadcast
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Broadcast-PayloadEvent"></a>
+
+### Rpc.Broadcast.PayloadEvent
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Broadcast-PayloadEvent-Request"></a>
+
+### Rpc.Broadcast.PayloadEvent.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| payload | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Broadcast-PayloadEvent-Response"></a>
+
+### Rpc.Broadcast.PayloadEvent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| error | [Rpc.Broadcast.PayloadEvent.Response.Error](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Broadcast-PayloadEvent-Response-Error"></a>
+
+### Rpc.Broadcast.PayloadEvent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug"></a>
 
 ### Rpc.Debug
@@ -9793,89 +9879,6 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | treeId | [string](#string) |  |  |
 | headIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest"></a>
-
-### Rpc.DownloadManifest
-
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Request"></a>
-
-### Rpc.DownloadManifest.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| url | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Response"></a>
-
-### Rpc.DownloadManifest.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error) |  |  |
-| info | [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Response-Error"></a>
-
-### Rpc.DownloadManifest.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-DownloadManifest-Response-ManifestInfo"></a>
-
-### Rpc.DownloadManifest.Response.ManifestInfo
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| schema | [string](#string) |  |  |
-| id | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| author | [string](#string) |  |  |
-| license | [string](#string) |  |  |
-| title | [string](#string) |  |  |
-| description | [string](#string) |  |  |
-| screenshots | [string](#string) | repeated |  |
-| downloadLink | [string](#string) |  |  |
-| fileSize | [int32](#int32) |  |  |
-| categories | [string](#string) | repeated |  |
-| language | [string](#string) |  |  |
 
 
 
@@ -10378,6 +10381,7 @@ Get marks list in the selected range in text block.
 | disableEncryption | [bool](#bool) |  | deprecated, has no affect, GO-1926 |
 | style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
+| origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
 
 
 
@@ -10410,6 +10414,142 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery"></a>
+
+### Rpc.Gallery
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex"></a>
+
+### Rpc.Gallery.DownloadIndex
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Request"></a>
+
+### Rpc.Gallery.DownloadIndex.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Response"></a>
+
+### Rpc.Gallery.DownloadIndex.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Gallery.DownloadIndex.Response.Error](#anytype-Rpc-Gallery-DownloadIndex-Response-Error) |  |  |
+| categories | [Rpc.Gallery.DownloadIndex.Response.Category](#anytype-Rpc-Gallery-DownloadIndex-Response-Category) | repeated |  |
+| experiences | [model.ManifestInfo](#anytype-model-ManifestInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Response-Category"></a>
+
+### Rpc.Gallery.DownloadIndex.Response.Category
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| experiences | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Response-Error"></a>
+
+### Rpc.Gallery.DownloadIndex.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Gallery.DownloadIndex.Response.Error.Code](#anytype-Rpc-Gallery-DownloadIndex-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest"></a>
+
+### Rpc.Gallery.DownloadManifest
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest-Request"></a>
+
+### Rpc.Gallery.DownloadManifest.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest-Response"></a>
+
+### Rpc.Gallery.DownloadManifest.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Gallery.DownloadManifest.Response.Error](#anytype-Rpc-Gallery-DownloadManifest-Response-Error) |  |  |
+| info | [model.ManifestInfo](#anytype-model-ManifestInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest-Response-Error"></a>
+
+### Rpc.Gallery.DownloadManifest.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Gallery.DownloadManifest.Response.Error.Code](#anytype-Rpc-Gallery-DownloadManifest-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -18362,6 +18502,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code"></a>
+
+### Rpc.Broadcast.PayloadEvent.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -18466,19 +18620,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-DownloadManifest-Response-Error-Code"></a>
-
-### Rpc.DownloadManifest.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -18576,6 +18717,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-File-Upload-Response-Error-Code"></a>
 
 ### Rpc.File.Upload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadIndex-Response-Error-Code"></a>
+
+### Rpc.Gallery.DownloadIndex.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNMARSHALLING_ERROR | 3 |  |
+| DOWNLOAD_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Gallery-DownloadManifest-Response-Error-Code"></a>
+
+### Rpc.Gallery.DownloadManifest.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -22412,6 +22581,7 @@ Precondition: user A opened a block
 | fileLocalUsage | [Event.File.LocalUsage](#anytype-Event-File-LocalUsage) |  |  |
 | notificationSend | [Event.Notification.Send](#anytype-Event-Notification-Send) |  |  |
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
+| payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 
 
 
@@ -22717,6 +22887,31 @@ Removes document from subscription
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | subId | [string](#string) |  | subscription id |
+
+
+
+
+
+
+<a name="anytype-Event-Payload"></a>
+
+### Event.Payload
+
+
+
+
+
+
+
+<a name="anytype-Event-Payload-Broadcast"></a>
+
+### Event.Payload.Broadcast
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| payload | [string](#string) |  |  |
 
 
 
@@ -24215,6 +24410,32 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-ManifestInfo"></a>
+
+### ManifestInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| schema | [string](#string) |  |  |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| author | [string](#string) |  |  |
+| license | [string](#string) |  |  |
+| title | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+| screenshots | [string](#string) | repeated |  |
+| downloadLink | [string](#string) |  |  |
+| fileSize | [int32](#int32) |  |  |
+| categories | [string](#string) | repeated |  |
+| language | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Metadata"></a>
 
 ### Metadata
@@ -25176,6 +25397,7 @@ stored |
 | ---- | ------ | ----------- |
 | NotIndexed | 0 |  |
 | Indexed | 1 |  |
+| NotFound | 2 |  |
 
 
 

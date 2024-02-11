@@ -45,7 +45,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) GetInfoForFileSharing(ctx context.Context, fileObjectId string) (cid string, encryptionKeys []*model.FileEncryptionKey, err error) {
-	fileId, err := s.fileObjectService.GetFileIdFromObject(ctx, fileObjectId)
+	fileId, err := s.fileObjectService.GetFileIdFromObject(fileObjectId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get file id from object: %w", err)
 	}

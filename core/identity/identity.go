@@ -74,7 +74,6 @@ type service struct {
 	fileAclService    fileacl.Service
 	closing           chan struct{}
 	startedCh         chan struct{}
-	identities        []string
 	techSpaceId       string
 	personalSpaceId   string
 
@@ -401,7 +400,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 	}
 
 	for _, identityData := range identitiesData {
-		err := s.handleIdentityData(identityData)
+		err := s.broadcastIdentityProfile(identityData)
 		if err != nil {
 			log.Error("error handling identity data", zap.Error(err))
 		}
@@ -451,10 +450,10 @@ func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 	return nil
 }
 
-func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIdentity) error {
-	rawProfile, profile, err := s.GetProfile(identityData)
+func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataWithIdentity) error {
+	profile, rawProfile, err := s.findProfile(identityData)
 	if err != nil {
-		return err
+		return fmt.Errorf("find profile: %w", err)
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
@@ -484,11 +483,7 @@ func (s *service) handleIdentityData(identityData *identityrepoproto.DataWithIde
 	return nil
 }
 
-func (s *service) GetProfile(identityData *identityrepoproto.DataWithIdentity) ([]byte, *model.IdentityProfile, error) {
-	var (
-		rawProfile []byte
-		profile    *model.IdentityProfile
-	)
+func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
 	for _, data := range identityData.Data {
 		if data.Kind == identityRepoDataKind {
 			rawProfile = data.Data
@@ -507,7 +502,7 @@ func (s *service) GetProfile(identityData *identityrepoproto.DataWithIdentity) (
 	if profile == nil {
 		return nil, nil, fmt.Errorf("no profile data found")
 	}
-	return rawProfile, profile, nil
+	return profile, rawProfile, nil
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {
