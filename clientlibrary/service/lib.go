@@ -6,6 +6,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"sync"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -35,15 +36,28 @@ func init() {
 				metrics.SharedLongMethodsInterceptor,
 			},
 		})
-	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
-		go func() {
-			http.ListenAndServe(debug, nil)
-		}()
+	if addr, ok := os.LookupEnv("ANYPROF"); ok && addr != "" {
+		RunDebugServer(addr)
 	}
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
 	mw.SetEventSender(event.NewCallbackSender(eh))
+}
+
+var debugServerOnce sync.Once
+
+func RunDebugServer(addr string) {
+	fmt.Printf("Running GO debug HTTP server at: %s\n", addr)
+	debugServerOnce.Do(func() {
+		go func() {
+			http.ListenAndServe(addr, nil)
+		}()
+	})
+}
+
+func SetLogLevels(levels string) {
+	logging.SetLogLevels(levels)
 }
 
 func SetEnv(key, value string) {
