@@ -523,6 +523,10 @@
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
     - [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response)
     - [Rpc.Debug.ExportLocalstore.Response.Error](#anytype-Rpc-Debug-ExportLocalstore-Response-Error)
+    - [Rpc.Debug.Network](#anytype-Rpc-Debug-Network)
+    - [Rpc.Debug.Network.Request](#anytype-Rpc-Debug-Network-Request)
+    - [Rpc.Debug.Network.Response](#anytype-Rpc-Debug-Network-Response)
+    - [Rpc.Debug.Network.Response.Error](#anytype-Rpc-Debug-Network-Response-Error)
     - [Rpc.Debug.OpenedObjects](#anytype-Rpc-Debug-OpenedObjects)
     - [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request)
     - [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response)
@@ -1112,6 +1116,7 @@
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
+    - [Rpc.Debug.Network.Response.Error.Code](#anytype-Rpc-Debug-Network-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
@@ -1792,6 +1797,7 @@
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request) | [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response) |  |
 | DebugSubscriptions | [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request) | [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response) |  |
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
+| DebugNetwork | [Rpc.Debug.Network.Request](#anytype-Rpc-Debug-Network-Request) | [Rpc.Debug.Network.Response](#anytype-Rpc-Debug-Network-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
@@ -9357,6 +9363,64 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Network"></a>
+
+### Rpc.Debug.Network
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Network-Request"></a>
+
+### Rpc.Debug.Network.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| customNetworkFilePath | [string](#string) |  | not implemented yet |
+| requestIterations | [int32](#int32) |  | default is 1 |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Network-Response"></a>
+
+### Rpc.Debug.Network.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.Network.Response.Error](#anytype-Rpc-Debug-Network-Response-Error) |  |  |
+| jsonStat | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Network-Response-Error"></a>
+
+### Rpc.Debug.Network.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.Network.Response.Error.Code](#anytype-Rpc-Debug-Network-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -17780,6 +17844,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Debug-Network-Response-Error-Code"></a>
+
+### Rpc.Debug.Network.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

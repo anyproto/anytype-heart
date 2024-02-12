@@ -287,6 +287,7 @@ service ClientCommands {
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
     rpc DebugSubscriptions (anytype.Rpc.Debug.Subscriptions.Request) returns (anytype.Rpc.Debug.Subscriptions.Response);
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
+    rpc DebugNetwork(anytype.Rpc.Debug.Network.Request) returns (anytype.Rpc.Debug.Network.Response);
 
     rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
 
