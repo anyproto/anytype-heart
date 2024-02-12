@@ -138,6 +138,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			return NewIdentity(s.identityService, id), nil
 		case smartblock.SmartBlockTypeParticipant:
 			participantState := state.NewDoc(id, nil).(*state.State)
+			// Set object type here in order to derive value of Type relation in smartblock.Init
 			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
 			params := StaticSourceParams{
 				Id: domain.FullID{
