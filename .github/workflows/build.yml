@@ -15,14 +15,23 @@ on:
         description: 'Run perf test times'
         required: true
         default: '0'
+  schedule:
+    - cron: '0 0 * * *' # every day at midnight
+      filters:
+        branches:
+          include:
+            - 'main'
+
 
 permissions:
   actions: 'write'
+  packages: 'write'
+
 
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-11' || github.event.inputs.run-on-runner }}
+    runs-on: ${{ github.event_name == 'push' && 'macos-11' || (github.event.inputs.run-on-runner || 'self-hosted') }}
     steps:
       - name: validate agent
         run: |
@@ -42,7 +51,7 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: '~1.20.8'
-        if: github.event.inputs.run-on-runner != 'self-hosted'
+        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
       - name: Setup GO
         run: |
           go version
@@ -58,7 +67,7 @@ jobs:
           git fetch
           git checkout db6184738b77fbd5089e5fa1112177f391c91b24
           go install github.com/mitchellh/gox
-        if: github.event.inputs.run-on-runner != 'self-hosted'
+        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
@@ -69,7 +78,7 @@ jobs:
           brew tap --custom-remote filosottile/musl-cross https://github.com/anyproto/homebrew-musl-cross.git
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
-        if: github.event.inputs.run-on-runner != 'self-hosted'
+        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -125,17 +134,35 @@ jobs:
         if: github.event_name == 'push'
       - name: run perf tests
         run: |
+          echo "Running perf tests"
+          RUN_COUNT=${{ github.event.inputs.perf-test }}
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            RUN_COUNT=10
+          fi          
           cd cmd/perftester/
-          go run main.go ${{ github.event.inputs.perf-test }}
-          gh run cancel ${{ github.run_id }}
-          gh run watch ${{ github.run_id }}
+          go run main.go $RUN_COUNT
         env:
           ANYTYPE_REPORT_MEMORY: 'true'
           TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
           PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
           PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+      - name: Archive perf tests results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pprofs
+          path: |
+            *.pprof
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+      - name: end run perf tests
+        run: |
+          rm -rf *.pprof
+          echo "End running perf tests"
+          gh run cancel ${{ github.run_id }}
+          gh run watch ${{ github.run_id }}
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.event.inputs.perf-test != '0'
+        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
       - name: Make JS protos
         run: |
           make protos-js
