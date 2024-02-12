@@ -3,11 +3,18 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/export"
+	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -217,6 +224,71 @@ func (mw *Middleware) SpacePublicAdd(cctx context.Context, req *pb.RpcSpacePubli
 		Error: &pb.RpcSpacePublicAddResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) SpacePublish(cctx context.Context, req *pb.RpcSpacePublishRequest) *pb.RpcSpacePublishResponse {
+	walletService := mw.applicationService.GetApp().MustComponent(wallet.CName).(wallet.Wallet)
+	publishTempDir := filepath.Join(walletService.RepoPath(), "publishTemp")
+	err := os.MkdirAll(publishTempDir, 0755)
+	if err != nil {
+		return &pb.RpcSpacePublishResponse{
+			Error: &pb.RpcSpacePublishResponseError{
+				Code:        1,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	defer os.RemoveAll(publishTempDir)
+
+	err = mw.doBlockService(func(bs *block.Service) error {
+		es := mw.applicationService.GetApp().MustComponent(export.CName).(export.Export)
+		path, succeed, err := es.Export(cctx, pb.RpcObjectListExportRequest{SpaceId: req.FromSpace, Path: publishTempDir, Format: model.Export_Protobuf})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Exported %d objects to %s\n", succeed, path)
+
+		return err
+	})
+	if err != nil {
+		return &pb.RpcSpacePublishResponse{
+			Error: &pb.RpcSpacePublishResponseError{
+				Code:        1,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	originImport := objectorigin.Import(model.ImportType(model.Import_Pb))
+	_, _, err = getService[importer.Importer](mw).Import(cctx, &pb.RpcObjectImportRequest{
+		SpaceId:               req.ToSpace,
+		UpdateExistingObjects: true,
+		NoProgress:            false,
+		Type:                  model.Import_Pb,
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+			PbParams: &pb.RpcObjectImportRequestPbParams{
+				Path:         []string{publishTempDir},
+				NoCollection: true,
+				ImportType:   pb.RpcObjectImportRequestPbParams_SPACE,
+			},
+		},
+	}, originImport, nil)
+
+	if err != nil {
+		return &pb.RpcSpacePublishResponse{
+			Error: &pb.RpcSpacePublishResponseError{
+				Code:        1,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcSpacePublishResponse{
+		Error: &pb.RpcSpacePublishResponseError{
+			Code:        0,
+			Description: "",
 		},
 	}
 }

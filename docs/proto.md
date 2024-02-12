@@ -946,6 +946,10 @@
     - [Rpc.Space.PublicAdd.Request](#anytype-Rpc-Space-PublicAdd-Request)
     - [Rpc.Space.PublicAdd.Response](#anytype-Rpc-Space-PublicAdd-Response)
     - [Rpc.Space.PublicAdd.Response.Error](#anytype-Rpc-Space-PublicAdd-Response-Error)
+    - [Rpc.Space.Publish](#anytype-Rpc-Space-Publish)
+    - [Rpc.Space.Publish.Request](#anytype-Rpc-Space-Publish-Request)
+    - [Rpc.Space.Publish.Response](#anytype-Rpc-Space-Publish-Response)
+    - [Rpc.Space.Publish.Response.Error](#anytype-Rpc-Space-Publish-Response-Error)
     - [Rpc.Space.RequestApprove](#anytype-Rpc-Space-RequestApprove)
     - [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request)
     - [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response)
@@ -1265,6 +1269,7 @@
     - [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code)
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.PublicAdd.Response.Error.Code](#anytype-Rpc-Space-PublicAdd-Response-Error-Code)
+    - [Rpc.Space.Publish.Response.Error.Code](#anytype-Rpc-Space-Publish-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
@@ -1689,6 +1694,7 @@
 | SpaceJoinCancel | [Rpc.Space.JoinCancel.Request](#anytype-Rpc-Space-JoinCancel-Request) | [Rpc.Space.JoinCancel.Response](#anytype-Rpc-Space-JoinCancel-Response) |  |
 | SpaceGuestAdd | [Rpc.Space.GuestAdd.Request](#anytype-Rpc-Space-GuestAdd-Request) | [Rpc.Space.GuestAdd.Response](#anytype-Rpc-Space-GuestAdd-Response) |  |
 | SpacePublicAdd | [Rpc.Space.PublicAdd.Request](#anytype-Rpc-Space-PublicAdd-Request) | [Rpc.Space.PublicAdd.Response](#anytype-Rpc-Space-PublicAdd-Response) |  |
+| SpacePublish | [Rpc.Space.Publish.Request](#anytype-Rpc-Space-Publish-Request) | [Rpc.Space.Publish.Response](#anytype-Rpc-Space-Publish-Response) |  |
 | SpaceExit | [Rpc.Space.Exit.Request](#anytype-Rpc-Space-Exit-Request) | [Rpc.Space.Exit.Response](#anytype-Rpc-Space-Exit-Response) |  |
 | SpaceRequestApprove | [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request) | [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response) |  |
 | SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
@@ -15605,6 +15611,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-Publish"></a>
+
+### Rpc.Space.Publish
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Publish-Request"></a>
+
+### Rpc.Space.Publish.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fromSpace | [string](#string) |  |  |
+| toSpace | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Publish-Response"></a>
+
+### Rpc.Space.Publish.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.Publish.Response.Error](#anytype-Rpc-Space-Publish-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Publish-Response-Error"></a>
+
+### Rpc.Space.Publish.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.Publish.Response.Error.Code](#anytype-Rpc-Space-Publish-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-RequestApprove"></a>
 
 ### Rpc.Space.RequestApprove
@@ -19979,6 +20042,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Space-PublicAdd-Response-Error-Code"></a>
 
 ### Rpc.Space.PublicAdd.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 105 |  |
+
+
+
+<a name="anytype-Rpc-Space-Publish-Response-Error-Code"></a>
+
+### Rpc.Space.Publish.Response.Error.Code
 
 
 | Name | Number | Description |
