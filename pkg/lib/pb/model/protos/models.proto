@@ -726,7 +726,7 @@ message ObjectType {
         date = 17;
         spaceView = 18;
 
-        database = 20; // to be released later
+        pdf = 20;
     }
 }
 

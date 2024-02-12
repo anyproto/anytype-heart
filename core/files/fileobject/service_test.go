@@ -109,6 +109,8 @@ func (c *objectCreatorStub) CreateSmartBlockFromStateInSpace(ctx context.Context
 	return c.objectId, c.details, nil
 }
 
+const testFileId = domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
+
 func TestMigration(t *testing.T) {
 	t.Run("do not migrate empty file ids", func(t *testing.T) {
 		fx := newFixture(t)
@@ -147,42 +149,40 @@ func TestMigration(t *testing.T) {
 		fx := newFixture(t)
 
 		objectId := "objectId"
-		fileId := domain.FileId("fileId")
 		st := testutil.BuildStateFromAST(
 			bb.Root(
 				bb.ID(objectId),
-				bb.Children(bb.File("", bb.FileHash(fileId.String()))),
+				bb.Children(bb.File("", bb.FileHash(testFileId.String()))),
 			),
 		)
 
 		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(fileId.String(), mock.Anything).Return(nil)
+		space.EXPECT().Do(testFileId.String(), mock.Anything).Return(nil)
 
 		fx.MigrateBlocks(st, space, nil)
 	})
 
-	t.Run("do not migrate already migrated file: objectId is found by fileId in current space", func(t *testing.T) {
+	t.Run("do not create new object for already migrated file: objectId is found by fileId in current space", func(t *testing.T) {
 		fx := newFixture(t)
 
 		spaceId := "spaceId"
 		objectId := "objectId"
-		fileId := domain.FileId("fileId")
 		expectedFileObjectId := "fileObjectId"
 		st := testutil.BuildStateFromAST(
 			bb.Root(
 				bb.ID(objectId),
 			),
 		)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{fileId.String()}))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{testFileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(fileId.String(), mock.Anything).Return(ocache.ErrNotExists)
+		space.EXPECT().Do(testFileId.String(), mock.Anything).Return(ocache.ErrNotExists)
 		space.EXPECT().Id().Return(spaceId)
 
 		fx.objectStore.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String(expectedFileObjectId),
-				bundle.RelationKeyFileId:  pbtypes.String(fileId.String()),
+				bundle.RelationKeyFileId:  pbtypes.String(testFileId.String()),
 				bundle.RelationKeySpaceId: pbtypes.String(spaceId),
 			},
 		})
@@ -201,10 +201,9 @@ func TestMigration(t *testing.T) {
 		assert.Equal(t, wantState.Details(), st.Details())
 	})
 
-	t.Run("do not migrate already migrated file: objectId is found by fileId in another space", func(t *testing.T) {
+	t.Run("do not migrate already migrated file: migrated objectId has different CID format", func(t *testing.T) {
 		fx := newFixture(t)
 
-		spaceId := "spaceId"
 		objectId := "objectId"
 		fileId := domain.FileId("fileObjectIdFromAnotherSpace")
 		st := testutil.BuildStateFromAST(
@@ -215,8 +214,6 @@ func TestMigration(t *testing.T) {
 		st.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{fileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(fileId.String(), mock.Anything).Return(ocache.ErrNotExists)
-		space.EXPECT().Id().Return(spaceId)
 
 		fx.objectStore.AddObjects(t, []objectstore.TestObject{
 			{
