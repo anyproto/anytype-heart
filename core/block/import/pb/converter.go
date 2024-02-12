@@ -152,14 +152,14 @@ func (p *Pb) handleImportPath(
 		}
 	}
 	if profile != nil {
-		pr, e := p.accountService.LocalProfile()
+		pr, e := p.accountService.ProfileInfo()
 		if e != nil {
 			allErrors.Add(e)
 			if allErrors.ShouldAbortImport(pathCount, model.Import_Pb) {
 				return nil, nil, nil
 			}
 		}
-		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
+		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountId)
 		profileID = profile.ProfileId
 	}
 	return p.getSnapshotsFromProvidedFiles(pathCount, importSource, allErrors, path, profileID, needToImportWidgets, isMigration, importType)
@@ -349,7 +349,11 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 	}
 
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {
-		id = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
+		var err error
+		id, err = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
+		if err != nil {
+			return "", fmt.Errorf("get user profile id: %w", err)
+		}
 		p.setProfileIconOption(snapshot, profileID)
 	}
 	if snapshot.SbType == model.SmartBlockType_Page {
@@ -384,12 +388,12 @@ func (p *Pb) normalizeFilePath(snapshot *pb.SnapshotWithType, pbFiles source.Sou
 	return nil
 }
 
-func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
+func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) (string, error) {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	if objectID == profileID && isMigration {
-		return p.accountService.IdentityObjectId()
+		return p.accountService.ProfileObjectId()
 	}
-	return id
+	return id, nil
 }
 
 func (p *Pb) setProfileIconOption(mo *pb.SnapshotWithType, profileID string) {

@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-func NewSpaceController(spaceId string, a *app.App) spacecontroller.SpaceController {
+func NewSpaceController(spaceId string, metadata []byte, a *app.App) spacecontroller.SpaceController {
 	techSpace := a.MustComponent(techspace.CName).(techspace.TechSpace)
 	spaceCore := a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
 	return &spaceController{
@@ -24,12 +24,14 @@ func NewSpaceController(spaceId string, a *app.App) spacecontroller.SpaceControl
 		spaceId:   spaceId,
 		techSpace: techSpace,
 		spaceCore: spaceCore,
+		metadata:  metadata,
 	}
 }
 
 type spaceController struct {
-	app     *app.App
-	spaceId string
+	app      *app.App
+	spaceId  string
+	metadata []byte
 
 	loader    loader.Loader
 	spaceCore spacecore.SpaceCoreService
@@ -51,7 +53,7 @@ func (s *spaceController) Start(ctx context.Context) (err error) {
 	err = s.loader.Start(ctx)
 	// This could happen for old accounts
 	if errors.Is(err, spaceloader.ErrSpaceNotExists) {
-		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false)
+		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false, spaceinfo.AccountStatusUnknown)
 		if err != nil {
 			return
 		}
@@ -89,10 +91,15 @@ func (s *spaceController) newLoader() loader.Loader {
 		SpaceId:             s.spaceId,
 		Status:              spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown),
 		StopIfMandatoryFail: true,
+		OwnerMetadata:       s.metadata,
 	})
 }
 
 func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
+	return nil
+}
+
+func (s *spaceController) SetStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
 	return nil
 }
 

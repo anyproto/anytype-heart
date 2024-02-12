@@ -907,6 +907,50 @@
     - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
     - [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response)
     - [Rpc.Space.Delete.Response.Error](#anytype-Rpc-Space-Delete-Response-Error)
+    - [Rpc.Space.Exit](#anytype-Rpc-Space-Exit)
+    - [Rpc.Space.Exit.Request](#anytype-Rpc-Space-Exit-Request)
+    - [Rpc.Space.Exit.Response](#anytype-Rpc-Space-Exit-Response)
+    - [Rpc.Space.Exit.Response.Error](#anytype-Rpc-Space-Exit-Response-Error)
+    - [Rpc.Space.InviteGenerate](#anytype-Rpc-Space-InviteGenerate)
+    - [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request)
+    - [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response)
+    - [Rpc.Space.InviteGenerate.Response.Error](#anytype-Rpc-Space-InviteGenerate-Response-Error)
+    - [Rpc.Space.InviteGetCurrent](#anytype-Rpc-Space-InviteGetCurrent)
+    - [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request)
+    - [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response)
+    - [Rpc.Space.InviteGetCurrent.Response.Error](#anytype-Rpc-Space-InviteGetCurrent-Response-Error)
+    - [Rpc.Space.InviteRevoke](#anytype-Rpc-Space-InviteRevoke)
+    - [Rpc.Space.InviteRevoke.Request](#anytype-Rpc-Space-InviteRevoke-Request)
+    - [Rpc.Space.InviteRevoke.Response](#anytype-Rpc-Space-InviteRevoke-Response)
+    - [Rpc.Space.InviteRevoke.Response.Error](#anytype-Rpc-Space-InviteRevoke-Response-Error)
+    - [Rpc.Space.InviteView](#anytype-Rpc-Space-InviteView)
+    - [Rpc.Space.InviteView.Request](#anytype-Rpc-Space-InviteView-Request)
+    - [Rpc.Space.InviteView.Response](#anytype-Rpc-Space-InviteView-Response)
+    - [Rpc.Space.InviteView.Response.Error](#anytype-Rpc-Space-InviteView-Response-Error)
+    - [Rpc.Space.Join](#anytype-Rpc-Space-Join)
+    - [Rpc.Space.Join.Request](#anytype-Rpc-Space-Join-Request)
+    - [Rpc.Space.Join.Response](#anytype-Rpc-Space-Join-Response)
+    - [Rpc.Space.Join.Response.Error](#anytype-Rpc-Space-Join-Response-Error)
+    - [Rpc.Space.JoinCancel](#anytype-Rpc-Space-JoinCancel)
+    - [Rpc.Space.JoinCancel.Request](#anytype-Rpc-Space-JoinCancel-Request)
+    - [Rpc.Space.JoinCancel.Response](#anytype-Rpc-Space-JoinCancel-Response)
+    - [Rpc.Space.JoinCancel.Response.Error](#anytype-Rpc-Space-JoinCancel-Response-Error)
+    - [Rpc.Space.ParticipantPermissionsChange](#anytype-Rpc-Space-ParticipantPermissionsChange)
+    - [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request)
+    - [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response)
+    - [Rpc.Space.ParticipantPermissionsChange.Response.Error](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error)
+    - [Rpc.Space.ParticipantRemove](#anytype-Rpc-Space-ParticipantRemove)
+    - [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request)
+    - [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response)
+    - [Rpc.Space.ParticipantRemove.Response.Error](#anytype-Rpc-Space-ParticipantRemove-Response-Error)
+    - [Rpc.Space.RequestApprove](#anytype-Rpc-Space-RequestApprove)
+    - [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request)
+    - [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response)
+    - [Rpc.Space.RequestApprove.Response.Error](#anytype-Rpc-Space-RequestApprove-Response-Error)
+    - [Rpc.Space.RequestDecline](#anytype-Rpc-Space-RequestDecline)
+    - [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request)
+    - [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response)
+    - [Rpc.Space.RequestDecline.Response.Error](#anytype-Rpc-Space-RequestDecline-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -1208,6 +1252,17 @@
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
+    - [Rpc.Space.Exit.Response.Error.Code](#anytype-Rpc-Space-Exit-Response-Error-Code)
+    - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
+    - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
+    - [Rpc.Space.InviteRevoke.Response.Error.Code](#anytype-Rpc-Space-InviteRevoke-Response-Error-Code)
+    - [Rpc.Space.InviteView.Response.Error.Code](#anytype-Rpc-Space-InviteView-Response-Error-Code)
+    - [Rpc.Space.Join.Response.Error.Code](#anytype-Rpc-Space-Join-Response-Error-Code)
+    - [Rpc.Space.JoinCancel.Response.Error.Code](#anytype-Rpc-Space-JoinCancel-Response-Error-Code)
+    - [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code)
+    - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
+    - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
+    - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
@@ -1483,8 +1538,11 @@
     - [Export](#anytype-model-Export)
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
+    - [IdentityProfile](#anytype-model-IdentityProfile)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
+    - [Invite](#anytype-model-Invite)
+    - [InvitePayload](#anytype-model-InvitePayload)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
     - [ManifestInfo](#anytype-model-ManifestInfo)
@@ -1495,6 +1553,7 @@
     - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
+    - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1502,6 +1561,7 @@
     - [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet)
     - [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize)
     - [ObjectView.RelationWithValuePerObject](#anytype-model-ObjectView-RelationWithValuePerObject)
+    - [ParticipantPermissionChange](#anytype-model-ParticipantPermissionChange)
     - [Range](#anytype-model-Range)
     - [Relation](#anytype-model-Relation)
     - [Relation.Option](#anytype-model-Relation-Option)
@@ -1552,12 +1612,15 @@
     - [Notification.Status](#anytype-model-Notification-Status)
     - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
+    - [ParticipantPermissions](#anytype-model-ParticipantPermissions)
+    - [ParticipantStatus](#anytype-model-ParticipantStatus)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
     - [RelationFormat](#anytype-model-RelationFormat)
     - [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction)
     - [Restrictions.ObjectRestriction](#anytype-model-Restrictions-ObjectRestriction)
     - [SmartBlockType](#anytype-model-SmartBlockType)
+    - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceStatus](#anytype-model-SpaceStatus)
   
 - [Scalar Value Types](#scalar-value-types)
@@ -1616,6 +1679,17 @@
 | AccountRecoverFromLegacyExport | [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request) | [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response) |  |
 | AccountChangeNetworkConfigAndRestart | [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request) | [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response) |  |
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
+| SpaceInviteGenerate | [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request) | [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response) |  |
+| SpaceInviteGetCurrent | [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request) | [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response) |  |
+| SpaceInviteRevoke | [Rpc.Space.InviteRevoke.Request](#anytype-Rpc-Space-InviteRevoke-Request) | [Rpc.Space.InviteRevoke.Response](#anytype-Rpc-Space-InviteRevoke-Response) |  |
+| SpaceInviteView | [Rpc.Space.InviteView.Request](#anytype-Rpc-Space-InviteView-Request) | [Rpc.Space.InviteView.Response](#anytype-Rpc-Space-InviteView-Response) |  |
+| SpaceJoin | [Rpc.Space.Join.Request](#anytype-Rpc-Space-Join-Request) | [Rpc.Space.Join.Response](#anytype-Rpc-Space-Join-Response) |  |
+| SpaceJoinCancel | [Rpc.Space.JoinCancel.Request](#anytype-Rpc-Space-JoinCancel-Request) | [Rpc.Space.JoinCancel.Response](#anytype-Rpc-Space-JoinCancel-Response) |  |
+| SpaceExit | [Rpc.Space.Exit.Request](#anytype-Rpc-Space-Exit-Request) | [Rpc.Space.Exit.Response](#anytype-Rpc-Space-Exit-Response) |  |
+| SpaceRequestApprove | [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request) | [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response) |  |
+| SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
+| SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
+| SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
@@ -14960,6 +15034,642 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-Exit"></a>
+
+### Rpc.Space.Exit
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Exit-Request"></a>
+
+### Rpc.Space.Exit.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Exit-Response"></a>
+
+### Rpc.Space.Exit.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.Exit.Response.Error](#anytype-Rpc-Space-Exit-Response-Error) |  |  |
+| timestamp | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Exit-Response-Error"></a>
+
+### Rpc.Space.Exit.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.Exit.Response.Error.Code](#anytype-Rpc-Space-Exit-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGenerate"></a>
+
+### Rpc.Space.InviteGenerate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGenerate-Request"></a>
+
+### Rpc.Space.InviteGenerate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGenerate-Response"></a>
+
+### Rpc.Space.InviteGenerate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.InviteGenerate.Response.Error](#anytype-Rpc-Space-InviteGenerate-Response-Error) |  |  |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGenerate-Response-Error"></a>
+
+### Rpc.Space.InviteGenerate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetCurrent"></a>
+
+### Rpc.Space.InviteGetCurrent
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetCurrent-Request"></a>
+
+### Rpc.Space.InviteGetCurrent.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetCurrent-Response"></a>
+
+### Rpc.Space.InviteGetCurrent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.InviteGetCurrent.Response.Error](#anytype-Rpc-Space-InviteGetCurrent-Response-Error) |  |  |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetCurrent-Response-Error"></a>
+
+### Rpc.Space.InviteGetCurrent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteRevoke"></a>
+
+### Rpc.Space.InviteRevoke
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteRevoke-Request"></a>
+
+### Rpc.Space.InviteRevoke.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteRevoke-Response"></a>
+
+### Rpc.Space.InviteRevoke.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.InviteRevoke.Response.Error](#anytype-Rpc-Space-InviteRevoke-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteRevoke-Response-Error"></a>
+
+### Rpc.Space.InviteRevoke.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.InviteRevoke.Response.Error.Code](#anytype-Rpc-Space-InviteRevoke-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteView"></a>
+
+### Rpc.Space.InviteView
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteView-Request"></a>
+
+### Rpc.Space.InviteView.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteView-Response"></a>
+
+### Rpc.Space.InviteView.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.InviteView.Response.Error](#anytype-Rpc-Space-InviteView-Response-Error) |  |  |
+| spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
+| spaceIconCid | [string](#string) |  |  |
+| creatorName | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteView-Response-Error"></a>
+
+### Rpc.Space.InviteView.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.InviteView.Response.Error.Code](#anytype-Rpc-Space-InviteView-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Join"></a>
+
+### Rpc.Space.Join
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Join-Request"></a>
+
+### Rpc.Space.Join.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| networkId | [string](#string) |  | not-empty only for self-hosting |
+| spaceId | [string](#string) |  |  |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Join-Response"></a>
+
+### Rpc.Space.Join.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.Join.Response.Error](#anytype-Rpc-Space-Join-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Join-Response-Error"></a>
+
+### Rpc.Space.Join.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.Join.Response.Error.Code](#anytype-Rpc-Space-Join-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-JoinCancel"></a>
+
+### Rpc.Space.JoinCancel
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-JoinCancel-Request"></a>
+
+### Rpc.Space.JoinCancel.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-JoinCancel-Response"></a>
+
+### Rpc.Space.JoinCancel.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.JoinCancel.Response.Error](#anytype-Rpc-Space-JoinCancel-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-JoinCancel-Response-Error"></a>
+
+### Rpc.Space.JoinCancel.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.JoinCancel.Response.Error.Code](#anytype-Rpc-Space-JoinCancel-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange"></a>
+
+### Rpc.Space.ParticipantPermissionsChange
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange-Request"></a>
+
+### Rpc.Space.ParticipantPermissionsChange.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| changes | [model.ParticipantPermissionChange](#anytype-model-ParticipantPermissionChange) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange-Response"></a>
+
+### Rpc.Space.ParticipantPermissionsChange.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.ParticipantPermissionsChange.Response.Error](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error"></a>
+
+### Rpc.Space.ParticipantPermissionsChange.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantRemove"></a>
+
+### Rpc.Space.ParticipantRemove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantRemove-Request"></a>
+
+### Rpc.Space.ParticipantRemove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identities | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantRemove-Response"></a>
+
+### Rpc.Space.ParticipantRemove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.ParticipantRemove.Response.Error](#anytype-Rpc-Space-ParticipantRemove-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantRemove-Response-Error"></a>
+
+### Rpc.Space.ParticipantRemove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-RequestApprove"></a>
+
+### Rpc.Space.RequestApprove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-RequestApprove-Request"></a>
+
+### Rpc.Space.RequestApprove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-RequestApprove-Response"></a>
+
+### Rpc.Space.RequestApprove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.RequestApprove.Response.Error](#anytype-Rpc-Space-RequestApprove-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-RequestApprove-Response-Error"></a>
+
+### Rpc.Space.RequestApprove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-RequestDecline"></a>
+
+### Rpc.Space.RequestDecline
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-RequestDecline-Request"></a>
+
+### Rpc.Space.RequestDecline.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-RequestDecline-Response"></a>
+
+### Rpc.Space.RequestDecline.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.RequestDecline.Response.Error](#anytype-Rpc-Space-RequestDecline-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-RequestDecline-Response-Error"></a>
+
+### Rpc.Space.RequestDecline.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Template"></a>
 
 ### Rpc.Template
@@ -19057,11 +19767,194 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| NULL | 0 | No error; mnemonic should be non-empty |
-| UNKNOWN_ERROR | 1 | Any other errors |
-| BAD_INPUT | 2 | Root path is wrong |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
+
+
+
+<a name="anytype-Rpc-Space-Exit-Response-Error-Code"></a>
+
+### Rpc.Space.Exit.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-InviteGenerate-Response-Error-Code"></a>
+
+### Rpc.Space.InviteGenerate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code"></a>
+
+### Rpc.Space.InviteGetCurrent.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| NO_ACTIVE_INVITE | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-InviteRevoke-Response-Error-Code"></a>
+
+### Rpc.Space.InviteRevoke.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| NO_ACTIVE_INVITE | 103 |  |
+| REQUEST_FAILED | 105 |  |
+
+
+
+<a name="anytype-Rpc-Space-InviteView-Response-Error-Code"></a>
+
+### Rpc.Space.InviteView.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| INVITE_NOT_FOUND | 103 |  |
+| INVITE_BAD_SIGNATURE | 104 |  |
+
+
+
+<a name="anytype-Rpc-Space-Join-Response-Error-Code"></a>
+
+### Rpc.Space.Join.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| INVITE_NOT_FOUND | 103 |  |
+| INVITE_BAD_SIGNATURE | 104 |  |
+| REQUEST_FAILED | 105 |  |
+
+
+
+<a name="anytype-Rpc-Space-JoinCancel-Response-Error-Code"></a>
+
+### Rpc.Space.JoinCancel.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code"></a>
+
+### Rpc.Space.ParticipantPermissionsChange.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-ParticipantRemove-Response-Error-Code"></a>
+
+### Rpc.Space.ParticipantRemove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| PARTICIPANT_NOT_FOUND | 103 |  |
+| REQUEST_FAILED | 104 |  |
+
+
+
+<a name="anytype-Rpc-Space-RequestApprove-Response-Error-Code"></a>
+
+### Rpc.Space.RequestApprove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| NO_SUCH_IDENTITY | 103 |  |
+| INCORRECT_PERMISSIONS | 104 |  |
+| REQUEST_FAILED | 105 |  |
+
+
+
+<a name="anytype-Rpc-Space-RequestDecline-Response-Error-Code"></a>
+
+### Rpc.Space.RequestDecline.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
 
 
 
@@ -23364,6 +24257,24 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-IdentityProfile"></a>
+
+### IdentityProfile
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| iconCid | [string](#string) |  |  |
+| iconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-model-Import"></a>
 
 ### Import
@@ -23383,6 +24294,43 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [InternalFlag.Value](#anytype-model-InternalFlag-Value) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Invite"></a>
+
+### Invite
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| payload | [bytes](#bytes) |  |  |
+| signature | [bytes](#bytes) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-InvitePayload"></a>
+
+### InvitePayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| creatorIdentity | [string](#string) |  |  |
+| creatorName | [string](#string) |  |  |
+| inviteKey | [bytes](#bytes) |  |  |
+| spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
+| spaceIconCid | [string](#string) |  |  |
+| spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 
 
 
@@ -23507,6 +24455,7 @@ Used to decode block meta only, without the content itself
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
 | export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
 | galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
+| requestToJoin | [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin) |  |  |
 | space | [string](#string) |  |  |
 
 
@@ -23561,6 +24510,24 @@ Used to decode block meta only, without the content itself
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-RequestToJoin"></a>
+
+### Notification.RequestToJoin
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+| identityName | [string](#string) |  |  |
+| identityIcon | [string](#string) |  |  |
 
 
 
@@ -23687,6 +24654,22 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | objectId | [string](#string) |  |  |
 | relations | [RelationWithValue](#anytype-model-RelationWithValue) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ParticipantPermissionChange"></a>
+
+### ParticipantPermissionChange
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| perms | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 
@@ -24504,7 +25487,38 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | video | 16 |  |
 | date | 17 |  |
 | spaceView | 18 |  |
+| participant | 19 |  |
 | pdf | 20 |  |
+
+
+
+<a name="anytype-model-ParticipantPermissions"></a>
+
+### ParticipantPermissions
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Reader | 0 |  |
+| Writer | 1 |  |
+| Owner | 2 |  |
+| NoPermissions | 3 |  |
+
+
+
+<a name="anytype-model-ParticipantStatus"></a>
+
+### ParticipantStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Joining | 0 |  |
+| Active | 1 |  |
+| Removed | 2 |  |
+| Declined | 3 |  |
+| Removing | 4 |  |
+| Canceled | 5 |  |
 
 
 
@@ -24621,8 +25635,22 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | STRelationOption | 529 |  |
 | SpaceView | 530 |  |
 | Identity | 532 |  |
+| Participant | 534 |  |
 | MissingObject | 519 |  |
 | FileObject | 533 |  |
+
+
+
+<a name="anytype-model-SpaceAccessType"></a>
+
+### SpaceAccessType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Private | 0 |  |
+| Personal | 1 |  |
+| Shared | 2 |  |
 
 
 
@@ -24641,6 +25669,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | RemoteWaitingDeletion | 5 | RemoteWaitingDeletion - network status is &#34;waiting deletion&#34; |
 | RemoteDeleted | 6 | RemoteDeleted - the space is deleted in the current network |
 | SpaceDeleted | 7 | SpaceDeleted - the space should be deleted in the network |
+| SpaceActive | 8 | SpaceActive - the space is active in the network |
+| SpaceJoining | 9 | SpaceJoining - the account is joining the space |
 
 
  

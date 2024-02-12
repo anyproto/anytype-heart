@@ -73,7 +73,7 @@ func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
 		wait: wait,
 	}
 	s.mu.Unlock()
-	ctrl, err := s.factory.NewPersonalSpace(ctx)
+	ctrl, err := s.factory.NewPersonalSpace(ctx, s.accountMetadataPayload)
 	if err != nil {
 		return
 	}

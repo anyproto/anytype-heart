@@ -90,6 +90,7 @@ var (
 		model.ObjectType_relationOptionsList: {
 			model.Restrictions_Template,
 		},
+		model.ObjectType_participant: objRestrictAll,
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
@@ -145,6 +146,7 @@ var (
 		smartblock.SmartBlockTypeAccountOld: {
 			model.Restrictions_Template,
 		},
+		smartblock.SmartBlockTypeParticipant: objRestrictAll,
 	}
 )
 

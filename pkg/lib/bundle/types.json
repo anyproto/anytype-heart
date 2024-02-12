@@ -312,6 +312,20 @@
     "description": "Space"
   },
   {
+    "id": "participant",
+    "name": "Participant",
+    "types": [
+      "Participant"
+    ],
+    "emoji": "\uD83E\uDDD1",
+    "hidden": true,
+    "layout": "participant",
+    "relations": [
+      "tag"
+    ],
+    "description": "Participant"
+  },
+  {
     "id": "template",
     "name": "Template",
     "types": [

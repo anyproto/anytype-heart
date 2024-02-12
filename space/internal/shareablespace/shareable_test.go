@@ -36,6 +36,8 @@ type spaceStatusMock struct {
 	persistentUpdater func(status spaceinfo.AccountStatus)
 }
 
+var _ spacestatus.SpaceStatus = (*spaceStatusMock)(nil)
+
 func (s *spaceStatusMock) Init(a *app.App) (err error) {
 	return nil
 }
@@ -96,6 +98,10 @@ func (s *spaceStatusMock) SetLocalInfo(ctx context.Context, info spaceinfo.Space
 	return nil
 }
 
+func (s *spaceStatusMock) SetAccessType(ctx context.Context, status spaceinfo.AccessType) (err error) {
+	return nil
+}
+
 type inviting struct {
 	inviteReceived atomic.Bool
 	status         spacestatus.SpaceStatus
@@ -113,10 +119,10 @@ func (i *inviting) Start(ctx context.Context) error {
 	go func() {
 		i.inviteReceived.Store(true)
 		i.status.Lock()
-		i.status.SetPersistentStatus(ctx, spaceinfo.AccountStatusLoading)
+		i.status.SetPersistentStatus(ctx, spaceinfo.AccountStatusActive)
 		i.status.Unlock()
 	}()
-	i.reg.register(mode.ModeInviting)
+	i.reg.register(mode.ModeJoining)
 	return nil
 }
 
@@ -190,7 +196,7 @@ func (f factory) Process(md mode.Mode) mode.Process {
 	switch md {
 	case mode.ModeInitial:
 		return initial.New()
-	case mode.ModeInviting:
+	case mode.ModeJoining:
 		return newInviting(f.status, f.reg)
 	case mode.ModeLoading:
 		return newLoading(f.status, f.reg)
@@ -249,15 +255,15 @@ func (fx *fixture) stop() {
 }
 
 func TestSpaceController_InvitingLoading(t *testing.T) {
-	fx := newFixture(t, spaceinfo.AccountStatusInviting)
+	fx := newFixture(t, spaceinfo.AccountStatusJoining)
 	defer fx.stop()
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, mode.ModeInviting, fx.ctrl.Mode())
+	require.Equal(t, mode.ModeJoining, fx.ctrl.Mode())
 	time.Sleep(100 * time.Millisecond)
 	fx.reg.Lock()
 	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeInviting, mode.ModeLoading}, fx.reg.modes)
+	require.Equal(t, []mode.Mode{mode.ModeJoining, mode.ModeLoading}, fx.reg.modes)
 }
 
 func TestSpaceController_LoadingDeleting(t *testing.T) {
@@ -312,7 +318,7 @@ func TestSpaceController_DeletingInvalid(t *testing.T) {
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
-	err = fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusLoading)
+	err = fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusActive)
 	require.Error(t, err)
 	fx.reg.Lock()
 	defer fx.reg.Unlock()

@@ -17,6 +17,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -153,8 +154,8 @@ func SmartblockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 	if strings.HasPrefix(id, addr.MissingObject) {
 		return smartblock.SmartBlockTypeMissingObject, nil
 	}
-	if strings.HasPrefix(id, addr.IdentityPrefix) {
-		return smartblock.SmartBlockTypeIdentity, nil
+	if strings.HasPrefix(id, domain.ParticipantPrefix) {
+		return smartblock.SmartBlockTypeParticipant, nil
 	}
 
 	c, err := cid.Decode(id)

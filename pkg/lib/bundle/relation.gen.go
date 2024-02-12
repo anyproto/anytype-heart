@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f807329637be32ded3325b484c621d9af9620f4991a416ac58356002e36bb0d6"
+const RelationChecksum = "56d2e69285cd7e22d75e27e8538a9f8d0d542816b9ad97568436543afa724447"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -148,6 +148,7 @@ const (
 	RelationKeySpaceDashboardId          domain.RelationKey = "spaceDashboardId"
 	RelationKeyIconOption                domain.RelationKey = "iconOption"
 	RelationKeySpaceAccessibility        domain.RelationKey = "spaceAccessibility"
+	RelationKeySpaceAccessType           domain.RelationKey = "spaceAccessType"
 	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
 	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
@@ -162,6 +163,11 @@ const (
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
+	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
+	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
+	RelationKeyParticipantPermissions    domain.RelationKey = "participantPermissions"
+	RelationKeyIdentity                  domain.RelationKey = "identity"
+	RelationKeyParticipantStatus         domain.RelationKey = "participantStatus"
 	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
@@ -940,6 +946,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIdentity: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Identity",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_bridentity",
+			Key:              "identity",
+			MaxCount:         1,
+			Name:             "Identity",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIdentityProfileLink: {
 
 			DataSource:       model.Relation_derived,
@@ -1437,6 +1457,34 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyParticipantPermissions: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Participant permissions. Possible values: models.ParticipantPermissions",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brparticipantPermissions",
+			Key:              "participantPermissions",
+			MaxCount:         1,
+			Name:             "Participant permissions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyParticipantStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Participant status. Possible values: models.ParticipantStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brparticipantStatus",
+			Key:              "participantStatus",
+			MaxCount:         1,
+			Name:             "Participant status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyPhone: {
 
 			DataSource:       model.Relation_details,
@@ -1917,6 +1965,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceAccessType: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space access type, see enum model.SpaceAccessType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceAccessType",
+			Key:              "spaceAccessType",
+			MaxCount:         1,
+			Name:             "Space access type",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySpaceAccessibility: {
 
 			DataSource:       model.Relation_details,
@@ -1970,6 +2032,34 @@ var (
 			MaxCount:         1,
 			Name:             "Space ID",
 			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteFileCid: {
+
+			DataSource:       model.Relation_details,
+			Description:      "CID of invite file for current space. It stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteFileCid",
+			Key:              "spaceInviteFileCid",
+			MaxCount:         1,
+			Name:             "CID of invite file for current space",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteFileKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Encoded encryption key of invite file for current space. It stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteFileKey",
+			Key:              "spaceInviteFileKey",
+			MaxCount:         1,
+			Name:             "Encoded encryption key of invite file for current space",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

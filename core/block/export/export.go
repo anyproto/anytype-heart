@@ -502,7 +502,7 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	}
 	var spaceDashBoardID string
 
-	pr, err := e.accountService.LocalProfile()
+	pr, err := e.accountService.ProfileInfo()
 	if err != nil {
 		return err
 	}
@@ -515,7 +515,7 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	}
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
-		Address:          pr.AccountAddr,
+		Address:          pr.AccountId,
 		Name:             pr.Name,
 		Avatar:           pr.IconImage,
 		ProfileId:        pr.Id,

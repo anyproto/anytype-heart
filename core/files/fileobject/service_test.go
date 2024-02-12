@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -78,6 +79,10 @@ func newFixture(t *testing.T) *fixture {
 
 	err := a.Start(ctx)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := a.Close(ctx)
+		require.NoError(t, err)
+	})
 
 	fx := &fixture{
 		fileService:   fileService,
@@ -268,7 +273,8 @@ func TestMigration(t *testing.T) {
 
 		fx.objectCreator.objectId = expectedFileObjectId
 
-		expectIndexerCalled(t, fx, expectedFileObjectId)
+		waitIndexerCh := make(chan struct{}, 1)
+		expectIndexerCalled(t, fx, waitIndexerCh, expectedFileObjectId)
 
 		keys := map[string]string{
 			"filepath": "key",
@@ -302,6 +308,12 @@ func TestMigration(t *testing.T) {
 
 		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())
+
+		select {
+		case <-waitIndexerCh:
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("indexer was not called")
+		}
 	})
 }
 
@@ -321,9 +333,12 @@ func testAddFile(t *testing.T, fx *fixture, spaceId string) *files.AddResult {
 	return got
 }
 
-func expectIndexerCalled(t *testing.T, fx *fixture, fileObjectId string) {
+func expectIndexerCalled(t *testing.T, fx *fixture, waitIndexerCh chan struct{}, fileObjectId string) {
 	space := mock_clientspace.NewMockSpace(t)
-	space.EXPECT().Do(fileObjectId, mock.Anything).Return(nil)
+	space.EXPECT().Do(fileObjectId, mock.Anything).RunAndReturn(func(_ string, _ func(smartblock.SmartBlock) error) error {
+		waitIndexerCh <- struct{}{}
+		return nil
+	})
 
 	fx.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(space, nil)
 }
