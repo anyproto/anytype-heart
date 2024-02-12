@@ -1,5 +1,10 @@
 package domain
 
+import (
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
+)
+
 // FileId is a CID of the root of file's DAG
 type FileId string
 
@@ -25,4 +30,12 @@ type FileContentId string
 
 func (id FileContentId) String() string {
 	return string(id)
+}
+
+func IsFileId(raw string) bool {
+	c, err := cid.Decode(raw)
+	if err != nil {
+		return false
+	}
+	return c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256
 }

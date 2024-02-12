@@ -165,7 +165,7 @@ func SmartblockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 	}
 	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
 	if c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256 {
-		return smartblock.SmartBlockTypeFileObject, nil
+		return smartblock.SmartBlockTypeFile, nil
 	}
 	if c.Prefix().Codec == cid.DagCBOR {
 		return smartblock.SmartBlockTypePage, nil

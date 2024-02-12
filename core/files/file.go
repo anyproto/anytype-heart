@@ -105,6 +105,10 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 		Fields: commonDetails,
 	}
 
+	if meta.Media == "application/pdf" {
+		typeKey = bundle.TypeKeyFile
+		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_pdf))
+	}
 	if strings.HasPrefix(meta.Media, "video") {
 		typeKey = bundle.TypeKeyVideo
 		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_video))

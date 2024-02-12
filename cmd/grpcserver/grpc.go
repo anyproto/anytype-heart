@@ -75,6 +75,7 @@ func main() {
 	}
 
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
+		fmt.Printf("Running GO debug HTTP server at: %s\n", debug)
 		go func() {
 			http.ListenAndServe(debug, nil)
 		}()

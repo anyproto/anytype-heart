@@ -3423,8 +3423,9 @@ message Rpc {
                 }
 
                 message Category {
-                    string name = 1;
+                    string id = 1;
                     repeated string experiences = 2;
+                    string icon = 3;
                 }
             }
         }
