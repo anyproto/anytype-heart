@@ -725,6 +725,7 @@ message ObjectType {
         video = 16;
         date = 17;
         spaceView = 18;
+        pdf = 19;
 
         database = 20; // to be released later
     }
