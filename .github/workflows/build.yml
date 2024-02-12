@@ -25,6 +25,8 @@ on:
 
 permissions:
   actions: 'write'
+  packages: 'write'
+
 
 name: Build
 jobs:
