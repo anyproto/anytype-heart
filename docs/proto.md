@@ -12056,6 +12056,7 @@ DEPRECATED, GO-1926 |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
+| deleteOtherObjects | [bool](#bool) |  | dangerous, delete all objects that are not in import archive |
 
 
 

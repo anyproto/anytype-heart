@@ -240,7 +240,17 @@ func (mw *Middleware) SpacePublish(cctx context.Context, req *pb.RpcSpacePublish
 			},
 		}
 	}
+
 	defer os.RemoveAll(publishTempDir)
+
+	if req.FromSpace == req.ToSpace {
+		return &pb.RpcSpacePublishResponse{
+			Error: &pb.RpcSpacePublishResponseError{
+				Code:        1,
+				Description: "Source and destination spaces are the same",
+			},
+		}
+	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
 		es := mw.applicationService.GetApp().MustComponent(export.CName).(export.Export)
@@ -266,6 +276,7 @@ func (mw *Middleware) SpacePublish(cctx context.Context, req *pb.RpcSpacePublish
 	_, _, err = getService[importer.Importer](mw).Import(cctx, &pb.RpcObjectImportRequest{
 		SpaceId:               req.ToSpace,
 		UpdateExistingObjects: true,
+		DeleteOtherObjects:    true, // dangerous, but here is fine
 		NoProgress:            false,
 		Type:                  model.Import_Pb,
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{

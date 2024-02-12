@@ -2444,6 +2444,7 @@ message Rpc {
                 bool noProgress = 12;
                 bool isMigration = 13;
                 bool isNewSpace = 15;
+                bool deleteOtherObjects = 16; // dangerous, delete all objects that are not in import archive
 
                 message NotionParams {
                     string apiKey = 1;

@@ -43,6 +43,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -66,7 +67,12 @@ type Import struct {
 	tempDirProvider core.TempDirProvider
 	fileStore       filestore.FileStore
 	fileSync        filesync.FileSync
+	objectIdQuery   objectIdQuery
 	sync.Mutex
+}
+
+type objectIdQuery interface {
+	QueryObjectIDs(database.Query) ([]string, int, error)
 }
 
 func New() Importer {
@@ -79,6 +85,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.s = app.MustComponent[*block.Service](a)
 	accountService := app.MustComponent[account.Service](a)
 	spaceService := app.MustComponent[space.Service](a)
+	i.objectIdQuery = app.MustComponent[objectIdQuery](a)
+
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []common.Converter{
@@ -179,10 +187,29 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors, origin)
+	objectIds, err2 := i.getCurrentObjectsInSpace(req.SpaceId)
+	if err2 != nil {
+		return "", err2
+	}
+
+	details, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors, origin)
+
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
+	}
+	if resultErr == nil {
+		if req.DeleteOtherObjects {
+			for _, id := range objectIds {
+				if _, ok := details[id]; !ok {
+					log.Warnf("delete object %s", id)
+					err := i.s.DeleteObjectByFullID(domain.FullID{SpaceID: req.SpaceId, ObjectID: id})
+					if err != nil {
+						log.Warnf("delete object %s: %w", id, err)
+					}
+				}
+			}
+		}
 	}
 	return rootCollectionID, resultErr
 }
@@ -457,6 +484,25 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 
 func (i *Import) recordEvent(event amplitude.Event) {
 	metrics.Service.Send(event)
+}
+
+// todo: it's incorrect to rely on this
+func (p *Import) getCurrentObjectsInSpace(spaceId string) ([]string, error) {
+	ids, _, err := p.objectIdQuery.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Bool(true),
+			},
+		},
+	})
+	return ids, err
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {
