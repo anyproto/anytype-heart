@@ -58,7 +58,7 @@ type ObjectFactory struct {
 	fileObjectService   fileobject.Service
 	processService      process.Service
 	fileUploaderService fileuploader.Service
-	objectDeleter      ObjectDeleter
+	objectDeleter       ObjectDeleter
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -170,10 +170,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeWorkspace:
 		return f.newWorkspace(sb), nil
 	case coresb.SmartBlockTypeSpaceView:
-		return newSpaceView(
-			sb,
-			f.spaceService,
-		), nil
+		return f.newSpaceView(sb), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:

@@ -225,9 +225,15 @@ func (u *uploader) SetAdditionalDetails(details *types.Struct) Uploader {
 
 func (u *uploader) SetBytes(b []byte) Uploader {
 	u.getReader = func(_ context.Context) (*fileReader, error) {
+		buf := bytes.NewReader(b)
+		bufReaderSize := bufio.NewReaderSize(buf, bufSize)
 		return &fileReader{
 			bufioSeekClose: &bufioSeekClose{
-				Reader: bufio.NewReaderSize(bytes.NewReader(b), bufSize),
+				Reader: bufReaderSize,
+				seek: func(offset int64, whence int) (int64, error) {
+					bufReaderSize.Reset(buf)
+					return buf.Seek(offset, whence)
+				},
 			},
 		}, nil
 	}
@@ -420,9 +426,9 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		opts = append(opts, u.opts...)
 	}
 
-	var addResult *addToStorageResult
-	if u.fileType == model.BlockContentFile_Image {
-		addResult, err = u.addImageToStorage(ctx, opts)
+	var addResult *files.AddResult
+	if u.fileType == model.BlockContentFile_Image && !(filepath.Ext(u.name) == constant.SvgExt) {
+		addResult, err = u.fileService.ImageAdd(ctx, u.spaceId, opts...)
 		if errors.Is(err, image.ErrFormat) || errors.Is(err, mill.ErrFormatSupportNotEnabled) {
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
 		}
@@ -430,25 +436,15 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			return UploadResult{Err: fmt.Errorf("add image to storage: %w", err)}
 		}
 	} else {
-		addResult, err = u.addFileToStorage(ctx, opts)
+		addResult, err = u.fileService.FileAdd(ctx, u.spaceId, opts...)
 		if err != nil {
 			return UploadResult{Err: fmt.Errorf("add file to storage: %w", err)}
 		}
 	}
+	defer addResult.Commit()
 
-	if u.fileType == model.BlockContentFile_Image && !(filepath.Ext(u.name) == constant.SvgExt) {
-		err = u.addImage(ctx, opts, &result)
-		if err != nil {
-			return
-		}
-	} else {
-		err = u.addFile(ctx, opts, &result)
-		if err != nil {
-			return
-		}
-	}
-	result.MIME = addResult.mime
-	result.Size = addResult.size
+	result.MIME = addResult.MIME
+	result.Size = addResult.Size
 
 	fileObjectId, fileObjectDetails, err := u.getOrCreateFileObject(ctx, addResult)
 	if err != nil {
@@ -472,87 +468,11 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	return
 }
 
-func (u *uploader) addFile(ctx context.Context, opts []files.AddOption, result *UploadResult) error {
-	fl, err := u.fileService.FileAdd(ctx, u.spaceID, opts...)
-	if err != nil {
-		return err
-	}
-	result.Hash = fl.Hash()
-	if meta := fl.Meta(); meta != nil {
-		result.MIME = meta.Media
-		result.Size = meta.Size
-	}
-	return nil
-}
-
-func (u *uploader) addImage(ctx context.Context, opts []files.AddOption, result *UploadResult) error {
-	im, err := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
-	if errors.Is(err, image.ErrFormat) || errors.Is(err, mill.ErrFormatSupportNotEnabled) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	result.Hash = im.Hash()
-	orig, err := im.GetOriginalFile(ctx)
-	if err != nil {
-		log.Errorf("failed to get original image: %v", err)
-	}
-	if orig != nil {
-		result.MIME = orig.Meta().Media
-		result.Size = orig.Meta().Size
-	}
-	return nil
-}
-
-type addToStorageResult struct {
-	fileId     domain.FileId
-	fileKeys   *domain.FileEncryptionKeys
-	fileExists bool
-	mime       string
-	size       int64
-}
-
-func (u *uploader) addImageToStorage(ctx context.Context, addOptions []files.AddOption) (*addToStorageResult, error) {
-	addResult, err := u.fileService.ImageAdd(ctx, u.spaceId, addOptions...)
-	if err != nil {
-		return nil, err
-	}
-	res := &addToStorageResult{
-		fileId:     addResult.FileId,
-		fileKeys:   addResult.EncryptionKeys,
-		fileExists: addResult.IsExisting,
-	}
-	orig, _ := addResult.Image.GetOriginalFile(ctx)
-	if orig != nil {
-		res.mime = orig.Meta().Media
-		res.size = orig.Meta().Size
-	}
-	return res, nil
-}
-
-func (u *uploader) addFileToStorage(ctx context.Context, addOptions []files.AddOption) (*addToStorageResult, error) {
-	addResult, err := u.fileService.FileAdd(ctx, u.spaceId, addOptions...)
-	if err != nil {
-		return nil, err
-	}
-	res := &addToStorageResult{
-		fileId:     addResult.FileId,
-		fileKeys:   addResult.EncryptionKeys,
-		fileExists: addResult.IsExisting,
-	}
-	if meta := addResult.File.Meta(); meta != nil {
-		res.mime = meta.Media
-		res.size = meta.Size
-	}
-	return res, nil
-}
-
-func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToStorageResult) (string, *types.Struct, error) {
-	if addResult.fileExists {
+func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.AddResult) (string, *types.Struct, error) {
+	if addResult.IsExisting {
 		id, details, err := u.fileObjectService.GetObjectDetailsByFileId(domain.FullFileId{
 			SpaceId: u.spaceId,
-			FileId:  addResult.fileId,
+			FileId:  addResult.FileId,
 		})
 		if err == nil {
 			return id, details, nil
@@ -566,8 +486,8 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToSt
 	}
 
 	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
-		FileId:            addResult.fileId,
-		EncryptionKeys:    addResult.fileKeys.EncryptionKeys,
+		FileId:            addResult.FileId,
+		EncryptionKeys:    addResult.EncryptionKeys.EncryptionKeys,
 		ObjectOrigin:      u.origin,
 		AdditionalDetails: u.additionalDetails,
 	})

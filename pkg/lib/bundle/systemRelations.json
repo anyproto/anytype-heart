@@ -66,6 +66,7 @@
   "profileOwnerIdentity",
   "fileBackupStatus",
   "fileId",
+  "fileIndexingStatus",
   "origin",
   "revision",
   "imageKind",

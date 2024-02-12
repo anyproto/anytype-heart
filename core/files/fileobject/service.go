@@ -12,7 +12,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -26,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -41,12 +39,12 @@ var ErrObjectNotFound = fmt.Errorf("file object not found")
 const CName = "fileobject"
 
 type Service interface {
-	app.Component
+	app.ComponentRunnable
 
-	DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error
+	DeleteFileData(objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
-	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
+	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
 	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
@@ -62,12 +60,13 @@ type objectCreatorService interface {
 
 type service struct {
 	spaceService  space.Service
-	resolver      idresolver.Resolver
 	objectCreator objectCreatorService
 	fileService   files.Service
 	fileSync      filesync.FileSync
 	fileStore     filestore.FileStore
 	objectStore   objectstore.ObjectStore
+
+	indexer *indexer
 }
 
 func New() Service {
@@ -80,13 +79,22 @@ func (s *service) Name() string {
 
 func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.objectCreator = app.MustComponent[objectCreatorService](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.indexer = s.newIndexer()
 	return nil
+}
+
+func (s *service) Run(_ context.Context) error {
+	s.indexer.run()
+	return nil
+}
+
+func (s *service) Close(ctx context.Context) error {
+	return s.indexer.close()
 }
 
 type CreateRequest struct {
@@ -118,15 +126,8 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	if req.FileId == "" {
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
-	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
-		SpaceId: space.Id(),
-		FileId:  req.FileId,
-	}, req.ObjectOrigin)
-	if err != nil {
-		return "", nil, fmt.Errorf("get details for file or image: %w", err)
-	}
-	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
 
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
 	if req.AdditionalDetails != nil {
 		for k, v := range req.AdditionalDetails.GetFields() {
 			if _, ok := details.Fields[k]; !ok {
@@ -142,11 +143,64 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		EncryptionKeys: req.EncryptionKeys,
 	})
 
-	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
+	// Type will be changed after indexing, just use general type File for now
+	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState)
 	if err != nil {
 		return "", nil, fmt.Errorf("create object: %w", err)
 	}
+
+	err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId})
+	if err != nil {
+		// Will be retried in background, so don't return error
+		log.Errorf("add to index queue: %v", err)
+		err = nil
+	}
+
 	return id, object, nil
+}
+
+func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
+	if req.FileId == "" {
+		return fmt.Errorf("file hash is empty")
+	}
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
+	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
+
+	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
+	createState.SetDetails(details)
+	createState.SetFileInfo(state.FileInfo{
+		FileId:         req.FileId,
+		EncryptionKeys: req.EncryptionKeys,
+	})
+
+	// Type will be changed after indexing, just use general type File for now
+	id, _, err := s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState)
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("create object: %w", err)
+	}
+	err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId})
+	if err != nil {
+		// Will be retried in background, so don't return error
+		log.Errorf("add to index queue: %v", err)
+		err = nil
+	}
+	return err
+}
+
+func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *types.Struct {
+	details := &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyFileId.String(): pbtypes.String(fileId.String()),
+			// Use general file layout. It will be changed for proper layout after indexing
+			bundle.RelationKeyLayout.String():             pbtypes.Int64(int64(model.ObjectType_file)),
+			bundle.RelationKeyFileIndexingStatus.String(): pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
+		},
+	}
+	origin.AddToDetails(details)
+	return details
 }
 
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
@@ -187,61 +241,6 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 		return "", fmt.Errorf("create object: %w", err)
 	}
 	return fileObjectId, nil
-}
-
-func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
-	if req.FileId == "" {
-		return fmt.Errorf("file hash is empty")
-	}
-	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
-		SpaceId: space.Id(),
-		FileId:  req.FileId,
-	}, req.ObjectOrigin)
-	if err != nil {
-		return fmt.Errorf("get details for file or image: %w", err)
-	}
-	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
-	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
-
-	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
-	createState.SetDetails(details)
-	createState.SetFileInfo(state.FileInfo{
-		FileId:         req.FileId,
-		EncryptionKeys: req.EncryptionKeys,
-	})
-
-	_, _, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		return nil
-	}
-	return err
-}
-
-func (s *service) getDetailsForFileOrImage(ctx context.Context, id domain.FullFileId, origin objectorigin.ObjectOrigin) (details *types.Struct, typeKey domain.TypeKey, err error) {
-	file, err := s.fileService.FileByHash(ctx, id)
-	if err != nil {
-		return nil, "", err
-	}
-	if mill.IsImage(file.Info().Media) {
-		image, err := s.fileService.ImageByHash(ctx, id)
-		if err != nil {
-			return nil, "", err
-		}
-		details, err = image.Details(ctx)
-		if err != nil {
-			return nil, "", err
-		}
-		typeKey = bundle.TypeKeyImage
-	} else {
-		details, typeKey, err = file.Details(ctx)
-		if err != nil {
-			return nil, "", err
-		}
-	}
-
-	origin.AddToDetails(details)
-
-	return details, typeKey, nil
 }
 
 func (s *service) addToSyncQueue(id domain.FullFileId, uploadedByUser bool, imported bool) error {
@@ -301,40 +300,23 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *t
 	return pbtypes.GetString(details, bundle.RelationKeyId.String()), details, nil
 }
 
-func (s *service) GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error) {
-	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
+	details, err := s.objectStore.GetDetails(objectId)
 	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("resolve spaceId: %w", err)
+		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
-
-	space, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("get space: %w", err)
+	spaceId := pbtypes.GetString(details.Details, bundle.RelationKeySpaceId.String())
+	fileId := pbtypes.GetString(details.Details, bundle.RelationKeyFileId.String())
+	if fileId == "" {
+		return domain.FullFileId{}, fmt.Errorf("empty file hash")
 	}
-
-	return s.getFileIdFromObjectInSpace(space, objectId)
-}
-
-func (s *service) getFileIdFromObjectInSpace(space smartblock.Space, objectId string) (domain.FullFileId, error) {
-	var fileId string
-	err := space.Do(objectId, func(sb smartblock.SmartBlock) error {
-		fileId = pbtypes.GetString(sb.Details(), bundle.RelationKeyFileId.String())
-		if fileId == "" {
-			return fmt.Errorf("empty file hash")
-		}
-		return nil
-	})
-	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("get file object: %w", err)
-	}
-
 	return domain.FullFileId{
-		SpaceId: space.Id(),
+		SpaceId: spaceId,
 		FileId:  domain.FileId(fileId),
 	}, nil
 }
 
-func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.ChangeFileKeys, fileId string) string {
+func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.ChangeFileKeys, fileId string, origin objectorigin.ObjectOrigin) string {
 	// Don't migrate empty or its own id
 	if fileId == "" || objectId == fileId {
 		return fileId
@@ -361,6 +343,18 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 		return fileObjectId
 	}
 
+	// If due to some reason fileId is a file object id from another space, we should not migrate it
+	// This is definitely a bug, but we should not break things further.
+	exists, err := s.isFileExistInAnotherSpace(space.Id(), fileId)
+	if err != nil {
+		log.Errorf("checking that file exist in another space: %v", err)
+		return fileId
+	}
+	if exists {
+		log.With("fileObjectId", fileId).Error("found file object in another space")
+		return fileId
+	}
+
 	if len(fileKeys) == 0 {
 		log.Warnf("no encryption keys for fileId %s", fileId)
 	}
@@ -374,10 +368,15 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 		log.Errorf("can't derive object id for fileId %s: %v", fileId, err)
 		return fileId
 	}
+
+	storedOrigin, err := s.fileStore.GetFileOrigin(domain.FileId(fileId))
+	if err == nil {
+		origin = storedOrigin
+	}
 	err = s.migrateDeriveObject(context.Background(), space, CreateRequest{
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: fileKeys,
-		ObjectOrigin:   objectorigin.None(), // TODO what to do? Probably need to copy origin detail
+		ObjectOrigin:   origin,
 	}, uniqueKey)
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", fileId, err)
@@ -385,11 +384,33 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 	return fileObjectId
 }
 
+func (s *service) isFileExistInAnotherSpace(spaceId string, fileObjectId string) (bool, error) {
+	recs, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileObjectId),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		return false, fmt.Errorf("query objects by file hash: %w", err)
+	}
+	return len(recs) > 0, nil
+}
+
 func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
+	origin := objectorigin.FromDetails(st.Details())
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			fh.MigrateFile(func(oldHash string) (newHash string) {
-				return s.migrate(spc.(clientspace.Space), st.RootId(), keys, oldHash)
+				return s.migrate(spc.(clientspace.Space), st.RootId(), keys, oldHash, origin)
 			})
 		}
 		return true
@@ -397,8 +418,9 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.Ch
 }
 
 func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
+	origin := objectorigin.FromDetails(st.Details())
 	st.ModifyLinkedFilesInDetails(func(id string) string {
-		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id)
+		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id, origin)
 	})
 }
 
@@ -492,26 +514,29 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
 	}
 	for _, record := range records {
-		size, err := s.fileOffload(ctx, record.Details, includeNotPinned)
+		fileId := pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())
+		size, err := s.offloadFileSafe(ctx, spaceId, fileId, record, includeNotPinned)
 		if err != nil {
-			objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-			log.Errorf("failed to offload file %s: %v", objectId, err)
-			continue
+			log.Errorf("failed to offload file %s: %v", fileId, err)
+			return 0, 0, err
 		}
 		if size > 0 {
 			filesOffloaded++
+			err = s.fileStore.DeleteFile(domain.FileId(fileId))
+			if err != nil {
+				return 0, 0, fmt.Errorf("failed to delete file from store: %w", err)
+			}
 		}
 		totalSize += size
 	}
 	return filesOffloaded, totalSize, nil
 }
 
-func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, objectId string) error {
-	fullId, err := s.getFileIdFromObjectInSpace(space, objectId)
+func (s *service) DeleteFileData(objectId string) error {
+	fullId, err := s.GetFileIdFromObject(objectId)
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
-
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -542,4 +567,33 @@ func (s *service) DeleteFileData(ctx context.Context, space clientspace.Space, o
 		return nil
 	}
 	return nil
+}
+
+func (s *service) offloadFileSafe(ctx context.Context,
+	spaceId string,
+	fileId string,
+	record database.Record,
+	includeNotPinned bool,
+) (uint64, error) {
+	existingObjects, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		return 0, err
+	}
+	if len(existingObjects) > 0 {
+		return s.fileOffload(ctx, record.Details, false)
+	}
+	return s.fileOffload(ctx, record.Details, includeNotPinned)
 }
