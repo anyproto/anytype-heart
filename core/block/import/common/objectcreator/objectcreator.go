@@ -311,6 +311,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	}
 }
 
+// todo: rename setSpaceDashboardID
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []*pb.RpcObjectSetDetailsDetail

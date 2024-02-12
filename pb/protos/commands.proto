@@ -2470,6 +2470,7 @@ message Rpc {
                     bool noCollection = 2;
                     string collectionTitle = 3;
                     Type importType = 4;
+                    bool dontUpdateSpaceNameIcon = 5;
                     enum Type {
                         SPACE = 0;
                         EXPERIENCE = 1;

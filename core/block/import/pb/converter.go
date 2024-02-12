@@ -121,6 +121,11 @@ func (p *Pb) getSnapshots(
 		widgetSnapshot = widget
 		workspaceSnapshot = workspace
 	}
+	if params.DontUpdateSpaceNameIcon && workspaceSnapshot != nil && workspaceSnapshot.Snapshot.GetData().GetDetails().GetFields() != nil {
+		delete(workspaceSnapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyName.String())
+		delete(workspaceSnapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyIconOption.String())
+		delete(workspaceSnapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyIconImage.String())
+	}
 	return allSnapshots, widgetSnapshot, workspaceSnapshot
 }
 

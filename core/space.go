@@ -252,6 +252,7 @@ func (mw *Middleware) SpacePublish(cctx context.Context, req *pb.RpcSpacePublish
 
 		return err
 	})
+
 	if err != nil {
 		return &pb.RpcSpacePublishResponse{
 			Error: &pb.RpcSpacePublishResponseError{
@@ -269,9 +270,10 @@ func (mw *Middleware) SpacePublish(cctx context.Context, req *pb.RpcSpacePublish
 		Type:                  model.Import_Pb,
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
 			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path:         []string{publishTempDir},
-				NoCollection: true,
-				ImportType:   pb.RpcObjectImportRequestPbParams_SPACE,
+				Path:                    []string{publishTempDir},
+				NoCollection:            true,
+				DontUpdateSpaceNameIcon: true,
+				ImportType:              pb.RpcObjectImportRequestPbParams_SPACE,
 			},
 		},
 	}, originImport, nil)

@@ -12153,6 +12153,7 @@ DEPRECATED, GO-1926 |
 | noCollection | [bool](#bool) |  |  |
 | collectionTitle | [string](#string) |  |  |
 | importType | [Rpc.Object.Import.Request.PbParams.Type](#anytype-Rpc-Object-Import-Request-PbParams-Type) |  |  |
+| dontUpdateSpaceNameIcon | [bool](#bool) |  |  |
 
 
 
