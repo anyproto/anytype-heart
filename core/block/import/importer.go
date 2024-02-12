@@ -200,15 +200,36 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	}
 	if resultErr == nil {
 		if req.DeleteOtherObjects {
+			var objectsToDelete []string
 			for _, id := range objectIds {
 				if _, ok := details[id]; !ok {
-					log.Warnf("delete object %s", id)
-					err := i.s.DeleteObjectByFullID(domain.FullID{SpaceID: req.SpaceId, ObjectID: id})
-					if err != nil {
-						log.Warnf("delete object %s: %w", id, err)
-					}
+					objectsToDelete = append(objectsToDelete, id)
 				}
 			}
+			objectsToDelete, _, err2 = i.objectIdQuery.QueryObjectIDs(database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyId.String(),
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       pbtypes.StringList(objectsToDelete),
+					},
+					{
+						RelationKey: bundle.RelationKeyLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_NotIn,
+						Value:       pbtypes.IntList(int(model.ObjectType_file), int(model.ObjectType_image), int(model.ObjectType_audio), int(model.ObjectType_video), int(model.ObjectType_participant), int(model.ObjectType_space), int(model.ObjectType_spaceView)),
+					},
+				},
+			})
+			if err2 != nil {
+				return "", err2
+			}
+			for _, id := range objectsToDelete {
+				err2 = i.s.DeleteObjectByFullID(domain.FullID{SpaceID: req.SpaceId, ObjectID: id})
+				if err2 != nil {
+					log.Info("Deleting object", zap.String("id", id), zap.Error(err2))
+				}
+			}
+
 		}
 	}
 	return rootCollectionID, resultErr
