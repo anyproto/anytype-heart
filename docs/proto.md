@@ -10289,8 +10289,9 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
+| id | [string](#string) |  |  |
 | experiences | [string](#string) | repeated |  |
+| icon | [string](#string) |  |  |
 
 
 
