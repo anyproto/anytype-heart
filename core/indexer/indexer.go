@@ -132,13 +132,7 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return
 	}
-	for _, id := range ids {
-		err = i.store.DeleteObject(id)
-		if err != nil {
-			log.Errorf("failed to delete details: %v", err)
-		}
-	}
-	return nil
+	return i.store.DeleteDetails(ids...)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
