@@ -71,6 +71,9 @@ func (d *deletionController) updateStatuses(ctx context.Context) {
 		}
 	}
 	for idx, nodeStatus := range remoteStatuses {
+		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusNotExists {
+			continue
+		}
 		remoteStatus := convStatus(nodeStatus.Status)
 		err := d.deleter.updateRemoteStatus(ctx, ids[idx], remoteStatus)
 		if err != nil {

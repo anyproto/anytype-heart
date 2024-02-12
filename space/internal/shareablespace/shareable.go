@@ -85,7 +85,7 @@ func (s *spaceController) SetStatus(ctx context.Context, status spaceinfo.Accoun
 
 func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
 	s.status.Lock()
-	if s.lastUpdatedStatus == status {
+	if s.lastUpdatedStatus == status || (s.lastUpdatedStatus == spaceinfo.AccountStatusDeleted && status == spaceinfo.AccountStatusRemoving) {
 		s.status.Unlock()
 		return nil
 	}
@@ -103,6 +103,8 @@ func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.Acc
 		return updateStatus(mode.ModeOffloading)
 	case spaceinfo.AccountStatusJoining:
 		return updateStatus(mode.ModeJoining)
+	case spaceinfo.AccountStatusRemoving:
+		return updateStatus(mode.ModeRemoving)
 	default:
 		return updateStatus(mode.ModeLoading)
 	}
@@ -135,6 +137,11 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 	case mode.ModeOffloading:
 		return offloader.New(s.app, offloader.Params{
 			Status: s.status,
+		})
+	case mode.ModeRemoving:
+		return loader.New(s.app, loader.Params{
+			SpaceId: s.spaceId,
+			Status:  s.status,
 		})
 	case mode.ModeJoining:
 		return joiner.New(s.app, joiner.Params{

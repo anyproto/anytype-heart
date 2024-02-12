@@ -232,6 +232,9 @@ func (s *service) updateRemoteStatus(ctx context.Context, spaceId string, status
 	if err != nil {
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
+	if status == spaceinfo.RemoteStatusDeleted {
+		return ctrl.UpdateStatus(ctx, spaceinfo.AccountStatusRemoving)
+	}
 	return nil
 }
 
