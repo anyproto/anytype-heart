@@ -5981,6 +5981,29 @@ message Rpc {
             }
         }
     }
+    message Broadcast {
+        message PayloadEvent {
+            message Request {
+                string payload = 1;
+            }
+            message Response {
+                ResponseEvent event = 1;
+                Error error = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        INTERNAL_ERROR = 3;
+                    }
+                }
+            }
+        }
+    }
 }
 
 message Empty {
