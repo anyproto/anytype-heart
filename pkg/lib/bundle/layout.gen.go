@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
-const LayoutChecksum = "d0f1feb0705e9d74789a25e3c41b0c4682a79ecac2145a48606e8a26b8c688fc"
+const LayoutChecksum = "7584f43b4ea3cf4a41dc40d9db83f222a529a40791ec61ebfb4e827ad053e855"
 
 var (
 	Layouts = map[model.ObjectTypeLayout]model.Layout{
@@ -31,11 +31,6 @@ var (
 
 			Id:   model.ObjectType_dashboard,
 			Name: "Dashboard",
-		},
-		model.ObjectType_database: {
-
-			Id:   model.ObjectType_database,
-			Name: "Database",
 		},
 		model.ObjectType_file: {
 

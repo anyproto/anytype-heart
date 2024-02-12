@@ -15,10 +15,6 @@
     ]
   },
   {
-    "id": "database",
-    "name": "Database"
-  },
-  {
     "id": "note",
     "name": "Note"
   },
