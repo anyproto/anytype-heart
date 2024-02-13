@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
@@ -123,7 +124,15 @@ func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpace
 
 func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinRequest) *pb.RpcSpaceJoinResponse {
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
-	err := join(cctx, aclService, req)
+	var err error
+	// todo: remove temp test code
+	if strings.HasPrefix(req.InviteCid, "pub-") {
+		spaceService := mw.applicationService.GetApp().MustComponent(space.CName).(space.Service)
+		err = publicAdd(cctx, req.InviteCid[4:], req.InviteFileKey, spaceService)
+	} else {
+		err = join(cctx, aclService, req)
+	}
+
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceJoinResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceJoinResponseError_NO_SUCH_SPACE),
