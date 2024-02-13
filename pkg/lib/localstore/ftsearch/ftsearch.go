@@ -14,6 +14,7 @@ import (
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
 	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
+	"github.com/blevesearch/bleve/v2/search"
 	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/samber/lo"
 
@@ -55,7 +56,8 @@ type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	BatchIndex(docs []SearchDoc) (err error)
-	Search(spaceID, query string) (results []string, err error)
+	BatchDelete(ids []string) (err error)
+	Search(spaceID, query string) (results search.DocumentMatchCollection, err error)
 	Has(id string) (exists bool, err error)
 	Delete(id string) error
 	DocCount() (uint64, error)
@@ -119,7 +121,7 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 		return nil
 	}
 	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
-	b := f.index.NewBatch()
+	batch := f.index.NewBatch()
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
@@ -133,14 +135,35 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 	for _, doc := range docs {
 		doc.TitleNoTerms = doc.Title
 		doc.TextNoTerms = doc.Text
-		if err := b.Index(doc.Id, doc); err != nil {
+		if err := batch.Index(doc.Id, doc); err != nil {
 			return fmt.Errorf("failed to index document %s: %w", doc.Id, err)
 		}
 	}
-	return f.index.Batch(b)
+	return f.index.Batch(batch)
 }
 
-func (f *ftSearch) Search(spaceID, qry string) (results []string, err error) {
+func (f *ftSearch) BatchDelete(ids []string) (err error) {
+	if len(ids) == 0 {
+		return nil
+	}
+	batch := f.index.NewBatch()
+	start := time.Now()
+	defer func() {
+		spentMs := time.Since(start).Milliseconds()
+		l := log.With("objects", len(ids)).With("total", time.Since(start).Milliseconds())
+		if spentMs > 1000 {
+			l.Warnf("ft delete took too long")
+		} else {
+			l.Debugf("ft delete done")
+		}
+	}()
+	for _, id := range ids {
+		batch.Delete(id)
+	}
+	return f.index.Batch(batch)
+}
+
+func (f *ftSearch) Search(spaceID, qry string) (results search.DocumentMatchCollection, err error) {
 	qry = strings.ToLower(qry)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
@@ -175,7 +198,7 @@ func (f *ftSearch) getTerms(qry string) []string {
 	return terms
 }
 
-func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results []string, err error) {
+func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results search.DocumentMatchCollection, err error) {
 	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
 	if spaceID != "" {
 		spaceQuery := bleve.NewMatchQuery(spaceID)
@@ -190,10 +213,7 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results []st
 	if err != nil {
 		return
 	}
-	for _, result := range searchResult.Hits {
-		results = append(results, result.ID)
-	}
-	return
+	return searchResult.Hits, nil
 }
 
 func (f *ftSearch) Has(id string) (exists bool, err error) {

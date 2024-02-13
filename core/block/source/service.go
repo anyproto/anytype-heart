@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -17,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -33,7 +35,7 @@ func New() Service {
 }
 
 type accountService interface {
-	IdentityObjectId() string
+	MyParticipantId(string) string
 	PersonalSpaceID() string
 }
 
@@ -48,7 +50,7 @@ type Space interface {
 type Service interface {
 	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
-	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
+	NewStaticSource(params StaticSourceParams) SourceWithType
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
@@ -65,6 +67,7 @@ type service struct {
 	fileService        files.Service
 	identityService    identityService
 	objectStore        objectstore.ObjectStore
+	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -83,6 +86,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }
 
@@ -97,7 +101,8 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener: b.Listener,
+		Listener:    b.Listener,
+		TreeBuilder: objecttree.BuildKeyVerifiableObjectTree,
 	}
 }
 
@@ -123,8 +128,6 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	st, err := typeprovider.SmartblockTypeFromID(id)
 	if err == nil {
 		switch st {
-		case smartblock.SmartBlockTypeFile:
-			return NewFile(s.accountService, s.fileStore, s.fileService, space.Id(), id), nil
 		case smartblock.SmartBlockTypeDate:
 			return NewDate(space, id), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
@@ -133,6 +136,20 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			return NewBundledRelation(id), nil
 		case smartblock.SmartBlockTypeIdentity:
 			return NewIdentity(s.identityService, id), nil
+		case smartblock.SmartBlockTypeParticipant:
+			participantState := state.NewDoc(id, nil).(*state.State)
+			// Set object type here in order to derive value of Type relation in smartblock.Init
+			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
+			params := StaticSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  space.Id(),
+				},
+				State:     participantState,
+				SbType:    smartblock.SmartBlockTypeParticipant,
+				CreatorId: addr.AnytypeProfileId,
+			}
+			return s.NewStaticSource(params), nil
 		}
 	}
 
@@ -152,14 +169,16 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 		return &anytypeProfile{}, nil
 	case smartblock.SmartBlockTypeMissingObject:
 		return &missingObject{}, nil
-	case smartblock.SmartBlockTypeFile:
-		return &file{accountService: s.accountService, fileStore: s.fileStore}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{}, nil
 	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource(domain.FullID{}, smartblock.SmartBlockTypeBundledTemplate, nil, nil), nil
+		params := StaticSourceParams{
+			SbType:    smartblock.SmartBlockTypeBundledTemplate,
+			CreatorId: addr.AnytypeProfileId,
+		}
+		return s.NewStaticSource(params), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err

@@ -488,7 +488,7 @@ func TestService_Search(t *testing.T) {
 		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
 		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
 	})
-	t.Run("collection: collection has object with dependency - return objects without dependency", func(t *testing.T) {
+	t.Run("collection: collection has object with dependency, no dependency flag is set - return objects without dependency", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
@@ -505,14 +505,6 @@ func TestService_Search(t *testing.T) {
 				"id":            pbtypes.String("1"),
 				"name":          pbtypes.String("1"),
 				testRelationKey: pbtypes.String("2"),
-			}}},
-		}, nil)
-
-		// dependency
-		fx.store.EXPECT().QueryByID([]string{"2"}).Return([]database.Record{
-			{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("2"),
-				"name": pbtypes.String("2"),
 			}}},
 		}, nil)
 

@@ -26,8 +26,6 @@ var (
 	}
 	objFileRestrictions = ObjectRestrictions{
 		model.Restrictions_Blocks,
-		model.Restrictions_Relations,
-		model.Restrictions_Details,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
@@ -71,7 +69,7 @@ var (
 		model.ObjectType_collection: collectionRestrictions,
 		model.ObjectType_objectType: objRestrictEdit,
 		model.ObjectType_relation:   objRestrictEdit,
-		model.ObjectType_file:       objRestrictAll,
+		model.ObjectType_file:       objFileRestrictions,
 		model.ObjectType_dashboard: {
 			model.Restrictions_Details,
 			model.Restrictions_Relations,
@@ -92,9 +90,7 @@ var (
 		model.ObjectType_relationOptionsList: {
 			model.Restrictions_Template,
 		},
-		model.ObjectType_database: {
-			model.Restrictions_Template,
-		},
+		model.ObjectType_participant: objRestrictAll,
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
@@ -124,15 +120,12 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		smartblock.SmartBlockTypeFile:            objFileRestrictions,
-		smartblock.SmartBlockTypeArchive:         objRestrictAll,
-		smartblock.SmartBlockTypeBundledRelation: objRestrictAll,
-		smartblock.SmartBlockTypeSubObject: {
-			model.Restrictions_Blocks,
-			model.Restrictions_LayoutChange,
-			model.Restrictions_TypeChange,
-			model.Restrictions_Template,
-		},
+		smartblock.SmartBlockTypeFileObject:        objFileRestrictions,
+		smartblock.SmartBlockTypeArchive:           objRestrictAll,
+		smartblock.SmartBlockTypeBundledRelation:   objRestrictAll,
+		smartblock.SmartBlockTypeSubObject:         objRestrictEdit,
+		smartblock.SmartBlockTypeObjectType:        objRestrictEdit,
+		smartblock.SmartBlockTypeRelation:          objRestrictEdit,
 		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
 		smartblock.SmartBlockTypeBundledTemplate:   objRestrictAll,
 		smartblock.SmartBlockTypeTemplate: {
@@ -153,6 +146,7 @@ var (
 		smartblock.SmartBlockTypeAccountOld: {
 			model.Restrictions_Template,
 		},
+		smartblock.SmartBlockTypeParticipant: objRestrictAll,
 	}
 )
 
@@ -226,11 +220,9 @@ func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 		if lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
 			return sysRelationsRestrictions
 		}
-	default:
-		// we assume that all sb types are exists in objectRestrictionsBySBType
-		return objectRestrictionsBySBType[uk.SmartblockType()]
 	}
-	return
+	// we assume that all sb types exist in objectRestrictionsBySBType
+	return objectRestrictionsBySBType[uk.SmartblockType()]
 }
 
 func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) DataviewRestrictions {

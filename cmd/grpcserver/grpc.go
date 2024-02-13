@@ -13,7 +13,10 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
+	"runtime/pprof"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,29 +27,34 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/opentracing/opentracing-go"
+	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
 
 	"github.com/anyproto/anytype-heart/core"
+	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 const defaultAddr = "127.0.0.1:31007"
 const defaultWebAddr = "127.0.0.1:31008"
-const defaultUnaryWarningAfter = time.Second * 3
 
 // do not change this, js client relies on this msg to ensure that server is up
 const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
 
 var log = logging.Logger("anytype-grpc-server")
 var commonOSSignals = []os.Signal{os.Interrupt, syscall.SIGTERM, syscall.SIGINT}
+
+var (
+	PromUser     string
+	PromPassword string
+)
 
 func main() {
 	var addr string
@@ -77,11 +85,12 @@ func main() {
 	}
 
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
+		fmt.Printf("Running GO debug HTTP server at: %s\n", debug)
 		go func() {
 			http.ListenAndServe(debug, nil)
 		}()
 	}
-	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
+	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
 
 	var signalChan = make(chan os.Signal, 2)
 	signal.Notify(signalChan, signals...)
@@ -108,6 +117,7 @@ func main() {
 	if metrics.Enabled {
 		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
+	unaryInterceptors = append(unaryInterceptors, metrics.UnaryTraceInterceptor)
 	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		resp, err = mw.Authorize(ctx, req, info, handler)
 		if err != nil {
@@ -118,27 +128,7 @@ func main() {
 
 	// todo: we may want to change it to the opposite check with a public release
 	if os.Getenv("ANYTYPE_GRPC_NO_DEBUG_TIMEOUT") != "1" {
-		unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-			doneCh := make(chan struct{})
-			start := time.Now()
-
-			l := log.With("method", info.FullMethod)
-
-			go func() {
-				select {
-				case <-doneCh:
-				case <-time.After(defaultUnaryWarningAfter):
-					l.With("in_progress", true).With("goroutines", debug.StackCompact(true)).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
-				}
-			}()
-			ctx = context.WithValue(ctx, metrics.CtxKeyRPC, info.FullMethod)
-			resp, err = handler(ctx, req)
-			close(doneCh)
-			if time.Since(start) > defaultUnaryWarningAfter {
-				l.With("error", err).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
-			}
-			return
-		})
+		unaryInterceptors = append(unaryInterceptors, metrics.LongMethodsInterceptor)
 	}
 
 	grpcDebug, _ := strconv.Atoi(os.Getenv("ANYTYPE_GRPC_LOG"))
@@ -241,6 +231,8 @@ func main() {
 		}
 	}()
 
+	startReportMemory()
+
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 
@@ -303,4 +295,159 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 		},
 	}
 	return resp
+}
+
+func startReportMemory() {
+	if env := os.Getenv("ANYTYPE_REPORT_MEMORY"); env != "" {
+		go func() {
+			var maxAlloc uint64
+			var meanCPU float64
+			var maxHeapObjects uint64
+			var m runtime.MemStats
+			times := 60 * 3
+			rev := getRev()
+			_ = writeCpuProfile(rev, func() {
+				for i := 0; i < times; i++ {
+					runtime.ReadMemStats(&m)
+					percent, err := cpu.Percent(time.Second, false)
+					if err != nil {
+						fmt.Printf("Can't get cpu")
+					}
+					if maxAlloc < m.Alloc {
+						maxAlloc = m.Alloc
+					}
+					if maxHeapObjects < m.HeapObjects {
+						maxHeapObjects = m.HeapObjects
+					}
+					meanCPU += percent[0]
+					time.Sleep(time.Second)
+				}
+				err := sendMetrics(
+					map[string]uint64{
+						"MaxAlloc":    uint64(float64(maxAlloc) / 1024 / 1024),
+						"TotalAlloc":  uint64(float64(m.TotalAlloc) / 1024 / 1024),
+						"Mallocs":     m.Mallocs,
+						"Frees":       m.Frees,
+						"MeanCpu":     uint64(meanCPU / float64(times)),
+						"HeapObjects": maxHeapObjects,
+					},
+				)
+				if err != nil {
+					os.Exit(-1)
+				}
+			})
+			_ = writeHeapProfile(rev)
+			os.Exit(0)
+		}()
+	}
+}
+
+func getRev() string {
+	return vcs.GetVCSInfo().Revision[:8]
+}
+
+func writeCpuProfile(rev string, toProfile func()) error {
+	file, err := os.Create(fmt.Sprintf("cpu_profile_%s_%d.pprof", rev, time.Now().UnixMilli()))
+	if err != nil {
+		fmt.Println("Error creating profile file:", err)
+		return err
+	}
+	defer file.Close()
+
+	if err := pprof.StartCPUProfile(file); err != nil {
+		fmt.Println("Error writing cpu profile:", err)
+		return err
+	}
+
+	toProfile()
+
+	pprof.StopCPUProfile()
+	return nil
+}
+
+func writeHeapProfile(rev string) error {
+	file, err := os.Create(fmt.Sprintf("heap_profile_%s_%d.pprof", rev, time.Now().UnixMilli()))
+	if err != nil {
+		fmt.Println("Error creating profile file:", err)
+		return err
+	}
+	defer file.Close()
+
+	if err := pprof.WriteHeapProfile(file); err != nil {
+		fmt.Println("Error writing heap profile:", err)
+		return err
+	}
+	return nil
+}
+
+func sendMetrics(metrics map[string]uint64) error {
+	url := "https://pushgateway.anytype.io/metrics/job/heart_tech"
+
+	var sb strings.Builder
+	for key, value := range metrics {
+		data := fmt.Sprintf("r_%s_%s %d\n", key, getRev(), value)
+		fmt.Println(data)
+		sb.WriteString(data)
+	}
+
+	client := &http.Client{
+		Timeout: 1 * time.Minute,
+	}
+	err := makeMetricsRequest(client, url, sb.String())
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(1 * time.Minute)
+	err = makeDeleteRequest(client, url)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("metric has sent")
+	return nil
+}
+
+func makeDeleteRequest(client *http.Client, url string) error {
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		fmt.Println("metric delete err:", err)
+		return err
+	}
+
+	req.SetBasicAuth(PromUser, PromPassword)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("metric delete err:", err)
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+func makeMetricsRequest(client *http.Client, url string, content string) error {
+	req, err := http.NewRequest("POST", url, strings.NewReader(content))
+	if err != nil {
+		fmt.Println("metric send err:", err)
+		return err
+	}
+
+	req.SetBasicAuth(PromUser, PromPassword)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("metric send err:", err)
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+func init() {
+	if PromUser == "" {
+		PromUser = loadenv.Get("PROM_KEY")
+	}
+
+	if PromPassword == "" {
+		PromPassword = loadenv.Get("PROM_PASSWORD")
+	}
 }

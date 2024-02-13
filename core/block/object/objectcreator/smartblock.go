@@ -93,7 +93,7 @@ func (s *service) CreateSmartBlockFromStateInSpace(
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
-	metrics.SharedClient.RecordEvent(*ev)
+	metrics.Service.Send(ev)
 	return id, newDetails, nil
 }
 
@@ -112,6 +112,8 @@ func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlock
 		return coresb.SmartBlockTypeRelation
 	case bundle.TypeKeyRelationOption:
 		return coresb.SmartBlockTypeRelationOption
+	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
+		return coresb.SmartBlockTypeFileObject
 	default:
 		return coresb.SmartBlockTypePage
 	}
@@ -125,10 +127,17 @@ func createSmartBlock(
 		if err != nil {
 			return nil, err
 		}
-		return spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-			Key:      uk,
-			InitFunc: initFunc,
-		})
+		if sbType == coresb.SmartBlockTypeFileObject {
+			return spc.DeriveTreeObjectWithAccountSignature(ctx, objectcache.TreeDerivationParams{
+				Key:      uk,
+				InitFunc: initFunc,
+			})
+		} else {
+			return spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+				Key:      uk,
+				InitFunc: initFunc,
+			})
+		}
 	}
 	return spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
 		Time:           time.Now(),

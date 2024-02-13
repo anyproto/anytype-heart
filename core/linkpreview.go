@@ -33,7 +33,7 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		}
 	}
 	lp := mw.applicationService.GetApp().MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	data, err := lp.Fetch(ctx, u.String())
+	data, _, err := lp.Fetch(ctx, u.String())
 	if err != nil {
 		// trim the actual url from the error
 		errTrimmed := strings.Replace(err.Error(), u.String(), "<url>", -1)

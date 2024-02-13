@@ -501,7 +501,7 @@ func assertTypesIncluded(
 		lo.Map(whereIncluded, typeToString()),
 	)
 	if err != nil {
-		exitOnError(fmt.Errorf(relationAssertionError))
+		exitOnError(fmt.Errorf("%s: %w", relationAssertionError, err))
 	}
 }
 
@@ -515,7 +515,7 @@ func assertRelationsIncluded(
 		lo.Map(whereIncluded, relationToString()),
 	)
 	if err != nil {
-		exitOnError(fmt.Errorf(relationAssertionError))
+		exitOnError(fmt.Errorf("%s: %w", relationAssertionError, err))
 	}
 }
 

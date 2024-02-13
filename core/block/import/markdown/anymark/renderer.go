@@ -99,11 +99,8 @@ func (r *Renderer) renderHeading(_ util.BufWriter,
 		style = model.BlockContentText_Header3
 	}
 
-	if entering {
-		r.OpenNewTextBlock(style, nil)
-	} else {
-		r.CloseTextBlock(style)
-	}
+	r.openTextBlockWithStyle(entering, style, nil)
+
 	return ast.WalkContinue, nil
 }
 
@@ -111,12 +108,7 @@ func (r *Renderer) renderBlockquote(_ util.BufWriter,
 	source []byte,
 	node ast.Node,
 	entering bool) (ast.WalkStatus, error) {
-
-	if entering {
-		r.OpenNewTextBlock(model.BlockContentText_Quote, nil)
-	} else {
-		r.CloseTextBlock(model.BlockContentText_Quote)
-	}
+	r.openTextBlockWithStyle(entering, model.BlockContentText_Quote, nil)
 	return ast.WalkContinue, nil
 }
 
@@ -124,11 +116,7 @@ func (r *Renderer) renderCodeBlock(_ util.BufWriter,
 	source []byte,
 	n ast.Node,
 	entering bool) (ast.WalkStatus, error) {
-	if entering {
-		r.OpenNewTextBlock(model.BlockContentText_Code, nil)
-	} else {
-		r.CloseTextBlock(model.BlockContentText_Code)
-	}
+	r.openTextBlockWithStyle(entering, model.BlockContentText_Code, nil)
 	return ast.WalkContinue, nil
 }
 
@@ -143,10 +131,10 @@ func (r *Renderer) renderFencedCodeBlock(_ util.BufWriter,
 		fields = &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}}
 	}
 	if entering {
-		r.OpenNewTextBlock(model.BlockContentText_Code, fields)
+		r.openTextBlockWithStyle(entering, model.BlockContentText_Code, fields)
 		r.writeLines(source, n)
 	} else {
-		r.CloseTextBlock(model.BlockContentText_Code)
+		r.openTextBlockWithStyle(entering, model.BlockContentText_Code, nil)
 	}
 	return ast.WalkContinue, nil
 }
@@ -180,11 +168,7 @@ func (r *Renderer) renderListItem(_ util.BufWriter,
 		tag = model.BlockContentText_Numbered
 	}
 
-	if entering {
-		r.OpenNewTextBlock(tag, nil)
-	} else {
-		r.CloseTextBlock(tag)
-	}
+	r.openTextBlockWithStyle(entering, tag, nil)
 	return ast.WalkContinue, nil
 }
 
@@ -192,11 +176,7 @@ func (r *Renderer) renderParagraph(_ util.BufWriter,
 	source []byte,
 	n ast.Node,
 	entering bool) (ast.WalkStatus, error) {
-	if entering {
-		r.OpenNewTextBlock(model.BlockContentText_Paragraph, nil)
-	} else {
-		r.CloseTextBlock(model.BlockContentText_Paragraph)
-	}
+	r.openTextBlockWithStyle(entering, model.BlockContentText_Paragraph, nil)
 	return ast.WalkContinue, nil
 }
 
@@ -215,6 +195,9 @@ func (r *Renderer) renderThematicBreak(_ util.BufWriter,
 	source []byte,
 	n ast.Node,
 	entering bool) (ast.WalkStatus, error) {
+	if r.inTable {
+		return ast.WalkContinue, nil
+	}
 	if entering {
 		r.ForceCloseTextBlock()
 	} else {
@@ -358,6 +341,9 @@ func (r *Renderer) renderImage(_ util.BufWriter,
 	}
 
 	n := node.(*ast.Image)
+	if r.inTable {
+		return ast.WalkSkipChildren, nil
+	}
 	r.AddImageBlock(string(n.Destination))
 
 	return ast.WalkSkipChildren, nil
@@ -408,7 +394,7 @@ func (r *Renderer) renderText(_ util.BufWriter,
 
 	r.AddTextToBuffer(string(segment.Value(source)))
 	if n.HardLineBreak() {
-		r.CloseTextBlock(model.BlockContentText_Paragraph)
+		r.openTextBlockWithStyle(false, model.BlockContentText_Paragraph, nil)
 
 	} else if n.SoftLineBreak() {
 		r.AddTextToBuffer("\n")

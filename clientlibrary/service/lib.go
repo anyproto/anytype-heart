@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"sync"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -16,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
-var log = logging.Logger("anytype-mw")
+var log = logging.Logger("anytype-mw-library")
 
 var mw = core.New()
 
@@ -24,18 +26,38 @@ func init() {
 	fixTZ()
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
 
-	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
-	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
-	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
-		go func() {
-			http.ListenAndServe(debug, nil)
-		}()
+	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
+	registerClientCommandsHandler(
+		&ClientCommandsHandlerProxy{
+			client: mw,
+			interceptors: []func(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error){
+				metrics.SharedTraceInterceptor,
+				metrics.SharedLongMethodsInterceptor,
+			},
+		})
+	if addr, ok := os.LookupEnv("ANYPROF"); ok && addr != "" {
+		RunDebugServer(addr)
 	}
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
 	mw.SetEventSender(event.NewCallbackSender(eh))
+}
+
+var debugServerOnce sync.Once
+
+func RunDebugServer(addr string) {
+	fmt.Printf("Running GO debug HTTP server at: %s\n", addr)
+	debugServerOnce.Do(func() {
+		go func() {
+			http.ListenAndServe(addr, nil)
+		}()
+	})
+}
+
+func SetLogLevels(levels string) {
+	logging.SetLogLevels(levels)
 }
 
 func SetEnv(key, value string) {

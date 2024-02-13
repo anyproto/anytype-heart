@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "0b6ddb10a9e90cac620ea5490051c69dd77330c18f4067adf38dded3214692a9"
+const TypeChecksum = "d793d61e0b07300056e692cfe82dee8f23a436a70c36e066067b837b24b09ee1"
 const (
 	TypePrefix = "_ot"
 )
@@ -32,6 +32,7 @@ const (
 	TypeKeyRelationOption domain.TypeKey = "relationOption"
 	TypeKeySpace          domain.TypeKey = "space"
 	TypeKeySpaceView      domain.TypeKey = "spaceView"
+	TypeKeyParticipant    domain.TypeKey = "participant"
 	TypeKeyTemplate       domain.TypeKey = "template"
 	TypeKeySet            domain.TypeKey = "set"
 	TypeKeyCollection     domain.TypeKey = "collection"
@@ -281,6 +282,18 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "page",
+		},
+		TypeKeyParticipant: {
+
+			Description:   "Participant",
+			Hidden:        true,
+			IconEmoji:     "🧑",
+			Layout:        model.ObjectType_participant,
+			Name:          "Participant",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Participant},
+			Url:           TypePrefix + "participant",
 		},
 		TypeKeyProfile: {
 

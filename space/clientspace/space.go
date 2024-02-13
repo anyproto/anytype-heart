@@ -19,6 +19,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/internal/objectprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
@@ -36,6 +37,7 @@ type Space interface {
 	DerivedIDs() threads.DerivedSmartblockIds
 
 	WaitMandatoryObjects(ctx context.Context) (err error)
+	CommonSpace() commonspace.Space
 
 	Do(objectId string, apply func(sb smartblock.SmartBlock) error) error
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
@@ -65,6 +67,7 @@ type space struct {
 	indexer         spaceIndexer
 	derivedIDs      threads.DerivedSmartblockIds
 	installer       bundledObjectsInstaller
+	spaceCore       spacecore.SpaceCoreService
 	personalSpaceId string
 
 	common commonspace.Space
@@ -80,6 +83,7 @@ type SpaceDeps struct {
 	ObjectFactory   objectcache.ObjectFactory
 	AccountService  accountservice.Service
 	StorageService  storage.ClientStorage
+	SpaceCore       spacecore.SpaceCoreService
 	PersonalSpaceId string
 	LoadCtx         context.Context
 }
@@ -90,6 +94,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		installer:              deps.Installer,
 		common:                 deps.CommonSpace,
 		personalSpaceId:        deps.PersonalSpaceId,
+		spaceCore:              deps.SpaceCore,
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
@@ -158,6 +163,10 @@ func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
 	return s.derivedIDs
 }
 
+func (s *space) CommonSpace() commonspace.Space {
+	return s.common
+}
+
 func (s *space) WaitMandatoryObjects(ctx context.Context) (err error) {
 	select {
 	case <-s.loadMandatoryObjectsCh:
@@ -204,6 +213,10 @@ func (s *space) Close(ctx context.Context) error {
 	err := s.Cache.Close(ctx)
 	if err != nil {
 		return err
+	}
+	if s.spaceCore != nil {
+		// we need to remove it from space cache also
+		return s.spaceCore.CloseSpace(ctx, s.Id())
 	}
 	return s.common.Close()
 }

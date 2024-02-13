@@ -54,6 +54,19 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 		))
 	})
 
+	t.Run("ordinary type has basic restrictions", func(t *testing.T) {
+		assert.ErrorIs(t, rest.GetRestrictions(givenObjectType(bundle.TypeKeyDailyPlan)).Object.Check(
+			model.Restrictions_Blocks,
+			model.Restrictions_LayoutChange,
+		), ErrRestricted)
+	})
+
+	t.Run("ordinary relation has basic restrictions", func(t *testing.T) {
+		assert.ErrorIs(t, rest.GetRestrictions(givenObjectType(bundle.TypeKeyDailyPlan)).Object.Check(
+			model.Restrictions_TypeChange,
+		), ErrRestricted)
+	})
+
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		sbType:       coresb.SmartBlockTypeBundledObjectType,
 		layout:       model.ObjectType_objectType,

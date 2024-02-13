@@ -1246,7 +1246,7 @@
     "maxCount": 1,
     "name": "File extension",
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "format": "longtext",
@@ -1365,6 +1365,16 @@
     "source": "details"
   },
   {
+    "description": "Space access type, see enum model.SpaceAccessType",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceAccessType",
+    "maxCount": 1,
+    "name": "Space access type",
+    "readonly": false,
+    "source": "derived"
+  },
+  {
     "description": "File path or url with original object",
     "format": "longtext",
     "hidden": true,
@@ -1383,6 +1393,26 @@
     "name": "File sync status",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "File backup status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileBackupStatus",
+    "maxCount": 1,
+    "name": "File backup status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "File indexing status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileIndexingStatus",
+    "maxCount": 1,
+    "name": "File indexing status",
+    "readonly": true,
+    "source": "details"
   },
   {
     "description": "Last change ID",
@@ -1485,6 +1515,56 @@
     "source": "details"
   },
   {
+    "description": "CID of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileCid",
+    "maxCount": 1,
+    "name": "CID of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Encoded encryption key of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileKey",
+    "maxCount": 1,
+    "name": "Encoded encryption key of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Participant permissions. Possible values: models.ParticipantPermissions",
+    "format": "number",
+    "hidden": true,
+    "key": "participantPermissions",
+    "maxCount": 1,
+    "name": "Participant permissions",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Identity",
+    "format": "longtext",
+    "hidden": true,
+    "key": "identity",
+    "maxCount": 1,
+    "name": "Identity",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Participant status. Possible values: models.ParticipantStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "participantStatus",
+    "maxCount": 1,
+    "name": "Participant status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Link to the profile attached to Anytype Identity",
     "format": "object",
     "hidden": true,
@@ -1515,6 +1595,15 @@
     "source": "derived"
   },
   {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileId",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Last time object type was used",
     "format": "date",
     "hidden": true,
@@ -1531,6 +1620,26 @@
     "key": "revision",
     "maxCount": 1,
     "name": "Revision",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Describes how this image is used",
+    "format": "number",
+    "hidden": true,
+    "key": "imageKind",
+    "maxCount": 1,
+    "name": "Image kind",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Import type, used to create object (notion, md and etc)",
+    "format": "number",
+    "hidden": false,
+    "key": "importType",
+    "maxCount": 1,
+    "name": "Import Type",
     "readonly": true,
     "source": "details"
   }

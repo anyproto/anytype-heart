@@ -18,16 +18,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -110,6 +112,27 @@ func (i *indexer) StartFullTextIndex() (err error) {
 func (i *indexer) Close(ctx context.Context) (err error) {
 	close(i.quit)
 	return nil
+}
+
+func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
+	ids, _, err := i.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+			},
+		},
+	})
+	if err != nil {
+		return
+	}
+	return i.store.DeleteDetails(ids...)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
@@ -200,8 +223,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 			}
 		}
-
-		i.indexLinkedFiles(ctx, info.Space, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -215,7 +236,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 		saveIndexedHash()
 	}
 
-	metrics.SharedClient.RecordEvent(metrics.IndexEvent{
+	metrics.Service.Send(&metrics.IndexEvent{
 		ObjectId:                info.Id,
 		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
 		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
@@ -224,40 +245,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	})
 
 	return nil
-}
-
-func (i *indexer) indexLinkedFiles(ctx context.Context, space smartblock.Space, fileHashes []string) {
-	if len(fileHashes) == 0 {
-		return
-	}
-	existingIDs, err := i.store.HasIDs(fileHashes...)
-	if err != nil {
-		log.Errorf("failed to get existing file ids : %s", err)
-	}
-	newIDs := slice.Difference(fileHashes, existingIDs)
-	for _, id := range newIDs {
-		go func(id string) {
-			// Deduplicate
-			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
-			if ok {
-				return
-			}
-			bindErr := i.storageService.BindSpaceID(space.Id(), id)
-			if bindErr != nil {
-				log.Error("failed to bind space id", zap.Error(bindErr), zap.String("id", id))
-				return
-			}
-			// file's hash is id
-			idxErr := i.reindexDoc(ctx, space, id)
-			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
-				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
-			}
-			idxErr = i.store.AddToIndexQueue(id)
-			if idxErr != nil {
-				log.With("id", id).Error(idxErr)
-			}
-		}(id)
-	}
 }
 
 func headsHash(heads []string) string {

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
@@ -25,6 +26,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -48,16 +50,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -113,18 +118,18 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	a.SetVersionName(complexAppVersion)
 	logging.SetVersion(complexAppVersion)
 	Bootstrap(a, components...)
-	metrics.SharedClient.SetAppVersion(a.Version())
-	metrics.SharedClient.Run()
+	metrics.Service.SetAppVersion(a.VersionName())
+	metrics.Service.Run()
 	startTime := time.Now()
 	if err = a.Start(ctx); err != nil {
-		metrics.SharedClient.Close()
+		metrics.Service.Close()
 		a = nil
 		return
 	}
 	totalSpent := time.Since(startTime)
 	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
 	stat := a.StartStat()
-	event := metrics.AppStart{
+	event := &metrics.AppStart{
 		TotalMs:   stat.SpentMsTotal,
 		PerCompMs: stat.SpentMsPerComp,
 		Extra:     map[string]interface{}{},
@@ -159,7 +164,7 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	})
 
 	if metrics.Enabled {
-		metrics.SharedClient.RecordEvent(event)
+		metrics.Service.Send(event)
 	}
 	if totalSpent > WarningAfter {
 		l.Warn("app started")
@@ -189,6 +194,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
+		Register(filestore.New()).
 		// Services
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
@@ -209,24 +215,29 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
-		Register(rpcstore.New()).
-		Register(filestore.New()).
-		Register(fileservice.New()).
-		Register(filestorage.New()).
-		Register(filesync.New()).
+		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
+		Register(fileuploader.New()).
+		Register(rpcstore.New()).
+		Register(fileservice.New()).
+		Register(filestorage.New()).
+		Register(files.New()).
+		Register(fileacl.New()).
+		Register(invitestore.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(fileobject.New()).
+		Register(acl.New()).
+		Register(filesync.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
-		Register(files.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(core.New()).
@@ -246,7 +257,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
-		Register(session.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
@@ -255,7 +265,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
 		Register(profiler.New()).
-		Register(identity.New()).
+		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
 		Register(notifications.New()).
 		Register(paymentserviceclient.New()).

@@ -24,6 +24,7 @@ type SpaceStatus interface {
 	SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error)
 	SetLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
+	SetAccessType(ctx context.Context, status spaceinfo.AccessType) (err error)
 }
 
 type spaceStatus struct {
@@ -110,4 +111,8 @@ func (s *spaceStatus) setCurrentLocalInfo(ctx context.Context) (err error) {
 		LocalStatus:  s.localStatus,
 		RemoteStatus: s.remoteStatus,
 	})
+}
+
+func (s *spaceStatus) SetAccessType(ctx context.Context, acc spaceinfo.AccessType) (err error) {
+	return s.techSpace.SetAccessType(ctx, s.spaceId, acc)
 }

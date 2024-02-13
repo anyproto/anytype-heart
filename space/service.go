@@ -13,9 +13,11 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
@@ -48,10 +50,13 @@ type isNewAccount interface {
 type Service interface {
 	Create(ctx context.Context) (space clientspace.Space, err error)
 
+	Join(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
+	AccountMetadataSymKey() crypto.SymKey
+	AccountMetadataPayload() []byte
 
 	app.ComponentRunnable
 }
@@ -61,15 +66,16 @@ type service struct {
 	factory        spacefactory.SpaceFactory
 	spaceCore      spacecore.SpaceCoreService
 	accountService accountservice.Service
+	config         *config.Config
+	delController  *deletionController
 
-	delController *deletionController
-
-	personalSpaceId  string
-	newAccount       bool
-	spaceControllers map[string]spacecontroller.SpaceController
-	waiting          map[string]controllerWaiter
-	metadataPayload  []byte
-	repKey           uint64
+	personalSpaceId        string
+	newAccount             bool
+	spaceControllers       map[string]spacecontroller.SpaceController
+	waiting                map[string]controllerWaiter
+	accountMetadataSymKey  crypto.SymKey
+	accountMetadataPayload []byte
+	repKey                 uint64
 
 	mu        sync.Mutex
 	ctx       context.Context
@@ -102,16 +108,23 @@ func (s *service) Init(a *app.App) (err error) {
 	s.factory = app.MustComponent[spacefactory.SpaceFactory](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
+	s.config = app.MustComponent[*config.Config](a)
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.waiting = make(map[string]controllerWaiter)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	if err != nil {
 		return
 	}
-	s.metadataPayload, err = deriveMetadata(s.accountService.Account().SignKey)
+	accountMetadata, metadataSymKey, err := deriveMetadata(s.accountService.Account().SignKey)
 	if err != nil {
 		return
 	}
+	s.accountMetadataSymKey = metadataSymKey
+	s.accountMetadataPayload, err = accountMetadata.Marshal()
+	if err != nil {
+		return fmt.Errorf("marshal account metadata: %w", err)
+	}
+
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	return err
@@ -135,9 +148,19 @@ func (s *service) Run(ctx context.Context) (err error) {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 			err = ErrSpaceNotExists
 		}
+		// fix for the users that have wrong network id stored in the folder
+		err2 := s.config.ResetStoredNetworkId()
+		if err2 != nil {
+			log.Error("reset network id", zap.Error(err2))
+		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
 	s.delController.Run()
+	// only persist networkId after successful space init
+	err = s.config.PersistAccountNetworkId()
+	if err != nil {
+		log.Error("persist network id to config", zap.Error(err))
+	}
 	return nil
 }
 
@@ -188,6 +211,14 @@ func (s *service) OnWorkspaceChanged(spaceId string, details *types.Struct) {
 			log.Warn("OnWorkspaceChanged error", zap.Error(err))
 		}
 	}()
+}
+
+func (s *service) AccountMetadataSymKey() crypto.SymKey {
+	return s.accountMetadataSymKey
+}
+
+func (s *service) AccountMetadataPayload() []byte {
+	return s.accountMetadataPayload
 }
 
 func (s *service) updateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus) error {

@@ -61,6 +61,7 @@ type SpaceCoreService interface {
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
 	Delete(ctx context.Context, spaceID string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
+	CloseSpace(ctx context.Context, id string) error
 
 	StreamPool() streampool.StreamPool
 	app.ComponentRunnable
@@ -153,6 +154,11 @@ func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace
 		return
 	}
 	return obj.(*AnySpace), nil
+}
+
+func (s *service) CloseSpace(ctx context.Context, id string) error {
+	_, err := s.spaceCache.Remove(ctx, id)
+	return err
 }
 
 func (s *service) DeriveID(ctx context.Context, spaceType string) (id string, err error) {

@@ -14,6 +14,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -31,20 +32,22 @@ var loopTimeout = time.Minute
 var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
 type FileSync interface {
-	AddFile(spaceID, fileID string, uploadedByUser, imported bool) (err error)
-	OnUpload(func(spaceID, fileID string) error)
-	RemoveFile(spaceId, fileId string) (err error)
+	AddFile(spaceId string, fileId domain.FileId, uploadedByUser, imported bool) (err error)
+	OnUploadStarted(func(fileId domain.FileId) error)
+	OnUploaded(func(fileId domain.FileId) error)
+	OnLimited(func(fileId domain.FileId) error)
+	RemoveFile(spaceId string, fileId domain.FileId) (err error)
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
-	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
-	FileListStats(ctx context.Context, spaceId string, fileIDs []string) ([]FileStat, error)
+	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)
+	FileListStats(ctx context.Context, spaceId string, hashes []domain.FileId) ([]FileStat, error)
 	SyncStatus() (ss SyncStatus, err error)
-	HasUpload(spaceId, fileId string) (ok bool, err error)
-	IsFileUploadLimited(spaceId, fileId string) (ok bool, err error)
+	HasUpload(spaceId string, fileId domain.FileId) (ok bool, err error)
+	IsFileUploadLimited(spaceId string, fileId domain.FileId) (ok bool, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
-	CalculateFileSize(ctx context.Context, spaceId string, fileID string) (int, error)
+	CalculateFileSize(ctx context.Context, spaceId string, fileId domain.FileId) (int, error)
 	app.ComponentRunnable
 }
 
@@ -54,27 +57,24 @@ type QueueInfo struct {
 	RemovingQueue  []*QueueItem
 }
 
-type personalSpaceIDGetter interface {
-	PersonalSpaceID() string
-}
-
 type SyncStatus struct {
 	QueueLen int
 }
 
 type fileSync struct {
-	dbProvider       datastore.Datastore
-	rpcStore         rpcstore.RpcStore
-	queue            *fileSyncStore
-	loopCtx          context.Context
-	loopCancel       context.CancelFunc
-	uploadPingCh     chan struct{}
-	removePingCh     chan struct{}
-	dagService       ipld.DAGService
-	fileStore        filestore.FileStore
-	eventSender      event.Sender
-	onUpload         func(spaceID, fileID string) error
-	personalIDGetter personalSpaceIDGetter
+	dbProvider      datastore.Datastore
+	rpcStore        rpcstore.RpcStore
+	queue           *fileSyncStore
+	loopCtx         context.Context
+	loopCancel      context.CancelFunc
+	uploadPingCh    chan struct{}
+	removePingCh    chan struct{}
+	dagService      ipld.DAGService
+	fileStore       filestore.FileStore
+	eventSender     event.Sender
+	onUploaded      func(fileId domain.FileId) error
+	onUploadStarted func(fileId domain.FileId) error
+	onLimited       func(fileId domain.FileId) error
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -89,19 +89,26 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
-	f.personalIDGetter = app.MustComponent[personalSpaceIDGetter](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
 	return
 }
 
-func (s *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
-	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
+func (f *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
+	return filehelper.NewDAGServiceWithSpaceID(spaceID, f.dagService)
 }
 
-func (f *fileSync) OnUpload(callback func(spaceID, fileID string) error) {
-	f.onUpload = callback
+func (f *fileSync) OnUploaded(callback func(fileId domain.FileId) error) {
+	f.onUploaded = callback
+}
+
+func (f *fileSync) OnUploadStarted(callback func(fileId domain.FileId) error) {
+	f.onUploadStarted = callback
+}
+
+func (f *fileSync) OnLimited(callback func(fileId domain.FileId) error) {
+	f.onLimited = callback
 }
 
 func (f *fileSync) Name() (name string) {

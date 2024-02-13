@@ -79,6 +79,8 @@ type service struct {
 
 	m      sync.Mutex
 	ctxBuf *opCtx
+
+	subDebugger *subDebugger
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -92,6 +94,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.ctxBuf = &opCtx{c: s.cache}
+	s.initDebugger()
 	return
 }
 
@@ -238,14 +241,9 @@ func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*
 }
 
 func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, filterDepIds, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
 	if err != nil {
 		return nil, err
-	}
-	if req.NoDepSubscription {
-		sub.sortedSub.disableDep = true
-	} else {
-		sub.sortedSub.forceSubIds = filterDepIds
 	}
 	if err := sub.init(nil); err != nil {
 		return nil, fmt.Errorf("subscription init error: %w", err)
@@ -495,6 +493,8 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	handleTime := time.Since(st)
 	event := s.ctxBuf.apply()
 	dur := time.Since(st)
+
+	s.debugEvents(event)
 
 	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
 	s.eventSender.Broadcast(event)

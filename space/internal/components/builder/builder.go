@@ -2,6 +2,7 @@ package builder
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -13,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 const CName = "client.components.builder"
@@ -81,7 +83,22 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context) (clientspace.Space, error
 		AccountService:  b.accountService,
 		PersonalSpaceId: b.personalSpaceId,
 		StorageService:  b.storageService,
+		SpaceCore:       b.spaceCore,
 		LoadCtx:         b.ctx,
 	}
-	return clientspace.BuildSpace(ctx, deps)
+	space, err := clientspace.BuildSpace(ctx, deps)
+	if err != nil {
+		return nil, err
+	}
+
+	acc := spaceinfo.AccessTypePrivate
+	if space.Id() == b.personalSpaceId {
+		acc = spaceinfo.AccessTypePersonal
+	}
+	err = b.status.SetAccessType(ctx, acc)
+	if err != nil {
+		return nil, fmt.Errorf("set access type: %w", err)
+	}
+
+	return space, nil
 }

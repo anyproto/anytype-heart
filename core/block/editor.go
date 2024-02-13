@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -33,17 +34,17 @@ var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
-	Origin model.ObjectOrigin
+	ObjectOrigin objectorigin.ObjectOrigin
 }
 
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
-	Origin model.ObjectOrigin
+	ObjectOrigin objectorigin.ObjectOrigin
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
-	Origin model.ObjectOrigin
+	ObjectOrigin objectorigin.ObjectOrigin
 }
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
@@ -464,11 +465,11 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 
 func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupID string) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, file.FileSource{
+		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: groupID,
-			Origin:  req.Origin,
+			Origin:  req.ObjectOrigin,
 		}, false)
 		return err
 	})
@@ -476,10 +477,10 @@ func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupI
 
 func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, file.FileSource{
+		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
 			Url:    req.Url,
-			Origin: req.Origin,
+			Origin: req.ObjectOrigin,
 		}, true)
 		return err
 	})
@@ -495,14 +496,14 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUploadRequest) (hash string, err error) {
-	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
+func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *types.Struct, err error) {
+	upl := s.fileUploaderService.NewUploader(spaceId, req.ObjectOrigin)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
 
-	upl.SetOrigin(req.Origin)
 	upl.SetStyle(req.Style)
+	upl.SetAdditionalDetails(req.Details)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	} else {
@@ -515,9 +516,9 @@ func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUpload
 	}
 	res := upl.Upload(ctx)
 	if res.Err != nil {
-		return "", res.Err
+		return "", nil, res.Err
 	}
-	return res.Hash, nil
+	return res.FileObjectId, res.FileObjectDetails, nil
 }
 
 func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
@@ -534,24 +535,22 @@ func (s *Service) SetFileStyle(
 	})
 }
 
-func (s *Service) UploadFileBlockWithHash(
+func (s *Service) UploadFileBlock(
 	contextID string, req UploadRequest,
-) (hash string, err error) {
+) (fileObjectId string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
-		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
+		fileObjectId, err = b.Upload(nil, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: "",
-			Origin:  req.Origin,
-		})
+			Origin:  req.ObjectOrigin,
+		}, true)
 		if err != nil {
 			return err
 		}
-		hash = res.Hash
 		return nil
 	})
-
-	return hash, err
+	return fileObjectId, err
 }
 
 func (s *Service) Undo(
@@ -576,7 +575,7 @@ func (s *Service) Redo(
 
 func (s *Service) BookmarkFetch(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, req.Origin)
+		return b.Fetch(ctx, req.BlockId, req.Url, req.ObjectOrigin)
 	})
 }
 

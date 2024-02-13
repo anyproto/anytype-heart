@@ -14,15 +14,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-)
-
-const (
-	SpacePrivate  = 0
-	SpacePersonal = 1
 )
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
@@ -35,14 +31,16 @@ type spaceService interface {
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
 type SpaceView struct {
 	smartblock.SmartBlock
-	spaceService spaceService
+	spaceService      spaceService
+	fileObjectService fileobject.Service
 }
 
 // newSpaceView creates a new SpaceView with given deps
-func newSpaceView(sb smartblock.SmartBlock, spaceService spaceService) *SpaceView {
+func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 	return &SpaceView{
-		SmartBlock:   sb,
-		spaceService: spaceService,
+		SmartBlock:        sb,
+		spaceService:      f.spaceService,
+		fileObjectService: f.fileObjectService,
 	}
 }
 
@@ -58,7 +56,6 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 	s.DisableLayouts()
 	info := s.getSpaceInfo(ctx.State)
-	// TODO: [MR] set persistent status on the basis of context
 	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
 	s.setSpacePersistentInfo(ctx.State, newPersistentInfo)
 	s.setSpaceLocalInfo(ctx.State, spaceinfo.SpaceLocalInfo{
@@ -108,9 +105,27 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
+	st := s.NewState()
+	prev := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
+	// Can't change access level for personal space
+	if prev == spaceinfo.AccessTypePersonal {
+		return nil
+	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, pbtypes.Int64(int64(acc)))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
 	st := s.NewState()
 	s.setSpacePersistentInfo(st, info)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
 	return s.Apply(st)
 }
 
@@ -162,7 +177,6 @@ var workspaceKeysToCopy = []string{
 	bundle.RelationKeySpaceDashboardId.String(),
 	bundle.RelationKeyCreator.String(),
 	bundle.RelationKeyCreatedDate.String(),
-	bundle.RelationKeySpaceAccessibility.String(),
 }
 
 func (s *SpaceView) SetSpaceData(details *types.Struct) error {
@@ -170,6 +184,22 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 	var changed bool
 	for k, v := range details.Fields {
 		if slices.Contains(workspaceKeysToCopy, k) {
+			// Special case for migration to Files as Objects to handle following situation:
+			// - We have an icon in Workspace that was created in pre-Files as Objects version
+			// - We migrate it, change old id to new id
+			// - Now we need to push details to SpaceView. But if we push NEW id, then old clients will not be able to display image
+			// - So we need to push old id
+			if k == bundle.RelationKeyIconImage.String() {
+				fileId, err := s.fileObjectService.GetFileIdFromObject(v.GetStringValue())
+				if err == nil {
+					switch v.Kind.(type) {
+					case *types.Value_StringValue:
+						v = pbtypes.String(fileId.FileId.String())
+					case *types.Value_ListValue:
+						v = pbtypes.StringList([]string{fileId.FileId.String()})
+					}
+				}
+			}
 			changed = true
 			st.SetDetailAndBundledRelation(domain.RelationKey(k), v)
 		}

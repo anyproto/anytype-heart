@@ -30,9 +30,8 @@ type AccountStatus int
 const (
 	AccountStatusUnknown = AccountStatus(model.SpaceStatus_Unknown)
 	AccountStatusDeleted = AccountStatus(model.SpaceStatus_SpaceDeleted)
-	// TODO: [MR] generate
-	AccountStatusInviting = AccountStatus(8)
-	AccountStatusLoading  = AccountStatus(9)
+	AccountStatusJoining = AccountStatus(model.SpaceStatus_SpaceJoining)
+	AccountStatusActive  = AccountStatus(model.SpaceStatus_SpaceActive)
 )
 
 type SpaceLocalInfo struct {
@@ -52,3 +51,11 @@ type SpaceInfo struct {
 	RemoteStatus  RemoteStatus
 	AccountStatus AccountStatus
 }
+
+type AccessType int
+
+const (
+	AccessTypePrivate  = AccessType(model.SpaceAccessType_Private)
+	AccessTypePersonal = AccessType(model.SpaceAccessType_Personal)
+	AccessTypeShared   = AccessType(model.SpaceAccessType_Shared)
+)

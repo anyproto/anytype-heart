@@ -5,6 +5,7 @@
 //
 //	mockgen -package smartblock -destination indexer_mock.go github.com/anyproto/anytype-heart/core/block/editor/smartblock Indexer
 //
+
 // Package smartblock is a generated GoMock package.
 package smartblock
 

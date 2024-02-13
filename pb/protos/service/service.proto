@@ -15,6 +15,8 @@ service ClientCommands {
     rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
     rpc WalletRecover (anytype.Rpc.Wallet.Recover.Request) returns (anytype.Rpc.Wallet.Recover.Response);
     rpc WalletConvert (anytype.Rpc.Wallet.Convert.Request) returns (anytype.Rpc.Wallet.Convert.Response);
+    rpc AccountLocalLinkNewChallenge (anytype.Rpc.Account.LocalLink.NewChallenge.Request) returns (anytype.Rpc.Account.LocalLink.NewChallenge.Response);
+    rpc AccountLocalLinkSolveChallenge (anytype.Rpc.Account.LocalLink.SolveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.SolveChallenge.Response);
     rpc WalletCreateSession (anytype.Rpc.Wallet.CreateSession.Request) returns (anytype.Rpc.Wallet.CreateSession.Response);
     rpc WalletCloseSession (anytype.Rpc.Wallet.CloseSession.Request) returns (anytype.Rpc.Wallet.CloseSession.Response);
     // Workspace
@@ -48,6 +50,17 @@ service ClientCommands {
     // Space
     // ***
     rpc SpaceDelete (anytype.Rpc.Space.Delete.Request) returns (anytype.Rpc.Space.Delete.Response);
+    rpc SpaceInviteGenerate (anytype.Rpc.Space.InviteGenerate.Request) returns (anytype.Rpc.Space.InviteGenerate.Response);
+    rpc SpaceInviteGetCurrent (anytype.Rpc.Space.InviteGetCurrent.Request) returns (anytype.Rpc.Space.InviteGetCurrent.Response);
+    rpc SpaceInviteRevoke(anytype.Rpc.Space.InviteRevoke.Request) returns (anytype.Rpc.Space.InviteRevoke.Response);
+    rpc SpaceInviteView(anytype.Rpc.Space.InviteView.Request) returns (anytype.Rpc.Space.InviteView.Response);
+    rpc SpaceJoin (anytype.Rpc.Space.Join.Request) returns (anytype.Rpc.Space.Join.Response);
+    rpc SpaceJoinCancel (anytype.Rpc.Space.JoinCancel.Request) returns (anytype.Rpc.Space.JoinCancel.Response);
+    rpc SpaceExit (anytype.Rpc.Space.Exit.Request) returns (anytype.Rpc.Space.Exit.Response);
+    rpc SpaceRequestApprove (anytype.Rpc.Space.RequestApprove.Request) returns (anytype.Rpc.Space.RequestApprove.Response);
+    rpc SpaceRequestDecline (anytype.Rpc.Space.RequestDecline.Request) returns (anytype.Rpc.Space.RequestDecline.Response);
+    rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
+    rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
 
     // Object
     // ***
@@ -57,6 +70,7 @@ service ClientCommands {
     // ObjectCreate just creates the new page, without adding the link to it from some other page
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
+    rpc ObjectCreateFromUrl (anytype.Rpc.Object.CreateFromUrl.Request) returns (anytype.Rpc.Object.CreateFromUrl.Response);
 
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
@@ -131,6 +145,7 @@ service ClientCommands {
     // Files
     // ***
     rpc FileOffload (anytype.Rpc.File.Offload.Request) returns (anytype.Rpc.File.Offload.Response);
+    rpc FileSpaceOffload (anytype.Rpc.File.SpaceOffload.Request) returns (anytype.Rpc.File.SpaceOffload.Response);
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
@@ -152,7 +167,8 @@ service ClientCommands {
     // The artist info is available in the object details
     rpc UnsplashDownload (anytype.Rpc.Unsplash.Download.Request) returns (anytype.Rpc.Unsplash.Download.Response);
 
-    rpc DownloadManifest (anytype.Rpc.DownloadManifest.Request) returns (anytype.Rpc.DownloadManifest.Response);
+    rpc GalleryDownloadManifest (anytype.Rpc.Gallery.DownloadManifest.Request) returns (anytype.Rpc.Gallery.DownloadManifest.Response);
+    rpc GalleryDownloadIndex (anytype.Rpc.Gallery.DownloadIndex.Request) returns (anytype.Rpc.Gallery.DownloadIndex.Response);
 
     // General Block commands
     // ***
@@ -167,6 +183,7 @@ service ClientCommands {
     rpc BlockSetFields (anytype.Rpc.Block.SetFields.Request) returns (anytype.Rpc.Block.SetFields.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);
     rpc BlockSetCarriage (anytype.Rpc.Block.SetCarriage.Request) returns (anytype.Rpc.Block.SetCarriage.Response);
+    rpc BlockPreview (anytype.Rpc.Block.Preview.Request) returns (anytype.Rpc.Block.Preview.Response);
 
 
     rpc BlockListDelete (anytype.Rpc.Block.ListDelete.Request) returns (anytype.Rpc.Block.ListDelete.Response);
@@ -288,7 +305,6 @@ service ClientCommands {
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);
 
     rpc NotificationList (anytype.Rpc.Notification.List.Request) returns (anytype.Rpc.Notification.List.Response);
-
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
 
     rpc PaymentsSubscriptionGetStatus (anytype.Rpc.Payments.Subscription.GetStatus.Request) returns (anytype.Rpc.Payments.Subscription.GetStatus.Response);
@@ -303,6 +319,7 @@ service ClientCommands {
     rpc NameServiceResolveAnyId( anytype.Rpc.NameService.ResolveAnyId.Request ) returns (anytype.Rpc.NameService.ResolveAnyId.Response);
     // bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -> hello.any
     rpc NameServiceResolveSpaceId( anytype.Rpc.NameService.ResolveSpaceId.Request ) returns (anytype.Rpc.NameService.ResolveSpaceId.Response);
-    
     rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
+
+    rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
 }
