@@ -163,7 +163,7 @@ func (s *service) Run() {
 	defer s.lock.Unlock()
 	for _, c := range s.clients {
 		c.ctx, c.cancel = context.WithCancel(context.Background())
-		c.batcher = mb.New[amplitude.Event](0)
+		c.setBatcher(mb.New[amplitude.Event](0))
 		go c.startAggregating()
 		go c.startSendingBatchMessages(s)
 	}

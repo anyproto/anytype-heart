@@ -10476,8 +10476,9 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
+| id | [string](#string) |  |  |
 | experiences | [string](#string) | repeated |  |
+| icon | [string](#string) |  |  |
 
 
 
@@ -25562,7 +25563,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | date | 17 |  |
 | spaceView | 18 |  |
 | participant | 19 |  |
-| database | 20 | to be released later |
+| pdf | 20 |  |
 
 
 

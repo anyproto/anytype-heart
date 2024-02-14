@@ -730,7 +730,7 @@ message ObjectType {
         spaceView = 18;
         participant = 19;
 
-        database = 20; // to be released later
+        pdf = 20;
     }
 }
 
