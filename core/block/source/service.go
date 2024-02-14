@@ -101,8 +101,9 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:    b.Listener,
-		TreeBuilder: objecttree.BuildKeyVerifiableObjectTree,
+		Listener:      b.Listener,
+		TreeBuilder:   objecttree.BuildKeyVerifiableObjectTree,
+		TreeValidator: objecttree.ValidateFilterReadKeyRawTreeBuildFunc,
 	}
 }
 
