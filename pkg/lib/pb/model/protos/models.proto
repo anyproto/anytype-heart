@@ -966,10 +966,8 @@ message Notification {
         RequestToJoin requestToJoin = 10;
         RequestResponse requestResponse = 11;
         ParticipantRequestApproved participantRequestApproved = 12;
-        SpaceStopShare spaceStopShare = 14;
         LeaveRequest leaveRequest = 15;
         ParticipantRemove participantRemove = 16;
-        LeaveRequestApprove leaveRequestApprove = 17;
     }
     string space = 7;
     string acl = 13;
@@ -1019,10 +1017,6 @@ message Notification {
         ParticipantPermissions permission = 2;
     }
 
-    message SpaceStopShare {
-        string spaceID = 1;
-    }
-
     message LeaveRequest {
         string spaceId = 1;
         string identity = 2;
@@ -1031,11 +1025,9 @@ message Notification {
     }
 
     message ParticipantRemove {
-        string identityName = 1;
-    }
-
-    message LeaveRequestApprove {
-        string spaceId = 1;
+        string identity = 1;
+        string identityName = 2;
+        string identityIcon = 3;
     }
 
     enum Status {

@@ -92,9 +92,6 @@ func (n *AclNotificationSender) handleAclContent(ctx context.Context,
 			if err := n.sendAccountRemove(content, space, record.Id, aclId, permissions); err != nil {
 				return err
 			}
-			if err := n.sendInviteRevoke(content, space, record.Id, aclId, permissions); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
@@ -200,30 +197,6 @@ func (n *AclNotificationSender) sendAccountRemove(content *aclrecordproto.AclCon
 
 		}
 		// TODO else
-	}
-	return nil
-}
-
-func (n *AclNotificationSender) sendInviteRevoke(content *aclrecordproto.AclContentValue,
-	space clientspace.Space,
-	id, aclId string,
-	permissions list.AclPermissions,
-) error {
-	if inviteRevoke := content.GetInviteRevoke(); inviteRevoke != nil && permissions.CanManageAccounts() {
-		err := n.notificationService.CreateAndSend(&model.Notification{
-			Id:      id,
-			IsLocal: false,
-			Payload: &model.NotificationPayloadOfSpaceStopShare{
-				SpaceStopShare: &model.NotificationSpaceStopShare{
-					SpaceID: space.Id(),
-				},
-			},
-			Space: space.Id(),
-			Acl:   aclId,
-		})
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
