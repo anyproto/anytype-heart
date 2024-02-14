@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const CName = "history"
@@ -75,25 +74,25 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return
 	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id.ObjectID))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(id.SpaceID))
+	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
+	if err != nil {
+		return nil, nil, fmt.Errorf("get type id by key: %w", err)
+	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeId))
+
 	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, true, true, false, true, false)
 	// nolint:errcheck
 	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
 
 	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
-	uniqueObjTypes := s.ObjectTypeKeys()
 	for _, m := range metaD {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
 			Details: m.Details,
 		})
-
-		if typeKey := domain.TypeKey(pbtypes.GetString(m.Details, bundle.RelationKeyType.String())); typeKey != "" {
-			if slice.FindPos(uniqueObjTypes, typeKey) == -1 {
-				// todo: what is happening here?
-				uniqueObjTypes = append(uniqueObjTypes, typeKey)
-			}
-		}
 	}
 
 	relations, err := h.objectStore.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
