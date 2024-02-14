@@ -119,6 +119,18 @@ func (t *treeSyncer) StartSync() {
 	}
 }
 
+func (t *treeSyncer) StopSync() {
+	t.Lock()
+	defer t.Unlock()
+	t.isRunning = false
+}
+
+func (t *treeSyncer) ShouldSync(peerId string) bool {
+	t.Lock()
+	defer t.Unlock()
+	return t.isRunning
+}
+
 func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) error {
 	t.Lock()
 	defer t.Unlock()

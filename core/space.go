@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
@@ -14,8 +16,12 @@ import (
 )
 
 func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
-	spaceService := mw.applicationService.GetApp().MustComponent(space.CName).(space.Service)
-	err := spaceService.Delete(cctx, req.SpaceId)
+	spaceService := getService[space.Service](mw)
+	aclService := getService[acl.AclService](mw)
+	err := aclService.Leave(cctx, req.SpaceId)
+	if err == nil || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) {
+		err = spaceService.Delete(cctx, req.SpaceId)
+	}
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceDeleteResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceDeleteResponseError_NO_SUCH_SPACE),

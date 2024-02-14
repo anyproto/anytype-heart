@@ -2,7 +2,6 @@ package deletioncontroller
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/periodicsync"
@@ -89,29 +86,20 @@ func (d *deletionController) Close(ctx context.Context) error {
 }
 
 func (d *deletionController) loopIterate(ctx context.Context) error {
-	ownedIds, otherIds := d.updateStatuses(ctx)
+	ownedIds := d.updateStatuses(ctx)
 	d.mx.Lock()
-	var (
-		toDeleteOwnedIds []string
-		toLeaveOtherIds  []string
-	)
+	var toDeleteOwnedIds []string
 	for _, id := range ownedIds {
 		if _, exists := d.toDelete[id]; exists {
 			toDeleteOwnedIds = append(toDeleteOwnedIds, id)
 		}
 	}
-	for _, id := range otherIds {
-		if _, exists := d.toDelete[id]; exists {
-			toLeaveOtherIds = append(toLeaveOtherIds, id)
-		}
-	}
 	d.mx.Unlock()
 	d.deleteOwnedSpaces(ctx, toDeleteOwnedIds)
-	d.leaveOtherSpaces(ctx, toLeaveOtherIds)
 	return nil
 }
 
-func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds, otherIds []string) {
+func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []string) {
 	ids := d.spaceManager.AllSpaceIds()
 	remoteStatuses, err := d.client.StatusCheckMany(ctx, ids)
 	if err != nil {
@@ -133,13 +121,9 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds, othe
 			continue
 		}
 		isOwned := false
-		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusCreated {
-			if nodeStatus.Permissions == coordinatorproto.SpacePermissions_SpacePermissionsOwner {
-				isOwned = true
-				ownedIds = append(ownedIds, ids[idx])
-			} else {
-				otherIds = append(otherIds, ids[idx])
-			}
+		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusCreated && nodeStatus.Permissions == coordinatorproto.SpacePermissions_SpacePermissionsOwner {
+			isOwned = true
+			ownedIds = append(ownedIds, ids[idx])
 		}
 		remoteStatus := convStatus(nodeStatus.Status)
 		err := d.spaceManager.UpdateRemoteStatus(ctx, ids[idx], remoteStatus, isOwned)
@@ -155,48 +139,6 @@ func (d *deletionController) deleteOwnedSpaces(ctx context.Context, spaceIds []s
 	for _, spaceId := range spaceIds {
 		if err := d.spaceCore.Delete(ctx, spaceId); err != nil {
 			log.Warn("space deletion error", zap.Error(err), zap.String("spaceId", spaceId))
-			continue
-		}
-		d.mx.Lock()
-		delete(d.toDelete, spaceId)
-		d.mx.Unlock()
-	}
-}
-
-func (d *deletionController) leaveOtherSpaces(ctx context.Context, spaceIds []string) {
-	for _, spaceId := range spaceIds {
-		// TODO: optimize this to cache acls not to load them every time
-		res, err := d.joiningClient.AclGetRecords(ctx, spaceId, "")
-		if err != nil {
-			log.Warn("acl get records error", zap.Error(err), zap.String("spaceId", spaceId))
-			continue
-		}
-		storage, err := liststorage.NewInMemoryAclListStorage(res[0].Id, res)
-		if err != nil {
-			log.Warn("acl storage creation error", zap.Error(err), zap.String("spaceId", spaceId))
-			continue
-		}
-		acl, err := list.BuildAclListWithIdentity(d.keys, storage, list.NoOpAcceptorVerifier{})
-		if err != nil {
-			log.Warn("acl list build error", zap.Error(err), zap.String("spaceId", spaceId))
-			continue
-		}
-		identity := d.keys.SignKey.GetPublic()
-		_, err = acl.AclState().Record(identity)
-		if acl.AclState().Permissions(identity).NoPermissions() || !errors.Is(err, list.ErrNoSuchRecord) {
-			d.mx.Lock()
-			delete(d.toDelete, spaceId)
-			d.mx.Unlock()
-			continue
-		}
-		rec, err := acl.RecordBuilder().BuildRequestRemove()
-		if err != nil {
-			log.Warn("acl record build error", zap.Error(err), zap.String("spaceId", spaceId))
-			continue
-		}
-		_, err = d.joiningClient.SendRecord(ctx, spaceId, rec)
-		if err != nil {
-			log.Warn("acl record send error", zap.Error(err), zap.String("spaceId", spaceId))
 			continue
 		}
 		d.mx.Lock()
