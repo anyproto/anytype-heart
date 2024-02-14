@@ -600,20 +600,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if s.ParentState() != nil && s.ParentState().IsTheHeaderChange() {
 		// for the first change allow to set the last modified date from the state
 		// this used for the object imports
-		// lastModifiedFromState := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
-		// if lastModifiedFromState > 0 {
-		// 	lastModified = time.Unix(lastModifiedFromState, 0)
-		// }
-		// s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
+		lastModifiedFromState := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		if lastModifiedFromState > 0 {
+			lastModified = time.Unix(lastModifiedFromState, 0)
+		}
 
 		if existingCreatedDate := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()); existingCreatedDate == 0 || existingCreatedDate > lastModified.Unix() {
 			// this can happen if we don't have creation date in the root change
 			s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
 		}
 	}
-
-	// s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentParticipantId))
-	// s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
 
 	sb.beforeStateApply(s)
 
@@ -654,6 +650,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	pushChange := func() error {
 		if !sb.source.ReadOnly() {
+			// We can set details directly in object's state, they'll be indexed correctly
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentParticipantId))
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
 		}
@@ -940,7 +937,13 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 	if originalCreated := s.OriginalCreatedTimestamp(); originalCreated > 0 {
 		// means we have imported object, so we need to set original created date
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(originalCreated)))
-		s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
+		// Only set AddedDate once because we have a side effect with treeCreatedDate:
+		// - When we import object, treeCreateDate is set to time.Now()
+		// - But after push it is changed to original modified date
+		// - So after account recovery we will get treeCreateDate = original modified date, which is not equal to AddedDate
+		if pbtypes.GetInt64(s.Details(), bundle.RelationKeyAddedDate.String()) == 0 {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
+		}
 	} else {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(treeCreatedDate)))
 	}
