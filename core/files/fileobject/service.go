@@ -321,6 +321,9 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 	if fileId == "" || objectId == fileId {
 		return fileId
 	}
+	if !domain.IsFileId(fileId) {
+		return fileId
+	}
 	var fileKeys map[string]string
 	for _, k := range keys {
 		if k.Hash == fileId {
@@ -330,7 +333,7 @@ func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.C
 	err := space.Do(fileId, func(sb smartblock.SmartBlock) error {
 		return nil
 	})
-	// Already migrated
+	// Already migrated or it is a link to object
 	if err == nil {
 		return fileId
 	}
@@ -408,8 +411,8 @@ func (s *service) isFileExistInAnotherSpace(spaceId string, fileObjectId string)
 func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
 	origin := objectorigin.FromDetails(st.Details())
 	st.Iterate(func(b simple.Block) (isContinue bool) {
-		if fh, ok := b.(simple.FileHashes); ok {
-			fh.MigrateFile(func(oldHash string) (newHash string) {
+		if migrator, ok := b.(simple.FileMigrator); ok {
+			migrator.MigrateFile(func(oldHash string) (newHash string) {
 				return s.migrate(spc.(clientspace.Space), st.RootId(), keys, oldHash, origin)
 			})
 		}
@@ -420,6 +423,9 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.Ch
 func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
 	origin := objectorigin.FromDetails(st.Details())
 	st.ModifyLinkedFilesInDetails(func(id string) string {
+		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id, origin)
+	})
+	st.ModifyLinkedObjectsInDetails(func(id string) string {
 		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id, origin)
 	})
 }

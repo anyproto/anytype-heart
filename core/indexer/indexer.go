@@ -123,22 +123,16 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 				Value:       pbtypes.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyParticipant.String()),
+				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 		},
 	})
 	if err != nil {
 		return
 	}
-	for _, id := range ids {
-		err = i.store.DeleteObject(id)
-		if err != nil {
-			log.Errorf("failed to delete details: %v", err)
-		}
-	}
-	return nil
+	return i.store.DeleteDetails(ids...)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {

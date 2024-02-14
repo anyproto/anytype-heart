@@ -90,9 +90,6 @@ var (
 		model.ObjectType_relationOptionsList: {
 			model.Restrictions_Template,
 		},
-		model.ObjectType_database: {
-			model.Restrictions_Template,
-		},
 		model.ObjectType_participant: objRestrictAll,
 	}
 

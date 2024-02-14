@@ -12,6 +12,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"github.com/mr-tron/base58/base58"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -27,6 +29,8 @@ import (
 )
 
 const CName = "common.acl.aclservice"
+
+var log = logging.Logger(CName).Desugar()
 
 var (
 	ErrInviteNotExist       = errors.New("invite doesn't exist")
@@ -44,16 +48,16 @@ type AccountPermissions struct {
 
 type AclService interface {
 	app.Component
+	GenerateInvite(ctx context.Context, spaceId string) (*InviteInfo, error)
+	GetCurrentInvite(spaceId string) (*InviteInfo, error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
+	CancelJoin(ctx context.Context, spaceId string) (err error)
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error
-	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
-	Exit(ctx context.Context, spaceId string) (err error)
-	Cancel(ctx context.Context, spaceId string) (err error)
 	Decline(ctx context.Context, spaceId string, identity crypto.PubKey) (err error)
+	Leave(ctx context.Context, spaceId string) (err error)
+	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
-	GetCurrentInvite(spaceId string) (*InviteInfo, error)
-	GenerateInvite(ctx context.Context, spaceId string) (*InviteInfo, error)
 }
 
 func New() AclService {
@@ -84,6 +88,7 @@ func (a *aclService) Name() (name string) {
 }
 
 func (a *aclService) Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) error {
+	// TODO Check that space is not personal or tech
 	removeSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -106,7 +111,7 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 	return nil
 }
 
-func (a *aclService) Cancel(ctx context.Context, spaceId string) (err error) {
+func (a *aclService) CancelJoin(ctx context.Context, spaceId string) (err error) {
 	// TODO: finish this by implementing space offload for join canceled spaces (?)
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
@@ -176,7 +181,7 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 	return nil
 }
 
-func (a *aclService) Exit(ctx context.Context, spaceId string) error {
+func (a *aclService) Leave(ctx context.Context, spaceId string) error {
 	removeSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -277,7 +282,6 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 		acl.RUnlock()
 		return err
 	}
-	// TODO: change this logic to use RequestJoin objects
 	var recId string
 	for _, rec := range recs {
 		if rec.RequestIdentity.Equals(identity) {
@@ -352,11 +356,12 @@ func (a *aclService) buildInvitePayload(ctx context.Context, space clientspace.S
 		iconObjectId := pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
 		if iconObjectId != "" {
 			iconCid, iconEncryptionKeys, err := a.fileAcl.GetInfoForFileSharing(ctx, iconObjectId)
-			if err != nil {
-				return fmt.Errorf("get icon info: %w", err)
+			if err == nil {
+				invitePayload.SpaceIconCid = iconCid
+				invitePayload.SpaceIconEncryptionKeys = iconEncryptionKeys
+			} else {
+				log.Error("get space icon info", zap.Error(err))
 			}
-			invitePayload.SpaceIconCid = iconCid
-			invitePayload.SpaceIconEncryptionKeys = iconEncryptionKeys
 		}
 		return nil
 	})
