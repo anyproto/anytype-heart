@@ -570,6 +570,9 @@ func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, obje
 		return nil
 	}
 	return Do(s, objectId, func(sb smartblock.SmartBlock) error {
+		if sb.Type() == coresb.SmartBlockTypeRelation || sb.Type() == coresb.SmartBlockTypeObjectType {
+			return restriction.ErrRestricted
+		}
 		return s.restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }
