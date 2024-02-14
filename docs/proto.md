@@ -24269,6 +24269,7 @@ Used to decode block meta only, without the content itself
 | name | [string](#string) |  |  |
 | iconCid | [string](#string) |  |  |
 | iconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
+| description | [string](#string) |  |  |
 
 
 
