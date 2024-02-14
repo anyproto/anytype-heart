@@ -89,14 +89,16 @@ func (n *AclNotificationSender) handleAclContent(ctx context.Context,
 						return err
 					}
 				}
+				if reqLeave := content.GetAccountRequestRemove(); reqLeave != nil {
+					if err := n.sendAccountRemove(ctx, space, record, aclId); err != nil {
+						return err
+					}
+				}
 			}
 			if reqApprove := content.GetRequestAccept(); reqApprove != nil {
 				if err := n.sendParticipantRequestApprove(reqApprove, space, record.Id, aclId); err != nil {
 					return err
 				}
-			}
-			if err := n.sendAccountRemove(content, space, record.Id, aclId, permissions); err != nil {
-				return err
 			}
 		}
 	}
@@ -107,7 +109,11 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 	reqJoin *aclrecordproto.AclAccountRequestJoin,
 	space clientspace.Space, id, aclId string,
 ) error {
-	pubKey, name, icon, err := n.getProfileData(ctx, reqJoin)
+	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqJoin.InviteIdentity)
+	if err != nil {
+		return err
+	}
+	name, icon, err := n.getProfileData(ctx, pubKey)
 	if err != nil {
 		return err
 	}
@@ -160,30 +166,37 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 	return nil
 }
 
-func (n *AclNotificationSender) sendAccountRemove(content *aclrecordproto.AclContentValue,
+func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
 	space clientspace.Space,
-	id, aclId string,
-	permissions list.AclPermissions,
-) error {
-	if reqRemove := content.GetAccountRequestRemove(); reqRemove != nil {
-		if permissions.CanManageAccounts() {
-
-		}
-		// TODO else
+	record *list.AclRecord,
+	aclId string) error {
+	name, icon, err := n.getProfileData(ctx, record.Identity)
+	if err != nil {
+		return err
+	}
+	err = n.notificationService.CreateAndSend(&model.Notification{
+		Id:      record.Id,
+		IsLocal: false,
+		Payload: &model.NotificationPayloadOfLeaveRequest{LeaveRequest: &model.NotificationLeaveRequest{
+			SpaceId:      space.Id(),
+			Identity:     record.Identity.Account(),
+			IdentityName: name,
+			IdentityIcon: icon,
+		}},
+		Space: space.Id(),
+		Acl:   aclId,
+	})
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-func (n *AclNotificationSender) getProfileData(ctx context.Context, reqJoin *aclrecordproto.AclAccountRequestJoin,
-) (crypto.PubKey, string, string, error) {
-	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqJoin.InviteIdentity)
-	if err != nil {
-		return nil, "", "", err
-	}
+func (n *AclNotificationSender) getProfileData(ctx context.Context, identity crypto.PubKey) (string, string, error) {
 	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*10)
-	identities, err := n.identityService.GetIdentitiesDataFromRepo(ctxWithTimeout, []string{pubKey.Account()})
+	identities, err := n.identityService.GetIdentitiesDataFromRepo(ctxWithTimeout, []string{identity.Account()})
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
-		return nil, "", "", err
+		return "", "", err
 	}
 	var (
 		name string
@@ -192,12 +205,12 @@ func (n *AclNotificationSender) getProfileData(ctx context.Context, reqJoin *acl
 	if len(identities) != 0 {
 		profile, _, err := n.identityService.FindProfile(identities[0])
 		if err != nil {
-			return nil, "", "", err
+			return "", "", err
 		}
 		name = profile.Name
 		icon = profile.IconCid
 	}
-	return pubKey, name, icon, err
+	return name, icon, err
 }
 
 func mapProtoPermissionToAcl(permissions aclrecordproto.AclUserPermissions) model.ParticipantPermissions {
