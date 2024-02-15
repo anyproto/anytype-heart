@@ -32,7 +32,7 @@ var subsExpire time.Time = timeNow.Add(365 * 24 * time.Hour)
 var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
 func TestGetStatus(t *testing.T) {
-	t.Run("fail if no cache and GetSubscriptionStatus returns error", func(t *testing.T) {
+	t.Run("success if no cache and GetSubscriptionStatus returns error", func(t *testing.T) {
 		c := gomock.NewController(t)
 		defer c.Finish()
 
@@ -44,6 +44,10 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		ps.EXPECT().CacheGet().Return(nil, payments.ErrCacheExpired).Once()
+		ps.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcPaymentsSubscriptionGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		}).Once()
+		ps.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
 		decodedSignKey, err := crypto.DecodeKeyFromString(
@@ -67,8 +71,8 @@ func TestGetStatus(t *testing.T) {
 
 		// Call the function being tested
 		resp := getStatus(context.Background(), pp, ps, w, req)
-		assert.Equal(t, pb.RpcPaymentsSubscriptionGetStatusResponseErrorCode(pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR), resp.Error.Code)
-		assert.Equal(t, "test error", resp.Error.Description)
+		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierUnknown), resp.Tier)
+		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(psp.SubscriptionStatus_StatusUnknown), resp.Status)
 	})
 
 	t.Run("success if cache is expired and GetSubscriptionStatus returns no error", func(t *testing.T) {

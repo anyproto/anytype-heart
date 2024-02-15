@@ -46,8 +46,9 @@ CACHE LOGICS:
   - if cache is disabled or cache is clean or cache is expired
     -> ask from PP node, then save to cache:
 
-    x	if got info -> cache it for until it expires
+    x if got no info -> cache it for 10 days
     x if got into without expiration -> cache it for 10 days
+    x	if got info -> cache it for until it expires
     x if cache was disabled before and tier has changed -> enable cache again
     x if can not connect to PP node -> return error
     x if can not write to cache -> return error
@@ -279,11 +280,12 @@ func getStatus(ctx context.Context, pp ppclient.AnyPpClientService, ps payments.
 	// 3 - send request subscription
 	status, err := pp.GetSubscriptionStatus(ctx, &reqSigned)
 	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetStatusResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
+		log.Info("creating empty subscription in cache because can not get subscription status from payment node")
+
+		// eat error and create empty status ("no tier") so that we will then save it to the cache
+		status = &psp.GetSubscriptionResponse{
+			Tier:   psp.SubscriptionTier_TierUnknown,
+			Status: psp.SubscriptionStatus_StatusUnknown,
 		}
 	}
 
