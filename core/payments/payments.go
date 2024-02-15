@@ -55,23 +55,25 @@ func newStorageStructV1() *StorageStructV1 {
 }
 
 type Service interface {
-	// if cache is disabled -> will return ErrCacheDisabled
+	// if cache is disabled -> will return object and ErrCacheDisabled
 	// if cache is expired -> will return ErrCacheExpired
 	CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, err error)
 
 	// if cache is disabled -> will return no error
 	// if cache is expired -> will return no error
-	CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, lifetimeMinutes uint16) (err error)
+	CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, ExpireTime time.Time) (err error)
+
+	IsCacheEnabled() (enabled bool)
 
 	// if already enabled -> will not return error
-	EnableCache() (err error)
+	CacheEnable() (err error)
 
 	// if already disabled -> will not return error
 	// if currently disabled -> will disable GETs for next N minutes
-	DisableCacheForNextMinutes(minutes int) (err error)
+	CacheDisableForNextMinutes(minutes int) (err error)
 
 	// does not take into account if cache is enabled or not, erases always
-	ClearCache() (err error)
+	CacheClear() (err error)
 
 	app.ComponentRunnable
 }
@@ -122,8 +124,9 @@ func (r *service) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, 
 	}
 
 	// 2 - check if cache is disabled
-	if (ss.DisableUntilTime != time.Time{}) && time.Now().UTC().Before(ss.DisableUntilTime) {
-		return nil, ErrCacheDisabled
+	if !r.IsCacheEnabled() {
+		// return object too
+		return &ss.SubscriptionStatus, ErrCacheDisabled
 	}
 
 	// 3 - check if cache is outdated
@@ -135,7 +138,7 @@ func (r *service) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, 
 	return &ss.SubscriptionStatus, nil
 }
 
-func (r *service) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, lifetimeMinutes uint16) (err error) {
+func (r *service) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, ExpireTime time.Time) (err error) {
 	// 1 - get existing storage
 	ss, err := r.get()
 	if err != nil {
@@ -144,27 +147,30 @@ func (r *service) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, life
 	}
 
 	// 2 - update storage
-
 	ss.SubscriptionStatus = *in
-	ss.ExpireTime = time.Now().UTC().Add(time.Minute * time.Duration(lifetimeMinutes))
-
-	// do not overwrite it during the update
-	// ss.DisableUntilTime = time.Time{}
-
-	/*
-		// but if there is no tier yet -> let's not cache it
-		if in.Tier == pb.RpcPaymentsSubscription_TierUnknown {
-			// no error
-			return nil
-		}
-	*/
+	ss.ExpireTime = ExpireTime
 
 	// 3 - save to storage
 	return r.set(ss)
 }
 
+func (r *service) IsCacheEnabled() (enabled bool) {
+	// 1 - get existing storage
+	ss, err := r.get()
+	if err != nil {
+		return true
+	}
+
+	// 2 - check if cache is disabled
+	if (ss.DisableUntilTime != time.Time{}) && time.Now().UTC().Before(ss.DisableUntilTime) {
+		return false
+	}
+
+	return true
+}
+
 // will not return error if already enabled
-func (r *service) EnableCache() (err error) {
+func (r *service) CacheEnable() (err error) {
 	// 1 - get existing storage
 	ss, err := r.get()
 	if err != nil {
@@ -185,7 +191,7 @@ func (r *service) EnableCache() (err error) {
 
 // will not return error if already disabled
 // if currently disabled - will disable for next N minutes
-func (r *service) DisableCacheForNextMinutes(minutes int) (err error) {
+func (r *service) CacheDisableForNextMinutes(minutes int) (err error) {
 	// 1 - get existing storage
 	ss, err := r.get()
 	if err != nil {
@@ -205,7 +211,7 @@ func (r *service) DisableCacheForNextMinutes(minutes int) (err error) {
 }
 
 // does not take into account if cache is enabled or not, erases always
-func (r *service) ClearCache() (err error) {
+func (r *service) CacheClear() (err error) {
 	// 1 - get existing storage
 	ss, err := r.get()
 	if err != nil {

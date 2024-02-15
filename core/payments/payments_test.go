@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/pb"
@@ -60,7 +61,7 @@ func TestPayments_EnableCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.EnableCache()
+		err := fx.CacheEnable()
 		require.NoError(t, err)
 	})
 
@@ -68,10 +69,10 @@ func TestPayments_EnableCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.EnableCache()
+		err := fx.CacheEnable()
 		require.NoError(t, err)
 
-		err = fx.EnableCache()
+		err = fx.CacheEnable()
 		require.NoError(t, err)
 	})
 }
@@ -81,7 +82,7 @@ func TestPayments_DisableCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.DisableCacheForNextMinutes(0)
+		err := fx.CacheDisableForNextMinutes(0)
 		require.NoError(t, err)
 	})
 
@@ -89,10 +90,10 @@ func TestPayments_DisableCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.DisableCacheForNextMinutes(60)
+		err := fx.CacheDisableForNextMinutes(60)
 		require.NoError(t, err)
 
-		err = fx.DisableCacheForNextMinutes(40)
+		err = fx.CacheDisableForNextMinutes(40)
 		require.NoError(t, err)
 	})
 
@@ -100,13 +101,13 @@ func TestPayments_DisableCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.DisableCacheForNextMinutes(60)
+		err := fx.CacheDisableForNextMinutes(60)
 		require.NoError(t, err)
 
 		_, err = fx.CacheGet()
 		require.Equal(t, ErrCacheDisabled, err)
 
-		err = fx.ClearCache()
+		err = fx.CacheClear()
 		require.NoError(t, err)
 
 		_, err = fx.CacheGet()
@@ -119,7 +120,7 @@ func TestPayments_ClearCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.ClearCache()
+		err := fx.CacheClear()
 		require.NoError(t, err)
 	})
 
@@ -127,10 +128,10 @@ func TestPayments_ClearCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.ClearCache()
+		err := fx.CacheClear()
 		require.NoError(t, err)
 
-		err = fx.ClearCache()
+		err = fx.CacheClear()
 		require.NoError(t, err)
 	})
 
@@ -138,10 +139,10 @@ func TestPayments_ClearCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.DisableCacheForNextMinutes(60)
+		err := fx.CacheDisableForNextMinutes(60)
 		require.NoError(t, err)
 
-		err = fx.ClearCache()
+		err = fx.CacheClear()
 		require.NoError(t, err)
 	})
 
@@ -149,15 +150,18 @@ func TestPayments_ClearCache(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		timeNow := time.Now().UTC()
+		timePlus5Hours := timeNow.Add(5 * time.Hour)
+
 		err := fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
 			Status: pb.RpcPaymentsSubscription_StatusActive,
-		}, 60,
+		}, timePlus5Hours,
 		)
 
 		require.NoError(t, err)
 
-		err = fx.ClearCache()
+		err = fx.CacheClear()
 		require.NoError(t, err)
 
 		_, err = fx.CacheGet()
@@ -178,10 +182,13 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		timeNow := time.Now().UTC()
+		timePlus5Hours := timeNow.Add(5 * time.Hour)
+
 		err := fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
 			Status: pb.RpcPaymentsSubscription_StatusActive,
-		}, 60)
+		}, timePlus5Hours)
 		require.NoError(t, err)
 
 		out, err := fx.CacheGet()
@@ -193,7 +200,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 			Tier: pb.RpcPaymentsSubscription_TierExplorer,
 			// here
 			Status: pb.RpcPaymentsSubscription_StatusUnknown,
-		}, 60)
+		}, timePlus5Hours)
 		require.NoError(t, err)
 
 		out, err = fx.CacheGet()
@@ -202,26 +209,40 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		require.Equal(t, pb.RpcPaymentsSubscription_StatusUnknown, out.Status)
 	})
 
-	t.Run("should return error if cache is disabled", func(t *testing.T) {
+	t.Run("should return object and error if cache is disabled", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.DisableCacheForNextMinutes(10)
+		en := fx.IsCacheEnabled()
+		require.Equal(t, true, en)
+
+		err := fx.CacheDisableForNextMinutes(10)
 		require.NoError(t, err)
+
+		en = fx.IsCacheEnabled()
+		require.Equal(t, false, en)
+
+		timeNow := time.Now().UTC()
+		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
 			Status: pb.RpcPaymentsSubscription_StatusActive,
-		}, 60)
-		require.NoError(t, err)
-
-		_, err = fx.CacheGet()
-		require.Equal(t, ErrCacheDisabled, err)
-
-		err = fx.EnableCache()
+		}, timePlus5Hours)
 		require.NoError(t, err)
 
 		out, err := fx.CacheGet()
+		require.Equal(t, ErrCacheDisabled, err)
+		// HERE: weird semantics, error is returned too :-)
+		require.Equal(t, pb.RpcPaymentsSubscription_TierExplorer, out.Tier)
+
+		err = fx.CacheEnable()
+		require.NoError(t, err)
+
+		en = fx.IsCacheEnabled()
+		require.Equal(t, true, en)
+
+		out, err = fx.CacheGet()
 		require.NoError(t, err)
 		require.Equal(t, pb.RpcPaymentsSubscription_TierExplorer, out.Tier)
 	})
@@ -230,13 +251,16 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		timeNow := time.Now().UTC()
+		timePlus5Hours := timeNow.Add(5 * time.Hour)
+
 		err := fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
 			Status: pb.RpcPaymentsSubscription_StatusActive,
-		}, 60)
+		}, timePlus5Hours)
 		require.NoError(t, err)
 
-		err = fx.ClearCache()
+		err = fx.CacheClear()
 		require.NoError(t, err)
 
 		_, err = fx.CacheGet()
@@ -249,10 +273,13 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		timeNow := time.Now().UTC()
+		timePlus5Hours := timeNow.Add(5 * time.Hour)
+
 		err := fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
 			Status: pb.RpcPaymentsSubscription_StatusActive,
-		}, 60)
+		}, timePlus5Hours)
 		require.Equal(t, nil, err)
 
 		out, err := fx.CacheGet()
@@ -265,13 +292,16 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.DisableCacheForNextMinutes(10)
+		err := fx.CacheDisableForNextMinutes(10)
 		require.NoError(t, err)
+
+		timeNow := time.Now().UTC()
+		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
 			Status: pb.RpcPaymentsSubscription_StatusActive,
-		}, 60)
+		}, timePlus5Hours)
 		require.Equal(t, nil, err)
 	})
 
@@ -279,13 +309,16 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.ClearCache()
+		err := fx.CacheClear()
 		require.NoError(t, err)
+
+		timeNow := time.Now().UTC()
+		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
 			Status: pb.RpcPaymentsSubscription_StatusActive,
-		}, 60)
+		}, timePlus5Hours)
 		require.Equal(t, nil, err)
 	})
 
@@ -293,13 +326,15 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		err := fx.ClearCache()
+		err := fx.CacheClear()
 		require.NoError(t, err)
+
+		timeNull := time.Time{}
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
 			Status: pb.RpcPaymentsSubscription_StatusActive,
-		}, 0)
+		}, timeNull)
 		require.Equal(t, nil, err)
 
 		_, err = fx.CacheGet()
