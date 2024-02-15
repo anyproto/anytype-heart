@@ -3,7 +3,6 @@ package dependencies
 import (
 	"context"
 
-	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 
@@ -22,7 +21,5 @@ type IdentityService interface {
 
 	GetDetails(ctx context.Context, identity string) (details *types.Struct, err error)
 
-	GetIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error)
-
-	FindProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error)
+	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
 }

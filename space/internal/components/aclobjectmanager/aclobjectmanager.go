@@ -70,7 +70,7 @@ func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 		log.Error("error processing acl", zap.Error(err))
 	}
 	a.mx.Lock()
-	err = a.sendNotifications(a.ctx, commonSpace, commonSpace.Acl(), false)
+	err = a.sendNotifications(a.ctx, commonSpace, commonSpace.Acl())
 	if err != nil {
 		log.Error("failed to send notifications", zap.Error(err))
 	}
@@ -145,15 +145,15 @@ func (a *aclObjectManager) process() {
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
-	err = a.sendNotifications(a.ctx, common, common.Acl(), true)
+	err = a.sendNotifications(a.ctx, common, common.Acl())
 	if err != nil {
 		log.Error("failed to send notifications", zap.Error(err))
 	}
 }
 
-func (a *aclObjectManager) sendNotifications(ctx context.Context, common commonspace.Space, acl syncacl.SyncAcl, fullScan bool) error {
+func (a *aclObjectManager) sendNotifications(ctx context.Context, common commonspace.Space, acl syncacl.SyncAcl) error {
 	permissions := common.Acl().AclState().Permissions(common.Acl().AclState().AccountKey().GetPublic())
-	err := a.notificationService.SendNotification(ctx, a.sp, permissions, acl, fullScan)
+	err := a.notificationService.SendNotification(ctx, a.sp, permissions, acl)
 	if err != nil {
 		return err
 	}
@@ -303,7 +303,7 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		status := pbtypes.GetInt64(current, bundle.RelationKeyParticipantStatus.String())
 		if model.ParticipantStatus(status) == model.ParticipantStatus_Joining {
-			//err := a.notificationService.(&model.Notification{
+			// err := a.notificationService.(&model.Notification{
 			//	Status:  model.Notification_Created,
 			//	IsLocal: true,
 			//	Space:   a.sp.Id(),
@@ -315,10 +315,10 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 			//			IdentityIcon: profile.IconCid,
 			//		},
 			//	},
-			//})
-			//if err != nil {
+			// })
+			// if err != nil {
 			//	return nil, err
-			//}
+			// }
 		}
 
 		return pbtypes.StructMerge(current, details, false), nil

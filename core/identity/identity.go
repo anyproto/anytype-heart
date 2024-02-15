@@ -89,7 +89,8 @@ type service struct {
 	// identity => spaceId => observer
 	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
-	identityProfileCache   map[string]*model.IdentityProfile
+	sync.RWMutex
+	identityProfileCache map[string]*model.IdentityProfile
 }
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
@@ -260,6 +261,22 @@ func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.Sym
 	defer s.currentProfileDetailsLock.RUnlock()
 
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
+}
+
+func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			s.RLock()
+			if profile, ok := s.identityProfileCache[identity]; ok {
+				s.RUnlock()
+				return profile
+			}
+			s.RUnlock()
+		}
+	}
 }
 
 func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
@@ -456,7 +473,9 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
+	s.RLock()
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
+	s.RUnlock()
 	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
 
 	if hasUpdates {
@@ -506,7 +525,9 @@ func (s *service) FindProfile(identityData *identityrepoproto.DataWithIdentity) 
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {
+	s.Lock()
 	s.identityProfileCache[profile.Identity] = profile
+	s.Unlock()
 	return badgerhelper.SetValue(s.db, makeIdentityProfileKey(profile.Identity), rawProfile)
 }
 

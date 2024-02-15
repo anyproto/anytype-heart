@@ -24,7 +24,7 @@ type NotificationSender interface {
 }
 
 type AclNotification interface {
-	SendNotification(ctx context.Context, space clientspace.Space, permissions list.AclPermissions, acl syncacl.SyncAcl, fullScan bool) error
+	SendNotification(ctx context.Context, space clientspace.Space, permissions list.AclPermissions, acl syncacl.SyncAcl) error
 }
 
 type AclNotificationSender struct {
@@ -51,11 +51,7 @@ func (n *AclNotificationSender) SendNotification(ctx context.Context,
 	space clientspace.Space,
 	permissions list.AclPermissions,
 	acl syncacl.SyncAcl,
-	fullScan bool,
 ) error {
-	if !fullScan {
-		return n.handleAclContent(ctx, acl.Head(), permissions, space, acl.Id())
-	}
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
 	var err error
 	if lastNotificationId != "" {
@@ -82,7 +78,21 @@ func (n *AclNotificationSender) handleAclContent(ctx context.Context,
 	aclId string,
 ) error {
 	if aclData, ok := record.Model.(*aclrecordproto.AclData); ok {
-		for _, content := range aclData.AclContent {
+		err := n.iterateAclContent(ctx, record, permissions, space, aclId, aclData)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (n *AclNotificationSender) iterateAclContent(ctx context.Context,
+	record *list.AclRecord,
+	permissions list.AclPermissions,
+	space clientspace.Space,
+	aclId string,
+	aclData *aclrecordproto.AclData,
+) error {for _, content := range aclData.AclContent {
 			if permissions.CanManageAccounts() {
 				if reqJoin := content.GetRequestJoin(); reqJoin != nil {
 					if err := n.sendJoinRequest(ctx, reqJoin, space, record.Id, aclId); err != nil {
@@ -98,7 +108,7 @@ func (n *AclNotificationSender) handleAclContent(ctx context.Context,
 			if reqApprove := content.GetRequestAccept(); reqApprove != nil {
 				if err := n.sendParticipantRequestApprove(reqApprove, space, record.Id, aclId); err != nil {
 					return err
-				}
+
 			}
 		}
 	}
@@ -189,12 +199,8 @@ func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (n *AclNotificationSender) getProfileData(ctx context.Context, identity crypto.PubKey) (string, string, error) {
-	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*10)
-	identities, err := n.identityService.GetIdentitiesDataFromRepo(ctxWithTimeout, []string{identity.Account()})
+	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*30)
+	profile := n.identityService.WaitProfile(ctxWithTimeout, pubKey.Account())
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 		return "", "", err
 	}
@@ -202,11 +208,7 @@ func (n *AclNotificationSender) getProfileData(ctx context.Context, identity cry
 		name string
 		icon string
 	)
-	if len(identities) != 0 {
-		profile, _, err := n.identityService.FindProfile(identities[0])
-		if err != nil {
-			return "", "", err
-		}
+	if profile != nil {
 		name = profile.Name
 		icon = profile.IconCid
 	}
