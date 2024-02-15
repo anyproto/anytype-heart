@@ -19,7 +19,11 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 	spaceService := getService[space.Service](mw)
 	aclService := getService[acl.AclService](mw)
 	err := aclService.Leave(cctx, req.SpaceId)
-	if err == nil || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) {
+	// we check for possible error cases:
+	// 1. user is an owner
+	// 2. user already left a request to delete
+	// 3. user is not a member of the space anymore
+	if err == nil || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) || errors.Is(err, list.ErrNoSuchAccount) {
 		err = spaceService.Delete(cctx, req.SpaceId)
 	}
 	code := mapErrorCode(err,

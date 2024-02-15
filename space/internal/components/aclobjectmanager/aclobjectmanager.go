@@ -190,7 +190,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		}
 		return common.Acl().AclState().GetMetadata(key, true)
 	}
-	states := common.Acl().AclState().CurrentStates()
+	states := common.Acl().AclState().CurrentAccounts()
 	// decrypt all metadata
 	states, err = decryptAll(states, decrypt)
 	if err != nil {

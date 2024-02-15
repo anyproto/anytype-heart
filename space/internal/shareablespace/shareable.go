@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/offloader"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/remover"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -57,6 +58,9 @@ func (s *spaceController) Start(ctx context.Context) error {
 		return err
 	case spaceinfo.AccountStatusJoining:
 		_, err := s.sm.ChangeMode(mode.ModeJoining)
+		return err
+	case spaceinfo.AccountStatusRemoving:
+		_, err := s.sm.ChangeMode(mode.ModeRemoving)
 		return err
 	default:
 		_, err := s.sm.ChangeMode(mode.ModeLoading)
@@ -139,7 +143,7 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 			Status: s.status,
 		})
 	case mode.ModeRemoving:
-		return loader.New(s.app, loader.Params{
+		return remover.New(s.app, remover.Params{
 			SpaceId: s.spaceId,
 			Status:  s.status,
 		})
