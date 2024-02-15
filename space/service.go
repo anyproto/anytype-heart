@@ -53,6 +53,7 @@ type Service interface {
 	Join(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
+	TechSpaceId() string
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
@@ -275,4 +276,8 @@ func (s *service) allIDs() (ids []string) {
 		ids = append(ids, id)
 	}
 	return
+}
+
+func (s *service) TechSpaceId() string {
+	return s.techSpace.TechSpaceId()
 }

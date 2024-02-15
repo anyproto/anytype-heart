@@ -225,10 +225,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(filestorage.New()).
 		Register(files.New()).
 		Register(fileacl.New()).
-		Register(invitestore.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(invitestore.New()).
 		Register(fileobject.New()).
 		Register(acl.New()).
 		Register(filesync.New()).
