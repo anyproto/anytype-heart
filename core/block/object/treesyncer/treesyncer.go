@@ -64,6 +64,7 @@ type treeSyncer struct {
 	headPools    map[string]*executor
 	treeManager  treemanager.TreeManager
 	isRunning    bool
+	isSyncing    bool
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -80,6 +81,7 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 }
 
 func (t *treeSyncer) Init(a *app.App) (err error) {
+	t.isSyncing = true
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
 	return nil
 }
@@ -123,12 +125,13 @@ func (t *treeSyncer) StopSync() {
 	t.Lock()
 	defer t.Unlock()
 	t.isRunning = false
+	t.isSyncing = false
 }
 
 func (t *treeSyncer) ShouldSync(peerId string) bool {
 	t.Lock()
 	defer t.Unlock()
-	return t.isRunning
+	return t.isSyncing
 }
 
 func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) error {

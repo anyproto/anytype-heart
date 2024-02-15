@@ -6,7 +6,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -101,9 +103,11 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:      b.Listener,
-		TreeBuilder:   objecttree.BuildKeyVerifiableObjectTree,
-		TreeValidator: objecttree.ValidateFilterReadKeyRawTreeBuildFunc,
+		Listener:    b.Listener,
+		TreeBuilder: objecttree.BuildKeyFilterableObjectTree,
+		TreeValidator: func(payload treestorage.TreeStorageCreatePayload, buildFunc objecttree.BuildObjectTreeFunc, aclList list.AclList) (retPayload treestorage.TreeStorageCreatePayload, err error) {
+			return objecttree.ValidateFilterRawTree(payload, aclList)
+		},
 	}
 }
 
