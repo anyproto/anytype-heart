@@ -1,7 +1,6 @@
 package aclnotifications
 
 import (
-	"errors"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -175,18 +174,10 @@ func (n *AclNotificationSender) getProfileData(ctx context.Context, reqJoin *acl
 	}
 	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*30)
 	profile := n.identityService.WaitProfile(ctxWithTimeout, pubKey.Account())
-	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
-		return nil, "", "", err
+	if profile == nil {
+		return nil, "", "", nil
 	}
-	var (
-		name string
-		icon string
-	)
-	if profile != nil {
-		name = profile.Name
-		icon = profile.IconCid
-	}
-	return pubKey, name, icon, err
+	return pubKey, profile.Name, profile.IconCid, nil
 }
 
 func mapProtoPermissionToAcl(permissions aclrecordproto.AclUserPermissions) model.ParticipantPermissions {
