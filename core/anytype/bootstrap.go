@@ -62,6 +62,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/payments"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -269,7 +270,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(templateservice.New()).
 		Register(notifications.New()).
 		Register(paymentserviceclient.New()).
-		Register(nameserviceclient.New())
+		Register(nameserviceclient.New()).
+		Register(payments.New())
 }
 
 func MiddlewareVersion() string {

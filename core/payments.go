@@ -6,13 +6,21 @@ import (
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
+	"github.com/anyproto/anytype-heart/core/payments"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (mw *Middleware) getPaymentProcessingService() (pp ppclient.AnyPpClientService, err error) {
+func (mw *Middleware) getPpClient() (pp ppclient.AnyPpClientService, err error) {
 	if a := mw.applicationService.GetApp(); a != nil {
 		return a.MustComponent(ppclient.CName).(ppclient.AnyPpClientService), nil
+	}
+	return nil, ErrNotLoggedIn
+}
+
+func (mw *Middleware) getPaymentsService() (ps payments.Service, err error) {
+	if a := mw.applicationService.GetApp(); a != nil {
+		return a.MustComponent(payments.CName).(payments.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
@@ -24,11 +32,54 @@ func (mw *Middleware) getWallet() (w wallet.Wallet, err error) {
 	return nil, ErrNotLoggedIn
 }
 
+/*
+CACHE LOGICS:
+ 1. User installs Anytype
+    -> cache is clean
+
+2. client gets his subscription from MW
+
+  - if cache is disabled or cache is clean or cache is expired
+    -> ask from PP node, save to cache
+
+  - if no active subscription -> cache it for 10 days
+
+  - if subscription is active -> cache it for 10 days or before it will expire
+
+  - if can not connect to PP node -> return error
+
+  - if cache was disabled before and tier has changed -> enable cache again
+
+  - if we have it in cache
+    -> return from cache
+
+  - if 30 minutes elapsed
+    -> enable cache again
+
+    3. User clicks on a “Pay by card/crypto” or “Manage” button:
+    -> disable cache for 30 minutes or until subscription tier is changed
+
+4. User confirms his e-mail code
+  - if fail -> do nothing
+  - if succeed -> clear cache (it will cause getting again from PP node next)
+*/
 func (mw *Middleware) PaymentsSubscriptionGetStatus(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse {
+	// 1 - check if it is already in the cache
+	ps, err := mw.getPaymentsService()
+	if err != nil {
+		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Error: &pb.RpcPaymentsSubscriptionGetStatusResponseError{
+				Code:        pb.RpcPaymentsSubscriptionGetStatusResponseError_NOT_LOGGED_IN,
+				Description: err.Error(),
+			},
+		}
+	}
+
+	// 2 - try to get it from the payment node (requires connection)
 	// Get name service object that connects to the remote "paymentProcessingNode"
 	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
 	// see https://github.com/anyproto/any-sync/paymentservice/ for example
-	pp, err := mw.getPaymentProcessingService()
+	pp, err := mw.getPpClient()
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
 			Error: &pb.RpcPaymentsSubscriptionGetStatusResponseError{
@@ -48,14 +99,14 @@ func (mw *Middleware) PaymentsSubscriptionGetStatus(ctx context.Context, req *pb
 		}
 	}
 
-	return subscriptionGetStatus(ctx, pp, w, req)
+	return getStatus(ctx, pp, ps, w, req)
 }
 
 func (mw *Middleware) PaymentsSubscriptionGetPaymentUrl(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) *pb.RpcPaymentsSubscriptionGetPaymentUrlResponse {
 	// Get name service object that connects to the remote "paymentProcessingNode"
 	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
 	// see https://github.com/anyproto/any-sync/paymentservice/ for example
-	pp, err := mw.getPaymentProcessingService()
+	pp, err := mw.getPpClient()
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
 			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
@@ -82,7 +133,7 @@ func (mw *Middleware) PaymentsSubscriptionGetPortalLinkUrl(ctx context.Context, 
 	// Get name service object that connects to the remote "paymentProcessingNode"
 	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
 	// see https://github.com/anyproto/any-sync/paymentservice/ for example
-	pp, err := mw.getPaymentProcessingService()
+	pp, err := mw.getPpClient()
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse{
 			Error: &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError{
@@ -109,7 +160,7 @@ func (mw *Middleware) PaymentsSubscriptionGetVerificationEmail(ctx context.Conte
 	// Get name service object that connects to the remote "paymentProcessingNode"
 	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
 	// see https://github.com/anyproto/any-sync/paymentservice/ for example
-	pp, err := mw.getPaymentProcessingService()
+	pp, err := mw.getPpClient()
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetVerificationEmailResponse{
 			Error: &pb.RpcPaymentsSubscriptionGetVerificationEmailResponseError{
@@ -136,7 +187,7 @@ func (mw *Middleware) PaymentsSubscriptionVerifyEmailCode(ctx context.Context, r
 	// Get name service object that connects to the remote "paymentProcessingNode"
 	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
 	// see
-	pp, err := mw.getPaymentProcessingService()
+	pp, err := mw.getPpClient()
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse{
 			Error: &pb.RpcPaymentsSubscriptionVerifyEmailCodeResponseError{
@@ -159,14 +210,19 @@ func (mw *Middleware) PaymentsSubscriptionVerifyEmailCode(ctx context.Context, r
 	return verifyEmailCode(ctx, pp, w, req)
 }
 
-func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, w wallet.Wallet, req *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse {
-	// 1 - create request
+func getStatus(ctx context.Context, pp ppclient.AnyPpClientService, ps payments.Service, w wallet.Wallet, req *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse {
+	// 1 - check in cache
+	cached, err := ps.CacheGet()
+	if err == nil {
+		return cached
+	}
+
+	// 2 - create request to PP node
 	gsr := psp.GetSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: w.Account().SignKey.GetPublic().Account(),
 	}
 
-	// 2 - sign it with the wallet
 	payload, err := gsr.Marshal()
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
@@ -217,6 +273,22 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 	out.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(status.PaymentMethod)
 	out.RequestedAnyName = status.RequestedAnyName
 	out.UserEmail = status.UserEmail
+	// TODO:
+	//out.SubscribeToNewsletter = status.SubscribeToNewsletter
+
+	// TODO
+	// 4 - save into cache
+	cacheLifetimeMinutes := uint16(10 * 24 * 60) // 10 days
+
+	err = ps.CacheSet(&out, cacheLifetimeMinutes)
+	if err != nil {
+		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Error: &pb.RpcPaymentsSubscriptionGetStatusResponseError{
+				Code:        pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR,
+				Description: err.Error(),
+			},
+		}
+	}
 
 	return &out
 }
