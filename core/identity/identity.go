@@ -411,7 +411,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		}
 		identities = append(identities, identity)
 	}
-	identitiesData, err := s.GetIdentitiesDataFromRepo(ctx, identities)
+	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
 	if err != nil {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
@@ -425,7 +425,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 	return nil
 }
 
-func (s *service) GetIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
+func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
 	res, err := s.coordinatorClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
 	if err == nil {
 		return res, nil
@@ -468,7 +468,7 @@ func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 }
 
 func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataWithIdentity) error {
-	profile, rawProfile, err := s.FindProfile(identityData)
+	profile, rawProfile, err := s.findProfile(identityData)
 	if err != nil {
 		return fmt.Errorf("find profile: %w", err)
 	}
@@ -502,7 +502,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	return nil
 }
 
-func (s *service) FindProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
+func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
 	for _, data := range identityData.Data {
 		if data.Kind == identityRepoDataKind {
 			rawProfile = data.Data
