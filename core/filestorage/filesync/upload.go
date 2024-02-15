@@ -114,6 +114,17 @@ func (f *fileSync) tryToUpload() (domain.FileId, error) {
 	return fileId, f.queue.DoneUpload(spaceId, fileId)
 }
 
+func (f *fileSync) UploadSynchronously(spaceId string, fileId domain.FileId) error {
+	f.runOnUploadStartedHook(fileId, spaceId)
+	err := f.uploadFile(context.Background(), spaceId, fileId)
+	if err != nil {
+		return err
+	}
+	f.runOnUploadedHook(fileId, spaceId)
+	f.updateSpaceUsageInformation(spaceId)
+	return nil
+}
+
 func (f *fileSync) runOnUploadedHook(fileId domain.FileId, spaceId string) {
 	if f.onUploaded != nil {
 		err := f.onUploaded(fileId)
