@@ -677,7 +677,7 @@ func (s *Service) MoveBlocksToNewPage(
 	req pb.RpcBlockListMoveToNewObjectRequest,
 ) (linkID string, err error) {
 	// 1. Create new page, link
-	linkID, objectID, err := s.CreateLinkToTheNewObject(ctx, sctx, &pb.RpcBlockLinkCreateWithObjectRequest{
+	linkID, objectID, _, err := s.CreateLinkToTheNewObject(ctx, sctx, &pb.RpcBlockLinkCreateWithObjectRequest{
 		ContextId:           req.ContextId,
 		TargetId:            req.DropTargetId,
 		ObjectTypeUniqueKey: bundle.TypeKeyPage.URL(),

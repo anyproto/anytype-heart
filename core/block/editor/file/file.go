@@ -47,7 +47,7 @@ func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker getbloc
 }
 
 type BlockService interface {
-	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
+	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, details *types.Struct, err error)
 }
 
 type File interface {
@@ -216,7 +216,7 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.blockService.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
+			blockId, pageId, _, err = sf.blockService.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
 				SpaceId:             sf.SpaceID(),
 				ContextId:           sf.Id(),
 				ObjectTypeUniqueKey: bundle.TypeKeyPage.URL(),
