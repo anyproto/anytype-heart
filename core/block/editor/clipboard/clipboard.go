@@ -225,7 +225,8 @@ func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang
 	return firstTextBlock != nil &&
 		lastTextBlock == nil &&
 		rang != nil &&
-		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
+		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text)) &&
+		rang.To != 0 && rang.From != 0
 }
 
 func unlinkAndClearBlocks(
@@ -457,6 +458,11 @@ func (cb *clipboard) pasteAny(
 		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
 			return
 		}
+	}
+
+	// we provide client with id of last pasted text block to put caret in it
+	if lastTextBlock := ctrl.getLastPasteText(); lastTextBlock != nil {
+		blockIds = []string{lastTextBlock.Model().Id}
 	}
 
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
