@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -229,7 +228,7 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, spaceId string, status
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
 	if !isOwned && status == spaceinfo.RemoteStatusDeleted {
-		return ctrl.UpdateStatus(ctx, spaceinfo.AccountStatusRemoving)
+		return ctrl.SetStatus(ctx, spaceinfo.AccountStatusRemoving)
 	}
 	return nil
 }
@@ -266,8 +265,8 @@ func (s *service) Close(ctx context.Context) error {
 func (s *service) AllSpaceIds() (ids []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for id, sc := range s.spaceControllers {
-		if id == addr.AnytypeMarketplaceWorkspace || sc.Mode() != mode.ModeLoading {
+	for id, _ := range s.spaceControllers {
+		if id == addr.AnytypeMarketplaceWorkspace {
 			continue
 		}
 		ids = append(ids, id)
