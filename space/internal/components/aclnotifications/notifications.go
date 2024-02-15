@@ -1,7 +1,6 @@
 package aclnotifications
 
 import (
-	"errors"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -92,22 +91,23 @@ func (n *AclNotificationSender) iterateAclContent(ctx context.Context,
 	space clientspace.Space,
 	aclId string,
 	aclData *aclrecordproto.AclData,
-) error {for _, content := range aclData.AclContent {
-			if permissions.CanManageAccounts() {
-				if reqJoin := content.GetRequestJoin(); reqJoin != nil {
-					if err := n.sendJoinRequest(ctx, reqJoin, space, record.Id, aclId); err != nil {
-						return err
-					}
-				}
-				if reqLeave := content.GetAccountRequestRemove(); reqLeave != nil {
-					if err := n.sendAccountRemove(ctx, space, record, aclId); err != nil {
-						return err
-					}
+) error {
+	for _, content := range aclData.AclContent {
+		if permissions.CanManageAccounts() {
+			if reqJoin := content.GetRequestJoin(); reqJoin != nil {
+				if err := n.sendJoinRequest(ctx, reqJoin, space, record.Id, aclId); err != nil {
+					return err
 				}
 			}
-			if reqApprove := content.GetRequestAccept(); reqApprove != nil {
-				if err := n.sendParticipantRequestApprove(reqApprove, space, record.Id, aclId); err != nil {
+			if reqLeave := content.GetAccountRequestRemove(); reqLeave != nil {
+				if err := n.sendAccountRemove(ctx, space, record, aclId); err != nil {
 					return err
+				}
+			}
+		}
+		if reqApprove := content.GetRequestAccept(); reqApprove != nil {
+			if err := n.sendParticipantRequestApprove(reqApprove, space, record.Id, aclId); err != nil {
+				return err
 
 			}
 		}
@@ -123,7 +123,7 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	name, icon, err := n.getProfileData(ctx, pubKey)
+	name, icon := n.getProfileData(ctx, pubKey)
 	if err != nil {
 		return err
 	}
@@ -179,12 +179,10 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
 	space clientspace.Space,
 	record *list.AclRecord,
-	aclId string) error {
-	name, icon, err := n.getProfileData(ctx, record.Identity)
-	if err != nil {
-		return err
-	}
-	err = n.notificationService.CreateAndSend(&model.Notification{
+	aclId string,
+) error {
+	name, icon := n.getProfileData(ctx, record.Identity)
+	err := n.notificationService.CreateAndSend(&model.Notification{
 		Id:      record.Id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfLeaveRequest{LeaveRequest: &model.NotificationLeaveRequest{
@@ -199,10 +197,15 @@ func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (n *AclNotificationSender) getProfileData(ctx context.Context, account crypto.PubKey,
+) (string, string) {
 	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*30)
-	profile := n.identityService.WaitProfile(ctxWithTimeout, pubKey.Account())
-	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
-		return "", "", err
+	profile := n.identityService.WaitProfile(ctxWithTimeout, account.Account())
+	if profile == nil {
+		return "", ""
 	}
 	var (
 		name string
@@ -212,7 +215,7 @@ func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
 		name = profile.Name
 		icon = profile.IconCid
 	}
-	return name, icon, err
+	return name, icon
 }
 
 func mapProtoPermissionToAcl(permissions aclrecordproto.AclUserPermissions) model.ParticipantPermissions {
