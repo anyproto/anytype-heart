@@ -207,15 +207,7 @@ func (n *AclNotificationSender) getProfileData(ctx context.Context, account cryp
 	if profile == nil {
 		return "", ""
 	}
-	var (
-		name string
-		icon string
-	)
-	if profile != nil {
-		name = profile.Name
-		icon = profile.IconCid
-	}
-	return name, icon
+	return profile.Name, profile.IconCid
 }
 
 func mapProtoPermissionToAcl(permissions aclrecordproto.AclUserPermissions) model.ParticipantPermissions {
