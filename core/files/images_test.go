@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 )
 
 func TestImageAdd(t *testing.T) {
@@ -39,6 +41,55 @@ func TestImageAdd(t *testing.T) {
 			return testAddImage(t, fx)
 		})
 	})
+}
+
+func TestImageAddWithCustomEncryptionKeys(t *testing.T) {
+	fx := newFixture(t)
+
+	customKeys := map[string]string{
+		encryptionKeyPath(schema.LinkImageOriginal):  "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
+		encryptionKeyPath(schema.LinkImageLarge):     "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
+		encryptionKeyPath(schema.LinkImageSmall):     "bear36qgxpvnsqis2omwqi33zcrjo6arxhokpqr3bnh2oqphxkiba",
+		encryptionKeyPath(schema.LinkImageThumbnail): "bcewq7zoa6cbbev6nxkykrrclvidriuglgags67zbdda53wfnn6eq",
+		encryptionKeyPath(schema.LinkImageExif):      "bdoiogvdd5bayrezafzf2lvgh3xxjk7ru4yq2frpxhjgmx26ih6sq",
+	}
+	f, err := os.Open("../../pkg/lib/mill/testdata/image.jpeg")
+	require.NoError(t, err)
+	defer f.Close()
+
+	fileName := "myFile"
+	lastModifiedDate := time.Now()
+	opts := []AddOption{
+		WithName(fileName),
+		WithLastModifiedDate(lastModifiedDate.Unix()),
+		WithReader(f),
+		WithCustomEncryptionKeys(customKeys),
+	}
+	got, err := fx.ImageAdd(context.Background(), spaceId, opts...)
+	require.NoError(t, err)
+	got.Commit()
+
+	assertCustomEncryptionKeys(t, fx, got, customKeys)
+}
+
+func assertCustomEncryptionKeys(t *testing.T, fx *fixture, got *AddResult, customKeys map[string]string) {
+	encKeys, err := fx.fileStore.GetFileKeys(got.FileId)
+	require.NoError(t, err)
+	assert.Equal(t, customKeys, encKeys)
+
+	variants, err := fx.fileStore.ListFileVariants(got.FileId)
+	require.NoError(t, err)
+
+	for _, v := range variants {
+		var found bool
+		for _, key := range customKeys {
+			if v.Key == key {
+				found = true
+				break
+			}
+		}
+		require.True(t, found)
+	}
 }
 
 func testAddImage(t *testing.T, fx *fixture) *AddResult {
