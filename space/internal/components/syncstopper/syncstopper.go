@@ -54,7 +54,7 @@ func (s *SyncStopper) spaceCheck(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	if time.Now().Sub(s.startTime) > stopSyncTimeout {
+	if time.Since(s.startTime) > stopSyncTimeout {
 		sp.TreeSyncer().StopSync()
 	}
 	return nil
