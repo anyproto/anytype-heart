@@ -25672,6 +25672,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SpaceDeleted | 7 | SpaceDeleted - the space should be deleted in the network |
 | SpaceActive | 8 | SpaceActive - the space is active in the network |
 | SpaceJoining | 9 | SpaceJoining - the account is joining the space |
+| SpaceRemoving | 10 | SpaceRemoving - the account is removing from space or the space is removed from network |
 
 
  
