@@ -19,9 +19,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/converter/dot"
 	"github.com/anyproto/anytype-heart/core/converter/graphjson"
@@ -175,7 +177,7 @@ func (e *export) exportGraphJson(ctx context.Context, req pb.RpcObjectListExport
 	mc := graphjson.NewMultiConverter(e.sbtProvider)
 	mc.SetKnownDocs(docs)
 	var werr error
-	if succeed, werr = e.writeMultiDoc(ctx, req.SpaceId, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
+	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
 	}
 	return succeed
@@ -189,7 +191,7 @@ func (e *export) exportDotAndSVG(ctx context.Context, req pb.RpcObjectListExport
 	mc := dot.NewMultiConverter(format, e.sbtProvider)
 	mc.SetKnownDocs(docs)
 	var werr error
-	if succeed, werr = e.writeMultiDoc(ctx, req.SpaceId, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
+	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
 	}
 	return succeed
@@ -379,7 +381,13 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 	return objectDetails, nil
 }
 
-func (e *export) writeMultiDoc(ctx context.Context, spaceId string, mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue, includeFiles bool) (succeed int, err error) {
+func (e *export) writeMultiDoc(ctx context.Context,
+	mw converter.MultiConverter,
+	wr writer,
+	docs map[string]*types.Struct,
+	queue process.Queue,
+	includeFiles bool,
+) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
@@ -620,19 +628,26 @@ func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]d
 	var (
 		derivedObjects []database.Record
 		err            error
-		relationLinks  pbtypes.RelationLinks
+		relations      []string
 	)
 
 	for id, object := range objects {
 		err = getblock.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState()
-			relationLinks = state.GetRelationLinks()
+			relations = e.getObjectRelations(state, relations)
+			details := state.Details()
+			if e.objectWithDataview(details) {
+				relations, err = e.getDataviewRelations(state, relations)
+				if err != nil {
+					return err
+				}
+			}
 			return nil
 		})
 		if err != nil {
 			return nil, err
 		}
-		derivedObjects, err = e.processObject(object, derivedObjects, relationLinks)
+		derivedObjects, err = e.processObject(object, derivedObjects, relations)
 		if err != nil {
 			return nil, err
 		}
@@ -640,14 +655,44 @@ func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]d
 	return derivedObjects, nil
 }
 
-func (e *export) processObject(object *types.Struct, derivedObjects []database.Record, relationLinks pbtypes.RelationLinks) ([]database.Record, error) {
-	for _, relation := range relationLinks {
-		storeRelation, err := e.getRelation(relation.Key)
+func (e *export) getDataviewRelations(state *state.State, relations []string) ([]string, error) {
+	err := state.Iterate(func(b simple.Block) (isContinue bool) {
+		if dataview := b.Model().GetDataview(); dataview != nil {
+			for _, view := range dataview.Views {
+				for _, relation := range view.Relations {
+					relations = append(relations, relation.Key)
+				}
+			}
+		}
+		return true
+	})
+	return relations, err
+}
+
+func (e *export) getObjectRelations(state *state.State, relations []string) []string {
+	relationLinks := state.GetRelationLinks()
+	for _, link := range relationLinks {
+		relations = append(relations, link.Key)
+	}
+	return relations
+}
+
+func (e *export) objectWithDataview(details *types.Struct) bool {
+	return pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) == float64(model.ObjectType_collection) ||
+		pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) == float64(model.ObjectType_set)
+}
+
+func (e *export) processObject(object *types.Struct,
+	derivedObjects []database.Record,
+	relations []string,
+) ([]database.Record, error) {
+	for _, relation := range relations {
+		storeRelation, err := e.getRelation(relation)
 		if err != nil {
 			return nil, err
 		}
 		if storeRelation != nil {
-			derivedObjects, err = e.addRelationAndOptions(storeRelation, object, derivedObjects, relation.Key)
+			derivedObjects, err = e.addRelationAndOptions(storeRelation, object, derivedObjects, relation)
 			if err != nil {
 				return nil, err
 			}
