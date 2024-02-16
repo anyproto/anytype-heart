@@ -43,6 +43,9 @@ func NewFileSyncer(
 }
 
 func (s *FileSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin objectorigin.ObjectOrigin) error {
+	if targetObjectId := b.Model().GetFile().GetTargetObjectId(); targetObjectId != "" {
+		return nil
+	}
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
 		err := s.migrateFile(id.ObjectID, b.Model().Id, domain.FullFileId{
 			FileId:  domain.FileId(hash),
@@ -51,9 +54,6 @@ func (s *FileSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestor
 		if err != nil {
 			return fmt.Errorf("%w: %w", common.ErrFileLoad, err)
 		}
-		return nil
-	}
-	if hash := b.Model().GetFile().GetTargetObjectId(); hash != "" {
 		return nil
 	}
 	if b.Model().GetFile().Name == "" {

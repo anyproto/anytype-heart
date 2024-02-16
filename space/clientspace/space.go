@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -43,6 +44,7 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
+	IsReadOnly() bool
 	IsPersonal() bool
 
 	Close(ctx context.Context) error
@@ -70,7 +72,8 @@ type space struct {
 	spaceCore       spacecore.SpaceCoreService
 	personalSpaceId string
 
-	common commonspace.Space
+	myIdentity crypto.PubKey
+	common     commonspace.Space
 
 	loadMandatoryObjectsCh  chan struct{}
 	loadMandatoryObjectsErr error
@@ -95,6 +98,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		common:                 deps.CommonSpace,
 		personalSpaceId:        deps.PersonalSpaceId,
 		spaceCore:              deps.SpaceCore,
+		myIdentity:             deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
@@ -234,4 +238,8 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (s *space) IsReadOnly() bool {
+	return !s.CommonSpace().Acl().AclState().Permissions(s.myIdentity).CanWrite()
 }

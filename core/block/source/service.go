@@ -67,7 +67,6 @@ type service struct {
 	spaceCoreService   spacecore.SpaceCoreService
 	storageService     storage.ClientStorage
 	fileService        files.Service
-	identityService    identityService
 	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
 
@@ -84,7 +83,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	s.identityService = app.MustComponent[identityService](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
@@ -139,8 +137,6 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
 			return NewBundledRelation(id), nil
-		case smartblock.SmartBlockTypeIdentity:
-			return NewIdentity(s.identityService, id), nil
 		case smartblock.SmartBlockTypeParticipant:
 			participantState := state.NewDoc(id, nil).(*state.State)
 			// Set object type here in order to derive value of Type relation in smartblock.Init

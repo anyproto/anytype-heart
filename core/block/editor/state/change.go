@@ -144,6 +144,7 @@ func (s *State) Merge(s2 *State) *State {
 }
 
 func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
+	defer s.resetParentIdsCache()
 	for _, ch := range changes {
 		if err = s.applyChange(ch); err != nil {
 			return
@@ -174,6 +175,7 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 
 // ApplyChangeIgnoreErr should be called with changes from the single pb.Change
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
+	defer s.resetParentIdsCache()
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
 			log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
@@ -389,15 +391,10 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
-	ns := s.NewState()
 	for _, id := range move.Ids {
-		ns.Unlink(id)
+		s.Unlink(id)
 	}
-	if err := ns.InsertTo(move.TargetId, move.Position, move.Ids...); err != nil {
-		return err
-	}
-	_, _, err := ApplyStateFastOne(ns)
-	return err
+	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
 }
 
 func (s *State) changeStoreKeySet(set *pb.ChangeStoreKeySet) error {

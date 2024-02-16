@@ -147,6 +147,7 @@ func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error 
 	}
 	details := buildParticipantDetails(id, a.sp.Id(), myIdentity, model.ParticipantPermissions_Owner, model.ParticipantStatus_Active)
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()))
+	details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyDescription.String()))
 	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
 	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
 	err = a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
@@ -285,8 +286,9 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 		return err
 	}
 	details := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():      pbtypes.String(profile.Name),
-		bundle.RelationKeyIconImage.String(): pbtypes.String(profile.IconCid),
+		bundle.RelationKeyName.String():        pbtypes.String(profile.Name),
+		bundle.RelationKeyDescription.String(): pbtypes.String(profile.Description),
+		bundle.RelationKeyIconImage.String():   pbtypes.String(profile.IconCid),
 	}}
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		status := pbtypes.GetInt64(current, bundle.RelationKeyParticipantStatus.String())
