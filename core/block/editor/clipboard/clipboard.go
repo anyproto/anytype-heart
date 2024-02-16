@@ -453,16 +453,12 @@ func (cb *clipboard) pasteAny(
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
+	blockIds = ctrl.blockIds
 
 	if len(missingRelationKeys) > 0 {
 		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
 			return
 		}
-	}
-
-	// we provide client with id of last pasted text block to put caret in it
-	if lastTextBlock := ctrl.getLastPasteText(); lastTextBlock != nil {
-		blockIds = []string{lastTextBlock.Model().Id}
 	}
 
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
