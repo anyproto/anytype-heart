@@ -112,10 +112,6 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	if limit <= 0 {
 		limit = 100
 	}
-	profileId, profileName, err := h.getProfileInfo(id.SpaceID)
-	if err != nil {
-		return
-	}
 	var includeLastId = true
 
 	reverse := func(vers []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
@@ -133,11 +129,11 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		var data []*pb.RpcHistoryVersion
 
 		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
+			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
 			data = append(data, &pb.RpcHistoryVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,
-				AuthorId:    profileId,
-				AuthorName:  profileName,
+				AuthorId:    participantId,
 				Time:        c.Timestamp,
 			})
 			return true
@@ -227,28 +223,13 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 
 	st.BlocksInit(st)
 	if ch, e := tree.GetChange(versionId); e == nil {
-		profileId, profileName, e := h.getProfileInfo(id.SpaceID)
-		if e != nil {
-			err = e
-			return
-		}
+		participantId := domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
 		ver = &pb.RpcHistoryVersion{
 			Id:          ch.Id,
 			PreviousIds: ch.PreviousIds,
-			AuthorId:    profileId,
-			AuthorName:  profileName,
+			AuthorId:    participantId,
 			Time:        ch.Timestamp,
 		}
 	}
-	return
-}
-
-func (h *history) getProfileInfo(spaceId string) (profileId, profileName string, err error) {
-	profileId = h.accountService.MyParticipantId(spaceId)
-	lp, err := h.accountService.ProfileInfo()
-	if err != nil {
-		return
-	}
-	profileName = lp.Name
 	return
 }
