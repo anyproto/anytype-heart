@@ -10,31 +10,28 @@ import (
 )
 
 type StaticSourceParams struct {
-	Id         domain.FullID
-	SbType     smartblock.SmartBlockType
-	State      *state.State
-	CreatorId  string
-	PushChange func(p PushChangeParams) (string, error)
+	Id        domain.FullID
+	SbType    smartblock.SmartBlockType
+	State     *state.State
+	CreatorId string
 }
 
 func (s *service) NewStaticSource(params StaticSourceParams) SourceWithType {
 	return &static{
-		id:         params.Id,
-		sbType:     params.SbType,
-		doc:        params.State,
-		s:          s,
-		creatorId:  params.CreatorId,
-		pushChange: params.PushChange,
+		id:        params.Id,
+		sbType:    params.SbType,
+		doc:       params.State,
+		s:         s,
+		creatorId: params.CreatorId,
 	}
 }
 
 type static struct {
-	id         domain.FullID
-	sbType     smartblock.SmartBlockType
-	doc        *state.State
-	creatorId  string
-	pushChange func(p PushChangeParams) (string, error)
-	s          *service
+	id        domain.FullID
+	sbType    smartblock.SmartBlockType
+	doc       *state.State
+	creatorId string
+	s         *service
 }
 
 func (s *static) Id() string {
@@ -50,7 +47,7 @@ func (s *static) Type() smartblock.SmartBlockType {
 }
 
 func (s *static) ReadOnly() bool {
-	return s.pushChange == nil
+	return true
 }
 
 func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -58,9 +55,6 @@ func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty boo
 }
 
 func (s *static) PushChange(params PushChangeParams) (id string, err error) {
-	if s.pushChange != nil {
-		return s.pushChange(params)
-	}
 	return
 }
 

@@ -143,3 +143,7 @@ func (c *virtualCommonSpace) TryClose(objectTTL time.Duration) (close bool, err 
 func (c *virtualCommonSpace) Close() error {
 	return nil
 }
+
+func (c *virtualCommonSpace) IsReadOnly() bool {
+	return false
+}
