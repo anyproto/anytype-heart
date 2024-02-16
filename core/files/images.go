@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
@@ -62,7 +61,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 	addLock := s.lockAddOperation(opts.checksum)
 
-	dirEntries, err := s.addImageNodes(ctx, spaceId, opts.Reader, opts.Name)
+	dirEntries, err := s.addImageNodes(ctx, spaceId, opts)
 	if errors.Is(err, errFileExists) {
 		res, err := s.newExisingImageResult(addLock, dirEntries)
 		if err != nil {
@@ -121,7 +120,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}, nil
 }
 
-func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string) ([]dirEntry, error) {
+func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts AddOptions) ([]dirEntry, error) {
 	sch := schema.ImageResizeSchema
 	if len(sch.Links) == 0 {
 		return nil, schema.ErrEmptySchema
@@ -134,15 +133,16 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 			return nil, err
 		}
 		opts := &AddOptions{
-			Reader: reader,
-			Media:  "",
-			Name:   filename,
+			Reader:               addOpts.Reader,
+			Media:                "",
+			Name:                 addOpts.Name,
+			CustomEncryptionKeys: addOpts.CustomEncryptionKeys,
 		}
 		err = s.normalizeOptions(opts)
 		if err != nil {
 			return nil, err
 		}
-		added, fileNode, err := s.addFileNode(ctx, spaceID, stepMill, *opts)
+		added, fileNode, err := s.addFileNode(ctx, spaceID, stepMill, *opts, link.Name)
 		if errors.Is(err, errFileExists) {
 			// If we found out that original variant is already exists, so we are trying to add the same file.
 			if link.Name == "original" {
@@ -175,7 +175,7 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, reader io.R
 			fileInfo: added,
 			fileNode: fileNode,
 		})
-		reader.Seek(0, 0)
+		addOpts.Reader.Seek(0, 0)
 	}
 	return dirEntries, nil
 }
@@ -220,7 +220,7 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 	}
 
 	id := node.Cid().String()
-	err = helpers.AddLinkToDirectory(ctx, dagService, outer, fileLinkName, id)
+	err = helpers.AddLinkToDirectory(ctx, dagService, outer, schema.LinkFile, id)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -34,7 +34,8 @@ var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
-	ObjectOrigin objectorigin.ObjectOrigin
+	ObjectOrigin         objectorigin.ObjectOrigin
+	CustomEncryptionKeys map[string]string
 }
 
 type UploadRequest struct {
@@ -502,6 +503,9 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
 
+	if req.CustomEncryptionKeys != nil {
+		upl.SetCustomEncryptionKeys(req.CustomEncryptionKeys)
+	}
 	upl.SetStyle(req.Style)
 	upl.SetAdditionalDetails(req.Details)
 	if req.Type != model.BlockContentFile_None {
