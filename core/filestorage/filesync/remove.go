@@ -71,6 +71,15 @@ func (f *fileSync) tryToRemove() (domain.FileId, error) {
 	return fileId, nil
 }
 
+func (f *fileSync) RemoveSynchronously(spaceId string, fileId domain.FileId) (err error) {
+	err = f.removeFile(context.Background(), spaceId, fileId)
+	if err != nil {
+		return fmt.Errorf("remove file: %w", err)
+	}
+	f.updateSpaceUsageInformation(spaceId)
+	return
+}
+
 func (f *fileSync) removeFile(ctx context.Context, spaceId string, fileId domain.FileId) (err error) {
 	log.Info("removing file", zap.String("fileId", fileId.String()))
 	return f.rpcStore.DeleteFiles(ctx, spaceId, fileId)
