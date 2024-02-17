@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -35,6 +36,14 @@ const versionGroupInterval = time.Minute * 5
 
 var log = logging.Logger("anytype-mw-history")
 
+const (
+	BlockAdded = iota
+	BlockChanged
+	BlockRemoved
+	BlockMoved
+	Nothing
+)
+
 func New() History {
 	return new(history)
 }
@@ -43,6 +52,7 @@ type History interface {
 	Show(id domain.FullID, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
 	Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(id domain.FullID, versionId string) (err error)
+	Diff(id domain.FullID, beforeVersion, afterVersion string) (diff *model.StateDiff, err error)
 	app.Component
 }
 
@@ -106,6 +116,21 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		Details:       details,
 		RelationLinks: relations.RelationLinks(),
 	}, ver, nil
+}
+
+func (h *history) Diff(id domain.FullID, beforeVersion, afterVersion string) (diff *model.StateDiff, err error) {
+	changed, removed, added, moved, err := h.diffVersions(id, beforeVersion, afterVersion)
+	if err != nil {
+		return
+	}
+	return &model.StateDiff{
+		Blocks: &model.StateDiffBlocks{
+			ChangedIds: changed,
+			RemovedIds: removed,
+			AddedIds:   added,
+			MovedIds:   moved,
+		},
+	}, nil
 }
 
 func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
@@ -205,6 +230,182 @@ func (h *history) treeWithId(id domain.FullID, beforeId string, includeBeforeId 
 
 	sbt = smartblock.SmartBlockType(payload.SmartBlockType)
 	return
+}
+
+func (h *history) treeWithHeads(id domain.FullID, heads []string) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
+	spc, err := h.spaceService.Get(context.Background(), id.SpaceID)
+	if err != nil {
+		return
+	}
+	ht, err = spc.TreeBuilder().BuildHistoryTree(context.Background(), id.ObjectID, objecttreebuilder.HistoryTreeOpts{
+		HeadIds: heads,
+	})
+	if err != nil {
+		return
+	}
+
+	payload := &model.ObjectChangePayload{}
+	err = proto.Unmarshal(ht.ChangeInfo().ChangePayload, payload)
+	if err != nil {
+		return
+	}
+
+	sbt = smartblock.SmartBlockType(payload.SmartBlockType)
+	return
+}
+
+func (h *history) diffHeads(id domain.FullID, beforeHeads, afterHeads []string) (changed, removed, added, moved []string, err error) {
+	before, _, err := h.treeWithHeads(id, beforeHeads)
+	if err != nil {
+		return
+	}
+	after, _, err := h.treeWithHeads(id, afterHeads)
+	if err != nil {
+		return
+	}
+	return h.diffTrees(id.SpaceID, before, after)
+}
+
+func (h *history) diffVersions(id domain.FullID, beforeId, afterId string) (changed, removed, added, moved []string, err error) {
+	before, _, err := h.treeWithId(id, beforeId, true)
+	if err != nil {
+		return
+	}
+	after, _, err := h.treeWithId(id, afterId, true)
+	if err != nil {
+		return
+	}
+	return h.diffTrees(id.SpaceID, before, after)
+}
+
+func (h *history) diffTrees(spaceId string, before, after objecttree.HistoryTree) (changed, removed, added, moved []string, err error) {
+	buildState := func(tree objecttree.HistoryTree) (st *state.State, err error) {
+		st, _, _, err = source.BuildState(spaceId, nil, tree)
+		if err != nil {
+			return
+		}
+		if _, _, err = state.ApplyStateFast(st); err != nil {
+			return
+		}
+		st.BlocksInit(st)
+		return
+	}
+	beforeState, err := buildState(before)
+	if err != nil {
+		return
+	}
+	afterState, err := buildState(after)
+	if err != nil {
+		return
+	}
+	afterState.SetParent(beforeState)
+	_, _, err = state.ApplyState(afterState, true)
+	if err != nil {
+		return
+	}
+	changes := afterState.GetChanges()
+	for _, ch := range changes {
+		ids, action := h.changeType(ch)
+		switch action {
+		case BlockAdded:
+			added = append(added, ids...)
+		case BlockChanged:
+			for _, id := range ids {
+				if !slices.Contains(changed, id) {
+					changed = append(changed, id)
+				}
+			}
+		case BlockMoved:
+			moved = append(moved, ids...)
+		case BlockRemoved:
+			removed = append(removed, ids...)
+		default:
+		}
+	}
+	return
+}
+
+func (h *history) idFromMessage(msg *pb.EventMessage) (id string) {
+	switch msg.Value.(type) {
+	case *pb.EventMessageValueOfBlockSetAlign:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetAlign).BlockSetAlign.Id
+	case *pb.EventMessageValueOfBlockSetBackgroundColor:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetBackgroundColor).BlockSetBackgroundColor.Id
+	case *pb.EventMessageValueOfBlockSetBookmark:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetBookmark).BlockSetBookmark.Id
+	case *pb.EventMessageValueOfBlockSetVerticalAlign:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetVerticalAlign).BlockSetVerticalAlign.Id
+	case *pb.EventMessageValueOfBlockSetDiv:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetDiv).BlockSetDiv.Id
+	case *pb.EventMessageValueOfBlockSetText:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetText).BlockSetText.Id
+	case *pb.EventMessageValueOfBlockSetFields:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetFields).BlockSetFields.Id
+	case *pb.EventMessageValueOfBlockSetFile:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetFile).BlockSetFile.Id
+	case *pb.EventMessageValueOfBlockSetLink:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink.Id
+	case *pb.EventMessageValueOfBlockSetRelation:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetRelation).BlockSetRelation.Id
+	case *pb.EventMessageValueOfBlockSetLatex:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetLatex).BlockSetLatex.Id
+	case *pb.EventMessageValueOfBlockSetWidget:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Id
+	case *pb.EventMessageValueOfBlockDataviewSourceSet:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewSourceSet).BlockDataviewSourceSet.Id
+	case *pb.EventMessageValueOfBlockDataviewViewSet:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewViewSet).BlockDataviewViewSet.Id
+	case *pb.EventMessageValueOfBlockDataviewViewOrder:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewViewOrder).BlockDataviewViewOrder.Id
+	case *pb.EventMessageValueOfBlockDataviewViewDelete:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewViewDelete).BlockDataviewViewDelete.Id
+	case *pb.EventMessageValueOfBlockDataviewRelationSet:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewRelationSet).BlockDataviewRelationSet.Id
+	case *pb.EventMessageValueOfBlockDataviewRelationDelete:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewRelationDelete).BlockDataviewRelationDelete.Id
+	case *pb.EventMessageValueOfBlockDataViewGroupOrderUpdate:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataViewGroupOrderUpdate).BlockDataViewGroupOrderUpdate.Id
+	case *pb.EventMessageValueOfObjectRelationsAmend:
+		return msg.Value.(*pb.EventMessageValueOfObjectRelationsAmend).ObjectRelationsAmend.Id
+	case *pb.EventMessageValueOfObjectRelationsRemove:
+		return msg.Value.(*pb.EventMessageValueOfObjectRelationsRemove).ObjectRelationsRemove.Id
+	case *pb.EventMessageValueOfBlockDataViewObjectOrderUpdate:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataViewObjectOrderUpdate).BlockDataViewObjectOrderUpdate.Id
+	case *pb.EventMessageValueOfBlockDataviewViewUpdate:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate.Id
+	case *pb.EventMessageValueOfBlockDataviewTargetObjectIdSet:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewTargetObjectIdSet).BlockDataviewTargetObjectIdSet.Id
+	case *pb.EventMessageValueOfBlockDataviewIsCollectionSet:
+		return msg.Value.(*pb.EventMessageValueOfBlockDataviewIsCollectionSet).BlockDataviewIsCollectionSet.Id
+	case *pb.EventMessageValueOfBlockSetRestrictions:
+		return msg.Value.(*pb.EventMessageValueOfBlockSetRestrictions).BlockSetRestrictions.Id
+	default:
+		return ""
+	}
+}
+
+func (h *history) changeType(ch *pb.ChangeContent) (ids []string, action int) {
+	switch {
+	case ch.GetBlockCreate() != nil:
+		for _, id := range ch.GetBlockCreate().Blocks {
+			ids = append(ids, id.Id)
+		}
+		return ids, BlockAdded
+	case ch.GetBlockRemove() != nil:
+		return ch.GetBlockRemove().Ids, BlockRemoved
+	case ch.GetBlockUpdate() != nil:
+		for _, ev := range ch.GetBlockUpdate().Events {
+			id := h.idFromMessage(ev)
+			if id != "" {
+				ids = append(ids, id)
+			}
+		}
+		return ids, BlockChanged
+	case ch.GetBlockMove() != nil:
+		return ch.GetBlockMove().Ids, BlockMoved
+	default:
+		return nil, Nothing
+	}
 }
 
 func (h *history) buildState(id domain.FullID, versionId string) (st *state.State, sbType smartblock.SmartBlockType, ver *pb.RpcHistoryVersion, err error) {

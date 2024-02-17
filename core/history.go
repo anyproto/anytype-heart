@@ -92,6 +92,43 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 	return response(vers, nil)
 }
 
+func (mw *Middleware) HistoryDiffVersions(cctx context.Context, req *pb.RpcHistoryDiffVersionsRequest) *pb.RpcHistoryDiffVersionsResponse {
+	response := func(diff *model.StateDiff, err error) (res *pb.RpcHistoryDiffVersionsResponse) {
+		res = &pb.RpcHistoryDiffVersionsResponse{
+			Error: &pb.RpcHistoryDiffVersionsResponseError{
+				Code: pb.RpcHistoryDiffVersionsResponseError_NULL,
+			},
+			Diff: diff,
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcHistoryDiffVersionsResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+			return
+		}
+		return res
+	}
+	var (
+		diff *model.StateDiff
+		err  error
+	)
+	if err = mw.doBlockService(func(bs *block.Service) (err error) {
+		hs := mw.applicationService.GetApp().MustComponent(history.CName).(history.History)
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceID, err := res.ResolveSpaceID(req.ObjectId)
+		if err != nil {
+			return fmt.Errorf("resolve spaceID: %w", err)
+		}
+		diff, err = hs.Diff(domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: req.ObjectId,
+		}, req.BeforeId, req.AfterId)
+		return
+	}); err != nil {
+		return response(nil, err)
+	}
+	return response(diff, nil)
+}
+
 func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
 	response := func(err error) (res *pb.RpcHistorySetVersionResponse) {
 		res = &pb.RpcHistorySetVersionResponse{

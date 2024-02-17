@@ -50,6 +50,16 @@ enum SmartBlockType {
     FileObject = 0x215;
 }
 
+message StateDiff {
+    message Blocks {
+        repeated string removedIds = 1;
+        repeated string addedIds = 2;
+        repeated string changedIds = 3;
+        repeated string movedIds = 4;
+    }
+    Blocks blocks = 1;
+}
+
 message Block {
     string id = 1;
     google.protobuf.Struct fields = 2;
