@@ -7207,6 +7207,7 @@ id of the closest simple block |
 | blockId | [string](#string) |  |  |
 | targetId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
