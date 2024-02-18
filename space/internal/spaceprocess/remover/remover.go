@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
-	"github.com/anyproto/anytype-heart/space/internal/components/syncstopper"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
@@ -35,8 +34,7 @@ func New(app *app.App, params Params) Remover {
 	child := app.ChildApp()
 	child.Register(params.Status).
 		Register(builder.New()).
-		Register(spaceloader.New(params.StopIfMandatoryFail)).
-		Register(syncstopper.New()).
+		Register(spaceloader.New(params.StopIfMandatoryFail, true)).
 		Register(aclobjectmanager.New(params.OwnerMetadata))
 	return &remover{
 		app: child,

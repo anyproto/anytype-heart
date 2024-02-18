@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 
@@ -80,15 +81,16 @@ type space struct {
 }
 
 type SpaceDeps struct {
-	Indexer         spaceIndexer
-	Installer       bundledObjectsInstaller
-	CommonSpace     commonspace.Space
-	ObjectFactory   objectcache.ObjectFactory
-	AccountService  accountservice.Service
-	StorageService  storage.ClientStorage
-	SpaceCore       spacecore.SpaceCoreService
-	PersonalSpaceId string
-	LoadCtx         context.Context
+	Indexer           spaceIndexer
+	Installer         bundledObjectsInstaller
+	CommonSpace       commonspace.Space
+	ObjectFactory     objectcache.ObjectFactory
+	AccountService    accountservice.Service
+	StorageService    storage.ClientStorage
+	SpaceCore         spacecore.SpaceCoreService
+	PersonalSpaceId   string
+	LoadCtx           context.Context
+	DisableRemoteLoad bool
 }
 
 func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
@@ -118,17 +120,21 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
 	}
-	go sp.mandatoryObjectsLoad(deps.LoadCtx)
+	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
 	return sp, nil
 }
 
-func (s *space) mandatoryObjectsLoad(ctx context.Context) {
+func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool) {
 	defer close(s.loadMandatoryObjectsCh)
 	s.loadMandatoryObjectsErr = s.indexer.ReindexSpace(s)
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.loadMandatoryObjectsErr = s.LoadObjects(ctx, s.derivedIDs.IDs())
+	loadCtx := ctx
+	if !disableRemoteLoad {
+		loadCtx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	}
+	s.loadMandatoryObjectsErr = s.LoadObjects(loadCtx, s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
@@ -136,7 +142,9 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.common.TreeSyncer().StartSync()
+	if !disableRemoteLoad {
+		s.common.TreeSyncer().StartSync()
+	}
 }
 
 func (s *space) Id() string {
