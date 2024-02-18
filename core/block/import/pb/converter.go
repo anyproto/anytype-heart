@@ -297,7 +297,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		data, err := io.ReadAll(rd)
 		if err != nil {
-			return nil, ErrWrongFormat
+			return nil, err
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
 			return nil, ErrWrongFormat
