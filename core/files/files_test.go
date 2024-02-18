@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -32,11 +34,13 @@ type fixture struct {
 	commonFileService fileservice.FileService
 	fileSyncService   filesync.FileSync
 	rpcStore          rpcstore.RpcStore
+	fileStore         filestore.FileStore
 }
 
 const spaceId = "space1"
 
 func newFixture(t *testing.T) *fixture {
+	fileStore := filestore.New()
 	dataStoreProvider := datastore.NewInMemory()
 
 	blockStorage := filestorage.NewInMemory()
@@ -51,7 +55,7 @@ func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
 	a := new(app.App)
 	a.Register(dataStoreProvider)
-	a.Register(filestore.New())
+	a.Register(fileStore)
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
@@ -70,6 +74,7 @@ func newFixture(t *testing.T) *fixture {
 		commonFileService: commonFileService,
 		fileSyncService:   fileSyncService,
 		rpcStore:          rpcStore,
+		fileStore:         fileStore,
 	}
 }
 
@@ -137,6 +142,83 @@ func TestFileAdd(t *testing.T) {
 	})
 }
 
+func TestFileAddWithCustomKeys(t *testing.T) {
+	t.Run("with valid keys expect use them", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		uploaded := make(chan struct{})
+		fx.fileSyncService.OnUploaded(func(fileId domain.FileId) error {
+			close(uploaded)
+			return nil
+		})
+
+		fileName := "myFile"
+		lastModifiedDate := time.Now()
+		fileContent := "it's my favorite file"
+		buf := strings.NewReader(fileContent)
+		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+
+		customKeys := map[string]string{
+			encryptionKeyPath(schema.LinkFile): "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
+		}
+
+		opts := []AddOption{
+			WithName(fileName),
+			WithLastModifiedDate(lastModifiedDate.Unix()),
+			WithReader(buf),
+			WithCustomEncryptionKeys(customKeys),
+		}
+		got, err := fx.FileAdd(ctx, spaceId, opts...)
+		require.NoError(t, err)
+		assert.NotEmpty(t, got.FileId)
+		got.Commit()
+
+		assertCustomEncryptionKeys(t, fx, got, customKeys)
+	})
+
+	t.Run("with invalid keys expect generate new ones", func(t *testing.T) {
+		for i, customKeys := range []map[string]string{
+			nil,
+			{"invalid": "key"},
+			{encryptionKeyPath(schema.LinkFile): "not-an-aes-key"},
+		} {
+			t.Run(fmt.Sprintf("case %d", i+1), func(t *testing.T) {
+				fx := newFixture(t)
+				ctx := context.Background()
+
+				uploaded := make(chan struct{})
+				fx.fileSyncService.OnUploaded(func(fileId domain.FileId) error {
+					close(uploaded)
+					return nil
+				})
+
+				fileName := "myFile"
+				lastModifiedDate := time.Now()
+				fileContent := "it's my favorite file"
+				buf := strings.NewReader(fileContent)
+				fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+
+				opts := []AddOption{
+					WithName(fileName),
+					WithLastModifiedDate(lastModifiedDate.Unix()),
+					WithReader(buf),
+					WithCustomEncryptionKeys(customKeys),
+				}
+				got, err := fx.FileAdd(ctx, spaceId, opts...)
+				require.NoError(t, err)
+				assert.NotEmpty(t, got.FileId)
+				got.Commit()
+
+				encKeys, err := fx.fileStore.GetFileKeys(got.FileId)
+				require.NoError(t, err)
+				assert.NotEmpty(t, encKeys)
+				assert.NotEqual(t, customKeys, encKeys)
+			})
+		}
+	})
+}
+
 func TestAddFilesConcurrently(t *testing.T) {
 	testAddConcurrently(t, func(t *testing.T, fx *fixture) *AddResult {
 		return testAddFile(t, fx)
@@ -188,4 +270,14 @@ func testAddFile(t *testing.T, fx *fixture) *AddResult {
 	require.NoError(t, err)
 	got.Commit()
 	return got
+}
+
+func givenCustomEncryptionKeys() map[string]string {
+	return map[string]string{
+		encryptionKeyPath(schema.LinkImageOriginal):  "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
+		encryptionKeyPath(schema.LinkImageLarge):     "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
+		encryptionKeyPath(schema.LinkImageSmall):     "bear36qgxpvnsqis2omwqi33zcrjo6arxhokpqr3bnh2oqphxkiba",
+		encryptionKeyPath(schema.LinkImageThumbnail): "bcewq7zoa6cbbev6nxkykrrclvidriuglgags67zbdda53wfnn6eq",
+		encryptionKeyPath(schema.LinkImageExif):      "bdoiogvdd5bayrezafzf2lvgh3xxjk7ru4yq2frpxhjgmx26ih6sq",
+	}
 }

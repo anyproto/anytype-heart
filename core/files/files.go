@@ -44,10 +44,6 @@ import (
 
 const (
 	CName = "files"
-
-	// We have legacy nodes structure that allowed us to add directories and "0" means the first directory
-	// Now we have only one directory in which we have either single file or image variants
-	fileLinkName = "0"
 )
 
 var log = logging.Logger("anytype-files")
@@ -139,7 +135,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 
 	addLock := s.lockAddOperation(opts.checksum)
 
-	fileInfo, fileNode, err := s.addFileNode(ctx, spaceId, &m.Blob{}, opts)
+	fileInfo, fileNode, err := s.addFileNode(ctx, spaceId, &m.Blob{}, opts, schema.LinkFile)
 	if errors.Is(err, errFileExists) {
 		res, err := s.newExistingFileResult(addLock, fileInfo)
 		if err != nil {
@@ -247,7 +243,7 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 		l := schema.LinkByName(dirNode.Links(), ValidContentLinkNames)
 		info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
 		if err == nil {
-			fileKeys.EncryptionKeys[encryptionKeyPath(fileLinkName)] = info.Key
+			fileKeys.EncryptionKeys[encryptionKeyPath(schema.LinkFile)] = info.Key
 		} else {
 			log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), id.FileId.String()+"/"+dirLink.Name)
 		}
@@ -295,11 +291,11 @@ func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo 
 	outer := uio.NewDirectory(dagService)
 	outer.SetCidBuilder(cidBuilder)
 
-	err := helpers.AddLinkToDirectory(ctx, dagService, outer, fileLinkName, fileNode.Cid().String())
+	err := helpers.AddLinkToDirectory(ctx, dagService, outer, schema.LinkFile, fileNode.Cid().String())
 	if err != nil {
 		return nil, nil, err
 	}
-	keys.KeysByPath[encryptionKeyPath(fileLinkName)] = fileInfo.Key
+	keys.KeysByPath[encryptionKeyPath(schema.LinkFile)] = fileInfo.Key
 
 	node, err := outer.GetNode()
 	if err != nil {
@@ -483,7 +479,7 @@ var errFileExists = errors.New("file exists")
 	- meta
 	- content
 */
-func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, ipld.Node, error) {
+func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions, linkName string) (*storage.FileInfo, ipld.Node, error) {
 	opts, err := mill.Options(map[string]interface{}{
 		"plaintext": false,
 	})
@@ -535,7 +531,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		Size_:            int64(readerWithCounter.Count()),
 	}
 
-	key, err := symmetric.NewRandom()
+	key, err := getOrGenerateSymmetricKey(linkName, conf)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -581,6 +577,17 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, nil, fmt.Errorf("add file pair node: %w", err)
 	}
 	return fileInfo, pairNode, nil
+}
+
+func getOrGenerateSymmetricKey(linkName string, opts AddOptions) (symmetric.Key, error) {
+	if key, exists := opts.CustomEncryptionKeys[encryptionKeyPath(linkName)]; exists {
+		symKey, err := symmetric.FromString(key)
+		if err == nil {
+			return symKey, nil
+		}
+		return symmetric.NewRandom()
+	}
+	return symmetric.NewRandom()
 }
 
 // addFilePairNode has structure:
@@ -646,7 +653,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updat
 	if looksLikeFileNode(dirNode) {
 		var key string
 		if keys != nil {
-			key = keys[encryptionKeyPath(fileLinkName)]
+			key = keys[encryptionKeyPath(schema.LinkFile)]
 		}
 
 		fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+dirLink.Name, key)
@@ -757,7 +764,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 }
 
 func encryptionKeyPath(linkName string) string {
-	if linkName == fileLinkName {
+	if linkName == schema.LinkFile {
 		return "/0/"
 	}
 	return "/0/" + linkName + "/"

@@ -26,6 +26,7 @@ on:
 permissions:
   actions: 'write'
   packages: 'write'
+  contents: 'write'
 
 
 name: Build
