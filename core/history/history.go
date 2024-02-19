@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -114,13 +115,6 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	}
 	var includeLastId = true
 
-	reverse := func(vers []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
-		for i, j := 0, len(vers)-1; i < j; i, j = i+1, j-1 {
-			vers[i], vers[j] = vers[j], vers[i]
-		}
-		return vers
-	}
-
 	for len(resp) < limit {
 		tree, _, e := h.treeWithId(id, lastVersionId, includeLastId)
 		if e != nil {
@@ -158,20 +152,31 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		}
 	}
 
-	resp = reverse(resp)
-
-	var groupId int64
-	var nextVersionTimestamp int64
-
-	for i := 0; i < len(resp); i++ {
-		if nextVersionTimestamp-resp[i].Time > int64(versionGroupInterval.Seconds()) {
-			groupId++
-		}
-		nextVersionTimestamp = resp[i].Time
-		resp[i].GroupId = groupId
-	}
+	slices.Reverse(resp)
+	groupVersions(resp)
 
 	return
+}
+
+func groupVersions(historyRecords []*pb.RpcHistoryVersion) {
+	if len(historyRecords) == 0 {
+		return
+	}
+
+	var groupId int64
+	// We use word next here because we are iterating from the latest version down to the oldest
+	nextVersionTimestamp := historyRecords[0].Time
+	nextVersionAuthorId := historyRecords[0].AuthorId
+
+	for i, rec := range historyRecords {
+		authorChanged := historyRecords[i].AuthorId != nextVersionAuthorId
+		if authorChanged || nextVersionTimestamp-rec.Time > int64(versionGroupInterval.Seconds()) {
+			groupId++
+		}
+		nextVersionAuthorId = rec.AuthorId
+		nextVersionTimestamp = rec.Time
+		historyRecords[i].GroupId = groupId
+	}
 }
 
 func (h *history) SetVersion(id domain.FullID, versionId string) (err error) {
