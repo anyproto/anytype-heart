@@ -132,8 +132,8 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 			IdentityName: name,
 			IdentityIcon: iconCid,
 		}},
-		Space: space.Id(),
-		Acl:   aclId,
+		Space:     space.Id(),
+		AclHeadId: aclId,
 	})
 	if err != nil {
 		return err
@@ -163,8 +163,8 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 				Permission: mapProtoPermissionToAcl(reqApprove.Permissions),
 			},
 		},
-		Space: space.Id(),
-		Acl:   aclId,
+		Space:     space.Id(),
+		AclHeadId: aclId,
 	})
 	if err != nil {
 		return err

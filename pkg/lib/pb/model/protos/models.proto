@@ -971,7 +971,7 @@ message Notification {
         ParticipantRequestApproved participantRequestApproved = 13;
     }
     string space = 7;
-    string acl = 14;
+    string aclHeadId = 14;
 
     message Import {
         string processId = 1;

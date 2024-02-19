@@ -108,11 +108,11 @@ func (n *notificationService) updateNotificationsInLocalStore() {
 		if err != nil {
 			log.Errorf("failed to save notification %s: %s", notification.Id, err)
 		}
-		if notification.Acl != "" && notification.GetCreateTime() > lastNotificationTimestamp[notification.Acl] {
+		if notification.AclHeadId != "" && notification.GetCreateTime() > lastNotificationTimestamp[notification.AclHeadId] {
 			n.Lock()
-			n.lastNotificationIdToAcl[notification.Acl] = notification.Id
+			n.lastNotificationIdToAcl[notification.AclHeadId] = notification.Id
 			n.Unlock()
-			lastNotificationTimestamp[notification.Acl] = notification.GetCreateTime()
+			lastNotificationTimestamp[notification.AclHeadId] = notification.GetCreateTime()
 
 		}
 	}
@@ -140,7 +140,7 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 			}
 			s.AddNotification(notification)
 			n.Lock()
-			n.lastNotificationIdToAcl[notification.Acl] = notification.Id
+			n.lastNotificationIdToAcl[notification.AclHeadId] = notification.Id
 			n.Unlock()
 			return nil
 		})
