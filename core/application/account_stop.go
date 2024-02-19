@@ -77,7 +77,7 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 		return ErrFailedToStopApplication
 	}
 
-	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, req.NetworkMode, req.NetworkCustomConfigFilePath)
+	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, conf.PeferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
 	return err
 }
 
