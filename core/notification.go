@@ -50,7 +50,7 @@ func (mw *Middleware) NotificationTest(cctx context.Context, req *pb.RpcNotifica
 		}
 		return m
 	}
-	err := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
+	err := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Payload: &model.NotificationPayloadOfTest{Test: &model.NotificationTest{}},

@@ -18,6 +18,8 @@
     - [Change.DetailsUnset](#anytype-Change-DetailsUnset)
     - [Change.FileKeys](#anytype-Change-FileKeys)
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
+    - [Change.NotificationCreate](#anytype-Change-NotificationCreate)
+    - [Change.NotificationUpdate](#anytype-Change-NotificationUpdate)
     - [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd)
     - [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove)
     - [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet)
@@ -1558,6 +1560,8 @@
     - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
+    - [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved)
+    - [Notification.RequestResponse](#anytype-model-Notification-RequestResponse)
     - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
     - [Notification.Test](#anytype-model-Notification-Test)
     - [Object](#anytype-model-Object)
@@ -2017,6 +2021,8 @@ the element of change tree used to store and internal apply smartBlock history
 | storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
 | originalCreatedTimestampSet | [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet) |  |  |
 | setFileInfo | [Change.SetFileInfo](#anytype-Change-SetFileInfo) |  |  |
+| notificationCreate | [Change.NotificationCreate](#anytype-Change-NotificationCreate) |  |  |
+| notificationUpdate | [Change.NotificationUpdate](#anytype-Change-NotificationUpdate) |  |  |
 
 
 
@@ -2080,6 +2086,37 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-NotificationCreate"></a>
+
+### Change.NotificationCreate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| notification | [model.Notification](#anytype-model-Notification) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-NotificationUpdate"></a>
+
+### Change.NotificationUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [model.Notification.Status](#anytype-model-Notification-Status) |  |  |
 
 
 
@@ -24534,7 +24571,10 @@ Used to decode block meta only, without the content itself
 | galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
 | requestToJoin | [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin) |  |  |
 | test | [Notification.Test](#anytype-model-Notification-Test) |  |  |
+| requestResponse | [Notification.RequestResponse](#anytype-model-Notification-RequestResponse) |  |  |
+| participantRequestApproved | [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved) |  |  |
 | space | [string](#string) |  |  |
+| acl | [string](#string) |  |  |
 
 
 
@@ -24588,6 +24628,41 @@ Used to decode block meta only, without the content itself
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-ParticipantRequestApproved"></a>
+
+### Notification.ParticipantRequestApproved
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceID | [string](#string) |  |  |
+| permission | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-RequestResponse"></a>
+
+### Notification.RequestResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| identityName | [string](#string) |  |  |
+| identityIcon | [string](#string) |  |  |
+| isApproved | [bool](#bool) |  |  |
+| permission | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 
@@ -25726,6 +25801,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Participant | 534 |  |
 | MissingObject | 519 |  |
 | FileObject | 533 |  |
+| NotificationObject | 535 |  |
 
 
 
