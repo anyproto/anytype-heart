@@ -742,3 +742,7 @@ func isIncompatibleType(firstType, secondType model.BlockContentTextMarkType) bo
 	}
 	return false
 }
+
+func (t *Text) CanHaveChildren() bool {
+	return true
+}

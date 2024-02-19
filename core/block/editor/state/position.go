@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -240,14 +239,14 @@ func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, t
 	if len(ids) == 0 {
 		return
 	}
-	_, canHaveChildren := s.Get(ids[0]).(text.Block)
+	id0Block := s.Get(ids[0])
+	canHaveChildren := id0Block.CanHaveChildren()
 	targetHasChildren := false
 	pos := targetPos + 1
 	if !canHaveChildren {
 		pos = targetPos
 	}
-	id0Block := s.Get(ids[0]).Model()
-	if len(id0Block.ChildrenIds) == 0 {
+	if len(id0Block.Model().ChildrenIds) == 0 {
 		var idsIsChild bool
 		if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
 			targetHasChildren = true
@@ -259,7 +258,7 @@ func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, t
 			}
 		}
 		if !idsIsChild && canHaveChildren {
-			s.setChildrenIds(id0Block, target.Model().ChildrenIds)
+			s.setChildrenIds(id0Block.Model(), target.Model().ChildrenIds)
 		}
 	}
 	s.insertChildrenIds(targetParentM, pos, ids...)
