@@ -119,22 +119,20 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 	reqJoin *aclrecordproto.AclAccountRequestJoin,
 	space clientspace.Space, id, aclId string,
 ) error {
-	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqJoin.InviteIdentity)
-	if err != nil {
-		return err
+	var name, iconCid string
+	profile := n.getProfileData(ctx, string(reqJoin.InviteIdentity))
+	if profile != nil {
+		name = profile.Name
+		iconCid = profile.IconCid
 	}
-	name, icon := n.getProfileData(ctx, pubKey)
-	if err != nil {
-		return err
-	}
-	err = n.notificationService.CreateAndSend(&model.Notification{
+	err := n.notificationService.CreateAndSend(&model.Notification{
 		Id:      id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfRequestToJoin{RequestToJoin: &model.NotificationRequestToJoin{
 			SpaceId:      space.Id(),
-			Identity:     profile.Identity,
-			IdentityName: profile.Name,
-			IdentityIcon: profile.IconCid,
+			Identity:     string(reqJoin.InviteIdentity),
+			IdentityName: name,
+			IdentityIcon: iconCid,
 		}},
 		Space: space.Id(),
 		Acl:   aclId,
@@ -176,11 +174,9 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 	return nil
 }
 
-
-func (n *AclNotificationSender) getProfileData(ctx context.Context, account crypto.PubKey,
-) *model.IdentityProfile) {
+func (n *AclNotificationSender) getProfileData(ctx context.Context, account string) *model.IdentityProfile {
 	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*30)
-	profile := n.identityService.WaitProfile(ctxWithTimeout, account.Account())
+	profile := n.identityService.WaitProfile(ctxWithTimeout, account)
 	if profile == nil {
 		return nil
 	}
@@ -192,15 +188,15 @@ func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
 	record *list.AclRecord,
 	aclId string,
 ) error {
-	name, icon := n.getProfileData(ctx, record.Identity)
+	profile := n.getProfileData(ctx, record.Identity.Account())
 	err := n.notificationService.CreateAndSend(&model.Notification{
 		Id:      record.Id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfLeaveRequest{LeaveRequest: &model.NotificationLeaveRequest{
 			SpaceId:      space.Id(),
 			Identity:     record.Identity.Account(),
-			IdentityName: name,
-			IdentityIcon: icon,
+			IdentityName: profile.Name,
+			IdentityIcon: profile.IconCid,
 		}},
 		Space: space.Id(),
 		Acl:   aclId,
