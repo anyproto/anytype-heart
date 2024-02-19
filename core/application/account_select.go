@@ -67,10 +67,10 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, errors.Join(ErrFailedToStopApplication, err)
 	}
 
-	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.NetworkMode, req.NetworkCustomConfigFilePath)
+	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
 }
 
-func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
+func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
 	if rootPath != "" {
 		s.rootPath = rootPath
 	}
@@ -92,6 +92,9 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
+	}
+	if preferYamux {
+		cfg.PeferYamuxTransport = true
 	}
 	if networkMode > 0 {
 		cfg.NetworkMode = networkMode
