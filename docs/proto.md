@@ -2438,6 +2438,7 @@ Front end to middleware request-to-create-an account
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
 | networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
+| preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 
 
 
@@ -2980,6 +2981,7 @@ User can select an account from those, that came with an AccountAdd events
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
 | networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
+| preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 
 
 
