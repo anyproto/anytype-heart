@@ -113,7 +113,7 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 	reqJoin *aclrecordproto.AclAccountRequestJoin,
 	space clientspace.Space, id, aclId string,
 ) error {
-	pubKey, name, icon, err := n.getProfileData(ctx, reqJoin)
+	profile, err := n.getProfileData(ctx, reqJoin)
 	if err != nil {
 		return err
 	}
@@ -122,9 +122,9 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfRequestToJoin{RequestToJoin: &model.NotificationRequestToJoin{
 			SpaceId:      space.Id(),
-			Identity:     pubKey.Account(),
-			IdentityName: name,
-			IdentityIcon: icon,
+			Identity:     profile.Identity,
+			IdentityName: profile.Name,
+			IdentityIcon: profile.IconCid,
 		}},
 		Space: space.Id(),
 		Acl:   aclId,
@@ -167,17 +167,17 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 }
 
 func (n *AclNotificationSender) getProfileData(ctx context.Context, reqJoin *aclrecordproto.AclAccountRequestJoin,
-) (crypto.PubKey, string, string, error) {
+) (*model.IdentityProfile, error) {
 	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqJoin.InviteIdentity)
 	if err != nil {
-		return nil, "", "", err
+		return nil, nil
 	}
 	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*30)
 	profile := n.identityService.WaitProfile(ctxWithTimeout, pubKey.Account())
 	if profile == nil {
-		return nil, "", "", nil
+		return nil, nil
 	}
-	return pubKey, profile.Name, profile.IconCid, nil
+	return profile, nil
 }
 
 func mapProtoPermissionToAcl(permissions aclrecordproto.AclUserPermissions) model.ParticipantPermissions {

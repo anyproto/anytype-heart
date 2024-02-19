@@ -313,26 +313,6 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 		bundle.RelationKeyIconImage.String():   pbtypes.String(profile.IconCid),
 	}}
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
-		status := pbtypes.GetInt64(current, bundle.RelationKeyParticipantStatus.String())
-		if model.ParticipantStatus(status) == model.ParticipantStatus_Joining {
-			// err := a.notificationService.(&model.Notification{
-			//	Status:  model.Notification_Created,
-			//	IsLocal: true,
-			//	Space:   a.sp.Id(),
-			//	Payload: &model.NotificationPayloadOfRequestToJoin{
-			//		RequestToJoin: &model.NotificationRequestToJoin{
-			//			SpaceId:      a.sp.Id(),
-			//			Identity:     identity,
-			//			IdentityName: profile.Name,
-			//			IdentityIcon: profile.IconCid,
-			//		},
-			//	},
-			// })
-			// if err != nil {
-			//	return nil, err
-			// }
-		}
-
 		return pbtypes.StructMerge(current, details, false), nil
 	})
 }

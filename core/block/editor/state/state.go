@@ -1887,10 +1887,7 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {
-	iterState := s
-	for iterState != nil && iterState.notifications == nil {
-		iterState = iterState.parent
-	}
+	iterState := s.findStateWithNonEmptyNotifications()
 	if iterState == nil {
 		return nil
 	}
@@ -1915,14 +1912,19 @@ func (s *State) AddNotification(notification *model.Notification) {
 }
 
 func (s *State) ListNotifications() map[string]*model.Notification {
-	iterState := s
-	for iterState != nil && iterState.notifications == nil {
-		iterState = iterState.parent
-	}
+	iterState := s.findStateWithNonEmptyNotifications()
 	if iterState == nil {
 		return nil
 	}
 	return iterState.notifications
+}
+
+func (s *State) findStateWithNonEmptyNotifications() *State {
+	iterState := s
+	for iterState != nil && iterState.notifications == nil {
+		iterState = iterState.parent
+	}
+	return iterState
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation

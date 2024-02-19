@@ -90,8 +90,7 @@ type service struct {
 	// identity => spaceId => observer
 	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
-	sync.RWMutex
-	identityProfileCache map[string]*model.IdentityProfile
+	identityProfileCache   map[string]*model.IdentityProfile
 }
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
@@ -220,19 +219,35 @@ func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.Sym
 }
 
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
+	profile := s.getProfileFromCache(identity)
+	if profile != nil {
+		return profile
+	}
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
-			s.RLock()
-			if profile, ok := s.identityProfileCache[identity]; ok {
-				s.RUnlock()
+		case <-s.closing:
+			return nil
+		case <-ticker.C:
+			profile = s.getProfileFromCache(identity)
+			if profile != nil {
 				return profile
 			}
-			s.RUnlock()
 		}
 	}
+}
+
+func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {
+	s.lock.RLock()
+	if profile, ok := s.identityProfileCache[identity]; ok {
+		s.lock.RUnlock()
+		return profile
+	}
+	s.lock.RUnlock()
+	return nil
 }
 
 func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
@@ -431,9 +446,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
-	s.RLock()
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
-	s.RUnlock()
 	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
 
 	if hasUpdates {
@@ -483,9 +496,7 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {
-	s.Lock()
 	s.identityProfileCache[profile.Identity] = profile
-	s.Unlock()
 	return badgerhelper.SetValue(s.db, makeIdentityProfileKey(profile.Identity), rawProfile)
 }
 
