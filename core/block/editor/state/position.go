@@ -12,7 +12,7 @@ import (
 )
 
 type canHaveChildren interface {
-	CanHaveChildren() bool
+	CanHaveChildren()
 }
 
 func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...string) (err error) {
