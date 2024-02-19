@@ -238,7 +238,6 @@ func (p *pasteCtrl) intoBlock() (err error) {
 		return
 	}
 	p.caretPos, err = firstSelText.RangeTextPaste(p.selRange.From, p.selRange.To, firstPasteText.Model(), p.mode.intoBlockCopyStyle)
-	p.blockIds = []string{firstSelText.Model().Id}
 	p.ps.Unlink(firstPasteText.Model().Id)
 	return
 }
