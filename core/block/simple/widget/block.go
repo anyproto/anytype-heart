@@ -85,7 +85,3 @@ func (b *block) ApplyEvent(e *pb.EventBlockSetWidget) error {
 	}
 	return nil
 }
-
-func (t *block) CanHaveChildren() bool {
-	return true
-}

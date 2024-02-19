@@ -30,7 +30,6 @@ type Block interface {
 	String() string
 	Copy() Block
 	Validate() error
-	CanHaveChildren() bool
 }
 
 type LinkedFilesIterator interface {

@@ -106,10 +106,6 @@ func (b *Base) String() string {
 	return fmt.Sprintf("%s: %T (%d)", b.Id, b.Content, len(b.ChildrenIds))
 }
 
-func (b *Base) CanHaveChildren() bool {
-	return false
-}
-
 func stringSlicesEq(s1, s2 []string) bool {
 	if len(s1) != len(s2) {
 		return false
