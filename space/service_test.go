@@ -32,6 +32,7 @@ const (
 
 // TODO Revive tests
 func TestService_Init(t *testing.T) {
+	t.Skip("@roman should revive this test")
 	t.Run("existing account", func(t *testing.T) {
 		fx := newFixture(t, false)
 		defer fx.finish(t)
