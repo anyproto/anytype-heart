@@ -41,3 +41,23 @@ func (mw *Middleware) NotificationReply(cctx context.Context, req *pb.RpcNotific
 	}
 	return response(pb.RpcNotificationReplyResponseError_NULL, nil)
 }
+
+func (mw *Middleware) NotificationTest(cctx context.Context, req *pb.RpcNotificationTestRequest) *pb.RpcNotificationTestResponse {
+	response := func(code pb.RpcNotificationTestResponseErrorCode, err error) *pb.RpcNotificationTestResponse {
+		m := &pb.RpcNotificationTestResponse{Error: &pb.RpcNotificationTestResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	err := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
+		Status:  model.Notification_Created,
+		IsLocal: true,
+		Payload: &model.NotificationPayloadOfTest{Test: &model.NotificationTest{}},
+	})
+
+	if err != nil {
+		return response(pb.RpcNotificationTestResponseError_INTERNAL_ERROR, err)
+	}
+	return response(pb.RpcNotificationTestResponseError_NULL, nil)
+}
