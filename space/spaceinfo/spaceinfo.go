@@ -28,10 +28,11 @@ func (r RemoteStatus) IsDeleted() bool {
 type AccountStatus int
 
 const (
-	AccountStatusUnknown = AccountStatus(model.SpaceStatus_Unknown)
-	AccountStatusDeleted = AccountStatus(model.SpaceStatus_SpaceDeleted)
-	AccountStatusJoining = AccountStatus(model.SpaceStatus_SpaceJoining)
-	AccountStatusActive  = AccountStatus(model.SpaceStatus_SpaceActive)
+	AccountStatusUnknown  = AccountStatus(model.SpaceStatus_Unknown)
+	AccountStatusDeleted  = AccountStatus(model.SpaceStatus_SpaceDeleted)
+	AccountStatusJoining  = AccountStatus(model.SpaceStatus_SpaceJoining)
+	AccountStatusActive   = AccountStatus(model.SpaceStatus_SpaceActive)
+	AccountStatusRemoving = AccountStatus(model.SpaceStatus_SpaceRemoving)
 )
 
 type SpaceLocalInfo struct {

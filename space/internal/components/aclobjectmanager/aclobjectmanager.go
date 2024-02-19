@@ -169,6 +169,7 @@ func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error 
 	}
 	details := buildParticipantDetails(id, a.sp.Id(), myIdentity, model.ParticipantPermissions_Owner, model.ParticipantStatus_Active)
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()))
+	details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyDescription.String()))
 	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
 	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
 	err = a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
@@ -212,7 +213,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		}
 		return common.Acl().AclState().GetMetadata(key, true)
 	}
-	states := common.Acl().AclState().CurrentStates()
+	states := common.Acl().AclState().CurrentAccounts()
 	// decrypt all metadata
 	states, err = decryptAll(states, decrypt)
 	if err != nil {
@@ -220,7 +221,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
-	err = a.processStates(states)
+	err = a.processStates(states, common.Acl().AclState().Identity())
 	if err != nil {
 		return
 	}
@@ -228,9 +229,19 @@ func (a *aclObjectManager) processAcl() (err error) {
 	return
 }
 
-func (a *aclObjectManager) processStates(states []list.AccountState) (err error) {
+func (a *aclObjectManager) processStates(states []list.AccountState, myIdentity crypto.PubKey) (err error) {
 	var numActiveUsers int
 	for _, state := range states {
+		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) {
+			a.status.Lock()
+			err := a.status.SetPersistentStatus(a.ctx, spaceinfo.AccountStatusRemoving)
+			if err != nil {
+				a.status.Unlock()
+				return err
+			}
+			a.status.Unlock()
+			return nil
+		}
 		if !(state.Permissions.IsOwner() || state.Permissions.NoPermissions()) {
 			numActiveUsers++
 		}
@@ -297,8 +308,9 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 		return err
 	}
 	details := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():      pbtypes.String(profile.Name),
-		bundle.RelationKeyIconImage.String(): pbtypes.String(profile.IconCid),
+		bundle.RelationKeyName.String():        pbtypes.String(profile.Name),
+		bundle.RelationKeyDescription.String(): pbtypes.String(profile.Description),
+		bundle.RelationKeyIconImage.String():   pbtypes.String(profile.IconCid),
 	}}
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		status := pbtypes.GetInt64(current, bundle.RelationKeyParticipantStatus.String())

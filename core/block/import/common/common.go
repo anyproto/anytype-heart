@@ -168,15 +168,20 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 }
 
 func handleFileBlock(oldIdToNew map[string]string, block simple.Block, st *state.State) {
-	targetObjectId := block.Model().GetFile().TargetObjectId
-	if targetObjectId == "" {
-		return
+	if targetObjectId := block.Model().GetFile().TargetObjectId; targetObjectId != "" {
+		newId := oldIdToNew[targetObjectId]
+		if newId == "" {
+			newId = addr.MissingObject
+		}
+		block.Model().GetFile().TargetObjectId = newId
 	}
-	newId := oldIdToNew[targetObjectId]
-	if newId == "" {
-		newId = addr.MissingObject
+	if hash := block.Model().GetFile().GetHash(); hash != "" {
+		// Means that we created file object for this file
+		newId := oldIdToNew[hash]
+		if newId != "" {
+			block.Model().GetFile().TargetObjectId = newId
+		}
 	}
-	block.Model().GetFile().TargetObjectId = newId
 	st.Set(simple.New(block.Model()))
 }
 

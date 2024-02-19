@@ -17,6 +17,7 @@ const (
 	ModeLoading
 	ModeOffloading
 	ModeJoining
+	ModeRemoving
 )
 
 type WaitResult struct {

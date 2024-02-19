@@ -44,7 +44,7 @@ func (o *offloader) Start(ctx context.Context) error {
 }
 
 func (o *offloader) CanTransition(next mode.Mode) bool {
-	return false
+	return true
 }
 
 func (o *offloader) WaitOffload(ctx context.Context) error {

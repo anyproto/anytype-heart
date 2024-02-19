@@ -134,6 +134,8 @@ type State struct {
 	groupId                  string
 	noObjectType             bool
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
+	parentIdsCache           map[string]string
+	isParentIdsCacheEnabled  bool
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -202,6 +204,7 @@ func (s *State) Add(b simple.Block) (ok bool) {
 	if s.Pick(id) == nil {
 		s.blocks[id] = b
 		s.blockInit(b)
+		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
 		return true
 	}
 	return false
@@ -211,8 +214,18 @@ func (s *State) Set(b simple.Block) {
 	if !s.Exists(b.Model().Id) {
 		s.Add(b)
 	} else {
+		s.removeFromCache(s.Pick(b.Model().Id).Model().ChildrenIds...)
+		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
 		s.blocks[b.Model().Id] = b
 		s.blockInit(b)
+	}
+}
+
+func (s *State) removeFromCache(ids ...string) {
+	if s.isParentIdsCacheEnabled {
+		for _, id := range ids {
+			delete(s.parentIdsCache, id)
+		}
 	}
 }
 
@@ -270,6 +283,7 @@ func (s *State) Unlink(id string) (ok bool) {
 	if parent := s.GetParentOf(id); parent != nil {
 		parentM := parent.Model()
 		parentM.ChildrenIds = slice.RemoveMut(parentM.ChildrenIds, id)
+		s.removeFromCache(id)
 		return true
 	}
 	return
@@ -309,6 +323,13 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	if s.isParentIdsCacheEnabled {
+		if parentId, ok := s.getParentIdsCache()[id]; ok {
+			return s.Pick(parentId)
+		}
+		return
+	}
+
 	s.Iterate(func(b simple.Block) bool {
 		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
 			res = b
@@ -317,6 +338,24 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		return true
 	})
 	return
+}
+
+func (s *State) resetParentIdsCache() {
+	s.parentIdsCache = nil
+	s.isParentIdsCacheEnabled = false
+}
+
+func (s *State) getParentIdsCache() map[string]string {
+	if s.parentIdsCache == nil {
+		s.parentIdsCache = make(map[string]string)
+		s.Iterate(func(block simple.Block) bool {
+			for _, id := range block.Model().ChildrenIds {
+				s.parentIdsCache[id] = block.Model().Id
+			}
+			return true
+		})
+	}
+	return s.parentIdsCache
 }
 
 func (s *State) IsChild(parentId, childId string) bool {
@@ -423,6 +462,7 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
+	defer s.resetParentIdsCache()
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -649,24 +689,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.relationLinks = s.relationLinks
 	}
 
-	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
-		// revert lastModified update if we don't have any actual changes being made
-		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
-		prevModifiedBy := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedBy.String())
-		if s.localDetails != nil {
-			if _, isNull := prevModifiedDate.GetKind().(*types.Value_NullValue); prevModifiedDate == nil || isNull {
-				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
-			} else {
-				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
-			}
-			if _, isNull := prevModifiedBy.GetKind().(*types.Value_NullValue); prevModifiedBy == nil || isNull {
-				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed by: prev value is nil")
-			} else {
-				s.localDetails.Fields[bundle.RelationKeyLastModifiedBy.String()] = prevModifiedBy
-			}
-		}
-	}
-
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
 		if diff := pbtypes.StructDiff(prev, s.localDetails); diff != nil {
@@ -698,7 +720,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
-
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }

@@ -75,6 +75,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
@@ -225,10 +226,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(filestorage.New()).
 		Register(files.New()).
 		Register(fileacl.New()).
-		Register(invitestore.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(deletioncontroller.New()).
+		Register(invitestore.New()).
 		Register(fileobject.New()).
 		Register(acl.New()).
 		Register(filesync.New()).

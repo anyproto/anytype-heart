@@ -1289,6 +1289,51 @@ func (_c *MockSpace_IsPersonal_Call) RunAndReturn(run func() bool) *MockSpace_Is
 	return _c
 }
 
+// IsReadOnly provides a mock function with given fields:
+func (_m *MockSpace) IsReadOnly() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsReadOnly")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockSpace_IsReadOnly_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsReadOnly'
+type MockSpace_IsReadOnly_Call struct {
+	*mock.Call
+}
+
+// IsReadOnly is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) IsReadOnly() *MockSpace_IsReadOnly_Call {
+	return &MockSpace_IsReadOnly_Call{Call: _e.mock.On("IsReadOnly")}
+}
+
+func (_c *MockSpace_IsReadOnly_Call) Run(run func()) *MockSpace_IsReadOnly_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_IsReadOnly_Call) Return(_a0 bool) *MockSpace_IsReadOnly_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_IsReadOnly_Call) RunAndReturn(run func() bool) *MockSpace_IsReadOnly_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LoadObjects provides a mock function with given fields: ctx, ids
 func (_m *MockSpace) LoadObjects(ctx context.Context, ids []string) error {
 	ret := _m.Called(ctx, ids)

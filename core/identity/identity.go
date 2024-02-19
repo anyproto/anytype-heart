@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
@@ -47,10 +46,6 @@ type Service interface {
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
 
-	// GetDetails returns the last store details of the identity and provides a way to receive updates via updateHook
-	GetDetails(ctx context.Context, identity string) (details *types.Struct, err error)
-	// SpaceId returns the spaceId used to store the identities in the objectStore
-	SpaceId() string
 	app.ComponentRunnable
 }
 
@@ -63,19 +58,25 @@ type observer struct {
 	initialized bool
 }
 
+type identityRepoClient interface {
+	app.Component
+	IdentityRepoPut(ctx context.Context, identity string, data []*identityrepoproto.Data) (err error)
+	IdentityRepoGet(ctx context.Context, identities []string, kinds []string) (res []*identityrepoproto.DataWithIdentity, err error)
+}
+
 type service struct {
-	dbProvider        datastore.Datastore
-	db                *badger.DB
-	spaceService      space.Service
-	objectStore       objectstore.ObjectStore
-	accountService    account.Service
-	spaceIdDeriver    spaceIdDeriver
-	coordinatorClient coordinatorclient.CoordinatorClient
-	fileAclService    fileacl.Service
-	closing           chan struct{}
-	startedCh         chan struct{}
-	techSpaceId       string
-	personalSpaceId   string
+	dbProvider         datastore.Datastore
+	db                 *badger.DB
+	spaceService       space.Service
+	objectStore        objectstore.ObjectStore
+	accountService     account.Service
+	spaceIdDeriver     spaceIdDeriver
+	identityRepoClient identityRepoClient
+	fileAclService     fileacl.Service
+	closing            chan struct{}
+	startedCh          chan struct{}
+	techSpaceId        string
+	personalSpaceId    string
 
 	myIdentity                string
 	currentProfileDetailsLock sync.RWMutex
@@ -111,7 +112,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[account.Service](a)
 	s.spaceIdDeriver = app.MustComponent[spaceIdDeriver](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.coordinatorClient = app.MustComponent[coordinatorclient.CoordinatorClient](a)
+	s.identityRepoClient = app.MustComponent[identityRepoClient](a)
 	s.fileAclService = app.MustComponent[fileacl.Service](a)
 	s.dbProvider = app.MustComponent[datastore.Datastore](a)
 	return
@@ -151,51 +152,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 func (s *service) Close(ctx context.Context) (err error) {
 	close(s.closing)
 	return nil
-}
-
-func (s *service) SpaceId() string {
-	return s.techSpaceId
-}
-
-func (s *service) GetDetails(ctx context.Context, profileId string) (details *types.Struct, err error) {
-	rec, err := s.objectStore.GetDetails(profileId)
-	if err != nil {
-		return nil, err
-	}
-
-	return rec.Details, nil
-}
-
-func getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Struct {
-	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
-	description := pbtypes.GetString(details, bundle.RelationKeyDescription.String())
-	image := pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
-	profileId := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	d := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():                pbtypes.String(name),
-		bundle.RelationKeyDescription.String():         pbtypes.String(description),
-		bundle.RelationKeyId.String():                  pbtypes.String(id),
-		bundle.RelationKeyIsReadonly.String():          pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String():          pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():            pbtypes.Bool(false),
-		bundle.RelationKeySpaceId.String():             pbtypes.String(spaceId),
-		bundle.RelationKeyType.String():                pbtypes.String(bundle.TypeKeyProfile.BundledURL()),
-		bundle.RelationKeyIdentityProfileLink.String(): pbtypes.String(profileId),
-		bundle.RelationKeyLayout.String():              pbtypes.Float64(float64(model.ObjectType_profile)),
-		bundle.RelationKeyLastModifiedBy.String():      pbtypes.String(id),
-	}}
-
-	if image != "" {
-		d.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(image)
-	}
-
-	// deprecated, but we have existing profiles which use this, so let's it be up for clients to decide either to render it or not
-	iconOption := pbtypes.Get(details, bundle.RelationKeyIconOption.String())
-	if iconOption != nil {
-		d.Fields[bundle.RelationKeyIconOption.String()] = iconOption
-	}
-
-	return d
 }
 
 func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) {
@@ -307,9 +263,10 @@ func (s *service) cacheProfileDetails(details *types.Struct) {
 	s.currentProfileDetailsLock.Unlock()
 
 	identityProfile := &model.IdentityProfile{
-		Identity: s.myIdentity,
-		Name:     pbtypes.GetString(details, bundle.RelationKeyName.String()),
-		IconCid:  pbtypes.GetString(details, bundle.RelationKeyIconImage.String()),
+		Identity:    s.myIdentity,
+		Name:        pbtypes.GetString(details, bundle.RelationKeyName.String()),
+		Description: pbtypes.GetString(details, bundle.RelationKeyDescription.String()),
+		IconCid:     pbtypes.GetString(details, bundle.RelationKeyIconImage.String()),
 	}
 	observers, ok := s.identityObservers[s.myIdentity]
 	if ok {
@@ -340,6 +297,7 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context) error {
 	identityProfile := &model.IdentityProfile{
 		Identity:           identity,
 		Name:               pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyName.String()),
+		Description:        pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyDescription.String()),
 		IconCid:            iconCid,
 		IconEncryptionKeys: iconEncryptionKeys,
 	}
@@ -358,7 +316,7 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to sign profile data: %w", err)
 	}
-	err = s.coordinatorClient.IdentityRepoPut(ctx, identity, []*identityrepoproto.Data{
+	err = s.identityRepoClient.IdentityRepoPut(ctx, identity, []*identityrepoproto.Data{
 		{
 			Kind:      "profile",
 			Data:      data,
@@ -426,7 +384,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 }
 
 func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
-	res, err := s.coordinatorClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
+	res, err := s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
 	if err == nil {
 		return res, nil
 	}

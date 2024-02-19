@@ -10,6 +10,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -43,6 +45,7 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
+	IsReadOnly() bool
 	IsPersonal() bool
 
 	Close(ctx context.Context) error
@@ -70,22 +73,24 @@ type space struct {
 	spaceCore       spacecore.SpaceCoreService
 	personalSpaceId string
 
-	common commonspace.Space
+	myIdentity crypto.PubKey
+	common     commonspace.Space
 
 	loadMandatoryObjectsCh  chan struct{}
 	loadMandatoryObjectsErr error
 }
 
 type SpaceDeps struct {
-	Indexer         spaceIndexer
-	Installer       bundledObjectsInstaller
-	CommonSpace     commonspace.Space
-	ObjectFactory   objectcache.ObjectFactory
-	AccountService  accountservice.Service
-	StorageService  storage.ClientStorage
-	SpaceCore       spacecore.SpaceCoreService
-	PersonalSpaceId string
-	LoadCtx         context.Context
+	Indexer           spaceIndexer
+	Installer         bundledObjectsInstaller
+	CommonSpace       commonspace.Space
+	ObjectFactory     objectcache.ObjectFactory
+	AccountService    accountservice.Service
+	StorageService    storage.ClientStorage
+	SpaceCore         spacecore.SpaceCoreService
+	PersonalSpaceId   string
+	LoadCtx           context.Context
+	DisableRemoteLoad bool
 }
 
 func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
@@ -95,6 +100,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		common:                 deps.CommonSpace,
 		personalSpaceId:        deps.PersonalSpaceId,
 		spaceCore:              deps.SpaceCore,
+		myIdentity:             deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
@@ -114,17 +120,21 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
 	}
-	go sp.mandatoryObjectsLoad(deps.LoadCtx)
+	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
 	return sp, nil
 }
 
-func (s *space) mandatoryObjectsLoad(ctx context.Context) {
+func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool) {
 	defer close(s.loadMandatoryObjectsCh)
 	s.loadMandatoryObjectsErr = s.indexer.ReindexSpace(s)
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.loadMandatoryObjectsErr = s.LoadObjects(ctx, s.derivedIDs.IDs())
+	loadCtx := ctx
+	if !disableRemoteLoad {
+		loadCtx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	}
+	s.loadMandatoryObjectsErr = s.LoadObjects(loadCtx, s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
@@ -132,7 +142,9 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.common.TreeSyncer().StartSync()
+	if !disableRemoteLoad {
+		s.common.TreeSyncer().StartSync()
+	}
 }
 
 func (s *space) Id() string {
@@ -234,4 +246,8 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (s *space) IsReadOnly() bool {
+	return !s.CommonSpace().Acl().AclState().Permissions(s.myIdentity).CanWrite()
 }

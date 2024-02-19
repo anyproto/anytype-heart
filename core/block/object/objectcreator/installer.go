@@ -27,6 +27,9 @@ func (s *service) InstallBundledObjects(
 	sourceObjectIds []string,
 	isNewSpace bool,
 ) (ids []string, objects []*types.Struct, err error) {
+	if space.IsReadOnly() {
+		return
+	}
 
 	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
