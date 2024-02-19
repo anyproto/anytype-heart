@@ -36,6 +36,7 @@ const (
 	Name               = "Pb"
 	rootCollectionName = "Protobuf Import"
 	configFile         = "config.json"
+	fileDir            = "files"
 )
 
 var ErrNotAnyBlockExtension = errors.New("not JSON or PB extension")
@@ -225,6 +226,10 @@ func (p *Pb) getSnapshotsFromProvidedFiles(
 	workspaceSnapshot *common.Snapshot,
 ) {
 	if iterateErr := pbFiles.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
+		// skip files from "files" directory
+		if filepath.Dir(fileName) == fileDir {
+			return true
+		}
 		snapshot, err := p.makeSnapshot(fileName, profileID, path, fileReader, isMigration, pbFiles)
 		if err != nil {
 			allErrors.Add(err)
