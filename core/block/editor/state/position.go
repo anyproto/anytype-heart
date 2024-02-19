@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -66,23 +67,7 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	case model.Block_Inner:
 		target.Model().ChildrenIds = append(target.Model().ChildrenIds, ids...)
 	case model.Block_Replace:
-		pos = targetPos + 1
-		if len(ids) > 0 && len(s.Get(ids[0]).Model().ChildrenIds) == 0 {
-			var idsIsChild bool
-			if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
-				for _, id := range ids {
-					if slice.FindPos(targetChild, id) != -1 {
-						idsIsChild = true
-						break
-					}
-				}
-			}
-			if !idsIsChild {
-				s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
-			}
-		}
-		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
-		s.Unlink(target.Model().Id)
+		s.insertReplace(target, targetParentM, targetPos, ids...)
 	case model.Block_InnerFirst:
 		target.Model().ChildrenIds = append(ids, target.Model().ChildrenIds...)
 	default:
@@ -212,4 +197,35 @@ func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block
 	}
 	parent.Model().ChildrenIds[pos] = row.Model().Id
 	return
+}
+
+func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, targetPos int, ids ...string) {
+	if len(ids) == 0 {
+		return
+	}
+	_, canHaveChildren := s.Get(ids[0]).(text.Block)
+	targetHasChildren := false
+	pos := targetPos + 1
+	if !canHaveChildren {
+		pos = targetPos
+	}
+	if len(s.Get(ids[0]).Model().ChildrenIds) == 0 {
+		var idsIsChild bool
+		if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
+			targetHasChildren = true
+			for _, id := range ids {
+				if slice.FindPos(targetChild, id) != -1 {
+					idsIsChild = true
+					break
+				}
+			}
+		}
+		if !idsIsChild && canHaveChildren {
+			s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
+		}
+	}
+	targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
+	if canHaveChildren || !targetHasChildren {
+		s.Unlink(target.Model().Id)
+	}
 }
