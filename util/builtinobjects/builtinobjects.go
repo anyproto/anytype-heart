@@ -234,7 +234,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		path = url
 	} else {
 		if path, err = b.downloadZipToFile(url, progress); err != nil {
-			_ = progress.Cancel()
+			if pErr := progress.Cancel(); pErr != nil {
+				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
+			}
 			sendNotification(model.Import_INTERNAL_ERROR)
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
