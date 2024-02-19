@@ -99,7 +99,7 @@ func (n *AclNotificationSender) iterateAclContent(ctx context.Context,
 					return err
 				}
 			}
-			if reqLeave := content.GetAccountRequestRemove(); reqLeave != nil {
+			if reqLeave := content.GetAccountRemove(); reqLeave != nil {
 				if err := n.sendAccountRemove(ctx, space, record, aclId); err != nil {
 					return err
 				}
@@ -188,15 +188,20 @@ func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
 	record *list.AclRecord,
 	aclId string,
 ) error {
+	var name, iconCid string
 	profile := n.getProfileData(ctx, record.Identity.Account())
+	if profile != nil {
+		name = profile.Name
+		iconCid = profile.IconCid
+	}
 	err := n.notificationService.CreateAndSend(&model.Notification{
 		Id:      record.Id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfLeaveRequest{LeaveRequest: &model.NotificationLeaveRequest{
 			SpaceId:      space.Id(),
 			Identity:     record.Identity.Account(),
-			IdentityName: profile.Name,
-			IdentityIcon: profile.IconCid,
+			IdentityName: name,
+			IdentityIcon: iconCid,
 		}},
 		Space: space.Id(),
 		Acl:   aclId,
