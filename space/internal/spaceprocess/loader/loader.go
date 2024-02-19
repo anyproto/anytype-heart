@@ -38,7 +38,7 @@ func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
 	child.Register(params.Status).
 		Register(builder.New()).
-		Register(spaceloader.New(params.StopIfMandatoryFail)).
+		Register(spaceloader.New(params.StopIfMandatoryFail, false)).
 		Register(aclobjectmanager.New(params.OwnerMetadata)).
 		Register(aclnotifications.NewAclNotificationSender())
 	return &loader{

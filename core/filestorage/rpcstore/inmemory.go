@@ -153,7 +153,27 @@ func (t *inMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId do
 }
 
 func (t *inMemoryStore) DeleteFiles(ctx context.Context, spaceId string, fileIds ...domain.FileId) (err error) {
-	panic("not implemented")
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if _, ok := t.spaceFiles[spaceId]; !ok {
+		return fmt.Errorf("spaceFiles not found: %s", spaceId)
+	}
+	if _, ok := t.spaceCids[spaceId]; !ok {
+		return fmt.Errorf("spaceCids not found: %s", spaceId)
+	}
+
+	for _, fileId := range fileIds {
+		_, ok := t.spaceFiles[spaceId][fileId]
+		if ok {
+			delete(t.spaceFiles[spaceId], fileId)
+			for cId := range t.files[fileId] {
+				delete(t.spaceCids[spaceId], cId)
+			}
+			delete(t.files, fileId)
+		}
+	}
+	return nil
 }
 
 func (t *inMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {

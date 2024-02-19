@@ -167,7 +167,7 @@ func CopyNotification(in *model.Notification) (out *model.Notification) {
 	buf := bytesPool.Get().([]byte)
 	size := in.Size()
 	if cap(buf) < size {
-		buf = make([]byte, 0, size*2)
+		buf = make([]byte, 0, size)
 	}
 	// nolint:errcheck
 	size, err = in.MarshalToSizedBuffer(buf[:size])
