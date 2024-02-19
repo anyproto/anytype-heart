@@ -61,6 +61,7 @@ type SpaceCoreService interface {
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
 	Delete(ctx context.Context, spaceID string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
+	Pick(ctx context.Context, id string) (*AnySpace, error)
 	CloseSpace(ctx context.Context, id string) error
 
 	StreamPool() streampool.StreamPool
@@ -197,6 +198,14 @@ func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPay
 
 func (s *service) Get(ctx context.Context, id string) (space *AnySpace, err error) {
 	v, err := s.spaceCache.Get(ctx, id)
+	if err != nil {
+		return
+	}
+	return v.(*AnySpace), nil
+}
+
+func (s *service) Pick(ctx context.Context, id string) (space *AnySpace, err error) {
+	v, err := s.spaceCache.Pick(ctx, id)
 	if err != nil {
 		return
 	}

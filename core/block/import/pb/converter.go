@@ -39,6 +39,7 @@ const (
 )
 
 var ErrNotAnyBlockExtension = errors.New("not JSON or PB extension")
+var ErrWrongFormat = errors.New("wrong PB or JSON format")
 
 type Pb struct {
 	service         *collection.Service
@@ -288,7 +289,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
+			return nil, ErrWrongFormat
 		}
 		return snapshot, nil
 	}
@@ -296,10 +297,10 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		data, err := io.ReadAll(rd)
 		if err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
+			return nil, err
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
+			return nil, ErrWrongFormat
 		}
 		return snapshot, nil
 	}
@@ -361,7 +362,6 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType,
 	}
 	if snapshot.SbType == model.SmartBlockType_File {
 		err := p.normalizeFilePath(snapshot, pbFiles, path)
-		id = pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		if err != nil {
 			return "", fmt.Errorf("failed to update file path in file snapshot %w", err)
 		}
