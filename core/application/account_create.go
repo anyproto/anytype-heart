@@ -50,6 +50,9 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	if req.DisableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
+	if req.PreferYamuxTransport {
+		cfg.PeferYamuxTransport = true
+	}
 	if req.NetworkMode > 0 {
 		cfg.NetworkMode = req.NetworkMode
 		cfg.NetworkCustomConfigFilePath = req.NetworkCustomConfigFilePath
