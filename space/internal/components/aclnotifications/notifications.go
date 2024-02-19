@@ -120,17 +120,21 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 	space clientspace.Space, id, aclId string,
 ) error {
 	var name, iconCid string
-	profile := n.getProfileData(ctx, string(reqJoin.InviteIdentity))
+	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqJoin.InviteIdentity)
+	if err != nil {
+		return err
+	}
+	profile := n.getProfileData(ctx, pubKey.Account())
 	if profile != nil {
 		name = profile.Name
 		iconCid = profile.IconCid
 	}
-	err := n.notificationService.CreateAndSend(&model.Notification{
+	err = n.notificationService.CreateAndSend(&model.Notification{
 		Id:      id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfRequestToJoin{RequestToJoin: &model.NotificationRequestToJoin{
 			SpaceId:      space.Id(),
-			Identity:     string(reqJoin.InviteIdentity),
+			Identity:     pubKey.Account(),
 			IdentityName: name,
 			IdentityIcon: iconCid,
 		}},
@@ -176,11 +180,7 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 
 func (n *AclNotificationSender) getProfileData(ctx context.Context, account string) *model.IdentityProfile {
 	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*30)
-	profile := n.identityService.WaitProfile(ctxWithTimeout, account)
-	if profile == nil {
-		return nil
-	}
-	return profile
+	return n.identityService.WaitProfile(ctxWithTimeout, account)
 }
 
 func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
