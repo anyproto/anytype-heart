@@ -5,17 +5,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
-	"github.com/anyproto/anytype-heart/core/identity"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -175,7 +176,7 @@ func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpace
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
 	err := accept(cctx, req.SpaceId, req.Identity, req.Permissions, aclService)
 	if err == nil {
-		err = mw.sendResponseNotification(cctx, uuid.New().String(), req.SpaceId, req.Permissions, true)
+		err = mw.sendResponseNotification(req.Identity, req.SpaceId, req.Permissions, true)
 	}
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceRequestApproveResponseError_SPACE_IS_DELETED),
@@ -196,7 +197,7 @@ func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpace
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
 	err := decline(cctx, req.SpaceId, req.Identity, aclService)
 	if err == nil {
-		err = mw.sendResponseNotification(cctx, uuid.New().String(), req.SpaceId, 0, false)
+		err = mw.sendResponseNotification(req.Identity, req.SpaceId, 0, false)
 	}
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceRequestDeclineResponseError_SPACE_IS_DELETED),
@@ -212,19 +213,20 @@ func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpace
 	}
 }
 
-func (mw *Middleware) sendResponseNotification(cctx context.Context, id, spaceId string, permissions model.ParticipantPermissions, isApproved bool) error {
-	identityService := app.MustComponent[identity.Service](mw.GetApp())
-	details, err := identityService.GetDetails(cctx, id)
+func (mw *Middleware) sendResponseNotification(account, spaceId string, permissions model.ParticipantPermissions, isApproved bool) error {
+	objectStore := app.MustComponent[objectstore.ObjectStore](mw.GetApp())
+	id := domain.NewParticipantId(spaceId, account)
+	details, err := objectStore.GetDetails(id)
 	if err != nil {
 		return err
 	}
-	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
-	image := pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
+	name := pbtypes.GetString(details.Details, bundle.RelationKeyName.String())
+	image := pbtypes.GetString(details.Details, bundle.RelationKeyIconImage.String())
 	err = app.MustComponent[notifications.Notifications](mw.GetApp()).CreateAndSend(&model.Notification{
-		Id:      id,
+		Id:      uuid.New().String(),
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfRequestResponse{RequestResponse: &model.NotificationRequestResponse{
-			Identity:     id,
+			Identity:     account,
 			IdentityName: name,
 			IdentityIcon: image,
 			IsApproved:   isApproved,
