@@ -104,7 +104,7 @@ func (s *State) normalizeChildren(b simple.Block) {
 	m := b.Model()
 	for _, cid := range m.ChildrenIds {
 		if !s.Exists(cid) {
-			m.ChildrenIds = slice.RemoveMut(m.ChildrenIds, cid)
+			s.setChildrenIds(m, slice.RemoveMut(m.ChildrenIds, cid))
 			s.normalizeChildren(b)
 			return
 		}
@@ -166,7 +166,7 @@ func (s *State) normalizeTree() (err error) {
 	if s.Pick(headerId) != nil && slice.FindPos(s.Pick(s.RootId()).Model().ChildrenIds, headerId) != 0 {
 		s.Unlink(headerId)
 		root := s.Get(s.RootId()).Model()
-		root.ChildrenIds = append([]string{headerId}, root.ChildrenIds...)
+		s.setChildrenIds(root, append([]string{headerId}, root.ChildrenIds...))
 	}
 	return nil
 }
@@ -229,9 +229,9 @@ func (s *State) wrapChildrenToDiv(id string) (nextId string) {
 	}
 
 	div := s.newDiv()
-	div.Model().ChildrenIds = parent.ChildrenIds
+	s.setChildrenIds(div.Model(), parent.ChildrenIds)
 	s.Add(div)
-	parent.ChildrenIds = []string{div.Model().Id}
+	s.setChildrenIds(parent, []string{div.Model().Id})
 	return parent.Id
 }
 
@@ -245,9 +245,8 @@ func (s *State) divBalance(d1, d2 *model.Block) (overflow bool) {
 
 	d1ChildrenIds := make([]string, div)
 	copy(d1ChildrenIds, d1.ChildrenIds[:div])
-
-	d2.ChildrenIds = d1.ChildrenIds[div:]
-	d1.ChildrenIds = d1ChildrenIds
+	s.setChildrenIds(d2, d1.ChildrenIds[div:])
+	s.setChildrenIds(d1, d1ChildrenIds)
 	return len(d2.ChildrenIds) > maxChildrenThreshold
 }
 
@@ -305,7 +304,7 @@ func (s *State) removeDuplicates() {
 				idx = idx - i
 				chIds = append(chIds[:idx], chIds[idx+1:]...)
 			}
-			b.Model().ChildrenIds = chIds
+			s.setChildrenIds(b.Model(), chIds)
 		}
 		handledBlocks[b.Model().Id] = struct{}{}
 		return true
@@ -384,7 +383,7 @@ func CleanupLayouts(s *State) (removedCount int) {
 				}
 			}
 		}
-		b.Model().ChildrenIds = result
+		s.setChildrenIds(b.Model(), result)
 		return
 	}
 	cleanup(s.RootId())

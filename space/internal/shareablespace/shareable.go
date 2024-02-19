@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/offloader"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/remover"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -58,6 +59,9 @@ func (s *spaceController) Start(ctx context.Context) error {
 	case spaceinfo.AccountStatusJoining:
 		_, err := s.sm.ChangeMode(mode.ModeJoining)
 		return err
+	case spaceinfo.AccountStatusRemoving:
+		_, err := s.sm.ChangeMode(mode.ModeRemoving)
+		return err
 	default:
 		_, err := s.sm.ChangeMode(mode.ModeLoading)
 		return err
@@ -85,7 +89,7 @@ func (s *spaceController) SetStatus(ctx context.Context, status spaceinfo.Accoun
 
 func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
 	s.status.Lock()
-	if s.lastUpdatedStatus == status {
+	if s.lastUpdatedStatus == status || (s.lastUpdatedStatus == spaceinfo.AccountStatusDeleted && status == spaceinfo.AccountStatusRemoving) {
 		s.status.Unlock()
 		return nil
 	}
@@ -103,6 +107,8 @@ func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.Acc
 		return updateStatus(mode.ModeOffloading)
 	case spaceinfo.AccountStatusJoining:
 		return updateStatus(mode.ModeJoining)
+	case spaceinfo.AccountStatusRemoving:
+		return updateStatus(mode.ModeRemoving)
 	default:
 		return updateStatus(mode.ModeLoading)
 	}
@@ -135,6 +141,11 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 	case mode.ModeOffloading:
 		return offloader.New(s.app, offloader.Params{
 			Status: s.status,
+		})
+	case mode.ModeRemoving:
+		return remover.New(s.app, remover.Params{
+			SpaceId: s.spaceId,
+			Status:  s.status,
 		})
 	case mode.ModeJoining:
 		return joiner.New(s.app, joiner.Params{

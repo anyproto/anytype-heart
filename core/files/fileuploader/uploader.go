@@ -101,6 +101,7 @@ type Uploader interface {
 	SetFile(path string) Uploader
 	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
+	SetCustomEncryptionKeys(keys map[string]string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
@@ -156,10 +157,11 @@ type uploader struct {
 	opts              []files.AddOption
 	groupID           string
 
-	tempDirProvider   core.TempDirProvider
-	fileService       files.Service
-	origin            objectorigin.ObjectOrigin
-	additionalDetails *types.Struct
+	tempDirProvider      core.TempDirProvider
+	fileService          files.Service
+	origin               objectorigin.ObjectOrigin
+	additionalDetails    *types.Struct
+	customEncryptionKeys map[string]string
 }
 
 type bufioSeekClose struct {
@@ -236,6 +238,11 @@ func (u *uploader) SetBytes(b []byte) Uploader {
 			},
 		}, nil
 	}
+	return u
+}
+
+func (u *uploader) SetCustomEncryptionKeys(keys map[string]string) Uploader {
+	u.customEncryptionKeys = keys
 	return u
 }
 
@@ -419,6 +426,9 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		files.WithName(u.name),
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
+	}
+	if u.customEncryptionKeys != nil {
+		opts = append(opts, files.WithCustomEncryptionKeys(u.customEncryptionKeys))
 	}
 
 	if len(u.opts) > 0 {
