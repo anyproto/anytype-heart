@@ -648,6 +648,10 @@
     - [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request)
     - [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response)
     - [Rpc.Notification.Reply.Response.Error](#anytype-Rpc-Notification-Reply-Response-Error)
+    - [Rpc.Notification.Test](#anytype-Rpc-Notification-Test)
+    - [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request)
+    - [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response)
+    - [Rpc.Notification.Test.Response.Error](#anytype-Rpc-Notification-Test-Response-Error)
     - [Rpc.Object](#anytype-Rpc-Object)
     - [Rpc.Object.ApplyTemplate](#anytype-Rpc-Object-ApplyTemplate)
     - [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request)
@@ -1188,6 +1192,7 @@
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
     - [Rpc.Notification.List.Response.Error.Code](#anytype-Rpc-Notification-List-Response-Error-Code)
     - [Rpc.Notification.Reply.Response.Error.Code](#anytype-Rpc-Notification-Reply-Response-Error-Code)
+    - [Rpc.Notification.Test.Response.Error.Code](#anytype-Rpc-Notification-Test-Response-Error-Code)
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
     - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
@@ -1560,6 +1565,7 @@
     - [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved)
     - [Notification.RequestResponse](#anytype-model-Notification-RequestResponse)
     - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
+    - [Notification.Test](#anytype-model-Notification-Test)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1876,6 +1882,7 @@
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
+| NotificationTest | [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request) | [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response) |  |
 | BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
 
  
@@ -2545,6 +2552,7 @@ Front end to middleware request-to-create-an account
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
 | networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
+| preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 
 
 
@@ -3087,6 +3095,7 @@ User can select an account from those, that came with an AccountAdd events
 | disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
 | networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
+| preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 
 
 
@@ -11243,6 +11252,58 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Notification-Test"></a>
+
+### Rpc.Notification.Test
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-Test-Request"></a>
+
+### Rpc.Notification.Test.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-Test-Response"></a>
+
+### Rpc.Notification.Test.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Notification.Test.Response.Error](#anytype-Rpc-Notification-Test-Response-Error) |  |  |
+| notification | [model.Notification](#anytype-model-Notification) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Notification-Test-Response-Error"></a>
+
+### Rpc.Notification.Test.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Notification.Test.Response.Error.Code](#anytype-Rpc-Notification-Test-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object"></a>
 
 ### Rpc.Object
@@ -18933,6 +18994,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Notification-Test-Response-Error-Code"></a>
+
+### Rpc.Notification.Test.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
 <a name="anytype-Rpc-Object-ApplyTemplate-Response-Error-Code"></a>
 
 ### Rpc.Object.ApplyTemplate.Response.Error.Code
@@ -24497,12 +24572,13 @@ Used to decode block meta only, without the content itself
 | export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
 | galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
 | requestToJoin | [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin) |  |  |
+| test | [Notification.Test](#anytype-model-Notification-Test) |  |  |
 | requestResponse | [Notification.RequestResponse](#anytype-model-Notification-RequestResponse) |  |  |
 | participantRequestApproved | [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved) |  |  |
 | leaveRequest | [Notification.LeaveRequest](#anytype-model-Notification-LeaveRequest) |  |  |
 | participantRemove | [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove) |  |  |
 | space | [string](#string) |  |  |
-| acl | [string](#string) |  |  |
+| aclHeadId | [string](#string) |  |  |
 
 
 
@@ -24644,6 +24720,16 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-Test"></a>
+
+### Notification.Test
+
 
 
 

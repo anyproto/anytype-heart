@@ -966,13 +966,14 @@ message Notification {
         Export export = 8;
         GalleryImport galleryImport = 9;
         RequestToJoin requestToJoin = 10;
-        RequestResponse requestResponse = 11;
-        ParticipantRequestApproved participantRequestApproved = 12;
+        Test test = 11;
+        RequestResponse requestResponse = 12;
+        ParticipantRequestApproved participantRequestApproved = 13;
         LeaveRequest leaveRequest = 15;
         ParticipantRemove participantRemove = 16;
     }
     string space = 7;
-    string acl = 13;
+    string aclHeadId = 14;
 
     message Import {
         string processId = 1;
@@ -1005,6 +1006,8 @@ message Notification {
         string identityName = 3;
         string identityIcon = 4;
     }
+
+    message Test {}
 
     message RequestResponse {
         string identity = 1;
