@@ -11,8 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-type canHaveChildren interface {
-	CanHaveChildren()
+type childrenInheritable interface {
+	CanInheritChildren()
 }
 
 func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...string) (err error) {
@@ -244,10 +244,10 @@ func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, t
 		return
 	}
 	id0Block := s.Get(ids[0])
-	_, canHaveChildren := id0Block.(canHaveChildren)
+	_, canInheritChildren := id0Block.(childrenInheritable)
 	targetHasChildren := false
 	pos := targetPos + 1
-	if !canHaveChildren {
+	if !canInheritChildren {
 		pos = targetPos
 	}
 	if len(id0Block.Model().ChildrenIds) == 0 {
@@ -261,12 +261,12 @@ func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, t
 				}
 			}
 		}
-		if !idsIsChild && canHaveChildren {
+		if !idsIsChild && canInheritChildren {
 			s.setChildrenIds(id0Block.Model(), target.Model().ChildrenIds)
 		}
 	}
 	s.insertChildrenIds(targetParentM, pos, ids...)
-	if canHaveChildren || !targetHasChildren {
+	if canInheritChildren || !targetHasChildren {
 		s.Unlink(target.Model().Id)
 	}
 }
