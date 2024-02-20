@@ -99,10 +99,16 @@ func (n *AclNotificationSender) iterateAclContent(ctx context.Context,
 					return err
 				}
 			}
+			if reqLeave := content.GetAccountRemove(); reqLeave != nil {
+				if err := n.sendAccountRemove(ctx, space, record, aclId); err != nil {
+					return err
+				}
+			}
 		}
 		if reqApprove := content.GetRequestAccept(); reqApprove != nil {
 			if err := n.sendParticipantRequestApprove(reqApprove, space, record.Id, aclId); err != nil {
 				return err
+
 			}
 		}
 	}
@@ -175,6 +181,35 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 func (n *AclNotificationSender) getProfileData(ctx context.Context, account string) *model.IdentityProfile {
 	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*30)
 	return n.identityService.WaitProfile(ctxWithTimeout, account)
+}
+
+func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
+	space clientspace.Space,
+	record *list.AclRecord,
+	aclId string,
+) error {
+	var name, iconCid string
+	profile := n.getProfileData(ctx, record.Identity.Account())
+	if profile != nil {
+		name = profile.Name
+		iconCid = profile.IconCid
+	}
+	err := n.notificationService.CreateAndSend(&model.Notification{
+		Id:      record.Id,
+		IsLocal: false,
+		Payload: &model.NotificationPayloadOfLeaveRequest{LeaveRequest: &model.NotificationLeaveRequest{
+			SpaceId:      space.Id(),
+			Identity:     record.Identity.Account(),
+			IdentityName: name,
+			IdentityIcon: iconCid,
+		}},
+		Space:     space.Id(),
+		AclHeadId: aclId,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func mapProtoPermissionToAcl(permissions aclrecordproto.AclUserPermissions) model.ParticipantPermissions {

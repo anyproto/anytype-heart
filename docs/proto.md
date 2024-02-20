@@ -1560,6 +1560,8 @@
     - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
+    - [Notification.LeaveRequest](#anytype-model-Notification-LeaveRequest)
+    - [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove)
     - [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved)
     - [Notification.RequestResponse](#anytype-model-Notification-RequestResponse)
     - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
@@ -24573,6 +24575,8 @@ Used to decode block meta only, without the content itself
 | test | [Notification.Test](#anytype-model-Notification-Test) |  |  |
 | requestResponse | [Notification.RequestResponse](#anytype-model-Notification-RequestResponse) |  |  |
 | participantRequestApproved | [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved) |  |  |
+| leaveRequest | [Notification.LeaveRequest](#anytype-model-Notification-LeaveRequest) |  |  |
+| participantRemove | [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove) |  |  |
 | space | [string](#string) |  |  |
 | aclHeadId | [string](#string) |  |  |
 
@@ -24628,6 +24632,41 @@ Used to decode block meta only, without the content itself
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-LeaveRequest"></a>
+
+### Notification.LeaveRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+| identityName | [string](#string) |  |  |
+| identityIcon | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-ParticipantRemove"></a>
+
+### Notification.ParticipantRemove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| identityName | [string](#string) |  |  |
+| identityIcon | [string](#string) |  |  |
 
 
 
