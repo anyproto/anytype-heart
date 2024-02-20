@@ -11,6 +11,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+type childrenInheritable interface {
+	CanInheritChildren()
+}
+
 func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...string) (err error) {
 	var (
 		target        simple.Block
@@ -66,24 +70,7 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	case model.Block_Inner:
 		s.prependChildrenIds(target.Model(), ids...)
 	case model.Block_Replace:
-		pos = targetPos + 1
-		id0Block := s.Get(ids[0]).Model()
-		if len(ids) > 0 && len(id0Block.ChildrenIds) == 0 {
-			var idsIsChild bool
-			if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
-				for _, id := range ids {
-					if slice.FindPos(targetChild, id) != -1 {
-						idsIsChild = true
-						break
-					}
-				}
-			}
-			if !idsIsChild {
-				s.setChildrenIds(id0Block, target.Model().ChildrenIds)
-			}
-		}
-		s.insertChildrenIds(targetParentM, pos, ids...)
-		s.Unlink(target.Model().Id)
+		s.insertReplace(target, targetParentM, targetPos, ids...)
 	case model.Block_InnerFirst:
 		s.appendChildrenIds(target.Model(), ids...)
 	default:
@@ -250,4 +237,36 @@ func (s *State) addNewBlockAndWrapToColumn(opId string, b simple.Block) simple.B
 	})
 	s.Add(column)
 	return column
+}
+
+func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, targetPos int, ids ...string) {
+	if len(ids) == 0 {
+		return
+	}
+	id0Block := s.Get(ids[0])
+	_, canInheritChildren := id0Block.(childrenInheritable)
+	targetHasChildren := false
+	pos := targetPos + 1
+	if !canInheritChildren {
+		pos = targetPos
+	}
+	if len(id0Block.Model().ChildrenIds) == 0 {
+		var idsIsChild bool
+		if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
+			targetHasChildren = true
+			for _, id := range ids {
+				if slice.FindPos(targetChild, id) != -1 {
+					idsIsChild = true
+					break
+				}
+			}
+		}
+		if !idsIsChild && canInheritChildren {
+			s.setChildrenIds(id0Block.Model(), target.Model().ChildrenIds)
+		}
+	}
+	s.insertChildrenIds(targetParentM, pos, ids...)
+	if canInheritChildren || !targetHasChildren {
+		s.Unlink(target.Model().Id)
+	}
 }
