@@ -143,6 +143,32 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 		return nil, nil, fmt.Errorf("query uninstalled objects: %w", err)
 	}
 
+	if len(sourceObjectIDs) != len(uninstalledObjects) {
+		archived, _, err := s.objectStore.Query(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeySourceObject.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.StringList(sourceObjectIDs),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(space.Id()),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+		})
+		if err != nil {
+			log.Errorf("query archived objects: %w", err)
+		}
+		uninstalledObjects = append(uninstalledObjects, archived...)
+	}
+
 	var (
 		ids     []string
 		objects []*types.Struct
@@ -161,6 +187,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 			st.SetDetails(installingDetails)
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, pbtypes.Bool(false))
 			typeKey = domain.TypeKey(st.UniqueKeyInternal())
 
 			ids = append(ids, id)
