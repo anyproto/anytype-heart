@@ -203,8 +203,8 @@ func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
 			IdentityName: name,
 			IdentityIcon: iconCid,
 		}},
-		Space: space.Id(),
-		Acl:   aclId,
+		Space:     space.Id(),
+		AclHeadId: aclId,
 	})
 	if err != nil {
 		return err
