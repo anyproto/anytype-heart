@@ -132,7 +132,7 @@ func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clien
 	}
 
 	deletedObjects = lo.UniqBy(append(deletedObjects, archivedObjects...), func(record database.Record) string {
-		return pbtypes.GetString(record.Details, bundle.RelationKeySourceObject.String())
+		return pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
 	})
 
 	var (
