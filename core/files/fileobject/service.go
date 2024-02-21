@@ -187,7 +187,6 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		if err != nil {
 			// Will be retried in background, so don't return error
 			log.Errorf("add to index queue: %v", err)
-			err = nil
 		}
 	}
 
