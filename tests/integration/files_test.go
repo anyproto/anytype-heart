@@ -21,14 +21,14 @@ func TestFiles(t *testing.T) {
 		blockService := getService[*block.Service](app)
 		objectId, details, err := blockService.UploadFile(ctx, acc.Info.AccountSpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
-				LocalPath: "../../pkg/lib/mill/testdata/Landscape_8.jpg",
+				LocalPath: "./testdata/test_image.png",
 			},
 		})
 
 		require.NoError(t, err)
 		require.NotEmpty(t, objectId)
 
-		assert.Equal(t, "Landscape_8", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+		assert.Equal(t, "test_image", pbtypes.GetString(details, bundle.RelationKeyName.String()))
 		assert.NotEmpty(t, pbtypes.GetString(details, bundle.RelationKeyFileId.String()))
 		assert.NotEmpty(t, pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
 		assert.True(t, pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()) > 0)
