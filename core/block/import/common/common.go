@@ -349,7 +349,7 @@ func AddRelationsToDataView(collectionState *state.State, relationLink *model.Re
 				err := dataView.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
 					Key:       relationLink.Key,
 					IsVisible: true,
-					Width:     192,
+					Width:     dataview.DefaultViewRelationWidth,
 				})
 				if err != nil {
 					return true
