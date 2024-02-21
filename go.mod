@@ -269,7 +269,7 @@ require (
 
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
 
-replace github.com/dgraph-io/ristretto => github.com/anyproto/ristretto v0.1.2-0.20240206201651-43b6ac4c41bf
+replace github.com/dgraph-io/ristretto => github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c
 
 replace github.com/libp2p/zeroconf/v2 => github.com/anyproto/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941
 
