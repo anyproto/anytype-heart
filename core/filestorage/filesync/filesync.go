@@ -127,9 +127,8 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	go f.runNodeUsageUpdater()
-
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
+	go f.runNodeUsageUpdater()
 	go f.addLoop()
 	go f.removeLoop()
 	return
