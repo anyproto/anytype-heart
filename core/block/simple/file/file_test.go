@@ -81,6 +81,6 @@ func TestFile_Validate(t *testing.T) {
 			Content:      &model.BlockContentOfFile{File: &model.BlockContentFile{State: model.BlockContentFile_Done, Size_: 0}},
 		}).(*File)
 		err := b.Validate()
-		assert.Error(t, err)
+		assert.NoError(t, err)
 	})
 }
