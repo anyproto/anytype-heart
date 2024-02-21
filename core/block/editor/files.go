@@ -8,8 +8,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
@@ -17,9 +17,10 @@ import (
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
 	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
 	return &File{
-		SmartBlock:    sb,
-		AllOperations: basicComponent,
-		Text:          stext.NewText(sb, f.objectStore, f.eventSender),
+		SmartBlock:        sb,
+		AllOperations:     basicComponent,
+		Text:              stext.NewText(sb, f.objectStore, f.eventSender),
+		fileObjectService: f.fileObjectService,
 	}
 }
 
@@ -27,6 +28,7 @@ type File struct {
 	smartblock.SmartBlock
 	basic.AllOperations
 	stext.Text
+	fileObjectService fileobject.Service
 }
 
 func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -37,14 +39,12 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
 			}
 
-			// Other blocks added in file indexer (see fileobject package)
-			template.InitTemplate(s,
-				template.WithEmpty,
-				template.WithTitle,
-				template.WithDefaultFeaturedRelations,
-				template.WithFeaturedRelations,
-				template.WithAllBlocksEditsRestricted,
-			)
+			// Other blocks added:
+			// - While creating file object, if we use synchronous metadata indexing mode
+			// - In background metadata indexer, if we use asynchronous metadata indexing mode
+			//
+			// See fileobject.Service
+			p.fileObjectService.InitEmptyFileState(ctx.State)
 		},
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -12,6 +13,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -41,6 +45,7 @@ const CName = "fileobject"
 type Service interface {
 	app.ComponentRunnable
 
+	InitEmptyFileState(st *state.State)
 	DeleteFileData(objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
@@ -55,7 +60,7 @@ type Service interface {
 }
 
 type objectCreatorService interface {
-	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *types.Struct, err error)
 }
 
 type service struct {
@@ -98,10 +103,21 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 type CreateRequest struct {
-	FileId            domain.FileId
-	EncryptionKeys    map[string]string
-	ObjectOrigin      objectorigin.ObjectOrigin
-	AdditionalDetails *types.Struct
+	FileId                domain.FileId
+	EncryptionKeys        map[string]string
+	ObjectOrigin          objectorigin.ObjectOrigin
+	AdditionalDetails     *types.Struct
+	AsyncMetadataIndexing bool
+}
+
+func (s *service) InitEmptyFileState(st *state.State) {
+	template.InitTemplate(st,
+		template.WithEmpty,
+		template.WithTitle,
+		template.WithDefaultFeaturedRelations,
+		template.WithFeaturedRelations,
+		template.WithAllBlocksEditsRestricted,
+	)
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
@@ -136,24 +152,43 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		}
 	}
 
-	createState := state.NewDoc("", nil).(*state.State)
+	payload, err := space.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
+		Time:           time.Now(),
+		SmartblockType: coresb.SmartBlockTypeFileObject,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("create tree payload: %w", err)
+	}
+
+	createState := state.NewDoc(payload.RootRawChange.Id, nil).(*state.State)
 	createState.SetDetails(details)
 	createState.SetFileInfo(state.FileInfo{
 		FileId:         req.FileId,
 		EncryptionKeys: req.EncryptionKeys,
 	})
+	if !req.AsyncMetadataIndexing {
+		s.InitEmptyFileState(createState)
+		fullFileId := domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}
+		fullObjectId := domain.FullID{SpaceID: space.Id(), ObjectID: payload.RootRawChange.Id}
+		err := s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
+		if err != nil {
+			return "", nil, fmt.Errorf("inject metadata to state: %w", err)
+		}
+	}
 
 	// Type will be changed after indexing, just use general type File for now
-	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState)
+	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpaceWithOptions(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState, objectcreator.WithPayload(&payload))
 	if err != nil {
 		return "", nil, fmt.Errorf("create object: %w", err)
 	}
 
-	err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId})
-	if err != nil {
-		// Will be retried in background, so don't return error
-		log.Errorf("add to index queue: %v", err)
-		err = nil
+	if req.AsyncMetadataIndexing {
+		err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId})
+		if err != nil {
+			// Will be retried in background, so don't return error
+			log.Errorf("add to index queue: %v", err)
+			err = nil
+		}
 	}
 
 	return id, object, nil
@@ -174,7 +209,7 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 	})
 
 	// Type will be changed after indexing, just use general type File for now
-	id, _, err := s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState)
+	id, _, err := s.objectCreator.CreateSmartBlockFromStateInSpaceWithOptions(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState)
 	if errors.Is(err, treestorage.ErrTreeExists) {
 		return nil
 	}
@@ -233,9 +268,10 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 		return "", fmt.Errorf("get file keys: %w", err)
 	}
 	fileObjectId, _, err = s.Create(context.Background(), fileId.SpaceId, CreateRequest{
-		FileId:         fileId.FileId,
-		EncryptionKeys: keys,
-		ObjectOrigin:   origin,
+		FileId:                fileId.FileId,
+		EncryptionKeys:        keys,
+		ObjectOrigin:          origin,
+		AsyncMetadataIndexing: true,
 	})
 	if err != nil {
 		return "", fmt.Errorf("create object: %w", err)

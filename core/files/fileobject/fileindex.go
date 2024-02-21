@@ -178,6 +178,25 @@ func (ind *indexer) indexNext(ctx context.Context) error {
 func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId domain.FullFileId) error {
 	defer ind.markIndexingDone(id)
 
+	space, err := ind.spaceService.Get(ctx, id.SpaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	err = space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		err := ind.injectMetadataToState(ctx, st, fileId, id)
+		if err != nil {
+			return fmt.Errorf("inject metadata to state: %w", err)
+		}
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return fmt.Errorf("apply to smart block: %w", err)
+	}
+	return nil
+}
+
+func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
 	if errors.Is(err, domain.ErrFileNotFound) {
 		log.Errorf("build details: %v", err)
@@ -186,32 +205,22 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	if err != nil {
 		return fmt.Errorf("build details: %w", err)
 	}
-	space, err := ind.spaceService.Get(ctx, id.SpaceID)
-	if err != nil {
-		return fmt.Errorf("get space: %w", err)
+
+	st.SetObjectTypeKey(typeKey)
+	prevDetails := st.CombinedDetails()
+
+	keys := make([]domain.RelationKey, 0, len(details.Fields))
+	for k := range details.Fields {
+		keys = append(keys, domain.RelationKey(k))
 	}
-	err = space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-		st.SetObjectTypeKey(typeKey)
-		prevDetails := st.CombinedDetails()
+	st.AddBundledRelations(keys...)
 
-		keys := make([]domain.RelationKey, 0, len(details.Fields))
-		for k := range details.Fields {
-			keys = append(keys, domain.RelationKey(k))
-		}
-		st.AddBundledRelations(keys...)
+	details = pbtypes.StructMerge(prevDetails, details, true)
+	st.SetDetails(details)
 
-		details = pbtypes.StructMerge(prevDetails, details, true)
-		st.SetDetails(details)
-
-		err = ind.addBlocks(st, details, id.ObjectID)
-		if err != nil {
-			return fmt.Errorf("add blocks: %w", err)
-		}
-		return sb.Apply(st)
-	})
+	err = ind.addBlocks(st, details, id.ObjectID)
 	if err != nil {
-		return fmt.Errorf("apply to smart block: %w", err)
+		return fmt.Errorf("add blocks: %w", err)
 	}
 	return nil
 }
