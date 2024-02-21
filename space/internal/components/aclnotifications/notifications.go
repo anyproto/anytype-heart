@@ -1,21 +1,29 @@
 package aclnotifications
 
 import (
-	"time"
-
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/cheggaaa/mb"
 	"golang.org/x/net/context"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 )
 
 const Cname = "spaceNotification"
+
+var logger = logging.Logger("acl-notifications")
+
+type aclNotificationRecord struct {
+	record      list.AclRecord
+	permissions list.AclPermissions
+	spaceId     string
+	aclId       string
+}
 
 type NotificationSender interface {
 	CreateAndSend(notification *model.Notification) error
@@ -23,61 +31,75 @@ type NotificationSender interface {
 }
 
 type AclNotification interface {
-	SendNotification(ctx context.Context, space clientspace.Space, permissions list.AclPermissions, acl syncacl.SyncAcl) error
+	app.ComponentRunnable
+	AddRecords(acl syncacl.SyncAcl, permissions list.AclPermissions, spaceId string)
 }
 
-type AclNotificationSender struct {
-	app.Component
+type aclNotificationSender struct {
 	identityService     dependencies.IdentityService
 	notificationService NotificationSender
+	batcher             *mb.MB
 }
 
-func NewAclNotificationSender() *AclNotificationSender {
-	return &AclNotificationSender{}
+func NewAclNotificationSender() AclNotification {
+	return &aclNotificationSender{batcher: mb.New(0)}
 }
 
-func (n *AclNotificationSender) Init(a *app.App) (err error) {
+func (n *aclNotificationSender) Init(a *app.App) (err error) {
 	n.identityService = app.MustComponent[dependencies.IdentityService](a)
 	n.notificationService = app.MustComponent[NotificationSender](a)
 	return nil
 }
 
-func (n *AclNotificationSender) Name() (name string) {
+func (n *aclNotificationSender) Name() (name string) {
 	return Cname
 }
 
-func (n *AclNotificationSender) SendNotification(ctx context.Context,
-	space clientspace.Space,
-	permissions list.AclPermissions,
-	acl syncacl.SyncAcl,
-) error {
+func (n *aclNotificationSender) Run(ctx context.Context) (err error) {
+	go n.processRecords()
+	return
+}
+
+func (n *aclNotificationSender) Close(ctx context.Context) (err error) {
+	if err := n.batcher.Close(); err != nil {
+		logger.Errorf("failed to close batcher, %s", err)
+	}
+	return
+}
+
+func (n *aclNotificationSender) AddRecords(acl syncacl.SyncAcl, permissions list.AclPermissions, spaceId string) {
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
-	var err error
 	if lastNotificationId != "" {
 		acl.IterateFrom(lastNotificationId, func(record *list.AclRecord) (IsContinue bool) {
-			if err = n.handleAclContent(ctx, record, permissions, space, acl.Id()); err != nil {
-				return false
+			err := n.batcher.Add(&aclNotificationRecord{
+				record:      *record,
+				permissions: permissions,
+				spaceId:     spaceId,
+				aclId:       acl.Id(),
+			})
+			if err != nil {
+				logger.Errorf("failed to add acl record, %s", err)
 			}
 			return true
 		})
-		return err
+		return
 	}
 	for _, record := range acl.Records() {
-		if err = n.handleAclContent(ctx, record, permissions, space, acl.Id()); err != nil {
-			return err
+		err := n.batcher.Add(&aclNotificationRecord{
+			record:      *record,
+			permissions: permissions,
+			spaceId:     spaceId,
+			aclId:       acl.Id(),
+		})
+		if err != nil {
+			logger.Errorf("failed to add acl record, %s", err)
 		}
 	}
-	return nil
 }
 
-func (n *AclNotificationSender) handleAclContent(ctx context.Context,
-	record *list.AclRecord,
-	permissions list.AclPermissions,
-	space clientspace.Space,
-	aclId string,
-) error {
-	if aclData, ok := record.Model.(*aclrecordproto.AclData); ok {
-		err := n.iterateAclContent(ctx, record, permissions, space, aclId, aclData)
+func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
+	if aclData, ok := aclNotificationRecord.record.Model.(*aclrecordproto.AclData); ok {
+		err := n.iterateAclContent(ctx, aclNotificationRecord, aclData)
 		if err != nil {
 			return err
 		}
@@ -85,28 +107,38 @@ func (n *AclNotificationSender) handleAclContent(ctx context.Context,
 	return nil
 }
 
-func (n *AclNotificationSender) iterateAclContent(ctx context.Context,
-	record *list.AclRecord,
-	permissions list.AclPermissions,
-	space clientspace.Space,
-	aclId string,
+func (n *aclNotificationSender) processRecords() {
+	for {
+		msgs := n.batcher.Wait()
+		if len(msgs) == 0 {
+			return
+		}
+		for _, msg := range msgs {
+			record, ok := msg.(*aclNotificationRecord)
+			if !ok {
+				continue
+			}
+			err := n.sendNotification(context.Background(), record)
+			if err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (n *aclNotificationSender) iterateAclContent(ctx context.Context,
+	aclNotificationRecord *aclNotificationRecord,
 	aclData *aclrecordproto.AclData,
 ) error {
 	for _, content := range aclData.AclContent {
-		if permissions.CanManageAccounts() {
-			if reqJoin := content.GetRequestJoin(); reqJoin != nil {
-				if err := n.sendJoinRequest(ctx, reqJoin, space, record.Id, aclId); err != nil {
-					return err
-				}
-			}
-			if reqLeave := content.GetAccountRemove(); reqLeave != nil {
-				if err := n.sendAccountRemove(ctx, space, record, aclId); err != nil {
-					return err
-				}
+		if aclNotificationRecord.permissions.CanManageAccounts() {
+			err := n.handleOwnerNotifications(ctx, aclNotificationRecord, content)
+			if err != nil {
+				return err
 			}
 		}
 		if reqApprove := content.GetRequestAccept(); reqApprove != nil {
-			if err := n.sendParticipantRequestApprove(reqApprove, space, record.Id, aclId); err != nil {
+			if err := n.sendParticipantRequestApprove(reqApprove, aclNotificationRecord); err != nil {
 				return err
 
 			}
@@ -115,31 +147,45 @@ func (n *AclNotificationSender) iterateAclContent(ctx context.Context,
 	return nil
 }
 
-func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
+func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context, aclNotificationRecord *aclNotificationRecord, content *aclrecordproto.AclContentValue) error {
+	if reqJoin := content.GetRequestJoin(); reqJoin != nil {
+		if err := n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord); err != nil {
+			return err
+		}
+	}
+	if reqLeave := content.GetAccountRemove(); reqLeave != nil {
+		if err := n.sendAccountRemove(ctx, aclNotificationRecord); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (n *aclNotificationSender) sendJoinRequest(ctx context.Context,
 	reqJoin *aclrecordproto.AclAccountRequestJoin,
-	space clientspace.Space, id, aclId string,
+	notificationRecord *aclNotificationRecord,
 ) error {
 	var name, iconCid string
 	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqJoin.InviteIdentity)
 	if err != nil {
 		return err
 	}
-	profile := n.getProfileData(ctx, pubKey.Account())
+	profile := n.identityService.WaitProfile(ctx, pubKey.Account())
 	if profile != nil {
 		name = profile.Name
 		iconCid = profile.IconCid
 	}
 	err = n.notificationService.CreateAndSend(&model.Notification{
-		Id:      id,
+		Id:      notificationRecord.record.Id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfRequestToJoin{RequestToJoin: &model.NotificationRequestToJoin{
-			SpaceId:      space.Id(),
+			SpaceId:      notificationRecord.spaceId,
 			Identity:     pubKey.Account(),
 			IdentityName: name,
 			IdentityIcon: iconCid,
 		}},
-		Space:     space.Id(),
-		AclHeadId: aclId,
+		Space:     notificationRecord.spaceId,
+		AclHeadId: notificationRecord.aclId,
 	})
 	if err != nil {
 		return err
@@ -147,9 +193,8 @@ func (n *AclNotificationSender) sendJoinRequest(ctx context.Context,
 	return nil
 }
 
-func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrecordproto.AclAccountRequestAccept,
-	space clientspace.Space,
-	id, aclId string,
+func (n *aclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrecordproto.AclAccountRequestAccept,
+	notificationRecord *aclNotificationRecord,
 ) error {
 	identity, _, _ := n.identityService.GetMyProfileDetails()
 	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqApprove.Identity)
@@ -161,16 +206,16 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 		return nil
 	}
 	err = n.notificationService.CreateAndSend(&model.Notification{
-		Id:      id,
+		Id:      notificationRecord.record.Id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfParticipantRequestApproved{
 			ParticipantRequestApproved: &model.NotificationParticipantRequestApproved{
-				SpaceID:    space.Id(),
+				SpaceID:    notificationRecord.spaceId,
 				Permission: mapProtoPermissionToAcl(reqApprove.Permissions),
 			},
 		},
-		Space:     space.Id(),
-		AclHeadId: aclId,
+		Space:     notificationRecord.spaceId,
+		AclHeadId: notificationRecord.aclId,
 	})
 	if err != nil {
 		return err
@@ -178,33 +223,24 @@ func (n *AclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 	return nil
 }
 
-func (n *AclNotificationSender) getProfileData(ctx context.Context, account string) *model.IdentityProfile {
-	ctxWithTimeout, _ := context.WithTimeout(ctx, time.Second*30)
-	return n.identityService.WaitProfile(ctxWithTimeout, account)
-}
-
-func (n *AclNotificationSender) sendAccountRemove(ctx context.Context,
-	space clientspace.Space,
-	record *list.AclRecord,
-	aclId string,
-) error {
+func (n *aclNotificationSender) sendAccountRemove(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
 	var name, iconCid string
-	profile := n.getProfileData(ctx, record.Identity.Account())
+	profile := n.identityService.WaitProfile(ctx, aclNotificationRecord.record.Identity.Account())
 	if profile != nil {
 		name = profile.Name
 		iconCid = profile.IconCid
 	}
 	err := n.notificationService.CreateAndSend(&model.Notification{
-		Id:      record.Id,
+		Id:      aclNotificationRecord.record.Id,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfLeaveRequest{LeaveRequest: &model.NotificationLeaveRequest{
-			SpaceId:      space.Id(),
-			Identity:     record.Identity.Account(),
+			SpaceId:      aclNotificationRecord.spaceId,
+			Identity:     aclNotificationRecord.record.Identity.Account(),
 			IdentityName: name,
 			IdentityIcon: iconCid,
 		}},
-		Space:     space.Id(),
-		AclHeadId: aclId,
+		Space:     aclNotificationRecord.spaceId,
+		AclHeadId: aclNotificationRecord.aclId,
 	})
 	if err != nil {
 		return err
