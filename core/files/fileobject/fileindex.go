@@ -200,7 +200,8 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
 	if errors.Is(err, domain.ErrFileNotFound) {
 		log.Errorf("build details: %v", err)
-		return ind.markFileAsNotFound(id)
+		ind.markFileAsNotFound(st)
+		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("build details: %w", err)
@@ -225,16 +226,8 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	return nil
 }
 
-func (ind *indexer) markFileAsNotFound(id domain.FullID) error {
-	space, err := ind.spaceService.Get(ind.indexCtx, id.SpaceID)
-	if err != nil {
-		return fmt.Errorf("get space: %w", err)
-	}
-	return space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileIndexingStatus, pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)))
-		return sb.Apply(st)
-	})
+func (ind *indexer) markFileAsNotFound(st *state.State) {
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileIndexingStatus, pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)))
 }
 
 func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {
