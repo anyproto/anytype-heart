@@ -48,7 +48,7 @@ CACHE LOGICS:
 
     x if got no info -> cache it for 10 days
     x if got into without expiration -> cache it for 10 days
-    x	if got info -> cache it for until it expires
+    x if got info -> cache it for until it expires
     x if cache was disabled before and tier has changed -> enable cache again
     x if can not connect to PP node -> return error
     x if can not write to cache -> return error
@@ -327,11 +327,18 @@ func getStatus(ctx context.Context, pp ppclient.AnyPpClientService, ps payments.
 		}
 	}
 
-	// 5 - if cache was disabled but the tier is different -> enable cache again (we have received new data from )
+	// 5 - if cache was disabled but the tier is different -> enable cache again (we have received new data)
 	if !ps.IsCacheEnabled() {
-		if cached == nil || cached.Tier != pb.RpcPaymentsSubscriptionSubscriptionTier(status.Tier) {
+		// only when tier changed
+		isDiffTier := (cached != nil) && (cached.Tier != pb.RpcPaymentsSubscriptionSubscriptionTier(status.Tier))
+
+		// only when received active state (finally)
+		isActive := (status.Status == psp.SubscriptionStatus(pb.RpcPaymentsSubscription_StatusActive))
+
+		if cached == nil || (isDiffTier && isActive) {
 			log.Debug("enabling cache again")
 
+			// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
 			err := ps.CacheEnable()
 			if err != nil {
 				return &pb.RpcPaymentsSubscriptionGetStatusResponse{
@@ -353,6 +360,7 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, ps payme
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId: w.Account().SignKey.GetPublic().Account(),
 
+		// not SCW address, but EOA address
 		// including 0x
 		OwnerEthAddress: w.GetAccountEthAddress().Hex(),
 
