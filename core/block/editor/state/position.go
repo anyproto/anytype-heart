@@ -11,8 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-type childrenInheritable interface {
-	CanInheritChildren()
+type childrenInheritableOnReplace interface {
+	CanInheritChildrenOnReplace()
 }
 
 func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...string) (err error) {
@@ -244,7 +244,7 @@ func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, t
 		return
 	}
 	id0Block := s.Get(ids[0])
-	_, canInheritChildren := id0Block.(childrenInheritable)
+	_, canInheritChildren := id0Block.(childrenInheritableOnReplace)
 	targetHasChildren := false
 	pos := targetPos + 1
 	if !canInheritChildren {
