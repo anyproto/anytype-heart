@@ -147,7 +147,10 @@ func (n *aclNotificationSender) iterateAclContent(ctx context.Context,
 	return nil
 }
 
-func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context, aclNotificationRecord *aclNotificationRecord, content *aclrecordproto.AclContentValue) error {
+func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context,
+	aclNotificationRecord *aclNotificationRecord,
+	content *aclrecordproto.AclContentValue,
+) error {
 	if reqJoin := content.GetRequestJoin(); reqJoin != nil {
 		if err := n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord); err != nil {
 			return err
