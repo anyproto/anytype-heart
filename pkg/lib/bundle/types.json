@@ -322,7 +322,7 @@
       "Participant"
     ],
     "emoji": "\uD83E\uDDD1",
-    "hidden": true,
+    "hidden": false,
     "layout": "participant",
     "relations": [
       "tag"
