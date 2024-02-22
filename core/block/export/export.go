@@ -535,7 +535,7 @@ func (e *export) objectValid(sbType smartblock.SmartBlockType, id string, r *mod
 	if r.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && !validTypeForNonProtobuf(sbType) {
+	if !isProtobuf && !validTypeForNonProtobuf(sbType, r.Details) {
 		return false
 	}
 	if isProtobuf && !validType(sbType) {
@@ -605,10 +605,18 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeFileObject
 }
 
-func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
+func validTypeForNonProtobuf(sbType smartblock.SmartBlockType, details *types.Struct) bool {
+	if !validLayout(details) {
+		return false
+	}
 	return sbType == smartblock.SmartBlockTypeProfilePage ||
 		sbType == smartblock.SmartBlockTypePage ||
 		sbType == smartblock.SmartBlockTypeFileObject
+}
+
+func validLayout(details *types.Struct) bool {
+	return pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) != float64(model.ObjectType_collection) &&
+		pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) != float64(model.ObjectType_set)
 }
 
 func (e *export) cleanupFile(wr writer) {
