@@ -21,7 +21,7 @@ func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basicComponent,
-		Text:           stext.NewText(sb, f.objectStore, f.eventSender),fileObjectService: f.fileObjectService,
+		Text:           stext.NewText(sb, f.objectStore, f.eventSender), fileObjectService: f.fileObjectService,
 	}
 }
 
