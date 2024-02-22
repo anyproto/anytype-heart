@@ -203,7 +203,8 @@
       "addedDate",
       "fileExt"
     ],
-    "description": "Auto-generated object from .mpeg-4 files added to Anytype. The recording of moving visual images"
+    "description": "The recording of moving visual images",
+    "restrictObjectCreation": true
   },
   {
     "id": "dashboard",
@@ -215,7 +216,8 @@
     "hidden": true,
     "layout": "dashboard",
     "relations": [],
-    "description": "Internal home dashboard with favourite objects"
+    "description": "Internal home dashboard with favourite objects",
+    "restrictObjectCreation": true
   },
   {
     "id": "dailyPlan",
@@ -295,7 +297,8 @@
     "relations": [
       "tag"
     ],
-    "description": "Workspace"
+    "description": "Workspace",
+    "restrictObjectCreation": true
   },
   {
     "id": "spaceView",
@@ -309,7 +312,8 @@
     "relations": [
       "tag"
     ],
-    "description": "Space"
+    "description": "Space",
+    "restrictObjectCreation": true
   },
   {
     "id": "participant",
@@ -323,7 +327,8 @@
     "relations": [
       "tag"
     ],
-    "description": "Participant"
+    "description": "Anytype identity as a space participant",
+    "restrictObjectCreation": true
   },
   {
     "id": "template",
@@ -441,7 +446,8 @@
       "focalRatio",
       "fileExt"
     ],
-    "description": "Auto-generated object from .jpg \u0026 .png files added to Anytype. A representation of the external form of a person or thing in art"
+    "description": "A representation of the external form of a person or thing in art",
+    "restrictObjectCreation": true
   },
   {
     "id": "bug",
@@ -503,7 +509,8 @@
       "audioArtist",
       "audioLyrics"
     ],
-    "description": "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce"
+    "description": "Sound when recorded, with ability to reproduce",
+    "restrictObjectCreation": true
   },
   {
     "id": "goal",
@@ -575,7 +582,8 @@
       "addedDate",
       "fileExt"
     ],
-    "description": "Auto-generated object from files added to Anytype. Computer resource for recording data in a computer storage device"
+    "description": "Computer resource for recording data in a computer storage device",
+    "restrictObjectCreation": true
   },
   {
     "id": "project",
