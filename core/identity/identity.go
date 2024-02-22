@@ -251,6 +251,9 @@ func (s *service) cacheProfileDetails(details *types.Struct) {
 		Description: pbtypes.GetString(details, bundle.RelationKeyDescription.String()),
 		IconCid:     pbtypes.GetString(details, bundle.RelationKeyIconImage.String()),
 	}
+
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	observers, ok := s.identityObservers[s.myIdentity]
 	if ok {
 		for _, obs := range observers {
