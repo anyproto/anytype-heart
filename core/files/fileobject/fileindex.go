@@ -178,35 +178,15 @@ func (ind *indexer) indexNext(ctx context.Context) error {
 func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId domain.FullFileId) error {
 	defer ind.markIndexingDone(id)
 
-	details, typeKey, err := ind.buildDetails(ctx, fileId)
-	if errors.Is(err, domain.ErrFileNotFound) {
-		log.Errorf("build details: %v", err)
-		return ind.markFileAsNotFound(id)
-	}
-	if err != nil {
-		return fmt.Errorf("build details: %w", err)
-	}
 	space, err := ind.spaceService.Get(ctx, id.SpaceID)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
 	err = space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		st.SetObjectTypeKey(typeKey)
-		prevDetails := st.CombinedDetails()
-
-		keys := make([]domain.RelationKey, 0, len(details.Fields))
-		for k := range details.Fields {
-			keys = append(keys, domain.RelationKey(k))
-		}
-		st.AddBundledRelations(keys...)
-
-		details = pbtypes.StructMerge(prevDetails, details, true)
-		st.SetDetails(details)
-
-		err = ind.addBlocks(st, details, id.ObjectID)
+		err := ind.injectMetadataToState(ctx, st, fileId, id)
 		if err != nil {
-			return fmt.Errorf("add blocks: %w", err)
+			return fmt.Errorf("inject metadata to state: %w", err)
 		}
 		return sb.Apply(st)
 	})
@@ -216,16 +196,38 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	return nil
 }
 
-func (ind *indexer) markFileAsNotFound(id domain.FullID) error {
-	space, err := ind.spaceService.Get(ind.indexCtx, id.SpaceID)
-	if err != nil {
-		return fmt.Errorf("get space: %w", err)
+func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
+	details, typeKey, err := ind.buildDetails(ctx, fileId)
+	if errors.Is(err, domain.ErrFileNotFound) {
+		log.Errorf("build details: %v", err)
+		ind.markFileAsNotFound(st)
+		return nil
 	}
-	return space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileIndexingStatus, pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)))
-		return sb.Apply(st)
-	})
+	if err != nil {
+		return fmt.Errorf("build details: %w", err)
+	}
+
+	st.SetObjectTypeKey(typeKey)
+	prevDetails := st.CombinedDetails()
+
+	keys := make([]domain.RelationKey, 0, len(details.Fields))
+	for k := range details.Fields {
+		keys = append(keys, domain.RelationKey(k))
+	}
+	st.AddBundledRelations(keys...)
+
+	details = pbtypes.StructMerge(prevDetails, details, true)
+	st.SetDetails(details)
+
+	err = ind.addBlocks(st, details, id.ObjectID)
+	if err != nil {
+		return fmt.Errorf("add blocks: %w", err)
+	}
+	return nil
+}
+
+func (ind *indexer) markFileAsNotFound(st *state.State) {
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileIndexingStatus, pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)))
 }
 
 func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {

@@ -88,10 +88,10 @@ func TestState_InsertTo(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
 		r.Add(simple.New(&model.Block{Id: "target", ChildrenIds: []string{"child"}}))
-		r.Add(simple.New(&model.Block{Id: "child"}))
+		r.Add(simple.New(&model.Block{Id: "child", Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}))
 
 		s := r.NewState()
-		s.Add(simple.New(&model.Block{Id: "first"}))
+		s.Add(simple.New(&model.Block{Id: "first", Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}))
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Replace, "first", "second")
 
@@ -109,6 +109,45 @@ func TestState_InsertTo(t *testing.T) {
 		_, _, err = ApplyState(s, true)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"child", "second"}, r.Pick("root").Model().ChildrenIds)
+	})
+
+	t.Run("do not replace target with children when non-text block inserted", func(t *testing.T) {
+		// given
+		r := NewDoc("root", nil).(*State)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
+		r.Add(simple.New(&model.Block{Id: "target", ChildrenIds: []string{"child"}}))
+		r.Add(simple.New(&model.Block{Id: "child", ChildrenIds: []string{}}))
+
+		s := r.NewState()
+		s.Add(simple.New(&model.Block{Id: "link", Content: &model.BlockContentOfLink{}}))
+
+		// when
+		err := s.InsertTo("target", model.Block_Replace, "link")
+		_, _, err2 := ApplyState(s, true)
+
+		// then
+		assert.NoError(t, err)
+		assert.NoError(t, err2)
+		assert.Len(t, s.Pick("root").Model().ChildrenIds, 2)
+	})
+
+	t.Run("replace target without children when non-text block inserted", func(t *testing.T) {
+		// given
+		r := NewDoc("root", nil).(*State)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
+		r.Add(simple.New(&model.Block{Id: "target", ChildrenIds: []string{}}))
+
+		s := r.NewState()
+		s.Add(simple.New(&model.Block{Id: "link", Content: &model.BlockContentOfLink{}}))
+
+		// when
+		err := s.InsertTo("target", model.Block_Replace, "link")
+		_, _, err2 := ApplyState(s, true)
+
+		// then
+		assert.NoError(t, err)
+		assert.NoError(t, err2)
+		assert.Equal(t, s.Pick("root").Model().ChildrenIds, []string{"link"})
 	})
 
 	t.Run("innerFirst", func(t *testing.T) {
