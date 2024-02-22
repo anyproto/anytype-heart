@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
@@ -17,14 +18,16 @@ import (
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
 	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
 	return &File{
-		SmartBlock:    sb,
-		AllOperations: basicComponent,
-		Text:          stext.NewText(sb, f.objectStore, f.eventSender),
+		SmartBlock:     sb,
+		ChangeReceiver: sb.(source.ChangeReceiver),
+		AllOperations:  basicComponent,
+		Text:           stext.NewText(sb, f.objectStore, f.eventSender),
 	}
 }
 
 type File struct {
 	smartblock.SmartBlock
+	source.ChangeReceiver
 	basic.AllOperations
 	stext.Text
 }
