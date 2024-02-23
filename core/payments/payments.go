@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 )
@@ -47,10 +49,11 @@ type StorageStructV1 struct {
 
 func newStorageStructV1() *StorageStructV1 {
 	return &StorageStructV1{
-		CurrentVersion:   1,
-		LastUpdated:      time.Now().UTC(),
-		ExpireTime:       time.Time{},
-		DisableUntilTime: time.Time{},
+		CurrentVersion:     1,
+		LastUpdated:        time.Now().UTC(),
+		ExpireTime:         time.Time{},
+		DisableUntilTime:   time.Time{},
+		SubscriptionStatus: pb.RpcPaymentsSubscriptionGetStatusResponse{},
 	}
 }
 
@@ -83,33 +86,38 @@ func New() Service {
 }
 
 type service struct {
-	db *badger.DB
+	dbProvider datastore.Datastore
+	db         *badger.DB
+
+	m sync.Mutex
 }
 
-func (r *service) Name() (name string) {
+func (s *service) Name() (name string) {
 	return CName
 }
 
-func (r *service) Init(a *app.App) (err error) {
-	db, err := badger.Open(badger.DefaultOptions("payments_cache"))
+func (s *service) Init(a *app.App) (err error) {
+	s.dbProvider = app.MustComponent[datastore.Datastore](a)
+
+	db, err := s.dbProvider.LocalStorage()
 	if err != nil {
 		return err
 	}
-	r.db = db
+	s.db = db
 	return nil
 }
 
-func (r *service) Run(_ context.Context) (err error) {
+func (s *service) Run(_ context.Context) (err error) {
 	return nil
 }
 
-func (r *service) Close(_ context.Context) (err error) {
-	return r.db.Close()
+func (s *service) Close(_ context.Context) (err error) {
+	return s.db.Close()
 }
 
-func (r *service) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, err error) {
+func (s *service) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, err error) {
 	// 1 - check in storage
-	ss, err := r.get()
+	ss, err := s.get()
 	if err != nil {
 		log.Error("can not get subscription status from cache", zap.Error(err))
 		// do not translate error here!
@@ -124,7 +132,7 @@ func (r *service) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, 
 	}
 
 	// 2 - check if cache is disabled
-	if !r.IsCacheEnabled() {
+	if !s.IsCacheEnabled() {
 		// return object too
 		return &ss.SubscriptionStatus, ErrCacheDisabled
 	}
@@ -138,9 +146,9 @@ func (r *service) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, 
 	return &ss.SubscriptionStatus, nil
 }
 
-func (r *service) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, ExpireTime time.Time) (err error) {
+func (s *service) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, ExpireTime time.Time) (err error) {
 	// 1 - get existing storage
-	ss, err := r.get()
+	ss, err := s.get()
 	if err != nil {
 		// if there is no record in the cache, let's create it
 		ss = newStorageStructV1()
@@ -151,12 +159,12 @@ func (r *service) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, Expi
 	ss.ExpireTime = ExpireTime
 
 	// 3 - save to storage
-	return r.set(ss)
+	return s.set(ss)
 }
 
-func (r *service) IsCacheEnabled() (enabled bool) {
+func (s *service) IsCacheEnabled() (enabled bool) {
 	// 1 - get existing storage
-	ss, err := r.get()
+	ss, err := s.get()
 	if err != nil {
 		return true
 	}
@@ -170,9 +178,9 @@ func (r *service) IsCacheEnabled() (enabled bool) {
 }
 
 // will not return error if already enabled
-func (r *service) CacheEnable() (err error) {
+func (s *service) CacheEnable() (err error) {
 	// 1 - get existing storage
-	ss, err := r.get()
+	ss, err := s.get()
 	if err != nil {
 		// if there is no record in the cache, let's create it
 		ss = newStorageStructV1()
@@ -182,7 +190,7 @@ func (r *service) CacheEnable() (err error) {
 	ss.DisableUntilTime = time.Time{}
 
 	// 3 - save to storage
-	err = r.set(ss)
+	err = s.set(ss)
 	if err != nil {
 		return ErrCacheDbError
 	}
@@ -191,9 +199,9 @@ func (r *service) CacheEnable() (err error) {
 
 // will not return error if already disabled
 // if currently disabled - will disable for next N minutes
-func (r *service) CacheDisableForNextMinutes(minutes int) (err error) {
+func (s *service) CacheDisableForNextMinutes(minutes int) (err error) {
 	// 1 - get existing storage
-	ss, err := r.get()
+	ss, err := s.get()
 	if err != nil {
 		// if there is no record in the cache, let's create it
 		ss = newStorageStructV1()
@@ -203,7 +211,7 @@ func (r *service) CacheDisableForNextMinutes(minutes int) (err error) {
 	ss.DisableUntilTime = time.Now().UTC().Add(time.Minute * time.Duration(minutes))
 
 	// 3 - save to storage
-	err = r.set(ss)
+	err = s.set(ss)
 	if err != nil {
 		return ErrCacheDbError
 	}
@@ -211,60 +219,54 @@ func (r *service) CacheDisableForNextMinutes(minutes int) (err error) {
 }
 
 // does not take into account if cache is enabled or not, erases always
-func (r *service) CacheClear() (err error) {
+func (s *service) CacheClear() (err error) {
 	// 1 - get existing storage
-	ss, err := r.get()
+	ss, err := s.get()
 	if err != nil {
 		// no error if there is no record in the cache
 		return nil
 	}
 
 	// 2 - update storage
-	ss.CurrentVersion = 1
-	ss.LastUpdated = time.Now().UTC()
-	ss.ExpireTime = time.Time{}
-	ss.DisableUntilTime = time.Time{}
-	ss.SubscriptionStatus = pb.RpcPaymentsSubscriptionGetStatusResponse{}
+	ss = newStorageStructV1()
 
 	// 3 - save to storage
-	err = r.set(ss)
+	err = s.set(ss)
 	if err != nil {
 		return ErrCacheDbError
 	}
 	return nil
 }
 
-func (r *service) get() (out *StorageStructV1, err error) {
-	if r.db == nil {
+func (s *service) get() (out *StorageStructV1, err error) {
+	if s.db == nil {
 		return nil, errors.New("db is not initialized")
 	}
 
-	err = r.db.View(func(txn *badger.Txn) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	var ss StorageStructV1
+	err = s.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(dbKey))
 		if err != nil {
 			return err
 		}
 
-		var data []byte
-		data, err = item.ValueCopy(data)
-		if err != nil {
-			return err
-		}
-
-		// convert value to out
-		var ss StorageStructV1
-		err = json.Unmarshal(data, &ss)
-		if err != nil {
-			return err
-		}
-
-		out = &ss
-		return nil
+		return item.Value(func(val []byte) error {
+			// convert value to out
+			return json.Unmarshal(val, &ss)
+		})
 	})
-	return
+
+	out = &ss
+	return out, err
 }
 
 func (s *service) set(in *StorageStructV1) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	return s.db.Update(func(txn *badger.Txn) error {
 		// convert
 		bytes, err := json.Marshal(*in)

@@ -12,27 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (mw *Middleware) getPpClient() (pp ppclient.AnyPpClientService, err error) {
-	if a := mw.applicationService.GetApp(); a != nil {
-		return a.MustComponent(ppclient.CName).(ppclient.AnyPpClientService), nil
-	}
-	return nil, ErrNotLoggedIn
-}
-
-func (mw *Middleware) getPaymentsService() (ps payments.Service, err error) {
-	if a := mw.applicationService.GetApp(); a != nil {
-		return a.MustComponent(payments.CName).(payments.Service), nil
-	}
-	return nil, ErrNotLoggedIn
-}
-
-func (mw *Middleware) getWallet() (w wallet.Wallet, err error) {
-	if a := mw.applicationService.GetApp(); a != nil {
-		return a.MustComponent(wallet.CName).(wallet.Wallet), nil
-	}
-	return nil, ErrNotLoggedIn
-}
-
 /*
 CACHE LOGICS:
  1. User installs Anytype
@@ -63,176 +42,40 @@ CACHE LOGICS:
     -> clear cache (it will cause getting again from PP node next)
 */
 func (mw *Middleware) PaymentsSubscriptionGetStatus(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse {
-	ps, err := mw.getPaymentsService()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetStatusResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetStatusResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	// Get name service object that connects to the remote "paymentProcessingNode"
-	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
-	// see https://github.com/anyproto/any-sync/paymentservice/ for example
-	pp, err := mw.getPpClient()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetStatusResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetStatusResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	w, err := mw.getWallet()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetStatusResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetStatusResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
+	ps := getService[payments.Service](mw)
+	pp := getService[ppclient.AnyPpClientService](mw)
+	w := getService[wallet.Wallet](mw)
 
 	return getStatus(ctx, pp, ps, w, req)
 }
 
 func (mw *Middleware) PaymentsSubscriptionGetPaymentUrl(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) *pb.RpcPaymentsSubscriptionGetPaymentUrlResponse {
-	ps, err := mw.getPaymentsService()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	// Get name service object that connects to the remote "paymentProcessingNode"
-	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
-	// see https://github.com/anyproto/any-sync/paymentservice/ for example
-	pp, err := mw.getPpClient()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	w, err := mw.getWallet()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPaymentUrlResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPaymentUrlResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
+	ps := getService[payments.Service](mw)
+	pp := getService[ppclient.AnyPpClientService](mw)
+	w := getService[wallet.Wallet](mw)
 
 	return getPaymentURL(ctx, pp, ps, w, req)
 }
 
 func (mw *Middleware) PaymentsSubscriptionGetPortalLinkUrl(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) *pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse {
-	ps, err := mw.getPaymentsService()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	// Get name service object that connects to the remote "paymentProcessingNode"
-	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
-	// see https://github.com/anyproto/any-sync/paymentservice/ for example
-	pp, err := mw.getPpClient()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	w, err := mw.getWallet()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
+	ps := getService[payments.Service](mw)
+	pp := getService[ppclient.AnyPpClientService](mw)
+	w := getService[wallet.Wallet](mw)
 
 	return getPortalLink(ctx, pp, ps, w, req)
 }
 
 func (mw *Middleware) PaymentsSubscriptionGetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest) *pb.RpcPaymentsSubscriptionGetVerificationEmailResponse {
-	// Get name service object that connects to the remote "paymentProcessingNode"
-	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
-	// see https://github.com/anyproto/any-sync/paymentservice/ for example
-	pp, err := mw.getPpClient()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetVerificationEmailResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetVerificationEmailResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetVerificationEmailResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	w, err := mw.getWallet()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionGetVerificationEmailResponse{
-			Error: &pb.RpcPaymentsSubscriptionGetVerificationEmailResponseError{
-				Code:        pb.RpcPaymentsSubscriptionGetVerificationEmailResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
+	pp := getService[ppclient.AnyPpClientService](mw)
+	w := getService[wallet.Wallet](mw)
 
 	return getVerificationEmail(ctx, pp, w, req)
 }
 
 func (mw *Middleware) PaymentsSubscriptionVerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) *pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse {
-	// Get name service object that connects to the remote "paymentProcessingNode"
-	// in order for that to work, we need to have a "paymentProcessingNode" node in the nodes section of the config
-	// see
-	pp, err := mw.getPpClient()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse{
-			Error: &pb.RpcPaymentsSubscriptionVerifyEmailCodeResponseError{
-				Code:        pb.RpcPaymentsSubscriptionVerifyEmailCodeResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	w, err := mw.getWallet()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse{
-			Error: &pb.RpcPaymentsSubscriptionVerifyEmailCodeResponseError{
-				Code:        pb.RpcPaymentsSubscriptionVerifyEmailCodeResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	ps, err := mw.getPaymentsService()
-	if err != nil {
-		return &pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse{
-			Error: &pb.RpcPaymentsSubscriptionVerifyEmailCodeResponseError{
-				Code:        pb.RpcPaymentsSubscriptionVerifyEmailCodeResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
-	}
+	pp := getService[ppclient.AnyPpClientService](mw)
+	w := getService[wallet.Wallet](mw)
+	ps := getService[payments.Service](mw)
 
 	return verifyEmailCode(ctx, pp, ps, w, req)
 }

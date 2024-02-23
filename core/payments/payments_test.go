@@ -2,7 +2,6 @@ package payments
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -11,34 +10,23 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/require"
 	"github.com/tj/assert"
-	"go.uber.org/mock/gomock"
 )
 
 var ctx = context.Background()
 
 type fixture struct {
-	a    *app.App
-	ctrl *gomock.Controller
-	//db     *badger.DB
-	tmpDir string
+	a *app.App
 
 	*service
 }
 
 func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
-		a:    new(app.App),
-		ctrl: gomock.NewController(t),
-
+		a:       new(app.App),
 		service: New().(*service),
 	}
 
-	// init real (non-mocked) badger db
-	tmpDir, err := os.MkdirTemp("", "payments_cache_*")
-	require.NoError(t, err)
-	fx.tmpDir = tmpDir
-
-	db, err := badger.Open(badger.DefaultOptions(tmpDir).WithLoggingLevel(badger.ERROR))
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
 	require.NoError(t, err)
 	fx.db = db
 
@@ -50,10 +38,8 @@ func newFixture(t *testing.T) *fixture {
 
 func (fx *fixture) finish(t *testing.T) {
 	assert.NoError(t, fx.a.Close(ctx))
-	fx.ctrl.Finish()
 
 	//assert.NoError(t, fx.db.Close())
-	_ = os.RemoveAll(fx.tmpDir)
 }
 
 func TestPayments_EnableCache(t *testing.T) {
