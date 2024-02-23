@@ -287,7 +287,7 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 				IsNewObject:    true,
 				ObjectTypeKeys: []domain.TypeKey{bundle.TypeKeyDashboard},
 				State:          extractedState,
-				SpaceID:        s.personalSpaceId,
+				SpaceID:        s.Id(),
 			}
 		})
 		if err != nil {

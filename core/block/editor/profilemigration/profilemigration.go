@@ -11,8 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -52,25 +51,26 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 		return true
 	})
 
-	uk, err := domain.NewUniqueKey(smartblock2.SmartBlockTypePage, InternalKeyOldProfileData)
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypePage, InternalKeyOldProfileData)
 	if err != nil {
 		return nil, err
 	}
 	newState := state.NewDocWithUniqueKey(st.RootId(), blocksMap, uk).(*state.State)
-	newState.SetDetails(pbtypes.CopyStruct(st.CombinedDetails()))
-	newName := pbtypes.GetString(newState.Details(), bundle.RelationKeyName.String()) + " [migrated]"
-	newState.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(newName))
-	newState.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(false))
-	newState.SetDetail(bundle.RelationKeyIsReadonly.String(), pbtypes.Bool(false))
-	newState.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(model.ObjectType_profile)))
+	newState.AddRelationLinks(st.GetRelationLinks()...)
+	newStateDetails := pbtypes.CopyStruct(st.Details())
+	newName := pbtypes.GetString(newStateDetails, bundle.RelationKeyName.String()) + " [migrated]"
+	newStateDetails.Fields[bundle.RelationKeyName.String()] = pbtypes.String(newName)
+	newStateDetails.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(false)
+	newState.SetDetails(newStateDetails)
+	// remove the identity block
 	newState.CleanupBlock(identityBlockId)
 
-	rootBlock := st.Pick(st.RootId())
-	slices.DeleteFunc(rootBlock.Model().ChildrenIds, func(s string) bool {
+	rootBlock := st.Get(st.RootId())
+	rootBlock.Model().ChildrenIds = slices.DeleteFunc(rootBlock.Model().ChildrenIds, func(s string) bool {
 		return !slices.Contains(whitelistBlocks, s)
 	})
 
-	var whitelistDetailKeys = []string{
+	whitelistDetailKeys := []string{
 		"iconEmoji",
 		"name",
 		"isHidden",
@@ -80,13 +80,13 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 		"iconImage",
 		"iconOption",
 	}
-	keysToRemove := []string{}
+	var keysToRemove []string
 	for k := range st.Details().GetFields() {
 		if !slices.Contains(whitelistDetailKeys, k) {
 			keysToRemove = append(keysToRemove, k)
 		}
 	}
-
+	// cleanup custom details from old state
 	st.RemoveDetail(keysToRemove...)
 	st.RemoveRelation(keysToRemove...)
 	return newState, nil

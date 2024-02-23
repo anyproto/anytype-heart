@@ -93,28 +93,6 @@ func migrationSetHidden(st *state.State) {
 	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
 }
 
-func migrationExtractBlocksIfExists() template.StateTransformer {
-	return func(st *state.State) {
-		blockId := "identity"
-		st.Set(simple.New(&model.Block{
-			Id: blockId,
-			Content: &model.BlockContentOfRelation{
-				Relation: &model.BlockContentRelation{
-					Key: bundle.RelationKeyProfileOwnerIdentity.String(),
-				},
-			},
-			Restrictions: &model.BlockRestrictions{
-				Edit:   true,
-				Remove: true,
-				Drag:   true,
-				DropOn: true,
-			},
-		}))
-
-		st.InsertTo(state.TitleBlockID, model.Block_Bottom, blockId)
-	}
-}
-
 func migrationWithIdentityBlock(st *state.State) {
 	blockId := "identity"
 	st.Set(simple.New(&model.Block{
