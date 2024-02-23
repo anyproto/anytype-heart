@@ -33,10 +33,12 @@ var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
 type FileSync interface {
 	AddFile(spaceId string, fileId domain.FileId, uploadedByUser, imported bool) (err error)
+	UploadSynchronously(spaceId string, fileId domain.FileId) error
 	OnUploadStarted(func(fileId domain.FileId) error)
 	OnUploaded(func(fileId domain.FileId) error)
 	OnLimited(func(fileId domain.FileId) error)
 	RemoveFile(spaceId string, fileId domain.FileId) (err error)
+	RemoveSynchronously(spaceId string, fileId domain.FileId) (err error)
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)
@@ -125,9 +127,8 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	go f.runNodeUsageUpdater()
-
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
+	go f.runNodeUsageUpdater()
 	go f.addLoop()
 	go f.removeLoop()
 	return

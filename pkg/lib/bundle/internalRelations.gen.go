@@ -6,7 +6,7 @@ package bundle
 
 import domain "github.com/anyproto/anytype-heart/core/domain"
 
-const InternalRelationsChecksum = "19cefc1c3cd9e090d6c715ccc819b852798c2b638edb0b162f999b9bf57e98ce"
+const InternalRelationsChecksum = "252c59332af390d7006506a90fa7617b48082f796e97ad50a74b8fd3a680bc2c"
 
 // RequiredInternalRelations contains internal relations that will be added to EVERY new or existing object
 // if this relation only needs SPECIFIC objects(e.g. of some type) add it to the SystemRelations
@@ -37,6 +37,4 @@ var RequiredInternalRelations = []domain.RelationKey{
 	RelationKeyLinks,
 	RelationKeyInternalFlags,
 	RelationKeyRestrictions,
-	RelationKeyFileId,
-	RelationKeySizeInBytes,
 }

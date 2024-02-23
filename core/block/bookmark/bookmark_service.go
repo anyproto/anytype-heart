@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 const CName = "bookmark"
@@ -40,6 +41,7 @@ const CName = "bookmark"
 type ContentFuture func() *bookmark.ObjectContent
 
 type Service interface {
+	CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error)
 	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	UpdateObject(objectId string, getContent *bookmark.ObjectContent) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
@@ -88,6 +90,23 @@ func (s *service) Name() (name string) {
 }
 
 var log = logging.Logger("anytype-mw-bookmark")
+
+func (s *service) CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
+	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
+	var res ContentFuture
+	if source != "" {
+		u, err := uri.NormalizeURI(source)
+		if err != nil {
+			return "", nil, fmt.Errorf("process uri: %w", err)
+		}
+		res = s.FetchBookmarkContent(req.SpaceId, u, false)
+	} else {
+		res = func() *bookmark.ObjectContent {
+			return nil
+		}
+	}
+	return s.CreateBookmarkObject(ctx, spaceId, req.Details, res)
+}
 
 func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, objectDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {

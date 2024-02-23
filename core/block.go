@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -43,8 +44,8 @@ func (mw *Middleware) BlockCreate(cctx context.Context, req *pb.RpcBlockCreateRe
 
 func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcBlockLinkCreateWithObjectResponseErrorCode, id, targetId string, err error) *pb.RpcBlockLinkCreateWithObjectResponse {
-		m := &pb.RpcBlockLinkCreateWithObjectResponse{Error: &pb.RpcBlockLinkCreateWithObjectResponseError{Code: code}, BlockId: id, TargetId: targetId}
+	response := func(code pb.RpcBlockLinkCreateWithObjectResponseErrorCode, id, targetId string, objectDetails *types.Struct, err error) *pb.RpcBlockLinkCreateWithObjectResponse {
+		m := &pb.RpcBlockLinkCreateWithObjectResponse{Error: &pb.RpcBlockLinkCreateWithObjectResponseError{Code: code}, BlockId: id, TargetId: targetId, Details: objectDetails}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -52,15 +53,18 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 		}
 		return m
 	}
-	var id, targetId string
+	var (
+		id, targetId  string
+		objectDetails *types.Struct
+	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, targetId, err = bs.CreateLinkToTheNewObject(cctx, ctx, req)
+		id, targetId, objectDetails, err = bs.CreateLinkToTheNewObject(cctx, ctx, req)
 		return
 	})
 	if err != nil {
-		return response(pb.RpcBlockLinkCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", err)
+		return response(pb.RpcBlockLinkCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", objectDetails, err)
 	}
-	return response(pb.RpcBlockLinkCreateWithObjectResponseError_NULL, id, targetId, nil)
+	return response(pb.RpcBlockLinkCreateWithObjectResponseError_NULL, id, targetId, objectDetails, nil)
 }
 
 func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {

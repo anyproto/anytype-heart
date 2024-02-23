@@ -431,21 +431,25 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 	if err != nil {
 		return nil, err
 	}
-	err = aclClient.AddRecord(ctx, res.InviteRec)
-	if err != nil {
-		return nil, fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
-	}
 
 	invite, err := a.buildInvite(ctx, acceptSpace, res.InviteKey)
 	if err != nil {
 		return nil, fmt.Errorf("build invite: %w", err)
 	}
-	inviteFileCid, inviteFileKey, err := a.inviteStore.StoreInvite(ctx, spaceId, invite)
+	inviteFileCid, inviteFileKey, err := a.inviteStore.StoreInvite(ctx, invite)
 	if err != nil {
 		return nil, fmt.Errorf("store invite in ipfs: %w", err)
 	}
+	removeInviteFile := func() {
+		err := a.inviteStore.RemoveInvite(ctx, inviteFileCid)
+		if err != nil {
+			log.Error("remove invite file", zap.Error(err))
+		}
+	}
+
 	inviteFileKeyRaw, err := EncodeKeyToBase58(inviteFileKey)
 	if err != nil {
+		removeInviteFile()
 		return nil, fmt.Errorf("encode invite file key: %w", err)
 	}
 	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
@@ -456,7 +460,14 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		return view.SetInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
 	})
 	if err != nil {
+		removeInviteFile()
 		return nil, fmt.Errorf("set invite file info: %w", err)
+	}
+
+	err = aclClient.AddRecord(ctx, res.InviteRec)
+	if err != nil {
+		removeInviteFile()
+		return nil, fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
 
 	return &InviteInfo{
