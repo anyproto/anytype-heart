@@ -25,6 +25,7 @@ type pasteCtrl struct {
 
 	caretPos  int32
 	uploadArr []pb.RpcBlockUploadRequest
+	blockIds  []string
 }
 
 type pasteMode struct {
@@ -65,11 +66,6 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 		p.removeSelection()
 	}
 	p.normalize()
-
-	if p.mode.singleRange && req.FocusedBlockId != "" {
-		p.restoreFocusedBlockId(req.FocusedBlockId)
-	}
-
 	p.processFiles()
 	return
 }
@@ -296,6 +292,7 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	return p.ps.Iterate(func(b simple.Block) (isContinue bool) {
 		if b.Model().Id != p.ps.RootId() {
 			p.s.Add(b)
+			p.blockIds = append(p.blockIds, b.Model().Id)
 		} else {
 			p.s.InsertTo(targetId, targetPos, b.Model().ChildrenIds...)
 		}
@@ -360,38 +357,4 @@ func (p *pasteCtrl) intoCodeBlock() (err error) {
 	p.ps.Get(p.ps.RootId()).Model().ChildrenIds = nil
 	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, true)
 	return err
-}
-
-// TODO: GO-1394 Changing id of new block to old one conflicts the idea of changes and multiplatform. Needs redesign
-func (p *pasteCtrl) restoreFocusedBlockId(target string) {
-	isTargetFound := false
-	p.s.Iterate(func(b simple.Block) (isContinue bool) {
-		if b.Model().Id == target {
-			isTargetFound = true
-			return false
-		}
-		return true
-	})
-
-	if isTargetFound {
-		return
-	}
-
-	lastPasteText := p.getLastPasteText()
-	if lastPasteText == nil {
-		return
-	}
-	p.caretPos = int32(len(lastPasteText.GetText()))
-	lastPasteTextId := lastPasteText.Model().Id
-	lastBlock := p.s.Get(lastPasteTextId)
-	lastBlock.Model().Id = target
-	p.s.Set(lastBlock)
-
-	p.s.Iterate(func(b simple.Block) (isContinue bool) {
-		if lo.Contains(b.Model().ChildrenIds, lastPasteTextId) {
-			b.Model().ChildrenIds = lo.Replace(b.Model().ChildrenIds, lastPasteTextId, target, 1)
-			return false
-		}
-		return true
-	})
 }

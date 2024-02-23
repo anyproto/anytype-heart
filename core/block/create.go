@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -77,7 +79,7 @@ func (s *Service) CreateLinkToTheNewObject(
 	ctx context.Context,
 	sctx session.Context,
 	req *pb.RpcBlockLinkCreateWithObjectRequest,
-) (linkID string, objectID string, err error) {
+) (linkID string, objectID string, objectDetails *types.Struct, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
@@ -85,7 +87,7 @@ func (s *Service) CreateLinkToTheNewObject(
 
 	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
 	if err != nil {
-		return "", "", fmt.Errorf("get type key from raw unique key: %w", err)
+		return "", "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
 
 	createReq := objectcreator.CreateObjectRequest{
@@ -94,7 +96,7 @@ func (s *Service) CreateLinkToTheNewObject(
 		ObjectTypeKey: objectTypeKey,
 		TemplateId:    req.TemplateId,
 	}
-	objectID, _, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
+	objectID, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
 		return
 	}

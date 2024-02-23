@@ -11,13 +11,11 @@ import (
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/dgraph-io/badger/v4"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -130,21 +128,13 @@ func (s *service) Watch(spaceId string, id string, filesGetter func() []string) 
 }
 
 func (s *service) unwatch(spaceID string, id string) {
-	sbt, err := s.typeProvider.Type(spaceID, id)
-	if err != nil {
-		log.Debug("failed to get type of", zap.String("objectID", id))
-	}
 	s.updateReceiver.ClearLastObjectStatus(id)
-	switch sbt {
-	case smartblock.SmartBlockTypeFileObject:
-		// File watcher unwatches files automatically
-	default:
-		s.objectWatchersLock.Lock()
-		defer s.objectWatchersLock.Unlock()
-		objectWatcher := s.objectWatchers[spaceID]
-		if objectWatcher != nil {
-			objectWatcher.Unwatch(id)
-		}
+
+	s.objectWatchersLock.Lock()
+	defer s.objectWatchersLock.Unlock()
+	objectWatcher := s.objectWatchers[spaceID]
+	if objectWatcher != nil {
+		objectWatcher.Unwatch(id)
 	}
 }
 

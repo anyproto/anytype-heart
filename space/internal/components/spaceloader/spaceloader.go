@@ -33,15 +33,17 @@ type spaceLoader struct {
 	builder             builder.SpaceBuilder
 	loading             *loadingSpace
 	stopIfMandatoryFail bool
+	disableRemoteLoad   bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
 	space  clientspace.Space
 }
 
-func New(stopIfMandatoryFail bool) SpaceLoader {
+func New(stopIfMandatoryFail, disableRemoteLoad bool) SpaceLoader {
 	return &spaceLoader{
 		stopIfMandatoryFail: stopIfMandatoryFail,
+		disableRemoteLoad:   disableRemoteLoad,
 	}
 }
 
@@ -102,7 +104,7 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 	if err = s.status.SetLocalInfo(ctx, info); err != nil {
 		return
 	}
-	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail)
+	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail, s.disableRemoteLoad)
 	return
 }
 
@@ -143,7 +145,7 @@ func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
 }
 
 func (s *spaceLoader) open(ctx context.Context) (clientspace.Space, error) {
-	return s.builder.BuildSpace(ctx)
+	return s.builder.BuildSpace(ctx, s.disableRemoteLoad)
 }
 
 func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {

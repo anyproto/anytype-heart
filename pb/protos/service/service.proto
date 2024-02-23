@@ -306,6 +306,7 @@ service ClientCommands {
 
     rpc NotificationList (anytype.Rpc.Notification.List.Request) returns (anytype.Rpc.Notification.List.Response);
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
+    rpc NotificationTest (anytype.Rpc.Notification.Test.Request) returns (anytype.Rpc.Notification.Test.Response);
 
     rpc PaymentsSubscriptionGetStatus (anytype.Rpc.Payments.Subscription.GetStatus.Request) returns (anytype.Rpc.Payments.Subscription.GetStatus.Response);
     rpc PaymentsSubscriptionGetPaymentUrl (anytype.Rpc.Payments.Subscription.GetPaymentUrl.Request) returns (anytype.Rpc.Payments.Subscription.GetPaymentUrl.Response);
