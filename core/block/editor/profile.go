@@ -82,10 +82,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
-				template.WithTitle,
-				template.WithFeaturedRelations,
 				template.WithRequiredRelations(),
-				migrationWithIdentityBlock,
 				migrationSetHidden,
 			)
 		},
@@ -94,6 +91,28 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 
 func migrationSetHidden(st *state.State) {
 	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
+}
+
+func migrationExtractBlocksIfExists() template.StateTransformer {
+	return func(st *state.State) {
+		blockId := "identity"
+		st.Set(simple.New(&model.Block{
+			Id: blockId,
+			Content: &model.BlockContentOfRelation{
+				Relation: &model.BlockContentRelation{
+					Key: bundle.RelationKeyProfileOwnerIdentity.String(),
+				},
+			},
+			Restrictions: &model.BlockRestrictions{
+				Edit:   true,
+				Remove: true,
+				Drag:   true,
+				DropOn: true,
+			},
+		}))
+
+		st.InsertTo(state.TitleBlockID, model.Block_Bottom, blockId)
+	}
 }
 
 func migrationWithIdentityBlock(st *state.State) {
@@ -125,6 +144,12 @@ func (p *Profile) StateMigrations() migration.Migrations {
 		{
 			Version: 3,
 			Proc:    migrationSetHidden,
+		},
+		{
+			Version: 4,
+			Proc: func(s *state.State) {
+				// skip it. it will be done separately via ProfileMigrationExtractUserStat in space.migrationProfileObject
+			},
 		},
 	})
 }

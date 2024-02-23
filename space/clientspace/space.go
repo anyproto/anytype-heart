@@ -13,9 +13,12 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/profilemigration"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -142,6 +145,10 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
+	err := s.migrationProfileObject(ctx)
+	if err != nil {
+		log.Error("failed to migrate profile object", zap.Error(err))
+	}
 	if !disableRemoteLoad {
 		s.common.TreeSyncer().StartSync()
 	}
@@ -246,6 +253,51 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (s *space) migrationProfileObject(ctx context.Context) error {
+	if !s.IsPersonal() {
+		return nil
+	}
+	if s.derivedIDs.Profile == "" {
+		return nil
+	}
+
+	return s.Do(s.derivedIDs.Profile, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		extractedState, err := profilemigration.ExtractCustomState(st)
+		if err != nil {
+			if err == profilemigration.ErrNoCustomStateFound {
+				log.Error("no extra state found")
+				return nil
+			}
+			return err
+		}
+		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypePage, profilemigration.InternalKeyOldProfileData)
+		if err != nil {
+			return err
+		}
+		payload, err := s.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{UseAccountSignature: true, Key: uniqueKey})
+		if err != nil {
+			return err
+		}
+		newSb, err := s.CreateTreeObjectWithPayload(ctx, payload, func(id string) *smartblock.InitContext {
+			extractedState.SetRootId(id)
+			return &smartblock.InitContext{
+				IsNewObject:    true,
+				ObjectTypeKeys: []domain.TypeKey{bundle.TypeKeyDashboard},
+				State:          extractedState,
+				SpaceID:        s.personalSpaceId,
+			}
+		})
+		if err != nil {
+			return err
+		}
+		log.Warn("old profile custom state migrated")
+		newSb.Close()
+
+		return sb.Apply(st)
+	})
 }
 
 func (s *space) IsReadOnly() bool {
