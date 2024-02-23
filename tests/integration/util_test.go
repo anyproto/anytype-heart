@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -65,12 +64,6 @@ func createAccountAndStartApp(t *testing.T) *testApplication {
 
 	eventQueue := mb.New[*pb.Event](0)
 	sender := event.NewCallbackSender(func(event *pb.Event) {
-		for _, msg := range event.Messages {
-			fmt.Println("EVMESSAGE", msg.Value)
-			if msg.GetProcessDone() != nil {
-				fmt.Println("EVIT", msg.GetProcessDone())
-			}
-		}
 		err := eventQueue.Add(ctx, event)
 		if err != nil {
 			log.Println("event queue error:", err)
