@@ -84,7 +84,7 @@ func TestImportFiles(t *testing.T) {
 			if v := msg.GetObjectDetailsSet(); v != nil {
 				if slices.Contains(v.SubIds, subscriptionId) {
 					fileObjectId := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
-					assertImageAvailbleInGateway(t, app, fileObjectId)
+					assertImageAvailableInGateway(t, app, fileObjectId)
 					return true
 				}
 			}
@@ -93,7 +93,7 @@ func TestImportFiles(t *testing.T) {
 	})
 }
 
-func assertImageAvailbleInGateway(t *testing.T, app *testApplication, fileObjectId string) {
+func assertImageAvailableInGateway(t *testing.T, app *testApplication, fileObjectId string) {
 	gw := getService[gateway.Gateway](app)
 	host := gw.Addr()
 	resp, err := http.Get("http://" + host + "/image/" + fileObjectId)
