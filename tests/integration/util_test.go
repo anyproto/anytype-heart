@@ -2,9 +2,13 @@ package integration
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/application"
@@ -16,7 +20,33 @@ import (
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 )
 
-func createAccountAndStartApp(t *testing.T) (*application.Service, *model.Account) {
+type testApplication struct {
+	appService *application.Service
+	account    *model.Account
+	eventQueue *mb.MB[*pb.Event]
+}
+
+func (a *testApplication) personalSpaceId() string {
+	return a.account.Info.AccountSpaceId
+}
+
+func (a *testApplication) waitEventMessage(t *testing.T, pred func(msg *pb.EventMessage) bool) {
+	queueCond := a.eventQueue.NewCond().WithFilter(func(event *pb.Event) bool {
+		for _, msg := range event.Messages {
+			if pred(msg) {
+				return true
+			}
+		}
+		return false
+	})
+
+	queueCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := queueCond.WaitOne(queueCtx)
+	require.NoError(t, err)
+}
+
+func createAccountAndStartApp(t *testing.T) *testApplication {
 	repoDir := t.TempDir()
 
 	ctx := context.Background()
@@ -33,8 +63,18 @@ func createAccountAndStartApp(t *testing.T) (*application.Service, *model.Accoun
 	})
 	t.Log(mnemonic)
 
+	eventQueue := mb.New[*pb.Event](0)
 	sender := event.NewCallbackSender(func(event *pb.Event) {
-		t.Log(event)
+		for _, msg := range event.Messages {
+			fmt.Println("EVMESSAGE", msg.Value)
+			if msg.GetProcessDone() != nil {
+				fmt.Println("EVIT", msg.GetProcessDone())
+			}
+		}
+		err := eventQueue.Add(ctx, event)
+		if err != nil {
+			log.Println("event queue error:", err)
+		}
 	})
 	app.SetEventSender(sender)
 
@@ -46,7 +86,12 @@ func createAccountAndStartApp(t *testing.T) (*application.Service, *model.Accoun
 	})
 	require.NoError(t, err)
 
-	objCreator := getService[builtinobjects.BuiltinObjects](app)
+	testApp := &testApplication{
+		appService: app,
+		account:    acc,
+		eventQueue: eventQueue,
+	}
+	objCreator := getService[builtinobjects.BuiltinObjects](testApp)
 	_, err = objCreator.CreateObjectsForUseCase(session.NewContext(), acc.Info.AccountSpaceId, pb.RpcObjectImportUseCaseRequest_GET_STARTED)
 	require.NoError(t, err)
 
@@ -57,10 +102,10 @@ func createAccountAndStartApp(t *testing.T) (*application.Service, *model.Accoun
 		require.NoError(t, err)
 	})
 
-	return app, acc
+	return testApp
 }
 
-func getService[T any](appService *application.Service) T {
-	a := appService.GetApp()
+func getService[T any](testApp *testApplication) T {
+	a := testApp.appService.GetApp()
 	return app.MustComponent[T](a)
 }
