@@ -2,83 +2,61 @@ package payments
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/anytype-heart/core/payments/cache"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/dgraph-io/badger/v4"
-	"go.uber.org/zap"
+
+	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 )
 
 const CName = "payments"
 
 var log = logger.NewNamed(CName)
 
-var (
-	ErrCacheDbError = errors.New("cache db error")
+/*
+CACHE LOGICS:
+ 1. User installs Anytype
+    -> cache is clean
 
-	ErrUnsupportedCacheVersion = errors.New("unsupported cache version")
-	ErrCacheDisabled           = errors.New("cache is disabled")
-	ErrCacheExpired            = errors.New("cache is empty")
-)
+2. client gets his subscription from MW
 
-const dbKey = "payments/subscription/v1"
+  - if cache is disabled and 30 minutes elapsed
+    -> enable cache again
 
-type StorageStructV1 struct {
-	// to migrate old storage to new format
-	CurrentVersion uint16
+  - if cache is disabled or cache is clean or cache is expired
+    -> ask from PP node, then save to cache:
 
-	// this variable is just for info
-	LastUpdated time.Time
+    x if got no info -> cache it for 10 days
+    x if got into without expiration -> cache it for 10 days
+    x if got info -> cache it for until it expires
+    x if cache was disabled before and tier has changed -> enable cache again
+    x if can not connect to PP node -> return error
+    x if can not write to cache -> return error
 
-	// depending on the type of the subscription the cache will have different lifetime
-	// if current time is >= ExpireTime -> cache is expired
-	ExpireTime time.Time
+  - if we have it in cache
+    -> return from cache
 
-	// if this is 0 - then cache is enabled
-	DisableUntilTime time.Time
+    3. User clicks on a “Pay by card/crypto” or “Manage” button:
+    -> disable cache for 30 minutes (so we always get from PP node)
 
-	// v1 of the actual data
-	SubscriptionStatus pb.RpcPaymentsSubscriptionGetStatusResponse
-}
-
-func newStorageStructV1() *StorageStructV1 {
-	return &StorageStructV1{
-		CurrentVersion:     1,
-		LastUpdated:        time.Now().UTC(),
-		ExpireTime:         time.Time{},
-		DisableUntilTime:   time.Time{},
-		SubscriptionStatus: pb.RpcPaymentsSubscriptionGetStatusResponse{},
-	}
-}
-
+    4. User confirms his e-mail code
+    -> clear cache (it will cause getting again from PP node next)
+*/
 type Service interface {
-	// if cache is disabled -> will return object and ErrCacheDisabled
-	// if cache is expired -> will return ErrCacheExpired
-	CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, err error)
+	GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error)
 
-	// if cache is disabled -> will return no error
-	// if cache is expired -> will return no error
-	CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, ExpireTime time.Time) (err error)
+	GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) (*pb.RpcPaymentsSubscriptionGetPaymentUrlResponse, error)
+	GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) (*pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse, error)
 
-	IsCacheEnabled() (enabled bool)
+	GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest) (*pb.RpcPaymentsSubscriptionGetVerificationEmailResponse, error)
+	VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) (*pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse, error)
 
-	// if already enabled -> will not return error
-	CacheEnable() (err error)
-
-	// if already disabled -> will not return error
-	// if currently disabled -> will disable GETs for next N minutes
-	CacheDisableForNextMinutes(minutes int) (err error)
-
-	// does not take into account if cache is enabled or not, erases always
-	CacheClear() (err error)
-
-	app.ComponentRunnable
+	app.Component
 }
 
 func New() Service {
@@ -86,10 +64,9 @@ func New() Service {
 }
 
 type service struct {
-	dbProvider datastore.Datastore
-	db         *badger.DB
-
-	m sync.Mutex
+	c  cache.CacheService
+	pp ppclient.AnyPpClientService
+	w  wallet.Wallet
 }
 
 func (s *service) Name() (name string) {
@@ -97,13 +74,10 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.dbProvider = app.MustComponent[datastore.Datastore](a)
+	s.c = app.MustComponent[cache.CacheService](a)
+	s.pp = app.MustComponent[ppclient.AnyPpClientService](a)
+	s.w = app.MustComponent[wallet.Wallet](a)
 
-	db, err := s.dbProvider.LocalStorage()
-	if err != nil {
-		return err
-	}
-	s.db = db
 	return nil
 }
 
@@ -112,168 +86,272 @@ func (s *service) Run(_ context.Context) (err error) {
 }
 
 func (s *service) Close(_ context.Context) (err error) {
-	return s.db.Close()
-}
-
-func (s *service) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, err error) {
-	// 1 - check in storage
-	ss, err := s.get()
-	if err != nil {
-		log.Error("can not get subscription status from cache", zap.Error(err))
-		// do not translate error here!
-		return nil, ErrCacheExpired
-	}
-
-	if ss.CurrentVersion != 1 {
-		// currently we have only one version, but in future we can have more
-		// this error can happen if you "downgrade" the app
-		log.Error("unsupported cache version", zap.Uint16("version", ss.CurrentVersion))
-		return nil, ErrUnsupportedCacheVersion
-	}
-
-	// 2 - check if cache is disabled
-	if !s.IsCacheEnabled() {
-		// return object too
-		return &ss.SubscriptionStatus, ErrCacheDisabled
-	}
-
-	// 3 - check if cache is outdated
-	if time.Now().UTC().After(ss.ExpireTime) {
-		return nil, ErrCacheExpired
-	}
-
-	// 4 - return value
-	return &ss.SubscriptionStatus, nil
-}
-
-func (s *service) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, ExpireTime time.Time) (err error) {
-	// 1 - get existing storage
-	ss, err := s.get()
-	if err != nil {
-		// if there is no record in the cache, let's create it
-		ss = newStorageStructV1()
-	}
-
-	// 2 - update storage
-	ss.SubscriptionStatus = *in
-	ss.ExpireTime = ExpireTime
-
-	// 3 - save to storage
-	return s.set(ss)
-}
-
-func (s *service) IsCacheEnabled() (enabled bool) {
-	// 1 - get existing storage
-	ss, err := s.get()
-	if err != nil {
-		return true
-	}
-
-	// 2 - check if cache is disabled
-	if (ss.DisableUntilTime != time.Time{}) && time.Now().UTC().Before(ss.DisableUntilTime) {
-		return false
-	}
-
-	return true
-}
-
-// will not return error if already enabled
-func (s *service) CacheEnable() (err error) {
-	// 1 - get existing storage
-	ss, err := s.get()
-	if err != nil {
-		// if there is no record in the cache, let's create it
-		ss = newStorageStructV1()
-	}
-
-	// 2 - update storage
-	ss.DisableUntilTime = time.Time{}
-
-	// 3 - save to storage
-	err = s.set(ss)
-	if err != nil {
-		return ErrCacheDbError
-	}
 	return nil
 }
 
-// will not return error if already disabled
-// if currently disabled - will disable for next N minutes
-func (s *service) CacheDisableForNextMinutes(minutes int) (err error) {
-	// 1 - get existing storage
-	ss, err := s.get()
+func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error) {
+	ownerID := s.w.Account().SignKey.GetPublic().Account()
+	privKey := s.w.GetAccountPrivkey()
+
+	// 1 - check in cache
+	cached, err := s.c.CacheGet()
+	if err == nil {
+		return cached, nil
+	}
+
+	// 2 - send request to PP node
+	gsr := psp.GetSubscriptionRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyID: ownerID,
+	}
+
+	payload, err := gsr.Marshal()
 	if err != nil {
-		// if there is no record in the cache, let's create it
-		ss = newStorageStructV1()
+		return nil, err
 	}
 
-	// 2 - update storage
-	ss.DisableUntilTime = time.Now().UTC().Add(time.Minute * time.Duration(minutes))
-
-	// 3 - save to storage
-	err = s.set(ss)
+	// this is the SignKey
+	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return ErrCacheDbError
+		return nil, err
 	}
-	return nil
-}
 
-// does not take into account if cache is enabled or not, erases always
-func (s *service) CacheClear() (err error) {
-	// 1 - get existing storage
-	ss, err := s.get()
+	reqSigned := psp.GetSubscriptionRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	status, err := s.pp.GetSubscriptionStatus(ctx, &reqSigned)
 	if err != nil {
-		// no error if there is no record in the cache
-		return nil
-	}
+		log.Info("creating empty subscription in cache because can not get subscription status from payment node")
 
-	// 2 - update storage
-	ss = newStorageStructV1()
-
-	// 3 - save to storage
-	err = s.set(ss)
-	if err != nil {
-		return ErrCacheDbError
-	}
-	return nil
-}
-
-func (s *service) get() (out *StorageStructV1, err error) {
-	if s.db == nil {
-		return nil, errors.New("db is not initialized")
-	}
-
-	s.m.Lock()
-	defer s.m.Unlock()
-
-	var ss StorageStructV1
-	err = s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(dbKey))
-		if err != nil {
-			return err
+		// eat error and create empty status ("no tier") so that we will then save it to the cache
+		status = &psp.GetSubscriptionResponse{
+			Tier:   psp.SubscriptionTier_TierUnknown,
+			Status: psp.SubscriptionStatus_StatusUnknown,
 		}
+	}
 
-		return item.Value(func(val []byte) error {
-			// convert value to out
-			return json.Unmarshal(val, &ss)
-		})
-	})
+	var out pb.RpcPaymentsSubscriptionGetStatusResponse
 
-	out = &ss
-	return out, err
+	out.Tier = pb.RpcPaymentsSubscriptionSubscriptionTier(status.Tier)
+	out.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(status.Status)
+	out.DateStarted = status.DateStarted
+	out.DateEnds = status.DateEnds
+	out.IsAutoRenew = status.IsAutoRenew
+	out.NextTier = pb.RpcPaymentsSubscriptionSubscriptionTier(status.NextTier)
+	out.NextTierEnds = status.NextTierEnds
+	out.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(status.PaymentMethod)
+	out.RequestedAnyName = status.RequestedAnyName
+	out.UserEmail = status.UserEmail
+	// TODO:
+	//out.SubscribeToNewsletter = status.SubscribeToNewsletter
+
+	// 3 - save into cache
+	// truncate nseconds here
+	var cacheExpireTime time.Time = time.Unix(int64(status.DateEnds), 0)
+
+	// if subscription DateEns is null - then default expire time is in 10 days
+	// or until user clicks on a “Pay by card/crypto” or “Manage” button
+	if status.DateEnds == 0 {
+		log.Debug("setting cache to 10 days because subscription DateEnds is null")
+
+		timeNow := time.Now().UTC()
+		cacheExpireTime = timeNow.Add(10 * 24 * time.Hour)
+	}
+
+	err = s.c.CacheSet(&out, cacheExpireTime)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4 - if cache was disabled but the tier is different -> enable cache again (we have received new data)
+	if !s.c.IsCacheEnabled() {
+		// only when tier changed
+		isDiffTier := (cached != nil) && (cached.Tier != pb.RpcPaymentsSubscriptionSubscriptionTier(status.Tier))
+
+		// only when received active state (finally)
+		isActive := (status.Status == psp.SubscriptionStatus(pb.RpcPaymentsSubscription_StatusActive))
+
+		if cached == nil || (isDiffTier && isActive) {
+			log.Debug("enabling cache again")
+
+			// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
+			err := s.c.CacheEnable()
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return &out, nil
 }
 
-func (s *service) set(in *StorageStructV1) (err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
+func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) (*pb.RpcPaymentsSubscriptionGetPaymentUrlResponse, error) {
+	// 1 - send request
+	bsr := psp.BuySubscriptionRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId: s.w.Account().SignKey.GetPublic().Account(),
 
-	return s.db.Update(func(txn *badger.Txn) error {
-		// convert
-		bytes, err := json.Marshal(*in)
-		if err != nil {
-			return err
-		}
+		// not SCW address, but EOA address
+		// including 0x
+		OwnerEthAddress: s.w.GetAccountEthAddress().Hex(),
 
-		return txn.Set([]byte(dbKey), bytes)
-	})
+		RequestedTier: psp.SubscriptionTier(req.RequestedTier),
+		PaymentMethod: psp.PaymentMethod(req.PaymentMethod),
+
+		RequestedAnyName: req.RequestedAnyName,
+	}
+
+	payload, err := bsr.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	privKey := s.w.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	reqSigned := psp.BuySubscriptionRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	bsRet, err := s.pp.BuySubscription(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	var out pb.RpcPaymentsSubscriptionGetPaymentUrlResponse
+	out.PaymentUrl = bsRet.PaymentUrl
+
+	// 2 - disable cache for 30 minutes
+	log.Debug("disabling cache for 30 minutes after payment URL was received")
+
+	err = s.c.CacheDisableForNextMinutes(30)
+	if err != nil {
+		return nil, err
+	}
+
+	return &out, nil
+}
+
+func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) (*pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse, error) {
+	// 1 - send request
+	bsr := psp.GetSubscriptionPortalLinkRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId: s.w.Account().SignKey.GetPublic().Account(),
+	}
+
+	payload, err := bsr.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	privKey := s.w.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	reqSigned := psp.GetSubscriptionPortalLinkRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	bsRet, err := s.pp.GetSubscriptionPortalLink(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	var out pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse
+	out.PortalUrl = bsRet.PortalUrl
+
+	// 2 - disable cache for 30 minutes
+	log.Debug("disabling cache for 30 minutes after portal link was received")
+	err = s.c.CacheDisableForNextMinutes(30)
+	if err != nil {
+		return nil, err
+	}
+
+	return &out, nil
+}
+
+func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest) (*pb.RpcPaymentsSubscriptionGetVerificationEmailResponse, error) {
+	// 1 - send request
+	bsr := psp.GetVerificationEmailRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId:            s.w.Account().SignKey.GetPublic().Account(),
+		Email:                 req.Email,
+		SubscribeToNewsletter: req.SubscribeToNewsletter,
+	}
+
+	payload, err := bsr.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	privKey := s.w.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	reqSigned := psp.GetVerificationEmailRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	_, err = s.pp.GetVerificationEmail(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	var out pb.RpcPaymentsSubscriptionGetVerificationEmailResponse
+	return &out, nil
+}
+
+func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) (*pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse, error) {
+	// 1 - send request
+	bsr := psp.VerifyEmailRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId:      s.w.Account().SignKey.GetPublic().Account(),
+		OwnerEthAddress: s.w.GetAccountEthAddress().Hex(),
+		Code:            req.Code,
+	}
+
+	payload, err := bsr.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	privKey := s.w.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	reqSigned := psp.VerifyEmailRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	// empty return or error
+	_, err = s.pp.VerifyEmail(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2 - clear cache
+	log.Debug("clearing cache after email verification code was confirmed")
+	err = s.c.CacheClear()
+	if err != nil {
+		return nil, err
+	}
+
+	// return out
+	var out pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse
+	return &out, nil
 }

@@ -96,6 +96,7 @@ import (
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 )
 
 var (
@@ -273,7 +274,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(notifications.New()).
 		Register(paymentserviceclient.New()).
 		Register(nameserviceclient.New()).
-		Register(payments.New())
+		Register(payments.New()).
+		Register(paymentscache.New())
 }
 
 func MiddlewareVersion() string {
