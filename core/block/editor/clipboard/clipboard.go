@@ -226,7 +226,7 @@ func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang
 		lastTextBlock == nil &&
 		rang != nil &&
 		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text)) &&
-		rang.To != 0 && rang.From != 0
+		(rang.To != 0 || rang.From != 0)
 }
 
 func unlinkAndClearBlocks(
