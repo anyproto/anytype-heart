@@ -8,11 +8,15 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/application"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -101,4 +105,50 @@ func createAccountAndStartApp(t *testing.T) *testApplication {
 func getService[T any](testApp *testApplication) T {
 	a := testApp.appService.GetApp()
 	return app.MustComponent[T](a)
+}
+
+type testSubscription struct {
+	subscriptionId string
+}
+
+func newTestSubscription(t *testing.T, app *testApplication, keys []domain.RelationKey, filters []*model.BlockContentDataviewFilter) *testSubscription {
+	keysConverted := make([]string, 0, len(keys))
+	for _, key := range keys {
+		keysConverted = append(keysConverted, key.String())
+	}
+	subscriptionId := bson.NewObjectId().Hex()
+	subscriptionService := getService[subscription.Service](app)
+	_, err := subscriptionService.Search(pb.RpcObjectSearchSubscribeRequest{
+		SubId:   subscriptionId,
+		Keys:    keysConverted,
+		Filters: filters,
+	})
+	require.NoError(t, err)
+
+	return &testSubscription{
+		subscriptionId: subscriptionId,
+	}
+}
+
+func (s *testSubscription) waitOneObjectDetailsSet(t *testing.T, app *testApplication, assertion func(t *testing.T, msg *pb.EventObjectDetailsSet)) {
+	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
+		if v := msg.GetObjectDetailsSet(); v != nil {
+			if slices.Contains(v.SubIds, s.subscriptionId) {
+				assertion(t, v)
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func (s *testSubscription) waitObjectDetailsSetWithPredicate(t *testing.T, app *testApplication, assertion func(t *testing.T, msg *pb.EventObjectDetailsSet) bool) {
+	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
+		if v := msg.GetObjectDetailsSet(); v != nil {
+			if slices.Contains(v.SubIds, s.subscriptionId) {
+				return assertion(t, v)
+			}
+		}
+		return false
+	})
 }

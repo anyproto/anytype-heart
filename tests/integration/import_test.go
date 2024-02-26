@@ -8,11 +8,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
@@ -21,45 +20,71 @@ import (
 )
 
 func TestImportFiles(t *testing.T) {
-	t.Run("import from version with Files as Objects", func(t *testing.T) {
+	t.Run("import from version with Files as Objects: just file object", func(t *testing.T) {
+		t.Skip()
+	})
+	t.Run("import from version with Files as Objects: from relation (iconImage)", func(t *testing.T) {
 		ctx := context.Background()
 		app := createAccountAndStartApp(t)
 
-		subscriptionId := "files"
-		subscriptionService := getService[subscription.Service](app)
-		_, err := subscriptionService.Search(pb.RpcObjectSearchSubscribeRequest{
-			SubId: subscriptionId,
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-			},
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyFileIndexingStatus.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)),
-				},
-				{
-					RelationKey: bundle.RelationKeyLayout.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.ObjectType_image)),
-				},
-				{
-					RelationKey: bundle.RelationKeyName.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("test_image"),
-				},
-				{
-					RelationKey: bundle.RelationKeyFileMimeType.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("image/png"),
-				},
-				{
-					RelationKey: bundle.RelationKeyFileId.String(),
-					Condition:   model.BlockContentDataviewFilter_NotEmpty,
-				},
-			},
+		fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+			filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
+			filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
+			filterEqualsToString(bundle.RelationKeyName, "Saturn"),
+			filterEqualsToString(bundle.RelationKeyFileMimeType, "image/jpeg"),
+			filterNotEmpty(bundle.RelationKeyFileId),
 		})
+
+		objectSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId, bundle.RelationKeyIconImage}, []*model.BlockContentDataviewFilter{
+			filterNotEmpty(bundle.RelationKeyIconImage),
+		})
+
+		importerService := getService[importer.Importer](app)
+		_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
+			SpaceId: app.personalSpaceId(),
+			Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
+			Type:    model.Import_Pb,
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+				PbParams: &pb.RpcObjectImportRequestPbParams{
+					Path: []string{"./testdata/import/object with file relation/"},
+				},
+			},
+		}, objectorigin.Import(model.Import_Pb), nil)
 		require.NoError(t, err)
+
+		app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
+			if v := msg.GetProcessDone(); v != nil {
+				return v.Process.Id == processId
+			}
+			return false
+		})
+
+		var fileObjectId string
+		fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
+			fileObjectId = pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
+			assertImageAvailableInGateway(t, app, fileObjectId)
+		})
+		objectSub.waitObjectDetailsSetWithPredicate(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) bool {
+			list := pbtypes.GetStringList(msg.Details, bundle.RelationKeyIconImage.String())
+			if len(list) > 0 {
+				return fileObjectId == list[0]
+			}
+			return false
+
+		})
+	})
+
+	t.Run("import from version with Files as Objects: from block", func(t *testing.T) {
+		ctx := context.Background()
+		app := createAccountAndStartApp(t)
+
+		fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+			filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
+			filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
+			filterEqualsToString(bundle.RelationKeyName, "test_image"),
+			filterEqualsToString(bundle.RelationKeyFileMimeType, "image/png"),
+			filterNotEmpty(bundle.RelationKeyFileId),
+		})
 
 		importerService := getService[importer.Importer](app)
 		_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
@@ -80,15 +105,9 @@ func TestImportFiles(t *testing.T) {
 			}
 			return false
 		})
-		app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
-			if v := msg.GetObjectDetailsSet(); v != nil {
-				if slices.Contains(v.SubIds, subscriptionId) {
-					fileObjectId := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
-					assertImageAvailableInGateway(t, app, fileObjectId)
-					return true
-				}
-			}
-			return false
+		fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
+			fileObjectId := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
+			assertImageAvailableInGateway(t, app, fileObjectId)
 		})
 	})
 }
