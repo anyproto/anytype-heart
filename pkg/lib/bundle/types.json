@@ -313,7 +313,7 @@
   },
   {
     "id": "participant",
-    "name": "Participant",
+    "name": "Space member",
     "types": [
       "Participant"
     ],
@@ -323,7 +323,7 @@
     "relations": [
       "tag"
     ],
-    "description": "Participant"
+    "description": "Participant of the anytype space"
   },
   {
     "id": "template",
