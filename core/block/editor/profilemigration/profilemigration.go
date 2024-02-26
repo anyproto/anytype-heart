@@ -63,7 +63,7 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 	newStateDetails.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(false)
 	newState.SetDetails(newStateDetails)
 	// remove the identity block
-	newState.CleanupBlock(identityBlockId)
+	newState.Unlink(identityBlockId)
 
 	rootBlock := st.Get(st.RootId())
 	rootBlock.Model().ChildrenIds = slices.DeleteFunc(rootBlock.Model().ChildrenIds, func(s string) bool {
