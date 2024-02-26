@@ -20,9 +20,6 @@ import (
 )
 
 func TestImportFiles(t *testing.T) {
-	t.Run("import from version with Files as Objects: just file object", func(t *testing.T) {
-		t.Skip()
-	})
 	t.Run("import from version with Files as Objects: from relation (iconImage)", func(t *testing.T) {
 		ctx := context.Background()
 		app := createAccountAndStartApp(t)
@@ -97,6 +94,43 @@ func TestImportFiles(t *testing.T) {
 				},
 			},
 		}, objectorigin.Import(model.Import_Pb), nil)
+		require.NoError(t, err)
+
+		app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
+			if v := msg.GetProcessDone(); v != nil {
+				return v.Process.Id == processId
+			}
+			return false
+		})
+		fileSub.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {
+			fileObjectId := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
+			assertImageAvailableInGateway(t, app, fileObjectId)
+		})
+	})
+
+	t.Run("import markdown", func(t *testing.T) {
+		ctx := context.Background()
+		app := createAccountAndStartApp(t)
+
+		fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+			filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
+			filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
+			filterEqualsToString(bundle.RelationKeyName, "4399421398_87191e276a_w"), // Name comes from file's name
+			filterEqualsToString(bundle.RelationKeyFileMimeType, "image/jpeg"),
+			filterNotEmpty(bundle.RelationKeyFileId),
+		})
+
+		importerService := getService[importer.Importer](app)
+		_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
+			SpaceId: app.personalSpaceId(),
+			Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
+			Type:    model.Import_Markdown,
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+					Path: []string{"./testdata/import/markdown with files/"},
+				},
+			},
+		}, objectorigin.Import(model.Import_Markdown), nil)
 		require.NoError(t, err)
 
 		app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
