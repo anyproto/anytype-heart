@@ -126,7 +126,6 @@ func (p *Profile) StateMigrations() migration.Migrations {
 		{
 			Version: 4,
 			Proc: func(s *state.State) {
-				// skip it. it will be done separately via ProfileMigrationExtractUserStat in space.migrationProfileObject
 			},
 		},
 	})
