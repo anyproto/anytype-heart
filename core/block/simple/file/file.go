@@ -241,6 +241,10 @@ func (f *File) HasSmartIds() bool {
 	return f.content.TargetObjectId != ""
 }
 
+func (f *File) IsEmpty() bool {
+	return f.content.TargetObjectId == "" && f.content.Hash == ""
+}
+
 func DetectTypeByMIME(mime string) model.BlockContentFileType {
 	if mill.IsImage(mime) {
 		return model.BlockContentFile_Image

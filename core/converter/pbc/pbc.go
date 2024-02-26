@@ -44,7 +44,7 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		Snapshot: snapshot,
 	}
 	if p.isJSON {
-		m := jsonpb.Marshaler{Indent: " "}
+		m := jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
 		result, err := m.MarshalToString(mo)
 		if err != nil {
 			log.Errorf("failed to convert object to json: %s", err)

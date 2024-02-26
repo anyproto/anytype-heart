@@ -8,7 +8,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 
-	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -51,10 +50,14 @@ type Service interface {
 	app.Component
 }
 
+type bookmarkService interface {
+	CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error)
+}
+
 type service struct {
 	objectStore       objectstore.ObjectStore
 	collectionService CollectionService
-	bookmark          bookmark.Service
+	bookmarkService   bookmarkService
 	app               *app.App
 	spaceService      space.Service
 	templateService   TemplateService
@@ -67,7 +70,7 @@ func NewCreator() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
+	s.bookmarkService = app.MustComponent[bookmarkService](a)
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
@@ -126,7 +129,7 @@ func (s *service) createObjectInSpace(
 	}
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
-		return s.createBookmark(ctx, space.Id(), &pb.RpcObjectCreateBookmarkRequest{
+		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), &pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 		})
 	case bundle.TypeKeySet:
