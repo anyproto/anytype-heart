@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "d793d61e0b07300056e692cfe82dee8f23a436a70c36e066067b837b24b09ee1"
+const TypeChecksum = "29accb5d4e1409b976416d6f3217d6e28e311b624dbd004be7882ce141d5bfee"
 const (
 	TypePrefix = "_ot"
 )
@@ -285,11 +285,11 @@ var (
 		},
 		TypeKeyParticipant: {
 
-			Description:   "Participant",
+			Description:   "Participant of the anytype space",
 			Hidden:        true,
 			IconEmoji:     "🧑",
 			Layout:        model.ObjectType_participant,
-			Name:          "Participant",
+			Name:          "Space member",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Participant},
