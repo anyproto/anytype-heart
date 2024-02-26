@@ -64,7 +64,8 @@ func ExtractCustomState(st *state.State) (userState *state.State, err error) {
 	newState.SetDetails(newStateDetails)
 	// remove the identity block
 	newState.Unlink(identityBlockId)
-
+	newState.CleanupBlock(identityBlockId)
+	
 	rootBlock := st.Get(st.RootId())
 	rootBlock.Model().ChildrenIds = slices.DeleteFunc(rootBlock.Model().ChildrenIds, func(s string) bool {
 		return !slices.Contains(whitelistBlocks, s)
