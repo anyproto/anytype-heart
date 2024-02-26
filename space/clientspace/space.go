@@ -263,6 +263,21 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 		return nil
 	}
 
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypePage, profilemigration.InternalKeyOldProfileData)
+	if err != nil {
+		return err
+	}
+	// lets do the cheap check if we already has this extracted object
+	extractedProfileId, err := s.DeriveObjectID(ctx, uniqueKey)
+	if err != nil {
+		return err
+	}
+
+	extractedProfileExists, _ := s.Storage().HasTree(extractedProfileId)
+	if extractedProfileExists {
+		return nil
+	}
+
 	return s.Do(s.derivedIDs.Profile, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		extractedState, err := profilemigration.ExtractCustomState(st)
@@ -273,10 +288,7 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 			}
 			return err
 		}
-		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypePage, profilemigration.InternalKeyOldProfileData)
-		if err != nil {
-			return err
-		}
+
 		payload, err := s.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{UseAccountSignature: true, Key: uniqueKey})
 		if err != nil {
 			return err
