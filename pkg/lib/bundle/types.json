@@ -328,7 +328,8 @@
       "tag"
     ],
     "description": "Anytype identity as a space participant",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "template",
