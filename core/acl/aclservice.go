@@ -216,7 +216,7 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return fmt.Errorf("get space view id: %w", err)
 	}
-	return a.removeExistingInviteFileInfo(spaceViewId)
+	return a.removeExistingInviteFileInfo(ctx, spaceViewId)
 }
 
 func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
@@ -410,12 +410,23 @@ func (a *aclService) getExistingInviteFileInfo(spaceViewId string) (fileCid stri
 	return
 }
 
-func (a *aclService) removeExistingInviteFileInfo(spaceViewId string) (err error) {
-	return getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
+func (a *aclService) removeExistingInviteFileInfo(ctx context.Context, spaceViewId string) (err error) {
+	var fileCid string
+	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
+		details := sb.Details()
+		fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
 		newState := sb.NewState()
 		newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
 		return sb.Apply(newState)
 	})
+	if err != nil {
+		return err
+	}
+	cId, err := cid.Decode(fileCid)
+	if err != nil {
+		return fmt.Errorf("decode file cid: %w", err)
+	}
+	return a.inviteStore.RemoveInvite(ctx, cId)
 }
 
 func (a *aclService) GetCurrentInvite(spaceId string) (*InviteInfo, error) {
