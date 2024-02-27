@@ -136,8 +136,7 @@ func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 
 func (m *subObjectsAndProfileLinksMigration) migrateId(oldId string) (newId string) {
 	if m.profileID != "" && m.identityObjectID != "" {
-		// we substitute all links to profile object with identity object EXCEPT the case with
-		// widget to identity in Personal space, we must substitute identity with profile to show links correctly
+		// we substitute all links to profile object with space member object
 		if oldId == m.profileID ||
 			strings.HasPrefix(oldId, "_id_") { // we don't need to check the exact accountID here, because we only have links to our own identity
 			return m.identityObjectID
