@@ -140,6 +140,22 @@ func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinReques
 	}
 }
 
+func (mw *Middleware) SpaceStopSharing(cctx context.Context, req *pb.RpcSpaceStopSharingRequest) *pb.RpcSpaceStopSharingResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.StopSharing(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceStopSharingResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceStopSharingResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceStopSharingResponseError_REQUEST_FAILED),
+	)
+	return &pb.RpcSpaceStopSharingResponse{
+		Error: &pb.RpcSpaceStopSharingResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) SpaceJoinCancel(cctx context.Context, req *pb.RpcSpaceJoinCancelRequest) *pb.RpcSpaceJoinCancelResponse {
 	return &pb.RpcSpaceJoinCancelResponse{
 		Error: &pb.RpcSpaceJoinCancelResponseError{

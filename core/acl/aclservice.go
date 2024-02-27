@@ -52,6 +52,7 @@ type AclService interface {
 	GetCurrentInvite(spaceId string) (*InviteInfo, error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
+	StopSharing(ctx context.Context, spaceId string) error
 	CancelJoin(ctx context.Context, spaceId string) (err error)
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error
 	Decline(ctx context.Context, spaceId string, identity crypto.PubKey) (err error)
@@ -188,6 +189,26 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) error {
 	}
 	cl := removeSpace.CommonSpace().AclClient()
 	err = cl.RequestSelfRemove(ctx)
+	if err != nil {
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	return nil
+}
+
+func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
+	removeSpace, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	newPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return err
+	}
+	cl := removeSpace.CommonSpace().AclClient()
+	err = cl.StopSharing(ctx, list.ReadKeyChangePayload{
+		MetadataKey: newPrivKey,
+		ReadKey:     crypto.NewAES(),
+	})
 	if err != nil {
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
