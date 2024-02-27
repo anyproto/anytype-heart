@@ -931,6 +931,10 @@ func reorderRelationOption(records []database.Record, optionId string, afterId s
 	if afterId != "" && beforeId != "" {
 		return "", fmt.Errorf("both afterId and beforeId are set")
 	}
+	if optionId == afterId || optionId == beforeId {
+		return "", fmt.Errorf("optionId is the same as target")
+	}
+	
 	var (
 		found      bool
 		prev, next database.Record
