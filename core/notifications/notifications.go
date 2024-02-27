@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -126,9 +125,6 @@ func (n *notificationService) Close(_ context.Context) (err error) {
 }
 
 func (n *notificationService) CreateAndSend(notification *model.Notification) error {
-	if notification.Id == "" {
-		notification.Id = uuid.New().String()
-	}
 	notification.CreateTime = time.Now().Unix()
 	if !notification.IsLocal {
 		var exist bool
@@ -257,12 +253,7 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 		log.Errorf("failed to get notification object unique key: %v", err)
 		return
 	}
-	techSpaceID, err := n.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
-	if err != nil {
-		log.Errorf("failed to get personal space for notifications: %v", err)
-		return
-	}
-	techSpace, err := n.spaceService.Get(ctx, techSpaceID)
+	techSpace, err := n.spaceService.GetTechSpace(ctx)
 	if err != nil {
 		return
 	}

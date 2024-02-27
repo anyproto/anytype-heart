@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/google/uuid"
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -214,6 +215,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		removeFunc       = func() {}
 		sendNotification = func(code model.ImportErrorCode) {
 			nErr := b.notifications.CreateAndSend(&model.Notification{
+				Id:      uuid.New().String(),
 				Status:  model.Notification_Created,
 				IsLocal: true,
 				Space:   spaceID,

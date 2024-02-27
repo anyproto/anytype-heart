@@ -699,7 +699,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				sb.undo.Add(act)
 			}
 		}
-	} else if hasStoreChanges(changes) || migrationVersionUpdated || hasNotificationChanges(changes) { // TODO: change to len(changes) > 0
+	} else if hasChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		err = pushChange()
 		if err != nil {
@@ -1323,15 +1323,21 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }
 
-func hasStoreChanges(changes []*pb.ChangeContent) bool {
+func hasChanges(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if ch.GetStoreKeySet() != nil ||
-			ch.GetStoreKeyUnset() != nil ||
-			ch.GetStoreSliceUpdate() != nil {
+		if isStoreOrNotificationChanges(ch) {
 			return true
 		}
 	}
 	return false
+}
+
+func isStoreOrNotificationChanges(ch *pb.ChangeContent) bool {
+	return ch.GetStoreKeySet() != nil ||
+		ch.GetStoreKeyUnset() != nil ||
+		ch.GetStoreSliceUpdate() != nil ||
+		ch.GetNotificationCreate() != nil ||
+		ch.GetNotificationUpdate() != nil
 }
 
 func hasDetailsMsgs(msgs []simple.EventMessage) bool {
@@ -1339,16 +1345,6 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 		if msg.Msg.GetObjectDetailsSet() != nil ||
 			msg.Msg.GetObjectDetailsUnset() != nil ||
 			msg.Msg.GetObjectDetailsAmend() != nil {
-			return true
-		}
-	}
-	return false
-}
-
-func hasNotificationChanges(changes []*pb.ChangeContent) bool {
-	for _, ch := range changes {
-		if ch.GetNotificationCreate() != nil ||
-			ch.GetNotificationUpdate() != nil {
 			return true
 		}
 	}

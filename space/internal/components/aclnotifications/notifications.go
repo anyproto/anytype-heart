@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 )
 
-const Cname = "spaceNotification"
+const CName = "common.components.aclnotifications"
 
 var logger = logging.Logger("acl-notifications")
 
@@ -52,7 +52,7 @@ func (n *aclNotificationSender) Init(a *app.App) (err error) {
 }
 
 func (n *aclNotificationSender) Name() (name string) {
-	return Cname
+	return CName
 }
 
 func (n *aclNotificationSender) Run(ctx context.Context) (err error) {
