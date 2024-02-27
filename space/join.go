@@ -46,3 +46,10 @@ func (s *service) Join(ctx context.Context, id string) error {
 	s.mu.Unlock()
 	return nil
 }
+
+func (s *service) CancelLeave(ctx context.Context, id string) error {
+	return s.techSpace.SetPersistentInfo(ctx, spaceinfo.SpacePersistentInfo{
+		SpaceID:       id,
+		AccountStatus: spaceinfo.AccountStatusActive,
+	})
+}

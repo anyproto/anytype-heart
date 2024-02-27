@@ -50,6 +50,7 @@ type Service interface {
 	Create(ctx context.Context) (space clientspace.Space, err error)
 
 	Join(ctx context.Context, id string) (err error)
+	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
