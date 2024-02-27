@@ -6107,6 +6107,20 @@ func (h *ClientCommandsHandlerProxy) SpaceExit(ctx context.Context, req *pb.RpcS
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcSpaceExitResponse)
 }
+func (h *ClientCommandsHandlerProxy) SpaceStopSharing(ctx context.Context, req *pb.RpcSpaceStopSharingRequest) *pb.RpcSpaceStopSharingResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.SpaceStopSharing(ctx, req.(*pb.RpcSpaceStopSharingRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "SpaceStopSharing", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcSpaceStopSharingResponse)
+}
 func (h *ClientCommandsHandlerProxy) SpaceRequestApprove(ctx context.Context, req *pb.RpcSpaceRequestApproveRequest) *pb.RpcSpaceRequestApproveResponse {
 	actualCall := func(ctx context.Context, req any) (any, error) {
 		return h.client.SpaceRequestApprove(ctx, req.(*pb.RpcSpaceRequestApproveRequest)), nil
