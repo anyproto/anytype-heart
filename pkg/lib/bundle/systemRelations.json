@@ -35,6 +35,8 @@
   "relationDefaultValue",
   "relationMaxCount",
   "relationOptionColor",
+  "relationOptionOrder",
+  "relationOptionInternalOrder",
   "relationFormatObjectTypes",
   "isReadonly",
   "isDeleted",

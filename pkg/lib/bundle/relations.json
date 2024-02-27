@@ -79,6 +79,26 @@
     "source": "details"
   },
   {
+    "description": "Relation option order",
+    "format": "longtext",
+    "hidden": true,
+    "key": "relationOptionOrder",
+    "maxCount": 1,
+    "name": "Relation option order",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Relation option internal order",
+    "format": "longtext",
+    "hidden": true,
+    "key": "relationOptionInternalOrder",
+    "maxCount": 1,
+    "name": "Relation option internal order",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "instructions",
