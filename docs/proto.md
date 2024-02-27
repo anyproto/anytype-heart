@@ -24784,6 +24784,7 @@ Used to decode block meta only, without the content itself
 | installedByDefault | [bool](#bool) |  |  |
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 | revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
+| restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
 
 
 
@@ -25807,6 +25808,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | LayoutChange | 6 | restricts layout changing |
 | Template | 7 | restricts template creation from this object |
 | Duplicate | 8 | restricts duplicate object |
+| CreateObjectOfThisType | 9 | can be set only for types. Restricts creating objects of this type |
 
 
 

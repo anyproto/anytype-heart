@@ -96,3 +96,7 @@ func (l *Latex) ApplyEvent(e *pb.EventBlockSetLatex) error {
 	}
 	return nil
 }
+
+func (l *Latex) IsEmpty() bool {
+	return l.content.Text == ""
+}
