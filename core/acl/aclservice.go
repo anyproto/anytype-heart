@@ -212,7 +212,11 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
-	return nil
+	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
+	if err != nil {
+		return fmt.Errorf("get space view id: %w", err)
+	}
+	return a.removeExistingInviteFileInfo(spaceViewId)
 }
 
 func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
@@ -404,6 +408,14 @@ func (a *aclService) getExistingInviteFileInfo(spaceViewId string) (fileCid stri
 		return nil
 	})
 	return
+}
+
+func (a *aclService) removeExistingInviteFileInfo(spaceViewId string) (err error) {
+	return getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
+		newState := sb.NewState()
+		newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
+		return sb.Apply(newState)
+	})
 }
 
 func (a *aclService) GetCurrentInvite(spaceId string) (*InviteInfo, error) {
