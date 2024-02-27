@@ -11591,6 +11591,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | objectTypeUniqueKey | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| addPageContent | [bool](#bool) |  |  |
 
 
 
