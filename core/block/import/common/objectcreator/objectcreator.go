@@ -39,7 +39,7 @@ import (
 
 var log = logging.Logger("import")
 
-// Service incapsulate logic with creation of given smartblocks
+// Service encapsulate logic with creation of given smartblocks
 type Service interface {
 	//nolint:lll
 	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
@@ -84,7 +84,6 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	origin := dataObject.origin
 	spaceID := dataObject.spaceID
 
-	var err error
 	newID := oldIDtoNew[sn.Id]
 
 	if sn.SbType == coresb.SmartBlockTypeFile {
@@ -97,7 +96,10 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
 
-	var filesToDelete []string
+	var (
+		filesToDelete []string
+		err           error
+	)
 	defer func() {
 		// delete file in ipfs if there is error after creation
 		oc.onFinish(err, st, filesToDelete)

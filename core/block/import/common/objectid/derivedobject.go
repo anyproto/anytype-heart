@@ -26,7 +26,7 @@ func newDerivedObject(existingObject *existingObject, spaceService space.Service
 }
 
 func (r *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, getExisting bool, _ objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
-	id, payload, err := r.existingObject.GetIDAndPayload(ctx, spaceID, sn, getExisting)
+	id, payload, err := r.existingObject.GetIDAndPayload(ctx, spaceID, sn, true)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
