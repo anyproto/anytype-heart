@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -42,7 +40,7 @@ func NewFileSyncer(
 	}
 }
 
-func (s *FileSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin objectorigin.ObjectOrigin) error {
+func (s *FileSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b simple.Block, origin objectorigin.ObjectOrigin) error {
 	if targetObjectId := b.Model().GetFile().GetTargetObjectId(); targetObjectId != "" {
 		return nil
 	}

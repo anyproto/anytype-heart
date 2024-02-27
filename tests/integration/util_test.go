@@ -26,7 +26,7 @@ import (
 type testApplication struct {
 	appService *application.Service
 	account    *model.Account
-	eventQueue *mb.MB[*pb.Event]
+	eventQueue *mb.MB[*pb.EventMessage]
 }
 
 func (a *testApplication) personalSpaceId() string {
@@ -34,22 +34,17 @@ func (a *testApplication) personalSpaceId() string {
 }
 
 func (a *testApplication) waitEventMessage(t *testing.T, pred func(msg *pb.EventMessage) bool) {
-	queueCond := a.eventQueue.NewCond().WithFilter(func(event *pb.Event) bool {
-		for _, msg := range event.Messages {
-			if pred(msg) {
-				return true
-			}
-		}
-		return false
+	queueCond := a.eventQueue.NewCond().WithFilter(func(msg *pb.EventMessage) bool {
+		return pred(msg)
 	})
 
-	queueCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	queueCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	_, err := queueCond.WaitOne(queueCtx)
 	require.NoError(t, err)
 }
 
-func createAccountAndStartApp(t *testing.T) *testApplication {
+func createAccountAndStartApp(t *testing.T, defaultUsecase pb.RpcObjectImportUseCaseRequestUseCase) *testApplication {
 	repoDir := t.TempDir()
 
 	ctx := context.Background()
@@ -66,11 +61,13 @@ func createAccountAndStartApp(t *testing.T) *testApplication {
 	})
 	t.Log(mnemonic)
 
-	eventQueue := mb.New[*pb.Event](0)
+	eventQueue := mb.New[*pb.EventMessage](0)
 	sender := event.NewCallbackSender(func(event *pb.Event) {
-		err := eventQueue.Add(ctx, event)
-		if err != nil {
-			log.Println("event queue error:", err)
+		for _, msg := range event.Messages {
+			err := eventQueue.Add(ctx, msg)
+			if err != nil {
+				log.Println("event queue error:", err)
+			}
 		}
 	})
 	app.SetEventSender(sender)
@@ -89,7 +86,7 @@ func createAccountAndStartApp(t *testing.T) *testApplication {
 		eventQueue: eventQueue,
 	}
 	objCreator := getService[builtinobjects.BuiltinObjects](testApp)
-	_, err = objCreator.CreateObjectsForUseCase(session.NewContext(), acc.Info.AccountSpaceId, pb.RpcObjectImportUseCaseRequest_GET_STARTED)
+	_, err = objCreator.CreateObjectsForUseCase(session.NewContext(), acc.Info.AccountSpaceId, defaultUsecase)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -124,7 +121,6 @@ func newTestSubscription(t *testing.T, app *testApplication, keys []domain.Relat
 		Filters: filters,
 	})
 	require.NoError(t, err)
-
 	return &testSubscription{
 		subscriptionId: subscriptionId,
 	}

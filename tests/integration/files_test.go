@@ -15,7 +15,7 @@ import (
 
 func TestFiles(t *testing.T) {
 	ctx := context.Background()
-	app := createAccountAndStartApp(t)
+	app := createAccountAndStartApp(t, pb.RpcObjectImportUseCaseRequest_GET_STARTED)
 
 	t.Run("upload image", func(t *testing.T) {
 		blockService := getService[*block.Service](app)
