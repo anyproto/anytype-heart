@@ -82,10 +82,17 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 }
 
 func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceInviteRevokeRequest) *pb.RpcSpaceInviteRevokeResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.RevokeInvite(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteRevokeResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteRevokeResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteRevokeResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceInviteRevokeResponse{
 		Error: &pb.RpcSpaceInviteRevokeResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }

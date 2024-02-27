@@ -49,6 +49,7 @@ type AccountPermissions struct {
 type AclService interface {
 	app.Component
 	GenerateInvite(ctx context.Context, spaceId string) (*InviteInfo, error)
+	RevokeInvite(ctx context.Context, spaceId string) error
 	GetCurrentInvite(spaceId string) (*InviteInfo, error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
@@ -137,6 +138,23 @@ func (a *aclService) Decline(ctx context.Context, spaceId string, identity crypt
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
 	return nil
+}
+
+func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	cl := sp.CommonSpace().AclClient()
+	err = cl.RevokeAllInvites(ctx)
+	if err != nil {
+		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	}
+	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
+	if err != nil {
+		return fmt.Errorf("get space view id: %w", err)
+	}
+	return a.removeExistingInviteFileInfo(ctx, spaceViewId)
 }
 
 func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
