@@ -1409,6 +1409,14 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		} else {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
 		}
+
+		if uk.SmartblockType() == smartblock.SmartBlockTypeRelationOption {
+			order := pbtypes.GetString(s.Details(), bundle.RelationKeyRelationOptionInternalOrder.String())
+			if order == "" {
+				order = uk.InternalKey()
+			}
+			s.SetLocalDetail(bundle.RelationKeyRelationOptionOrder.String(), pbtypes.String(order))
+		}
 	}
 
 	sb.setRestrictionsDetail(s)

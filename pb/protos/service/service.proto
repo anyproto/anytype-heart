@@ -122,6 +122,7 @@ service ClientCommands {
     rpc ObjectCreateRelation (anytype.Rpc.Object.CreateRelation.Request) returns (anytype.Rpc.Object.CreateRelation.Response);
     rpc ObjectCreateRelationOption (anytype.Rpc.Object.CreateRelationOption.Request) returns (anytype.Rpc.Object.CreateRelationOption.Response);
     rpc RelationListRemoveOption (anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
+    rpc RelationMoveOption (anytype.Rpc.Relation.MoveOption.Request) returns (anytype.Rpc.Relation.MoveOption.Response);
     rpc RelationOptions (anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
 
     // Object Relations

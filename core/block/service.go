@@ -14,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
+	lexicographic_sort "github.com/tolgaOzen/lexicographic-sort"
 	"go.uber.org/zap"
 
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
@@ -685,6 +686,51 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 	return nil
 }
 
+func (s *Service) MoveOption(optionId string, afterId, beforeId string) error {
+	return Do(s, optionId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+
+		records, _, err := s.objectStore.Query(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					RelationKey: bundle.RelationKeySpaceId.String(),
+					Value:       pbtypes.String(b.SpaceID()),
+				},
+				{
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					RelationKey: bundle.RelationKeyRelationKey.String(),
+					Value:       pbtypes.String(relKey),
+				},
+				{
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					RelationKey: bundle.RelationKeyLayout.String(),
+					Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				},
+			},
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyRelationOptionOrder.String(),
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("query options: %w", err)
+		}
+
+		if len(records) == 0 {
+			return fmt.Errorf("target option not found")
+		}
+
+		newOrder, err := reorderRelationOption(records, optionId, afterId, beforeId)
+		st.SetDetail(bundle.RelationKeyRelationOptionInternalOrder.String(), pbtypes.String(newOrder))
+
+		return b.Apply(st)
+	},
+	)
+}
+
 // TODO: remove proxy
 func (s *Service) Process() process.Service {
 	return s.process
@@ -879,4 +925,70 @@ func (s *Service) enrichDetailsWithOrigin(details *types.Struct, origin model.Ob
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
+}
+
+func reorderRelationOption(records []database.Record, optionId string, afterId string, beforeId string) (newOrder string, err error) {
+	if afterId != "" && beforeId != "" {
+		return "", fmt.Errorf("both afterId and beforeId are set")
+	}
+	var (
+		found      bool
+		prev, next database.Record
+	)
+	for i, record := range records {
+		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		if id == optionId {
+			found = true
+			if i == len(records)-1 && afterId != "" {
+				// the last one case
+				newOrder = bson.NewObjectId().Hex()
+				break
+			}
+
+			if beforeId != "" {
+				if i > 0 {
+					prev = records[i-1]
+				}
+				next = record
+			} else {
+				if len(records) > i+1 {
+					// in case of the last one we don't need to prev
+					prev = record
+					next = records[i+1]
+				}
+			}
+		}
+	}
+	if !found {
+		return "", fmt.Errorf("option not found")
+	}
+	if prev.Details == nil && next.Details == nil {
+		// special case, adding after the last one
+		return bson.NewObjectId().Hex(), nil
+	}
+	var prevKey, nextKey string
+	nextKey, err = getRelationOptionSort(next.Details)
+	if prev.Details == nil {
+		// special case in case adding to the beginning
+		prevKey = " "
+	} else {
+		prevKey, err = getRelationOptionSort(prev.Details)
+		nextKey, err = getRelationOptionSort(next.Details)
+	}
+
+	return lexicographic_sort.GenerateBetween(prevKey, nextKey), nil
+}
+
+func getRelationOptionSort(details *types.Struct) (string, error) {
+	saved := pbtypes.GetString(details, bundle.RelationKeyRelationOptionInternalOrder.String())
+	if saved != "" {
+		return saved, nil
+	}
+
+	ukStr := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+	uk, err := domain.UnmarshalUniqueKey(ukStr)
+	if err != nil {
+		return "", err
+	}
+	return uk.InternalKey(), nil
 }

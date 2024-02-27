@@ -80,6 +80,36 @@ func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb
 	return response(pb.RpcRelationListRemoveOptionResponseError_NULL, nil)
 }
 
+func (mw *Middleware) RelationMoveOption(cctx context.Context, request *pb.RpcRelationMoveOptionRequest) *pb.RpcRelationMoveOptionResponse {
+	response := func(code pb.RpcRelationMoveOptionResponseErrorCode, err error) *pb.RpcRelationMoveOptionResponse {
+		if err != nil {
+			return &pb.RpcRelationMoveOptionResponse{
+				Error: &pb.RpcRelationMoveOptionResponseError{
+					Code:        code,
+					Description: err.Error(),
+				},
+			}
+		}
+
+		return &pb.RpcRelationMoveOptionResponse{
+			Error: &pb.RpcRelationMoveOptionResponseError{
+				Code: code,
+			},
+		}
+	}
+
+	err := mw.doBlockService(func(bs *block.Service) error {
+		var err error
+		err = bs.MoveOption(request.OptionId, request.AfterId, request.BeforeId)
+		return err
+	})
+	if err != nil {
+		return response(pb.RpcRelationMoveOptionResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcRelationMoveOptionResponseError_NULL, nil)
+}
+
 func (mw *Middleware) RelationOptions(cctx context.Context, request *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
 	// TODO implement me
 	panic("implement me")

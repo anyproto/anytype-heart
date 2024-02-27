@@ -2802,6 +2802,28 @@ message Rpc {
     }
 
     message Relation {
+        message MoveOption {
+            message Request {
+                string optionId = 1;
+                string afterId = 2; // move it after the given id
+                string beforeId = 3; // move it before the given id
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
         message ListRemoveOption {
             message Request {
                 repeated string optionIds = 1;
