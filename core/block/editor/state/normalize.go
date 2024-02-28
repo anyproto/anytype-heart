@@ -89,13 +89,16 @@ func (s *State) normalizeLayout() {
 }
 
 func (s *State) removeEmptyLayoutBlocks(blocks map[string]simple.Block) {
+	// TODO: rewrite to use DFS routine: If layout block has no children, remove it, then check its parent
 	for _, b := range blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
-			if len(b.Model().ChildrenIds) == 0 {
-				s.Unlink(b.Model().Id)
+			if layout.Style == model.BlockContentLayout_Row || layout.Style == model.BlockContentLayout_Column || layout.Style == model.BlockContentLayout_Div {
+				if len(b.Model().ChildrenIds) == 0 {
+					s.Unlink(b.Model().Id)
+				}
+				// load parent for checking
+				s.GetParentOf(b.Model().Id)
 			}
-			// load parent for checking
-			s.GetParentOf(b.Model().Id)
 		}
 	}
 }
