@@ -433,6 +433,7 @@ func (e *export) writeDoc(ctx context.Context, format model.ExportFormat, wr wri
 				return nil
 			}
 		}
+
 		var conv converter.Converter
 		switch format {
 		case model.Export_Markdown:

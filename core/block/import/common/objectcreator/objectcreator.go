@@ -93,7 +93,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.setRootBlock(snapshot, newID)
 
-	oc.injectImportDetails(sn, origin, newID, spaceID)
+	oc.injectImportDetails(sn, origin)
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
 
@@ -165,7 +165,7 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption && sbType != coresb.SmartBlockTypeFileObject
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objectorigin.ObjectOrigin, newId string, spaceId string) {
+func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objectorigin.ObjectOrigin) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
