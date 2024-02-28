@@ -253,6 +253,13 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 		Metadata:  a.spaceService.AccountMetadataPayload(),
 	})
 	if err != nil {
+		if errors.Is(err, list.ErrInsufficientPermissions) {
+			err = a.joiningClient.CancelRemoveSelf(ctx, spaceId)
+			if err != nil {
+				return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+			}
+			return a.spaceService.CancelLeave(ctx, spaceId)
+		}
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
 	return a.spaceService.Join(ctx, spaceId)
