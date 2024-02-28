@@ -120,6 +120,53 @@ func (_c *MockService_AccountMetadataSymKey_Call) RunAndReturn(run func() crypto
 	return _c
 }
 
+// CancelLeave provides a mock function with given fields: ctx, id
+func (_m *MockService) CancelLeave(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CancelLeave")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_CancelLeave_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CancelLeave'
+type MockService_CancelLeave_Call struct {
+	*mock.Call
+}
+
+// CancelLeave is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockService_Expecter) CancelLeave(ctx interface{}, id interface{}) *MockService_CancelLeave_Call {
+	return &MockService_CancelLeave_Call{Call: _e.mock.On("CancelLeave", ctx, id)}
+}
+
+func (_c *MockService_CancelLeave_Call) Run(run func(ctx context.Context, id string)) *MockService_CancelLeave_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_CancelLeave_Call) Return(err error) *MockService_CancelLeave_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_CancelLeave_Call) RunAndReturn(run func(context.Context, string) error) *MockService_CancelLeave_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Close provides a mock function with given fields: ctx
 func (_m *MockService) Close(ctx context.Context) error {
 	ret := _m.Called(ctx)
