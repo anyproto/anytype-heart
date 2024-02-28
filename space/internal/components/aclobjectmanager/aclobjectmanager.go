@@ -304,7 +304,7 @@ func convertPermissions(permissions list.AclPermissions) model.ParticipantPermis
 	case aclrecordproto.AclUserPermissions_Owner:
 		return model.ParticipantPermissions_Owner
 	}
-	return model.ParticipantPermissions_Reader
+	return model.ParticipantPermissions_NoPermissions
 }
 
 func convertStatus(status list.AclStatus) model.ParticipantStatus {
@@ -359,11 +359,9 @@ func buildParticipantDetails(
 	status model.ParticipantStatus,
 ) *types.Struct {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():       pbtypes.String(id),
-		bundle.RelationKeyIdentity.String(): pbtypes.String(identity),
-
-		bundle.RelationKeySpaceId.String(): pbtypes.String(spaceId),
-
+		bundle.RelationKeyId.String():                     pbtypes.String(id),
+		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
+		bundle.RelationKeySpaceId.String():                pbtypes.String(spaceId),
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
