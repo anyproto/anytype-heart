@@ -1,7 +1,7 @@
 package common
 
 import (
-	"bytes"
+	"crypto/sha256"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -31,16 +31,6 @@ var randomIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔
 
 var log = logging.Logger("import")
 
-func GetSourceDetail(fileName, importPath string) string {
-	var source bytes.Buffer
-	source.WriteString(strings.TrimPrefix(filepath.Ext(fileName), "."))
-	source.WriteString(":")
-	source.WriteString(importPath)
-	source.WriteRune(filepath.Separator)
-	source.WriteString(fileName)
-	return source.String()
-}
-
 func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
 	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
@@ -49,9 +39,11 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	if emoji == "" {
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
+	hash := sha256.New()
+	sum := string(hash.Sum([]byte(sourcePath)))
 	fields := map[string]*types.Value{
 		bundle.RelationKeyName.String():             pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String():   pbtypes.String(sourcePath),
+		bundle.RelationKeySourceFilePath.String():   pbtypes.String(sum),
 		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
 		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
