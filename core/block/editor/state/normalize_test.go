@@ -77,7 +77,9 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "c1", Content: contColumn}))
 		r.Add(simple.New(&model.Block{Id: "c2", Content: contColumn}))
 
-		r.Add(simple.New(&model.Block{Id: "t1", ChildrenIds: []string{"tableRows", "tableColumns"}}))
+		r.Add(simple.New(&model.Block{Id: "t1", ChildrenIds: []string{"tableRows", "tableColumns"}, Content: &model.BlockContentOfTable{
+			Table: &model.BlockContentTable{},
+		}}))
 		r.Add(simple.New(&model.Block{Id: "tableRows", Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_TableRows,
