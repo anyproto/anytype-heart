@@ -450,8 +450,8 @@ func (p *Pb) injectImportDetails(sn *pb.SnapshotWithType) {
 
 func (p *Pb) setSourceFilePath(sn *pb.SnapshotWithType) {
 	spaceId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySpaceId.String())
-	pageId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	sourceFilePath := filepath.Join(spaceId, pageId, string(filepath.Separator))
+	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	sourceFilePath := filepath.Join(spaceId, "/", id)
 	sn.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceFilePath)
 }
 

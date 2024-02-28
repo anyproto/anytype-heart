@@ -1,7 +1,8 @@
 package common
 
 import (
-	"crypto/sha256"
+	"crypto/md5"
+	"encoding/hex"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -39,11 +40,11 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	if emoji == "" {
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
-	hash := sha256.New()
-	sum := string(hash.Sum([]byte(sourcePath)))
+	h := md5.Sum([]byte(sourcePath))
+	hash := hex.EncodeToString(h[:])
 	fields := map[string]*types.Value{
 		bundle.RelationKeyName.String():             pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String():   pbtypes.String(sum),
+		bundle.RelationKeySourceFilePath.String():   pbtypes.String(hash),
 		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
 		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
