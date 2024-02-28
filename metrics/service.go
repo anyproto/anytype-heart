@@ -177,11 +177,11 @@ func (s *service) Run() {
 
 func (s *service) Close() {
 	s.lock.Lock()
+	defer s.lock.Unlock()
 	for _, c := range s.clients {
 		c.Close()
 	}
 	s.alreadyRunning = false
-	defer s.lock.Unlock()
 }
 
 func (s *service) Send(ev amplitude.Event) {
