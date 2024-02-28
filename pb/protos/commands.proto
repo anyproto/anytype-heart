@@ -1515,6 +1515,7 @@ message Rpc {
                 string objectTypeUniqueKey = 2;
                 string url = 3;
                 google.protobuf.Struct details = 4;
+                bool addPageContent = 5;
             }
 
             message Response {

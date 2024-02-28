@@ -76,11 +76,24 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow}))
 		r.Add(simple.New(&model.Block{Id: "c1", Content: contColumn}))
 		r.Add(simple.New(&model.Block{Id: "c2", Content: contColumn}))
-		r.Add(simple.New(&model.Block{Id: "t1"}))
+
+		r.Add(simple.New(&model.Block{Id: "t1", ChildrenIds: []string{"tableRows", "tableColumns"}}))
+		r.Add(simple.New(&model.Block{Id: "tableRows", Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableRows,
+			},
+		}}))
+		r.Add(simple.New(&model.Block{Id: "tableColumns", Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableColumns,
+			},
+		}}))
 
 		s := r.NewState()
 		s.Get("c1")
 		s.Get("c2")
+		s.Get("tableRows")
+		s.Get("tableColumns")
 
 		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
@@ -91,6 +104,8 @@ func TestState_Normalize(t *testing.T) {
 		assert.Nil(t, r.Pick("r1"))
 		assert.Nil(t, r.Pick("c1"))
 		assert.Nil(t, r.Pick("c2"))
+		assert.NotNil(t, r.Pick("tableRows"))    // Do not remove table rows
+		assert.NotNil(t, r.Pick("tableColumns")) // Do not remove table columns
 	})
 
 	t.Run("remove one column row", func(t *testing.T) {
