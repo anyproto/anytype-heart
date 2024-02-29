@@ -188,3 +188,7 @@ func (l *Link) ToText(targetDetails *types.Struct) simple.Block {
 	}
 	return simple.New(m)
 }
+
+func (l *Link) IsEmpty() bool {
+	return l.content.TargetBlockId == ""
+}

@@ -49,8 +49,8 @@ func (sb *smartBlock) navigationalLinks(s *state.State) (ids []string) {
 func collectBlockLinks(s *state.State) (ids []string) {
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if f := b.Model().GetFile(); f != nil {
-			if f.Hash != "" && f.Type != model.BlockContentFile_Image {
-				ids = append(ids, f.Hash)
+			if f.TargetObjectId != "" && f.Type != model.BlockContentFile_Image {
+				ids = append(ids, f.TargetObjectId)
 			}
 			return true
 		}

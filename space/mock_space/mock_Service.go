@@ -120,6 +120,53 @@ func (_c *MockService_AccountMetadataSymKey_Call) RunAndReturn(run func() crypto
 	return _c
 }
 
+// CancelLeave provides a mock function with given fields: ctx, id
+func (_m *MockService) CancelLeave(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CancelLeave")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_CancelLeave_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CancelLeave'
+type MockService_CancelLeave_Call struct {
+	*mock.Call
+}
+
+// CancelLeave is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockService_Expecter) CancelLeave(ctx interface{}, id interface{}) *MockService_CancelLeave_Call {
+	return &MockService_CancelLeave_Call{Call: _e.mock.On("CancelLeave", ctx, id)}
+}
+
+func (_c *MockService_CancelLeave_Call) Run(run func(ctx context.Context, id string)) *MockService_CancelLeave_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_CancelLeave_Call) Return(err error) *MockService_CancelLeave_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_CancelLeave_Call) RunAndReturn(run func(context.Context, string) error) *MockService_CancelLeave_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Close provides a mock function with given fields: ctx
 func (_m *MockService) Close(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -624,6 +671,51 @@ func (_c *MockService_SpaceViewId_Call) Return(spaceViewId string, err error) *M
 }
 
 func (_c *MockService_SpaceViewId_Call) RunAndReturn(run func(string) (string, error)) *MockService_SpaceViewId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TechSpaceId provides a mock function with given fields:
+func (_m *MockService) TechSpaceId() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for TechSpaceId")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockService_TechSpaceId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TechSpaceId'
+type MockService_TechSpaceId_Call struct {
+	*mock.Call
+}
+
+// TechSpaceId is a helper method to define mock.On call
+func (_e *MockService_Expecter) TechSpaceId() *MockService_TechSpaceId_Call {
+	return &MockService_TechSpaceId_Call{Call: _e.mock.On("TechSpaceId")}
+}
+
+func (_c *MockService_TechSpaceId_Call) Run(run func()) *MockService_TechSpaceId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_TechSpaceId_Call) Return(_a0 string) *MockService_TechSpaceId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_TechSpaceId_Call) RunAndReturn(run func() string) *MockService_TechSpaceId_Call {
 	_c.Call.Return(run)
 	return _c
 }

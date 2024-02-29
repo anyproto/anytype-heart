@@ -74,12 +74,7 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		return "", fmt.Errorf("block has no content")
 	}
 
-	if l, ok := req.Block.GetContent().(*model.BlockContentOfLink); ok {
-		// substitute identity object with profile object as links are treated differently in personal and private spaces
-		if l.Link.TargetBlockId == w.accountService.MyParticipantId(w.SpaceID()) && w.Space().Id() == w.accountService.PersonalSpaceID() {
-			l.Link.TargetBlockId = w.Space().DerivedIDs().Profile
-		}
-	} else {
+	if req.Block.GetLink() == nil {
 		return "", fmt.Errorf("unsupported widget content: %T", req.Block.Content)
 	}
 

@@ -63,7 +63,7 @@ func (s *service) waitLoad(ctx context.Context, ctrl spacecontroller.SpaceContro
 	if ld, ok := ctrl.Current().(loader.LoadWaiter); ok {
 		return ld.WaitLoad(ctx)
 	}
-	return nil, fmt.Errorf("failed to load space, mode is %d", ctrl.Mode())
+	return nil, fmt.Errorf("failed to load space, mode is %d: %w", ctrl.Mode(), ErrFailedToLoad)
 }
 
 func (s *service) loadPersonalSpace(ctx context.Context) (err error) {

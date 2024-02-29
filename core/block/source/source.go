@@ -599,7 +599,6 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 	}
 
 	if lastChange != nil && !st.IsTheHeaderChange() {
-		// todo: why do we don't need to set last modified for the header change?
 		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)

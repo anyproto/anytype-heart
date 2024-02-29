@@ -609,8 +609,10 @@
     "source": "details",
     "objectTypes": [
       "profile",
-      "contact"
-    ]
+      "contact",
+      "participant"
+    ],
+    "revision": 1
   },
   {
     "description": "Name of artist",
@@ -751,8 +753,10 @@
     "source": "details",
     "objectTypes": [
       "profile",
-      "contact"
-    ]
+      "contact",
+      "participant"
+    ],
+    "revision": 1
   },
   {
     "format": "longtext",
@@ -1164,10 +1168,11 @@
     "maxCount": 1,
     "name": "Last modified by",
     "objectTypes": [
-      "profile"
+      "participant"
     ],
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Relation allows multi values",

@@ -33,14 +33,16 @@ type loadingSpace struct {
 
 	// results
 	stopIfMandatoryFail bool
+	disableRemoteLoad   bool
 	space               clientspace.Space
 	loadErr             error
 	loadCh              chan struct{}
 }
 
-func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail bool) *loadingSpace {
+func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, disableRemoteLoad bool) *loadingSpace {
 	ls := &loadingSpace{
 		stopIfMandatoryFail:  stopIfMandatoryFail,
+		disableRemoteLoad:    disableRemoteLoad,
 		retryTimeout:         loadingRetryTimeout,
 		spaceServiceProvider: s,
 		loadCh:               make(chan struct{}),
@@ -80,7 +82,7 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 	sp, err := ls.spaceServiceProvider.open(ctx)
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
-		return false
+		return ls.disableRemoteLoad
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
@@ -89,7 +91,7 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 				ls.loadErr = err
 				return true
 			}
-			return false
+			return ls.disableRemoteLoad
 		}
 	}
 	if err != nil {

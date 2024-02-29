@@ -225,7 +225,8 @@ func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang
 	return firstTextBlock != nil &&
 		lastTextBlock == nil &&
 		rang != nil &&
-		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
+		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text)) &&
+		rang.To > 0
 }
 
 func unlinkAndClearBlocks(
@@ -452,6 +453,7 @@ func (cb *clipboard) pasteAny(
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
+	blockIds = ctrl.blockIds
 
 	if len(missingRelationKeys) > 0 {
 		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {

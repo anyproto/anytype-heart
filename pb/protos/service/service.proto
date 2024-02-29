@@ -57,6 +57,7 @@ service ClientCommands {
     rpc SpaceJoin (anytype.Rpc.Space.Join.Request) returns (anytype.Rpc.Space.Join.Response);
     rpc SpaceJoinCancel (anytype.Rpc.Space.JoinCancel.Request) returns (anytype.Rpc.Space.JoinCancel.Response);
     rpc SpaceExit (anytype.Rpc.Space.Exit.Request) returns (anytype.Rpc.Space.Exit.Response);
+    rpc SpaceStopSharing (anytype.Rpc.Space.StopSharing.Request) returns (anytype.Rpc.Space.StopSharing.Response);
     rpc SpaceRequestApprove (anytype.Rpc.Space.RequestApprove.Request) returns (anytype.Rpc.Space.RequestApprove.Response);
     rpc SpaceRequestDecline (anytype.Rpc.Space.RequestDecline.Request) returns (anytype.Rpc.Space.RequestDecline.Response);
     rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
@@ -306,6 +307,7 @@ service ClientCommands {
 
     rpc NotificationList (anytype.Rpc.Notification.List.Request) returns (anytype.Rpc.Notification.List.Response);
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
+    rpc NotificationTest (anytype.Rpc.Notification.Test.Request) returns (anytype.Rpc.Notification.Test.Response);
 
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
 }
