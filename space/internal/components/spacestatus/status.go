@@ -113,7 +113,9 @@ func (s *spaceStatus) SetPersistentInfo(ctx context.Context, info spaceinfo.Spac
 		return err
 	}
 	s.accountStatus = info.AccountStatus
-	s.latestAclHeadId = info.AclHeadId
+	if info.AclHeadId != "" {
+		s.latestAclHeadId = info.AclHeadId
+	}
 	return nil
 }
 
