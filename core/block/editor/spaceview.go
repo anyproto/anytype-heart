@@ -143,7 +143,9 @@ func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocal
 func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
-	st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
+	if info.AclHeadId != "" {
+		st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
+	}
 }
 
 // targetSpaceID returns space id from the root of space object's tree
