@@ -60,7 +60,7 @@ type (
 		analytics, validate, creator   bool
 		list, removeRelations, exclude bool
 		collectCustomUsageInfo         bool
-		path, rules, spaceDBId         string
+		path, rules, spaceDashboardId  string
 	}
 )
 
@@ -164,7 +164,7 @@ func getFlags() (*cliFlags, error) {
 	rules := flag.String("rules", "", "Path to file with processing rules")
 	exclude := flag.Bool("exclude", false, "Exclude objects that did not pass validation")
 	custom := flag.Bool("c", false, "Collect usage information about custom types and relations")
-	spaceDBId := flag.String("s", "", "Id of object to be set as Space Dashboard")
+	spaceDashboardId := flag.String("s", "", "Id of object to be set as Space Dashboard")
 
 	flag.Parse()
 
@@ -182,7 +182,7 @@ func getFlags() (*cliFlags, error) {
 		rules:                  *rules,
 		exclude:                *exclude,
 		collectCustomUsageInfo: *custom,
-		spaceDBId:              *spaceDBId,
+		spaceDashboardId:       *spaceDashboardId,
 	}, nil
 }
 
@@ -321,7 +321,7 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 
 func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags) ([]byte, error) {
 	if name == constant.ProfileFile {
-		return processProfile(data, info, flags.spaceDBId)
+		return processProfile(data, info, flags.spaceDashboardId)
 	}
 
 	if strings.HasPrefix(name, "files/") {
