@@ -209,6 +209,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 }
 
 func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
+	r = objectRestrictionsBySBType[uk.SmartblockType()]
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
@@ -222,11 +223,11 @@ func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	case smartblock.SmartBlockTypeRelation:
 		key := uk.InternalKey()
 		if lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
-			return sysRelationsRestrictions
+			r = sysRelationsRestrictions
 		}
 	}
 	// we assume that all sb types exist in objectRestrictionsBySBType
-	return objectRestrictionsBySBType[uk.SmartblockType()]
+	return r
 }
 
 func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) DataviewRestrictions {
