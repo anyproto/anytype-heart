@@ -19,9 +19,12 @@ type SpaceStatus interface {
 	GetLocalStatus() spaceinfo.LocalStatus
 	GetRemoteStatus() spaceinfo.RemoteStatus
 	GetPersistentStatus() spaceinfo.AccountStatus
+	LatestAclHeadId() string
 	UpdatePersistentStatus(ctx context.Context, status spaceinfo.AccountStatus)
+	UpdatePersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo)
 	SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error
 	SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error)
+	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SetLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(ctx context.Context, status spaceinfo.AccessType) (err error)
@@ -29,17 +32,19 @@ type SpaceStatus interface {
 
 type spaceStatus struct {
 	sync.Mutex
-	spaceId       string
-	accountStatus spaceinfo.AccountStatus
-	localStatus   spaceinfo.LocalStatus
-	remoteStatus  spaceinfo.RemoteStatus
-	techSpace     techspace.TechSpace
+	spaceId         string
+	accountStatus   spaceinfo.AccountStatus
+	localStatus     spaceinfo.LocalStatus
+	remoteStatus    spaceinfo.RemoteStatus
+	latestAclHeadId string
+	techSpace       techspace.TechSpace
 }
 
-func New(spaceId string, accountStatus spaceinfo.AccountStatus) SpaceStatus {
+func New(spaceId string, accountStatus spaceinfo.AccountStatus, aclHeadId string) SpaceStatus {
 	return &spaceStatus{
-		accountStatus: accountStatus,
-		spaceId:       spaceId,
+		accountStatus:   accountStatus,
+		spaceId:         spaceId,
+		latestAclHeadId: aclHeadId,
 	}
 }
 
@@ -72,6 +77,15 @@ func (s *spaceStatus) UpdatePersistentStatus(ctx context.Context, status spacein
 	s.accountStatus = status
 }
 
+func (s *spaceStatus) UpdatePersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) {
+	s.accountStatus = info.AccountStatus
+	s.latestAclHeadId = info.AclHeadId
+}
+
+func (s *spaceStatus) LatestAclHeadId() string {
+	return s.latestAclHeadId
+}
+
 func (s *spaceStatus) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
 	s.remoteStatus = status
 	return s.setCurrentLocalInfo(ctx)
@@ -89,6 +103,18 @@ func (s *spaceStatus) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLoca
 	s.localStatus = info.LocalStatus
 	s.remoteStatus = info.RemoteStatus
 	return s.setCurrentLocalInfo(ctx)
+}
+
+func (s *spaceStatus) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error) {
+	if s.GetPersistentStatus() == info.AccountStatus {
+		return nil
+	}
+	if err = s.techSpace.SetPersistentInfo(ctx, info); err != nil {
+		return err
+	}
+	s.accountStatus = info.AccountStatus
+	s.latestAclHeadId = info.AclHeadId
+	return nil
 }
 
 func (s *spaceStatus) SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error) {

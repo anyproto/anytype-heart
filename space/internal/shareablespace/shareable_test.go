@@ -236,7 +236,7 @@ func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 	}
 	s.persistentUpdater = func(status spaceinfo.AccountStatus) {
 		go func() {
-			err := controller.UpdateStatus(context.Background(), status)
+			err := controller.UpdateInfo(context.Background(), status)
 			require.NoError(t, err)
 		}()
 	}
@@ -272,7 +272,7 @@ func TestSpaceController_LoadingDeleting(t *testing.T) {
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeLoading, fx.ctrl.Mode())
-	err = fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusDeleted)
+	err = fx.ctrl.UpdateInfo(context.Background(), spaceinfo.AccountStatusDeleted)
 	require.NoError(t, err)
 	fx.reg.Lock()
 	defer fx.reg.Unlock()
@@ -289,7 +289,7 @@ func TestSpaceController_LoadingDeletingMultipleWaiters(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
-			err := fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusDeleted)
+			err := fx.ctrl.UpdateInfo(context.Background(), spaceinfo.AccountStatusDeleted)
 			require.NoError(t, err)
 			wg.Done()
 		}()
@@ -318,7 +318,7 @@ func TestSpaceController_DeletingInvalid(t *testing.T) {
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
-	err = fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusActive)
+	err = fx.ctrl.UpdateInfo(context.Background(), spaceinfo.AccountStatusActive)
 	require.Error(t, err)
 	fx.reg.Lock()
 	defer fx.reg.Unlock()

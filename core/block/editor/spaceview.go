@@ -56,7 +56,7 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 	s.DisableLayouts()
 	info := s.getSpaceInfo(ctx.State)
-	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
+	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus, AclHeadId: info.AclHeadId}
 	s.setSpacePersistentInfo(ctx.State, newPersistentInfo)
 	s.setSpaceLocalInfo(ctx.State, spaceinfo.SpaceLocalInfo{
 		SpaceID:      spaceID,
@@ -143,6 +143,7 @@ func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocal
 func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
+	st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
 }
 
 // targetSpaceID returns space id from the root of space object's tree
@@ -167,6 +168,7 @@ func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpacePersisten
 	return spaceinfo.SpacePersistentInfo{
 		SpaceID:       pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()),
 		AccountStatus: spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String())),
+		AclHeadId:     pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()),
 	}
 }
 
