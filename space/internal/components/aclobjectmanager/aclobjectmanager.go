@@ -199,7 +199,19 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
-	err = a.processStates(states, common.Acl().AclState().Identity())
+	a.status.Lock()
+	aclHeadId := a.status.LatestAclHeadId()
+	a.status.Unlock()
+	var upToDate bool
+	if aclHeadId != "" {
+		_, err := common.Acl().Get(aclHeadId)
+		if err == nil {
+			upToDate = true
+		}
+	} else {
+		upToDate = true
+	}
+	err = a.processStates(states, upToDate, common.Acl().AclState().Identity())
 	if err != nil {
 		return
 	}
@@ -207,10 +219,10 @@ func (a *aclObjectManager) processAcl() (err error) {
 	return
 }
 
-func (a *aclObjectManager) processStates(states []list.AccountState, myIdentity crypto.PubKey) (err error) {
+func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	var numActiveUsers int
 	for _, state := range states {
-		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) {
+		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
 			a.status.Lock()
 			err := a.status.SetPersistentStatus(a.ctx, spaceinfo.AccountStatusRemoving)
 			if err != nil {

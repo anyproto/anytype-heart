@@ -79,6 +79,16 @@
     "source": "details"
   },
   {
+    "description": "Latest Acl head id",
+    "format": "longtext",
+    "hidden": true,
+    "key": "latestAclHeadId",
+    "maxCount": 1,
+    "name": "Latest acl head id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "instructions",
