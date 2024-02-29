@@ -45,6 +45,7 @@ func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, 
 		stopIfMandatoryFail:  stopIfMandatoryFail,
 		disableRemoteLoad:    disableRemoteLoad,
 		retryTimeout:         loadingRetryTimeout,
+		latestAclHeadId:      aclHeadId,
 		spaceServiceProvider: s,
 		loadCh:               make(chan struct{}),
 	}
