@@ -42,7 +42,7 @@ type TechSpace interface {
 	Close(ctx context.Context) (err error)
 
 	TechSpaceId() string
-	SpaceViewCreate(ctx context.Context, spaceId string, force bool, status spaceinfo.AccountStatus) (err error)
+	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) (err error)
@@ -136,9 +136,9 @@ func (s *techSpace) SetPersistentInfo(ctx context.Context, info spaceinfo.SpaceP
 	})
 }
 
-func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool, status spaceinfo.AccountStatus) (err error) {
+func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error) {
 	if force {
-		return s.spaceViewCreate(ctx, spaceId, status)
+		return s.spaceViewCreate(ctx, spaceId, info)
 	}
 	viewId, err := s.getViewIdLocked(ctx, spaceId)
 	if err != nil {
@@ -146,7 +146,7 @@ func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force b
 	}
 	_, err = s.objectCache.GetObject(ctx, viewId)
 	if err != nil { // TODO: check specific error
-		return s.spaceViewCreate(ctx, spaceId, status)
+		return s.spaceViewCreate(ctx, spaceId, info)
 	}
 	return ErrSpaceViewExists
 }
@@ -173,14 +173,17 @@ func (s *techSpace) SpaceViewId(spaceId string) (string, error) {
 	return s.getViewIdLocked(context.TODO(), spaceId)
 }
 
-func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, status spaceinfo.AccountStatus) (err error) {
+func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, info spaceinfo.SpacePersistentInfo) (err error) {
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, spaceID)
 	if err != nil {
 		return
 	}
 	initFunc := func(id string) *editorsb.InitContext {
 		st := state.NewDoc(id, nil).(*state.State)
-		st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(status)))
+		st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
+		if info.AclHeadId != "" {
+			st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
+		}
 		return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: st}
 	}
 	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{

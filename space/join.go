@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-func (s *service) Join(ctx context.Context, id string) error {
+func (s *service) Join(ctx context.Context, id, aclHeadId string) error {
 	s.mu.Lock()
 	waiter, exists := s.waiting[id]
 	if exists {
@@ -23,6 +23,7 @@ func (s *service) Join(ctx context.Context, id string) error {
 			return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
 				SpaceID:       id,
 				AccountStatus: spaceinfo.AccountStatusJoining,
+				AclHeadId:     aclHeadId,
 			})
 		}
 		return nil
@@ -32,7 +33,7 @@ func (s *service) Join(ctx context.Context, id string) error {
 		wait: wait,
 	}
 	s.mu.Unlock()
-	ctrl, err := s.factory.CreateInvitingSpace(ctx, id)
+	ctrl, err := s.factory.CreateInvitingSpace(ctx, id, aclHeadId)
 	if err != nil {
 		s.mu.Lock()
 		close(wait)

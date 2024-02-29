@@ -114,7 +114,6 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 }
 
 func (a *aclService) CancelJoin(ctx context.Context, spaceId string) (err error) {
-	// TODO: finish this by implementing space offload for join canceled spaces (?)
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -124,7 +123,7 @@ func (a *aclService) CancelJoin(ctx context.Context, spaceId string) (err error)
 	if err != nil {
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
-	return nil
+	return a.spaceService.Delete(ctx, spaceId)
 }
 
 func (a *aclService) Decline(ctx context.Context, spaceId string, identity crypto.PubKey) (err error) {
@@ -248,7 +247,7 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 		return fmt.Errorf("unmarshal invite key: %w", err)
 	}
 
-	err = a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
+	aclHeadId, err := a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
 		InviteKey: inviteKey,
 		Metadata:  a.spaceService.AccountMetadataPayload(),
 	})
@@ -262,7 +261,7 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 		}
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
-	return a.spaceService.Join(ctx, spaceId)
+	return a.spaceService.Join(ctx, spaceId, aclHeadId)
 }
 
 type InviteView struct {

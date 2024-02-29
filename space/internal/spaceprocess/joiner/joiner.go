@@ -30,21 +30,41 @@ type Params struct {
 
 func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
+	params.Status.Lock()
+	joinHeadId := params.Status.LatestAclHeadId()
+	params.Status.Unlock()
 	child.Register(params.Status).
 		Register(newStatusChanger()).
-		Register(aclwaiter.New(params.SpaceId, func(acl list.AclList) error {
-			params.Status.Lock()
-			defer params.Status.Unlock()
-			err := params.Status.SetPersistentInfo(context.Background(), spaceinfo.SpacePersistentInfo{
-				SpaceID:       params.SpaceId,
-				AccountStatus: spaceinfo.AccountStatusActive,
-				AclHeadId:     acl.Head().Id,
-			})
-			if err != nil {
-				params.Log.Error("failed to set persistent status", zap.Error(err))
-			}
-			return err
-		}))
+		Register(aclwaiter.New(params.SpaceId,
+			joinHeadId,
+			// onFinish
+			func(acl list.AclList) error {
+				params.Status.Lock()
+				defer params.Status.Unlock()
+				err := params.Status.SetPersistentInfo(context.Background(), spaceinfo.SpacePersistentInfo{
+					SpaceID:       params.SpaceId,
+					AccountStatus: spaceinfo.AccountStatusActive,
+					AclHeadId:     acl.Head().Id,
+				})
+				if err != nil {
+					params.Log.Error("failed to set persistent status", zap.Error(err))
+				}
+				return err
+			},
+			// onReject
+			func(acl list.AclList) error {
+				params.Status.Lock()
+				defer params.Status.Unlock()
+				err := params.Status.SetPersistentInfo(context.Background(), spaceinfo.SpacePersistentInfo{
+					SpaceID:       params.SpaceId,
+					AccountStatus: spaceinfo.AccountStatusDeleted,
+					AclHeadId:     acl.Head().Id,
+				})
+				if err != nil {
+					params.Log.Error("failed to set persistent status", zap.Error(err))
+				}
+				return err
+			}))
 	return &joiner{
 		app: child,
 	}
