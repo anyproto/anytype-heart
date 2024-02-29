@@ -96,6 +96,7 @@ import (
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 )
 

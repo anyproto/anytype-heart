@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/require"
-	"github.com/tj/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 var ctx = context.Background()

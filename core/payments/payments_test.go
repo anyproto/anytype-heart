@@ -14,16 +14,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
-	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 
-	"github.com/tj/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 var ctx = context.Background()
@@ -35,11 +34,11 @@ var subsExpire time.Time = timeNow.Add(365 * 24 * time.Hour)
 var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
 type fixture struct {
-	a    *app.App
-	ctrl *gomock.Controller
-	c    *mock_cache.MockCacheService
-	pp   *mock_ppclient.MockAnyPpClientService
-	w    *mock_wallet.MockWallet
+	a        *app.App
+	ctrl     *gomock.Controller
+	cache    *mock_cache.MockCacheService
+	ppclient *mock_ppclient.MockAnyPpClientService
+	wallet   *mock_wallet.MockWallet
 
 	*service
 }
@@ -51,18 +50,9 @@ func newFixture(t *testing.T) *fixture {
 		service: New().(*service),
 	}
 
-	fx.c = mock_cache.NewMockCacheService(t)
-	fx.pp = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
-	fx.w = mock_wallet.NewMockWallet(t)
-
-	fx.pp.EXPECT().Name().Return(paymentserviceclient.CName).AnyTimes()
-	fx.pp.EXPECT().Init(gomock.Any()).Return(nil).AnyTimes()
-
-	fx.c.EXPECT().Name().Return(cache.CName)
-	fx.c.EXPECT().Init(fx.a).Return(nil)
-
-	fx.w.EXPECT().Name().Return(wallet.CName)
-	fx.w.EXPECT().Init(fx.a).Return(nil)
+	fx.cache = mock_cache.NewMockCacheService(t)
+	fx.ppclient = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
+	fx.wallet = mock_wallet.NewMockWallet(t)
 
 	// init w mock
 	SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
@@ -73,17 +63,18 @@ func newFixture(t *testing.T) *fixture {
 
 	assert.NoError(t, err)
 
-	var ak accountdata.AccountKeys
-	ak.PeerId = "123"
-	ak.SignKey = decodedSignKey
+	ak := accountdata.AccountKeys{
+		PeerId:  "123",
+		SignKey: decodedSignKey,
+	}
 
-	fx.w.EXPECT().Account().Return(&ak)
-	fx.w.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
+	fx.wallet.EXPECT().Account().Return(&ak)
+	fx.wallet.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
 
 	fx.a.Register(fx.service).
-		Register(fx.c).
-		Register(fx.pp).
-		Register(fx.w)
+		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet))
 
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -98,15 +89,15 @@ func TestGetStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
-		fx.c.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
-		fx.c.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcPaymentsSubscriptionGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcPaymentsSubscriptionGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		}).Once()
-		fx.c.EXPECT().IsCacheEnabled().Return(true).Once()
+		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx)
@@ -120,33 +111,35 @@ func TestGetStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		var sr psp.GetSubscriptionResponse
-		sr.Tier = psp.SubscriptionTier_TierExplorer
-		sr.Status = psp.SubscriptionStatus_StatusActive
-		sr.DateStarted = uint64(timeNow.Unix())
-		sr.DateEnds = uint64(subsExpire.Unix())
-		sr.IsAutoRenew = true
-		sr.PaymentMethod = psp.PaymentMethod_MethodCrypto
-		sr.RequestedAnyName = "something.any"
+		sr := psp.GetSubscriptionResponse{
+			Tier:             psp.SubscriptionTier_TierExplorer,
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
 
-		var psgsr pb.RpcPaymentsSubscriptionGetStatusResponse
-		psgsr.Tier = pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier)
-		psgsr.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status)
-		psgsr.DateStarted = sr.DateStarted
-		psgsr.DateEnds = sr.DateEnds
-		psgsr.IsAutoRenew = sr.IsAutoRenew
-		psgsr.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod)
-		psgsr.RequestedAnyName = sr.RequestedAnyName
+		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
+			DateStarted:      sr.DateStarted,
+			DateEnds:         sr.DateEnds,
+			IsAutoRenew:      sr.IsAutoRenew,
+			PaymentMethod:    pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod),
+			RequestedAnyName: sr.RequestedAnyName,
+		}
 
-		fx.pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.c.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
-		fx.c.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		}).Once()
-		fx.c.EXPECT().IsCacheEnabled().Return(true).Once()
+		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx)
@@ -165,35 +158,37 @@ func TestGetStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		var sr psp.GetSubscriptionResponse
-		sr.Tier = psp.SubscriptionTier_TierExplorer
-		sr.Status = psp.SubscriptionStatus_StatusActive
-		sr.DateStarted = uint64(timeNow.Unix())
-		sr.DateEnds = uint64(subsExpire.Unix())
-		sr.IsAutoRenew = true
-		sr.PaymentMethod = psp.PaymentMethod_MethodCrypto
-		sr.RequestedAnyName = "something.any"
+		sr := psp.GetSubscriptionResponse{
+			Tier:             psp.SubscriptionTier_TierExplorer,
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
 
-		var psgsr pb.RpcPaymentsSubscriptionGetStatusResponse
-		psgsr.Tier = pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier)
-		psgsr.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status)
-		psgsr.DateStarted = sr.DateStarted
-		psgsr.DateEnds = sr.DateEnds
-		psgsr.IsAutoRenew = sr.IsAutoRenew
-		psgsr.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod)
-		psgsr.RequestedAnyName = sr.RequestedAnyName
+		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
+			DateStarted:      sr.DateStarted,
+			DateEnds:         sr.DateEnds,
+			IsAutoRenew:      sr.IsAutoRenew,
+			PaymentMethod:    pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod),
+			RequestedAnyName: sr.RequestedAnyName,
+		}
 
-		fx.pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
 		}).MinTimes(1)
 
 		// here: cache is disabled
-		fx.c.EXPECT().CacheGet().Return(nil, cache.ErrCacheDisabled).Once()
-		fx.c.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheDisabled).Once()
+		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		}).Once()
-		fx.c.EXPECT().IsCacheEnabled().Return(false).Once()
-		fx.c.EXPECT().CacheEnable().Return(nil).Once()
+		fx.cache.EXPECT().IsCacheEnabled().Return(false).Once()
+		fx.cache.EXPECT().CacheEnable().Return(nil).Once()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx)
@@ -212,30 +207,32 @@ func TestGetStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		var sr psp.GetSubscriptionResponse
-		sr.Tier = psp.SubscriptionTier_TierExplorer
-		sr.Status = psp.SubscriptionStatus_StatusActive
-		sr.DateStarted = uint64(timeNow.Unix())
-		sr.DateEnds = uint64(subsExpire.Unix())
-		sr.IsAutoRenew = true
-		sr.PaymentMethod = psp.PaymentMethod_MethodCrypto
-		sr.RequestedAnyName = "something.any"
+		sr := psp.GetSubscriptionResponse{
+			Tier:             psp.SubscriptionTier_TierExplorer,
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
 
-		var psgsr pb.RpcPaymentsSubscriptionGetStatusResponse
-		psgsr.Tier = pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier)
-		psgsr.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status)
-		psgsr.DateStarted = sr.DateStarted
-		psgsr.DateEnds = sr.DateEnds
-		psgsr.IsAutoRenew = sr.IsAutoRenew
-		psgsr.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod)
-		psgsr.RequestedAnyName = sr.RequestedAnyName
+		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
+			DateStarted:      sr.DateStarted,
+			DateEnds:         sr.DateEnds,
+			IsAutoRenew:      sr.IsAutoRenew,
+			PaymentMethod:    pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod),
+			RequestedAnyName: sr.RequestedAnyName,
+		}
 
-		fx.pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.c.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
-		fx.c.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
 			return errors.New("can not write to cache!")
 		}).Once()
 
@@ -252,17 +249,18 @@ func TestGetStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		var psgsr pb.RpcPaymentsSubscriptionGetStatusResponse
-		psgsr.Tier = pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierExplorer)
-		psgsr.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(2)
-		psgsr.DateStarted = uint64(timeNow.Unix())
-		psgsr.DateEnds = uint64(subsExpire.Unix())
-		psgsr.IsAutoRenew = true
-		psgsr.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(1)
-		psgsr.RequestedAnyName = "something.any"
+		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierExplorer),
+			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(2),
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    pb.RpcPaymentsSubscriptionPaymentMethod(1),
+			RequestedAnyName: "something.any",
+		}
 
 		// HERE>>>
-		fx.c.EXPECT().CacheGet().Return(&psgsr, nil).Once()
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil).Once()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx)
@@ -276,34 +274,36 @@ func TestGetStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		var sr psp.GetSubscriptionResponse
-		sr.Tier = psp.SubscriptionTier_TierUnknown
-		sr.Status = psp.SubscriptionStatus_StatusUnknown
-		sr.DateStarted = 0
-		sr.DateEnds = 0
-		sr.IsAutoRenew = false
-		sr.PaymentMethod = psp.PaymentMethod_MethodCard
-		sr.RequestedAnyName = ""
+		sr := psp.GetSubscriptionResponse{
+			Tier:             psp.SubscriptionTier_TierUnknown,
+			Status:           psp.SubscriptionStatus_StatusUnknown,
+			DateStarted:      0,
+			DateEnds:         0,
+			IsAutoRenew:      false,
+			PaymentMethod:    psp.PaymentMethod_MethodCard,
+			RequestedAnyName: "",
+		}
 
-		var psgsr pb.RpcPaymentsSubscriptionGetStatusResponse
-		psgsr.Tier = pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier)
-		psgsr.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status)
-		psgsr.DateStarted = sr.DateStarted
-		psgsr.DateEnds = sr.DateEnds
-		psgsr.IsAutoRenew = sr.IsAutoRenew
-		psgsr.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod)
-		psgsr.RequestedAnyName = sr.RequestedAnyName
+		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
+			DateStarted:      sr.DateStarted,
+			DateEnds:         sr.DateEnds,
+			IsAutoRenew:      sr.IsAutoRenew,
+			PaymentMethod:    pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod),
+			RequestedAnyName: sr.RequestedAnyName,
+		}
 
-		fx.pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.c.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
 		// here time.Now() will be passed which can be a bit different from the the cacheExpireTime
-		fx.c.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		}).Once()
-		fx.c.EXPECT().IsCacheEnabled().Return(true).Once()
+		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx)
@@ -324,33 +324,35 @@ func TestGetStatus(t *testing.T) {
 
 		var subsExpire5 time.Time = timeNow.Add(365 * 24 * time.Hour)
 
-		var sr psp.GetSubscriptionResponse
-		sr.Tier = psp.SubscriptionTier_TierExplorer
-		sr.Status = psp.SubscriptionStatus_StatusActive
-		sr.DateStarted = uint64(timeNow.Unix())
-		sr.DateEnds = uint64(subsExpire5.Unix())
-		sr.IsAutoRenew = false
-		sr.PaymentMethod = psp.PaymentMethod_MethodCard
-		sr.RequestedAnyName = ""
+		sr := psp.GetSubscriptionResponse{
+			Tier:             psp.SubscriptionTier_TierExplorer,
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire5.Unix()),
+			IsAutoRenew:      false,
+			PaymentMethod:    psp.PaymentMethod_MethodCard,
+			RequestedAnyName: "",
+		}
 
-		var psgsr pb.RpcPaymentsSubscriptionGetStatusResponse
-		psgsr.Tier = pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier)
-		psgsr.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status)
-		psgsr.DateStarted = sr.DateStarted
-		psgsr.DateEnds = sr.DateEnds
-		psgsr.IsAutoRenew = sr.IsAutoRenew
-		psgsr.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod)
-		psgsr.RequestedAnyName = sr.RequestedAnyName
+		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
+			DateStarted:      sr.DateStarted,
+			DateEnds:         sr.DateEnds,
+			IsAutoRenew:      sr.IsAutoRenew,
+			PaymentMethod:    pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod),
+			RequestedAnyName: sr.RequestedAnyName,
+		}
 
-		fx.pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.c.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
-		fx.c.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		}).Once()
-		fx.c.EXPECT().IsCacheEnabled().Return(true).Once()
+		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx)
@@ -367,42 +369,43 @@ func TestGetStatus(t *testing.T) {
 		var subsExpire5 time.Time = timeNow.Add(365 * 24 * time.Hour)
 
 		// this is from PP node
-		var sr psp.GetSubscriptionResponse
-		// tier is different!!!
-		sr.Tier = psp.SubscriptionTier_TierBuilder1Year
-		sr.Status = psp.SubscriptionStatus_StatusActive
-		sr.DateStarted = uint64(timeNow.Unix())
-		sr.DateEnds = uint64(subsExpire5.Unix())
-		sr.IsAutoRenew = false
-		sr.PaymentMethod = psp.PaymentMethod_MethodCard
-		sr.RequestedAnyName = ""
+		sr := psp.GetSubscriptionResponse{
+			Tier:             psp.SubscriptionTier_TierBuilder1Year,
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire5.Unix()),
+			IsAutoRenew:      false,
+			PaymentMethod:    psp.PaymentMethod_MethodCard,
+			RequestedAnyName: "",
+		}
 
 		// this is from DB
-		var psgsr pb.RpcPaymentsSubscriptionGetStatusResponse
-		psgsr.Tier = pb.RpcPaymentsSubscription_TierExplorer
-		psgsr.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status)
-		psgsr.DateStarted = sr.DateStarted
-		psgsr.DateEnds = sr.DateEnds
-		psgsr.IsAutoRenew = sr.IsAutoRenew
-		psgsr.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod)
-		psgsr.RequestedAnyName = sr.RequestedAnyName
+		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
+			Tier:             pb.RpcPaymentsSubscription_TierExplorer,
+			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
+			DateStarted:      sr.DateStarted,
+			DateEnds:         sr.DateEnds,
+			IsAutoRenew:      sr.IsAutoRenew,
+			PaymentMethod:    pb.RpcPaymentsSubscriptionPaymentMethod(sr.PaymentMethod),
+			RequestedAnyName: sr.RequestedAnyName,
+		}
 
 		// this is the new state
 		var psgsr2 pb.RpcPaymentsSubscriptionGetStatusResponse = psgsr
 		psgsr2.Tier = pb.RpcPaymentsSubscription_TierBuilder1Year
 
-		fx.pp.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
 		}).MinTimes(1)
 
 		// return real struct and error
-		fx.c.EXPECT().CacheGet().Return(&psgsr, cache.ErrCacheDisabled).Once()
-		fx.c.EXPECT().CacheSet(&psgsr2, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, cache.ErrCacheDisabled).Once()
+		fx.cache.EXPECT().CacheSet(&psgsr2, cacheExpireTime).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		}).Once()
-		fx.c.EXPECT().IsCacheEnabled().Return(false).Once()
+		fx.cache.EXPECT().IsCacheEnabled().Return(false).Once()
 		// this should be called
-		fx.c.EXPECT().CacheEnable().Return(nil).Once()
+		fx.cache.EXPECT().CacheEnable().Return(nil).Once()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx)
@@ -418,9 +421,9 @@ func TestGetPaymentURL(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
 
-		fx.pp.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.BuySubscriptionResponse, error) {
+		fx.ppclient.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.BuySubscriptionResponse, error) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
@@ -443,16 +446,16 @@ func TestGetPaymentURL(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
 
-		fx.pp.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.BuySubscriptionResponse, error) {
+		fx.ppclient.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.BuySubscriptionResponse, error) {
 			var out psp.BuySubscriptionResponse
 			out.PaymentUrl = "https://xxxx.com"
 
 			return &out, nil
 		}).MinTimes(1)
 
-		fx.c.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
+		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentUrlRequest{
@@ -473,7 +476,7 @@ func TestGetPortalURL(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.pp.EXPECT().GetSubscriptionPortalLink(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetSubscriptionPortalLinkResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionPortalLink(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetSubscriptionPortalLinkResponse, error) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
@@ -489,13 +492,13 @@ func TestGetPortalURL(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.pp.EXPECT().GetSubscriptionPortalLink(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetSubscriptionPortalLinkResponse, error) {
+		fx.ppclient.EXPECT().GetSubscriptionPortalLink(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetSubscriptionPortalLinkResponse, error) {
 			return &psp.GetSubscriptionPortalLinkResponse{
 				PortalUrl: "https://xxxx.com",
 			}, nil
 		}).MinTimes(1)
 
-		fx.c.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
+		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest{}
@@ -512,7 +515,7 @@ func TestGetVerificationEmail(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.pp.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
+		fx.ppclient.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
@@ -530,7 +533,7 @@ func TestGetVerificationEmail(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.pp.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
+		fx.ppclient.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
 			return &psp.GetVerificationEmailResponse{}, nil
 		}).MinTimes(1)
 
@@ -552,11 +555,11 @@ func TestVerifyEmailCode(t *testing.T) {
 		defer fx.finish(t)
 
 		// no errors
-		fx.pp.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyEmailResponse, error) {
+		fx.ppclient.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyEmailResponse, error) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
-		fx.w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest{}
@@ -572,13 +575,13 @@ func TestVerifyEmailCode(t *testing.T) {
 		defer fx.finish(t)
 
 		// no errors
-		fx.pp.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyEmailResponse, error) {
+		fx.ppclient.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyEmailResponse, error) {
 			return &psp.VerifyEmailResponse{}, nil
 		}).MinTimes(1)
 
-		fx.w.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
 
-		fx.c.EXPECT().CacheClear().Return(nil).Once()
+		fx.cache.EXPECT().CacheClear().Return(nil).Once()
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest{}

@@ -9,10 +9,11 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 )
 
 const CName = "cache"
@@ -146,7 +147,7 @@ func (s *cacheservice) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusRespo
 	return &ss.SubscriptionStatus, nil
 }
 
-func (s *cacheservice) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, ExpireTime time.Time) (err error) {
+func (s *cacheservice) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expireTime time.Time) (err error) {
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {
@@ -156,7 +157,7 @@ func (s *cacheservice) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse,
 
 	// 2 - update storage
 	ss.SubscriptionStatus = *in
-	ss.ExpireTime = ExpireTime
+	ss.ExpireTime = expireTime
 
 	// 3 - save to storage
 	return s.set(ss)
@@ -221,14 +222,14 @@ func (s *cacheservice) CacheDisableForNextMinutes(minutes int) (err error) {
 // does not take into account if cache is enabled or not, erases always
 func (s *cacheservice) CacheClear() (err error) {
 	// 1 - get existing storage
-	ss, err := s.get()
+	_, err = s.get()
 	if err != nil {
 		// no error if there is no record in the cache
 		return nil
 	}
 
 	// 2 - update storage
-	ss = newStorageStructV1()
+	ss := newStorageStructV1()
 
 	// 3 - save to storage
 	err = s.set(ss)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -64,9 +65,9 @@ func New() Service {
 }
 
 type service struct {
-	c  cache.CacheService
-	pp ppclient.AnyPpClientService
-	w  wallet.Wallet
+	cache    cache.CacheService
+	ppclient ppclient.AnyPpClientService
+	wallet   wallet.Wallet
 }
 
 func (s *service) Name() (name string) {
@@ -74,9 +75,9 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.c = app.MustComponent[cache.CacheService](a)
-	s.pp = app.MustComponent[ppclient.AnyPpClientService](a)
-	s.w = app.MustComponent[wallet.Wallet](a)
+	s.cache = app.MustComponent[cache.CacheService](a)
+	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
+	s.wallet = app.MustComponent[wallet.Wallet](a)
 
 	return nil
 }
@@ -90,11 +91,11 @@ func (s *service) Close(_ context.Context) (err error) {
 }
 
 func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error) {
-	ownerID := s.w.Account().SignKey.GetPublic().Account()
-	privKey := s.w.GetAccountPrivkey()
+	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
+	privKey := s.wallet.GetAccountPrivkey()
 
 	// 1 - check in cache
-	cached, err := s.c.CacheGet()
+	cached, err := s.cache.CacheGet()
 	if err == nil {
 		return cached, nil
 	}
@@ -121,7 +122,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSub
 		Signature: signature,
 	}
 
-	status, err := s.pp.GetSubscriptionStatus(ctx, &reqSigned)
+	status, err := s.ppclient.GetSubscriptionStatus(ctx, &reqSigned)
 	if err != nil {
 		log.Info("creating empty subscription in cache because can not get subscription status from payment node")
 
@@ -145,7 +146,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSub
 	out.RequestedAnyName = status.RequestedAnyName
 	out.UserEmail = status.UserEmail
 	// TODO:
-	//out.SubscribeToNewsletter = status.SubscribeToNewsletter
+	// out.SubscribeToNewsletter = status.SubscribeToNewsletter
 
 	// 3 - save into cache
 	// truncate nseconds here
@@ -160,13 +161,13 @@ func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSub
 		cacheExpireTime = timeNow.Add(10 * 24 * time.Hour)
 	}
 
-	err = s.c.CacheSet(&out, cacheExpireTime)
+	err = s.cache.CacheSet(&out, cacheExpireTime)
 	if err != nil {
 		return nil, err
 	}
 
 	// 4 - if cache was disabled but the tier is different -> enable cache again (we have received new data)
-	if !s.c.IsCacheEnabled() {
+	if !s.cache.IsCacheEnabled() {
 		// only when tier changed
 		isDiffTier := (cached != nil) && (cached.Tier != pb.RpcPaymentsSubscriptionSubscriptionTier(status.Tier))
 
@@ -177,7 +178,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSub
 			log.Debug("enabling cache again")
 
 			// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
-			err := s.c.CacheEnable()
+			err := s.cache.CacheEnable()
 			if err != nil {
 				return nil, err
 			}
@@ -191,11 +192,11 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscrip
 	// 1 - send request
 	bsr := psp.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId: s.w.Account().SignKey.GetPublic().Account(),
+		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 
 		// not SCW address, but EOA address
 		// including 0x
-		OwnerEthAddress: s.w.GetAccountEthAddress().Hex(),
+		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
 
 		RequestedTier: psp.SubscriptionTier(req.RequestedTier),
 		PaymentMethod: psp.PaymentMethod(req.PaymentMethod),
@@ -208,7 +209,7 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscrip
 		return nil, err
 	}
 
-	privKey := s.w.GetAccountPrivkey()
+	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
 		return nil, err
@@ -219,7 +220,7 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscrip
 		Signature: signature,
 	}
 
-	bsRet, err := s.pp.BuySubscription(ctx, &reqSigned)
+	bsRet, err := s.ppclient.BuySubscription(ctx, &reqSigned)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +231,7 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscrip
 	// 2 - disable cache for 30 minutes
 	log.Debug("disabling cache for 30 minutes after payment URL was received")
 
-	err = s.c.CacheDisableForNextMinutes(30)
+	err = s.cache.CacheDisableForNextMinutes(30)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +243,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscrip
 	// 1 - send request
 	bsr := psp.GetSubscriptionPortalLinkRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId: s.w.Account().SignKey.GetPublic().Account(),
+		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 	}
 
 	payload, err := bsr.Marshal()
@@ -250,7 +251,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscrip
 		return nil, err
 	}
 
-	privKey := s.w.GetAccountPrivkey()
+	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
 		return nil, err
@@ -261,7 +262,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscrip
 		Signature: signature,
 	}
 
-	bsRet, err := s.pp.GetSubscriptionPortalLink(ctx, &reqSigned)
+	bsRet, err := s.ppclient.GetSubscriptionPortalLink(ctx, &reqSigned)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +272,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscrip
 
 	// 2 - disable cache for 30 minutes
 	log.Debug("disabling cache for 30 minutes after portal link was received")
-	err = s.c.CacheDisableForNextMinutes(30)
+	err = s.cache.CacheDisableForNextMinutes(30)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +284,7 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsS
 	// 1 - send request
 	bsr := psp.GetVerificationEmailRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId:            s.w.Account().SignKey.GetPublic().Account(),
+		OwnerAnyId:            s.wallet.Account().SignKey.GetPublic().Account(),
 		Email:                 req.Email,
 		SubscribeToNewsletter: req.SubscribeToNewsletter,
 	}
@@ -293,7 +294,7 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsS
 		return nil, err
 	}
 
-	privKey := s.w.GetAccountPrivkey()
+	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
 		return nil, err
@@ -304,7 +305,7 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsS
 		Signature: signature,
 	}
 
-	_, err = s.pp.GetVerificationEmail(ctx, &reqSigned)
+	_, err = s.ppclient.GetVerificationEmail(ctx, &reqSigned)
 	if err != nil {
 		return nil, err
 	}
@@ -317,8 +318,8 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscr
 	// 1 - send request
 	bsr := psp.VerifyEmailRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId:      s.w.Account().SignKey.GetPublic().Account(),
-		OwnerEthAddress: s.w.GetAccountEthAddress().Hex(),
+		OwnerAnyId:      s.wallet.Account().SignKey.GetPublic().Account(),
+		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
 		Code:            req.Code,
 	}
 
@@ -327,7 +328,7 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscr
 		return nil, err
 	}
 
-	privKey := s.w.GetAccountPrivkey()
+	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
 		return nil, err
@@ -339,14 +340,14 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscr
 	}
 
 	// empty return or error
-	_, err = s.pp.VerifyEmail(ctx, &reqSigned)
+	_, err = s.ppclient.VerifyEmail(ctx, &reqSigned)
 	if err != nil {
 		return nil, err
 	}
 
 	// 2 - clear cache
 	log.Debug("clearing cache after email verification code was confirmed")
-	err = s.c.CacheClear()
+	err = s.cache.CacheClear()
 	if err != nil {
 		return nil, err
 	}
