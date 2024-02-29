@@ -431,6 +431,7 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 		FilesForceReindexCounter:         ForceFilesReindexCounter,
 		IdxRebuildCounter:                ForceIdxRebuildCounter,
 		FulltextRebuild:                  ForceFulltextIndexCounter,
+		FulltextErase:                    ForceFulltextEraseCounter,
 		BundledObjects:                   ForceBundledObjectsReindexCounter,
 		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 	}
