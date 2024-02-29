@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f2cc0befbfea6768c50fd6be77f1233dee9f2352eb08e7d8fb156c0518d6160f"
+const RelationChecksum = "1a66db22719ea5a9d7ca626148f9ab16bb93108c393e069593d08a25f55de8f8"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -358,10 +358,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brbacklinks",
 			Key:              "backlinks",
-			Name:             "Links to this object",
+			Name:             "Backlinks",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         2,
+			Revision:         3,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBudget: {
@@ -1308,10 +1308,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brlinks",
 			Key:              "links",
-			Name:             "Links from this object",
+			Name:             "Links",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         2,
+			Revision:         3,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLogic: {
