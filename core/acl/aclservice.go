@@ -115,12 +115,7 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 }
 
 func (a *aclService) CancelJoin(ctx context.Context, spaceId string) (err error) {
-	sp, err := a.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return err
-	}
-	cl := sp.CommonSpace().AclClient()
-	err = cl.CancelRequest(ctx)
+	err = a.joiningClient.CancelJoin(ctx, spaceId)
 	if err != nil {
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
