@@ -3,27 +3,16 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 	proto "github.com/anyproto/any-sync/nameservice/nameserviceproto"
 
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 // NameServiceResolveName does a name lookup: somename.any -> info
 func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNameServiceResolveNameRequest) *pb.RpcNameServiceResolveNameResponse {
-	// Get name service object that connects to the remote "namingNode"
-	// in order for that to work, we need to have a "namingNode" node in the nodes section of the config
-	// see https://github.com/anyproto/any-ns-node/blob/main/etc/ for example
-	ns, err := mw.getNameService()
-
-	if err != nil {
-		return &pb.RpcNameServiceResolveNameResponse{
-			Error: &pb.RpcNameServiceResolveNameResponseError{
-				// we don't map error codes here
-				Code:        pb.RpcNameServiceResolveNameResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
-	}
+	ns := getService[nameserviceclient.AnyNsClientService](mw)
 
 	var in proto.NameAvailableRequest
 	in.FullName = req.FullName
@@ -120,28 +109,10 @@ func (mw *Middleware) NameServiceReverseResolveName(ctx context.Context, req *pb
 func (mw *Middleware) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcNameServiceUserAccountGetRequest) *pb.RpcNameServiceUserAccountGetResponse {
 	// 1 - get name service object that connects to the remote "namingNode"
 	// in order for that to work, we need to have a "namingNode" node in the nodes section of the config
-	ns, err := mw.getNameService()
-
-	if err != nil {
-		return &pb.RpcNameServiceUserAccountGetResponse{
-			Error: &pb.RpcNameServiceUserAccountGetResponseError{
-				// we don't map error codes here
-				Code:        pb.RpcNameServiceUserAccountGetResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
-	}
+	ns := getService[nameserviceclient.AnyNsClientService](mw)
 
 	// 2 - get user's ETH address from the wallet
-	w, err := mw.getWallet()
-	if err != nil {
-		return &pb.RpcNameServiceUserAccountGetResponse{
-			Error: &pb.RpcNameServiceUserAccountGetResponseError{
-				Code:        pb.RpcNameServiceUserAccountGetResponseError_NOT_LOGGED_IN,
-				Description: err.Error(),
-			},
-		}
-	}
+	w := getService[wallet.Wallet](mw)
 
 	// 3 - get user's account info
 	//
