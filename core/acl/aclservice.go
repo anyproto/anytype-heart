@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	"github.com/mr-tron/base58/base58"
 	"go.uber.org/zap"
@@ -241,7 +242,6 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 	if err != nil {
 		return fmt.Errorf("get invite payload: %w", err)
 	}
-
 	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.InviteKey)
 	if err != nil {
 		return fmt.Errorf("unmarshal invite key: %w", err)
@@ -261,7 +261,14 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 		}
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
-	return a.spaceService.Join(ctx, spaceId, aclHeadId)
+	err = a.spaceService.Join(ctx, spaceId, aclHeadId)
+	if err != nil {
+		return err
+	}
+	return a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId, &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():      pbtypes.String(invitePayload.SpaceName),
+		bundle.RelationKeyIconImage.String(): pbtypes.String(invitePayload.SpaceIconCid),
+	}})
 }
 
 type InviteView struct {

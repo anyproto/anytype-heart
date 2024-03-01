@@ -86,9 +86,9 @@ func (_c *MockSpaceFactory_CreateAndSetTechSpace_Call) RunAndReturn(run func(con
 	return _c
 }
 
-// CreateInvitingSpace provides a mock function with given fields: ctx, id
-func (_m *MockSpaceFactory) CreateInvitingSpace(ctx context.Context, id string) (spacecontroller.SpaceController, error) {
-	ret := _m.Called(ctx, id)
+// CreateInvitingSpace provides a mock function with given fields: ctx, id, aclHeadId
+func (_m *MockSpaceFactory) CreateInvitingSpace(ctx context.Context, id string, aclHeadId string) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, id, aclHeadId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateInvitingSpace")
@@ -96,19 +96,19 @@ func (_m *MockSpaceFactory) CreateInvitingSpace(ctx context.Context, id string) 
 
 	var r0 spacecontroller.SpaceController
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (spacecontroller.SpaceController, error)); ok {
-		return rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, id, aclHeadId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) spacecontroller.SpaceController); ok {
-		r0 = rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, id, aclHeadId)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(spacecontroller.SpaceController)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, id)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, id, aclHeadId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -124,13 +124,14 @@ type MockSpaceFactory_CreateInvitingSpace_Call struct {
 // CreateInvitingSpace is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-func (_e *MockSpaceFactory_Expecter) CreateInvitingSpace(ctx interface{}, id interface{}) *MockSpaceFactory_CreateInvitingSpace_Call {
-	return &MockSpaceFactory_CreateInvitingSpace_Call{Call: _e.mock.On("CreateInvitingSpace", ctx, id)}
+//   - aclHeadId string
+func (_e *MockSpaceFactory_Expecter) CreateInvitingSpace(ctx interface{}, id interface{}, aclHeadId interface{}) *MockSpaceFactory_CreateInvitingSpace_Call {
+	return &MockSpaceFactory_CreateInvitingSpace_Call{Call: _e.mock.On("CreateInvitingSpace", ctx, id, aclHeadId)}
 }
 
-func (_c *MockSpaceFactory_CreateInvitingSpace_Call) Run(run func(ctx context.Context, id string)) *MockSpaceFactory_CreateInvitingSpace_Call {
+func (_c *MockSpaceFactory_CreateInvitingSpace_Call) Run(run func(ctx context.Context, id string, aclHeadId string)) *MockSpaceFactory_CreateInvitingSpace_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
@@ -140,7 +141,7 @@ func (_c *MockSpaceFactory_CreateInvitingSpace_Call) Return(sp spacecontroller.S
 	return _c
 }
 
-func (_c *MockSpaceFactory_CreateInvitingSpace_Call) RunAndReturn(run func(context.Context, string) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreateInvitingSpace_Call {
+func (_c *MockSpaceFactory_CreateInvitingSpace_Call) RunAndReturn(run func(context.Context, string, string) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreateInvitingSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }
