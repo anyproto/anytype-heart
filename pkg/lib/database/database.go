@@ -77,7 +77,7 @@ func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
-	filterObj, err := compose(qry.Filters, store)
+	filterObj, err := MakeFilters(qry.Filters, store)
 	if err != nil {
 		return
 	}
@@ -94,22 +94,6 @@ func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
 		}
 	}
 	return ""
-}
-
-func compose(
-	filters []*model.BlockContentDataviewFilter,
-	store ObjectStore,
-) (FiltersAnd, error) {
-	var filterObj FiltersAnd
-	qryFilter, err := MakeFiltersAnd(filters, store)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(qryFilter) > 0 {
-		filterObj = append(filterObj, qryFilter)
-	}
-	return filterObj, nil
 }
 
 func extractOrder(spaceID string, sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
