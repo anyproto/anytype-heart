@@ -292,6 +292,7 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 		if err != nil {
 			if !(flags.exclude && errors.Is(err, errValidationFailed)) {
 				// just do not include object that failed validation
+				fmt.Println(f.Name)
 				incorrectFileFound = true
 			}
 			continue
@@ -324,7 +325,7 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 		return processProfile(data, info, flags.spaceDashboardId)
 	}
 
-	if strings.HasPrefix(name, "files/") {
+	if strings.HasPrefix(name, "files") {
 		return data, nil
 	}
 
