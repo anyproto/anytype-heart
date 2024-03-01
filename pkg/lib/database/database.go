@@ -35,27 +35,34 @@ type Query struct {
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
-	var (
-		hasArchivedFilter bool
-		hasDeletedFilter  bool
-		hasTypeFilter     bool
-	)
+	if len(filters) == 0 {
+		return filters
+	}
+	hasArchivedFilter, hasDeletedFilter, hasTypeFilter := hasDefaultFilters(filters)
+	if len(filters[0].NestedFilters) > 0 {
+		return addDefaultFiltersToNested(filters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
+	}
+	return addDefaultFilters(filters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
+}
 
-	for _, filter := range filters {
-		// include archived objects if we have explicit filter about it
-		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
-			hasArchivedFilter = true
-		}
-
-		if filter.RelationKey == bundle.RelationKeyLayout.String() {
-			hasTypeFilter = true
-		}
-
-		if filter.RelationKey == bundle.RelationKeyIsDeleted.String() {
-			hasDeletedFilter = true
+func addDefaultFiltersToNested(filters []*model.BlockContentDataviewFilter, hasArchivedFilter, hasDeletedFilter, hasTypeFilter bool) []*model.BlockContentDataviewFilter {
+	if filters[0].Operator == model.BlockContentDataviewFilter_And {
+		filters[0].NestedFilters = addDefaultFilters(filters[0].NestedFilters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
+	}
+	// build And filter based on original Or filter and default filters
+	if filters[0].Operator == model.BlockContentDataviewFilter_Or {
+		filters = addDefaultFilters(filters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
+		return []*model.BlockContentDataviewFilter{
+			{
+				Operator:      model.BlockContentDataviewFilter_And,
+				NestedFilters: filters,
+			},
 		}
 	}
+	return filters
+}
 
+func addDefaultFilters(filters []*model.BlockContentDataviewFilter, hasArchivedFilter, hasDeletedFilter, hasTypeFilter bool) []*model.BlockContentDataviewFilter {
 	if !hasArchivedFilter {
 		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
 	}
@@ -64,9 +71,39 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyLayout.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Float64(float64(model.ObjectType_space))})
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.Float64(float64(model.ObjectType_space))})
 	}
 	return filters
+}
+
+func hasDefaultFilters(filters []*model.BlockContentDataviewFilter) (bool, bool, bool) {
+	var (
+		hasArchivedFilter bool
+		hasDeletedFilter  bool
+		hasTypeFilter     bool
+	)
+	if len(filters) == 0 {
+		return false, false, false
+	}
+	for _, filter := range filters {
+		if len(filter.NestedFilters) > 0 {
+			hasArchivedFilter, hasDeletedFilter, hasTypeFilter = hasDefaultFilters(filters[0].NestedFilters)
+		} else {
+			// include archived objects if we have explicit filter about it
+			if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
+				hasArchivedFilter = true
+			}
+
+			if filter.RelationKey == bundle.RelationKeyLayout.String() {
+				hasTypeFilter = true
+			}
+
+			if filter.RelationKey == bundle.RelationKeyIsDeleted.String() {
+				hasDeletedFilter = true
+			}
+		}
+	}
+	return hasArchivedFilter, hasDeletedFilter, hasTypeFilter
 }
 
 func injectDefaultOrder(qry Query, sorts []*model.BlockContentDataviewSort) []*model.BlockContentDataviewSort {

@@ -28,16 +28,32 @@ func MakeFilters(protoFilters []*model.BlockContentDataviewFilter, store ObjectS
 		return FiltersAnd{}, fmt.Errorf("objectStore dependency is nil")
 	}
 	if len(protoFilters) == 0 {
-		return nil, nil
+		return FiltersAnd{}, nil
 	}
-
 	spaceID := getSpaceIDFromFilters(protoFilters)
 	operator := protoFilters[0].Operator
-	filter, err := makeFilters(protoFilters, store, operator, spaceID)
+	if operator == model.BlockContentDataviewFilter_No {
+		return makeFilterNone(protoFilters, store, spaceID)
+	}
+	filter, err := makeFilters(protoFilters[0].NestedFilters, store, operator, spaceID)
 	if err != nil {
 		return nil, err
 	}
 	return filter, nil
+}
+
+func makeFilterNone(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore, spaceID string) (Filter, error) {
+	var and FiltersAnd
+	for _, pf := range protoFilters {
+		if pf.Condition != model.BlockContentDataviewFilter_None {
+			f, err := MakeFilter(spaceID, pf, store)
+			if err != nil {
+				return nil, err
+			}
+			and = append(and, f)
+		}
+	}
+	return and, nil
 }
 
 func makeFilters(protoFilters []*model.BlockContentDataviewFilter,
@@ -47,8 +63,7 @@ func makeFilters(protoFilters []*model.BlockContentDataviewFilter,
 ) (Filter, error) {
 	switch operator {
 	case model.BlockContentDataviewFilter_No:
-		filter, err := MakeFilter(spaceID, protoFilters[0], store)
-		return filter, err
+		return MakeFilter(spaceID, protoFilters[0], store)
 	case model.BlockContentDataviewFilter_Or:
 		return makeFilterOr(protoFilters, store, spaceID)
 	case model.BlockContentDataviewFilter_And:
@@ -61,7 +76,12 @@ func makeFilterAnd(filters []*model.BlockContentDataviewFilter, store ObjectStor
 	var and FiltersAnd
 	for _, filter := range filters {
 		if len(filter.NestedFilters) == 0 {
-			return MakeFilter(spaceId, filter, store)
+			f, err := MakeFilter(spaceId, filter, store)
+			if err != nil {
+				return nil, err
+			}
+			and = append(and, f)
+			continue
 		}
 		ns := TransformQuickOption(filter.NestedFilters, nil)
 		f, err := makeFilters(ns, store, filter.Operator, spaceId)
@@ -77,7 +97,12 @@ func makeFilterOr(filters []*model.BlockContentDataviewFilter, store ObjectStore
 	var or FiltersOr
 	for _, filter := range filters {
 		if len(filter.NestedFilters) == 0 {
-			return MakeFilter(spaceId, filter, store)
+			f, err := MakeFilter(spaceId, filter, store)
+			if err != nil {
+				return nil, err
+			}
+			or = append(or, f)
+			continue
 		}
 		ns := TransformQuickOption(filter.NestedFilters, nil)
 		f, err := makeFilters(ns, store, filter.Operator, spaceId)

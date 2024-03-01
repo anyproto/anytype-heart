@@ -109,70 +109,14 @@ func TestService_Search(t *testing.T) {
 
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
-		assert.Nil(t, err)
+		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
+		require.NoError(t, err)
 
-		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
-		assert.Nil(t, err)
-
-		option1UniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, option1)
-		assert.Nil(t, err)
-
-		option2UniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, option2)
-		assert.Nil(t, err)
-
-		fx.store.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:             pbtypes.String(relationKey),
-				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
-				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-			},
-			{
-				bundle.RelationKeyId:        pbtypes.String(source),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
-				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
-			},
-			{
-				bundle.RelationKeyId:          pbtypes.String(option1),
-				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
-				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
-				bundle.RelationKeyName:        pbtypes.String("Done"),
-				bundle.RelationKeyUniqueKey:   pbtypes.String(option1UniqueKey.Marshal()),
-			},
-			{
-				bundle.RelationKeyId:          pbtypes.String(option2),
-				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
-				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
-				bundle.RelationKeyName:        pbtypes.String("Not started"),
-				bundle.RelationKeyUniqueKey:   pbtypes.String(option2UniqueKey.Marshal()),
-			},
-			{
-				bundle.RelationKeyId:            pbtypes.String("1"),
-				bundle.RelationKeySpaceId:       pbtypes.String(spaceID),
-				domain.RelationKey(relationKey): pbtypes.String(option1UniqueKey.Marshal()),
-				bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_basic)),
-				bundle.RelationKeyName:          pbtypes.String("Object 1"),
-				bundle.RelationKeyType:          pbtypes.String(objectTypeKey.Marshal()),
-			},
-			{
-				bundle.RelationKeyId:            pbtypes.String("2"),
-				bundle.RelationKeySpaceId:       pbtypes.String(spaceID),
-				domain.RelationKey(relationKey): pbtypes.String(option2UniqueKey.Marshal()),
-				bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_basic)),
-				bundle.RelationKeyName:          pbtypes.String("Object 2"),
-				bundle.RelationKeyType:          pbtypes.String(objectTypeKey.Marshal()),
-			},
-		})
 		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			Keys: []string{bundle.RelationKeyId.String()},
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    0,
+					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: relationKey,
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String(option1),
@@ -184,22 +128,191 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Len(t, resp.Records, 1)
-		assert.Equal(t, option1, resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
+		assert.Equal(t, "1", resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
 	})
 	t.Run("search with filters: linear structure with none filters", func(t *testing.T) {
+		fx := newFixtureWithRealObjectStore(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+		option1 := "option1"
+		option2 := "option2"
 
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
+		require.NoError(t, err)
+
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			Keys: []string{bundle.RelationKeyId.String()},
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: relationKey,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(option1),
+					Format:      model.RelationFormat_status,
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: relationKey,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(option2),
+					Format:      model.RelationFormat_status,
+				},
+			},
+			NoDepSubscription: true,
+		})
+		require.NoError(t, err)
+		assert.Len(t, resp.Records, 0)
 	})
 	t.Run("search with filters: tree structure with And filter in root and None filters in NesterFilters", func(t *testing.T) {
+		fx := newFixtureWithRealObjectStore(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+		option1 := "option1"
+		option2 := "option2"
 
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
+		require.NoError(t, err)
+
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			Keys: []string{bundle.RelationKeyId.String()},
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator: model.BlockContentDataviewFilter_And,
+					NestedFilters: []*model.BlockContentDataviewFilter{
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: relationKey,
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String(option2),
+							Format:      model.RelationFormat_status,
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyName.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String("Object 1"),
+							Format:      model.RelationFormat_shorttext,
+						},
+					},
+				},
+			},
+			NoDepSubscription: true,
+		})
+		require.NoError(t, err)
+		assert.Len(t, resp.Records, 0)
 	})
 	t.Run("search with filters: tree structure with Or filter in root and None filters in NesterFilters", func(t *testing.T) {
+		fx := newFixtureWithRealObjectStore(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+		option1 := "option1"
+		option2 := "option2"
 
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
+		require.NoError(t, err)
+
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			Keys: []string{bundle.RelationKeyId.String()},
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator: model.BlockContentDataviewFilter_Or,
+					NestedFilters: []*model.BlockContentDataviewFilter{
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: relationKey,
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String(option2),
+							Format:      model.RelationFormat_status,
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyName.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String("Object 1"),
+							Format:      model.RelationFormat_shorttext,
+						},
+					},
+				},
+			},
+			NoDepSubscription: true,
+		})
+		require.NoError(t, err)
+		assert.Len(t, resp.Records, 2)
+		assert.Equal(t, "1", resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
+		assert.Equal(t, "2", resp.Records[1].Fields[bundle.RelationKeyId.String()].GetStringValue())
 	})
 	t.Run("search with filters: tree structure with And filter in root and combined filters as NestedFilter", func(t *testing.T) {
+		fx := newFixtureWithRealObjectStore(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
 
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		spaceID := "spaceId"
+
+		option1 := "option1"
+		option2 := "option2"
+		option3 := "option3"
+
+		tag1 := "work"
+		tag2 := "university"
+
+		addTestObjectsForNestedFilters(t, fx, spaceID, option1, option2, option3, tag1, tag2)
+
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			Keys:              []string{bundle.RelationKeyId.String()},
+			Filters:           prepareNestedFiltersWithOperator(model.BlockContentDataviewFilter_And, option1, option2, tag1),
+			NoDepSubscription: true,
+		})
+		require.NoError(t, err)
+		assert.Len(t, resp.Records, 1)
+		assert.Equal(t, "1", resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
 	})
 	t.Run("search with filters: tree structure with Or filter in root and combined filters as NestedFilter", func(t *testing.T) {
+		fx := newFixtureWithRealObjectStore(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
 
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		spaceID := "spaceId"
+
+		option1 := "option1"
+		option2 := "option2"
+		option3 := "option3"
+
+		tag1 := "work"
+		tag2 := "university"
+
+		addTestObjectsForNestedFilters(t, fx, spaceID, option1, option2, option3, tag1, tag2)
+
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			Keys:              []string{bundle.RelationKeyId.String()},
+			Filters:           prepareNestedFiltersWithOperator(model.BlockContentDataviewFilter_Or, option1, option2, tag1),
+			NoDepSubscription: true,
+		})
+		require.NoError(t, err)
+		assert.Len(t, resp.Records, 3)
+		assert.Equal(t, "1", resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
+		assert.Equal(t, "2", resp.Records[1].Fields[bundle.RelationKeyId.String()].GetStringValue())
+		assert.Equal(t, "3", resp.Records[2].Fields[bundle.RelationKeyId.String()].GetStringValue())
 	})
 	t.Run("cache ref counter", func(t *testing.T) {
 		fx := newFixture(t)
@@ -1060,6 +1173,148 @@ func TestService_Search(t *testing.T) {
 		assert.Len(t, sub.Dependencies, 0)
 		assert.Len(t, sub.Records, 0)
 	})
+}
+
+func addTestObjects(t *testing.T, source, relationKey, option1, option2, spaceID string, fx *fixtureRealStore) error {
+	objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+	assert.Nil(t, err)
+	fx.store.AddObjects(t, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:            pbtypes.String("1"),
+			bundle.RelationKeySpaceId:       pbtypes.String(spaceID),
+			domain.RelationKey(relationKey): pbtypes.String(option1),
+			bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:          pbtypes.String("Object 1"),
+			bundle.RelationKeyType:          pbtypes.String(objectTypeKey.Marshal()),
+		},
+		{
+			bundle.RelationKeyId:            pbtypes.String("2"),
+			bundle.RelationKeySpaceId:       pbtypes.String(spaceID),
+			domain.RelationKey(relationKey): pbtypes.String(option2),
+			bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:          pbtypes.String("Object 2"),
+			bundle.RelationKeyType:          pbtypes.String(objectTypeKey.Marshal()),
+		},
+	})
+	return err
+}
+
+func addTestObjectsForNestedFilters(t *testing.T, fx *fixtureRealStore, spaceID, option1, option2, option3, tag1, tag2 string) {
+	fx.store.AddObjects(t, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:      pbtypes.String("1"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceID),
+			bundle.RelationKeyStatus:  pbtypes.String(option1),
+			bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    pbtypes.String("Object 1"),
+			bundle.RelationKeyType:    pbtypes.String(bundle.TypeKeyPage.String()),
+			bundle.RelationKeyTag:     pbtypes.StringList([]string{tag1}),
+			bundle.RelationKeyDueDate: pbtypes.Int64(1704070917),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("2"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceID),
+			bundle.RelationKeyStatus:  pbtypes.String(option3),
+			bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    pbtypes.String("Object 2"),
+			bundle.RelationKeyType:    pbtypes.String(bundle.TypeKeyPage.String()),
+			bundle.RelationKeyTag:     pbtypes.StringList([]string{tag2}),
+			bundle.RelationKeyDueDate: pbtypes.Int64(1709254917),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("3"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceID),
+			bundle.RelationKeyStatus:  pbtypes.String(option2),
+			bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    pbtypes.String("Object 3"),
+			bundle.RelationKeyType:    pbtypes.String(bundle.TypeKeyPage.String()),
+			bundle.RelationKeyTag:     pbtypes.StringList([]string{tag1, tag2}),
+			bundle.RelationKeyDueDate: pbtypes.Int64(1711933317),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("4"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceID),
+			bundle.RelationKeyStatus:  pbtypes.String(option1),
+			bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    pbtypes.String("Object 4"),
+			bundle.RelationKeyType:    pbtypes.String(bundle.TypeKeyPage.String()),
+			bundle.RelationKeyDueDate: pbtypes.Int64(1714525317),
+		},
+	})
+}
+
+func prepareNestedFiltersWithOperator(operator model.BlockContentDataviewFilterOperator, option1 string, option2 string, tag1 string) []*model.BlockContentDataviewFilter {
+	return []*model.BlockContentDataviewFilter{
+		{
+			Operator: operator,
+			NestedFilters: []*model.BlockContentDataviewFilter{
+				{
+					Operator: model.BlockContentDataviewFilter_Or,
+					NestedFilters: []*model.BlockContentDataviewFilter{
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyName.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String("Object 1"),
+							Format:      model.RelationFormat_shorttext,
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyName.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String("Object 2"),
+							Format:      model.RelationFormat_shorttext,
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyName.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String("Object 3"),
+							Format:      model.RelationFormat_shorttext,
+						},
+					},
+				},
+				{
+					Operator: model.BlockContentDataviewFilter_And,
+					NestedFilters: []*model.BlockContentDataviewFilter{
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyTag.String(),
+							Condition:   model.BlockContentDataviewFilter_In,
+							Value:       pbtypes.StringList([]string{tag1}),
+							Format:      model.RelationFormat_tag,
+						},
+						{
+							Operator: model.BlockContentDataviewFilter_Or,
+							NestedFilters: []*model.BlockContentDataviewFilter{
+								{
+									Operator:    model.BlockContentDataviewFilter_No,
+									RelationKey: bundle.RelationKeyStatus.String(),
+									Condition:   model.BlockContentDataviewFilter_Equal,
+									Value:       pbtypes.String(option1),
+									Format:      model.RelationFormat_shorttext,
+								},
+								{
+									Operator:    model.BlockContentDataviewFilter_No,
+									RelationKey: bundle.RelationKeyName.String(),
+									Condition:   model.BlockContentDataviewFilter_Equal,
+									Value:       pbtypes.String(option2),
+									Format:      model.RelationFormat_shorttext,
+								},
+							},
+						},
+					},
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyDueDate.String(),
+					Condition:   model.BlockContentDataviewFilter_Less,
+					Value:       pbtypes.Int64(1709254917),
+					Format:      model.RelationFormat_shorttext,
+				},
+			},
+		},
+	}
 }
 
 func xTestNestedSubscription(t *testing.T) {
