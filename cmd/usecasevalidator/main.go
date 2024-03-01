@@ -203,7 +203,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if strings.HasPrefix(f.Name, "files/") {
+		if strings.HasPrefix(f.Name, "files") {
 			continue
 		}
 
