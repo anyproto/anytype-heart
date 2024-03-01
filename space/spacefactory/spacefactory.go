@@ -147,6 +147,7 @@ func (s *spaceFactory) CreateInvitingSpace(ctx context.Context, id, aclHeadId st
 	ctrl, err := shareablespace.NewSpaceController(id, spaceinfo.SpacePersistentInfo{
 		SpaceID:       id,
 		AccountStatus: spaceinfo.AccountStatusJoining,
+		AclHeadId:     aclHeadId,
 	}, s.app)
 	if err != nil {
 		return nil, err
