@@ -97,6 +97,110 @@ func TestService_Search(t *testing.T) {
 		assert.NoError(t, fx.Unsubscribe("test"))
 		assert.Len(t, fx.Service.(*service).cache.entries, 0)
 	})
+	t.Run("search with filters: one filter None", func(t *testing.T) {
+		fx := newFixtureWithRealObjectStore(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+		option1 := "option1"
+		option2 := "option2"
+
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		assert.Nil(t, err)
+
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+
+		option1UniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, option1)
+		assert.Nil(t, err)
+
+		option2UniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, option2)
+		assert.Nil(t, err)
+
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String(option1),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyName:        pbtypes.String("Done"),
+				bundle.RelationKeyUniqueKey:   pbtypes.String(option1UniqueKey.Marshal()),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String(option2),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyName:        pbtypes.String("Not started"),
+				bundle.RelationKeyUniqueKey:   pbtypes.String(option2UniqueKey.Marshal()),
+			},
+			{
+				bundle.RelationKeyId:            pbtypes.String("1"),
+				bundle.RelationKeySpaceId:       pbtypes.String(spaceID),
+				domain.RelationKey(relationKey): pbtypes.String(option1UniqueKey.Marshal()),
+				bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyName:          pbtypes.String("Object 1"),
+				bundle.RelationKeyType:          pbtypes.String(objectTypeKey.Marshal()),
+			},
+			{
+				bundle.RelationKeyId:            pbtypes.String("2"),
+				bundle.RelationKeySpaceId:       pbtypes.String(spaceID),
+				domain.RelationKey(relationKey): pbtypes.String(option2UniqueKey.Marshal()),
+				bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyName:          pbtypes.String("Object 2"),
+				bundle.RelationKeyType:          pbtypes.String(objectTypeKey.Marshal()),
+			},
+		})
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			Keys: []string{bundle.RelationKeyId.String()},
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    0,
+					RelationKey: relationKey,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(option1),
+					Format:      model.RelationFormat_status,
+				},
+			},
+			NoDepSubscription: true,
+		})
+		require.NoError(t, err)
+
+		assert.Len(t, resp.Records, 1)
+		assert.Equal(t, option1, resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
+	})
+	t.Run("search with filters: linear structure with none filters", func(t *testing.T) {
+
+	})
+	t.Run("search with filters: tree structure with And filter in root and None filters in NesterFilters", func(t *testing.T) {
+
+	})
+	t.Run("search with filters: tree structure with Or filter in root and None filters in NesterFilters", func(t *testing.T) {
+
+	})
+	t.Run("search with filters: tree structure with And filter in root and combined filters as NestedFilter", func(t *testing.T) {
+
+	})
+	t.Run("search with filters: tree structure with Or filter in root and combined filters as NestedFilter", func(t *testing.T) {
+
+	})
 	t.Run("cache ref counter", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.a.Close(context.Background())

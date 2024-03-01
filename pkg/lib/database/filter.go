@@ -23,24 +23,70 @@ var (
 	ErrValueMustBeListSupporting = errors.New("value must be list supporting")
 )
 
-func MakeFiltersAnd(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore) (FiltersAnd, error) {
+func MakeFilters(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
 	if store == nil {
 		return FiltersAnd{}, fmt.Errorf("objectStore dependency is nil")
 	}
-	spaceID := getSpaceIDFromFilters(protoFilters)
-	protoFilters = TransformQuickOption(protoFilters, nil)
+	if len(protoFilters) == 0 {
+		return nil, nil
+	}
 
+	spaceID := getSpaceIDFromFilters(protoFilters)
+	operator := protoFilters[0].Operator
+	filter, err := makeFilters(protoFilters, store, operator, spaceID)
+	if err != nil {
+		return nil, err
+	}
+	return filter, nil
+}
+
+func makeFilters(protoFilters []*model.BlockContentDataviewFilter,
+	store ObjectStore,
+	operator model.BlockContentDataviewFilterOperator,
+	spaceID string,
+) (Filter, error) {
+	switch operator {
+	case model.BlockContentDataviewFilter_No:
+		filter, err := MakeFilter(spaceID, protoFilters[0], store)
+		return filter, err
+	case model.BlockContentDataviewFilter_Or:
+		return makeFilterOr(protoFilters, store, spaceID)
+	case model.BlockContentDataviewFilter_And:
+		return makeFilterAnd(protoFilters, store, spaceID)
+	}
+	return nil, nil
+}
+
+func makeFilterAnd(filters []*model.BlockContentDataviewFilter, store ObjectStore, spaceId string) (Filter, error) {
 	var and FiltersAnd
-	for _, pf := range protoFilters {
-		if pf.Condition != model.BlockContentDataviewFilter_None {
-			f, err := MakeFilter(spaceID, pf, store)
-			if err != nil {
-				return nil, err
-			}
-			and = append(and, f)
+	for _, filter := range filters {
+		if len(filter.NestedFilters) == 0 {
+			return MakeFilter(spaceId, filter, store)
 		}
+		ns := TransformQuickOption(filter.NestedFilters, nil)
+		f, err := makeFilters(ns, store, filter.Operator, spaceId)
+		if err != nil {
+			return nil, err
+		}
+		and = append(and, f)
 	}
 	return and, nil
+}
+
+func makeFilterOr(filters []*model.BlockContentDataviewFilter, store ObjectStore, spaceId string) (Filter, error) {
+	var or FiltersOr
+	for _, filter := range filters {
+		if len(filter.NestedFilters) == 0 {
+			return MakeFilter(spaceId, filter, store)
+		}
+		ns := TransformQuickOption(filter.NestedFilters, nil)
+		f, err := makeFilters(ns, store, filter.Operator, spaceId)
+		if err != nil {
+			return nil, err
+		}
+		or = append(or, f)
+	}
+	return or, nil
 }
 
 func NestedRelationKey(baseRelationKey domain.RelationKey, nestedRelationKey domain.RelationKey) string {

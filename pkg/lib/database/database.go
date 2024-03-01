@@ -104,7 +104,7 @@ func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *F
 		objectStore: store,
 	}
 
-	filterObj, err := MakeFiltersAnd(qry.Filters, store)
+	filterObj, err := MakeFilters(qry.Filters, store)
 	if err != nil {
 		return
 	}
