@@ -63,7 +63,7 @@ func validateRelationBlocks(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) 
 	relLinks := pbtypes.RelationLinks(s.Snapshot.Data.GetRelationLinks())
 	for _, rk := range relKeys {
 		if !relLinks.Has(rk) {
-			if rel, errFound := bundle.GetRelation(domain.RelationKey(rk)); errFound != nil {
+			if rel, errFound := bundle.GetRelation(domain.RelationKey(rk)); errFound == nil {
 				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
 					Key:    rk,
 					Format: rel.Format,
@@ -91,7 +91,7 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 		if e != nil {
 			rel = getRelationLinkByKey(s.Snapshot.Data.RelationLinks, k)
 			if rel == nil {
-				if relation, errFound := bundle.GetRelation(domain.RelationKey(k)); errFound != nil {
+				if relation, errFound := bundle.GetRelation(domain.RelationKey(k)); errFound == nil {
 					s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
 						Key:    k,
 						Format: relation.Format,
