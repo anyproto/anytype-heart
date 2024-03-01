@@ -1,0 +1,222 @@
+{
+  "sbType": "STRelation",
+  "snapshot": {
+    "data": {
+      "blocks": [
+        {
+          "id": "bafyreihgcpy6tmpf5zlohex5nris3lzybjn34eob74uny2ysvsbg7ocpdi",
+          "childrenIds": [
+            "header"
+          ],
+          "smartblock": {
+
+          }
+        },
+        {
+          "id": "header",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "childrenIds": [
+            "title",
+            "featuredRelations"
+          ],
+          "layout": {
+            "style": "Header"
+          }
+        },
+        {
+          "id": "title",
+          "fields": {
+              "_detailsKey": [
+                    "name",
+                    "done"
+                  ]
+            },
+          "restrictions": {
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "text": {
+            "style": "Title",
+            "marks": {
+
+            }
+          }
+        },
+        {
+          "id": "featuredRelations",
+          "restrictions": {
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "featuredRelations": {
+
+          }
+        }
+      ],
+      "details": {
+          "backlinks": [
+              ],
+          "createdDate": 1708943524,
+          "creator": "_participant_bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+          "featuredRelations": [
+                "type"
+              ],
+          "id": "bafyreihgcpy6tmpf5zlohex5nris3lzybjn34eob74uny2ysvsbg7ocpdi",
+          "internalFlags": [
+              ],
+          "lastModifiedBy": "_participant_bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+          "lastModifiedDate": 1708943524,
+          "layout": 5,
+          "links": [
+              ],
+          "name": "Custom image relation",
+          "relationFormat": 5,
+          "relationFormatObjectTypes": [
+              ],
+          "relationKey": "65dc68a44ac3df3648e9b872",
+          "restrictions": [
+                3,
+                6,
+                5,
+                7
+              ],
+          "snippet": "",
+          "spaceId": "bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya.3uxcyvge8is62",
+          "type": "bafyreiabkcyd6d4yn23ercz7hgf6lt6qzifbangzalh2zlpno4feqylvti",
+          "uniqueKey": "rel-65dc68a44ac3df3648e9b872"
+        },
+      "objectTypes": [
+        "ot-relation"
+      ],
+      "relationLinks": [
+        {
+          "key": "spaceId",
+          "format": "object"
+        },
+        {
+          "key": "internalFlags",
+          "format": "number"
+        },
+        {
+          "key": "relationFormatObjectTypes",
+          "format": "object"
+        },
+        {
+          "key": "id",
+          "format": "object"
+        },
+        {
+          "key": "relationFormat",
+          "format": "number"
+        },
+        {
+          "key": "layout",
+          "format": "number"
+        },
+        {
+          "key": "uniqueKey"
+        },
+        {
+          "key": "name",
+          "format": "shorttext"
+        },
+        {
+          "key": "relationKey"
+        },
+        {
+          "key": "creator",
+          "format": "object"
+        },
+        {
+          "key": "createdDate",
+          "format": "date"
+        },
+        {
+          "key": "snippet"
+        },
+        {
+          "key": "backlinks",
+          "format": "object"
+        },
+        {
+          "key": "description"
+        },
+        {
+          "key": "iconEmoji",
+          "format": "emoji"
+        },
+        {
+          "key": "iconImage",
+          "format": "file"
+        },
+        {
+          "key": "type",
+          "format": "object"
+        },
+        {
+          "key": "layoutAlign",
+          "format": "number"
+        },
+        {
+          "key": "coverId"
+        },
+        {
+          "key": "coverScale",
+          "format": "number"
+        },
+        {
+          "key": "coverType",
+          "format": "number"
+        },
+        {
+          "key": "coverX",
+          "format": "number"
+        },
+        {
+          "key": "coverY",
+          "format": "number"
+        },
+        {
+          "key": "lastModifiedDate",
+          "format": "date"
+        },
+        {
+          "key": "lastModifiedBy",
+          "format": "object"
+        },
+        {
+          "key": "lastOpenedDate",
+          "format": "date"
+        },
+        {
+          "key": "featuredRelations",
+          "format": "object"
+        },
+        {
+          "key": "isFavorite",
+          "format": "checkbox"
+        },
+        {
+          "key": "workspaceId",
+          "format": "object"
+        },
+        {
+          "key": "links",
+          "format": "object"
+        },
+        {
+          "key": "restrictions",
+          "format": "number"
+        }
+      ],
+      "key": "65dc68a44ac3df3648e9b872"
+    }
+  }
+}

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f2cc0befbfea6768c50fd6be77f1233dee9f2352eb08e7d8fb156c0518d6160f"
+const RelationChecksum = "15ce7e760c03abd6582ca7d20c4a04cc31f315cd6067149b32a9966e4f07b3fa"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -19,6 +19,7 @@ const (
 	RelationKeyRelationFormatObjectTypes domain.RelationKey = "relationFormatObjectTypes"
 	RelationKeyRelationKey               domain.RelationKey = "relationKey"
 	RelationKeyRelationOptionColor       domain.RelationKey = "relationOptionColor"
+	RelationKeyLatestAclHeadId           domain.RelationKey = "latestAclHeadId"
 	RelationKeyInstructions              domain.RelationKey = "instructions"
 	RelationKeyDone                      domain.RelationKey = "done"
 	RelationKeyMediaArtistURL            domain.RelationKey = "mediaArtistURL"
@@ -358,10 +359,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brbacklinks",
 			Key:              "backlinks",
-			Name:             "Links to this object",
+			Name:             "Backlinks",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         2,
+			Revision:         3,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBudget: {
@@ -1248,6 +1249,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyLatestAclHeadId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Latest Acl head id",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brlatestAclHeadId",
+			Key:              "latestAclHeadId",
+			MaxCount:         1,
+			Name:             "Latest acl head id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyLayout: {
 
 			DataSource:       model.Relation_details,
@@ -1308,10 +1323,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brlinks",
 			Key:              "links",
-			Name:             "Links from this object",
+			Name:             "Links",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         2,
+			Revision:         3,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLogic: {

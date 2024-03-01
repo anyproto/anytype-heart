@@ -75,5 +75,6 @@
   "spaceInviteFileKey",
   "participantPermissions",
   "participantStatus",
+  "latestAclHeadId",
   "identity"
 ]

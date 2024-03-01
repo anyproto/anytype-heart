@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/acl/aclwaiter"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -31,10 +32,14 @@ func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
 	child.Register(params.Status).
 		Register(newStatusChanger()).
-		Register(aclwaiter.New(params.SpaceId, func() error {
+		Register(aclwaiter.New(params.SpaceId, func(acl list.AclList) error {
 			params.Status.Lock()
 			defer params.Status.Unlock()
-			err := params.Status.SetPersistentStatus(context.Background(), spaceinfo.AccountStatusActive)
+			err := params.Status.SetPersistentInfo(context.Background(), spaceinfo.SpacePersistentInfo{
+				SpaceID:       params.SpaceId,
+				AccountStatus: spaceinfo.AccountStatusActive,
+				AclHeadId:     acl.Head().Id,
+			})
 			if err != nil {
 				params.Log.Error("failed to set persistent status", zap.Error(err))
 			}

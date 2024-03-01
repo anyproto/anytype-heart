@@ -17,6 +17,8 @@ type DataObject struct {
 	ctx            context.Context
 	origin         objectorigin.ObjectOrigin
 	spaceID        string
+
+	newIdsSet map[string]struct{}
 }
 
 type Result struct {
@@ -32,6 +34,10 @@ func NewDataObject(ctx context.Context,
 	origin objectorigin.ObjectOrigin,
 	spaceID string,
 ) *DataObject {
+	newIdsSet := make(map[string]struct{}, len(oldIDtoNew))
+	for _, newId := range oldIDtoNew {
+		newIdsSet[newId] = struct{}{}
+	}
 	return &DataObject{
 		oldIDtoNew:     oldIDtoNew,
 		createPayloads: createPayloads,
@@ -39,6 +45,7 @@ func NewDataObject(ctx context.Context,
 		ctx:            ctx,
 		origin:         origin,
 		spaceID:        spaceID,
+		newIdsSet:      newIdsSet,
 	}
 }
 

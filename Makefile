@@ -80,6 +80,7 @@ test-deps:
 	@go build -o deps github.com/vektra/mockery/v2
 	@go generate ./...
 	@$(DEPS_PATH)/mockery --disable-version-string
+	@go run ./cmd/testcase generate-json-helpers
 
 clear-test-deps:
 	@echo 'Removing test mocks...'

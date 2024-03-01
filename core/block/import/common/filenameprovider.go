@@ -46,7 +46,7 @@ func extractFileFromArchiveToTempDirectory(fileName string, rc io.ReadCloser, te
 	directoryWithFile := filepath.Dir(fileName)
 	if directoryWithFile != "" {
 		directoryWithFile = filepath.Join(tempDir, directoryWithFile)
-		if err := os.Mkdir(directoryWithFile, 0777); err != nil && !os.IsExist(err) {
+		if err := os.MkdirAll(directoryWithFile, 0777); err != nil && !os.IsExist(err) {
 			return "", oserror.TransformError(err)
 		}
 	}

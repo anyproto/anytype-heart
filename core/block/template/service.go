@@ -152,7 +152,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 			return
 		}
 
-		targetState.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
+		targetState.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String(), bundle.RelationKeyOrigin.String())
 		targetState.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
 		targetState.SetLocalDetails(nil)
 		return

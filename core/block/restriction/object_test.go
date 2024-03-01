@@ -47,10 +47,17 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 		), ErrRestricted)
 	})
 
+	t.Run("system type restricted creation", func(t *testing.T) {
+		assert.ErrorIs(t, rest.GetRestrictions(givenObjectType(bundle.TypeKeyParticipant)).Object.Check(
+			model.Restrictions_CreateObjectOfThisType,
+		), ErrRestricted)
+	})
+
 	t.Run("ordinary type", func(t *testing.T) {
 		assert.NoError(t, rest.GetRestrictions(givenObjectType(bundle.TypeKeyDailyPlan)).Object.Check(
 			model.Restrictions_Details,
 			model.Restrictions_Delete,
+			model.Restrictions_CreateObjectOfThisType,
 		))
 	})
 

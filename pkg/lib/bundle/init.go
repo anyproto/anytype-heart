@@ -67,11 +67,22 @@ func HasObjectTypeID(id string) bool {
 	return exists
 }
 
+// GetTypeByUrl is deprecated, use GetType instead
 func GetTypeByUrl(u string) (*model.ObjectType, error) {
 	if !strings.HasPrefix(u, TypePrefix) {
 		return nil, fmt.Errorf("invalid url with no bundled type prefix")
 	}
 	tk := domain.TypeKey(strings.TrimPrefix(u, TypePrefix))
+	if v, exists := types[tk]; exists {
+		t := pbtypes.CopyObjectType(v)
+		t.Key = tk.String()
+		return t, nil
+	}
+
+	return nil, ErrNotFound
+}
+
+func GetType(tk domain.TypeKey) (*model.ObjectType, error) {
 	if v, exists := types[tk]; exists {
 		t := pbtypes.CopyObjectType(v)
 		t.Key = tk.String()

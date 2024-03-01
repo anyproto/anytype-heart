@@ -15,11 +15,11 @@ import (
 
 func TestFiles(t *testing.T) {
 	ctx := context.Background()
-	app, acc := createAccountAndStartApp(t)
+	app := createAccountAndStartApp(t, pb.RpcObjectImportUseCaseRequest_GET_STARTED)
 
 	t.Run("upload image", func(t *testing.T) {
 		blockService := getService[*block.Service](app)
-		objectId, details, err := blockService.UploadFile(ctx, acc.Info.AccountSpaceId, block.FileUploadRequest{
+		objectId, details, err := blockService.UploadFile(ctx, app.personalSpaceId(), block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: "./testdata/test_image.png",
 			},

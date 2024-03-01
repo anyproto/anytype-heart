@@ -139,7 +139,7 @@ func (i *Import) Import(ctx context.Context,
 	var rootCollectionId string
 	if c, ok := i.converters[req.Type.String()]; ok {
 		rootCollectionId, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
-		return rootCollectionId, "", returnedErr
+		return rootCollectionId, progress.Id(), returnedErr
 	}
 	if req.Type == model.Import_External {
 		returnedErr = i.importFromExternalSource(ctx, req, progress)

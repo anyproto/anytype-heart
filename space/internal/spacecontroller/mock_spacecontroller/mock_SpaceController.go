@@ -162,17 +162,17 @@ func (_c *MockSpaceController_Mode_Call) RunAndReturn(run func() mode.Mode) *Moc
 	return _c
 }
 
-// SetStatus provides a mock function with given fields: ctx, status
-func (_m *MockSpaceController) SetStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
-	ret := _m.Called(ctx, status)
+// SetInfo provides a mock function with given fields: ctx, info
+func (_m *MockSpaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	ret := _m.Called(ctx, info)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetStatus")
+		panic("no return value specified for SetInfo")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.AccountStatus) error); ok {
-		r0 = rf(ctx, status)
+	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.SpacePersistentInfo) error); ok {
+		r0 = rf(ctx, info)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -180,31 +180,31 @@ func (_m *MockSpaceController) SetStatus(ctx context.Context, status spaceinfo.A
 	return r0
 }
 
-// MockSpaceController_SetStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetStatus'
-type MockSpaceController_SetStatus_Call struct {
+// MockSpaceController_SetInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetInfo'
+type MockSpaceController_SetInfo_Call struct {
 	*mock.Call
 }
 
-// SetStatus is a helper method to define mock.On call
+// SetInfo is a helper method to define mock.On call
 //   - ctx context.Context
-//   - status spaceinfo.AccountStatus
-func (_e *MockSpaceController_Expecter) SetStatus(ctx interface{}, status interface{}) *MockSpaceController_SetStatus_Call {
-	return &MockSpaceController_SetStatus_Call{Call: _e.mock.On("SetStatus", ctx, status)}
+//   - info spaceinfo.SpacePersistentInfo
+func (_e *MockSpaceController_Expecter) SetInfo(ctx interface{}, info interface{}) *MockSpaceController_SetInfo_Call {
+	return &MockSpaceController_SetInfo_Call{Call: _e.mock.On("SetInfo", ctx, info)}
 }
 
-func (_c *MockSpaceController_SetStatus_Call) Run(run func(ctx context.Context, status spaceinfo.AccountStatus)) *MockSpaceController_SetStatus_Call {
+func (_c *MockSpaceController_SetInfo_Call) Run(run func(ctx context.Context, info spaceinfo.SpacePersistentInfo)) *MockSpaceController_SetInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(spaceinfo.AccountStatus))
+		run(args[0].(context.Context), args[1].(spaceinfo.SpacePersistentInfo))
 	})
 	return _c
 }
 
-func (_c *MockSpaceController_SetStatus_Call) Return(_a0 error) *MockSpaceController_SetStatus_Call {
+func (_c *MockSpaceController_SetInfo_Call) Return(_a0 error) *MockSpaceController_SetInfo_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSpaceController_SetStatus_Call) RunAndReturn(run func(context.Context, spaceinfo.AccountStatus) error) *MockSpaceController_SetStatus_Call {
+func (_c *MockSpaceController_SetInfo_Call) RunAndReturn(run func(context.Context, spaceinfo.SpacePersistentInfo) error) *MockSpaceController_SetInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -300,6 +300,53 @@ func (_c *MockSpaceController_Start_Call) RunAndReturn(run func(context.Context)
 	return _c
 }
 
+// UpdateInfo provides a mock function with given fields: ctx, info
+func (_m *MockSpaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	ret := _m.Called(ctx, info)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateInfo")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.SpacePersistentInfo) error); ok {
+		r0 = rf(ctx, info)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceController_UpdateInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateInfo'
+type MockSpaceController_UpdateInfo_Call struct {
+	*mock.Call
+}
+
+// UpdateInfo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - info spaceinfo.SpacePersistentInfo
+func (_e *MockSpaceController_Expecter) UpdateInfo(ctx interface{}, info interface{}) *MockSpaceController_UpdateInfo_Call {
+	return &MockSpaceController_UpdateInfo_Call{Call: _e.mock.On("UpdateInfo", ctx, info)}
+}
+
+func (_c *MockSpaceController_UpdateInfo_Call) Run(run func(ctx context.Context, info spaceinfo.SpacePersistentInfo)) *MockSpaceController_UpdateInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(spaceinfo.SpacePersistentInfo))
+	})
+	return _c
+}
+
+func (_c *MockSpaceController_UpdateInfo_Call) Return(_a0 error) *MockSpaceController_UpdateInfo_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceController_UpdateInfo_Call) RunAndReturn(run func(context.Context, spaceinfo.SpacePersistentInfo) error) *MockSpaceController_UpdateInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateRemoteStatus provides a mock function with given fields: ctx, status
 func (_m *MockSpaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
 	ret := _m.Called(ctx, status)
@@ -343,53 +390,6 @@ func (_c *MockSpaceController_UpdateRemoteStatus_Call) Return(_a0 error) *MockSp
 }
 
 func (_c *MockSpaceController_UpdateRemoteStatus_Call) RunAndReturn(run func(context.Context, spaceinfo.RemoteStatus) error) *MockSpaceController_UpdateRemoteStatus_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateStatus provides a mock function with given fields: ctx, status
-func (_m *MockSpaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
-	ret := _m.Called(ctx, status)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateStatus")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.AccountStatus) error); ok {
-		r0 = rf(ctx, status)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockSpaceController_UpdateStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateStatus'
-type MockSpaceController_UpdateStatus_Call struct {
-	*mock.Call
-}
-
-// UpdateStatus is a helper method to define mock.On call
-//   - ctx context.Context
-//   - status spaceinfo.AccountStatus
-func (_e *MockSpaceController_Expecter) UpdateStatus(ctx interface{}, status interface{}) *MockSpaceController_UpdateStatus_Call {
-	return &MockSpaceController_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, status)}
-}
-
-func (_c *MockSpaceController_UpdateStatus_Call) Run(run func(ctx context.Context, status spaceinfo.AccountStatus)) *MockSpaceController_UpdateStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(spaceinfo.AccountStatus))
-	})
-	return _c
-}
-
-func (_c *MockSpaceController_UpdateStatus_Call) Return(_a0 error) *MockSpaceController_UpdateStatus_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockSpaceController_UpdateStatus_Call) RunAndReturn(run func(context.Context, spaceinfo.AccountStatus) error) *MockSpaceController_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -119,7 +119,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	}
 
 	st.ModifyLinkedFilesInDetails(func(fileId string) string {
-		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.createPayloads, origin)
+		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin)
 		if newFileId != fileId {
 			filesToDelete = append(filesToDelete, fileId)
 		}
@@ -151,13 +151,12 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	oc.setArchived(snapshot, newID)
 
-	syncErr := oc.syncFilesAndLinks(dataObject.createPayloads, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
+	syncErr := oc.syncFilesAndLinks(dataObject.newIdsSet, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
 	if syncErr != nil {
 		if errors.Is(syncErr, common.ErrFileLoad) {
 			return respDetails, newID, syncErr
 		}
 	}
-
 	return respDetails, newID, nil
 }
 
@@ -400,7 +399,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, id domain.FullID, origin objectorigin.ObjectOrigin) error {
+func (oc *ObjectCreator) syncFilesAndLinks(newIdsSet map[string]struct{}, id domain.FullID, origin objectorigin.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
 	err := block.Do(oc.service, id.ObjectID, func(b smartblock.SmartBlock) error {
@@ -410,7 +409,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(snapshotPayloads map[string]treestora
 			if s != nil {
 				// We can't run syncer here because it will cause a deadlock, so we defer this operation
 				tasks = append(tasks, func() error {
-					err := s.Sync(id, snapshotPayloads, bl, origin)
+					err := s.Sync(id, newIdsSet, bl, origin)
 					if err != nil {
 						return err
 					}

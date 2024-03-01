@@ -297,7 +297,7 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 			extractedState.SetRootId(id)
 			return &smartblock.InitContext{
 				IsNewObject:    true,
-				ObjectTypeKeys: []domain.TypeKey{bundle.TypeKeyDashboard},
+				ObjectTypeKeys: []domain.TypeKey{bundle.TypeKeyPage},
 				State:          extractedState,
 				SpaceID:        s.Id(),
 			}

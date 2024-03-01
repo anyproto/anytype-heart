@@ -89,17 +89,17 @@ func (s *spaceController) SpaceId() string {
 func (s *spaceController) newLoader() loader.Loader {
 	return loader.New(s.app, loader.Params{
 		SpaceId:             s.spaceId,
-		Status:              spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown),
+		Status:              spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown, ""),
 		StopIfMandatoryFail: true,
 		OwnerMetadata:       s.metadata,
 	})
 }
 
-func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
+func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	return nil
 }
 
-func (s *spaceController) SetStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
+func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	return nil
 }
 

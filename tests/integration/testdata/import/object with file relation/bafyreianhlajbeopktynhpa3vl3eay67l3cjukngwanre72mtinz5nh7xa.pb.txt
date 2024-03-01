@@ -1,0 +1,220 @@
+{
+  "sbType": "Page",
+  "snapshot": {
+    "data": {
+      "blocks": [
+        {
+          "id": "bafyreianhlajbeopktynhpa3vl3eay67l3cjukngwanre72mtinz5nh7xa",
+          "restrictions": {
+
+          },
+          "childrenIds": [
+            "header",
+            "65dc68924ac3df3648e9b871"
+          ],
+          "smartblock": {
+
+          }
+        },
+        {
+          "id": "header",
+          "restrictions": {
+            "edit": true,
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "childrenIds": [
+            "title",
+            "featuredRelations"
+          ],
+          "layout": {
+            "style": "Header"
+          }
+        },
+        {
+          "id": "65dc68924ac3df3648e9b871",
+          "restrictions": {
+
+          },
+          "text": {
+            "marks": {
+
+            }
+          }
+        },
+        {
+          "id": "title",
+          "fields": {
+              "_detailsKey": [
+                    "name",
+                    "done"
+                  ]
+            },
+          "restrictions": {
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "text": {
+            "style": "Title",
+            "marks": {
+
+            }
+          }
+        },
+        {
+          "id": "featuredRelations",
+          "restrictions": {
+            "remove": true,
+            "drag": true,
+            "dropOn": true
+          },
+          "featuredRelations": {
+
+          }
+        }
+      ],
+      "details": {
+          "backlinks": [
+              ],
+          "createdDate": 1708943497,
+          "creator": "_participant_bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+          "featuredRelations": [
+                "type",
+                "backlinks"
+              ],
+          "iconImage": [
+                "bafyreieq4gxa3uhpk6dxgvbuzq6fbn3mm75fstmyrqzf4xr4mvowcoxv64"
+              ],
+          "id": "bafyreianhlajbeopktynhpa3vl3eay67l3cjukngwanre72mtinz5nh7xa",
+          "lastModifiedBy": "_participant_bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+          "lastModifiedDate": 1708943991,
+          "lastOpenedDate": 1708944358,
+          "layout": 0,
+          "links": [
+              ],
+          "name": "Page with image relation",
+          "restrictions": [
+              ],
+          "snippet": "",
+          "spaceId": "bafyreifcy5wy3wluu2r2ewcm7v46lpykqqyf5362mn54jsr4w67xn6e6ya.3uxcyvge8is62",
+          "type": "bafyreifa6mvn6nhazik67die3i7ima3s64qhpeb6ei2k5kadv2ovgvm2ti"
+        },
+      "objectTypes": [
+        "ot-page"
+      ],
+      "relationLinks": [
+        {
+          "key": "id",
+          "format": "object"
+        },
+        {
+          "key": "name",
+          "format": "shorttext"
+        },
+        {
+          "key": "description"
+        },
+        {
+          "key": "snippet"
+        },
+        {
+          "key": "iconEmoji",
+          "format": "emoji"
+        },
+        {
+          "key": "iconImage",
+          "format": "file"
+        },
+        {
+          "key": "type",
+          "format": "object"
+        },
+        {
+          "key": "layout",
+          "format": "number"
+        },
+        {
+          "key": "layoutAlign",
+          "format": "number"
+        },
+        {
+          "key": "coverId"
+        },
+        {
+          "key": "coverScale",
+          "format": "number"
+        },
+        {
+          "key": "coverType",
+          "format": "number"
+        },
+        {
+          "key": "coverX",
+          "format": "number"
+        },
+        {
+          "key": "coverY",
+          "format": "number"
+        },
+        {
+          "key": "createdDate",
+          "format": "date"
+        },
+        {
+          "key": "creator",
+          "format": "object"
+        },
+        {
+          "key": "lastModifiedDate",
+          "format": "date"
+        },
+        {
+          "key": "lastModifiedBy",
+          "format": "object"
+        },
+        {
+          "key": "lastOpenedDate",
+          "format": "date"
+        },
+        {
+          "key": "featuredRelations",
+          "format": "object"
+        },
+        {
+          "key": "isFavorite",
+          "format": "checkbox"
+        },
+        {
+          "key": "workspaceId",
+          "format": "object"
+        },
+        {
+          "key": "spaceId",
+          "format": "object"
+        },
+        {
+          "key": "links",
+          "format": "object"
+        },
+        {
+          "key": "internalFlags",
+          "format": "number"
+        },
+        {
+          "key": "restrictions",
+          "format": "number"
+        },
+        {
+          "key": "backlinks",
+          "format": "object"
+        },
+        {
+          "key": "65dc68a44ac3df3648e9b872",
+          "format": "file"
+        }
+      ]
+    }
+  }
+}

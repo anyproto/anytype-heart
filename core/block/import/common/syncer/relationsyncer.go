@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -32,9 +31,9 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, origin objectorigin.ObjectOrigin) string {
+func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[string]struct{}, origin objectorigin.ObjectOrigin) string {
 	// If file is created during import, do nothing
-	if _, ok := snapshotPayloads[fileId]; ok {
+	if _, ok := newIdsSet[fileId]; ok {
 		return fileId
 	}
 

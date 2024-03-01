@@ -115,6 +115,8 @@ func (p *peerStore) updatePeer(peerId string, oldIds, newIds []string) {
 }
 
 func (p *peerStore) AllLocalPeers() []string {
+	p.Lock()
+	defer p.Unlock()
 	return p.localPeerIds
 }
 

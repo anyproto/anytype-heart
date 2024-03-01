@@ -44,6 +44,7 @@ type SpaceLocalInfo struct {
 type SpacePersistentInfo struct {
 	SpaceID       string
 	AccountStatus AccountStatus
+	AclHeadId     string
 }
 
 type SpaceInfo struct {

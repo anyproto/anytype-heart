@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -44,9 +43,9 @@ func NewIconSyncer(service *block.Service, resolver idresolver.Resolver, fileSto
 	}
 }
 
-func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, b simple.Block, origin objectorigin.ObjectOrigin) error {
+func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b simple.Block, origin objectorigin.ObjectOrigin) error {
 	iconImage := b.Model().GetText().GetIconImage()
-	newId, err := s.handleIconImage(id.SpaceID, snapshotPayloads, iconImage, origin)
+	newId, err := s.handleIconImage(id.SpaceID, newIdsSet, iconImage, origin)
 	if err != nil {
 		return fmt.Errorf("%w: %w", common.ErrFileLoad, err)
 	}
@@ -71,8 +70,8 @@ func (s *IconSyncer) Sync(id domain.FullID, snapshotPayloads map[string]treestor
 	return nil
 }
 
-func (s *IconSyncer) handleIconImage(spaceId string, snapshotPayloads map[string]treestorage.TreeStorageCreatePayload, iconImage string, origin objectorigin.ObjectOrigin) (string, error) {
-	if _, ok := snapshotPayloads[iconImage]; ok {
+func (s *IconSyncer) handleIconImage(spaceId string, newIdsSet map[string]struct{}, iconImage string, origin objectorigin.ObjectOrigin) (string, error) {
+	if _, ok := newIdsSet[iconImage]; ok {
 		return iconImage, nil
 	}
 	_, err := cid.Decode(iconImage)
