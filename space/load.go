@@ -38,6 +38,7 @@ func (s *service) getStatus(ctx context.Context, spaceId string) (ctrl spacecont
 		s.mu.Unlock()
 		return ctrl, nil
 	}
+	s.mu.Unlock()
 	return nil, ErrSpaceNotExists
 }
 
