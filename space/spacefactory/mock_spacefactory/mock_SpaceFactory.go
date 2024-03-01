@@ -471,9 +471,9 @@ func (_c *MockSpaceFactory_NewPersonalSpace_Call) RunAndReturn(run func(context.
 	return _c
 }
 
-// NewShareableSpace provides a mock function with given fields: ctx, id, status
-func (_m *MockSpaceFactory) NewShareableSpace(ctx context.Context, id string, status spaceinfo.AccountStatus) (spacecontroller.SpaceController, error) {
-	ret := _m.Called(ctx, id, status)
+// NewShareableSpace provides a mock function with given fields: ctx, id, info
+func (_m *MockSpaceFactory) NewShareableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, id, info)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewShareableSpace")
@@ -481,19 +481,19 @@ func (_m *MockSpaceFactory) NewShareableSpace(ctx context.Context, id string, st
 
 	var r0 spacecontroller.SpaceController
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.AccountStatus) (spacecontroller.SpaceController, error)); ok {
-		return rf(ctx, id, status)
+	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, id, info)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.AccountStatus) spacecontroller.SpaceController); ok {
-		r0 = rf(ctx, id, status)
+	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.SpacePersistentInfo) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, id, info)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(spacecontroller.SpaceController)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, spaceinfo.AccountStatus) error); ok {
-		r1 = rf(ctx, id, status)
+	if rf, ok := ret.Get(1).(func(context.Context, string, spaceinfo.SpacePersistentInfo) error); ok {
+		r1 = rf(ctx, id, info)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -509,14 +509,14 @@ type MockSpaceFactory_NewShareableSpace_Call struct {
 // NewShareableSpace is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-//   - status spaceinfo.AccountStatus
-func (_e *MockSpaceFactory_Expecter) NewShareableSpace(ctx interface{}, id interface{}, status interface{}) *MockSpaceFactory_NewShareableSpace_Call {
-	return &MockSpaceFactory_NewShareableSpace_Call{Call: _e.mock.On("NewShareableSpace", ctx, id, status)}
+//   - info spaceinfo.SpacePersistentInfo
+func (_e *MockSpaceFactory_Expecter) NewShareableSpace(ctx interface{}, id interface{}, info interface{}) *MockSpaceFactory_NewShareableSpace_Call {
+	return &MockSpaceFactory_NewShareableSpace_Call{Call: _e.mock.On("NewShareableSpace", ctx, id, info)}
 }
 
-func (_c *MockSpaceFactory_NewShareableSpace_Call) Run(run func(ctx context.Context, id string, status spaceinfo.AccountStatus)) *MockSpaceFactory_NewShareableSpace_Call {
+func (_c *MockSpaceFactory_NewShareableSpace_Call) Run(run func(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo)) *MockSpaceFactory_NewShareableSpace_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(spaceinfo.AccountStatus))
+		run(args[0].(context.Context), args[1].(string), args[2].(spaceinfo.SpacePersistentInfo))
 	})
 	return _c
 }
@@ -526,7 +526,7 @@ func (_c *MockSpaceFactory_NewShareableSpace_Call) Return(_a0 spacecontroller.Sp
 	return _c
 }
 
-func (_c *MockSpaceFactory_NewShareableSpace_Call) RunAndReturn(run func(context.Context, string, spaceinfo.AccountStatus) (spacecontroller.SpaceController, error)) *MockSpaceFactory_NewShareableSpace_Call {
+func (_c *MockSpaceFactory_NewShareableSpace_Call) RunAndReturn(run func(context.Context, string, spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)) *MockSpaceFactory_NewShareableSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }
