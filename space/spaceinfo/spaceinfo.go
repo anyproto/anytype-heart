@@ -11,6 +11,20 @@ const (
 	LocalStatusMissing = LocalStatus(model.SpaceStatus_Missing)
 )
 
+func (l LocalStatus) ToString() string {
+	switch l {
+	case LocalStatusUnknown:
+		return "Unknown"
+	case LocalStatusLoading:
+		return "Loading"
+	case LocalStatusOk:
+		return "Ok"
+	case LocalStatusMissing:
+		return "Missing"
+	}
+	return ""
+}
+
 type RemoteStatus int
 
 const (
@@ -25,6 +39,22 @@ func (r RemoteStatus) IsDeleted() bool {
 	return r == RemoteStatusDeleted || r == RemoteStatusWaitingDeletion
 }
 
+func (r RemoteStatus) ToString() string {
+	switch r {
+	case RemoteStatusUnknown:
+		return "Unknown"
+	case RemoteStatusOk:
+		return "Ok"
+	case RemoteStatusWaitingDeletion:
+		return "WaitingDeletion"
+	case RemoteStatusDeleted:
+		return "Deleted"
+	case RemoteStatusError:
+		return "Error"
+	}
+	return ""
+}
+
 type AccountStatus int
 
 const (
@@ -34,6 +64,22 @@ const (
 	AccountStatusActive   = AccountStatus(model.SpaceStatus_SpaceActive)
 	AccountStatusRemoving = AccountStatus(model.SpaceStatus_SpaceRemoving)
 )
+
+func (a AccountStatus) ToString() string {
+	switch a {
+	case AccountStatusUnknown:
+		return "Unknown"
+	case AccountStatusDeleted:
+		return "Deleted"
+	case AccountStatusJoining:
+		return "Joining"
+	case AccountStatusActive:
+		return "Active"
+	case AccountStatusRemoving:
+		return "Removing"
+	}
+	return ""
+}
 
 type SpaceLocalInfo struct {
 	SpaceID      string
