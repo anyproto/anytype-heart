@@ -340,9 +340,17 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 	return
 }
 
-func (s *State) resetParentIdsCache() {
+func (s *State) ResetParentIdsCache() {
 	s.parentIdsCache = nil
 	s.isParentIdsCacheEnabled = false
+}
+
+func (s *State) EnableParentIdsCache() bool {
+	if s.isParentIdsCacheEnabled {
+		return true
+	}
+	s.isParentIdsCacheEnabled = true
+	return false
 }
 
 func (s *State) getParentIdsCache() map[string]string {
@@ -462,7 +470,12 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
-	defer s.resetParentIdsCache()
+	alreadyEnabled := s.EnableParentIdsCache()
+	defer func() {
+		if !alreadyEnabled {
+			s.ResetParentIdsCache()
+		}
+	}()
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
