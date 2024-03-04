@@ -226,8 +226,8 @@ func (n *aclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfParticipantRequestApproved{
 			ParticipantRequestApproved: &model.NotificationParticipantRequestApproved{
-				SpaceID:    notificationRecord.spaceId,
-				Permission: mapProtoPermissionToAcl(reqApprove.Permissions),
+				SpaceId:     notificationRecord.spaceId,
+				Permissions: mapProtoPermissionToAcl(reqApprove.Permissions),
 			},
 		},
 		Space:     notificationRecord.spaceId,
@@ -252,7 +252,7 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 	err := n.notificationService.CreateAndSend(&model.Notification{
 		Id:      notificationId,
 		IsLocal: false,
-		Payload: &model.NotificationPayloadOfLeaveRequest{LeaveRequest: &model.NotificationLeaveRequest{
+		Payload: &model.NotificationPayloadOfRequestToLeave{RequestToLeave: &model.NotificationRequestToLeave{
 			SpaceId:      aclNotificationRecord.spaceId,
 			Identity:     aclNotificationRecord.record.Identity.Account(),
 			IdentityName: name,
