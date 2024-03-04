@@ -594,11 +594,22 @@ type ClientCommandsClient interface {
 	NotificationList(ctx context.Context, in *pb.RpcNotificationListRequest, opts ...grpc.CallOption) (*pb.RpcNotificationListResponse, error)
 	NotificationReply(ctx context.Context, in *pb.RpcNotificationReplyRequest, opts ...grpc.CallOption) (*pb.RpcNotificationReplyResponse, error)
 	NotificationTest(ctx context.Context, in *pb.RpcNotificationTestRequest, opts ...grpc.CallOption) (*pb.RpcNotificationTestResponse, error)
+	// Get current subscription status (tier, expiration date, etc.)
+	// WARNING: can be cached by Anytype Heart
 	PaymentsSubscriptionGetStatus(ctx context.Context, in *pb.RpcPaymentsSubscriptionGetStatusRequest, opts ...grpc.CallOption) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error)
+	// Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
 	PaymentsSubscriptionGetPaymentUrl(ctx context.Context, in *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest, opts ...grpc.CallOption) (*pb.RpcPaymentsSubscriptionGetPaymentUrlResponse, error)
+	// Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
+	// a) change his billing details
+	// b) see payment info, invoices, etc
+	// c) cancel the subscription
 	PaymentsSubscriptionGetPortalLinkUrl(ctx context.Context, in *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest, opts ...grpc.CallOption) (*pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse, error)
+	// Send a verification code to the user's email. The user should enter this code to verify his email.
 	PaymentsSubscriptionGetVerificationEmail(ctx context.Context, in *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest, opts ...grpc.CallOption) (*pb.RpcPaymentsSubscriptionGetVerificationEmailResponse, error)
+	// Verify the user's email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail)
 	PaymentsSubscriptionVerifyEmailCode(ctx context.Context, in *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest, opts ...grpc.CallOption) (*pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse, error)
+	// Name Service:
+	// ***
 	// hello.any -> data
 	NameServiceResolveName(ctx context.Context, in *pb.RpcNameServiceResolveNameRequest, opts ...grpc.CallOption) (*pb.RpcNameServiceResolveNameResponse, error)
 	// 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any
@@ -3013,11 +3024,22 @@ type ClientCommandsServer interface {
 	NotificationList(context.Context, *pb.RpcNotificationListRequest) *pb.RpcNotificationListResponse
 	NotificationReply(context.Context, *pb.RpcNotificationReplyRequest) *pb.RpcNotificationReplyResponse
 	NotificationTest(context.Context, *pb.RpcNotificationTestRequest) *pb.RpcNotificationTestResponse
+	// Get current subscription status (tier, expiration date, etc.)
+	// WARNING: can be cached by Anytype Heart
 	PaymentsSubscriptionGetStatus(context.Context, *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse
+	// Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
 	PaymentsSubscriptionGetPaymentUrl(context.Context, *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) *pb.RpcPaymentsSubscriptionGetPaymentUrlResponse
+	// Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
+	// a) change his billing details
+	// b) see payment info, invoices, etc
+	// c) cancel the subscription
 	PaymentsSubscriptionGetPortalLinkUrl(context.Context, *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) *pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse
+	// Send a verification code to the user's email. The user should enter this code to verify his email.
 	PaymentsSubscriptionGetVerificationEmail(context.Context, *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest) *pb.RpcPaymentsSubscriptionGetVerificationEmailResponse
+	// Verify the user's email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail)
 	PaymentsSubscriptionVerifyEmailCode(context.Context, *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) *pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse
+	// Name Service:
+	// ***
 	// hello.any -> data
 	NameServiceResolveName(context.Context, *pb.RpcNameServiceResolveNameRequest) *pb.RpcNameServiceResolveNameResponse
 	// 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any

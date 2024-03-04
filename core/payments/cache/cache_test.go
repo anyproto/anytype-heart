@@ -8,8 +8,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var ctx = context.Background()
@@ -140,7 +140,7 @@ func TestPayments_ClearCache(t *testing.T) {
 		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err := fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:   int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status: pb.RpcPaymentsSubscription_StatusActive,
 		}, timePlus5Hours,
 		)
@@ -172,18 +172,18 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err := fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:   int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status: pb.RpcPaymentsSubscription_StatusActive,
 		}, timePlus5Hours)
 		require.NoError(t, err)
 
 		out, err := fx.CacheGet()
 		require.NoError(t, err)
-		require.Equal(t, pb.RpcPaymentsSubscription_TierExplorer, out.Tier)
+		require.Equal(t, int32(pb.RpcPaymentsSubscription_TierExplorer), out.Tier)
 		require.Equal(t, pb.RpcPaymentsSubscription_StatusActive, out.Status)
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier: pb.RpcPaymentsSubscription_TierExplorer,
+			Tier: int32(pb.RpcPaymentsSubscription_TierExplorer),
 			// here
 			Status: pb.RpcPaymentsSubscription_StatusUnknown,
 		}, timePlus5Hours)
@@ -191,7 +191,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 
 		out, err = fx.CacheGet()
 		require.NoError(t, err)
-		require.Equal(t, pb.RpcPaymentsSubscription_TierExplorer, out.Tier)
+		require.Equal(t, int32(pb.RpcPaymentsSubscription_TierExplorer), out.Tier)
 		require.Equal(t, pb.RpcPaymentsSubscription_StatusUnknown, out.Status)
 	})
 
@@ -212,7 +212,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:   int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status: pb.RpcPaymentsSubscription_StatusActive,
 		}, timePlus5Hours)
 		require.NoError(t, err)
@@ -220,7 +220,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		out, err := fx.CacheGet()
 		require.Equal(t, ErrCacheDisabled, err)
 		// HERE: weird semantics, error is returned too :-)
-		require.Equal(t, pb.RpcPaymentsSubscription_TierExplorer, out.Tier)
+		require.Equal(t, int32(pb.RpcPaymentsSubscription_TierExplorer), out.Tier)
 
 		err = fx.CacheEnable()
 		require.NoError(t, err)
@@ -230,7 +230,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 
 		out, err = fx.CacheGet()
 		require.NoError(t, err)
-		require.Equal(t, pb.RpcPaymentsSubscription_TierExplorer, out.Tier)
+		require.Equal(t, int32(pb.RpcPaymentsSubscription_TierExplorer), out.Tier)
 	})
 
 	t.Run("should return error if cache is cleared", func(t *testing.T) {
@@ -241,7 +241,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err := fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:   int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status: pb.RpcPaymentsSubscription_StatusActive,
 		}, timePlus5Hours)
 		require.NoError(t, err)
@@ -263,14 +263,14 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err := fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:   int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status: pb.RpcPaymentsSubscription_StatusActive,
 		}, timePlus5Hours)
 		require.Equal(t, nil, err)
 
 		out, err := fx.CacheGet()
 		require.NoError(t, err)
-		require.Equal(t, pb.RpcPaymentsSubscription_TierExplorer, out.Tier)
+		require.Equal(t, int32(pb.RpcPaymentsSubscription_TierExplorer), out.Tier)
 		require.Equal(t, pb.RpcPaymentsSubscription_StatusActive, out.Status)
 	})
 
@@ -285,7 +285,7 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:   int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status: pb.RpcPaymentsSubscription_StatusActive,
 		}, timePlus5Hours)
 		require.Equal(t, nil, err)
@@ -302,7 +302,7 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		timePlus5Hours := timeNow.Add(5 * time.Hour)
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:   int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status: pb.RpcPaymentsSubscription_StatusActive,
 		}, timePlus5Hours)
 		require.Equal(t, nil, err)
@@ -318,7 +318,7 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		timeNull := time.Time{}
 
 		err = fx.CacheSet(&pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:   pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:   int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status: pb.RpcPaymentsSubscription_StatusActive,
 		}, timeNull)
 		require.Equal(t, nil, err)

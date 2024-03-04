@@ -135,18 +135,15 @@ func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSub
 
 	var out pb.RpcPaymentsSubscriptionGetStatusResponse
 
-	out.Tier = pb.RpcPaymentsSubscriptionSubscriptionTier(status.Tier)
+	out.Tier = int32(status.Tier)
 	out.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(status.Status)
 	out.DateStarted = status.DateStarted
 	out.DateEnds = status.DateEnds
 	out.IsAutoRenew = status.IsAutoRenew
-	out.NextTier = pb.RpcPaymentsSubscriptionSubscriptionTier(status.NextTier)
-	out.NextTierEnds = status.NextTierEnds
 	out.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(status.PaymentMethod)
 	out.RequestedAnyName = status.RequestedAnyName
 	out.UserEmail = status.UserEmail
-	// TODO:
-	// out.SubscribeToNewsletter = status.SubscribeToNewsletter
+	out.SubscribeToNewsletter = status.SubscribeToNewsletter
 
 	// 3 - save into cache
 	// truncate nseconds here
@@ -169,7 +166,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSub
 	// 4 - if cache was disabled but the tier is different -> enable cache again (we have received new data)
 	if !s.cache.IsCacheEnabled() {
 		// only when tier changed
-		isDiffTier := (cached != nil) && (cached.Tier != pb.RpcPaymentsSubscriptionSubscriptionTier(status.Tier))
+		isDiffTier := (cached != nil) && (cached.Tier != int32(status.Tier))
 
 		// only when received active state (finally)
 		isActive := (status.Status == psp.SubscriptionStatus(pb.RpcPaymentsSubscription_StatusActive))

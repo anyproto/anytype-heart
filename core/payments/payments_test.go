@@ -103,7 +103,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx)
 		assert.NoError(t, err)
 
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierUnknown), resp.Tier)
+		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(psp.SubscriptionStatus_StatusUnknown), resp.Status)
 	})
 
@@ -122,7 +122,7 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Tier:             int32(sr.Tier),
 			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
 			DateStarted:      sr.DateStarted,
 			DateEnds:         sr.DateEnds,
@@ -145,7 +145,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx)
 		assert.NoError(t, err)
 
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierExplorer), resp.Tier)
+		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(2), resp.Status)
 		assert.Equal(t, sr.DateStarted, resp.DateStarted)
 		assert.Equal(t, sr.DateEnds, resp.DateEnds)
@@ -169,7 +169,7 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Tier:             int32(sr.Tier),
 			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
 			DateStarted:      sr.DateStarted,
 			DateEnds:         sr.DateEnds,
@@ -194,7 +194,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx)
 		assert.NoError(t, err)
 
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierExplorer), resp.Tier)
+		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(2), resp.Status)
 		assert.Equal(t, sr.DateStarted, resp.DateStarted)
 		assert.Equal(t, sr.DateEnds, resp.DateEnds)
@@ -218,7 +218,7 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Tier:             int32(sr.Tier),
 			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
 			DateStarted:      sr.DateStarted,
 			DateEnds:         sr.DateEnds,
@@ -250,7 +250,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierExplorer),
+			Tier:             int32(psp.SubscriptionTier_TierExplorer),
 			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(2),
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -266,7 +266,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx)
 		assert.NoError(t, err)
 
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierExplorer), resp.Tier)
+		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(2), resp.Status)
 	})
 
@@ -285,7 +285,7 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Tier:             int32(sr.Tier),
 			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
 			DateStarted:      sr.DateStarted,
 			DateEnds:         sr.DateEnds,
@@ -309,7 +309,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx)
 		assert.NoError(t, err)
 
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierUnknown), resp.Tier)
+		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(0), resp.Status)
 		assert.Equal(t, uint64(0), resp.DateStarted)
 		assert.Equal(t, uint64(0), resp.DateEnds)
@@ -335,7 +335,7 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:             pb.RpcPaymentsSubscriptionSubscriptionTier(sr.Tier),
+			Tier:             int32(sr.Tier),
 			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
 			DateStarted:      sr.DateStarted,
 			DateEnds:         sr.DateEnds,
@@ -358,7 +358,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx)
 		assert.NoError(t, err)
 
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierExplorer), resp.Tier)
+		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(2), resp.Status)
 	})
 
@@ -381,7 +381,7 @@ func TestGetStatus(t *testing.T) {
 
 		// this is from DB
 		psgsr := pb.RpcPaymentsSubscriptionGetStatusResponse{
-			Tier:             pb.RpcPaymentsSubscription_TierExplorer,
+			Tier:             int32(pb.RpcPaymentsSubscription_TierExplorer),
 			Status:           pb.RpcPaymentsSubscriptionSubscriptionStatus(sr.Status),
 			DateStarted:      sr.DateStarted,
 			DateEnds:         sr.DateEnds,
@@ -392,7 +392,7 @@ func TestGetStatus(t *testing.T) {
 
 		// this is the new state
 		var psgsr2 pb.RpcPaymentsSubscriptionGetStatusResponse = psgsr
-		psgsr2.Tier = pb.RpcPaymentsSubscription_TierBuilder1Year
+		psgsr2.Tier = int32(pb.RpcPaymentsSubscription_TierBuilder1Year)
 
 		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
@@ -411,7 +411,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx)
 		assert.NoError(t, err)
 
-		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionTier(psp.SubscriptionTier_TierBuilder1Year), resp.Tier)
+		assert.Equal(t, int32(psp.SubscriptionTier_TierBuilder1Year), resp.Tier)
 		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(2), resp.Status)
 	})
 }
@@ -432,7 +432,7 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentUrlRequest{
-			RequestedTier:    pb.RpcPaymentsSubscription_TierBuilder1Year,
+			RequestedTier:    int32(pb.RpcPaymentsSubscription_TierBuilder1Year),
 			PaymentMethod:    pb.RpcPaymentsSubscription_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
@@ -459,7 +459,7 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentUrlRequest{
-			RequestedTier:    pb.RpcPaymentsSubscription_TierBuilder1Year,
+			RequestedTier:    int32(pb.RpcPaymentsSubscription_TierBuilder1Year),
 			PaymentMethod:    pb.RpcPaymentsSubscription_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}

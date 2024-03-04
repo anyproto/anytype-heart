@@ -1929,12 +1929,12 @@
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | NotificationTest | [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request) | [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response) |  |
-| PaymentsSubscriptionGetStatus | [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request) | [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response) |  |
-| PaymentsSubscriptionGetPaymentUrl | [Rpc.Payments.Subscription.GetPaymentUrl.Request](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request) | [Rpc.Payments.Subscription.GetPaymentUrl.Response](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response) |  |
-| PaymentsSubscriptionGetPortalLinkUrl | [Rpc.Payments.Subscription.GetPortalLinkUrl.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request) | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response) |  |
-| PaymentsSubscriptionGetVerificationEmail | [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request) | [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response) |  |
-| PaymentsSubscriptionVerifyEmailCode | [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request) | [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response) |  |
-| NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | hello.any -&gt; data |
+| PaymentsSubscriptionGetStatus | [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request) | [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response) | Get current subscription status (tier, expiration date, etc.) WARNING: can be cached by Anytype Heart |
+| PaymentsSubscriptionGetPaymentUrl | [Rpc.Payments.Subscription.GetPaymentUrl.Request](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request) | [Rpc.Payments.Subscription.GetPaymentUrl.Response](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
+| PaymentsSubscriptionGetPortalLinkUrl | [Rpc.Payments.Subscription.GetPortalLinkUrl.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request) | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
+| PaymentsSubscriptionGetVerificationEmail | [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request) | [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
+| PaymentsSubscriptionVerifyEmailCode | [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request) | [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail) |
+| NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | NameServiceResolveSpaceId | [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request) | [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) |  |
@@ -15165,7 +15165,9 @@ Available undo/redo operations
 <a name="anytype-Rpc-Payments-Subscription"></a>
 
 ### Rpc.Payments.Subscription
-
+A Subscription (a Tier) is a bundle of several &#34;Features&#34;
+every user should have one and only one tier 
+users can not have N tiers (no combining)
 
 
 
@@ -15175,7 +15177,8 @@ Available undo/redo operations
 <a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl"></a>
 
 ### Rpc.Payments.Subscription.GetPaymentUrl
-
+Generate a link to the payment provider
+where user can pay for the subscription
 
 
 
@@ -15190,9 +15193,9 @@ Available undo/redo operations
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| requestedTier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  |  |
+| requestedTier | [int32](#int32) |  |  |
 | paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
-| requestedAnyName | [string](#string) |  | can be empty passing name here will not register it! this is just for convenience will be returned later with Subscription.GetStatus request |
+| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
 
 
 
@@ -15234,7 +15237,7 @@ Available undo/redo operations
 <a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl"></a>
 
 ### Rpc.Payments.Subscription.GetPortalLinkUrl
-Will generate a link to the portal where user can:
+Generate a link to the portal where user can:
 a) change his billing details
 b) see payment info, invoices, etc
 c) cancel the subscription
@@ -15289,7 +15292,9 @@ c) cancel the subscription
 <a name="anytype-Rpc-Payments-Subscription-GetStatus"></a>
 
 ### Rpc.Payments.Subscription.GetStatus
-
+Get the current status of the subscription
+including the tier, status, dates, etc
+WARNING: this can be cached by Anytype heart
 
 
 
@@ -15315,16 +15320,15 @@ c) cancel the subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Payments.Subscription.GetStatus.Response.Error](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error) |  |  |
-| tier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  |  |
+| tier | [int32](#int32) |  | it was SubscriptionTier before, changed to int32 to allow dynamic values |
 | status | [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus) |  |  |
 | dateStarted | [uint64](#uint64) |  |  |
 | dateEnds | [uint64](#uint64) |  |  |
 | isAutoRenew | [bool](#bool) |  |  |
-| nextTier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  | if client has &#34;downgraded&#34; - he is still able to use the service until the end of the period (dateEnds) but then he will be on nextTier until nextTierEnds if Tier0_Unknown -&gt; then no next tier |
-| nextTierEnds | [uint64](#uint64) |  |  |
 | paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
 | requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
 | userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
+| subscribeToNewsletter | [bool](#bool) |  |  |
 
 
 
@@ -15350,7 +15354,8 @@ c) cancel the subscription
 <a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail"></a>
 
 ### Rpc.Payments.Subscription.GetVerificationEmail
-
+Send an e-mail with verification code to the user
+can be called multiple times but with some timeout (N seconds) between calls
 
 
 
@@ -15407,7 +15412,8 @@ c) cancel the subscription
 <a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode"></a>
 
 ### Rpc.Payments.Subscription.VerifyEmailCode
-
+Verify the e-mail address of the user 
+need a correct code that was sent to the user when calling GetVerificationEmail
 
 
 
@@ -20542,6 +20548,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MethodCrypto | 1 |  |
 | MethodApplePay | 2 |  |
 | MethodGooglePay | 3 |  |
+| MethodAppleInapp | 4 |  |
+| MethodGoogleInapp | 5 |  |
 
 
 
@@ -20553,7 +20561,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | StatusUnknown | 0 |  |
-| StatusPending | 1 |  |
+| StatusPending | 1 | please wait a bit more |
 | StatusActive | 2 |  |
 
 
@@ -20565,7 +20573,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| TierUnknown | 0 |  |
+| TierNewUser | 0 |  |
 | TierExplorer | 1 | &#34;free&#34; tier |
 | TierBuilder1WeekTEST | 2 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
 | TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |

@@ -588,11 +588,22 @@ type ClientCommandsHandler interface {
 	NotificationList(context.Context, *pb.RpcNotificationListRequest) *pb.RpcNotificationListResponse
 	NotificationReply(context.Context, *pb.RpcNotificationReplyRequest) *pb.RpcNotificationReplyResponse
 	NotificationTest(context.Context, *pb.RpcNotificationTestRequest) *pb.RpcNotificationTestResponse
+	// Get current subscription status (tier, expiration date, etc.)
+	// WARNING: can be cached by Anytype Heart
 	PaymentsSubscriptionGetStatus(context.Context, *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse
+	// Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
 	PaymentsSubscriptionGetPaymentUrl(context.Context, *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) *pb.RpcPaymentsSubscriptionGetPaymentUrlResponse
+	// Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
+	// a) change his billing details
+	// b) see payment info, invoices, etc
+	// c) cancel the subscription
 	PaymentsSubscriptionGetPortalLinkUrl(context.Context, *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) *pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse
+	// Send a verification code to the user's email. The user should enter this code to verify his email.
 	PaymentsSubscriptionGetVerificationEmail(context.Context, *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest) *pb.RpcPaymentsSubscriptionGetVerificationEmailResponse
+	// Verify the user's email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail)
 	PaymentsSubscriptionVerifyEmailCode(context.Context, *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) *pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse
+	// Name Service:
+	// ***
 	// hello.any -> data
 	NameServiceResolveName(context.Context, *pb.RpcNameServiceResolveNameRequest) *pb.RpcNameServiceResolveNameResponse
 	// 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any

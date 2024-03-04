@@ -6309,27 +6309,29 @@ message Rpc {
     }
 
     message Payments {
+        /** 
+        * A Subscription (a Tier) is a bundle of several "Features"
+        * every user should have one and only one tier 
+        * users can not have N tiers (no combining)
+        */
         message Subscription {
             enum SubscriptionTier {
-                TierUnknown = 0;
-                
+                TierNewUser = 0;
                 // "free" tier
                 TierExplorer = 1;
-
                 // this tier can be used just for testing in debug mode
                 // it will still create an active subscription, but with NO features
                 TierBuilder1WeekTEST = 2;
-                
                 // this tier can be used just for testing in debug mode
                 // it will still create an active subscription, but with NO features
                 TierCoCreator1WeekTEST = 3;
-
                 TierBuilder1Year = 4;
                 TierCoCreator1Year = 5;
             }
             
             enum SubscriptionStatus {
                 StatusUnknown = 0;
+                // please wait a bit more
                 StatusPending = 1;
                 StatusActive = 2;
             }
@@ -6339,8 +6341,15 @@ message Rpc {
                 MethodCrypto = 1;
                 MethodApplePay = 2;
                 MethodGooglePay = 3;
+                MethodAppleInapp = 4;
+                MethodGoogleInapp = 5;
             }
 
+            /**
+            * Get the current status of the subscription
+            * including the tier, status, dates, etc
+            * WARNING: this can be cached by Anytype heart
+            */
             message GetStatus {
                 message Request {
                 }
@@ -6348,26 +6357,18 @@ message Rpc {
                 message Response {
                     Error error = 1;
 
-                    SubscriptionTier tier = 2;
+                    // it was SubscriptionTier before, changed to int32 to allow dynamic values
+                    int32 tier = 2;
                     SubscriptionStatus status = 3;
-                  
                     uint64 dateStarted = 4;
                     uint64 dateEnds = 5;
                     bool isAutoRenew = 6;
-                  
-                    // if client has "downgraded" - he is still able to use the service until the end of the period
-                    // (dateEnds) but then he will be on nextTier until nextTierEnds
-                    //  
-                    // if Tier0_Unknown -> then no next tier
-                    SubscriptionTier nextTier = 7;
-                    uint64 nextTierEnds = 8;
-                    PaymentMethod paymentMethod = 9;
-
+                    PaymentMethod paymentMethod = 7;
                     // can be empty if user did not ask for any name
-                    string requestedAnyName = 10;
-
+                    string requestedAnyName = 8;
                     // if the email was verified by the user or set during the checkout - it will be here
-                    string userEmail = 11;
+                    string userEmail = 9;
+                    bool subscribeToNewsletter = 10;
 
                     message Error {
                         Code code = 1;
@@ -6385,15 +6386,18 @@ message Rpc {
                 }
             }
 
+            /**
+            * Generate a link to the payment provider
+            * where user can pay for the subscription
+            */
             message GetPaymentUrl {
                 message Request {
-                    SubscriptionTier requestedTier = 1;
+                    int32 requestedTier = 1;
                   
                     PaymentMethod paymentMethod = 2;
 
-                    // can be empty
-                    // passing name here will not register it! this is just for convenience 
-                    // will be returned later with Subscription.GetStatus request
+                    // if empty - then no name requested
+                    // if non-empty - PP node will register that name on behalf of the user
                     string requestedAnyName = 3;
                 }
     
@@ -6420,10 +6424,12 @@ message Rpc {
                 }
             }
 
-            // Will generate a link to the portal where user can:
-            // a) change his billing details
-            // b) see payment info, invoices, etc
-            // c) cancel the subscription
+            /** 
+            * Generate a link to the portal where user can:
+            * a) change his billing details
+            * b) see payment info, invoices, etc
+            * c) cancel the subscription
+            */
             message GetPortalLinkUrl {
                 message Request {
                     
@@ -6450,6 +6456,10 @@ message Rpc {
                 }
             }
 
+            /**
+            * Send an e-mail with verification code to the user
+            * can be called multiple times but with some timeout (N seconds) between calls
+            */ 
             message GetVerificationEmail {
                 message Request {
                     string email = 1;
@@ -6476,6 +6486,10 @@ message Rpc {
                 }
             }
 
+            /**
+            * Verify the e-mail address of the user 
+            * need a correct code that was sent to the user when calling GetVerificationEmail
+            */
             message VerifyEmailCode {
                 message Request {
                     string code = 1;

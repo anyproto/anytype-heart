@@ -308,12 +308,26 @@ service ClientCommands {
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
     rpc NotificationTest (anytype.Rpc.Notification.Test.Request) returns (anytype.Rpc.Notification.Test.Response);
 
+    // Payments
+    // ***
+
+    // Get current subscription status (tier, expiration date, etc.)
+    // WARNING: can be cached by Anytype Heart
     rpc PaymentsSubscriptionGetStatus (anytype.Rpc.Payments.Subscription.GetStatus.Request) returns (anytype.Rpc.Payments.Subscription.GetStatus.Response);
+    // Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
     rpc PaymentsSubscriptionGetPaymentUrl (anytype.Rpc.Payments.Subscription.GetPaymentUrl.Request) returns (anytype.Rpc.Payments.Subscription.GetPaymentUrl.Response);
+    // Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
+    // a) change his billing details
+    // b) see payment info, invoices, etc
+    // c) cancel the subscription
     rpc PaymentsSubscriptionGetPortalLinkUrl (anytype.Rpc.Payments.Subscription.GetPortalLinkUrl.Request) returns (anytype.Rpc.Payments.Subscription.GetPortalLinkUrl.Response);
+    // Send a verification code to the user's email. The user should enter this code to verify his email.
     rpc PaymentsSubscriptionGetVerificationEmail (anytype.Rpc.Payments.Subscription.GetVerificationEmail.Request) returns (anytype.Rpc.Payments.Subscription.GetVerificationEmail.Response);
+    // Verify the user's email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail)
     rpc PaymentsSubscriptionVerifyEmailCode (anytype.Rpc.Payments.Subscription.VerifyEmailCode.Request) returns (anytype.Rpc.Payments.Subscription.VerifyEmailCode.Response);
 
+    // Name Service:
+    // ***
     // hello.any -> data
     rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
     // 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any
@@ -321,6 +335,5 @@ service ClientCommands {
     // bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -> hello.any
     rpc NameServiceResolveSpaceId( anytype.Rpc.NameService.ResolveSpaceId.Request ) returns (anytype.Rpc.NameService.ResolveSpaceId.Response);
     rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
-
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
 }
