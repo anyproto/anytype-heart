@@ -3,7 +3,7 @@
     "action": "remove",
     "entity": "relationLink",
     "relationLink": {
-      "key": "notes"
+      "key": "65df961ce9223c492ad1a0bb"
     },
     "comment": "some objects still have deleted relation notes"
   },
@@ -11,7 +11,7 @@
     "action": "remove",
     "entity": "relationLink",
     "relationLink": {
-      "key": "quote"
+      "key": "65e09c71e9223c492ad1a0ed"
     },
     "comment": "some objects still have deleted relation quote"
   },
@@ -19,7 +19,23 @@
     "action": "remove",
     "entity": "relationLink",
     "relationLink": {
-      "key": "address"
+      "key": "65e09cc8e9223c492ad1a0f1"
+    },
+    "comment": "some objects still have deleted relation address"
+  },
+  {
+    "action": "remove",
+    "entity": "relationLink",
+    "relationLink": {
+      "key": "65e09619e9223c492ad1a0cd"
+    },
+    "comment": "some objects still have deleted relation address"
+  },
+  {
+    "action": "remove",
+    "entity": "relationLink",
+    "relationLink": {
+      "key": "65e09cc8e9223c492ad1a0f1"
     },
     "comment": "some objects still have deleted relation address"
   },

@@ -414,7 +414,8 @@ func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 		}
 	}
 	if !isValid {
-		return fmt.Errorf("object '%s' is invalid: %w", id, err)
+		return fmt.Errorf("object '%s' (name: '%s') is invalid: %w",
+			id[len(id)-4:], pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()), err)
 	}
 	return nil
 }
