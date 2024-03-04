@@ -11,7 +11,7 @@ const (
 	LocalStatusMissing = LocalStatus(model.SpaceStatus_Missing)
 )
 
-func (l LocalStatus) ToString() string {
+func (l LocalStatus) String() string {
 	switch l {
 	case LocalStatusUnknown:
 		return "Unknown"
@@ -39,7 +39,7 @@ func (r RemoteStatus) IsDeleted() bool {
 	return r == RemoteStatusDeleted || r == RemoteStatusWaitingDeletion
 }
 
-func (r RemoteStatus) ToString() string {
+func (r RemoteStatus) String() string {
 	switch r {
 	case RemoteStatusUnknown:
 		return "Unknown"
@@ -65,7 +65,7 @@ const (
 	AccountStatusRemoving = AccountStatus(model.SpaceStatus_SpaceRemoving)
 )
 
-func (a AccountStatus) ToString() string {
+func (a AccountStatus) String() string {
 	switch a {
 	case AccountStatusUnknown:
 		return "Unknown"

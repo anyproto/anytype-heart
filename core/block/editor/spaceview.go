@@ -144,7 +144,7 @@ func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocal
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
-	s.log.Infof("set space local status: %s, remote status: %s", info.LocalStatus.ToString(), info.RemoteStatus.ToString())
+	s.log.Infof("set space local status: %s, remote status: %s", info.LocalStatus.String(), info.RemoteStatus.String())
 }
 
 func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
@@ -155,7 +155,7 @@ func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.Space
 		log = log.With("aclHeadId", info.AclHeadId)
 		st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
 	}
-	log.Infof("set space account status: %s", info.AccountStatus.ToString())
+	log.Infof("set space account status: %s", info.AccountStatus.String())
 }
 
 // targetSpaceID returns space id from the root of space object's tree

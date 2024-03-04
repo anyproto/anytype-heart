@@ -101,6 +101,11 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 	return response(nil, spaceSummary)
 }
 
+func (mw *Middleware) DebugStat(ctx context.Context, request *pb.RpcDebugStatRequest) *pb.RpcDebugStatResponse {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (mw *Middleware) DebugStackGoroutines(_ context.Context, req *pb.RpcDebugStackGoroutinesRequest) *pb.RpcDebugStackGoroutinesResponse {
 	response := func(err error) (res *pb.RpcDebugStackGoroutinesResponse) {
 		res = &pb.RpcDebugStackGoroutinesResponse{

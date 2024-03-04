@@ -291,6 +291,7 @@ service ClientCommands {
 
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 
+    rpc DebugStat (anytype.Rpc.Debug.Stat.Request) returns (anytype.Rpc.Debug.Stat.Response);
     rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
     rpc DebugTreeHeads (anytype.Rpc.Debug.TreeHeads.Request) returns (anytype.Rpc.Debug.TreeHeads.Response);
     rpc DebugSpaceSummary (anytype.Rpc.Debug.SpaceSummary.Request) returns (anytype.Rpc.Debug.SpaceSummary.Response);
