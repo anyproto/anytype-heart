@@ -26,7 +26,7 @@ func parseAcl(acl list.AclList, spaceId string) aclStat {
 	}
 	acl.RLock()
 	defer acl.RUnlock()
-	var statuses []accountStatus
+	statuses := make([]accountStatus, 0, len(acl.AclState().CurrentAccounts()))
 	for _, acc := range acl.AclState().CurrentAccounts() {
 		statuses = append(statuses, accountStatus{
 			Permission: convPermissionToString(acc.Permissions),
