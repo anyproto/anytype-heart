@@ -89,7 +89,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		go func() {
 			err = p.deleteRelationOptions(p.SpaceID(), pbtypes.GetString(p.Details(), bundle.RelationKeyRelationKey.String()))
 			if err != nil {
-				log.With("err", err)
+				log.With("err", err).Error("failed to delete relation options")
 			}
 		}()
 	}
