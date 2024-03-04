@@ -6171,6 +6171,7 @@ message Rpc {
         }
         message Network {
             message Request {
+                option (no_auth) = true;
                 string customNetworkFilePath = 1; // not implemented yet
                 int32 requestIterations = 2; // default is 1
             }
