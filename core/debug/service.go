@@ -148,11 +148,11 @@ func (d *debug) SpaceSummary(ctx context.Context, spaceID string) (summary Space
 
 func (d *debug) DebugStat() (string, error) {
 	stats := d.statService.GetStat()
-	marshalled, err := json.Marshal(stats)
+	marshaled, err := json.Marshal(stats)
 	if err != nil {
 		return "", err
 	}
-	return string(marshalled), nil
+	return string(marshaled), nil
 }
 
 func (d *debug) TreeHeads(ctx context.Context, id string) (info TreeInfo, err error) {
