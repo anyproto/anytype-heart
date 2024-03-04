@@ -120,7 +120,7 @@ func (s *State) addChangesForSideMoving(targetID string, pos model.BlockPosition
 				targetID = lastTargetID
 				pos = model.Block_Bottom
 			}
-			cb.Add(targetID, pos, blockToAdd.Model())
+			cb.Add(targetID, pos, blockToAdd.Copy().Model())
 			lastOperation = operationAdd
 			lastTargetID = id
 		} else {
