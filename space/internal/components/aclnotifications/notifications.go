@@ -146,6 +146,11 @@ func (n *aclNotificationSender) iterateAclContent(ctx context.Context,
 
 			}
 		}
+		if accRemove := content.GetAccountRemove(); accRemove != nil {
+			if err := n.sendAccountRemove(ctx, aclNotificationRecord, notificationId, accRemove.Identities); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -167,8 +172,8 @@ func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context,
 			return err
 		}
 	}
-	if reqLeave := content.GetAccountRemove(); reqLeave != nil {
-		if err := n.sendAccountRemove(ctx, aclNotificationRecord, notificationId); err != nil {
+	if reqLeave := content.GetAccountRequestRemove(); reqLeave != nil {
+		if err := n.sendAccountRequestRemove(ctx, aclNotificationRecord, notificationId); err != nil {
 			return err
 		}
 	}
@@ -239,7 +244,7 @@ func (n *aclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 	return nil
 }
 
-func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
+func (n *aclNotificationSender) sendAccountRequestRemove(ctx context.Context,
 	aclNotificationRecord *aclNotificationRecord,
 	notificationId string,
 ) error {
@@ -265,6 +270,59 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 		return err
 	}
 	return nil
+}
+
+func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
+	aclNotificationRecord *aclNotificationRecord,
+	notificationId string,
+	identities [][]byte,
+) error {
+	myProfile, _, _ := n.identityService.GetMyProfileDetails()
+	found, err := n.isAccountRemoved(identities, myProfile)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	var name, iconCid string
+	profile := n.identityService.WaitProfile(ctx, aclNotificationRecord.record.Identity.Account())
+	if profile != nil {
+		name = profile.Name
+		iconCid = profile.IconCid
+	}
+	err = n.notificationService.CreateAndSend(&model.Notification{
+		Id:      notificationId,
+		IsLocal: false,
+		Payload: &model.NotificationPayloadOfParticipantRemove{ParticipantRemove: &model.NotificationParticipantRemove{
+			SpaceId:      aclNotificationRecord.spaceId,
+			Identity:     aclNotificationRecord.record.Identity.Account(),
+			IdentityName: name,
+			IdentityIcon: iconCid,
+		}},
+		Space:     aclNotificationRecord.spaceId,
+		AclHeadId: aclNotificationRecord.aclId,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (n *aclNotificationSender) isAccountRemoved(identities [][]byte, myProfile string) (bool, error) {
+	var found bool
+	for _, identity := range identities {
+		pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(identity)
+		if err != nil {
+			return false, err
+		}
+		account := pubKey.Account()
+		if account == myProfile {
+			found = true
+			break
+		}
+	}
+	return found, nil
 }
 
 func mapProtoPermissionToAcl(permissions aclrecordproto.AclUserPermissions) model.ParticipantPermissions {

@@ -189,6 +189,9 @@ func (a *aclObjectManager) processAcl() (err error) {
 	lastIndexed := a.lastIndexed
 	a.mx.Unlock()
 	if lastIndexed == common.Acl().Head().Id {
+		a.mx.Lock()
+		a.sendNotifications(common)
+		a.mx.Unlock()
 		return nil
 	}
 	decrypt := func(key crypto.PubKey) ([]byte, error) {
