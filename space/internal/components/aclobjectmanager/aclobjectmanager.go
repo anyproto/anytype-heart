@@ -199,7 +199,19 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
-	err = a.processStates(states, common.Acl().AclState().Identity())
+	a.status.Lock()
+	aclHeadId := a.status.LatestAclHeadId()
+	a.status.Unlock()
+	var upToDate bool
+	if aclHeadId != "" {
+		_, err := common.Acl().Get(aclHeadId)
+		if err == nil {
+			upToDate = true
+		}
+	} else {
+		upToDate = true
+	}
+	err = a.processStates(states, upToDate, common.Acl().AclState().Identity())
 	if err != nil {
 		return
 	}
@@ -207,10 +219,10 @@ func (a *aclObjectManager) processAcl() (err error) {
 	return
 }
 
-func (a *aclObjectManager) processStates(states []list.AccountState, myIdentity crypto.PubKey) (err error) {
+func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	var numActiveUsers int
 	for _, state := range states {
-		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) {
+		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
 			a.status.Lock()
 			err := a.status.SetPersistentStatus(a.ctx, spaceinfo.AccountStatusRemoving)
 			if err != nil {
@@ -304,7 +316,7 @@ func convertPermissions(permissions list.AclPermissions) model.ParticipantPermis
 	case aclrecordproto.AclUserPermissions_Owner:
 		return model.ParticipantPermissions_Owner
 	}
-	return model.ParticipantPermissions_Reader
+	return model.ParticipantPermissions_NoPermissions
 }
 
 func convertStatus(status list.AclStatus) model.ParticipantStatus {
@@ -359,11 +371,9 @@ func buildParticipantDetails(
 	status model.ParticipantStatus,
 ) *types.Struct {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():       pbtypes.String(id),
-		bundle.RelationKeyIdentity.String(): pbtypes.String(identity),
-
-		bundle.RelationKeySpaceId.String(): pbtypes.String(spaceId),
-
+		bundle.RelationKeyId.String():                     pbtypes.String(id),
+		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
+		bundle.RelationKeySpaceId.String():                pbtypes.String(spaceId),
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
