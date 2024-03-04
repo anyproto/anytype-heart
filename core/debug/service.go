@@ -148,7 +148,7 @@ func (d *debug) SpaceSummary(ctx context.Context, spaceID string) (summary Space
 
 func (d *debug) DebugStat() (string, error) {
 	stats := d.statService.GetStat()
-	marshalled, err := json.MarshalIndent(stats, "", "  ")
+	marshalled, err := json.Marshal(stats)
 	if err != nil {
 		return "", err
 	}

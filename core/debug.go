@@ -102,8 +102,18 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 }
 
 func (mw *Middleware) DebugStat(ctx context.Context, request *pb.RpcDebugStatRequest) *pb.RpcDebugStatResponse {
-	// TODO implement me
-	panic("implement me")
+	debugService := mw.applicationService.GetApp().MustComponent(debug.CName).(debug.Debug)
+	debugStat, err := debugService.DebugStat()
+	code := mapErrorCode(err,
+		errToCode(err, pb.RpcDebugStatResponseError_UNKNOWN_ERROR),
+	)
+	return &pb.RpcDebugStatResponse{
+		JsonStat: debugStat,
+		Error: &pb.RpcDebugStatResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
 }
 
 func (mw *Middleware) DebugStackGoroutines(_ context.Context, req *pb.RpcDebugStackGoroutinesRequest) *pb.RpcDebugStackGoroutinesResponse {
