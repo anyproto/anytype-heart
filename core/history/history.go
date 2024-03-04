@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const CName = "history"
@@ -75,25 +74,25 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return
 	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id.ObjectID))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(id.SpaceID))
+	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
+	if err != nil {
+		return nil, nil, fmt.Errorf("get type id by key: %w", err)
+	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeId))
+
 	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, true, true, false, true, false)
 	// nolint:errcheck
 	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
 
 	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
-	uniqueObjTypes := s.ObjectTypeKeys()
 	for _, m := range metaD {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
 			Details: m.Details,
 		})
-
-		if typeKey := domain.TypeKey(pbtypes.GetString(m.Details, bundle.RelationKeyType.String())); typeKey != "" {
-			if slice.FindPos(uniqueObjTypes, typeKey) == -1 {
-				// todo: what is happening here?
-				uniqueObjTypes = append(uniqueObjTypes, typeKey)
-			}
-		}
 	}
 
 	relations, err := h.objectStore.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
@@ -113,10 +112,6 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	if limit <= 0 {
 		limit = 100
 	}
-	profileId, profileName, err := h.getProfileInfo()
-	if err != nil {
-		return
-	}
 	var includeLastId = true
 
 	reverse := func(vers []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
@@ -134,11 +129,11 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		var data []*pb.RpcHistoryVersion
 
 		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
+			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
 			data = append(data, &pb.RpcHistoryVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,
-				AuthorId:    profileId,
-				AuthorName:  profileName,
+				AuthorId:    participantId,
 				Time:        c.Timestamp,
 			})
 			return true
@@ -218,7 +213,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 		return
 	}
 
-	st, _, _, err = source.BuildState(nil, tree)
+	st, _, _, err = source.BuildState(id.SpaceID, nil, tree)
 	if err != nil {
 		return
 	}
@@ -228,28 +223,13 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 
 	st.BlocksInit(st)
 	if ch, e := tree.GetChange(versionId); e == nil {
-		profileId, profileName, e := h.getProfileInfo()
-		if e != nil {
-			err = e
-			return
-		}
+		participantId := domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
 		ver = &pb.RpcHistoryVersion{
 			Id:          ch.Id,
 			PreviousIds: ch.PreviousIds,
-			AuthorId:    profileId,
-			AuthorName:  profileName,
+			AuthorId:    participantId,
 			Time:        ch.Timestamp,
 		}
 	}
-	return
-}
-
-func (h *history) getProfileInfo() (profileId, profileName string, err error) {
-	profileId = h.accountService.IdentityObjectId()
-	lp, err := h.accountService.LocalProfile()
-	if err != nil {
-		return
-	}
-	profileName = lp.Name
 	return
 }

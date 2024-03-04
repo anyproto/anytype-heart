@@ -53,7 +53,6 @@
   "spaceDashboardId",
   "recommendedRelations",
   "iconOption",
-  "spaceAccessibility",
   "widthInPixels",
   "heightInPixels",
   "fileExt",
@@ -70,5 +69,12 @@
   "origin",
   "revision",
   "imageKind",
-  "importType"
+  "importType",
+  "spaceAccessType",
+  "spaceInviteFileCid",
+  "spaceInviteFileKey",
+  "participantPermissions",
+  "participantStatus",
+  "latestAclHeadId",
+  "identity"
 ]

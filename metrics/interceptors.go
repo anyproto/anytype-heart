@@ -24,6 +24,8 @@ var excludedMethods = []string{
 	"ObjectSearchSubscribe",
 	"ObjectSearchUnsubscribe",
 	"ObjectSubscribeIds",
+	"MetricsSetParameters",
+	"AppSetDeviceState",
 }
 
 func UnaryTraceInterceptor(

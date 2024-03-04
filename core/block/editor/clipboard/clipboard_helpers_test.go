@@ -246,7 +246,7 @@ func newFixture(sb smartblock.SmartBlock) Clipboard {
 	return NewClipboard(sb, nil, nil, nil, nil, nil)
 }
 
-func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
+func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) ([]string, bool) {
 	cb := newFixture(sb)
 	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
@@ -258,8 +258,10 @@ func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.
 	req.AnySlot = blocks
 	req.SelectedTextRange = &textRange
 
-	_, _, _, _, err := cb.Paste(nil, req, "")
+	ids, _, _, isSameFocusedBlock, err := cb.Paste(nil, req, "")
 	require.NoError(t, err)
+
+	return ids, isSameFocusedBlock
 }
 
 func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {

@@ -26,7 +26,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 14
+	ForceObjectsReindexCounter int32 = 16
 
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
 	ForceFilesReindexCounter int32 = 11 //
@@ -36,7 +36,7 @@ const (
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 63
+	ForceIdxRebuildCounter int32 = 62
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 6
@@ -431,6 +431,7 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 		FilesForceReindexCounter:         ForceFilesReindexCounter,
 		IdxRebuildCounter:                ForceIdxRebuildCounter,
 		FulltextRebuild:                  ForceFulltextIndexCounter,
+		FulltextErase:                    ForceFulltextEraseCounter,
 		BundledObjects:                   ForceBundledObjectsReindexCounter,
 		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 	}

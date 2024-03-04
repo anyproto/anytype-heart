@@ -21,11 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const (
-	SpacePrivate  = 0
-	SpacePersonal = 1
-)
-
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
 type spaceService interface {
@@ -61,8 +56,7 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 	s.DisableLayouts()
 	info := s.getSpaceInfo(ctx.State)
-	// TODO: [MR] set persistent status on the basis of context
-	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
+	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus, AclHeadId: info.AclHeadId}
 	s.setSpacePersistentInfo(ctx.State, newPersistentInfo)
 	s.setSpaceLocalInfo(ctx.State, spaceinfo.SpaceLocalInfo{
 		SpaceID:      spaceID,
@@ -111,9 +105,27 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
+	st := s.NewState()
+	prev := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
+	// Can't change access level for personal space
+	if prev == spaceinfo.AccessTypePersonal {
+		return nil
+	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, pbtypes.Int64(int64(acc)))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
 	st := s.NewState()
 	s.setSpacePersistentInfo(st, info)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
 	return s.Apply(st)
 }
 
@@ -131,6 +143,9 @@ func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocal
 func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
+	if info.AclHeadId != "" {
+		st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
+	}
 }
 
 // targetSpaceID returns space id from the root of space object's tree
@@ -155,6 +170,7 @@ func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpacePersisten
 	return spaceinfo.SpacePersistentInfo{
 		SpaceID:       pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()),
 		AccountStatus: spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String())),
+		AclHeadId:     pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()),
 	}
 }
 
@@ -165,7 +181,6 @@ var workspaceKeysToCopy = []string{
 	bundle.RelationKeySpaceDashboardId.String(),
 	bundle.RelationKeyCreator.String(),
 	bundle.RelationKeyCreatedDate.String(),
-	bundle.RelationKeySpaceAccessibility.String(),
 }
 
 func (s *SpaceView) SetSpaceData(details *types.Struct) error {
