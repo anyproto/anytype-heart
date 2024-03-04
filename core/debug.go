@@ -3,8 +3,11 @@ package core
 import (
 	"context"
 
+	"github.com/polydawn/refmt/json"
+
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
+	"github.com/anyproto/anytype-heart/core/debug/network"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -191,4 +194,26 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 		return nil
 	})
 	return response(objectIDs, err)
+}
+
+func (mw *Middleware) DebugNetwork(ctx context.Context, req *pb.RpcDebugNetworkRequest) *pb.RpcDebugNetworkResponse {
+	response := func(stat network.Stat, err error) (res *pb.RpcDebugNetworkResponse) {
+		code := pb.RpcDebugNetworkResponseError_NULL
+		if err != nil {
+			code = pb.RpcDebugNetworkResponseError_UNKNOWN_ERROR
+		}
+		jsonStat, _ := json.Marshal(stat)
+		return &pb.RpcDebugNetworkResponse{
+			JsonStat: string(jsonStat),
+			Error: &pb.RpcDebugNetworkResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	if req.RequestIterations == 0 {
+		req.RequestIterations = 1
+	}
+	return response(network.PerformDebug(ctx, int(req.RequestIterations)))
 }
