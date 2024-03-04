@@ -154,6 +154,11 @@ func main() {
 		jLogger := jaeger.StdLogger
 
 		cfg, err := jaegercfg.FromEnv()
+		cfg.Sampler = &jaegercfg.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		}
+
 		if err != nil {
 			log.Fatal(err)
 		}
