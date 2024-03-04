@@ -1,6 +1,8 @@
 package aclnotifications
 
 import (
+	"fmt"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
@@ -130,15 +132,16 @@ func (n *aclNotificationSender) iterateAclContent(ctx context.Context,
 	aclNotificationRecord *aclNotificationRecord,
 	aclData *aclrecordproto.AclData,
 ) error {
-	for _, content := range aclData.AclContent {
+	for i, content := range aclData.AclContent {
+		notificationId := provideNotificationId(aclNotificationRecord.record.Id, i)
 		if aclNotificationRecord.permissions.CanManageAccounts() {
-			err := n.handleOwnerNotifications(ctx, aclNotificationRecord, content)
+			err := n.handleOwnerNotifications(ctx, aclNotificationRecord, content, notificationId)
 			if err != nil {
 				return err
 			}
 		}
 		if reqApprove := content.GetRequestAccept(); reqApprove != nil {
-			if err := n.sendParticipantRequestApprove(reqApprove, aclNotificationRecord); err != nil {
+			if err := n.sendParticipantRequestApprove(reqApprove, aclNotificationRecord, notificationId); err != nil {
 				return err
 
 			}
@@ -147,17 +150,25 @@ func (n *aclNotificationSender) iterateAclContent(ctx context.Context,
 	return nil
 }
 
+func provideNotificationId(id string, i int) string {
+	if i == 0 {
+		return id
+	}
+	return fmt.Sprintf("%s%d", id, i)
+}
+
 func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context,
 	aclNotificationRecord *aclNotificationRecord,
 	content *aclrecordproto.AclContentValue,
+	notificationId string,
 ) error {
 	if reqJoin := content.GetRequestJoin(); reqJoin != nil {
-		if err := n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord); err != nil {
+		if err := n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord, notificationId); err != nil {
 			return err
 		}
 	}
 	if reqLeave := content.GetAccountRemove(); reqLeave != nil {
-		if err := n.sendAccountRemove(ctx, aclNotificationRecord); err != nil {
+		if err := n.sendAccountRemove(ctx, aclNotificationRecord, notificationId); err != nil {
 			return err
 		}
 	}
@@ -167,6 +178,7 @@ func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context,
 func (n *aclNotificationSender) sendJoinRequest(ctx context.Context,
 	reqJoin *aclrecordproto.AclAccountRequestJoin,
 	notificationRecord *aclNotificationRecord,
+	notificationId string,
 ) error {
 	var name, iconCid string
 	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqJoin.InviteIdentity)
@@ -179,7 +191,7 @@ func (n *aclNotificationSender) sendJoinRequest(ctx context.Context,
 		iconCid = profile.IconCid
 	}
 	err = n.notificationService.CreateAndSend(&model.Notification{
-		Id:      notificationRecord.record.Id,
+		Id:      notificationId,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfRequestToJoin{RequestToJoin: &model.NotificationRequestToJoin{
 			SpaceId:      notificationRecord.spaceId,
@@ -198,6 +210,7 @@ func (n *aclNotificationSender) sendJoinRequest(ctx context.Context,
 
 func (n *aclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrecordproto.AclAccountRequestAccept,
 	notificationRecord *aclNotificationRecord,
+	notificationId string,
 ) error {
 	identity, _, _ := n.identityService.GetMyProfileDetails()
 	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqApprove.Identity)
@@ -209,7 +222,7 @@ func (n *aclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 		return nil
 	}
 	err = n.notificationService.CreateAndSend(&model.Notification{
-		Id:      notificationRecord.record.Id,
+		Id:      notificationId,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfParticipantRequestApproved{
 			ParticipantRequestApproved: &model.NotificationParticipantRequestApproved{
@@ -226,7 +239,10 @@ func (n *aclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 	return nil
 }
 
-func (n *aclNotificationSender) sendAccountRemove(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
+func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
+	aclNotificationRecord *aclNotificationRecord,
+	notificationId string,
+) error {
 	var name, iconCid string
 	profile := n.identityService.WaitProfile(ctx, aclNotificationRecord.record.Identity.Account())
 	if profile != nil {
@@ -234,7 +250,7 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context, aclNotifi
 		iconCid = profile.IconCid
 	}
 	err := n.notificationService.CreateAndSend(&model.Notification{
-		Id:      aclNotificationRecord.record.Id,
+		Id:      notificationId,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfLeaveRequest{LeaveRequest: &model.NotificationLeaveRequest{
 			SpaceId:      aclNotificationRecord.spaceId,

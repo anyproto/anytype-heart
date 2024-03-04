@@ -63,14 +63,10 @@ type aclObjectManager struct {
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
-	commonSpace := a.sp.CommonSpace()
 	err := a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
-	a.mx.Lock()
-	a.sendNotifications(commonSpace)
-	a.mx.Unlock()
 }
 
 func (a *aclObjectManager) Init(ap *app.App) (err error) {
@@ -141,7 +137,6 @@ func (a *aclObjectManager) process() {
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
-	a.sendNotifications(common)
 }
 
 func (a *aclObjectManager) sendNotifications(common commonspace.Space) {
@@ -227,6 +222,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		return
 	}
 	a.lastIndexed = common.Acl().Head().Id
+	a.sendNotifications(common)
 	return
 }
 

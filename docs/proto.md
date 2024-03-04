@@ -1568,7 +1568,6 @@
     - [Notification.LeaveRequest](#anytype-model-Notification-LeaveRequest)
     - [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove)
     - [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved)
-    - [Notification.RequestResponse](#anytype-model-Notification-RequestResponse)
     - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
     - [Notification.Test](#anytype-model-Notification-Test)
     - [Object](#anytype-model-Object)
@@ -24652,7 +24651,6 @@ Used to decode block meta only, without the content itself
 | galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
 | requestToJoin | [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin) |  |  |
 | test | [Notification.Test](#anytype-model-Notification-Test) |  |  |
-| requestResponse | [Notification.RequestResponse](#anytype-model-Notification-RequestResponse) |  |  |
 | participantRequestApproved | [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved) |  |  |
 | leaveRequest | [Notification.LeaveRequest](#anytype-model-Notification-LeaveRequest) |  |  |
 | participantRemove | [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove) |  |  |
@@ -24761,25 +24759,6 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceID | [string](#string) |  |  |
-| permission | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
-
-
-
-
-
-
-<a name="anytype-model-Notification-RequestResponse"></a>
-
-### Notification.RequestResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| identity | [string](#string) |  |  |
-| identityName | [string](#string) |  |  |
-| identityIcon | [string](#string) |  |  |
-| isApproved | [bool](#bool) |  |  |
 | permission | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 

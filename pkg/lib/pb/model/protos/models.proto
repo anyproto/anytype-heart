@@ -970,7 +970,6 @@ message Notification {
         GalleryImport galleryImport = 9;
         RequestToJoin requestToJoin = 10;
         Test test = 11;
-        RequestResponse requestResponse = 12;
         ParticipantRequestApproved participantRequestApproved = 13;
         LeaveRequest leaveRequest = 15;
         ParticipantRemove participantRemove = 16;
@@ -1011,14 +1010,6 @@ message Notification {
     }
 
     message Test {}
-
-    message RequestResponse {
-        string identity = 1;
-        string identityName = 2;
-        string identityIcon = 3;
-        bool isApproved = 4;
-        ParticipantPermissions permission = 5;
-    }
 
     message ParticipantRequestApproved {
         string spaceID = 1;
