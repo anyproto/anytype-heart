@@ -20,7 +20,10 @@ func (s *service) Join(ctx context.Context, id string) error {
 		ctrl := s.spaceControllers[id]
 		s.mu.Unlock()
 		if ctrl.Mode() != mode.ModeJoining {
-			return ctrl.SetStatus(ctx, spaceinfo.AccountStatusJoining)
+			return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
+				SpaceID:       id,
+				AccountStatus: spaceinfo.AccountStatusJoining,
+			})
 		}
 		return nil
 	}
@@ -45,4 +48,11 @@ func (s *service) Join(ctx context.Context, id string) error {
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 	return nil
+}
+
+func (s *service) CancelLeave(ctx context.Context, id string) error {
+	return s.techSpace.SetPersistentInfo(ctx, spaceinfo.SpacePersistentInfo{
+		SpaceID:       id,
+		AccountStatus: spaceinfo.AccountStatusActive,
+	})
 }

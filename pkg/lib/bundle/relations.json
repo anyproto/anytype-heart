@@ -79,6 +79,16 @@
     "source": "details"
   },
   {
+    "description": "Latest Acl head id",
+    "format": "longtext",
+    "hidden": true,
+    "key": "latestAclHeadId",
+    "maxCount": 1,
+    "name": "Latest acl head id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "instructions",
@@ -1127,10 +1137,10 @@
     "hidden": false,
     "key": "links",
     "maxCount": 0,
-    "name": "Links from this object",
+    "name": "Links",
     "readonly": true,
     "source": "derived",
-    "revision": 2
+    "revision": 3
   },
   {
     "format": "number",
@@ -1464,10 +1474,10 @@
     "key": "backlinks",
     "maxCount": 0,
     "hidden": false,
-    "name": "Links to this object",
+    "name": "Backlinks",
     "readonly": true,
     "source": "local",
-    "revision": 2
+    "revision": 3
   },
   {
     "description": "Relation that indicates document has been uninstalled",

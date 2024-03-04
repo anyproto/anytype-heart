@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
@@ -142,12 +143,14 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		succeed = e.exportGraphJson(ctx, req, docs, succeed, wr, queue)
 	} else {
 		tasks := make([]process.Task, 0, len(docs))
-		succeed, tasks = e.exportDocs(ctx, req, docs, wr, queue, succeed, tasks)
+		var succeedAsync int64
+		tasks = e.exportDocs(ctx, req, docs, wr, queue, &succeedAsync, tasks)
 		err := queue.Wait(tasks...)
 		if err != nil {
 			e.cleanupFile(wr)
 			return "", 0, err
 		}
+		succeed += int(succeedAsync)
 	}
 	if err = queue.Finalize(); err != nil {
 		e.cleanupFile(wr)
@@ -164,21 +167,21 @@ func (e *export) exportDocs(ctx context.Context,
 	req pb.RpcObjectListExportRequest,
 	docs map[string]*types.Struct,
 	wr writer, queue process.Queue,
-	succeed int,
+	succeed *int64,
 	tasks []process.Task,
-) (int, []process.Task) {
+) []process.Task {
 	for docId := range docs {
 		did := docId
 		task := func() {
 			if werr := e.writeDoc(ctx, &req, wr, docs, queue, did); werr != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
-				succeed++
+				atomic.AddInt64(succeed, 1)
 			}
 		}
 		tasks = append(tasks, task)
 	}
-	return succeed, tasks
+	return tasks
 }
 
 func (e *export) exportGraphJson(ctx context.Context, req pb.RpcObjectListExportRequest, docs map[string]*types.Struct, succeed int, wr writer, queue process.Queue) int {

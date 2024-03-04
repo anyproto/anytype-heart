@@ -115,12 +115,12 @@ func (s *State) normalizeChildren(b simple.Block) {
 }
 
 func (s *State) normalizeLayoutRow(b simple.Block) {
+	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
+		return
+	}
 	// remove empty layout
 	if len(b.Model().ChildrenIds) == 0 {
 		s.Unlink(b.Model().Id)
-		return
-	}
-	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
 		return
 	}
 	// one column - remove row
