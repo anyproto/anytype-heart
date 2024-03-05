@@ -85,10 +85,13 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	if p.isRelationDeleted(ctx) {
-		err = p.deleteRelationOptions(ctx)
-		if err != nil {
-			return err
-		}
+		// todo: move this to separate component
+		go func() {
+			err = p.deleteRelationOptions(p.SpaceID(), pbtypes.GetString(p.Details(), bundle.RelationKeyRelationKey.String()))
+			if err != nil {
+				log.With("err", err).Error("failed to delete relation options")
+			}
+		}()
 	}
 	return nil
 }
@@ -98,8 +101,7 @@ func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
 		pbtypes.GetBool(ctx.State.Details(), bundle.RelationKeyIsUninstalled.String())
 }
 
-func (p *Page) deleteRelationOptions(ctx *smartblock.InitContext) error {
-	relationKey := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyRelationKey.String())
+func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
 	relationOptions, _, err := p.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -117,7 +119,7 @@ func (p *Page) deleteRelationOptions(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	spaceID := p.Space().Id()
+
 	for _, id := range relationOptions {
 		err := p.objectDeleter.DeleteObjectByFullID(domain.FullID{SpaceID: spaceID, ObjectID: id})
 		if err != nil {
