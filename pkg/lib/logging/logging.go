@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
-const DefaultLogLevels = "common.commonspace.headsync=INFO;*=WARN"
+const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;*=WARN"
 
 var DefaultCfg = logger.Config{
 	Production:   false,
