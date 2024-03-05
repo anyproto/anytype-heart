@@ -61,7 +61,7 @@ func (s *service) listAllTypesAndRelations(spaceId string) (map[string]*types.St
 func reviseSystemObject(space clientspace.Space, localObject *types.Struct, marketObjects map[string]*types.Struct) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
-	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) < pbtypes.GetInt64(localObject, revisionKey) {
+	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
 		return
 	}
 	details := buildDiffDetails(marketObject, localObject)
@@ -98,10 +98,17 @@ func buildDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjectSet
 		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),
 		bundle.RelationKeyIsReadonly.String(), bundle.RelationKeyIsHidden.String(),
 		bundle.RelationKeyRevision.String(), bundle.RelationKeyRelationReadonlyValue.String(),
-		bundle.RelationKeyRelationMaxCount.String(),
+		bundle.RelationKeyRelationMaxCount.String(), bundle.RelationKeyTargetObjectType.String(),
 	})
 
 	for key, value := range diff.Fields {
+		if key == bundle.RelationKeyTargetObjectType.String() {
+			// special case. We don't want to remove the types that was set by user, so only add ones that we have
+			currentList := pbtypes.GetStringList(current, bundle.RelationKeyTargetObjectType.String())
+			missedInCurrent, _ := lo.Difference(pbtypes.GetStringList(origin, bundle.RelationKeyTargetObjectType.String()), currentList)
+			currentList = append(currentList, missedInCurrent...)
+			value = pbtypes.StringList(currentList)
+		}
 		details = append(details, &pb.RpcObjectSetDetailsDetail{Key: key, Value: value})
 	}
 	return
