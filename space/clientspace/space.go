@@ -10,10 +10,15 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/profilemigration"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -43,6 +48,7 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
+	IsReadOnly() bool
 	IsPersonal() bool
 
 	Close(ctx context.Context) error
@@ -70,22 +76,24 @@ type space struct {
 	spaceCore       spacecore.SpaceCoreService
 	personalSpaceId string
 
-	common commonspace.Space
+	myIdentity crypto.PubKey
+	common     commonspace.Space
 
 	loadMandatoryObjectsCh  chan struct{}
 	loadMandatoryObjectsErr error
 }
 
 type SpaceDeps struct {
-	Indexer         spaceIndexer
-	Installer       bundledObjectsInstaller
-	CommonSpace     commonspace.Space
-	ObjectFactory   objectcache.ObjectFactory
-	AccountService  accountservice.Service
-	StorageService  storage.ClientStorage
-	SpaceCore       spacecore.SpaceCoreService
-	PersonalSpaceId string
-	LoadCtx         context.Context
+	Indexer           spaceIndexer
+	Installer         bundledObjectsInstaller
+	CommonSpace       commonspace.Space
+	ObjectFactory     objectcache.ObjectFactory
+	AccountService    accountservice.Service
+	StorageService    storage.ClientStorage
+	SpaceCore         spacecore.SpaceCoreService
+	PersonalSpaceId   string
+	LoadCtx           context.Context
+	DisableRemoteLoad bool
 }
 
 func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
@@ -95,6 +103,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		common:                 deps.CommonSpace,
 		personalSpaceId:        deps.PersonalSpaceId,
 		spaceCore:              deps.SpaceCore,
+		myIdentity:             deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
@@ -114,17 +123,21 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
 	}
-	go sp.mandatoryObjectsLoad(deps.LoadCtx)
+	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
 	return sp, nil
 }
 
-func (s *space) mandatoryObjectsLoad(ctx context.Context) {
+func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool) {
 	defer close(s.loadMandatoryObjectsCh)
 	s.loadMandatoryObjectsErr = s.indexer.ReindexSpace(s)
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.loadMandatoryObjectsErr = s.LoadObjects(ctx, s.derivedIDs.IDs())
+	loadCtx := ctx
+	if !disableRemoteLoad {
+		loadCtx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	}
+	s.loadMandatoryObjectsErr = s.LoadObjects(loadCtx, s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
@@ -132,7 +145,13 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.common.TreeSyncer().StartSync()
+	err := s.migrationProfileObject(ctx)
+	if err != nil {
+		log.Error("failed to migrate profile object", zap.Error(err))
+	}
+	if !disableRemoteLoad {
+		s.common.TreeSyncer().StartSync()
+	}
 }
 
 func (s *space) Id() string {
@@ -234,4 +253,65 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (s *space) migrationProfileObject(ctx context.Context) error {
+	if !s.IsPersonal() {
+		return nil
+	}
+	if s.derivedIDs.Profile == "" {
+		return nil
+	}
+
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypePage, profilemigration.InternalKeyOldProfileData)
+	if err != nil {
+		return err
+	}
+	// lets do the cheap check if we already has this extracted object
+	extractedProfileId, err := s.DeriveObjectID(ctx, uniqueKey)
+	if err != nil {
+		return err
+	}
+
+	extractedProfileExists, _ := s.Storage().HasTree(extractedProfileId)
+	if extractedProfileExists {
+		return nil
+	}
+
+	return s.Do(s.derivedIDs.Profile, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		extractedState, err := profilemigration.ExtractCustomState(st)
+		if err != nil {
+			if err == profilemigration.ErrNoCustomStateFound {
+				log.Error("no extra state found")
+				return nil
+			}
+			return err
+		}
+
+		payload, err := s.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{UseAccountSignature: true, Key: uniqueKey})
+		if err != nil {
+			return err
+		}
+		newSb, err := s.CreateTreeObjectWithPayload(ctx, payload, func(id string) *smartblock.InitContext {
+			extractedState.SetRootId(id)
+			return &smartblock.InitContext{
+				IsNewObject:    true,
+				ObjectTypeKeys: []domain.TypeKey{bundle.TypeKeyPage},
+				State:          extractedState,
+				SpaceID:        s.Id(),
+			}
+		})
+		if err != nil {
+			return err
+		}
+		log.Warn("old profile custom state migrated")
+		newSb.Close()
+
+		return sb.Apply(st)
+	})
+}
+
+func (s *space) IsReadOnly() bool {
+	return !s.CommonSpace().Acl().AclState().Permissions(s.myIdentity).CanWrite()
 }

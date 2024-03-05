@@ -8,13 +8,11 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
@@ -28,16 +26,15 @@ import (
 
 type fixture struct {
 	*service
-	coordinatorClient *mock_coordinatorclient.MockCoordinatorClient
+	coordinatorClient *inMemoryIdentityRepo
 }
 
-const testObserverPeriod = 5 * time.Millisecond
+const testObserverPeriod = 1 * time.Millisecond
 
 func newFixture(t *testing.T) *fixture {
-	ctrl := gomock.NewController(t)
 	ctx := context.Background()
 
-	coordinatorClient := mock_coordinatorclient.NewMockCoordinatorClient(ctrl)
+	identityRepoClient := newInMemoryIdentityRepo()
 	objectStore := objectstore.NewStoreFixture(t)
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
@@ -50,7 +47,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(&spaceIdDeriverStub{})
 	a.Register(dataStore)
 	a.Register(objectStore)
-	a.Register(testutil.PrepareMock(ctx, a, coordinatorClient))
+	a.Register(identityRepoClient)
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(testutil.PrepareMock(ctx, a, fileAclService))
@@ -68,7 +65,7 @@ func newFixture(t *testing.T) *fixture {
 	svcRef.db = db
 	fx := &fixture{
 		service:           svcRef,
-		coordinatorClient: coordinatorClient,
+		coordinatorClient: identityRepoClient,
 	}
 	go fx.observeIdentitiesLoop()
 
@@ -83,13 +80,67 @@ func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.Sym
 	return data
 }
 
+type inMemoryIdentityRepo struct {
+	lock           sync.Mutex
+	isUnavailable  bool
+	identitiesData map[string]*identityrepoproto.DataWithIdentity
+}
+
+func newInMemoryIdentityRepo() *inMemoryIdentityRepo {
+	return &inMemoryIdentityRepo{
+		identitiesData: make(map[string]*identityrepoproto.DataWithIdentity),
+	}
+}
+
+func (d *inMemoryIdentityRepo) Init(a *app.App) (err error) {
+	return nil
+}
+
+func (d *inMemoryIdentityRepo) Name() (name string) {
+	return "inMemoryIdentityRepo"
+}
+
+func (d *inMemoryIdentityRepo) setUnavailable() {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	d.isUnavailable = true
+}
+
+func (d *inMemoryIdentityRepo) IdentityRepoPut(ctx context.Context, identity string, data []*identityrepoproto.Data) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	d.identitiesData[identity] = &identityrepoproto.DataWithIdentity{
+		Identity: identity,
+		Data:     data,
+	}
+	return nil
+}
+
+func (d *inMemoryIdentityRepo) IdentityRepoGet(ctx context.Context, identities []string, kinds []string) (res []*identityrepoproto.DataWithIdentity, err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	if d.isUnavailable {
+		return nil, fmt.Errorf("network problem")
+	}
+
+	res = make([]*identityrepoproto.DataWithIdentity, 0, len(identities))
+	for _, identity := range identities {
+		if data, ok := d.identitiesData[identity]; ok {
+			res = append(res, data)
+		}
+	}
+	return
+}
+
 func TestIdentityProfileCache(t *testing.T) {
 	fx := newFixture(t)
 
 	spaceId := "space1"
 	identity := "identity1"
 
-	fx.coordinatorClient.EXPECT().IdentityRepoGet(gomock.Any(), []string{identity}, []string{identityRepoDataKind}).Return(nil, fmt.Errorf("network problem")).AnyTimes()
+	fx.coordinatorClient.setUnavailable()
 
 	profileSymKey, err := crypto.NewRandomAES()
 	require.NoError(t, err)
@@ -137,43 +188,32 @@ func TestObservers(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	var identitiesFromRepo []*identityrepoproto.DataWithIdentity
+	time.Sleep(testObserverPeriod * 2)
 
-	fx.coordinatorClient.EXPECT().IdentityRepoGet(gomock.Any(), []string{identity}, []string{identityRepoDataKind}).DoAndReturn(func(_ context.Context, _ []string, _ []string) ([]*identityrepoproto.DataWithIdentity, error) {
-		return identitiesFromRepo, nil
-	}).AnyTimes()
-	time.Sleep(testObserverPeriod)
-	identitiesFromRepo = []*identityrepoproto.DataWithIdentity{
+	err = fx.identityRepoClient.IdentityRepoPut(context.Background(), identity, []*identityrepoproto.Data{
 		{
-			Identity: identity,
-			Data: []*identityrepoproto.Data{
-				{
-					Kind: identityRepoDataKind,
-					Data: wantData,
-				},
-			},
+			Kind: identityRepoDataKind,
+			Data: wantData,
 		},
-	}
+	})
+	require.NoError(t, err)
 
 	t.Run("change profile's name", func(t *testing.T) {
 		wantProfile2 := &model.IdentityProfile{
-			Identity: identity,
-			Name:     "name1 edited",
+			Identity:    identity,
+			Name:        "name1 edited",
+			Description: "my description",
 		}
 		wantData2 := marshalProfile(t, wantProfile2, profileSymKey)
 
-		time.Sleep(testObserverPeriod)
-		identitiesFromRepo = []*identityrepoproto.DataWithIdentity{
+		time.Sleep(testObserverPeriod * 2)
+		err = fx.identityRepoClient.IdentityRepoPut(context.Background(), identity, []*identityrepoproto.Data{
 			{
-				Identity: identity,
-				Data: []*identityrepoproto.Data{
-					{
-						Kind: identityRepoDataKind,
-						Data: wantData2,
-					},
-				},
+				Kind: identityRepoDataKind,
+				Data: wantData2,
 			},
-		}
+		})
+		require.NoError(t, err)
 	})
 
 	wg.Wait()
@@ -184,8 +224,9 @@ func TestObservers(t *testing.T) {
 			Name:     "name1",
 		},
 		{
-			Identity: identity,
-			Name:     "name1 edited",
+			Identity:    identity,
+			Name:        "name1 edited",
+			Description: "my description",
 		},
 	}
 	assert.Equal(t, wantCalls, callbackCalls)

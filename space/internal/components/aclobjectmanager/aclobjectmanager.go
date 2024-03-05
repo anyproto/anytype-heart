@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
@@ -53,12 +54,33 @@ type aclObjectManager struct {
 	identityService     dependencies.IdentityService
 	indexer             dependencies.SpaceIndexer
 	notificationService notifications.Notifications
+	statService         debugstat.StatService
 	started             bool
 
 	ownerMetadata     []byte
 	mx                sync.Mutex
 	lastIndexed       string
 	addedParticipants map[string]struct{}
+}
+
+func (a *aclObjectManager) ProvideStat() any {
+	select {
+	case <-a.waitLoad:
+		if a.loadErr != nil {
+			return parseAcl(nil, a.status.SpaceId())
+		}
+		return parseAcl(a.sp.CommonSpace().Acl(), a.status.SpaceId())
+	default:
+		return parseAcl(nil, a.status.SpaceId())
+	}
+}
+
+func (a *aclObjectManager) StatId() string {
+	return a.status.SpaceId()
+}
+
+func (a *aclObjectManager) StatType() string {
+	return CName
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
@@ -75,6 +97,11 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
 	a.notificationService = app.MustComponent[notifications.Notifications](ap)
+	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
+	if a.statService == nil {
+		a.statService = debugstat.NewNoOp()
+	}
+	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil
@@ -103,6 +130,7 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	a.cancel()
 	<-a.wait
 	a.identityService.UnregisterIdentitiesInSpace(a.status.SpaceId())
+	a.statService.RemoveProvider(a)
 	return
 }
 
@@ -147,6 +175,7 @@ func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error 
 	}
 	details := buildParticipantDetails(id, a.sp.Id(), myIdentity, model.ParticipantPermissions_Owner, model.ParticipantStatus_Active)
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()))
+	details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyDescription.String()))
 	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
 	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
 	err = a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
@@ -190,7 +219,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		}
 		return common.Acl().AclState().GetMetadata(key, true)
 	}
-	states := common.Acl().AclState().CurrentStates()
+	states := common.Acl().AclState().CurrentAccounts()
 	// decrypt all metadata
 	states, err = decryptAll(states, decrypt)
 	if err != nil {
@@ -198,7 +227,19 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
-	err = a.processStates(states)
+	a.status.Lock()
+	aclHeadId := a.status.LatestAclHeadId()
+	a.status.Unlock()
+	var upToDate bool
+	if aclHeadId != "" {
+		_, err := common.Acl().Get(aclHeadId)
+		if err == nil {
+			upToDate = true
+		}
+	} else {
+		upToDate = true
+	}
+	err = a.processStates(states, upToDate, common.Acl().AclState().Identity())
 	if err != nil {
 		return
 	}
@@ -206,9 +247,19 @@ func (a *aclObjectManager) processAcl() (err error) {
 	return
 }
 
-func (a *aclObjectManager) processStates(states []list.AccountState) (err error) {
+func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	var numActiveUsers int
 	for _, state := range states {
+		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
+			a.status.Lock()
+			err := a.status.SetPersistentStatus(a.ctx, spaceinfo.AccountStatusRemoving)
+			if err != nil {
+				a.status.Unlock()
+				return err
+			}
+			a.status.Unlock()
+			return nil
+		}
 		if !(state.Permissions.IsOwner() || state.Permissions.NoPermissions()) {
 			numActiveUsers++
 		}
@@ -275,30 +326,11 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 		return err
 	}
 	details := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():      pbtypes.String(profile.Name),
-		bundle.RelationKeyIconImage.String(): pbtypes.String(profile.IconCid),
+		bundle.RelationKeyName.String():        pbtypes.String(profile.Name),
+		bundle.RelationKeyDescription.String(): pbtypes.String(profile.Description),
+		bundle.RelationKeyIconImage.String():   pbtypes.String(profile.IconCid),
 	}}
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
-		status := pbtypes.GetInt64(current, bundle.RelationKeyParticipantStatus.String())
-		if model.ParticipantStatus(status) == model.ParticipantStatus_Joining {
-			err := a.notificationService.CreateAndSendLocal(&model.Notification{
-				Status:  model.Notification_Created,
-				IsLocal: true,
-				Space:   a.sp.Id(),
-				Payload: &model.NotificationPayloadOfRequestToJoin{
-					RequestToJoin: &model.NotificationRequestToJoin{
-						SpaceId:      a.sp.Id(),
-						Identity:     identity,
-						IdentityName: profile.Name,
-						IdentityIcon: profile.IconCid,
-					},
-				},
-			})
-			if err != nil {
-				return nil, err
-			}
-		}
-
 		return pbtypes.StructMerge(current, details, false), nil
 	})
 }
@@ -312,7 +344,7 @@ func convertPermissions(permissions list.AclPermissions) model.ParticipantPermis
 	case aclrecordproto.AclUserPermissions_Owner:
 		return model.ParticipantPermissions_Owner
 	}
-	return model.ParticipantPermissions_Reader
+	return model.ParticipantPermissions_NoPermissions
 }
 
 func convertStatus(status list.AclStatus) model.ParticipantStatus {
@@ -367,11 +399,9 @@ func buildParticipantDetails(
 	status model.ParticipantStatus,
 ) *types.Struct {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():       pbtypes.String(id),
-		bundle.RelationKeyIdentity.String(): pbtypes.String(identity),
-
-		bundle.RelationKeySpaceId.String(): pbtypes.String(spaceId),
-
+		bundle.RelationKeyId.String():                     pbtypes.String(id),
+		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
+		bundle.RelationKeySpaceId.String():                pbtypes.String(spaceId),
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),

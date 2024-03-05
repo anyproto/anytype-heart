@@ -58,6 +58,7 @@ type Config struct {
 	NewAccount                             bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
+	PeferYamuxTransport                    bool
 	NetworkMode                            pb.RpcAccountNetworkMode
 	NetworkCustomConfigFilePath            string `json:",omitempty"` // not saved to config
 
@@ -142,7 +143,10 @@ func (c *Config) Init(a *app.App) (err error) {
 	if err = c.initFromFileAndEnv(repoPath); err != nil {
 		return
 	}
-	a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+	if !c.PeferYamuxTransport {
+		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
+		a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+	}
 	return
 }
 

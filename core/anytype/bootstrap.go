@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
@@ -75,6 +76,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
@@ -188,6 +190,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	a.
 		// Data storages
 		Register(clientds.New()).
+		Register(debugstat.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
@@ -228,6 +231,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
 		Register(fileobject.New()).
 		Register(acl.New()).

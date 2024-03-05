@@ -12,10 +12,11 @@ import (
 type AddOption func(*AddOptions)
 
 type AddOptions struct {
-	Reader           io.ReadSeeker
-	Media            string
-	Name             string
-	LastModifiedDate int64
+	Reader               io.ReadSeeker
+	Media                string
+	Name                 string
+	LastModifiedDate     int64
+	CustomEncryptionKeys map[string]string
 
 	// checksum of original file, calculated from Reader
 	checksum string
@@ -36,6 +37,12 @@ func WithName(name string) AddOption {
 func WithLastModifiedDate(timestamp int64) AddOption {
 	return func(args *AddOptions) {
 		args.LastModifiedDate = timestamp
+	}
+}
+
+func WithCustomEncryptionKeys(keys map[string]string) AddOption {
+	return func(args *AddOptions) {
+		args.CustomEncryptionKeys = keys
 	}
 }
 

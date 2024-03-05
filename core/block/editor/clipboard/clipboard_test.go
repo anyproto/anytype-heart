@@ -149,13 +149,13 @@ func TestCommonSmart_pasteAny(t *testing.T) {
 		checkBlockText(t, sb, []string{"11111", "22222", "aaaaa", "bbbbb", "55555"})
 	})
 
-	t.Run("9. Save id of focused block", func(t *testing.T) {
+	t.Run("9. Return ids of new blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
-		pasteAny(t, sb, "4", model.Range{}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
+		ids, isSameFocusedBlock := pasteAny(t, sb, "4", model.Range{}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "44444", "55555"})
-		assert.Equal(t, sb.Blocks()[5].Id, "4")
+		assert.Len(t, ids, 2)
+		assert.False(t, isSameFocusedBlock)
 	})
-
 }
 
 func TestCommonSmart_splitMarks(t *testing.T) {
@@ -1309,6 +1309,124 @@ func Test_CopyAndCutText(t *testing.T) {
 		const expected = "1. A-1\n\t1. B-1\n2. C-1\nD-1\n1. E-1\n2. F-1"
 		assert.Equal(t, expected, textSlotCopy)
 		assert.Equal(t, expected, textSlotCut)
+	})
+
+	t.Run("cut/copy - text range from 0", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 7},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 7},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "some te"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 2)
+	})
+
+	t.Run("cut/copy - text range from 0 to the end of block", func(t *testing.T) {
+		// given
+		const expected = "some text 1"
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: int32(len(expected))},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: int32(len(expected))},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 1)
+	})
+
+	t.Run("cut/copy - inner text range", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 2, To: 8},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 2, To: 8},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "me tex"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 2)
+	})
+
+	t.Run("cut/copy - text range from 0 to 0", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(sb)
+		textSlotCopy, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "some text 1"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 1)
+		assert.Len(t, anySlotCopy, 1)
+		assert.Len(t, anySlotCut, 1)
 	})
 }
 

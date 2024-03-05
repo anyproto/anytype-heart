@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
@@ -14,8 +16,16 @@ import (
 )
 
 func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
-	spaceService := mw.applicationService.GetApp().MustComponent(space.CName).(space.Service)
-	err := spaceService.Delete(cctx, req.SpaceId)
+	spaceService := getService[space.Service](mw)
+	aclService := getService[acl.AclService](mw)
+	err := aclService.Leave(cctx, req.SpaceId)
+	// we check for possible error cases:
+	// 1. user is an owner
+	// 2. user already left a request to delete
+	// 3. user is not a member of the space anymore
+	if err == nil || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) || errors.Is(err, list.ErrNoSuchAccount) {
+		err = spaceService.Delete(cctx, req.SpaceId)
+	}
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceDeleteResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceDeleteResponseError_NO_SUCH_SPACE),
@@ -72,10 +82,17 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 }
 
 func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceInviteRevokeRequest) *pb.RpcSpaceInviteRevokeResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.RevokeInvite(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteRevokeResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteRevokeResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteRevokeResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceInviteRevokeResponse{
 		Error: &pb.RpcSpaceInviteRevokeResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
@@ -130,11 +147,34 @@ func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinReques
 	}
 }
 
+func (mw *Middleware) SpaceStopSharing(cctx context.Context, req *pb.RpcSpaceStopSharingRequest) *pb.RpcSpaceStopSharingResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.StopSharing(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceStopSharingResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceStopSharingResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceStopSharingResponseError_REQUEST_FAILED),
+	)
+	return &pb.RpcSpaceStopSharingResponse{
+		Error: &pb.RpcSpaceStopSharingResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) SpaceJoinCancel(cctx context.Context, req *pb.RpcSpaceJoinCancelRequest) *pb.RpcSpaceJoinCancelResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.CancelJoin(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceJoinCancelResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceJoinCancelResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceJoinCancelResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceJoinCancelResponse{
 		Error: &pb.RpcSpaceJoinCancelResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }

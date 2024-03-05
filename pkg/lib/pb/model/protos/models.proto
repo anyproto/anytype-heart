@@ -663,6 +663,8 @@ message Restrictions {
         Template = 7;
         // restricts duplicate object
         Duplicate = 8;
+        // can be set only for types. Restricts creating objects of this type
+        CreateObjectOfThisType = 9;
     }
 
 
@@ -705,6 +707,7 @@ message ObjectType {
     bool installedByDefault = 11;
     string key = 12; // name of objectType (can be localized for bundled types)
     int64 revision = 13; // revision of system objectType. Used to check if we should change type content or not
+    bool restrictObjectCreation = 14; // restricts creating objects of this type for users
 
     enum Layout {
         basic = 0;
@@ -911,6 +914,8 @@ enum SpaceStatus {
     SpaceActive = 8;
     // SpaceJoining - the account is joining the space
     SpaceJoining = 9;
+    // SpaceRemoving - the account is removing from space or the space is removed from network
+    SpaceRemoving = 10;
 }
 
 message ParticipantPermissionChange {
@@ -962,6 +967,7 @@ message Notification {
         Export export = 8;
         GalleryImport galleryImport = 9;
         RequestToJoin requestToJoin = 10;
+        Test test = 11;
     }
     string space = 7;
 
@@ -996,6 +1002,8 @@ message Notification {
         string identityName = 3;
         string identityIcon = 4;
     }
+
+    message Test {}
 
     enum Status {
         Created = 0;
@@ -1063,6 +1071,7 @@ message IdentityProfile {
     string name = 2;
     string iconCid = 3;
     repeated FileEncryptionKey iconEncryptionKeys = 4;
+    string description = 5;
 }
 
 message FileInfo {

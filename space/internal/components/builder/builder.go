@@ -21,7 +21,7 @@ const CName = "client.components.builder"
 
 type SpaceBuilder interface {
 	app.Component
-	BuildSpace(ctx context.Context) (clientspace.Space, error)
+	BuildSpace(ctx context.Context, disableRemoteLoad bool) (clientspace.Space, error)
 }
 
 func New() SpaceBuilder {
@@ -70,10 +70,23 @@ func (b *spaceBuilder) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (b *spaceBuilder) BuildSpace(ctx context.Context) (clientspace.Space, error) {
+func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (clientspace.Space, error) {
+	if disableRemoteLoad {
+		st, err := b.storageService.WaitSpaceStorage(ctx, b.status.SpaceId())
+		if err != nil {
+			return nil, err
+		}
+		err = st.Close(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	coreSpace, err := b.spaceCore.Get(ctx, b.status.SpaceId())
 	if err != nil {
 		return nil, err
+	}
+	if disableRemoteLoad {
+		coreSpace.TreeSyncer().StopSync()
 	}
 	deps := clientspace.SpaceDeps{
 		Indexer:         b.indexer,
