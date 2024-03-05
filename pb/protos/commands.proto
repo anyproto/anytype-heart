@@ -262,8 +262,6 @@ message Rpc {
         message JoinCancel {
             message Request {
                 string spaceId = 1;
-                string inviteCid = 2;
-                string inviteFileKey = 3;
             }
 
             message Response {

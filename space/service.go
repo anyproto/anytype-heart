@@ -49,11 +49,12 @@ type isNewAccount interface {
 type Service interface {
 	Create(ctx context.Context) (space clientspace.Space, err error)
 
-	Join(ctx context.Context, id string) (err error)
+	Join(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
+	TechSpace() *clientspace.TechSpace
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
@@ -99,6 +100,10 @@ func (s *service) Delete(ctx context.Context, id string) (err error) {
 		return fmt.Errorf("delete space: %w", err)
 	}
 	return nil
+}
+
+func (s *service) TechSpace() *clientspace.TechSpace {
+	return s.techSpace
 }
 
 func (s *service) Init(a *app.App) (err error) {

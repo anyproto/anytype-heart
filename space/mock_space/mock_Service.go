@@ -481,17 +481,17 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// Join provides a mock function with given fields: ctx, id
-func (_m *MockService) Join(ctx context.Context, id string) error {
-	ret := _m.Called(ctx, id)
+// Join provides a mock function with given fields: ctx, id, aclHeadId
+func (_m *MockService) Join(ctx context.Context, id string, aclHeadId string) error {
+	ret := _m.Called(ctx, id, aclHeadId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Join")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, id, aclHeadId)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -507,23 +507,24 @@ type MockService_Join_Call struct {
 // Join is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-func (_e *MockService_Expecter) Join(ctx interface{}, id interface{}) *MockService_Join_Call {
-	return &MockService_Join_Call{Call: _e.mock.On("Join", ctx, id)}
+//   - aclHeadId string
+func (_e *MockService_Expecter) Join(ctx interface{}, id interface{}, aclHeadId interface{}) *MockService_Join_Call {
+	return &MockService_Join_Call{Call: _e.mock.On("Join", ctx, id, aclHeadId)}
 }
 
-func (_c *MockService_Join_Call) Run(run func(ctx context.Context, id string)) *MockService_Join_Call {
+func (_c *MockService_Join_Call) Run(run func(ctx context.Context, id string, aclHeadId string)) *MockService_Join_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *MockService_Join_Call) Return(err error) *MockService_Join_Call {
-	_c.Call.Return(err)
+func (_c *MockService_Join_Call) Return(_a0 error) *MockService_Join_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockService_Join_Call) RunAndReturn(run func(context.Context, string) error) *MockService_Join_Call {
+func (_c *MockService_Join_Call) RunAndReturn(run func(context.Context, string, string) error) *MockService_Join_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -671,6 +672,53 @@ func (_c *MockService_SpaceViewId_Call) Return(spaceViewId string, err error) *M
 }
 
 func (_c *MockService_SpaceViewId_Call) RunAndReturn(run func(string) (string, error)) *MockService_SpaceViewId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TechSpace provides a mock function with given fields:
+func (_m *MockService) TechSpace() *clientspace.TechSpace {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for TechSpace")
+	}
+
+	var r0 *clientspace.TechSpace
+	if rf, ok := ret.Get(0).(func() *clientspace.TechSpace); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*clientspace.TechSpace)
+		}
+	}
+
+	return r0
+}
+
+// MockService_TechSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TechSpace'
+type MockService_TechSpace_Call struct {
+	*mock.Call
+}
+
+// TechSpace is a helper method to define mock.On call
+func (_e *MockService_Expecter) TechSpace() *MockService_TechSpace_Call {
+	return &MockService_TechSpace_Call{Call: _e.mock.On("TechSpace")}
+}
+
+func (_c *MockService_TechSpace_Call) Run(run func()) *MockService_TechSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_TechSpace_Call) Return(_a0 *clientspace.TechSpace) *MockService_TechSpace_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_TechSpace_Call) RunAndReturn(run func() *clientspace.TechSpace) *MockService_TechSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }

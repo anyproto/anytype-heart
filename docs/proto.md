@@ -15529,8 +15529,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| inviteCid | [string](#string) |  |  |
-| inviteFileKey | [string](#string) |  |  |
 
 
 
