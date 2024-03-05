@@ -29,7 +29,7 @@ type fixture struct {
 	coordinatorClient *inMemoryIdentityRepo
 }
 
-const testObserverPeriod = 5 * time.Millisecond
+const testObserverPeriod = 1 * time.Millisecond
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
@@ -188,7 +188,7 @@ func TestObservers(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	time.Sleep(testObserverPeriod)
+	time.Sleep(testObserverPeriod * 2)
 
 	err = fx.identityRepoClient.IdentityRepoPut(context.Background(), identity, []*identityrepoproto.Data{
 		{
@@ -206,7 +206,7 @@ func TestObservers(t *testing.T) {
 		}
 		wantData2 := marshalProfile(t, wantProfile2, profileSymKey)
 
-		time.Sleep(testObserverPeriod)
+		time.Sleep(testObserverPeriod * 2)
 		err = fx.identityRepoClient.IdentityRepoPut(context.Background(), identity, []*identityrepoproto.Data{
 			{
 				Kind: identityRepoDataKind,
