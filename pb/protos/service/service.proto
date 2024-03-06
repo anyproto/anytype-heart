@@ -325,6 +325,9 @@ service ClientCommands {
     rpc PaymentsSubscriptionGetVerificationEmail (anytype.Rpc.Payments.Subscription.GetVerificationEmail.Request) returns (anytype.Rpc.Payments.Subscription.GetVerificationEmail.Response);
     // Verify the user's email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail)
     rpc PaymentsSubscriptionVerifyEmailCode (anytype.Rpc.Payments.Subscription.VerifyEmailCode.Request) returns (anytype.Rpc.Payments.Subscription.VerifyEmailCode.Response);
+    // If your subscription is in PendingRequiresFinalization:
+    // please call PaymentsSubscriptionFinalize to finish the process
+    rpc PaymentsSubscriptionFinalize (anytype.Rpc.Payments.Subscription.Finalize.Request) returns (anytype.Rpc.Payments.Subscription.Finalize.Response);
 
     // Name Service:
     // ***

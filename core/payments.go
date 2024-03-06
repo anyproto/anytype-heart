@@ -86,3 +86,19 @@ func (mw *Middleware) PaymentsSubscriptionVerifyEmailCode(ctx context.Context, r
 
 	return out
 }
+
+func (mw *Middleware) PaymentsSubscriptionFinalize(ctx context.Context, req *pb.RpcPaymentsSubscriptionFinalizeRequest) *pb.RpcPaymentsSubscriptionFinalizeResponse {
+	ps := getService[payments.Service](mw)
+	out, err := ps.FinalizeSubscription(ctx, req)
+
+	if err != nil {
+		return &pb.RpcPaymentsSubscriptionFinalizeResponse{
+			Error: &pb.RpcPaymentsSubscriptionFinalizeResponseError{
+				Code:        pb.RpcPaymentsSubscriptionFinalizeResponseError_UNKNOWN_ERROR,
+				Description: err.Error(),
+			},
+		}
+	}
+
+	return out
+}

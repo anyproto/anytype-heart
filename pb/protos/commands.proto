@@ -6325,8 +6325,8 @@ message Rpc {
                 // this tier can be used just for testing in debug mode
                 // it will still create an active subscription, but with NO features
                 TierCoCreator1WeekTEST = 3;
-                TierBuilder1Year = 4;
-                TierCoCreator1Year = 5;
+                TierBuilder = 4;
+                TierCoCreator = 5;
             }
             
             enum SubscriptionStatus {
@@ -6334,6 +6334,12 @@ message Rpc {
                 // please wait a bit more
                 StatusPending = 1;
                 StatusActive = 2;
+                // in some cases we need to finalize the subscription:
+                // - if user has bought a subscription directly without first calling
+                // the BuySubscription method
+                // 
+                // in this case please call Finalize to finish the process
+                StatusPendingRequiresFinalization = 3;
             }
             
             enum PaymentMethod {
@@ -6439,6 +6445,32 @@ message Rpc {
                     Error error = 1;
 
                     string portalUrl = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                        }
+                    }
+                }
+            }
+
+            message Finalize {
+                message Request {
+                    // if empty - then no name requested
+                    // if non-empty - PP node will register that name on behalf of the user
+                    string requestedAnyName = 1;
+                }
+    
+                message Response {
+                    Error error = 1;
 
                     message Error {
                         Code code = 1;

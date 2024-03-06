@@ -112,7 +112,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             psp.SubscriptionTier_TierExplorer,
+			Tier:             int32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -159,7 +159,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             psp.SubscriptionTier_TierExplorer,
+			Tier:             int32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -208,7 +208,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             psp.SubscriptionTier_TierExplorer,
+			Tier:             int32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -275,7 +275,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             psp.SubscriptionTier_TierUnknown,
+			Tier:             int32(psp.SubscriptionTier_TierUnknown),
 			Status:           psp.SubscriptionStatus_StatusUnknown,
 			DateStarted:      0,
 			DateEnds:         0,
@@ -325,7 +325,7 @@ func TestGetStatus(t *testing.T) {
 		var subsExpire5 time.Time = timeNow.Add(365 * 24 * time.Hour)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             psp.SubscriptionTier_TierExplorer,
+			Tier:             int32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire5.Unix()),
@@ -370,7 +370,7 @@ func TestGetStatus(t *testing.T) {
 
 		// this is from PP node
 		sr := psp.GetSubscriptionResponse{
-			Tier:             psp.SubscriptionTier_TierBuilder1Year,
+			Tier:             int32(psp.SubscriptionTier_TierBuilder1Year),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire5.Unix()),
@@ -392,7 +392,7 @@ func TestGetStatus(t *testing.T) {
 
 		// this is the new state
 		var psgsr2 pb.RpcPaymentsSubscriptionGetStatusResponse = psgsr
-		psgsr2.Tier = int32(pb.RpcPaymentsSubscription_TierBuilder1Year)
+		psgsr2.Tier = int32(pb.RpcPaymentsSubscription_TierBuilder)
 
 		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
@@ -432,7 +432,7 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentUrlRequest{
-			RequestedTier:    int32(pb.RpcPaymentsSubscription_TierBuilder1Year),
+			RequestedTier:    int32(pb.RpcPaymentsSubscription_TierBuilder),
 			PaymentMethod:    pb.RpcPaymentsSubscription_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
@@ -459,7 +459,7 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentUrlRequest{
-			RequestedTier:    int32(pb.RpcPaymentsSubscription_TierBuilder1Year),
+			RequestedTier:    int32(pb.RpcPaymentsSubscription_TierBuilder),
 			PaymentMethod:    pb.RpcPaymentsSubscription_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
@@ -589,6 +589,48 @@ func TestVerifyEmailCode(t *testing.T) {
 
 		// Call the function being tested
 		_, err := fx.VerifyEmailCode(ctx, req)
+		assert.NoError(t, err)
+	})
+}
+
+func TestFinalizeSubscription(t *testing.T) {
+	t.Run("fail if FinalizeSubscription method fails", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		// no errors
+		fx.ppclient.EXPECT().FinalizeSubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.FinalizeSubscriptionResponse, error) {
+			return nil, errors.New("bad error")
+		}).MinTimes(1)
+
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
+
+		// Create a test request
+		req := &pb.RpcPaymentsSubscriptionFinalizeRequest{}
+
+		// Call the function being tested
+		_, err := fx.FinalizeSubscription(ctx, req)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		// no errors
+		fx.ppclient.EXPECT().FinalizeSubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.FinalizeSubscriptionResponse, error) {
+			return &psp.FinalizeSubscriptionResponse{}, nil
+		}).MinTimes(1)
+
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
+
+		fx.cache.EXPECT().CacheClear().Return(nil).Once()
+
+		// Create a test request
+		req := &pb.RpcPaymentsSubscriptionFinalizeRequest{}
+
+		// Call the function being tested
+		_, err := fx.FinalizeSubscription(ctx, req)
 		assert.NoError(t, err)
 	})
 }

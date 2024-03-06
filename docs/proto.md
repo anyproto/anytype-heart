@@ -912,6 +912,10 @@
     - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
     - [Rpc.Payments](#anytype-Rpc-Payments)
     - [Rpc.Payments.Subscription](#anytype-Rpc-Payments-Subscription)
+    - [Rpc.Payments.Subscription.Finalize](#anytype-Rpc-Payments-Subscription-Finalize)
+    - [Rpc.Payments.Subscription.Finalize.Request](#anytype-Rpc-Payments-Subscription-Finalize-Request)
+    - [Rpc.Payments.Subscription.Finalize.Response](#anytype-Rpc-Payments-Subscription-Finalize-Response)
+    - [Rpc.Payments.Subscription.Finalize.Response.Error](#anytype-Rpc-Payments-Subscription-Finalize-Response-Error)
     - [Rpc.Payments.Subscription.GetPaymentUrl](#anytype-Rpc-Payments-Subscription-GetPaymentUrl)
     - [Rpc.Payments.Subscription.GetPaymentUrl.Request](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request)
     - [Rpc.Payments.Subscription.GetPaymentUrl.Response](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response)
@@ -1297,6 +1301,7 @@
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
+    - [Rpc.Payments.Subscription.Finalize.Response.Error.Code](#anytype-Rpc-Payments-Subscription-Finalize-Response-Error-Code)
     - [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code)
     - [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Payments.Subscription.GetStatus.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code)
@@ -1934,6 +1939,7 @@
 | PaymentsSubscriptionGetPortalLinkUrl | [Rpc.Payments.Subscription.GetPortalLinkUrl.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request) | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
 | PaymentsSubscriptionGetVerificationEmail | [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request) | [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
 | PaymentsSubscriptionVerifyEmailCode | [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request) | [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail) |
+| PaymentsSubscriptionFinalize | [Rpc.Payments.Subscription.Finalize.Request](#anytype-Rpc-Payments-Subscription-Finalize-Request) | [Rpc.Payments.Subscription.Finalize.Response](#anytype-Rpc-Payments-Subscription-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call PaymentsSubscriptionFinalize to finish the process |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | NameServiceResolveSpaceId | [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request) | [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
@@ -15174,6 +15180,62 @@ users can not have N tiers (no combining)
 
 
 
+<a name="anytype-Rpc-Payments-Subscription-Finalize"></a>
+
+### Rpc.Payments.Subscription.Finalize
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-Finalize-Request"></a>
+
+### Rpc.Payments.Subscription.Finalize.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-Finalize-Response"></a>
+
+### Rpc.Payments.Subscription.Finalize.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Payments.Subscription.Finalize.Response.Error](#anytype-Rpc-Payments-Subscription-Finalize-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-Finalize-Response-Error"></a>
+
+### Rpc.Payments.Subscription.Finalize.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Payments.Subscription.Finalize.Response.Error.Code](#anytype-Rpc-Payments-Subscription-Finalize-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl"></a>
 
 ### Rpc.Payments.Subscription.GetPaymentUrl
@@ -20477,6 +20539,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Payments-Subscription-Finalize-Response-Error-Code"></a>
+
+### Rpc.Payments.Subscription.Finalize.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
 <a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code"></a>
 
 ### Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code
@@ -20563,6 +20640,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | StatusUnknown | 0 |  |
 | StatusPending | 1 | please wait a bit more |
 | StatusActive | 2 |  |
+| StatusPendingRequiresFinalization | 3 | in some cases we need to finalize the subscription: - if user has bought a subscription directly without first calling the BuySubscription method
+
+in this case please call Finalize to finish the process |
 
 
 
@@ -20577,8 +20657,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | TierExplorer | 1 | &#34;free&#34; tier |
 | TierBuilder1WeekTEST | 2 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
 | TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
-| TierBuilder1Year | 4 |  |
-| TierCoCreator1Year | 5 |  |
+| TierBuilder | 4 |  |
+| TierCoCreator | 5 |  |
 
 
 

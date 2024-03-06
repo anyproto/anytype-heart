@@ -57,6 +57,8 @@ type Service interface {
 	GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest) (*pb.RpcPaymentsSubscriptionGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) (*pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse, error)
 
+	FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsSubscriptionFinalizeRequest) (*pb.RpcPaymentsSubscriptionFinalizeResponse, error)
+
 	app.Component
 }
 
@@ -128,7 +130,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSub
 
 		// eat error and create empty status ("no tier") so that we will then save it to the cache
 		status = &psp.GetSubscriptionResponse{
-			Tier:   psp.SubscriptionTier_TierUnknown,
+			Tier:   int32(psp.SubscriptionTier_TierUnknown),
 			Status: psp.SubscriptionStatus_StatusUnknown,
 		}
 	}
@@ -195,7 +197,7 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscrip
 		// including 0x
 		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
 
-		RequestedTier: psp.SubscriptionTier(req.RequestedTier),
+		RequestedTier: req.RequestedTier,
 		PaymentMethod: psp.PaymentMethod(req.PaymentMethod),
 
 		RequestedAnyName: req.RequestedAnyName,
@@ -351,5 +353,48 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscr
 
 	// return out
 	var out pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse
+	return &out, nil
+}
+
+func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsSubscriptionFinalizeRequest) (*pb.RpcPaymentsSubscriptionFinalizeResponse, error) {
+	// 1 - send request
+	bsr := psp.FinalizeSubscriptionRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId:       s.wallet.Account().SignKey.GetPublic().Account(),
+		OwnerEthAddress:  s.wallet.GetAccountEthAddress().Hex(),
+		RequestedAnyName: req.RequestedAnyName,
+	}
+
+	payload, err := bsr.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	reqSigned := psp.FinalizeSubscriptionRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	// empty return or error
+	_, err = s.ppclient.FinalizeSubscription(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2 - clear cache
+	log.Debug("clearing cache after subscription was finalized")
+	err = s.cache.CacheClear()
+	if err != nil {
+		return nil, err
+	}
+
+	// return out
+	var out pb.RpcPaymentsSubscriptionFinalizeResponse
 	return &out, nil
 }
