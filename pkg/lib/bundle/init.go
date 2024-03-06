@@ -28,6 +28,21 @@ func IsSystemRelation(relationKey domain.RelationKey) bool {
 	return ok
 }
 
+func makeSystemTypesMap() map[domain.TypeKey]struct{} {
+	res := make(map[domain.TypeKey]struct{}, len(SystemTypes))
+	for _, k := range SystemTypes {
+		res[k] = struct{}{}
+	}
+	return res
+}
+
+var systemTypesMap = makeSystemTypesMap()
+
+func IsSystemType(typeKey domain.TypeKey) bool {
+	_, ok := systemTypesMap[typeKey]
+	return ok
+}
+
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKey{
 	coresb.SmartBlockTypePage:        TypeKeyPage,
 	coresb.SmartBlockTypeProfilePage: TypeKeyProfile,
