@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
@@ -53,6 +54,7 @@ type aclObjectManager struct {
 	modifier            dependencies.DetailsModifier
 	identityService     dependencies.IdentityService
 	indexer             dependencies.SpaceIndexer
+	statService         debugstat.StatService
 	started             bool
 	notificationService aclnotifications.AclNotification
 
@@ -60,6 +62,26 @@ type aclObjectManager struct {
 	mx                sync.Mutex
 	lastIndexed       string
 	addedParticipants map[string]struct{}
+}
+
+func (a *aclObjectManager) ProvideStat() any {
+	select {
+	case <-a.waitLoad:
+		if a.loadErr != nil {
+			return parseAcl(nil, a.status.SpaceId())
+		}
+		return parseAcl(a.sp.CommonSpace().Acl(), a.status.SpaceId())
+	default:
+		return parseAcl(nil, a.status.SpaceId())
+	}
+}
+
+func (a *aclObjectManager) StatId() string {
+	return a.status.SpaceId()
+}
+
+func (a *aclObjectManager) StatType() string {
+	return CName
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
@@ -76,6 +98,11 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
 	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
+	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
+	if a.statService == nil {
+		a.statService = debugstat.NewNoOp()
+	}
+	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil
@@ -104,6 +131,7 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	a.cancel()
 	<-a.wait
 	a.identityService.UnregisterIdentitiesInSpace(a.status.SpaceId())
+	a.statService.RemoveProvider(a)
 	return
 }
 

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 
 	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -13,7 +14,7 @@ import (
 const CName = "client.components.spacestatus"
 
 type SpaceStatus interface {
-	app.Component
+	app.ComponentRunnable
 	sync.Locker
 	SpaceId() string
 	GetLocalStatus() spaceinfo.LocalStatus
@@ -38,6 +39,25 @@ type spaceStatus struct {
 	remoteStatus    spaceinfo.RemoteStatus
 	latestAclHeadId string
 	techSpace       techspace.TechSpace
+	statService     debugstat.StatService
+}
+
+func (s *spaceStatus) ProvideStat() any {
+	return spaceStatusStat{
+		SpaceId:       s.spaceId,
+		AccountStatus: s.accountStatus.String(),
+		LocalStatus:   s.localStatus.String(),
+		RemoteStatus:  s.remoteStatus.String(),
+		AclHeadId:     s.latestAclHeadId,
+	}
+}
+
+func (s *spaceStatus) StatId() string {
+	return s.spaceId
+}
+
+func (s *spaceStatus) StatType() string {
+	return CName
 }
 
 func New(spaceId string, accountStatus spaceinfo.AccountStatus, aclHeadId string) SpaceStatus {
@@ -50,6 +70,20 @@ func New(spaceId string, accountStatus spaceinfo.AccountStatus, aclHeadId string
 
 func (s *spaceStatus) Init(a *app.App) (err error) {
 	s.techSpace = a.MustComponent(techspace.CName).(techspace.TechSpace)
+	s.statService, _ = a.Component(debugstat.CName).(debugstat.StatService)
+	if s.statService == nil {
+		s.statService = debugstat.NewNoOp()
+	}
+	s.statService.AddProvider(s)
+	return nil
+}
+
+func (s *spaceStatus) Run(ctx context.Context) (err error) {
+	return nil
+}
+
+func (s *spaceStatus) Close(ctx context.Context) (err error) {
+	s.statService.RemoveProvider(s)
 	return nil
 }
 
@@ -143,4 +177,12 @@ func (s *spaceStatus) setCurrentLocalInfo(ctx context.Context) (err error) {
 
 func (s *spaceStatus) SetAccessType(ctx context.Context, acc spaceinfo.AccessType) (err error) {
 	return s.techSpace.SetAccessType(ctx, s.spaceId, acc)
+}
+
+type spaceStatusStat struct {
+	SpaceId       string `json:"spaceId"`
+	AccountStatus string `json:"accountStatus"`
+	LocalStatus   string `json:"localStatus"`
+	RemoteStatus  string `json:"remoteStatus"`
+	AclHeadId     string `json:"aclHeadId"`
 }
