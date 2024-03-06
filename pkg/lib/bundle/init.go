@@ -28,18 +28,18 @@ func IsSystemRelation(relationKey domain.RelationKey) bool {
 	return ok
 }
 
-func makeSystemTypesMap() map[domain.TypeKey]struct{} {
+func makeInternalTypesTypesMap() map[domain.TypeKey]struct{} {
 	res := make(map[domain.TypeKey]struct{}, len(SystemTypes))
-	for _, k := range SystemTypes {
+	for _, k := range InternalTypes {
 		res[k] = struct{}{}
 	}
 	return res
 }
 
-var systemTypesMap = makeSystemTypesMap()
+var internalTypesTypesMap = makeInternalTypesTypesMap()
 
-func IsSystemType(typeKey domain.TypeKey) bool {
-	_, ok := systemTypesMap[typeKey]
+func IsInternalType(typeKey domain.TypeKey) bool {
+	_, ok := internalTypesTypesMap[typeKey]
 	return ok
 }
 

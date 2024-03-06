@@ -297,11 +297,18 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 		return docs, nil
 	}
 
-	derivedObjects, err := e.getRelatedDerivedObjects(docs)
+	err = e.addDerivedObjects(spaceId, docs, includeNested)
 	if err != nil {
 		return nil, err
 	}
+	return docs, nil
+}
 
+func (e *export) addDerivedObjects(spaceId string, docs map[string]*types.Struct, includeNested bool) error {
+	derivedObjects, err := e.getRelatedDerivedObjects(docs)
+	if err != nil {
+		return err
+	}
 	derivedObjectsMap := make(map[string]*types.Struct)
 	for _, object := range derivedObjects {
 		id := pbtypes.GetString(object.Details, bundle.RelationKeyId.String())
@@ -316,7 +323,7 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 	for id, details := range derivedObjectsMap {
 		docs[id] = details
 	}
-	return docs, nil
+	return nil
 }
 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
@@ -754,7 +761,7 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 	if err != nil {
 		return nil, err
 	}
-	if bundle.IsSystemType(key) {
+	if bundle.IsInternalType(key) {
 		return derivedObjects, nil
 	}
 	recommendedRelations := pbtypes.GetStringList(objectTypeDetails.Details, bundle.RelationKeyRecommendedRelations.String())
