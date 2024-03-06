@@ -403,7 +403,7 @@ func (e *export) writeMultiDoc(ctx context.Context, spaceId string, mw converter
 			werr := getblock.Do(e.picker, did, func(b sb.SmartBlock) error {
 				st := b.NewState().Copy()
 				if includeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
-					fileName, err := e.saveFile(ctx, wr, b)
+					fileName, err := e.saveFile(ctx, wr, b, false)
 					if err != nil {
 						return fmt.Errorf("save file: %w", err)
 					}
@@ -440,7 +440,7 @@ func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportReques
 		}
 
 		if req.IncludeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
-			fileName, err := e.saveFile(ctx, wr, b)
+			fileName, err := e.saveFile(ctx, wr, b, req.SpaceId == "")
 			if err != nil {
 				return fmt.Errorf("save file: %w", err)
 			}
@@ -499,7 +499,7 @@ func (e *export) provideFileName(docID, spaceId string, conv converter.Converter
 	return filename
 }
 
-func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock) (fileName string, err error) {
+func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {
 	fullId := domain.FullFileId{
 		SpaceId: fileObject.Space().Id(),
 		FileId:  domain.FileId(pbtypes.GetString(fileObject.Details(), bundle.RelationKeyFileId.String())),
@@ -520,7 +520,11 @@ func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlo
 		}
 	}
 	origName := file.Meta().Name
-	fileName = wr.Namer().Get("files", fileObject.Id(), filepath.Base(origName), filepath.Ext(origName))
+	rootPath := "files"
+	if exportAllSpaces {
+		rootPath = filepath.Join(spaceDirectory, string(filepath.Separator), fileObject.Space().Id(), string(filepath.Separator), rootPath)
+	}
+	fileName = wr.Namer().Get(rootPath, fileObject.Id(), filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.Background())
 	if err != nil {
 		return "", err
