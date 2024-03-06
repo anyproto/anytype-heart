@@ -169,7 +169,7 @@ func (a *aclObjectManager) process() {
 
 func (a *aclObjectManager) sendNotifications(common commonspace.Space) {
 	permissions := common.Acl().AclState().Permissions(common.Acl().AclState().AccountKey().GetPublic())
-	a.notificationService.AddRecords(common.Acl(), permissions, a.sp.Id())
+	a.notificationService.AddRecords(common.Acl().(list.AclList), permissions, a.sp.Id(), spaceinfo.AccountStatusActive)
 }
 
 func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error {
