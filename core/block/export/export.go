@@ -370,7 +370,7 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 			log.With("objectId", info.Id).Errorf("failed to get smartblock type: %v", err)
 			continue
 		}
-		if !e.objectValid(sbType, info.Id, info, includeArchived, isProtobuf) {
+		if !e.objectValid(sbType, info, includeArchived, isProtobuf) {
 			continue
 		}
 		objectDetails[info.Id] = info.Details
@@ -534,20 +534,20 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(sbType smartblock.SmartBlockType, id string, r *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
-	if r.Id == addr.AnytypeProfileId {
+func (e *export) objectValid(sbType smartblock.SmartBlockType, info *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
+	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && !validTypeForNonProtobuf(sbType, r.Details) {
+	if !isProtobuf && !validTypeForNonProtobuf(sbType) && !validLayoutForNonProtobuf(info.Details) {
 		return false
 	}
 	if isProtobuf && !validType(sbType) {
 		return false
 	}
-	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+	if strings.HasPrefix(info.Id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(info.Id, addr.BundledRelationURLPrefix) {
 		return false
 	}
-	if pbtypes.GetBool(r.Details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
+	if pbtypes.GetBool(info.Details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
 		return false
 	}
 	return true
@@ -608,16 +608,13 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeFileObject
 }
 
-func validTypeForNonProtobuf(sbType smartblock.SmartBlockType, details *types.Struct) bool {
-	if !validLayout(details) {
-		return false
-	}
+func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 	return sbType == smartblock.SmartBlockTypeProfilePage ||
 		sbType == smartblock.SmartBlockTypePage ||
 		sbType == smartblock.SmartBlockTypeFileObject
 }
 
-func validLayout(details *types.Struct) bool {
+func validLayoutForNonProtobuf(details *types.Struct) bool {
 	return pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) != float64(model.ObjectType_collection) &&
 		pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) != float64(model.ObjectType_set)
 }
