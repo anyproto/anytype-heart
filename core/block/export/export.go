@@ -384,7 +384,7 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 			log.With("objectId", info.Id).Errorf("failed to get smartblock type: %v", err)
 			continue
 		}
-		if !e.objectValid(sbType, info.Id, info.Details, includeArchived, isProtobuf) {
+		if !e.objectValid(sbType, info, includeArchived, isProtobuf) {
 			continue
 		}
 		objectDetails[info.Id] = info.Details
@@ -564,8 +564,8 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(sbType smartblock.SmartBlockType, id string, details *types.Struct, includeArchived bool, isProtobuf bool) bool {
-	if id == addr.AnytypeProfileId {
+func (e *export) objectValid(sbType smartblock.SmartBlockType, object *model.ObjectInfo, includeArchived, isProtobuf bool) bool {
+	if object.Id == addr.AnytypeProfileId {
 		return false
 	}
 	if !isProtobuf && !validTypeForNonProtobuf(sbType) {
@@ -574,10 +574,10 @@ func (e *export) objectValid(sbType smartblock.SmartBlockType, id string, detail
 	if isProtobuf && !validType(sbType) {
 		return false
 	}
-	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+	if strings.HasPrefix(object.Id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(object.Id, addr.BundledRelationURLPrefix) {
 		return false
 	}
-	if pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
+	if pbtypes.GetBool(object.Details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
 		return false
 	}
 	return true
