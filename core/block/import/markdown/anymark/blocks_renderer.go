@@ -199,6 +199,15 @@ func (r *blocksRenderer) AddTextToBuffer(text string) {
 	r.textBuffer += text
 }
 
+func (r *blocksRenderer) TextBufferLen() int {
+	if len(r.openedTextBlocks) > 0 {
+		return len(r.openedTextBlocks[len(r.openedTextBlocks)-1].textBuffer)
+
+	}
+
+	return len(r.textBuffer)
+}
+
 func (r *blocksRenderer) AddImageBlock(source string) {
 	sourceUnescaped, err := url.PathUnescape(source)
 	if err != nil {
