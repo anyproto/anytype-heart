@@ -360,22 +360,22 @@ func (n *aclNotificationSender) sendParticipantPermissionChanges(reqPermissionCh
 	notificationId string,
 ) error {
 	var (
-		account     bool
-		err         error
-		permissions aclrecordproto.AclUserPermissions
+		accountFound bool
+		err          error
+		permissions  aclrecordproto.AclUserPermissions
 	)
 	myProfile, _, _ := n.identityService.GetMyProfileDetails()
 	for _, change := range reqPermissionChanges.GetChanges() {
-		account, err = n.findAccount(change.Identity, myProfile)
+		accountFound, err = n.findAccount(change.Identity, myProfile)
 		if err != nil {
 			return err
 		}
-		if account {
+		if accountFound {
 			permissions = change.Permissions
 			break
 		}
 	}
-	if !account {
+	if !accountFound {
 		return nil
 	}
 	err = n.notificationService.CreateAndSend(&model.Notification{
