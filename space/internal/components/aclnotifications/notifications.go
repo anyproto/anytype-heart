@@ -140,16 +140,33 @@ func (n *aclNotificationSender) iterateAclContent(ctx context.Context,
 				return err
 			}
 		}
-		if reqApprove := content.GetRequestAccept(); reqApprove != nil {
-			if err := n.sendParticipantRequestApprove(reqApprove, aclNotificationRecord, notificationId); err != nil {
-				return err
-
-			}
+		err := n.handleSpaceMemberNotifications(ctx, aclNotificationRecord, content, notificationId)
+		if err != nil {
+			return err
 		}
-		if accRemove := content.GetAccountRemove(); accRemove != nil {
-			if err := n.sendAccountRemove(ctx, aclNotificationRecord, notificationId, accRemove.Identities); err != nil {
-				return err
-			}
+	}
+	return nil
+}
+
+func (n *aclNotificationSender) handleSpaceMemberNotifications(ctx context.Context,
+	aclNotificationRecord *aclNotificationRecord,
+	content *aclrecordproto.AclContentValue,
+	notificationId string,
+) error {
+	if reqApprove := content.GetRequestAccept(); reqApprove != nil {
+		if err := n.sendParticipantRequestApprove(reqApprove, aclNotificationRecord, notificationId); err != nil {
+			return err
+
+		}
+	}
+	if accRemove := content.GetAccountRemove(); accRemove != nil {
+		if err := n.sendAccountRemove(ctx, aclNotificationRecord, notificationId, accRemove.Identities); err != nil {
+			return err
+		}
+	}
+	if reqPermissionChanges := content.GetPermissionChanges(); reqPermissionChanges != nil {
+		if err := n.sendParticipantPermissionChanges(reqPermissionChanges, aclNotificationRecord, notificationId); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -309,20 +326,70 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 	return nil
 }
 
-func (n *aclNotificationSender) isAccountRemoved(identities [][]byte, myProfile string) (bool, error) {
-	var found bool
-	for _, identity := range identities {
-		pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(identity)
+func (n *aclNotificationSender) sendParticipantPermissionChanges(reqPermissionChanges *aclrecordproto.AclAccountPermissionChanges,
+	aclNotificationRecord *aclNotificationRecord,
+	notificationId string,
+) error {
+	var (
+		account     bool
+		err         error
+		permissions aclrecordproto.AclUserPermissions
+	)
+	myProfile, _, _ := n.identityService.GetMyProfileDetails()
+	for _, change := range reqPermissionChanges.GetChanges() {
+		account, err = n.findAccount(change.Identity, myProfile)
 		if err != nil {
-			return false, err
+			return err
 		}
-		account := pubKey.Account()
-		if account == myProfile {
-			found = true
+		if account {
+			permissions = change.Permissions
 			break
 		}
 	}
-	return found, nil
+	if !account {
+		return nil
+	}
+	err = n.notificationService.CreateAndSend(&model.Notification{
+		Id:      notificationId,
+		IsLocal: false,
+		Payload: &model.NotificationPayloadOfParticipantPermissionsChange{
+			ParticipantPermissionsChange: &model.NotificationParticipantPermissionsChange{
+				SpaceId:     aclNotificationRecord.spaceId,
+				Permissions: mapProtoPermissionToAcl(permissions),
+			},
+		},
+		Space:     aclNotificationRecord.spaceId,
+		AclHeadId: aclNotificationRecord.aclId,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (n *aclNotificationSender) isAccountRemoved(identities [][]byte, myProfile string) (bool, error) {
+	for _, identity := range identities {
+		found, err := n.findAccount(identity, myProfile)
+		if err != nil {
+			return false, err
+		}
+		if found {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (n *aclNotificationSender) findAccount(identity []byte, myProfile string) (bool, error) {
+	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(identity)
+	if err != nil {
+		return false, err
+	}
+	account := pubKey.Account()
+	if account == myProfile {
+		return true, nil
+	}
+	return false, nil
 }
 
 func mapProtoPermissionToAcl(permissions aclrecordproto.AclUserPermissions) model.ParticipantPermissions {
