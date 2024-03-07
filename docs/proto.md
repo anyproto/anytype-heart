@@ -16397,7 +16397,6 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | error | [Rpc.Wallet.CreateSession.Response.Error](#anytype-Rpc-Wallet-CreateSession-Response-Error) |  |  |
 | token | [string](#string) |  |  |
 | appToken | [string](#string) |  | in case of mnemonic auth, need to be persisted by client |
-| accountId | [string](#string) |  | temp, should be replaced with AccountInfo message |
 
 
 
