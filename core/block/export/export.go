@@ -605,7 +605,8 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeObjectType ||
 		sbType == smartblock.SmartBlockTypeRelation ||
 		sbType == smartblock.SmartBlockTypeRelationOption ||
-		sbType == smartblock.SmartBlockTypeFileObject
+		sbType == smartblock.SmartBlockTypeFileObject ||
+		sbType == smartblock.SmartBlockTypeParticipant
 }
 
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
