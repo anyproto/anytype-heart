@@ -15369,6 +15369,11 @@ WARNING: this can be cached by Anytype heart
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+
+
 
 
 

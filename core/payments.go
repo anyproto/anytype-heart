@@ -9,7 +9,7 @@ import (
 
 func (mw *Middleware) PaymentsSubscriptionGetStatus(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetStatusRequest) *pb.RpcPaymentsSubscriptionGetStatusResponse {
 	ps := getService[payments.Service](mw)
-	out, err := ps.GetSubscriptionStatus(ctx)
+	out, err := ps.GetSubscriptionStatus(ctx, req)
 
 	if err != nil {
 		return &pb.RpcPaymentsSubscriptionGetStatusResponse{

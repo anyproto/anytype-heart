@@ -100,7 +100,33 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx)
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Tier)
+		assert.Equal(t, pb.RpcPaymentsSubscriptionSubscriptionStatus(psp.SubscriptionStatus_StatusUnknown), resp.Status)
+	})
+
+	t.Run("success if NoCache flag is passed", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return nil, errors.New("test error")
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcPaymentsSubscriptionGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		}).Once()
+		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+
+		// Call the function being tested
+		req := pb.RpcPaymentsSubscriptionGetStatusRequest{
+			/// >>> here:
+			NoCache: true,
+		}
+		resp, err := fx.GetSubscriptionStatus(ctx, &req)
 		assert.NoError(t, err)
 
 		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Tier)
@@ -142,7 +168,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx)
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Tier)
@@ -191,7 +217,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil).Once()
 
 		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx)
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Tier)
@@ -237,7 +263,7 @@ func TestGetStatus(t *testing.T) {
 		}).Once()
 
 		// Call the function being tested
-		_, err := fx.GetSubscriptionStatus(ctx)
+		_, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.Error(t, err)
 
 		// resp object is nil in case of error
@@ -263,7 +289,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil).Once()
 
 		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx)
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Tier)
@@ -306,7 +332,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx)
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Tier)
@@ -355,7 +381,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
 		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx)
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Tier)
@@ -408,7 +434,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil).Once()
 
 		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx)
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, int32(psp.SubscriptionTier_TierBuilder1Year), resp.Tier)

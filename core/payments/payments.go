@@ -50,7 +50,7 @@ CACHE LOGICS:
     -> clear cache (it will cause getting again from PP node next)
 */
 type Service interface {
-	GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error)
+	GetSubscriptionStatus(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetStatusRequest) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error)
 
 	GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) (*pb.RpcPaymentsSubscriptionGetPaymentUrlResponse, error)
 	GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) (*pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse, error)
@@ -93,13 +93,14 @@ func (s *service) Close(_ context.Context) (err error) {
 	return nil
 }
 
-func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error) {
+func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetStatusRequest) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error) {
 	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
 	privKey := s.wallet.GetAccountPrivkey()
 
 	// 1 - check in cache
 	cached, err := s.cache.CacheGet()
-	if err == nil {
+	// if NoCache -> skip returning from cache
+	if err == nil && !req.NoCache {
 		return cached, nil
 	}
 

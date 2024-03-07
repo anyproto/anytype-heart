@@ -6358,6 +6358,9 @@ message Rpc {
             */
             message GetStatus {
                 message Request {
+                    // pass true to force the cache update
+                    // by default this is false
+                    bool noCache = 1;
                 }
     
                 message Response {
