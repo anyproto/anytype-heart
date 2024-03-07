@@ -608,6 +608,39 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
+// InitEmptyFileState provides a mock function with given fields: st
+func (_m *MockService) InitEmptyFileState(st *state.State) {
+	_m.Called(st)
+}
+
+// MockService_InitEmptyFileState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InitEmptyFileState'
+type MockService_InitEmptyFileState_Call struct {
+	*mock.Call
+}
+
+// InitEmptyFileState is a helper method to define mock.On call
+//   - st *state.State
+func (_e *MockService_Expecter) InitEmptyFileState(st interface{}) *MockService_InitEmptyFileState_Call {
+	return &MockService_InitEmptyFileState_Call{Call: _e.mock.On("InitEmptyFileState", st)}
+}
+
+func (_c *MockService_InitEmptyFileState_Call) Run(run func(st *state.State)) *MockService_InitEmptyFileState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*state.State))
+	})
+	return _c
+}
+
+func (_c *MockService_InitEmptyFileState_Call) Return() *MockService_InitEmptyFileState_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockService_InitEmptyFileState_Call) RunAndReturn(run func(*state.State)) *MockService_InitEmptyFileState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MigrateBlocks provides a mock function with given fields: st, spc, keys
 func (_m *MockService) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
 	_m.Called(st, spc, keys)

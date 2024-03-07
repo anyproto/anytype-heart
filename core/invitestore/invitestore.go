@@ -96,7 +96,7 @@ func (s *service) RemoveInvite(ctx context.Context, id cid.Cid) error {
 	if err != nil {
 		return fmt.Errorf("offload file: %w", err)
 	}
-	return s.fileSyncService.RemoveSynchronously(s.techSpaceId, domain.FileId(id.String()))
+	return s.fileSyncService.RemoveFile(s.techSpaceId, domain.FileId(id.String()))
 }
 
 func (s *service) GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (*model.Invite, error) {

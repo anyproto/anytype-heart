@@ -82,10 +82,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
-				template.WithTitle,
-				template.WithFeaturedRelations,
 				template.WithRequiredRelations(),
-				migrationWithIdentityBlock,
 				migrationSetHidden,
 			)
 		},
@@ -125,6 +122,11 @@ func (p *Profile) StateMigrations() migration.Migrations {
 		{
 			Version: 3,
 			Proc:    migrationSetHidden,
+		},
+		{
+			Version: 4,
+			Proc: func(s *state.State) {
+			},
 		},
 	})
 }

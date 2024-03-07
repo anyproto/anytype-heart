@@ -6,9 +6,10 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
+	"github.com/pkg/errors"
 
-	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
@@ -49,10 +50,14 @@ type Service interface {
 	app.Component
 }
 
+type bookmarkService interface {
+	CreateObjectAndFetch(ctx context.Context, spaceId string, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error)
+}
+
 type service struct {
 	objectStore       objectstore.ObjectStore
 	collectionService CollectionService
-	bookmark          bookmark.Service
+	bookmarkService   bookmarkService
 	app               *app.App
 	spaceService      space.Service
 	templateService   TemplateService
@@ -65,7 +70,7 @@ func NewCreator() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
+	s.bookmarkService = app.MustComponent[bookmarkService](a)
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
@@ -106,6 +111,8 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(
 	return s.CreateObject(ctx, spaceID, req)
 }
 
+// createObjectInSpace is supposed to be called for user-initiated object creation requests
+// will return Restricted error in case called with types like File or Participant
 func (s *service) createObjectInSpace(
 	ctx context.Context, space clientspace.Space, req CreateObjectRequest,
 ) (id string, details *types.Struct, err error) {
@@ -115,9 +122,14 @@ func (s *service) createObjectInSpace(
 	}
 	details = internalflag.PutToDetails(details, req.InternalFlags)
 
+	if bundle.HasObjectTypeByKey(req.ObjectTypeKey) {
+		if t := bundle.MustGetType(req.ObjectTypeKey); t.RestrictObjectCreation {
+			return "", nil, errors.Wrap(restriction.ErrRestricted, "creation of this object type is restricted")
+		}
+	}
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
-		return s.createBookmark(ctx, space.Id(), &pb.RpcObjectCreateBookmarkRequest{
+		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), &pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 		})
 	case bundle.TypeKeySet:

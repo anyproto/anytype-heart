@@ -539,6 +539,10 @@
     - [Rpc.Debug.StackGoroutines.Request](#anytype-Rpc-Debug-StackGoroutines-Request)
     - [Rpc.Debug.StackGoroutines.Response](#anytype-Rpc-Debug-StackGoroutines-Response)
     - [Rpc.Debug.StackGoroutines.Response.Error](#anytype-Rpc-Debug-StackGoroutines-Response-Error)
+    - [Rpc.Debug.Stat](#anytype-Rpc-Debug-Stat)
+    - [Rpc.Debug.Stat.Request](#anytype-Rpc-Debug-Stat-Request)
+    - [Rpc.Debug.Stat.Response](#anytype-Rpc-Debug-Stat-Response)
+    - [Rpc.Debug.Stat.Response.Error](#anytype-Rpc-Debug-Stat-Response-Error)
     - [Rpc.Debug.Subscriptions](#anytype-Rpc-Debug-Subscriptions)
     - [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request)
     - [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response)
@@ -955,6 +959,10 @@
     - [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request)
     - [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response)
     - [Rpc.Space.RequestDecline.Response.Error](#anytype-Rpc-Space-RequestDecline-Response-Error)
+    - [Rpc.Space.StopSharing](#anytype-Rpc-Space-StopSharing)
+    - [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request)
+    - [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response)
+    - [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -1164,6 +1172,7 @@
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
     - [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code)
+    - [Rpc.Debug.Stat.Response.Error.Code](#anytype-Rpc-Debug-Stat-Response-Error-Code)
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
@@ -1268,6 +1277,7 @@
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
+    - [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
@@ -1692,6 +1702,7 @@
 | SpaceJoin | [Rpc.Space.Join.Request](#anytype-Rpc-Space-Join-Request) | [Rpc.Space.Join.Response](#anytype-Rpc-Space-Join-Response) |  |
 | SpaceJoinCancel | [Rpc.Space.JoinCancel.Request](#anytype-Rpc-Space-JoinCancel-Request) | [Rpc.Space.JoinCancel.Response](#anytype-Rpc-Space-JoinCancel-Response) |  |
 | SpaceExit | [Rpc.Space.Exit.Request](#anytype-Rpc-Space-Exit-Request) | [Rpc.Space.Exit.Response](#anytype-Rpc-Space-Exit-Response) |  |
+| SpaceStopSharing | [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request) | [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response) |  |
 | SpaceRequestApprove | [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request) | [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response) |  |
 | SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
@@ -1864,6 +1875,7 @@
 | BlockLatexSetText | [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request) | [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request) | [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request) | [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response) |  |
+| DebugStat | [Rpc.Debug.Stat.Request](#anytype-Rpc-Debug-Stat-Request) | [Rpc.Debug.Stat.Response](#anytype-Rpc-Debug-Stat-Response) |  |
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
 | DebugTreeHeads | [Rpc.Debug.TreeHeads.Request](#anytype-Rpc-Debug-TreeHeads-Request) | [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response) |  |
 | DebugSpaceSummary | [Rpc.Debug.SpaceSummary.Request](#anytype-Rpc-Debug-SpaceSummary-Request) | [Rpc.Debug.SpaceSummary.Response](#anytype-Rpc-Debug-SpaceSummary-Response) |  |
@@ -9672,6 +9684,58 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-Stat"></a>
+
+### Rpc.Debug.Stat
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Stat-Request"></a>
+
+### Rpc.Debug.Stat.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Stat-Response"></a>
+
+### Rpc.Debug.Stat.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.Stat.Response.Error](#anytype-Rpc-Debug-Stat-Response-Error) |  |  |
+| jsonStat | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Stat-Response-Error"></a>
+
+### Rpc.Debug.Stat.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.Stat.Response.Error.Code](#anytype-Rpc-Debug-Stat-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-Subscriptions"></a>
 
 ### Rpc.Debug.Subscriptions
@@ -11591,6 +11655,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | objectTypeUniqueKey | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| addPageContent | [bool](#bool) |  |  |
 
 
 
@@ -15464,8 +15529,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| inviteCid | [string](#string) |  |  |
-| inviteFileKey | [string](#string) |  |  |
 
 
 
@@ -15725,6 +15788,62 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-StopSharing"></a>
+
+### Rpc.Space.StopSharing
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-StopSharing-Request"></a>
+
+### Rpc.Space.StopSharing.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-StopSharing-Response"></a>
+
+### Rpc.Space.StopSharing.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-StopSharing-Response-Error"></a>
+
+### Rpc.Space.StopSharing.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -18607,6 +18726,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-Stat-Response-Error-Code"></a>
+
+### Rpc.Debug.Stat.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Debug-Subscriptions-Response-Error-Code"></a>
 
 ### Rpc.Debug.Subscriptions.Response.Error.Code
@@ -20023,6 +20155,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Space-RequestDecline-Response-Error-Code"></a>
 
 ### Rpc.Space.RequestDecline.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-StopSharing-Response-Error-Code"></a>
+
+### Rpc.Space.StopSharing.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -24672,6 +24820,7 @@ Used to decode block meta only, without the content itself
 | installedByDefault | [bool](#bool) |  |  |
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 | revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
+| restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
 
 
 
@@ -25696,6 +25845,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | LayoutChange | 6 | restricts layout changing |
 | Template | 7 | restricts template creation from this object |
 | Duplicate | 8 | restricts duplicate object |
+| CreateObjectOfThisType | 9 | can be set only for types. Restricts creating objects of this type |
 
 
 

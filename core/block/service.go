@@ -798,7 +798,7 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 		return "", nil, err
 	}
 
-	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, true)
+	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, req.AddPageContent)
 	content := res()
 	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(req.Details, objectDetails, content)
 	if shouldUpdateDetails {
