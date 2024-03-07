@@ -19352,6 +19352,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | IMPORT_IS_CANCELED | 6 |  |
 | LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | FILE_LOAD_ERROR | 8 |  |
+| INSUFFICIENT_PERMISSIONS | 9 |  |
 
 
 
@@ -19365,6 +19366,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| INSUFFICIENT_PERMISSION | 3 |  |
 
 
 
@@ -25592,6 +25594,7 @@ stored |
 | IMPORT_IS_CANCELED | 6 |  |
 | LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | FILE_LOAD_ERROR | 8 |  |
+| INSUFFICIENT_PERMISSIONS | 9 |  |
 
 
 
