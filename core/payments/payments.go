@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -35,7 +36,7 @@ CACHE LOGICS:
     x if got no info -> cache it for 10 days
     x if got into without expiration -> cache it for 10 days
     x if got info -> cache it for until it expires
-    x if cache was disabled before and tier has changed -> enable cache again
+    x if cache was disabled before and tier has changed or status is active -> enable cache again
     x if can not connect to PP node -> return error
     x if can not write to cache -> return error
 
@@ -165,15 +166,15 @@ func (s *service) GetSubscriptionStatus(ctx context.Context) (*pb.RpcPaymentsSub
 		return nil, err
 	}
 
-	// 4 - if cache was disabled but the tier is different -> enable cache again (we have received new data)
+	// 4 - if cache was disabled but the tier is different or status is active -> enable cache again (we have received new data)
 	if !s.cache.IsCacheEnabled() {
-		// only when tier changed
-		isDiffTier := (cached != nil) && (cached.Tier != int32(status.Tier))
-
-		// only when received active state (finally)
+		// only when tier haschanged
+		isDiffTier := (cached != nil) && (cached.Tier != status.Tier)
 		isActive := (status.Status == psp.SubscriptionStatus(pb.RpcPaymentsSubscription_StatusActive))
 
-		if cached == nil || (isDiffTier && isActive) {
+		log.Debug("checking if payment cache should be enabled again", zap.Bool("isDiffTier", isDiffTier), zap.Bool("isActive", isActive))
+
+		if cached == nil || (isDiffTier || isActive) {
 			log.Debug("enabling cache again")
 
 			// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
