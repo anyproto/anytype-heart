@@ -60,6 +60,8 @@ type Service interface {
 
 	FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsSubscriptionFinalizeRequest) (*pb.RpcPaymentsSubscriptionFinalizeResponse, error)
 
+	GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) (*pb.RpcPaymentsTiersGetResponse, error)
+
 	app.Component
 }
 
@@ -398,5 +400,68 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsS
 
 	// return out
 	var out pb.RpcPaymentsSubscriptionFinalizeResponse
+	return &out, nil
+}
+
+func (s *service) GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) (*pb.RpcPaymentsTiersGetResponse, error) {
+	// 1 - send request
+	bsr := psp.GetTiersRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId:    s.wallet.Account().SignKey.GetPublic().Account(),
+		Locale:        req.Locale,
+		PaymentMethod: req.PaymentMethod,
+	}
+
+	payload, err := bsr.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	reqSigned := psp.GetTiersRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	// empty return or error
+	tiers, err := s.ppclient.GetAllTiers(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	// return out
+	var out pb.RpcPaymentsTiersGetResponse
+
+	out.Tiers = make([]*pb.RpcPaymentsTiersData, len(tiers.Tiers))
+	for i, tier := range tiers.Tiers {
+		out.Tiers[i] = &pb.RpcPaymentsTiersData{
+			Id:                    tier.Id,
+			Name:                  tier.Name,
+			Description:           tier.Description,
+			IsActive:              tier.IsActive,
+			IsTest:                tier.IsTest,
+			IsHiddenTier:          tier.IsHiddenTier,
+			PeriodType:            pb.RpcPaymentsTiersPeriodType(tier.PeriodType),
+			PeriodValue:           tier.PeriodValue,
+			PriceStripeUsdCents:   tier.PriceStripeUsdCents,
+			AnyNamesCountIncluded: tier.AnyNamesCountIncluded,
+			AnyNameMinLength:      tier.AnyNameMinLength,
+		}
+
+		// copy all features
+		out.Tiers[i].Features = make(map[string]*pb.RpcPaymentsTiersFeature)
+		for k, v := range tier.Features {
+			out.Tiers[i].Features[k] = &pb.RpcPaymentsTiersFeature{
+				ValueStr:  v.ValueStr,
+				ValueUint: v.ValueUint,
+			}
+		}
+	}
+
 	return &out, nil
 }

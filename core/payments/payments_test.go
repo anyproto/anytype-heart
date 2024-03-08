@@ -660,3 +660,74 @@ func TestFinalizeSubscription(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestGetTiers(t *testing.T) {
+	t.Run("fail if pp client returned error", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
+			return nil, errors.New("test error")
+		}).MinTimes(1)
+
+		req := pb.RpcPaymentsTiersGetRequest{
+			NoCache:       true,
+			Locale:        "EN_us",
+			PaymentMethod: 0,
+		}
+		_, err := fx.GetTiers(ctx, &req)
+		assert.Error(t, err)
+	})
+
+	t.Run("success if empty response", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
+			return &psp.GetTiersResponse{}, nil
+		}).MinTimes(1)
+
+		req := pb.RpcPaymentsTiersGetRequest{
+			NoCache:       true,
+			Locale:        "EN_us",
+			PaymentMethod: 0,
+		}
+		_, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+	})
+
+	t.Run("success if response", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
+			return &psp.GetTiersResponse{
+
+				Tiers: []*psp.TierData{
+					{
+						Id:           1,
+						Name:         "Explorer",
+						Description:  "Explorer tier",
+						IsActive:     true,
+						IsHiddenTier: false,
+					},
+				},
+			}, nil
+		}).MinTimes(1)
+
+		req := pb.RpcPaymentsTiersGetRequest{
+			NoCache:       true,
+			Locale:        "EN_us",
+			PaymentMethod: 0,
+		}
+		out, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(out.Tiers))
+
+		assert.Equal(t, uint32(1), out.Tiers[0].Id)
+		assert.Equal(t, "Explorer", out.Tiers[0].Name)
+		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
+		assert.Equal(t, true, out.Tiers[0].IsActive)
+		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+	})
+}

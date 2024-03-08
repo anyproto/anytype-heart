@@ -936,6 +936,14 @@
     - [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request)
     - [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response)
     - [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error)
+    - [Rpc.Payments.Tiers](#anytype-Rpc-Payments-Tiers)
+    - [Rpc.Payments.Tiers.Data](#anytype-Rpc-Payments-Tiers-Data)
+    - [Rpc.Payments.Tiers.Data.FeaturesEntry](#anytype-Rpc-Payments-Tiers-Data-FeaturesEntry)
+    - [Rpc.Payments.Tiers.Feature](#anytype-Rpc-Payments-Tiers-Feature)
+    - [Rpc.Payments.Tiers.Get](#anytype-Rpc-Payments-Tiers-Get)
+    - [Rpc.Payments.Tiers.Get.Request](#anytype-Rpc-Payments-Tiers-Get-Request)
+    - [Rpc.Payments.Tiers.Get.Response](#anytype-Rpc-Payments-Tiers-Get-Response)
+    - [Rpc.Payments.Tiers.Get.Response.Error](#anytype-Rpc-Payments-Tiers-Get-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
@@ -1310,6 +1318,8 @@
     - [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus)
     - [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier)
     - [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error-Code)
+    - [Rpc.Payments.Tiers.Get.Response.Error.Code](#anytype-Rpc-Payments-Tiers-Get-Response-Error-Code)
+    - [Rpc.Payments.Tiers.PeriodType](#anytype-Rpc-Payments-Tiers-PeriodType)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1940,6 +1950,7 @@
 | PaymentsSubscriptionGetVerificationEmail | [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request) | [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
 | PaymentsSubscriptionVerifyEmailCode | [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request) | [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail) |
 | PaymentsSubscriptionFinalize | [Rpc.Payments.Subscription.Finalize.Request](#anytype-Rpc-Payments-Subscription-Finalize-Request) | [Rpc.Payments.Subscription.Finalize.Response](#anytype-Rpc-Payments-Subscription-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call PaymentsSubscriptionFinalize to finish the process |
+| PaymentsTiersGet | [Rpc.Payments.Tiers.Get.Request](#anytype-Rpc-Payments-Tiers-Get-Request) | [Rpc.Payments.Tiers.Get.Response](#anytype-Rpc-Payments-Tiers-Get-Response) |  |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | NameServiceResolveSpaceId | [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request) | [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
@@ -15533,6 +15544,133 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 
 
 
+<a name="anytype-Rpc-Payments-Tiers"></a>
+
+### Rpc.Payments.Tiers
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Data"></a>
+
+### Rpc.Payments.Tiers.Data
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [uint32](#uint32) |  | this is a unique ID of the tier you should hardcode this in your app and provide icon, graphics, etc for each tier (even for old/historical/inactive/hidden tiers) |
+| name | [string](#string) |  | localazied name of the tier |
+| description | [string](#string) |  | just a short technical description you don&#39;t have to use it, you can use your own UI-friendly texts |
+| isActive | [bool](#bool) |  | can you buy it (ON ALL PLATFORMS, without clarification)? |
+| isTest | [bool](#bool) |  | is this tier for debugging only? |
+| isHiddenTier | [bool](#bool) |  | hidden tiers are only visible once user got them |
+| periodType | [Rpc.Payments.Tiers.PeriodType](#anytype-Rpc-Payments-Tiers-PeriodType) |  | how long is the period of the subscription |
+| periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
+| priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
+| anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
+| anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
+| features | [Rpc.Payments.Tiers.Data.FeaturesEntry](#anytype-Rpc-Payments-Tiers-Data-FeaturesEntry) | repeated | each tier has a set of features each feature has a unique key: &#34;storage&#34;, &#34;invites&#34;, etc not using enum here to provide dynamic feature list |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Data-FeaturesEntry"></a>
+
+### Rpc.Payments.Tiers.Data.FeaturesEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [Rpc.Payments.Tiers.Feature](#anytype-Rpc-Payments-Tiers-Feature) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Feature"></a>
+
+### Rpc.Payments.Tiers.Feature
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| valueStr | [string](#string) |  | &#34;invites&#34; &#34;GBs&#34; &#34;spaces&#34; ... |
+| valueUint | [uint32](#uint32) |  | each uint is a value of the feature |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get"></a>
+
+### Rpc.Payments.Tiers.Get
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get-Request"></a>
+
+### Rpc.Payments.Tiers.Get.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+| locale | [string](#string) |  |  |
+| paymentMethod | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get-Response"></a>
+
+### Rpc.Payments.Tiers.Get.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Payments.Tiers.Get.Response.Error](#anytype-Rpc-Payments-Tiers-Get-Response-Error) |  |  |
+| tiers | [Rpc.Payments.Tiers.Data](#anytype-Rpc-Payments-Tiers-Data) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get-Response-Error"></a>
+
+### Rpc.Payments.Tiers.Get.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Payments.Tiers.Get.Response.Error.Code](#anytype-Rpc-Payments-Tiers-Get-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Process"></a>
 
 ### Rpc.Process
@@ -20679,6 +20817,37 @@ in this case please call Finalize to finish the process |
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get-Response-Error-Code"></a>
+
+### Rpc.Payments.Tiers.Get.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-PeriodType"></a>
+
+### Rpc.Payments.Tiers.PeriodType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PeriodTypeUnknown | 0 |  |
+| PeriodTypeUnlimited | 1 |  |
+| PeriodTypeDays | 2 |  |
+| PeriodTypeWeeks | 3 |  |
+| PeriodTypeMonths | 4 |  |
+| PeriodTypeYears | 5 |  |
 
 
 

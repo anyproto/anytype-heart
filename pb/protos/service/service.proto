@@ -329,6 +329,8 @@ service ClientCommands {
     // please call PaymentsSubscriptionFinalize to finish the process
     rpc PaymentsSubscriptionFinalize (anytype.Rpc.Payments.Subscription.Finalize.Request) returns (anytype.Rpc.Payments.Subscription.Finalize.Response);
 
+    rpc PaymentsTiersGet (anytype.Rpc.Payments.Tiers.Get.Request) returns (anytype.Rpc.Payments.Tiers.Get.Response);
+
     // Name Service:
     // ***
     // hello.any -> data
