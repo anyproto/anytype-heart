@@ -1069,6 +1069,7 @@ message IdentityProfile {
     string iconCid = 3;
     repeated FileEncryptionKey iconEncryptionKeys = 4;
     string description = 5;
+    string globalName = 6;
 }
 
 message FileInfo {

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "56d2e69285cd7e22d75e27e8538a9f8d0d542816b9ad97568436543afa724447"
+const RelationChecksum = "5658b7e40a9192d60e84c376574436687e4b0d65b2615d98ff12413d276f2100"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -176,6 +176,7 @@ const (
 	RelationKeyRevision                  domain.RelationKey = "revision"
 	RelationKeyImageKind                 domain.RelationKey = "imageKind"
 	RelationKeyImportType                domain.RelationKey = "importType"
+	RelationKeyGlobalName                domain.RelationKey = "globalName"
 )
 
 var (
@@ -847,6 +848,19 @@ var (
 			Key:              "genre",
 			Name:             "Genre",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyGlobalName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Name of profile that the user could be mentioned by",
+			Format:           model.RelationFormat_string,
+			Id:               "_brglobalName",
+			Key:              "globalName",
+			MaxCount:         1,
+			Name:             "Global name",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
