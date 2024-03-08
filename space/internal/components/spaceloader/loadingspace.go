@@ -34,16 +34,18 @@ type loadingSpace struct {
 	// results
 	stopIfMandatoryFail bool
 	disableRemoteLoad   bool
+	latestAclHeadId     string
 	space               clientspace.Space
 	loadErr             error
 	loadCh              chan struct{}
 }
 
-func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, disableRemoteLoad bool) *loadingSpace {
+func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, disableRemoteLoad bool, aclHeadId string) *loadingSpace {
 	ls := &loadingSpace{
 		stopIfMandatoryFail:  stopIfMandatoryFail,
 		disableRemoteLoad:    disableRemoteLoad,
 		retryTimeout:         loadingRetryTimeout,
+		latestAclHeadId:      aclHeadId,
 		spaceServiceProvider: s,
 		loadCh:               make(chan struct{}),
 	}
@@ -103,6 +105,15 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 		}
 		ls.loadErr = err
 	} else {
+		if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
+			acl := sp.CommonSpace().Acl()
+			acl.RLock()
+			defer acl.RUnlock()
+			_, err := acl.Get(ls.latestAclHeadId)
+			if err != nil {
+				return false
+			}
+		}
 		ls.space = sp
 	}
 	return true

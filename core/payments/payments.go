@@ -141,7 +141,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 
 	var out pb.RpcPaymentsSubscriptionGetStatusResponse
 
-	out.Tier = int32(status.Tier)
+	out.Tier = status.Tier
 	out.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(status.Status)
 	out.DateStarted = status.DateStarted
 	out.DateEnds = status.DateEnds

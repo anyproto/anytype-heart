@@ -148,10 +148,10 @@ func (c *client) sendNextBatch(info amplitude.AppInfoProvider, batcher *mb.MB[am
 }
 
 func (c *client) recordAggregatedData() {
-	c.lock.RLock()
+	c.lock.Lock()
 	toSend := c.aggregatableMap
 	c.aggregatableMap = make(map[string]SamplableEvent)
-	c.lock.RUnlock()
+	c.lock.Unlock()
 	// итерейтим сразу старую мапу и скармливаем ГЦ
 	for _, ev := range toSend {
 		c.send(ev)
