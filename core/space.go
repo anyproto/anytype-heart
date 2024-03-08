@@ -82,10 +82,17 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 }
 
 func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceInviteRevokeRequest) *pb.RpcSpaceInviteRevokeResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.RevokeInvite(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteRevokeResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteRevokeResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteRevokeResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceInviteRevokeResponse{
 		Error: &pb.RpcSpaceInviteRevokeResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
@@ -140,11 +147,34 @@ func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinReques
 	}
 }
 
+func (mw *Middleware) SpaceStopSharing(cctx context.Context, req *pb.RpcSpaceStopSharingRequest) *pb.RpcSpaceStopSharingResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.StopSharing(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceStopSharingResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceStopSharingResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceStopSharingResponseError_REQUEST_FAILED),
+	)
+	return &pb.RpcSpaceStopSharingResponse{
+		Error: &pb.RpcSpaceStopSharingResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) SpaceJoinCancel(cctx context.Context, req *pb.RpcSpaceJoinCancelRequest) *pb.RpcSpaceJoinCancelResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.CancelJoin(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceJoinCancelResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceJoinCancelResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceJoinCancelResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceJoinCancelResponse{
 		Error: &pb.RpcSpaceJoinCancelResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
