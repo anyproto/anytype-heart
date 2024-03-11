@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
@@ -437,16 +438,16 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetReque
 	// return out
 	var out pb.RpcPaymentsTiersGetResponse
 
-	out.Tiers = make([]*pb.RpcPaymentsTiersData, len(tiers.Tiers))
+	out.Tiers = make([]*model.SubscriptionTierData, len(tiers.Tiers))
 	for i, tier := range tiers.Tiers {
-		out.Tiers[i] = &pb.RpcPaymentsTiersData{
+		out.Tiers[i] = &model.SubscriptionTierData{
 			Id:                    tier.Id,
 			Name:                  tier.Name,
 			Description:           tier.Description,
 			IsActive:              tier.IsActive,
 			IsTest:                tier.IsTest,
 			IsHiddenTier:          tier.IsHiddenTier,
-			PeriodType:            pb.RpcPaymentsTiersPeriodType(tier.PeriodType),
+			PeriodType:            model.SubscriptionTierDataPeriodType(tier.PeriodType),
 			PeriodValue:           tier.PeriodValue,
 			PriceStripeUsdCents:   tier.PriceStripeUsdCents,
 			AnyNamesCountIncluded: tier.AnyNamesCountIncluded,
@@ -454,9 +455,9 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetReque
 		}
 
 		// copy all features
-		out.Tiers[i].Features = make(map[string]*pb.RpcPaymentsTiersFeature)
+		out.Tiers[i].Features = make(map[string]*model.SubscriptionTierDataFeature)
 		for k, v := range tier.Features {
-			out.Tiers[i].Features[k] = &pb.RpcPaymentsTiersFeature{
+			out.Tiers[i].Features[k] = &model.SubscriptionTierDataFeature{
 				ValueStr:  v.ValueStr,
 				ValueUint: v.ValueUint,
 			}

@@ -103,7 +103,7 @@ func (mw *Middleware) PaymentsSubscriptionFinalize(ctx context.Context, req *pb.
 	return out
 }
 
-func (mw *Middleware) PaymentsTiersGet(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) *pb.RpcPaymentsTiersGetResponse {
+func (mw *Middleware) PaymentsGetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) *pb.RpcPaymentsTiersGetResponse {
 	ps := getService[payments.Service](mw)
 	out, err := ps.GetTiers(ctx, req)
 
