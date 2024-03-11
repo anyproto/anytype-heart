@@ -42,15 +42,30 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 }
 
 func (mw *Middleware) NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNameServiceResolveAnyIdRequest) *pb.RpcNameServiceResolveAnyIdResponse {
-	// TODO: implement
-	// TODO: test
+	// Get name service object that connects to the remote "namingNode"
+	// in order for that to work, we need to have a "namingNode" node in the nodes section of the config
+	ns := getService[nameserviceclient.AnyNsClientService](mw)
 
-	return &pb.RpcNameServiceResolveAnyIdResponse{
-		Error: &pb.RpcNameServiceResolveAnyIdResponseError{
-			Code:        pb.RpcNameServiceResolveAnyIdResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
-		},
+	var in proto.NameByAnyIdRequest
+	in.AnyAddress = req.AnyId
+
+	nar, err := ns.GetNameByAnyId(ctx, &in)
+	if err != nil {
+		return &pb.RpcNameServiceResolveAnyIdResponse{
+			Error: &pb.RpcNameServiceResolveAnyIdResponseError{
+				// we don't map error codes here
+				Code:        pb.RpcNameServiceResolveAnyIdResponseError_UNKNOWN_ERROR,
+				Description: err.Error(),
+			},
+		}
 	}
+
+	// Return the response
+	var out pb.RpcNameServiceResolveAnyIdResponse
+	out.Found = nar.Found
+	out.FullName = nar.Name
+
+	return &out
 }
 
 func (mw *Middleware) NameServiceResolveSpaceId(ctx context.Context, req *pb.RpcNameServiceResolveSpaceIdRequest) *pb.RpcNameServiceResolveSpaceIdResponse {
@@ -64,47 +79,6 @@ func (mw *Middleware) NameServiceResolveSpaceId(ctx context.Context, req *pb.Rpc
 		},
 	}
 }
-
-/*
-// NameServiceReverseResolveName does a reverse name lookup: address -> somename.any
-func (mw *Middleware) NameServiceReverseResolveName(ctx context.Context, req *pb.RpcNameServiceReverseResolveNameRequest) *pb.RpcNameServiceReverseResolveNameResponse {
-	// Get name service object that connects to the remote "namingNode"
-	// in order for that to work, we need to have a "namingNode" node in the nodes section of the config
-	ns, err := mw.getNameService()
-
-	if err != nil {
-		return &pb.RpcNameServiceReverseResolveNameResponse{
-			Error: &pb.RpcNameServiceReverseResolveNameResponseError{
-				// we don't map error codes here
-				Code:        pb.RpcNameServiceReverseResolveNameResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	var in proto.NameByAddressRequest
-	in.OwnerScwEthAddress = req.OwnerScwEthAddress
-	in.OwnerEthAddress = req.OwnerEthAddress
-
-	nar, err := ns.GetNameByAddress(ctx, &in)
-	if err != nil {
-		return &pb.RpcNameServiceReverseResolveNameResponse{
-			Error: &pb.RpcNameServiceReverseResolveNameResponseError{
-				// we don't map error codes here
-				Code:        pb.RpcNameServiceReverseResolveNameResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
-	}
-
-	// Return the response
-	var out pb.RpcNameServiceReverseResolveNameResponse
-	out.Found = nar.Found
-	out.Name = nar.Name
-
-	return &out
-}
-*/
 
 func (mw *Middleware) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcNameServiceUserAccountGetRequest) *pb.RpcNameServiceUserAccountGetResponse {
 	// 1 - get name service object that connects to the remote "namingNode"
