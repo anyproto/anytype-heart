@@ -454,6 +454,9 @@ func (s *State) updateNotification(update *pb.ChangeNotificationUpdate) {
 	if _, ok := s.notifications[update.Id]; !ok {
 		return
 	}
+	if s.notifications[update.Id].Status == model.Notification_Read {
+		return
+	}
 	s.notifications[update.Id].Status = update.Status
 }
 
