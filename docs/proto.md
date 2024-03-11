@@ -1570,8 +1570,10 @@
     - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
+    - [Notification.ParticipantPermissionsChange](#anytype-model-Notification-ParticipantPermissionsChange)
     - [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove)
     - [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved)
+    - [Notification.ParticipantRequestDecline](#anytype-model-Notification-ParticipantRequestDecline)
     - [Notification.RequestToJoin](#anytype-model-Notification-RequestToJoin)
     - [Notification.RequestToLeave](#anytype-model-Notification-RequestToLeave)
     - [Notification.Test](#anytype-model-Notification-Test)
@@ -24725,6 +24727,8 @@ Used to decode block meta only, without the content itself
 | participantRequestApproved | [Notification.ParticipantRequestApproved](#anytype-model-Notification-ParticipantRequestApproved) |  |  |
 | requestToLeave | [Notification.RequestToLeave](#anytype-model-Notification-RequestToLeave) |  |  |
 | participantRemove | [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove) |  |  |
+| participantRequestDecline | [Notification.ParticipantRequestDecline](#anytype-model-Notification-ParticipantRequestDecline) |  |  |
+| participantPermissionsChange | [Notification.ParticipantPermissionsChange](#anytype-model-Notification-ParticipantPermissionsChange) |  |  |
 | space | [string](#string) |  |  |
 | aclHeadId | [string](#string) |  |  |
 
@@ -24786,6 +24790,22 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Notification-ParticipantPermissionsChange"></a>
+
+### Notification.ParticipantPermissionsChange
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Notification-ParticipantRemove"></a>
 
 ### Notification.ParticipantRemove
@@ -24814,6 +24834,21 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-ParticipantRequestDecline"></a>
+
+### Notification.ParticipantRequestDecline
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 
 
 
