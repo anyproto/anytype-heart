@@ -191,7 +191,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		// Data storages
 		Register(clientds.New()).
 		Register(debugstat.New()).
-		Register(ftsearch.New()).
+		// Register(ftsearch.New()).
+		Register(ftsearch.New2()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
 		Register(filestore.New()).

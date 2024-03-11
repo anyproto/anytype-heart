@@ -31,6 +31,7 @@ const (
 
 	fieldTitle        = "Title"
 	fieldText         = "Text"
+	fieldSpace        = "SpaceID"
 	fieldTitleNoTerms = "TitleNoTerms"
 	fieldTextNoTerms  = "TextNoTerms"
 	fieldID           = "Id"
@@ -176,8 +177,8 @@ func (f *ftSearch) Search(spaceID, qry string) (results search.DocumentMatchColl
 	if len(terms) > 0 {
 		queries = append(
 			queries,
-			getAllWordsFromQueryConsequently(terms, fieldTitleNoTerms),
-			getAllWordsFromQueryConsequently(terms, fieldTextNoTerms),
+			// getAllWordsFromQueryConsequently(terms, fieldTitleNoTerms),
+			// getAllWordsFromQueryConsequently(terms, fieldTextNoTerms),
 		)
 	}
 
@@ -202,7 +203,7 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results sear
 	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
 	if spaceID != "" {
 		spaceQuery := bleve.NewMatchQuery(spaceID)
-		spaceQuery.SetField("SpaceID")
+		spaceQuery.SetField(fieldSpace)
 		rootQuery = bleve.NewConjunctionQuery(rootQuery, spaceQuery)
 	}
 
@@ -300,9 +301,9 @@ func getFullQueries(qry string) []query.Query {
 	var fullQueries = make([]query.Query, 0, 2)
 
 	if len(qry) > 5 {
-		fullQueries = append(fullQueries, getIDMatchQuery(qry))
+		// fullQueries = append(fullQueries, getIDMatchQuery(qry))
 	}
-	fullQueries = append(fullQueries, bleve.NewPrefixQuery(qry))
+	// fullQueries = append(fullQueries, bleve.NewPrefixQuery(qry))
 
 	return fullQueries
 }
