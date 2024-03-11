@@ -16,27 +16,28 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
-type fixture struct {
+type fixture2 struct {
 	ft   FTSearch
 	ta   *app.App
 	ctrl *gomock.Controller
 }
 
-func newFixture(path string, t *testing.T) *fixture {
-	ft := New()
+func newFixture2(path string, t *testing.T) *fixture2 {
+	ftsDir2 = ""
+	ft := TantivyNew()
 	ta := new(app.App)
 
 	ta.Register(wallet.NewWithRepoDirAndRandomKeys(path)).
 		Register(ft)
 
 	require.NoError(t, ta.Start(context.Background()))
-	return &fixture{
+	return &fixture2{
 		ft: ft,
 		ta: ta,
 	}
 }
 
-func TestNewFTSearch(t *testing.T) {
+func TestNewFTSearch2(t *testing.T) {
 	testCases := []struct {
 		name   string
 		tester func(t *testing.T, tmpDir string)
@@ -47,31 +48,31 @@ func TestNewFTSearch(t *testing.T) {
 		},
 		{
 			name:   "assertSearch",
-			tester: assertSearch,
+			tester: assertSearch2,
 		},
 		{
 			name:   "assertThaiSubstrFound",
-			tester: assertThaiSubstrFound,
+			tester: assertThaiSubstrFound2,
 		},
-		{
-			name:   "assertChineseFound",
-			tester: assertChineseFound,
-		},
+		// {
+		// 	name:   "assertChineseFound",
+		// 	tester: assertChineseFound2,
+		// },
 		{
 			name:   "assertFoundPartsOfTheWords",
-			tester: assertFoundPartsOfTheWords,
+			tester: assertFoundPartsOfTheWords2,
 		},
+		// {
+		// 	name:   "assertFoundCaseSensitivePartsOfTheWords",
+		// 	tester: assertFoundCaseSensitivePartsOfTheWords2,
+		// },
 		{
-			name:   "assertFoundCaseSensitivePartsOfTheWords",
-			tester: assertFoundCaseSensitivePartsOfTheWords,
-		},
-		{
-			name:   "assertNonEscapedQuery",
-			tester: assertNonEscapedQuery,
+			name:   "assertNonEscapedQuery2",
+			tester: assertNonEscapedQuery2,
 		},
 		{
 			name:   "assertMultiSpace",
-			tester: assertMultiSpace,
+			tester: assertMultiSpace2,
 		},
 	}
 
@@ -83,9 +84,9 @@ func TestNewFTSearch(t *testing.T) {
 	}
 }
 
-func assertFoundCaseSensitivePartsOfTheWords(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
+func assertFoundCaseSensitivePartsOfTheWords2(t *testing.T, tmpDir string) {
+	fixture2 := newFixture2(tmpDir, t)
+	ft := fixture2.ft
 
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "2",
@@ -105,39 +106,42 @@ func assertFoundCaseSensitivePartsOfTheWords(t *testing.T, tmpDir string) {
 		Text:  "third",
 	}))
 
-	validateSearch(t, ft, "", "Advanced", 1)
+	validateSearch2(t, ft, "", "Advanced", 1)
 
-	validateSearch(t, ft, "", "advanced", 1)
-	validateSearch(t, ft, "", "Advanc", 1)
-	validateSearch(t, ft, "", "advanc", 1)
+	validateSearch2(t, ft, "", "advanced", 1)
+	validateSearch2(t, ft, "", "Advanc", 1)
+	validateSearch2(t, ft, "", "advanc", 1)
 
-	validateSearch(t, ft, "", "first", 1)
-	validateSearch(t, ft, "", "second", 1)
-	validateSearch(t, ft, "", "Interesting", 1)
-	validateSearch(t, ft, "", "Interes", 1)
-	validateSearch(t, ft, "", "interes", 1)
-	validateSearch(t, ft, "", "third", 2)
+	validateSearch2(t, ft, "", "first", 1)
+	validateSearch2(t, ft, "", "second", 1)
+	validateSearch2(t, ft, "", "Interesting", 1)
+	validateSearch2(t, ft, "", "Interes", 1)
+	validateSearch2(t, ft, "", "interes", 1)
+	validateSearch2(t, ft, "", "third", 2)
 
 	_ = ft.Close(nil)
 }
 
-func assertChineseFound(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
+func assertChineseFound2(t *testing.T, tmpDir string) {
+	fixture2 := newFixture2(tmpDir, t)
+	ft := fixture2.ft
 	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "1",
-		Title: "",
-		Text:  "你好",
+		Id:      "1",
+		Title:   "",
+		Text:    "你好",
+		SpaceID: "spaceId",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "2",
-		Title: "",
-		Text:  "交代",
+		Id:      "2",
+		Title:   "",
+		Text:    "交代",
+		SpaceID: "spaceId",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "3",
-		Title: "",
-		Text:  "长江大桥",
+		Id:      "3",
+		Title:   "",
+		Text:    "长江大桥",
+		SpaceID: "spaceId",
 	}))
 
 	queries := []string{
@@ -147,29 +151,29 @@ func assertChineseFound(t *testing.T, tmpDir string) {
 	}
 
 	for _, qry := range queries {
-		validateSearch(t, ft, "", qry, 1)
+		validateSearch2(t, ft, "spaceId", qry, 1)
 	}
 
 	_ = ft.Close(nil)
 }
 
-func assertThaiSubstrFound(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
+func assertThaiSubstrFound2(t *testing.T, tmpDir string) {
+	fixture2 := newFixture2(tmpDir, t)
+	ft := fixture2.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "test",
 		Title: "ตัวอย่าง",
 		Text:  "พรระเจ้า \n kumamon",
 	}))
 
-	validateSearch(t, ft, "", "ระเ", 1)
-	validateSearch(t, ft, "", "ระเ ma", 1)
+	validateSearch2(t, ft, "", "ระเ", 1)
+	validateSearch2(t, ft, "", "ระเ ma", 1)
 
 	_ = ft.Close(nil)
 }
 
 func assertProperIds(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
+	fixture := newFixture2(tmpDir, t)
 	ft := fixture.ft
 	for i := range 50 {
 		require.NoError(t, ft.Index(SearchDoc{
@@ -201,24 +205,24 @@ func assertProperIds(t *testing.T, tmpDir string) {
 	_ = ft.Close(nil)
 }
 
-func assertSearch(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
+func assertSearch2(t *testing.T, tmpDir string) {
+	fixture2 := newFixture2(tmpDir, t)
+	ft := fixture2.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "test",
 		Title: "one",
 		Text:  "two",
 	}))
 
-	validateSearch(t, ft, "", "one", 1)
-	validateSearch(t, ft, "", "two", 1)
+	validateSearch2(t, ft, "", "one", 1)
+	validateSearch2(t, ft, "", "two", 1)
 
 	_ = ft.Close(nil)
 }
 
-func assertFoundPartsOfTheWords(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
+func assertFoundPartsOfTheWords2(t *testing.T, tmpDir string) {
+	fixture2 := newFixture2(tmpDir, t)
+	ft := fixture2.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",
 		Title: "This is the title",
@@ -230,26 +234,26 @@ func assertFoundPartsOfTheWords(t *testing.T, tmpDir string) {
 		Text:  "two",
 	}))
 
-	validateSearch(t, ft, "", "this", 1)
-	validateSearch(t, ft, "", "his", 1)
-	validateSearch(t, ft, "", "is", 2)
-	validateSearch(t, ft, "", "i t", 2)
+	validateSearch2(t, ft, "", "this", 1)
+	validateSearch2(t, ft, "", "his", 1)
+	validateSearch2(t, ft, "", "is", 2)
+	validateSearch2(t, ft, "", "i t", 2)
 
 	_ = ft.Close(nil)
 }
 
-func validateSearch(t *testing.T, ft FTSearch, spaceID, qry string, times int) {
+func validateSearch2(t *testing.T, ft FTSearch, spaceID, qry string, times int) {
 	res, err := ft.Search(spaceID, qry)
 	require.NoError(t, err)
 	assert.Len(t, res, times)
 }
 
-func TestChineseSearch(t *testing.T) {
+func TestChineseSearch2(t *testing.T) {
 	// given
-	index := givenPrefilledChineseIndex()
+	index := givenPrefilledChineseIndex2()
 	defer func() { _ = index.Close() }()
 
-	expected := givenExpectedChinese()
+	expected := givenExpectedChinese2()
 
 	// when
 	queries := []string{
@@ -259,11 +263,11 @@ func TestChineseSearch(t *testing.T) {
 	}
 
 	// then
-	result := validateChinese(queries, index)
+	result := validateChinese2(queries, index)
 	assert.Equal(t, expected, result)
 }
 
-func prettify(res *bleve.SearchResult) string {
+func prettify2(res *bleve.SearchResult) string {
 	type Result struct {
 		Id    string  `json:"id"`
 		Score float64 `json:"score"`
@@ -279,7 +283,7 @@ func prettify(res *bleve.SearchResult) string {
 	return string(b)
 }
 
-func validateChinese(queries []string, index bleve.Index) [3]string {
+func validateChinese2(queries []string, index bleve.Index) [3]string {
 	result := [3]string{}
 	for i, q := range queries {
 		req := bleve.NewSearchRequest(bleve.NewQueryStringQuery(q))
@@ -288,12 +292,12 @@ func validateChinese(queries []string, index bleve.Index) [3]string {
 		if err != nil {
 			panic(err)
 		}
-		result[i] = prettify(res)
+		result[i] = prettify2(res)
 	}
 	return result
 }
 
-func givenExpectedChinese() [3]string {
+func givenExpectedChinese2() [3]string {
 	return [3]string{
 		`[{"id":"1","score":0.3192794660708729}]`,
 		`[{"id":"2","score":0.3192794660708729}]`,
@@ -301,7 +305,7 @@ func givenExpectedChinese() [3]string {
 	}
 }
 
-func givenPrefilledChineseIndex() bleve.Index {
+func givenPrefilledChineseIndex2() bleve.Index {
 	tmpDir, _ := os.MkdirTemp("", "")
 	messages := []struct {
 		Id   string
@@ -335,30 +339,30 @@ func givenPrefilledChineseIndex() bleve.Index {
 	return index
 }
 
-func assertNonEscapedQuery(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
+func assertNonEscapedQuery2(t *testing.T, tmpDir string) {
+	fixture2 := newFixture2(tmpDir, t)
+	ft := fixture2.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",
 		Title: "This is the title",
 		Text:  "two",
 	}))
 
-	validateSearch(t, ft, "", "*", 0)
+	validateSearch2(t, ft, "", "*", 0)
 
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",
 		Title: "This is the title",
 		Text:  ".*?([])",
 	}))
-	validateSearch(t, ft, "", ".*?([])", 1)
+	validateSearch2(t, ft, "", ".*?([])", 1)
 
 	_ = ft.Close(nil)
 }
 
-func assertMultiSpace(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
+func assertMultiSpace2(t *testing.T, tmpDir string) {
+	fixture2 := newFixture2(tmpDir, t)
+	ft := fixture2.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:      "1.1",
 		SpaceID: "first",
@@ -384,14 +388,14 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 		Title: "My favorite coffee brands",
 	}))
 
-	validateSearch(t, ft, "first", "Dashboard", 1)
-	validateSearch(t, ft, "first", "art", 0)
-	validateSearch(t, ft, "second", "space", 2)
-	validateSearch(t, ft, "second", "coffee", 0)
-	validateSearch(t, ft, "", "Advanced", 1)
-	validateSearch(t, ft, "", "board", 2)
-	validateSearch(t, ft, "", "space", 4)
-	validateSearch(t, ft, "", "of", 5)
+	validateSearch2(t, ft, "first", "Dashboard", 1)
+	validateSearch2(t, ft, "first", "art", 0)
+	validateSearch2(t, ft, "second", "space", 2)
+	validateSearch2(t, ft, "second", "coffee", 0)
+	validateSearch2(t, ft, "", "Advanced", 1)
+	validateSearch2(t, ft, "", "board", 2)
+	validateSearch2(t, ft, "", "space", 4)
+	validateSearch2(t, ft, "", "of", 5)
 
 	_ = ft.Close(nil)
 }

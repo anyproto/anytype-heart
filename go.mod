@@ -3,6 +3,7 @@ module github.com/anyproto/anytype-heart
 go 1.22
 
 require (
+	github.com/JanFalkin/tantivy-jpc/go-client v0.0.0-00010101000000-000000000000
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/VividCortex/ewma v1.2.0
@@ -154,6 +155,8 @@ require (
 	github.com/dsoprea/go-photoshop-info-format v0.0.0-20200609050348-3db9b63b202c // indirect
 	github.com/dsoprea/go-utility/v2 v2.0.0-20221003172846-a3e1774ef349 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/eluv-io/errors-go v1.0.0 // indirect
+	github.com/eluv-io/stack v1.8.2 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.0.4 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
 	github.com/fogleman/gg v1.3.0 // indirect
@@ -234,6 +237,7 @@ require (
 	github.com/quic-go/quic-go v0.43.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
@@ -295,3 +299,5 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr v0.8.1-0.20221213144344-0b6b93adaec4
 
 replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38
+
+replace github.com/JanFalkin/tantivy-jpc/go-client => github.com/anyproto/tantivy-jpc/go-client v0.0.0-20240312133928-77a12308911f

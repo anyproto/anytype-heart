@@ -31,6 +31,7 @@ const (
 
 	fieldTitle        = "Title"
 	fieldText         = "Text"
+	fieldSpace        = "SpaceID"
 	fieldTitleNoTerms = "TitleNoTerms"
 	fieldTextNoTerms  = "TextNoTerms"
 	fieldId           = "Id"
@@ -50,7 +51,7 @@ type SearchDoc struct {
 	TextNoTerms  string
 }
 
-func New() FTSearch {
+func BleveNew() FTSearch {
 	return &ftSearch{}
 }
 
@@ -60,7 +61,6 @@ type FTSearch interface {
 	BatchIndex(ctx context.Context, docs []SearchDoc) (err error)
 	BatchDelete(ids []string) (err error)
 	Search(spaceID, query string) (results search.DocumentMatchCollection, err error)
-	Has(id string) (exists bool, err error)
 	Delete(id string) error
 	DocCount() (uint64, error)
 }
@@ -214,7 +214,7 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results sear
 	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
 	if spaceID != "" {
 		spaceQuery := bleve.NewMatchQuery(spaceID)
-		spaceQuery.SetField("SpaceID")
+		spaceQuery.SetField(fieldSpace)
 		rootQuery = bleve.NewConjunctionQuery(rootQuery, spaceQuery)
 	}
 
@@ -226,14 +226,6 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results sear
 		return
 	}
 	return searchResult.Hits, nil
-}
-
-func (f *ftSearch) Has(id string) (exists bool, err error) {
-	d, err := f.index.Document(id)
-	if err != nil {
-		return false, err
-	}
-	return d != nil, nil
 }
 
 func (f *ftSearch) getDocIdsForObjectId(id string) ([]string, error) {
