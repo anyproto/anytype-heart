@@ -267,7 +267,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
 	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det)
+		s.details = pbtypes.CopyStruct(det, false)
 	}
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value
@@ -285,7 +285,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 		}
 	}
 	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det)
+		s.details = pbtypes.CopyStruct(det, false)
 	}
 	delete(s.details.Fields, unset.Key)
 	return nil

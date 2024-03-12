@@ -23,7 +23,7 @@ func TestCopyStruct(t *testing.T) {
 		},
 	}
 
-	copy := CopyStruct(original)
+	copy := CopyStruct(original, true)
 
 	assert.NotSame(t, original, copy)
 	assert.Equal(t, original, copy)
