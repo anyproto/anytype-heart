@@ -176,10 +176,17 @@ func (f sortGetter) Get(key string) *types.Value {
 	return pbtypes.Get(f.curEl, key)
 }
 
+type FulltextMetadata struct {
+	InnerPath string
+	Highlight string
+}
+
+// todo: rename to SearchParams?
 type Filters struct {
-	FilterObj Filter
-	Order     Order
-	dateKeys  []string
+	FilterObj        Filter
+	Order            Order
+	FulltextMetadata map[string]FulltextMetadata
+	dateKeys         []string
 }
 
 func (f *Filters) Filter(e query.Entry) bool {
