@@ -1,9 +1,6 @@
 package metrics
 
 import (
-	"os"
-	"sync"
-
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
@@ -27,22 +24,14 @@ func GenerateAnalyticsId() string {
 
 var (
 	Enabled bool
-	once    sync.Once
 )
 
 func init() {
 	if DefaultAmplitudeKey == "" {
 		DefaultAmplitudeKey = loadenv.Get("AMPLITUDE_KEY")
 	}
-	if os.Getenv(EnvVarPromAddr) != "" {
-		Enabled = true
 
 	if DefaultInHouseKey == "" {
 		DefaultInHouseKey = loadenv.Get("INHOUSE_KEY")
 	}
-
-	if addr := os.Getenv("ANYTYPE_PROM"); addr != "" {
-		runPrometheusHttp(addr)
-	}
-
 }

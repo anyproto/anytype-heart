@@ -130,7 +130,6 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 	if len(docs) == 0 {
 		return nil
 	}
-	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
 	f.ftUpdatedCounter.Add(uint32(len(docs)))
 	batch := f.index.NewBatch()
 	start := time.Now()
