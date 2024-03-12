@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	GitBranch, GitSummary string
+	GitBranch, GitSummary, BuildDate, GitCommit string
 )
 
 type VCSInfo struct {
@@ -62,6 +62,14 @@ func GetVCSInfo() VCSInfo {
 		Summary: GitSummary,
 		CGO:     true,
 	}
+	// we don't have a build date and commit in the gomobile builds, so inject it via linker flags
+	if BuildDate != "" {
+		info.BuildDate, _ = time.Parse(time.RFC3339, BuildDate)
+	}
+	if GitCommit != "" {
+		info.Revision = GitCommit
+	}
+
 	d, ok := debug.ReadBuildInfo()
 	if !ok {
 		return info

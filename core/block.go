@@ -4,14 +4,17 @@ import (
 	"context"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -41,8 +44,8 @@ func (mw *Middleware) BlockCreate(cctx context.Context, req *pb.RpcBlockCreateRe
 
 func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) *pb.RpcBlockLinkCreateWithObjectResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcBlockLinkCreateWithObjectResponseErrorCode, id, targetId string, err error) *pb.RpcBlockLinkCreateWithObjectResponse {
-		m := &pb.RpcBlockLinkCreateWithObjectResponse{Error: &pb.RpcBlockLinkCreateWithObjectResponseError{Code: code}, BlockId: id, TargetId: targetId}
+	response := func(code pb.RpcBlockLinkCreateWithObjectResponseErrorCode, id, targetId string, objectDetails *types.Struct, err error) *pb.RpcBlockLinkCreateWithObjectResponse {
+		m := &pb.RpcBlockLinkCreateWithObjectResponse{Error: &pb.RpcBlockLinkCreateWithObjectResponseError{Code: code}, BlockId: id, TargetId: targetId, Details: objectDetails}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -50,15 +53,18 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 		}
 		return m
 	}
-	var id, targetId string
+	var (
+		id, targetId  string
+		objectDetails *types.Struct
+	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, targetId, err = bs.CreateLinkToTheNewObject(cctx, ctx, req)
+		id, targetId, objectDetails, err = bs.CreateLinkToTheNewObject(cctx, ctx, req)
 		return
 	})
 	if err != nil {
-		return response(pb.RpcBlockLinkCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", err)
+		return response(pb.RpcBlockLinkCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", objectDetails, err)
 	}
-	return response(pb.RpcBlockLinkCreateWithObjectResponseError_NULL, id, targetId, nil)
+	return response(pb.RpcBlockLinkCreateWithObjectResponseError_NULL, id, targetId, objectDetails, nil)
 }
 
 func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
@@ -200,7 +206,7 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
 			r.ContextId = req.ContextId
-			req := block.UploadRequest{Origin: model.ObjectOrigin_clipboard, RpcBlockUploadRequest: r}
+			req := block.UploadRequest{ObjectOrigin: objectorigin.Clipboard(), RpcBlockUploadRequest: r}
 			if err = bs.UploadBlockFile(nil, req, groupId); err != nil {
 				return err
 			}
@@ -308,7 +314,7 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		req := block.UploadRequest{RpcBlockUploadRequest: *req}
+		req := block.UploadRequest{RpcBlockUploadRequest: *req, ObjectOrigin: objectorigin.None()}
 		return bs.UploadBlockFile(nil, req, "")
 	})
 	if err != nil {
@@ -999,7 +1005,7 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		req := block.BookmarkFetchRequest{Origin: model.ObjectOrigin_bookmark, RpcBlockBookmarkFetchRequest: *req}
+		req := block.BookmarkFetchRequest{ObjectOrigin: objectorigin.Bookmark(), RpcBlockBookmarkFetchRequest: *req}
 		return bs.BookmarkFetch(ctx, req)
 	})
 	if err != nil {
@@ -1021,7 +1027,7 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.
 	}
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		req := bookmark.CreateAndFetchRequest{Origin: model.ObjectOrigin_bookmark, RpcBlockBookmarkCreateAndFetchRequest: *req}
+		req := bookmark.CreateAndFetchRequest{Origin: objectorigin.Bookmark(), RpcBlockBookmarkCreateAndFetchRequest: *req}
 		id, err = bs.BookmarkCreateAndFetch(ctx, req)
 		return
 	})
@@ -1113,4 +1119,20 @@ func (mw *Middleware) BlockListTurnInto(cctx context.Context, req *pb.RpcBlockLi
 		return response(pb.RpcBlockListTurnIntoResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListTurnIntoResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockPreview(cctx context.Context, req *pb.RpcBlockPreviewRequest) *pb.RpcBlockPreviewResponse {
+	response := func(code pb.RpcBlockPreviewResponseErrorCode, blocks []*model.Block, err error) *pb.RpcBlockPreviewResponse {
+		m := &pb.RpcBlockPreviewResponse{Error: &pb.RpcBlockPreviewResponseError{Code: code}, Blocks: blocks}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	blocks, _, err := anymark.HTMLToBlocks([]byte(req.Html), req.Url)
+	if err != nil {
+		return response(pb.RpcBlockPreviewResponseError_UNKNOWN_ERROR, nil, err)
+	}
+	blocks = anymark.AddRootBlock(blocks, "preview")
+	return response(pb.RpcBlockPreviewResponseError_NULL, blocks, nil)
 }

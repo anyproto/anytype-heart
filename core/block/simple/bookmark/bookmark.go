@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -15,6 +16,11 @@ import (
 
 func init() {
 	simple.RegisterCreator(NewBookmark)
+}
+
+type ObjectContent struct {
+	BookmarkContent *model.BlockContentBookmark
+	Blocks          []*model.Block
 }
 
 func NewBookmark(m *model.Block) simple.Block {
@@ -31,9 +37,9 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
-	ToDetails(origin model.ObjectOrigin) *types.Struct
+	ToDetails(origin objectorigin.ObjectOrigin) *types.Struct
 	SetState(s model.BlockContentBookmarkState)
-	UpdateContent(func(content *model.BlockContentBookmark))
+	UpdateContent(func(content *ObjectContent))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
 }
 
@@ -46,20 +52,18 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
 }
 
-func (b *Bookmark) ToDetails(origin model.ObjectOrigin) *types.Struct {
+func (b *Bookmark) ToDetails(origin objectorigin.ObjectOrigin) *types.Struct {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),
 		},
 	}
-	if origin != 0 {
-		details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
-	}
+	origin.AddToDetails(details)
 	return details
 }
 
-func (b *Bookmark) UpdateContent(updater func(bookmark *model.BlockContentBookmark)) {
-	updater(b.content)
+func (b *Bookmark) UpdateContent(updater func(content *ObjectContent)) {
+	updater(&ObjectContent{BookmarkContent: b.content})
 }
 
 func (b *Bookmark) SetState(s model.BlockContentBookmarkState) {
@@ -169,6 +173,15 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	return
 }
 
+func (b *Bookmark) IterateLinkedFiles(iter func(id string)) {
+	if b.content.ImageHash != "" {
+		iter(b.content.ImageHash)
+	}
+	if b.content.FaviconHash != "" {
+		iter(b.content.FaviconHash)
+	}
+}
+
 func (b *Bookmark) FillFileHashes(hashes []string) []string {
 	if b.content.ImageHash != "" {
 		hashes = append(hashes, b.content.ImageHash)
@@ -177,6 +190,15 @@ func (b *Bookmark) FillFileHashes(hashes []string) []string {
 		hashes = append(hashes, b.content.FaviconHash)
 	}
 	return hashes
+}
+
+func (b *Bookmark) MigrateFile(replacer func(oldHash string) (newHash string)) {
+	if b.content.ImageHash != "" {
+		b.content.ImageHash = replacer(b.content.ImageHash)
+	}
+	if b.content.FaviconHash != "" {
+		b.content.FaviconHash = replacer(b.content.FaviconHash)
+	}
 }
 
 func (l *Bookmark) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
@@ -195,4 +217,8 @@ func (b *Bookmark) FillSmartIds(ids []string) []string {
 
 func (b *Bookmark) HasSmartIds() bool {
 	return b.content.TargetObjectId != ""
+}
+
+func (l *Bookmark) IsEmpty() bool {
+	return l.content.TargetObjectId == ""
 }

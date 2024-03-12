@@ -11,6 +11,20 @@ const (
 	LocalStatusMissing = LocalStatus(model.SpaceStatus_Missing)
 )
 
+func (l LocalStatus) String() string {
+	switch l {
+	case LocalStatusUnknown:
+		return "Unknown"
+	case LocalStatusLoading:
+		return "Loading"
+	case LocalStatusOk:
+		return "Ok"
+	case LocalStatusMissing:
+		return "Missing"
+	}
+	return ""
+}
+
 type RemoteStatus int
 
 const (
@@ -25,15 +39,47 @@ func (r RemoteStatus) IsDeleted() bool {
 	return r == RemoteStatusDeleted || r == RemoteStatusWaitingDeletion
 }
 
+func (r RemoteStatus) String() string {
+	switch r {
+	case RemoteStatusUnknown:
+		return "Unknown"
+	case RemoteStatusOk:
+		return "Ok"
+	case RemoteStatusWaitingDeletion:
+		return "WaitingDeletion"
+	case RemoteStatusDeleted:
+		return "Deleted"
+	case RemoteStatusError:
+		return "Error"
+	}
+	return ""
+}
+
 type AccountStatus int
 
 const (
-	AccountStatusUnknown = AccountStatus(model.SpaceStatus_Unknown)
-	AccountStatusDeleted = AccountStatus(model.SpaceStatus_SpaceDeleted)
-	// TODO: [MR] generate
-	AccountStatusInviting = AccountStatus(8)
-	AccountStatusLoading  = AccountStatus(9)
+	AccountStatusUnknown  = AccountStatus(model.SpaceStatus_Unknown)
+	AccountStatusDeleted  = AccountStatus(model.SpaceStatus_SpaceDeleted)
+	AccountStatusJoining  = AccountStatus(model.SpaceStatus_SpaceJoining)
+	AccountStatusActive   = AccountStatus(model.SpaceStatus_SpaceActive)
+	AccountStatusRemoving = AccountStatus(model.SpaceStatus_SpaceRemoving)
 )
+
+func (a AccountStatus) String() string {
+	switch a {
+	case AccountStatusUnknown:
+		return "Unknown"
+	case AccountStatusDeleted:
+		return "Deleted"
+	case AccountStatusJoining:
+		return "Joining"
+	case AccountStatusActive:
+		return "Active"
+	case AccountStatusRemoving:
+		return "Removing"
+	}
+	return ""
+}
 
 type SpaceLocalInfo struct {
 	SpaceID      string
@@ -44,6 +90,7 @@ type SpaceLocalInfo struct {
 type SpacePersistentInfo struct {
 	SpaceID       string
 	AccountStatus AccountStatus
+	AclHeadId     string
 }
 
 type SpaceInfo struct {
@@ -52,3 +99,11 @@ type SpaceInfo struct {
 	RemoteStatus  RemoteStatus
 	AccountStatus AccountStatus
 }
+
+type AccessType int
+
+const (
+	AccessTypePrivate  = AccessType(model.SpaceAccessType_Private)
+	AccessTypePersonal = AccessType(model.SpaceAccessType_Personal)
+	AccessTypeShared   = AccessType(model.SpaceAccessType_Shared)
+)

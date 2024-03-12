@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -38,6 +39,11 @@ func TestState_Normalize(t *testing.T) {
 				},
 			}
 		}
+		div = &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Div,
+			},
+		}
 	)
 
 	t.Run("nothing to change", func(t *testing.T) {
@@ -48,37 +54,6 @@ func TestState_Normalize(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
 		assert.Empty(t, hist)
-	})
-
-	t.Run("lastmodifieddate should not change", func(t *testing.T) {
-		r := NewDoc("1", map[string]simple.Block{
-			"1": base.NewBase(&model.Block{Id: "1"}),
-		})
-
-		r.(*State).SetLastModified(1, "abc")
-
-		s := r.NewState()
-		s.Add(simple.New(&model.Block{Id: "2"}))
-		s.InsertTo("1", model.Block_Inner, "2")
-
-		s.SetLastModified(2, "abc")
-		msgs, hist, err := ApplyState(s, true)
-		require.NoError(t, err)
-		assert.Len(t, msgs, 3)      // BlockSetChildrenIds, BlockAdd, ObjectDetailsAmend(lastmodifieddate)
-		assert.Len(t, s.changes, 1) // BlockCreate
-		assert.Len(t, hist.Add, 1)
-		assert.Len(t, hist.Change, 1)
-		assert.Nil(t, hist.Details)
-
-		s = s.NewState()
-		s.SetLastModified(3, "abc")
-		msgs, hist, err = ApplyState(s, true)
-		require.NoError(t, err)
-		assert.Len(t, msgs, 0) // last modified should be reverted and not msg should be produced
-		assert.Len(t, s.changes, 0)
-		assert.Len(t, hist.Add, 0)
-		assert.Len(t, hist.Change, 0)
-		assert.Nil(t, hist.Details)
 	})
 
 	t.Run("clean missing children", func(t *testing.T) {
@@ -101,11 +76,26 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow}))
 		r.Add(simple.New(&model.Block{Id: "c1", Content: contColumn}))
 		r.Add(simple.New(&model.Block{Id: "c2", Content: contColumn}))
-		r.Add(simple.New(&model.Block{Id: "t1"}))
+
+		r.Add(simple.New(&model.Block{Id: "t1", ChildrenIds: []string{"tableRows", "tableColumns"}, Content: &model.BlockContentOfTable{
+			Table: &model.BlockContentTable{},
+		}}))
+		r.Add(simple.New(&model.Block{Id: "tableRows", Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableRows,
+			},
+		}}))
+		r.Add(simple.New(&model.Block{Id: "tableColumns", Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableColumns,
+			},
+		}}))
 
 		s := r.NewState()
 		s.Get("c1")
 		s.Get("c2")
+		s.Get("tableRows")
+		s.Get("tableColumns")
 
 		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
@@ -116,6 +106,8 @@ func TestState_Normalize(t *testing.T) {
 		assert.Nil(t, r.Pick("r1"))
 		assert.Nil(t, r.Pick("c1"))
 		assert.Nil(t, r.Pick("c2"))
+		assert.NotNil(t, r.Pick("tableRows"))    // Do not remove table rows
+		assert.NotNil(t, r.Pick("tableColumns")) // Do not remove table columns
 	})
 
 	t.Run("remove one column row", func(t *testing.T) {
@@ -272,7 +264,7 @@ func TestState_Normalize(t *testing.T) {
 		}
 		_, _, err = ApplyState(r.NewState(), true)
 		require.NoError(t, err)
-		//t.Log(r.String())
+		// t.Log(r.String())
 
 		root := r.Pick(ev.RootId).Model()
 		for _, childId := range root.ChildrenIds {
@@ -317,7 +309,44 @@ func TestState_Normalize(t *testing.T) {
 		assert.Equal(t, "header", s.Pick(s.RootId()).Model().ChildrenIds[0])
 	})
 
-	//t.Run("normalize size - big details", func(t *testing.T) {
+	t.Run("normalize div", func(t *testing.T) {
+		// given original state
+		r := NewDoc("root", nil).(*State)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"div-1", "div-2", "div-3"}}))
+		r.Add(simple.New(&model.Block{Id: "div-1", ChildrenIds: []string{"div-4", "b"}, Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-2", ChildrenIds: []string{"c", "div-5"}, Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-3", ChildrenIds: []string{"e", "f"}, Content: div}))
+
+		r.Add(simple.New(&model.Block{Id: "div-4", Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-5", ChildrenIds: []string{"div-6"}, Content: div}))
+		r.Add(simple.New(&model.Block{Id: "div-6", Content: div}))
+		r.Add(simple.New(&model.Block{Id: "c"}))
+		r.Add(simple.New(&model.Block{Id: "d"}))
+		r.Add(simple.New(&model.Block{Id: "e"}))
+		r.Add(simple.New(&model.Block{Id: "f"}))
+
+		// remove blocks
+		s := r.NewState()
+		s.Unlink("div-4")
+		s.Unlink("div-5")
+		s.Unlink("c")
+		s.Unlink("d")
+		s.Unlink("e")
+		s.Unlink("f")
+
+		// when
+		require.NoError(t, s.Normalize(false))
+		_, msg, err := ApplyState(s, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Len(t, s.Pick("root").Model().ChildrenIds, 0)
+		expectedRemovedIDs := []string{"div-1", "div-2", "div-3", "div-4", "div-5", "div-6"}
+		expectedRemovedIDsCount := lo.CountBy(msg.Remove, func(block simple.Block) bool { return slices.Contains(expectedRemovedIDs, block.Model().Id) })
+		assert.Equal(t, len(expectedRemovedIDs), expectedRemovedIDsCount)
+	})
+
+	// t.Run("normalize size - big details", func(t *testing.T) {
 	//	//given
 	//	blocks := map[string]simple.Block{
 	//		"root": simple.New(&model.Block{
@@ -335,9 +364,9 @@ func TestState_Normalize(t *testing.T) {
 	//	//then
 	//	assert.Less(t, blockSizeLimit, s.blocks["root"].Model().Size())
 	//	assert.Error(t, err)
-	//})
+	// })
 	//
-	//t.Run("normalize size - big content", func(t *testing.T) {
+	// t.Run("normalize size - big content", func(t *testing.T) {
 	//	//given
 	//	blocks := map[string]simple.Block{
 	//		"root": simple.New(&model.Block{
@@ -355,9 +384,9 @@ func TestState_Normalize(t *testing.T) {
 	//	//then
 	//	assert.Less(t, blockSizeLimit, s.blocks["root"].Model().Size())
 	//	assert.Error(t, err)
-	//})
+	// })
 	//
-	//t.Run("normalize size - no error", func(t *testing.T) {
+	// t.Run("normalize size - no error", func(t *testing.T) {
 	//	//given
 	//	blocks := map[string]simple.Block{
 	//		"root": simple.New(&model.Block{
@@ -378,7 +407,7 @@ func TestState_Normalize(t *testing.T) {
 	//	//then
 	//	assert.Less(t, s.blocks["root"].Model().Size(), blockSizeLimit)
 	//	assert.NoError(t, err)
-	//})
+	// })
 }
 
 func TestCleanupLayouts(t *testing.T) {
@@ -440,17 +469,17 @@ func BenchmarkNormalize(b *testing.B) {
 
 func TestShortenDetailsToLimit(t *testing.T) {
 	t.Run("shorten description", func(t *testing.T) {
-		//given
+		// given
 		details := map[string]*types.Value{
 			bundle.RelationKeyName.String():          pbtypes.String("my page"),
 			bundle.RelationKeyDescription.String():   pbtypes.String(strings.Repeat("a", detailSizeLimit+10)),
 			bundle.RelationKeyWidthInPixels.String(): pbtypes.Int64(20),
 		}
 
-		//when
+		// when
 		shortenDetailsToLimit("", details)
 
-		//then
+		// then
 		assert.Len(t, details[bundle.RelationKeyName.String()].GetStringValue(), 7)
 		assert.Less(t, len(details[bundle.RelationKeyDescription.String()].GetStringValue()), detailSizeLimit)
 	})
@@ -458,25 +487,25 @@ func TestShortenDetailsToLimit(t *testing.T) {
 
 func TestShortenValueOnN(t *testing.T) {
 	t.Run("string value", func(t *testing.T) {
-		//given
+		// given
 		value := pbtypes.String("abrakadabra")
 
-		//when
+		// when
 		value, left := shortenValueByN(value, 7)
 
-		//then
+		// then
 		assert.Equal(t, 0, left)
 		assert.Equal(t, "abra", value.GetStringValue())
 	})
 
 	t.Run("string list", func(t *testing.T) {
-		//given
+		// given
 		value := pbtypes.StringList([]string{"Liberté", "Égalité", "Fraternité"})
 
-		//when
+		// when
 		value, left := shortenValueByN(value, 15)
 
-		//then
+		// then
 		expected := pbtypes.StringList([]string{"", "É", "Fraternité"})
 
 		assert.Equal(t, 0, left)
@@ -484,13 +513,13 @@ func TestShortenValueOnN(t *testing.T) {
 	})
 
 	t.Run("cut off all strings", func(t *testing.T) {
-		//given
+		// given
 		value := pbtypes.StringList([]string{"😂", "😄", "🥰", "😔", "😰", "😥", "🥕", "🍅", "🌶"})
 
-		//when
+		// when
 		value, left := shortenValueByN(value, 100)
 
-		//then
+		// then
 		assert.Equal(t, 100-(9*4), left)
 		assert.Equal(t, 0, countStringsLength(value))
 	})

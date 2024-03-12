@@ -50,7 +50,7 @@ type ConfigRequired struct {
 	HostAddr            string `json:",omitempty"`
 	CustomFileStorePath string `json:",omitempty"`
 	LegacyFileStorePath string `json:",omitempty"`
-	NetworkId           string `json:",omitempty"` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
 }
 
 type Config struct {
@@ -58,6 +58,7 @@ type Config struct {
 	NewAccount                             bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
+	PeferYamuxTransport                    bool
 	NetworkMode                            pb.RpcAccountNetworkMode
 	NetworkCustomConfigFilePath            string `json:",omitempty"` // not saved to config
 
@@ -142,7 +143,10 @@ func (c *Config) Init(a *app.App) (err error) {
 	if err = c.initFromFileAndEnv(repoPath); err != nil {
 		return
 	}
-	a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+	if !c.PeferYamuxTransport {
+		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
+		a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+	}
 	return
 }
 
@@ -347,7 +351,6 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 	if conf.NetworkId != "" && c.NetworkId == "" {
 		log.Infof("Network id is not set in config; set to %s", conf.NetworkId)
 		c.NetworkId = conf.NetworkId
-		WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 	}
 	return
 }
@@ -374,4 +377,16 @@ func (c *Config) GetQuic() quic.Config {
 		WriteTimeoutSec: 10,
 		DialTimeoutSec:  10,
 	}
+}
+
+func (c *Config) ResetStoredNetworkId() error {
+	configCopy := c.ConfigRequired
+	configCopy.NetworkId = ""
+	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+}
+
+func (c *Config) PersistAccountNetworkId() error {
+	configCopy := c.ConfigRequired
+	configCopy.NetworkId = c.NetworkId
+	return WriteJsonConfig(c.GetConfigPath(), configCopy)
 }

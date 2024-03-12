@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -48,6 +49,9 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
 	if req.DisableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
+	}
+	if req.PreferYamuxTransport {
+		cfg.PeferYamuxTransport = true
 	}
 	if req.NetworkMode > 0 {
 		cfg.NetworkMode = req.NetworkMode
@@ -114,11 +118,12 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
-		hash, err := bs.UploadFile(context.Background(), personalSpaceId, block.FileUploadRequest{
+		hash, _, err := bs.UploadFile(context.Background(), personalSpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
 				Type:      model.BlockContentFile_Image,
 			},
+			ObjectOrigin: objectorigin.None(),
 		})
 		if err != nil {
 			log.Warnf("can't add avatar: %v", err)

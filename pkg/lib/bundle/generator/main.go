@@ -52,15 +52,16 @@ type Relation struct {
 }
 
 type ObjectType struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Types       []string `json:"types"`
-	Emoji       string   `json:"emoji"`
-	Hidden      bool     `json:"hidden"`
-	Layout      string   `json:"layout"`
-	Relations   []string `json:"relations"`
-	Description string   `json:"description"`
-	Revision    int      `json:"revision"`
+	ID                     string   `json:"id"`
+	Name                   string   `json:"name"`
+	Types                  []string `json:"types"`
+	Emoji                  string   `json:"emoji"`
+	Hidden                 bool     `json:"hidden"`
+	Layout                 string   `json:"layout"`
+	Relations              []string `json:"relations"`
+	Description            string   `json:"description"`
+	Revision               int      `json:"revision"`
+	RestrictObjectCreation bool     `json:"restrictObjectCreation"`
 }
 
 type Layout struct {
@@ -305,6 +306,10 @@ func generateTypes() error {
 				dictS[Id("Revision")] = Lit(ot.Revision)
 			}
 
+			if ot.RestrictObjectCreation {
+				dictS[Id("RestrictObjectCreation")] = Lit(ot.RestrictObjectCreation)
+			}
+
 			dict[Id(typeConst(ot.ID))] = Block(dictS)
 		}
 		g.Id("types").Op("=").Map(Qual(domainPkg, "TypeKey")).Op("*").Qual(relPbPkg, "ObjectType").Values(Dict(dict))
@@ -501,7 +506,7 @@ func assertTypesIncluded(
 		lo.Map(whereIncluded, typeToString()),
 	)
 	if err != nil {
-		exitOnError(fmt.Errorf(relationAssertionError))
+		exitOnError(fmt.Errorf("%s: %w", relationAssertionError, err))
 	}
 }
 
@@ -515,7 +520,7 @@ func assertRelationsIncluded(
 		lo.Map(whereIncluded, relationToString()),
 	)
 	if err != nil {
-		exitOnError(fmt.Errorf(relationAssertionError))
+		exitOnError(fmt.Errorf("%s: %w", relationAssertionError, err))
 	}
 }
 

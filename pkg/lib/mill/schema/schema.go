@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	ipld "github.com/ipfs/go-ipld-format"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 // ErrEmptySchema indicates a schema is empty
@@ -30,48 +28,4 @@ func LinkByName(links []*ipld.Link, names []string) *ipld.Link {
 		}
 	}
 	return nil
-}
-
-// Steps returns link steps in the order they should be processed
-func Steps(links map[string]*storage.Link) ([]storage.Step, error) {
-	var steps []storage.Step
-	run := links
-	i := 0
-	for {
-		if i > len(links) {
-			return nil, ErrLinkOrderNotSolvable
-		}
-		next := orderLinks(run, &steps)
-		if len(next) == 0 {
-			break
-		}
-		run = next
-		i++
-	}
-	return steps, nil
-}
-
-// orderLinks attempts to place all links in steps, returning any unused
-// whose source is not yet in steps
-func orderLinks(links map[string]*storage.Link, steps *[]storage.Step) map[string]*storage.Link {
-	unused := make(map[string]*storage.Link)
-	for name, link := range links {
-		if link.Use == FileTag {
-			*steps = append([]storage.Step{{Name: name, Link: link}}, *steps...)
-		} else {
-			useAt := -1
-			for i, s := range *steps {
-				if link.Use == s.Name {
-					useAt = i
-					break
-				}
-			}
-			if useAt >= 0 {
-				*steps = append(*steps, storage.Step{Name: name, Link: link})
-			} else {
-				unused[name] = link
-			}
-		}
-	}
-	return unused
 }

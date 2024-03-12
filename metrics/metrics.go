@@ -10,9 +10,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var log = logging.Logger("anytype-logger")
+var log = logging.Logger("anytype-telemetry")
 
-var DefaultAmplitudeKey = ""
+var (
+	DefaultAmplitudeKey string
+	DefaultInHouseKey   string
+)
 
 const (
 	EnvVarPromAddr = "ANYTYPE_PROM"
@@ -33,6 +36,13 @@ func init() {
 	}
 	if os.Getenv(EnvVarPromAddr) != "" {
 		Enabled = true
+
+	if DefaultInHouseKey == "" {
+		DefaultInHouseKey = loadenv.Get("INHOUSE_KEY")
+	}
+
+	if addr := os.Getenv("ANYTYPE_PROM"); addr != "" {
+		runPrometheusHttp(addr)
 	}
 
 }

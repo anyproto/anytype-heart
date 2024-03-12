@@ -10,9 +10,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/joiner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/offloader"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/remover"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -29,12 +31,12 @@ type spaceController struct {
 
 func NewSpaceController(
 	spaceId string,
-	status spaceinfo.AccountStatus,
+	info spaceinfo.SpacePersistentInfo,
 	a *app.App) (spacecontroller.SpaceController, error) {
 	s := &spaceController{
 		spaceId:           spaceId,
-		status:            spacestatus.New(spaceId, status),
-		lastUpdatedStatus: status,
+		status:            spacestatus.New(spaceId, info.AccountStatus, info.AclHeadId),
+		lastUpdatedStatus: info.AccountStatus,
 		app:               a,
 	}
 	sm, err := mode.NewStateMachine(s, log.With(zap.String("spaceId", spaceId)))
@@ -54,8 +56,11 @@ func (s *spaceController) Start(ctx context.Context) error {
 	case spaceinfo.AccountStatusDeleted:
 		_, err := s.sm.ChangeMode(mode.ModeOffloading)
 		return err
-	case spaceinfo.AccountStatusInviting:
-		_, err := s.sm.ChangeMode(mode.ModeInviting)
+	case spaceinfo.AccountStatusJoining:
+		_, err := s.sm.ChangeMode(mode.ModeJoining)
+		return err
+	case spaceinfo.AccountStatusRemoving:
+		_, err := s.sm.ChangeMode(mode.ModeRemoving)
 		return err
 	default:
 		_, err := s.sm.ChangeMode(mode.ModeLoading)
@@ -71,26 +76,39 @@ func (s *spaceController) Current() any {
 	return s.sm.GetProcess()
 }
 
-func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
+func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	s.status.Lock()
-	if s.lastUpdatedStatus == status {
+	err := s.status.SetPersistentInfo(ctx, info)
+	if err != nil {
+		s.status.Unlock()
+		return err
+	}
+	s.status.Unlock()
+	return s.UpdateInfo(ctx, info)
+}
+
+func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	s.status.Lock()
+	if s.lastUpdatedStatus == info.AccountStatus || (s.lastUpdatedStatus == spaceinfo.AccountStatusDeleted && info.AccountStatus == spaceinfo.AccountStatusRemoving) {
 		s.status.Unlock()
 		return nil
 	}
-	s.lastUpdatedStatus = status
+	s.lastUpdatedStatus = info.AccountStatus
 	s.status.Unlock()
 	updateStatus := func(mode mode.Mode) error {
 		s.status.Lock()
-		s.status.UpdatePersistentStatus(ctx, status)
+		s.status.UpdatePersistentInfo(ctx, info)
 		s.status.Unlock()
 		_, err := s.sm.ChangeMode(mode)
 		return err
 	}
-	switch status {
+	switch info.AccountStatus {
 	case spaceinfo.AccountStatusDeleted:
 		return updateStatus(mode.ModeOffloading)
-	case spaceinfo.AccountStatusInviting:
-		return updateStatus(mode.ModeInviting)
+	case spaceinfo.AccountStatusJoining:
+		return updateStatus(mode.ModeJoining)
+	case spaceinfo.AccountStatusRemoving:
+		return updateStatus(mode.ModeRemoving)
 	default:
 		return updateStatus(mode.ModeLoading)
 	}
@@ -124,8 +142,19 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 		return offloader.New(s.app, offloader.Params{
 			Status: s.status,
 		})
+	case mode.ModeRemoving:
+		return remover.New(s.app, remover.Params{
+			SpaceId: s.spaceId,
+			Status:  s.status,
+		})
+	case mode.ModeJoining:
+		return joiner.New(s.app, joiner.Params{
+			SpaceId: s.spaceId,
+			Status:  s.status,
+			Log:     log,
+		})
 	default:
-		panic("unknown mode")
+		return initial.New()
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	dependencies2 "github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
@@ -39,6 +40,7 @@ type spaceOffloader struct {
 	storageService storage.ClientStorage
 	indexer        dependencies2.SpaceIndexer
 	spaceCore      spacecore.SpaceCoreService
+	delController  deletioncontroller.DeletionController
 	ctx            context.Context
 	cancel         context.CancelFunc
 	offloaded      atomic.Bool
@@ -50,6 +52,7 @@ func (o *spaceOffloader) Init(a *app.App) (err error) {
 	o.storageService = app.MustComponent[storage.ClientStorage](a)
 	o.indexer = app.MustComponent[dependencies2.SpaceIndexer](a)
 	o.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
+	o.delController = app.MustComponent[deletioncontroller.DeletionController](a)
 	o.ctx, o.cancel = context.WithCancel(context.Background())
 	return nil
 }
@@ -70,14 +73,8 @@ func (o *spaceOffloader) Run(ctx context.Context) (err error) {
 		}
 	}
 	localStatus := o.status.GetLocalStatus()
-	remoteStatus := o.status.GetRemoteStatus()
 	o.status.Unlock()
-	if !remoteStatus.IsDeleted() {
-		err := o.spaceCore.Delete(ctx, o.status.SpaceId())
-		if err != nil {
-			log.Debug("network delete error", zap.Error(err), zap.String("spaceId", o.status.SpaceId()))
-		}
-	}
+	o.delController.AddSpace(o.status.SpaceId())
 	if localStatus == spaceinfo.LocalStatusMissing {
 		o.offloaded.Store(true)
 		return nil
@@ -133,7 +130,7 @@ func (o *spaceOffloader) offload(ctx context.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
-	err = o.fileOffloader.FilesSpaceOffload(ctx, id)
+	_, _, err = o.fileOffloader.FileSpaceOffload(ctx, id, true)
 	if err != nil {
 		return err
 	}

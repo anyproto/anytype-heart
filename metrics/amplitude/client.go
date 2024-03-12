@@ -3,76 +3,126 @@ package amplitude
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"io"
 	"net/http"
 	"time"
+
+	"github.com/klauspost/compress/gzhttp"
+	"github.com/klauspost/compress/gzip"
+	"github.com/valyala/fastjson"
 )
 
-const eventEndpoint = "https://amplitude.anytype.io/2/httpapi"
-
 // Client manages the communication to the Amplitude API
+
+type Service interface {
+	SendEvents(amplEvents []Event, info AppInfoProvider) error
+}
+
 type Client struct {
+	Service
 	eventEndpoint string
 	key           string
 	client        *http.Client
+	arenaPool     *fastjson.ArenaPool
+	isCompressed  bool
 }
 
-type Event struct {
-	AppVersion      string                 `json:"app_version,omitempty"`
-	DeviceID        string                 `json:"device_id,omitempty"`
-	EventID         int                    `json:"event_id,omitempty"`
-	EventProperties map[string]interface{} `json:"event_properties,omitempty"`
-	EventType       string                 `json:"event_type,omitempty"`
-	Groups          map[string]interface{} `json:"groups,omitempty"`
-	OsName          string                 `json:"os_name,omitempty"`
-	OsVersion       string                 `json:"os_version,omitempty"`
-	Platform        string                 `json:"platform,omitempty"`
-	ProductID       string                 `json:"productId,omitempty"`
-	Quantity        int                    `json:"quantity,omitempty"`
-	SessionID       int64                  `json:"session_id,omitempty"`
-	StartVersion    string                 `json:"start_version,omitempty"`
-	Time            int64                  `json:"time,omitempty"`
-	UserID          string                 `json:"user_id,omitempty"`
-	UserProperties  map[string]interface{} `json:"user_properties,omitempty"`
+type AppInfoProvider interface {
+	GetAppVersion() string
+	GetStartVersion() string
+	GetDeviceId() string
+	GetPlatform() string
+	GetUserId() string
 }
 
-type EventRequest struct {
-	APIKey string  `json:"api_key,omitempty"`
-	Events []Event `json:"events,omitempty"`
+type Event interface {
+	GetBackend() MetricsBackend
+	MarshalFastJson(arena *fastjson.Arena) JsonEvent
+	SetTimestamp()
+	GetTimestamp() int64
 }
+
+type MetricsBackend int
+type JsonEvent *fastjson.Value
 
 // New client with API key
-func New(key string) *Client {
+func New(eventEndpoint string, key string, isCompressed bool) Service {
+	var httpClient *http.Client
+	if isCompressed {
+		httpClient = &http.Client{
+			Transport: gzhttp.Transport(http.DefaultTransport),
+		}
+	} else {
+		httpClient = &http.Client{}
+	}
 	return &Client{
 		eventEndpoint: eventEndpoint,
 		key:           key,
-		client:        new(http.Client),
+		client:        httpClient,
+		arenaPool:     &fastjson.ArenaPool{},
 	}
 }
 
-func (c *Client) SetClient(client *http.Client) {
-	c.client = client
-}
-
-func (c *Client) Events(events []Event) error {
-	req := EventRequest{
-		APIKey: c.key,
-		Events: events,
+func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
+	if c.key == "" {
+		return nil
 	}
-	evJSON, err := json.Marshal(req)
-	if err != nil {
-		return err
+	if len(amplEvents) == 0 {
+		return nil
+	}
+	arena := c.arenaPool.Get()
+	appVersion := arena.NewString(info.GetAppVersion())
+	deviceId := arena.NewString(info.GetDeviceId())
+	platform := arena.NewString(info.GetPlatform())
+	startVersion := arena.NewString(info.GetStartVersion())
+	userId := arena.NewString(info.GetUserId())
+
+	reqJSON := arena.NewObject()
+	reqJSON.Set("api_key", arena.NewString(c.key))
+
+	events := arena.NewArray()
+	amIndex := 0
+	for _, ev := range amplEvents {
+		tryEvent := ev.MarshalFastJson(arena)
+		if tryEvent == nil {
+			continue
+		}
+		ampEvent := *tryEvent
+		ampEvent.Set("app_version", appVersion)
+		ampEvent.Set("device_id", deviceId)
+		ampEvent.Set("platform", platform)
+		ampEvent.Set("start_version", startVersion)
+		ampEvent.Set("user_id", userId)
+		ampEvent.Set("time", arena.NewNumberInt(int(ev.GetTimestamp())))
+
+		events.SetArrayItem(amIndex, &ampEvent)
+		amIndex++
 	}
 
+	reqJSON.Set("events", events)
+
+	evJSON := reqJSON.MarshalTo(nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	r, err := http.NewRequestWithContext(ctx, "POST", eventEndpoint, bytes.NewReader(evJSON))
+	defer func() {
+		cancel()
+		// flush arena
+		arena.Reset()
+		c.arenaPool.Put(arena)
+	}()
+
+	reader, err := c.getBody(evJSON)
 	if err != nil {
 		return err
 	}
-
-	r.Header.Set("content-type", "application/json")
-	resp, err := c.client.Do(r)
+	req, err := http.NewRequestWithContext(ctx, "POST", c.eventEndpoint, reader)
+	if err != nil {
+		return err
+	}
+	if c.isCompressed {
+		req.Header.Set("Content-Encoding", "gzip")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.client.Do(req)
 	if err == nil {
 		return resp.Body.Close()
 	}
@@ -80,6 +130,23 @@ func (c *Client) Events(events []Event) error {
 	return err
 }
 
-func (c *Client) Event(msg Event) error {
-	return c.Events([]Event{msg})
+func (c *Client) getBody(evJSON []byte) (io.Reader, error) {
+	if !c.isCompressed {
+		return bytes.NewReader(evJSON), nil
+	}
+
+	var buf *bytes.Buffer
+	gzipWriter := gzip.NewWriter(buf)
+
+	_, err := gzipWriter.Write(evJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	err = gzipWriter.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
 }

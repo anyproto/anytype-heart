@@ -14,13 +14,18 @@ import (
 	"github.com/go-shiori/go-readability"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/otiai10/opengraph/v2"
+	"golang.org/x/net/html/charset"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/text"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
-const CName = "linkpreview"
+const (
+	CName       = "linkpreview"
+	utfEncoding = "utf-8"
+)
 
 func New() LinkPreview {
 	return &linkPreview{}
@@ -32,8 +37,10 @@ const (
 	maxDescriptionSize = 200
 )
 
+var log = logging.Logger("link-preview")
+
 type LinkPreview interface {
-	Fetch(ctx context.Context, url string) (model.LinkPreview, error)
+	Fetch(ctx context.Context, url string) (model.LinkPreview, []byte, error)
 	app.Component
 }
 
@@ -50,7 +57,7 @@ func (l *linkPreview) Name() (name string) {
 	return CName
 }
 
-func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, error) {
+func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, []byte, error) {
 	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
 	client := &http.Client{Transport: rt}
 	og := opengraph.New(fetchUrl)
@@ -60,13 +67,17 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	err := og.Fetch()
 	if err != nil {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
-			return l.makeNonHtml(fetchUrl, resp)
+			preview, err := l.makeNonHtml(fetchUrl, resp)
+			if err != nil {
+				return preview, nil, err
+			}
+			return preview, rt.lastBody, nil
 		}
-		return model.LinkPreview{}, err
+		return model.LinkPreview{}, nil, err
 	}
 
 	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
-		return model.LinkPreview{}, fmt.Errorf("invalid http code %d", resp.StatusCode)
+		return model.LinkPreview{}, nil, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
 	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
@@ -78,7 +89,24 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	if !utf8.ValidString(res.Description) {
 		res.Description = ""
 	}
-	return res, nil
+	decodedResponse, err := decodeResponse(rt)
+	if err != nil {
+		log.Errorf("failed to decode request %s", err)
+	}
+	return res, decodedResponse, err
+}
+
+func decodeResponse(response *proxyRoundTripper) ([]byte, error) {
+	contentType := response.lastResponse.Header.Get("Content-Type")
+	enc, name, _ := charset.DetermineEncoding(response.lastBody, contentType)
+	if name == utfEncoding {
+		return response.lastBody, nil
+	}
+	decodedResponse, err := enc.NewDecoder().Bytes(response.lastBody)
+	if err != nil {
+		return response.lastBody, err
+	}
+	return decodedResponse, nil
 }
 
 func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) (i model.LinkPreview) {

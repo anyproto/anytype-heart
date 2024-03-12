@@ -325,18 +325,19 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 	}
 	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
 	if rawUniqueKey == "" {
-		return nil, fmt.Errorf("object %s does not have %s set in details", id, bundle.RelationKeyUniqueKey.String())
+		return nil, fmt.Errorf("object does not have unique key in details")
 	}
 	return domain.UnmarshalUniqueKey(rawUniqueKey)
 }
 
 func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error) {
-	filters := []*model.BlockContentDataviewFilter{
-		{
+	var filters []*model.BlockContentDataviewFilter
+	if spaceID != "" {
+		filters = append(filters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String(spaceID),
-		},
+		})
 	}
 	if includeArchived {
 		filters = append(filters, &model.BlockContentDataviewFilter{

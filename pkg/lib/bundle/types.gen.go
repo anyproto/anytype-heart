@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "0b6ddb10a9e90cac620ea5490051c69dd77330c18f4067adf38dded3214692a9"
+const TypeChecksum = "fea3b06c998f4c974f06b3b0714b26dd2c5a7fa35ce9dc8b8f17d7c619215f7b"
 const (
 	TypePrefix = "_ot"
 )
@@ -32,6 +32,7 @@ const (
 	TypeKeyRelationOption domain.TypeKey = "relationOption"
 	TypeKeySpace          domain.TypeKey = "space"
 	TypeKeySpaceView      domain.TypeKey = "spaceView"
+	TypeKeyParticipant    domain.TypeKey = "participant"
 	TypeKeyTemplate       domain.TypeKey = "template"
 	TypeKeySet            domain.TypeKey = "set"
 	TypeKeyCollection     domain.TypeKey = "collection"
@@ -53,14 +54,15 @@ var (
 	types = map[domain.TypeKey]*model.ObjectType{
 		TypeKeyAudio: {
 
-			Description:   "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce",
-			IconEmoji:     "🎵",
-			Layout:        model.ObjectType_file,
-			Name:          "Audio",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyComposer), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyAudioArtist), MustGetRelationLink(RelationKeyAudioLyrics)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_File},
-			Url:           TypePrefix + "audio",
+			Description:            "Sound when recorded, with ability to reproduce",
+			IconEmoji:              "🎵",
+			Layout:                 model.ObjectType_file,
+			Name:                   "Audio",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyComposer), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeyAudioArtist), MustGetRelationLink(RelationKeyAudioLyrics)},
+			RestrictObjectCreation: true,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
+			Url:                    TypePrefix + "audio",
 		},
 		TypeKeyBook: {
 
@@ -141,13 +143,14 @@ var (
 		},
 		TypeKeyDashboard: {
 
-			Description: "Internal home dashboard with favourite objects",
-			Hidden:      true,
-			Layout:      model.ObjectType_dashboard,
-			Name:        "Dashboard",
-			Readonly:    true,
-			Types:       []model.SmartBlockType{model.SmartBlockType_Home},
-			Url:         TypePrefix + "dashboard",
+			Description:            "Internal home dashboard with favourite objects",
+			Hidden:                 true,
+			Layout:                 model.ObjectType_dashboard,
+			Name:                   "Dashboard",
+			Readonly:               true,
+			RestrictObjectCreation: true,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_Home},
+			Url:                    TypePrefix + "dashboard",
 		},
 		TypeKeyDate: {
 
@@ -196,14 +199,15 @@ var (
 		},
 		TypeKeyFile: {
 
-			Description:   "Auto-generated object from files added to Anytype. Computer resource for recording data in a computer storage device",
-			IconEmoji:     "📎",
-			Layout:        model.ObjectType_file,
-			Name:          "File",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_File},
-			Url:           TypePrefix + "file",
+			Description:            "Computer resource for recording data in a computer storage device",
+			IconEmoji:              "📎",
+			Layout:                 model.ObjectType_file,
+			Name:                   "File",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RestrictObjectCreation: true,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
+			Url:                    TypePrefix + "file",
 		},
 		TypeKeyGoal: {
 
@@ -229,14 +233,15 @@ var (
 		},
 		TypeKeyImage: {
 
-			Description:   "Auto-generated object from .jpg & .png files added to Anytype. A representation of the external form of a person or thing in art",
-			IconEmoji:     "🏞",
-			Layout:        model.ObjectType_image,
-			Name:          "Image",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFocalRatio), MustGetRelationLink(RelationKeyFileExt)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_File},
-			Url:           TypePrefix + "image",
+			Description:            "A representation of the external form of a person or thing in art",
+			IconEmoji:              "🏞",
+			Layout:                 model.ObjectType_image,
+			Name:                   "Image",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFocalRatio), MustGetRelationLink(RelationKeyFileExt)},
+			RestrictObjectCreation: true,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
+			Url:                    TypePrefix + "image",
 		},
 		TypeKeyMovie: {
 
@@ -281,6 +286,19 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "page",
+		},
+		TypeKeyParticipant: {
+
+			Description:            "Anytype identity as a space participant",
+			IconEmoji:              "🧑",
+			Layout:                 model.ObjectType_participant,
+			Name:                   "Space member",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			RestrictObjectCreation: true,
+			Revision:               1,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_Participant},
+			Url:                    TypePrefix + "participant",
 		},
 		TypeKeyProfile: {
 
@@ -351,27 +369,29 @@ var (
 		},
 		TypeKeySpace: {
 
-			Description:   "Workspace",
-			Hidden:        true,
-			IconEmoji:     "🌎",
-			Layout:        model.ObjectType_space,
-			Name:          "Space",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Workspace},
-			Url:           TypePrefix + "space",
+			Description:            "Workspace",
+			Hidden:                 true,
+			IconEmoji:              "🌎",
+			Layout:                 model.ObjectType_space,
+			Name:                   "Space",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			RestrictObjectCreation: true,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_Workspace},
+			Url:                    TypePrefix + "space",
 		},
 		TypeKeySpaceView: {
 
-			Description:   "Space",
-			Hidden:        true,
-			IconEmoji:     "🌎",
-			Layout:        model.ObjectType_spaceView,
-			Name:          "Space",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_SpaceView},
-			Url:           TypePrefix + "spaceView",
+			Description:            "Space",
+			Hidden:                 true,
+			IconEmoji:              "🌎",
+			Layout:                 model.ObjectType_spaceView,
+			Name:                   "Space",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			RestrictObjectCreation: true,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_SpaceView},
+			Url:                    TypePrefix + "spaceView",
 		},
 		TypeKeyTask: {
 
@@ -397,14 +417,15 @@ var (
 		},
 		TypeKeyVideo: {
 
-			Description:   "Auto-generated object from .mpeg-4 files added to Anytype. The recording of moving visual images",
-			IconEmoji:     "📽",
-			Layout:        model.ObjectType_file,
-			Name:          "Video",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_File},
-			Url:           TypePrefix + "video",
+			Description:            "The recording of moving visual images",
+			IconEmoji:              "📽",
+			Layout:                 model.ObjectType_file,
+			Name:                   "Video",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyThumbnailImage), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyFileExt)},
+			RestrictObjectCreation: true,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
+			Url:                    TypePrefix + "video",
 		},
 		TypeKeyWeeklyPlan: {
 

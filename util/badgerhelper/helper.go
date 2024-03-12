@@ -115,3 +115,7 @@ func ViewTxnWithResult[T any](db *badger.DB, f func(txn *badger.Txn) (T, error))
 func UnmarshalString(b []byte) (string, error) {
 	return string(b), nil
 }
+
+func UnmarshalBytes(b []byte) ([]byte, error) {
+	return b, nil
+}

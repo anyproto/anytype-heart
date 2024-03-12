@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -17,13 +18,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "client.space.techspace"
 
 var log = logger.NewNamed(CName)
+
+const spaceViewCheckTimeout = time.Second * 15
 
 var (
 	ErrSpaceViewExists    = errors.New("spaceView exists")
@@ -37,9 +42,10 @@ type TechSpace interface {
 	Close(ctx context.Context) (err error)
 
 	TechSpaceId() string
-	SpaceViewCreate(ctx context.Context, spaceId string, force bool) (err error)
+	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
+	SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) (err error)
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
 	SpaceViewId(id string) (string, error)
@@ -49,6 +55,7 @@ type SpaceView interface {
 	sync.Locker
 	SetSpaceData(details *types.Struct) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
+	SetAccessType(acc spaceinfo.AccessType) error
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 }
 
@@ -117,15 +124,21 @@ func (s *techSpace) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalI
 	})
 }
 
+func (s *techSpace) SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) (err error) {
+	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
+		return spaceView.SetAccessType(acc)
+	})
+}
+
 func (s *techSpace) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error) {
 	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
 		return spaceView.SetSpacePersistentInfo(info)
 	})
 }
 
-func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool) (err error) {
+func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error) {
 	if force {
-		return s.spaceViewCreate(ctx, spaceId)
+		return s.spaceViewCreate(ctx, spaceId, info)
 	}
 	viewId, err := s.getViewIdLocked(ctx, spaceId)
 	if err != nil {
@@ -133,7 +146,7 @@ func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force b
 	}
 	_, err = s.objectCache.GetObject(ctx, viewId)
 	if err != nil { // TODO: check specific error
-		return s.spaceViewCreate(ctx, spaceId)
+		return s.spaceViewCreate(ctx, spaceId, info)
 	}
 	return ErrSpaceViewExists
 }
@@ -143,6 +156,8 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 	if err != nil {
 		return
 	}
+	ctx, cancel := context.WithTimeout(ctx, spaceViewCheckTimeout)
+	defer cancel()
 	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	_, getErr := s.objectCache.GetObject(ctx, viewId)
 	return getErr == nil, nil
@@ -158,16 +173,22 @@ func (s *techSpace) SpaceViewId(spaceId string) (string, error) {
 	return s.getViewIdLocked(context.TODO(), spaceId)
 }
 
-func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err error) {
+func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, info spaceinfo.SpacePersistentInfo) (err error) {
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, spaceID)
 	if err != nil {
 		return
 	}
+	initFunc := func(id string) *editorsb.InitContext {
+		st := state.NewDoc(id, nil).(*state.State)
+		st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
+		if info.AclHeadId != "" {
+			st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
+		}
+		return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: st}
+	}
 	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-		Key: uniqueKey,
-		InitFunc: func(id string) *editorsb.InitContext {
-			return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: state.NewDoc(id, nil).(*state.State)}
-		},
+		Key:      uniqueKey,
+		InitFunc: initFunc,
 	})
 	if err != nil {
 		return
