@@ -516,3 +516,7 @@ func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) err
 
 	return nil
 }
+
+func (d *Dataview) IsEmpty() bool {
+	return d.content.TargetObjectId == "" && len(d.content.Views) == 0
+}

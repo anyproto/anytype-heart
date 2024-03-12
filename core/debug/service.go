@@ -3,6 +3,7 @@ package debug
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/jsonpb"
@@ -36,6 +38,7 @@ func New() Debug {
 
 type Debug interface {
 	app.Component
+	DebugStat() (string, error)
 	DumpTree(ctx context.Context, objectID string, path string, anonymize bool, withSvg bool) (filename string, err error)
 	DumpLocalstore(ctx context.Context, spaceID string, objectIds []string, path string) (filename string, err error)
 	SpaceSummary(ctx context.Context, spaceID string) (summary SpaceSummary, err error)
@@ -47,6 +50,7 @@ type debug struct {
 	store        objectstore.ObjectStore
 	spaceService space.Service
 	resolver     idresolver.Resolver
+	statService  debugstat.StatService
 
 	server *http.Server
 }
@@ -60,7 +64,10 @@ func (d *debug) Init(a *app.App) (err error) {
 	d.block = a.MustComponent(block.CName).(*block.Service)
 	d.spaceService = app.MustComponent[space.Service](a)
 	d.resolver = app.MustComponent[idresolver.Resolver](a)
-
+	d.statService, _ = a.Component(debugstat.CName).(debugstat.StatService)
+	if d.statService == nil {
+		d.statService = debugstat.NewNoOp()
+	}
 	d.initHandlers(a)
 	return nil
 }
@@ -137,6 +144,15 @@ func (d *debug) SpaceSummary(ctx context.Context, spaceID string) (summary Space
 		})
 	}
 	return
+}
+
+func (d *debug) DebugStat() (string, error) {
+	stats := d.statService.GetStat()
+	marshaled, err := json.Marshal(stats)
+	if err != nil {
+		return "", err
+	}
+	return string(marshaled), nil
 }
 
 func (d *debug) TreeHeads(ctx context.Context, id string) (info TreeInfo, err error) {

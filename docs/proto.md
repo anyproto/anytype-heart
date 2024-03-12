@@ -539,6 +539,10 @@
     - [Rpc.Debug.StackGoroutines.Request](#anytype-Rpc-Debug-StackGoroutines-Request)
     - [Rpc.Debug.StackGoroutines.Response](#anytype-Rpc-Debug-StackGoroutines-Response)
     - [Rpc.Debug.StackGoroutines.Response.Error](#anytype-Rpc-Debug-StackGoroutines-Response-Error)
+    - [Rpc.Debug.Stat](#anytype-Rpc-Debug-Stat)
+    - [Rpc.Debug.Stat.Request](#anytype-Rpc-Debug-Stat-Request)
+    - [Rpc.Debug.Stat.Response](#anytype-Rpc-Debug-Stat-Response)
+    - [Rpc.Debug.Stat.Response.Error](#anytype-Rpc-Debug-Stat-Response-Error)
     - [Rpc.Debug.Subscriptions](#anytype-Rpc-Debug-Subscriptions)
     - [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request)
     - [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response)
@@ -936,6 +940,11 @@
     - [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request)
     - [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response)
     - [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error)
+    - [Rpc.Payments.Tiers](#anytype-Rpc-Payments-Tiers)
+    - [Rpc.Payments.Tiers.Get](#anytype-Rpc-Payments-Tiers-Get)
+    - [Rpc.Payments.Tiers.Get.Request](#anytype-Rpc-Payments-Tiers-Get-Request)
+    - [Rpc.Payments.Tiers.Get.Response](#anytype-Rpc-Payments-Tiers-Get-Response)
+    - [Rpc.Payments.Tiers.Get.Response.Error](#anytype-Rpc-Payments-Tiers-Get-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
@@ -999,6 +1008,10 @@
     - [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request)
     - [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response)
     - [Rpc.Space.RequestDecline.Response.Error](#anytype-Rpc-Space-RequestDecline-Response-Error)
+    - [Rpc.Space.StopSharing](#anytype-Rpc-Space-StopSharing)
+    - [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request)
+    - [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response)
+    - [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -1208,6 +1221,7 @@
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
     - [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code)
+    - [Rpc.Debug.Stat.Response.Error.Code](#anytype-Rpc-Debug-Stat-Response-Error-Code)
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
@@ -1310,6 +1324,7 @@
     - [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus)
     - [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier)
     - [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error-Code)
+    - [Rpc.Payments.Tiers.Get.Response.Error.Code](#anytype-Rpc-Payments-Tiers-Get-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1325,6 +1340,7 @@
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
+    - [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
@@ -1636,6 +1652,9 @@
     - [Restrictions.DataviewRestrictions](#anytype-model-Restrictions-DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
+    - [SubscriptionTierData](#anytype-model-SubscriptionTierData)
+    - [SubscriptionTierData.Feature](#anytype-model-SubscriptionTierData-Feature)
+    - [SubscriptionTierData.FeaturesEntry](#anytype-model-SubscriptionTierData-FeaturesEntry)
   
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
@@ -1685,6 +1704,7 @@
     - [SmartBlockType](#anytype-model-SmartBlockType)
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceStatus](#anytype-model-SpaceStatus)
+    - [SubscriptionTierData.PeriodType](#anytype-model-SubscriptionTierData-PeriodType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -1749,6 +1769,7 @@
 | SpaceJoin | [Rpc.Space.Join.Request](#anytype-Rpc-Space-Join-Request) | [Rpc.Space.Join.Response](#anytype-Rpc-Space-Join-Response) |  |
 | SpaceJoinCancel | [Rpc.Space.JoinCancel.Request](#anytype-Rpc-Space-JoinCancel-Request) | [Rpc.Space.JoinCancel.Response](#anytype-Rpc-Space-JoinCancel-Response) |  |
 | SpaceExit | [Rpc.Space.Exit.Request](#anytype-Rpc-Space-Exit-Request) | [Rpc.Space.Exit.Response](#anytype-Rpc-Space-Exit-Response) |  |
+| SpaceStopSharing | [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request) | [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response) |  |
 | SpaceRequestApprove | [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request) | [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response) |  |
 | SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
@@ -1921,6 +1942,7 @@
 | BlockLatexSetText | [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request) | [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request) | [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request) | [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response) |  |
+| DebugStat | [Rpc.Debug.Stat.Request](#anytype-Rpc-Debug-Stat-Request) | [Rpc.Debug.Stat.Response](#anytype-Rpc-Debug-Stat-Response) |  |
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
 | DebugTreeHeads | [Rpc.Debug.TreeHeads.Request](#anytype-Rpc-Debug-TreeHeads-Request) | [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response) |  |
 | DebugSpaceSummary | [Rpc.Debug.SpaceSummary.Request](#anytype-Rpc-Debug-SpaceSummary-Request) | [Rpc.Debug.SpaceSummary.Response](#anytype-Rpc-Debug-SpaceSummary-Response) |  |
@@ -1940,6 +1962,7 @@
 | PaymentsSubscriptionGetVerificationEmail | [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request) | [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
 | PaymentsSubscriptionVerifyEmailCode | [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request) | [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail) |
 | PaymentsSubscriptionFinalize | [Rpc.Payments.Subscription.Finalize.Request](#anytype-Rpc-Payments-Subscription-Finalize-Request) | [Rpc.Payments.Subscription.Finalize.Response](#anytype-Rpc-Payments-Subscription-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call PaymentsSubscriptionFinalize to finish the process |
+| PaymentsGetTiers | [Rpc.Payments.Tiers.Get.Request](#anytype-Rpc-Payments-Tiers-Get-Request) | [Rpc.Payments.Tiers.Get.Response](#anytype-Rpc-Payments-Tiers-Get-Response) |  |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | NameServiceResolveSpaceId | [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request) | [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
@@ -9739,6 +9762,58 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-Stat"></a>
+
+### Rpc.Debug.Stat
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Stat-Request"></a>
+
+### Rpc.Debug.Stat.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Stat-Response"></a>
+
+### Rpc.Debug.Stat.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.Stat.Response.Error](#anytype-Rpc-Debug-Stat-Response-Error) |  |  |
+| jsonStat | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-Stat-Response-Error"></a>
+
+### Rpc.Debug.Stat.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.Stat.Response.Error.Code](#anytype-Rpc-Debug-Stat-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-Subscriptions"></a>
 
 ### Rpc.Debug.Subscriptions
@@ -11910,6 +11985,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | objectTypeUniqueKey | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| addPageContent | [bool](#bool) |  |  |
 
 
 
@@ -15533,6 +15609,75 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 
 
 
+<a name="anytype-Rpc-Payments-Tiers"></a>
+
+### Rpc.Payments.Tiers
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get"></a>
+
+### Rpc.Payments.Tiers.Get
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get-Request"></a>
+
+### Rpc.Payments.Tiers.Get.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+| locale | [string](#string) |  |  |
+| paymentMethod | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get-Response"></a>
+
+### Rpc.Payments.Tiers.Get.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Payments.Tiers.Get.Response.Error](#anytype-Rpc-Payments-Tiers-Get-Response-Error) |  |  |
+| tiers | [model.SubscriptionTierData](#anytype-model-SubscriptionTierData) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Tiers-Get-Response-Error"></a>
+
+### Rpc.Payments.Tiers.Get.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Payments.Tiers.Get.Response.Error.Code](#anytype-Rpc-Payments-Tiers-Get-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Process"></a>
 
 ### Rpc.Process
@@ -16158,8 +16303,6 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| inviteCid | [string](#string) |  |  |
-| inviteFileKey | [string](#string) |  |  |
 
 
 
@@ -16419,6 +16562,62 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-StopSharing"></a>
+
+### Rpc.Space.StopSharing
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-StopSharing-Request"></a>
+
+### Rpc.Space.StopSharing.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-StopSharing-Response"></a>
+
+### Rpc.Space.StopSharing.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-StopSharing-Response-Error"></a>
+
+### Rpc.Space.StopSharing.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19301,6 +19500,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-Stat-Response-Error-Code"></a>
+
+### Rpc.Debug.Stat.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Debug-Subscriptions-Response-Error-Code"></a>
 
 ### Rpc.Debug.Subscriptions.Response.Error.Code
@@ -19968,6 +20180,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | IMPORT_IS_CANCELED | 6 |  |
 | LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | FILE_LOAD_ERROR | 8 |  |
+| INSUFFICIENT_PERMISSIONS | 9 |  |
 
 
 
@@ -19981,6 +20194,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| INSUFFICIENT_PERMISSION | 3 |  |
 
 
 
@@ -20682,6 +20896,21 @@ in this case please call Finalize to finish the process |
 
 
 
+<a name="anytype-Rpc-Payments-Tiers-Get-Response-Error-Code"></a>
+
+### Rpc.Payments.Tiers.Get.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
 <a name="anytype-Rpc-Process-Cancel-Response-Error-Code"></a>
 
 ### Rpc.Process.Cancel.Response.Error.Code
@@ -20907,6 +21136,22 @@ in this case please call Finalize to finish the process |
 <a name="anytype-Rpc-Space-RequestDecline-Response-Error-Code"></a>
 
 ### Rpc.Space.RequestDecline.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-StopSharing-Response-Error-Code"></a>
+
+### Rpc.Space.StopSharing.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -25557,6 +25802,7 @@ Used to decode block meta only, without the content itself
 | installedByDefault | [bool](#bool) |  |  |
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 | revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
+| restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
 
 
 
@@ -25850,6 +26096,66 @@ stored |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceID | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-SubscriptionTierData"></a>
+
+### SubscriptionTierData
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [uint32](#uint32) |  | this is a unique ID of the tier you should hardcode this in your app and provide icon, graphics, etc for each tier (even for old/historical/inactive/hidden tiers) |
+| name | [string](#string) |  | localazied name of the tier |
+| description | [string](#string) |  | just a short technical description you don&#39;t have to use it, you can use your own UI-friendly texts |
+| isActive | [bool](#bool) |  | can you buy it (ON ALL PLATFORMS, without clarification)? |
+| isTest | [bool](#bool) |  | is this tier for debugging only? |
+| isHiddenTier | [bool](#bool) |  | hidden tiers are only visible once user got them |
+| periodType | [SubscriptionTierData.PeriodType](#anytype-model-SubscriptionTierData-PeriodType) |  | how long is the period of the subscription |
+| periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
+| priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
+| anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
+| anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
+| features | [SubscriptionTierData.FeaturesEntry](#anytype-model-SubscriptionTierData-FeaturesEntry) | repeated | each tier has a set of features each feature has a unique key: &#34;storage&#34;, &#34;invites&#34;, etc not using enum here to provide dynamic feature list:
+
+&#34;stoageGB&#34; -&gt; {64, &#34;&#34;} &#34;invites&#34; -&gt; {120, &#34;&#34;} &#34;spaces-public&#34; -&gt; {10, &#34;&#34;} ... |
+
+
+
+
+
+
+<a name="anytype-model-SubscriptionTierData-Feature"></a>
+
+### SubscriptionTierData.Feature
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| valueUint | [uint32](#uint32) |  | usually feature has uint value like &#34;storage&#34; - 120 |
+| valueStr | [string](#string) |  | in case feature will have string value |
+
+
+
+
+
+
+<a name="anytype-model-SubscriptionTierData-FeaturesEntry"></a>
+
+### SubscriptionTierData.FeaturesEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [SubscriptionTierData.Feature](#anytype-model-SubscriptionTierData-Feature) |  |  |
 
 
 
@@ -26330,6 +26636,7 @@ stored |
 | IMPORT_IS_CANCELED | 6 |  |
 | LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | FILE_LOAD_ERROR | 8 |  |
+| INSUFFICIENT_PERMISSIONS | 9 |  |
 
 
 
@@ -26580,6 +26887,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | LayoutChange | 6 | restricts layout changing |
 | Template | 7 | restricts template creation from this object |
 | Duplicate | 8 | restricts duplicate object |
+| CreateObjectOfThisType | 9 | can be set only for types. Restricts creating objects of this type |
 
 
 
@@ -26647,6 +26955,22 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SpaceActive | 8 | SpaceActive - the space is active in the network |
 | SpaceJoining | 9 | SpaceJoining - the account is joining the space |
 | SpaceRemoving | 10 | SpaceRemoving - the account is removing from space or the space is removed from network |
+
+
+
+<a name="anytype-model-SubscriptionTierData-PeriodType"></a>
+
+### SubscriptionTierData.PeriodType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PeriodTypeUnknown | 0 |  |
+| PeriodTypeUnlimited | 1 |  |
+| PeriodTypeDays | 2 |  |
+| PeriodTypeWeeks | 3 |  |
+| PeriodTypeMonths | 4 |  |
+| PeriodTypeYears | 5 |  |
 
 
  

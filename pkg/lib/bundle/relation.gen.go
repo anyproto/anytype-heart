@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5658b7e40a9192d60e84c376574436687e4b0d65b2615d98ff12413d276f2100"
+const RelationChecksum = "b7fe81aa5a57694b39ac8ec0001ac643201be93ec43f28113ee5973b01c7acf4"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -19,6 +19,7 @@ const (
 	RelationKeyRelationFormatObjectTypes domain.RelationKey = "relationFormatObjectTypes"
 	RelationKeyRelationKey               domain.RelationKey = "relationKey"
 	RelationKeyRelationOptionColor       domain.RelationKey = "relationOptionColor"
+	RelationKeyLatestAclHeadId           domain.RelationKey = "latestAclHeadId"
 	RelationKeyInstructions              domain.RelationKey = "instructions"
 	RelationKeyDone                      domain.RelationKey = "done"
 	RelationKeyMediaArtistURL            domain.RelationKey = "mediaArtistURL"
@@ -254,9 +255,10 @@ var (
 			Id:               "_brassignee",
 			Key:              "assignee",
 			Name:             "Assignee",
-			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact"},
+			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact", TypePrefix + "participant"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAttachments: {
@@ -345,9 +347,10 @@ var (
 			Id:               "_brauthor",
 			Key:              "author",
 			Name:             "Author",
-			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact"},
+			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact", TypePrefix + "participant"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBacklinks: {
@@ -357,10 +360,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brbacklinks",
 			Key:              "backlinks",
-			Name:             "Links to this object",
+			Name:             "Backlinks",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         2,
+			Revision:         3,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBudget: {
@@ -565,13 +568,13 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Human which created this object",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brcreator",
 			Key:              "creator",
 			MaxCount:         1,
 			Name:             "Created by",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyDateOfBirth: {
@@ -1214,9 +1217,10 @@ var (
 			Key:              "lastModifiedBy",
 			MaxCount:         1,
 			Name:             "Last modified by",
-			ObjectTypes:      []string{TypePrefix + "profile"},
+			ObjectTypes:      []string{TypePrefix + "participant"},
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLastModifiedDate: {
@@ -1255,6 +1259,20 @@ var (
 			Key:              "lastUsedDate",
 			MaxCount:         1,
 			Name:             "Last Used date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLatestAclHeadId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Latest Acl head id",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brlatestAclHeadId",
+			Key:              "latestAclHeadId",
+			MaxCount:         1,
+			Name:             "Latest acl head id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1319,10 +1337,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brlinks",
 			Key:              "links",
-			Name:             "Links from this object",
+			Name:             "Links",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         2,
+			Revision:         3,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLogic: {

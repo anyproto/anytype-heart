@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
@@ -59,6 +60,8 @@ type Service interface {
 	VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) (*pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse, error)
 
 	FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsSubscriptionFinalizeRequest) (*pb.RpcPaymentsSubscriptionFinalizeResponse, error)
+
+	GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) (*pb.RpcPaymentsTiersGetResponse, error)
 
 	app.Component
 }
@@ -139,7 +142,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 
 	var out pb.RpcPaymentsSubscriptionGetStatusResponse
 
-	out.Tier = int32(status.Tier)
+	out.Tier = status.Tier
 	out.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(status.Status)
 	out.DateStarted = status.DateStarted
 	out.DateEnds = status.DateEnds
@@ -398,5 +401,68 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsS
 
 	// return out
 	var out pb.RpcPaymentsSubscriptionFinalizeResponse
+	return &out, nil
+}
+
+func (s *service) GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) (*pb.RpcPaymentsTiersGetResponse, error) {
+	// 1 - send request
+	bsr := psp.GetTiersRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId:    s.wallet.Account().SignKey.GetPublic().Account(),
+		Locale:        req.Locale,
+		PaymentMethod: req.PaymentMethod,
+	}
+
+	payload, err := bsr.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	reqSigned := psp.GetTiersRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	// empty return or error
+	tiers, err := s.ppclient.GetAllTiers(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	// return out
+	var out pb.RpcPaymentsTiersGetResponse
+
+	out.Tiers = make([]*model.SubscriptionTierData, len(tiers.Tiers))
+	for i, tier := range tiers.Tiers {
+		out.Tiers[i] = &model.SubscriptionTierData{
+			Id:                    tier.Id,
+			Name:                  tier.Name,
+			Description:           tier.Description,
+			IsActive:              tier.IsActive,
+			IsTest:                tier.IsTest,
+			IsHiddenTier:          tier.IsHiddenTier,
+			PeriodType:            model.SubscriptionTierDataPeriodType(tier.PeriodType),
+			PeriodValue:           tier.PeriodValue,
+			PriceStripeUsdCents:   tier.PriceStripeUsdCents,
+			AnyNamesCountIncluded: tier.AnyNamesCountIncluded,
+			AnyNameMinLength:      tier.AnyNameMinLength,
+		}
+
+		// copy all features
+		out.Tiers[i].Features = make(map[string]*model.SubscriptionTierDataFeature)
+		for k, v := range tier.Features {
+			out.Tiers[i].Features[k] = &model.SubscriptionTierDataFeature{
+				ValueStr:  v.ValueStr,
+				ValueUint: v.ValueUint,
+			}
+		}
+	}
+
 	return &out, nil
 }

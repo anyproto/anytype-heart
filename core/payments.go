@@ -102,3 +102,19 @@ func (mw *Middleware) PaymentsSubscriptionFinalize(ctx context.Context, req *pb.
 
 	return out
 }
+
+func (mw *Middleware) PaymentsGetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) *pb.RpcPaymentsTiersGetResponse {
+	ps := getService[payments.Service](mw)
+	out, err := ps.GetTiers(ctx, req)
+
+	if err != nil {
+		return &pb.RpcPaymentsTiersGetResponse{
+			Error: &pb.RpcPaymentsTiersGetResponseError{
+				Code:        pb.RpcPaymentsTiersGetResponseError_UNKNOWN_ERROR,
+				Description: err.Error(),
+			},
+		}
+	}
+
+	return out
+}

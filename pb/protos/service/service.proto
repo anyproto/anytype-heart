@@ -57,6 +57,7 @@ service ClientCommands {
     rpc SpaceJoin (anytype.Rpc.Space.Join.Request) returns (anytype.Rpc.Space.Join.Response);
     rpc SpaceJoinCancel (anytype.Rpc.Space.JoinCancel.Request) returns (anytype.Rpc.Space.JoinCancel.Response);
     rpc SpaceExit (anytype.Rpc.Space.Exit.Request) returns (anytype.Rpc.Space.Exit.Response);
+    rpc SpaceStopSharing (anytype.Rpc.Space.StopSharing.Request) returns (anytype.Rpc.Space.StopSharing.Response);
     rpc SpaceRequestApprove (anytype.Rpc.Space.RequestApprove.Request) returns (anytype.Rpc.Space.RequestApprove.Response);
     rpc SpaceRequestDecline (anytype.Rpc.Space.RequestDecline.Request) returns (anytype.Rpc.Space.RequestDecline.Response);
     rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
@@ -290,6 +291,7 @@ service ClientCommands {
 
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 
+    rpc DebugStat (anytype.Rpc.Debug.Stat.Request) returns (anytype.Rpc.Debug.Stat.Response);
     rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
     rpc DebugTreeHeads (anytype.Rpc.Debug.TreeHeads.Request) returns (anytype.Rpc.Debug.TreeHeads.Response);
     rpc DebugSpaceSummary (anytype.Rpc.Debug.SpaceSummary.Request) returns (anytype.Rpc.Debug.SpaceSummary.Response);
@@ -328,6 +330,8 @@ service ClientCommands {
     // If your subscription is in PendingRequiresFinalization:
     // please call PaymentsSubscriptionFinalize to finish the process
     rpc PaymentsSubscriptionFinalize (anytype.Rpc.Payments.Subscription.Finalize.Request) returns (anytype.Rpc.Payments.Subscription.Finalize.Response);
+
+    rpc PaymentsGetTiers (anytype.Rpc.Payments.Tiers.Get.Request) returns (anytype.Rpc.Payments.Tiers.Get.Response);
 
     // Name Service:
     // ***
