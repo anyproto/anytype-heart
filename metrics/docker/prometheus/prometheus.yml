@@ -1,17 +1,17 @@
 global:
   scrape_interval:     5s
   evaluation_interval: 5s
-  scrape_timeout:      10s
+  scrape_timeout:      5s
 
   external_labels:
       monitor: 'mw'
 
 scrape_configs:
   - job_name: 'mw'
-    scrape_interval: 1s
+    scrape_interval: 5s
     static_configs:
          - targets: ['host.docker.internal:9094']
   - job_name: node
-    scrape_interval: 1s
+    scrape_interval: 5s
     static_configs:
       - targets: ['host.docker.internal:9100']
