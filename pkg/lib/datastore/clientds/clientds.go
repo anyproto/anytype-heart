@@ -9,10 +9,14 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/metric"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/badger/v4/options"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -114,6 +118,8 @@ func (r *clientds) Init(a *app.App) (err error) {
 		return fmt.Errorf("need wallet to be inited first")
 	}
 	r.repoPath = wl.(wallet.Wallet).RepoPath()
+	metrics, _ := a.Component(metric.CName).(metric.Metric)
+	r.initMetrics(metrics)
 
 	if cfgGetter, ok := a.Component("config").(DSConfigGetter); ok {
 		r.cfg = cfgGetter.DSConfig()
@@ -222,4 +228,56 @@ func (r *clientds) GetLogFields() []zap.Field {
 		zap.Bool("localStoreWasMissing", r.localStoreWasMissing),
 		zap.Int64("spentOnInit", r.spentOnInit.Milliseconds()),
 	}
+}
+
+func (r *clientds) initMetrics(metric metric.Metric) {
+	if metric == nil {
+		return
+	}
+	badgerPrefix := "badger_"
+
+	badgerMetricNames := []string{
+		"read_num_vlog",
+		"read_bytes_vlog",
+		"write_num_vlog",
+		"write_bytes_vlog",
+		"read_bytes_lsm",
+		"write_bytes_l0",
+		"write_bytes_compaction",
+		"get_num_lsm",
+		"hit_num_lsm_bloom_filter",
+		"get_num_memtable",
+		"get_num_user",
+		"put_num_user",
+		"write_bytes_user",
+		"get_with_result_num_user",
+		"iterator_num_user",
+		"size_bytes_lsm",
+		"size_bytes_vlog",
+		"write_pending_num_memtable",
+		"compaction_current_num_lsm",
+	}
+
+	varsPerName := map[string][]string{
+		"get_num_lsm":                {"level"},
+		"hit_num_lsm_bloom_filter":   {"result"},
+		"size_bytes_lsm":             {"path"},
+		"size_bytes_vlog":            {"path"},
+		"write_pending_num_memtable": {"path"},
+		"write_bytes_compaction":     {"level"},
+	}
+
+	exports := make(map[string]*prometheus.Desc)
+	for _, name := range badgerMetricNames {
+		exports[badgerPrefix+name] = prometheus.NewDesc(
+			badgerPrefix+name,
+			badgerPrefix+name,
+			varsPerName[name], nil,
+		)
+	}
+
+	expvarCollector := collectors.NewExpvarCollector(exports)
+	metric.Registry().MustRegister(expvarCollector)
+	prometheus.DefaultRegisterer.Unregister(grpc_prometheus.DefaultServerMetrics)
+	metric.Registry().MustRegister(grpc_prometheus.DefaultServerMetrics)
 }

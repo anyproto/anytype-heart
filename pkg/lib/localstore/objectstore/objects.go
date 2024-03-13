@@ -7,14 +7,18 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/metric"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -82,7 +86,57 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		return fmt.Errorf("get badger: %w", err)
 	}
 
+	metrics, _ := a.Component(metric.CName).(metric.Metric)
+	s.initMetrics(metrics)
+
 	return s.initCache()
+}
+
+func (s *dsObjectStore) initMetrics(metrics metric.Metric) {
+	if metrics == nil {
+		return
+	}
+
+	metrics.Registry().MustRegister(
+		promauto.NewCounterFunc(prometheus.CounterOpts{
+			Namespace: "mw",
+			Subsystem: "store",
+			Name:      "details_index_updated",
+			Help:      "Details updated for an object",
+		}, func() float64 {
+			return float64(s.counterIndexUpdated.Load())
+		}),
+		promauto.NewCounterFunc(prometheus.CounterOpts{
+			Namespace: "mw",
+			Subsystem: "store",
+			Name:      "details_index_not_changed",
+			Help:      "Details not changed optimization",
+		}, func() float64 {
+			return float64(s.counterIndexDetailsNotChanged.Load())
+		}),
+		promauto.NewGaugeFunc(prometheus.GaugeOpts{
+			Namespace: "mw",
+			Subsystem: "store",
+			Name:      "subscriptions",
+			Help:      "amount of active subscriptions",
+		}, func() float64 {
+			s.RLock()
+			defer s.RUnlock()
+			return float64(len(s.subscriptions))
+		}),
+		promauto.NewGaugeFunc(prometheus.GaugeOpts{
+			Namespace: "mw",
+			Subsystem: "ft",
+			Name:      "queue_size",
+			Help:      "amount of pending objects for ft index",
+		}, func() float64 {
+			s.RLock()
+			defer s.RUnlock()
+			size, _ := s.CountIDsFromFullTextQueue()
+			return float64(size)
+		}),
+	)
+
 }
 
 func (s *dsObjectStore) initCache() error {
@@ -196,6 +250,9 @@ type dsObjectStore struct {
 	onChangeCallback      func(record database.Record)
 	subscriptions         []database.Subscription
 	onLinksUpdateCallback func(info LinksUpdateInfo)
+
+	counterIndexUpdated           atomic.Uint32
+	counterIndexDetailsNotChanged atomic.Uint32
 }
 
 func (s *dsObjectStore) Run(context.Context) (err error) {

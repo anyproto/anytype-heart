@@ -188,6 +188,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	const fileWatcherUpdateInterval = 5 * time.Second
 
 	a.
+		Register(metric.New()).
 		// Data storages
 		Register(clientds.New()).
 		Register(debugstat.New()).
@@ -203,7 +204,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(syncstatusprovider.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
-		Register(metric.New()).
 		Register(server.New()).
 		Register(debugserver.New()).
 		Register(pool.New()).
