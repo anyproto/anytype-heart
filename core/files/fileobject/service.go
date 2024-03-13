@@ -278,7 +278,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 }
 
 func (s *service) addToSyncQueue(id domain.FullFileId, uploadedByUser bool, imported bool) error {
-	if err := s.fileSync.AddFile(id.SpaceId, id.FileId, uploadedByUser, imported); err != nil {
+	if err := s.fileSync.AddFile(id, uploadedByUser, imported); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	// TODO Maybe we need a watcher here?
@@ -597,7 +597,7 @@ func (s *service) DeleteFileData(objectId string) error {
 		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
 			return err
 		}
-		if err := s.fileSync.RemoveFile(fullId.SpaceId, fullId.FileId); err != nil {
+		if err := s.fileSync.RemoveFile(fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}
 		_, err = s.FileOffload(context.Background(), objectId, true)

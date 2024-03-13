@@ -10,8 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func (f *fileSync) RemoveFile(spaceId string, fileId domain.FileId) (err error) {
-	log.Info("add file to removing queue", zap.String("fileId", fileId.String()))
+func (f *fileSync) RemoveFile(fileId domain.FullFileId) (err error) {
 	defer func() {
 		if err == nil {
 			select {
@@ -20,7 +19,7 @@ func (f *fileSync) RemoveFile(spaceId string, fileId domain.FileId) (err error) 
 			}
 		}
 	}()
-	err = f.queue.QueueRemove(spaceId, fileId)
+	err = f.queue.QueueRemove(fileId)
 	return
 }
 
@@ -63,7 +62,7 @@ func (f *fileSync) tryToRemove() (domain.FileId, error) {
 	if err = f.removeFile(f.loopCtx, spaceID, fileId); err != nil {
 		return fileId, fmt.Errorf("remove file: %w", err)
 	}
-	if err = f.queue.DoneRemove(spaceID, fileId); err != nil {
+	if err = f.queue.DoneRemove(it.FullFileId()); err != nil {
 		return fileId, fmt.Errorf("mark remove task as done: %w", err)
 	}
 	f.updateSpaceUsageInformation(spaceID)
