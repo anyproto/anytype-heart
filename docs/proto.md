@@ -558,6 +558,12 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
+    - [Rpc.Device](#anytype-Rpc-Device)
+    - [Rpc.Device.NetworkState](#anytype-Rpc-Device-NetworkState)
+    - [Rpc.Device.NetworkState.Set](#anytype-Rpc-Device-NetworkState-Set)
+    - [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request)
+    - [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response)
+    - [Rpc.Device.NetworkState.Set.Response.Error](#anytype-Rpc-Device-NetworkState-Set-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -1178,6 +1184,7 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
+    - [Rpc.Device.NetworkState.Set.Response.Error.Code](#anytype-Rpc-Device-NetworkState-Set-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1623,6 +1630,7 @@
     - [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
+    - [DeviceNetworkType](#anytype-model-DeviceNetworkType)
     - [Export.Format](#anytype-model-Export-Format)
     - [FileIndexingStatus](#anytype-model-FileIndexingStatus)
     - [ImageKind](#anytype-model-ImageKind)
@@ -1897,6 +1905,7 @@
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | NotificationTest | [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request) | [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response) |  |
 | BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
+| DeviceNetworkStateSet | [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request) | [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response) |  |
 
  
 
@@ -9956,6 +9965,82 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | treeId | [string](#string) |  |  |
 | headIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device"></a>
+
+### Rpc.Device
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState"></a>
+
+### Rpc.Device.NetworkState
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set"></a>
+
+### Rpc.Device.NetworkState.Set
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set-Request"></a>
+
+### Rpc.Device.NetworkState.Set.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deviceNetworkType | [model.DeviceNetworkType](#anytype-model-DeviceNetworkType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set-Response"></a>
+
+### Rpc.Device.NetworkState.Set.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Device.NetworkState.Set.Response.Error](#anytype-Rpc-Device-NetworkState-Set-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set-Response-Error"></a>
+
+### Rpc.Device.NetworkState.Set.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Device.NetworkState.Set.Response.Error.Code](#anytype-Rpc-Device-NetworkState-Set-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -18819,6 +18904,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Device-NetworkState-Set-Response-Error-Code"></a>
+
+### Rpc.Device.NetworkState.Set.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -25664,6 +25763,19 @@ stored |
 | VerticalAlignTop | 0 |  |
 | VerticalAlignMiddle | 1 |  |
 | VerticalAlignBottom | 2 |  |
+
+
+
+<a name="anytype-model-DeviceNetworkType"></a>
+
+### DeviceNetworkType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| WIFI | 0 |  |
+| CELLULAR | 1 |  |
+| NOT_CONNECTED | 2 |  |
 
 
 

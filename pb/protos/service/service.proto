@@ -311,4 +311,6 @@ service ClientCommands {
     rpc NotificationTest (anytype.Rpc.Notification.Test.Request) returns (anytype.Rpc.Notification.Test.Response);
 
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
+
+    rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
 }
