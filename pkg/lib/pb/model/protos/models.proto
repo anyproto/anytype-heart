@@ -1147,3 +1147,9 @@ message ManifestInfo {
     repeated string categories = 11;
     string language = 12;
 }
+
+enum DeviceNetworkType {
+    WIFI = 0;
+    CELLULAR = 1;
+    NOT_CONNECTED = 2;
+}
