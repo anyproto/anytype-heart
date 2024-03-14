@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
@@ -189,6 +190,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	a.
 		// Data storages
 		Register(clientds.New()).
+		Register(debugstat.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).

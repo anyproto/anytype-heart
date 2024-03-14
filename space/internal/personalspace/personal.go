@@ -53,7 +53,7 @@ func (s *spaceController) Start(ctx context.Context) (err error) {
 	err = s.loader.Start(ctx)
 	// This could happen for old accounts
 	if errors.Is(err, spaceloader.ErrSpaceNotExists) {
-		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false, spaceinfo.AccountStatusUnknown)
+		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false, spaceinfo.SpacePersistentInfo{AccountStatus: spaceinfo.AccountStatusUnknown})
 		if err != nil {
 			return
 		}

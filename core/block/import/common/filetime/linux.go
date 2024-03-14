@@ -21,7 +21,7 @@ func ExtractFileTimes(fileName string) (int64, int64) {
 	}
 
 	if stat, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
-		creationTime := time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec)
+		creationTime := time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec))
 		modTime := fileInfo.ModTime().Unix()
 		return creationTime.Unix(), modTime
 	}
