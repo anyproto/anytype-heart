@@ -17,6 +17,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -703,18 +704,18 @@ func (e *export) iterateObjects(objects map[string]*types.Struct) ([]database.Re
 	var (
 		derivedObjects []database.Record
 		relations      []string
-		err            error
 	)
 	for id, object := range objects {
 		err := getblock.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState()
 			relations = e.getObjectRelations(state, relations)
 			details := state.Details()
-			if e.objectWithDataview(details) {
-				relations, err = e.getDataviewRelations(state, relations)
+			if e.isObjectWithDataview(details) {
+				dataviewRelations, err := e.getDataviewRelations(state)
 				if err != nil {
 					return err
 				}
+				relations = lo.Union(relations, dataviewRelations)
 			}
 			return nil
 		})
@@ -729,7 +730,8 @@ func (e *export) iterateObjects(objects map[string]*types.Struct) ([]database.Re
 	return derivedObjects, nil
 }
 
-func (e *export) getDataviewRelations(state *state.State, relations []string) ([]string, error) {
+func (e *export) getDataviewRelations(state *state.State) ([]string, error) {
+	var relations []string
 	err := state.Iterate(func(b simple.Block) (isContinue bool) {
 		if dataview := b.Model().GetDataview(); dataview != nil {
 			for _, view := range dataview.Views {
@@ -751,7 +753,7 @@ func (e *export) getObjectRelations(state *state.State, relations []string) []st
 	return relations
 }
 
-func (e *export) objectWithDataview(details *types.Struct) bool {
+func (e *export) isObjectWithDataview(details *types.Struct) bool {
 	return pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) == float64(model.ObjectType_collection) ||
 		pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) == float64(model.ObjectType_set)
 }
