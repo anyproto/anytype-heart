@@ -214,6 +214,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	}
 
 	st, _, _, err = source.BuildState(id.SpaceID, nil, tree)
+	defer st.ResetParentIdsCache()
 	if err != nil {
 		return
 	}
