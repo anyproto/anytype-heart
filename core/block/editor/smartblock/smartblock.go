@@ -720,7 +720,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
 			ctx.SetMessages(sb.Id(), events)
-		} else if len(events) > 0 {
+		} else {
 			sb.sendEvent(&pb.Event{
 				Messages:  events,
 				ContextId: sb.RootId(),
