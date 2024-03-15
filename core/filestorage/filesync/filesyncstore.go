@@ -1,14 +1,11 @@
 package filesync
 
 import (
-	"bytes"
-	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/cheggaaa/mb/v3"
 	"github.com/dgraph-io/badger/v4"
@@ -38,6 +35,7 @@ type fileSyncStore struct {
 
 	inboxQueue     *mb.MB[*QueueItem]
 	discardedQueue *mb.MB[*QueueItem]
+	removingQueue  *mb.MB[*QueueItem]
 }
 
 func newFileSyncStore(db *badger.DB) (*fileSyncStore, error) {
@@ -45,32 +43,11 @@ func newFileSyncStore(db *badger.DB) (*fileSyncStore, error) {
 		db:             db,
 		inboxQueue:     mb.New[*QueueItem](0),
 		discardedQueue: mb.New[*QueueItem](0),
+		removingQueue:  mb.New[*QueueItem](0),
 	}
 	err := s.migrateQueue()
 	if err != nil {
 		return nil, fmt.Errorf("migrate queue: %w", err)
-	}
-
-	{
-		items, err := s.listItemsByPrefix(uploadKeyPrefix)
-		if err != nil {
-			return nil, fmt.Errorf("get saved queue items: %w", err)
-		}
-		err = s.inboxQueue.Add(context.Background(), items...)
-		if err != nil {
-			return nil, fmt.Errorf("add to inbox queue: %w", err)
-		}
-	}
-
-	{
-		items, err := s.listItemsByPrefix(discardedKeyPrefix)
-		if err != nil {
-			return nil, fmt.Errorf("get saved discarded items: %w", err)
-		}
-		err = s.discardedQueue.Add(context.Background(), items...)
-		if err != nil {
-			return nil, fmt.Errorf("add to discarded queue: %w", err)
-		}
 	}
 
 	return s, nil
@@ -185,234 +162,6 @@ func versionFromItem(it *badger.Item) (int, error) {
 	return res, err
 }
 
-func (s *fileSyncStore) QueueUpload(fileId domain.FullFileId, addedByUser bool, isImported bool) (err error) {
-	err = s.inboxQueue.Add(context.Background(), &QueueItem{
-		SpaceId:     fileId.SpaceId,
-		FileId:      fileId.FileId,
-		AddedByUser: addedByUser,
-		Imported:    isImported,
-	})
-	if err != nil {
-		return fmt.Errorf("add to inbox queue: %w", err)
-	}
-
-	return s.storeQueueItem(fileId, addedByUser, isImported)
-}
-
-func (s *fileSyncStore) storeQueueItem(fileId domain.FullFileId, addedByUser bool, isImported bool) error {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		logger := log.With(zap.String("spaceId", fileId.SpaceId), zap.String("fileId", fileId.FileId.String()), zap.Bool("addedByUser", addedByUser))
-		ok, err := isKeyExists(txn, discardedKey(fileId))
-		if err != nil {
-			return fmt.Errorf("check discarded key: %w", err)
-		}
-		if ok {
-			logger.Info("add file to upload queue: file is in discarded queue")
-			return nil
-		}
-		ok, err = isKeyExists(txn, uploadKey(fileId))
-		if err != nil {
-			return fmt.Errorf("check upload key: %w", err)
-		}
-		if ok {
-			logger.Info("add file to upload queue: file is already in queue, update timestamp")
-		} else {
-			logger.Info("add file to upload queue")
-		}
-		raw, err := createQueueItem(addedByUser, isImported)
-		if err != nil {
-			return fmt.Errorf("create queue item: %w", err)
-		}
-		return txn.Set(uploadKey(fileId), raw)
-	})
-}
-
-func createQueueItem(addedByUser bool, imported bool) ([]byte, error) {
-	return json.Marshal(QueueItem{
-		Timestamp:   time.Now().UnixMilli(),
-		AddedByUser: addedByUser,
-		Imported:    imported,
-	})
-}
-
-func (s *fileSyncStore) QueueDiscarded(fileId domain.FullFileId) (err error) {
-	err = s.discardedQueue.Add(context.Background(), &QueueItem{
-		SpaceId:     fileId.SpaceId,
-		FileId:      fileId.FileId,
-		AddedByUser: false,
-		Imported:    false,
-	})
-	if err != nil {
-		return fmt.Errorf("add to discarded queue: %w", err)
-	}
-	return s.updateTxn(func(txn *badger.Txn) error {
-		if err = txn.Delete(uploadKey(fileId)); err != nil {
-			return err
-		}
-		raw, err := createQueueItem(false, false)
-		if err != nil {
-			return fmt.Errorf("create queue item: %w", err)
-		}
-		return txn.Set(discardedKey(fileId), raw)
-	})
-}
-
-func (s *fileSyncStore) QueueRemove(fileId domain.FullFileId) (err error) {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		if err = removeFromUploadingQueue(txn, fileId); err != nil {
-			return err
-		}
-		raw, err := createQueueItem(false, false)
-		if err != nil {
-			return fmt.Errorf("create queue item: %w", err)
-		}
-		return txn.Set(removeKey(fileId), raw)
-	})
-}
-
-func (s *fileSyncStore) DoneUpload(fileId domain.FullFileId) (err error) {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		if err = removeFromUploadingQueue(txn, fileId); err != nil {
-			return err
-		}
-		return txn.Set(doneUploadKey(fileId), binTime(time.Now().UnixMilli()))
-	})
-}
-
-func removeFromUploadingQueue(txn *badger.Txn, fileId domain.FullFileId) error {
-	if err := txn.Delete(uploadKey(fileId)); err != nil {
-		return fmt.Errorf("remove from uploading queue: %w", err)
-	}
-	if err := txn.Delete(discardedKey(fileId)); err != nil {
-		return fmt.Errorf("remove from discarded uploading queue: %w", err)
-	}
-	return nil
-}
-
-func (s *fileSyncStore) DoneRemove(fileId domain.FullFileId) (err error) {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		if err = txn.Delete(removeKey(fileId)); err != nil {
-			return err
-		}
-		if err = txn.Delete(doneUploadKey(fileId)); err != nil {
-			return err
-		}
-		return txn.Set(doneRemoveKey(fileId), binTime(time.Now().UnixMilli()))
-	})
-}
-
-func (s *fileSyncStore) GetUpload(ctx context.Context) (it *QueueItem, err error) {
-	return s.inboxQueue.WaitOne(ctx)
-}
-
-func (s *fileSyncStore) GetDiscardedUpload(ctx context.Context) (it *QueueItem, err error) {
-	return s.discardedQueue.WaitOne(ctx)
-}
-
-func isKeyExists(txn *badger.Txn, key []byte) (bool, error) {
-	_, err := txn.Get(key)
-	if err == badger.ErrKeyNotFound {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (s *fileSyncStore) HasUpload(fileId domain.FullFileId) (ok bool, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		ok, err = isKeyExists(txn, uploadKey(fileId))
-		return err
-	})
-	return
-}
-
-func (s *fileSyncStore) IsFileUploadLimited(fileId domain.FullFileId) (ok bool, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		ok, err = isKeyExists(txn, discardedKey(fileId))
-		return err
-	})
-	return
-}
-
-func (s *fileSyncStore) GetRemove() (it *QueueItem, err error) {
-	// TODO FIX
-	// return s.getOne(removeKeyPrefix)
-	return nil, fmt.Errorf("fix")
-}
-
-func (s *fileSyncStore) listItemsByPrefix(prefix []byte) ([]*QueueItem, error) {
-	var items []*QueueItem
-	err := s.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.IteratorOptions{
-			PrefetchSize:   100,
-			PrefetchValues: true,
-			Prefix:         prefix,
-		})
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			qItem, err := getQueueItem(item)
-			if err != nil {
-				return fmt.Errorf("get queue item %s: %w", item.Key(), err)
-			}
-			fileId, spaceId := extractFileAndSpaceID(item)
-			qItem.FileId = domain.FileId(fileId)
-			qItem.SpaceId = spaceId
-			items = append(items, qItem)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-func extractFileAndSpaceID(item *badger.Item) (string, string) {
-	k := item.Key()
-	idx := bytes.LastIndexByte(k, sepByte)
-	fileId := string(k[idx+1:])
-	k = k[:idx]
-	idx = bytes.LastIndexByte(k, sepByte)
-	spaceId := string(k[idx+1:])
-	return fileId, spaceId
-}
-
-func (s *fileSyncStore) QueueLen() (l int, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		for _, prefix := range [][]byte{uploadKeyPrefix, removeKeyPrefix} {
-			it := txn.NewIterator(badger.IteratorOptions{
-				PrefetchSize:   100,
-				PrefetchValues: false,
-				Prefix:         prefix,
-			})
-			for it.Rewind(); it.Valid(); it.Next() {
-				l++
-			}
-			it.Close()
-		}
-		return nil
-	})
-	return
-}
-
-func (s *fileSyncStore) IsAlreadyUploaded(fileId domain.FullFileId) (done bool, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		_, e := txn.Get(doneUploadKey(fileId))
-		if e != nil && e != badger.ErrKeyNotFound {
-			return e
-		}
-		if e != badger.ErrKeyNotFound {
-			done = true
-		}
-		return nil
-	})
-	return
-}
-
 func (s *fileSyncStore) setNodeUsage(usage NodeUsage) error {
 	data, err := json.Marshal(usage)
 	if err != nil {
@@ -443,14 +192,6 @@ func discardedKey(fileId domain.FullFileId) (key []byte) {
 
 func removeKey(fileId domain.FullFileId) (key []byte) {
 	return []byte(keyPrefix + "queue/remove/" + fileId.SpaceId + "/" + fileId.FileId.String())
-}
-
-func doneUploadKey(fileId domain.FullFileId) (key []byte) {
-	return []byte(keyPrefix + "done/upload/" + fileId.SpaceId + "/" + fileId.FileId.String())
-}
-
-func doneRemoveKey(fileId domain.FullFileId) (key []byte) {
-	return []byte(keyPrefix + "done/remove/" + fileId.SpaceId + "/" + fileId.FileId.String())
 }
 
 func binTime(timestamp int64) []byte {

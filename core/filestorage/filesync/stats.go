@@ -82,7 +82,7 @@ func (f *fileSync) precacheNodeUsage() {
 	_, ok, err := f.getCachedNodeUsage()
 	// Init cache with default limits
 	if !ok || err != nil {
-		err = f.queue.setNodeUsage(NodeUsage{
+		err = f.store.setNodeUsage(NodeUsage{
 			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
 		if err != nil {
@@ -96,7 +96,7 @@ func (f *fileSync) precacheNodeUsage() {
 		log.Error("can't init node usage cache", zap.Error(err))
 
 		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
-		err = f.queue.setNodeUsage(NodeUsage{
+		err = f.store.setNodeUsage(NodeUsage{
 			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
 		if err != nil {
@@ -117,7 +117,7 @@ func (s *fileSync) NodeUsage(ctx context.Context) (NodeUsage, error) {
 }
 
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
-	usage, err := s.queue.getNodeUsage()
+	usage, err := s.store.getNodeUsage()
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return NodeUsage{}, false, nil
 	}
@@ -154,7 +154,7 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 		BytesLeft:         left,
 		Spaces:            spaces,
 	}
-	err = s.queue.setNodeUsage(usage)
+	err = s.store.setNodeUsage(usage)
 	if err != nil {
 		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
 	}
@@ -309,20 +309,20 @@ func (f *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId 
 func (f *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
 	var (
 		info QueueInfo
-		err  error
+		// err  error
 	)
 
-	info.UploadingQueue, err = f.queue.listItemsByPrefix(uploadKeyPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("list items from uploading queue: %w", err)
-	}
-	info.DiscardedQueue, err = f.queue.listItemsByPrefix(discardedKeyPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("list items from discarded queue: %w", err)
-	}
-	info.RemovingQueue, err = f.queue.listItemsByPrefix(removeKeyPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("list items from removing queue: %w", err)
-	}
+	// info.UploadingQueue, err = f.store.listItemsByPrefix(uploadKeyPrefix)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("list items from uploading queue: %w", err)
+	// }
+	// info.DiscardedQueue, err = f.store.listItemsByPrefix(discardedKeyPrefix)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("list items from discarded queue: %w", err)
+	// }
+	// info.RemovingQueue, err = f.store.listItemsByPrefix(removeKeyPrefix)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("list items from removing queue: %w", err)
+	// }
 	return &info, nil
 }

@@ -62,9 +62,9 @@ type SyncStatus struct {
 }
 
 type fileSync struct {
+	store           *fileSyncStore
 	dbProvider      datastore.Datastore
 	rpcStore        rpcstore.RpcStore
-	queue           *fileSyncStore
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
 	uploadPingCh    chan struct{}
@@ -75,6 +75,10 @@ type fileSync struct {
 	onUploaded      func(fileId domain.FileId) error
 	onUploadStarted func(fileId domain.FileId) error
 	onLimited       func(fileId domain.FileId) error
+
+	uploadingQueue *queue
+	retryingQueue  *queue
+	removingQueue  *queue
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -120,9 +124,33 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	f.queue, err = newFileSyncStore(db)
+	f.store, err = newFileSyncStore(db)
 	if err != nil {
 		return
+	}
+
+	{
+		q, err := newQueue(db, uploadKeyPrefix, uploadKey)
+		if err != nil {
+			return fmt.Errorf("new uploading queue: %w", err)
+		}
+		f.uploadingQueue = q
+	}
+
+	{
+		q, err := newQueue(db, discardedKeyPrefix, discardedKey)
+		if err != nil {
+			return fmt.Errorf("new retrying queue: %w", err)
+		}
+		f.retryingQueue = q
+	}
+
+	{
+		q, err := newQueue(db, removeKeyPrefix, removeKey)
+		if err != nil {
+			return fmt.Errorf("new removing queue: %w", err)
+		}
+		f.removingQueue = q
 	}
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
@@ -146,15 +174,21 @@ func (f *fileSync) Close(ctx context.Context) error {
 		}
 	}()
 
+	if err := f.uploadingQueue.close(); err != nil {
+		log.Error("can't close uploading queue: %v", zap.Error(err))
+	}
+	if err := f.retryingQueue.close(); err != nil {
+		log.Error("can't close retrying queue: %v", zap.Error(err))
+	}
+	if err := f.removingQueue.close(); err != nil {
+		log.Error("can't close removing queue: %v", zap.Error(err))
+	}
+
 	return nil
 }
 
 func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {
-	ql, err := f.queue.QueueLen()
-	if err != nil {
-		return
-	}
 	return SyncStatus{
-		QueueLen: ql,
+		QueueLen: f.uploadingQueue.length(),
 	}, nil
 }

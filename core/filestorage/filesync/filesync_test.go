@@ -62,7 +62,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		}, nil).AnyTimes()
 
 		// Add file to upload queue
-		err = fx.AddFile(spaceId, fileId, true, false)
+		err = fx.AddFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false)
 		require.NoError(t, err)
 		fx.waitEmptyQueue(t, time.Second*5)
 
@@ -135,7 +135,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		fx.fileStoreMock.EXPECT().ListFileVariants(fileId).Return([]*storage.FileInfo{
 			{}, // We can use just empty struct here, because we don't use any fields
 		}, nil).AnyTimes()
-		require.NoError(t, fx.AddFile(spaceId, fileId, true, false))
+		require.NoError(t, fx.AddFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false))
 		fx.waitLimitReachedEvent(t, time.Second*5)
 		fx.waitEmptyQueue(t, time.Second*5)
 
@@ -155,7 +155,7 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	defer fx.Finish(t)
 	spaceId := "spaceId"
 	fileId := domain.FileId("fileId")
-	require.NoError(t, fx.RemoveFile(spaceId, fileId))
+	require.NoError(t, fx.RemoveFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}))
 	fx.waitEmptyQueue(t, time.Second*5)
 }
 

@@ -3,24 +3,21 @@ package filesync
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func (f *fileSync) RemoveFile(fileId domain.FullFileId) (err error) {
-	defer func() {
-		if err == nil {
-			select {
-			case f.removePingCh <- struct{}{}:
-			default:
-			}
-		}
-	}()
-	err = f.queue.QueueRemove(fileId)
-	return
+func (f *fileSync) RemoveFile(fileId domain.FullFileId) error {
+	err := f.removeFromUploadingQueues(fileId)
+	if err != nil {
+		return fmt.Errorf("remove from uploading queues: %w", err)
+	}
+	return f.removingQueue.add(f.loopCtx, &QueueItem{
+		SpaceId: fileId.SpaceId,
+		FileId:  fileId.FileId,
+	})
 }
 
 func (f *fileSync) removeLoop() {
@@ -28,46 +25,39 @@ func (f *fileSync) removeLoop() {
 		select {
 		case <-f.loopCtx.Done():
 			return
-		case <-f.removePingCh:
-		case <-time.After(loopTimeout):
+		default:
 		}
-		f.removeOperation()
 
-	}
-}
-
-func (f *fileSync) removeOperation() {
-	for {
-		fileId, err := f.tryToRemove()
-		if err == errQueueIsEmpty {
-			return
-		}
+		it, err := f.removingQueue.getNext(f.loopCtx)
 		if err != nil {
-			log.Warn("can't remove file", zap.String("fileId", fileId.String()), zap.Error(err))
-			return
+			log.Warn("can't get next file to upload", zap.Error(err))
+			continue
 		}
-		log.Warn("file removed", zap.String("fileId", fileId.String()))
+		err = f.tryToRemove(it)
+		if err != nil {
+			log.Warn("can't remove file", zap.String("fileId", it.FileId.String()), zap.Error(err))
+			continue
+		}
 	}
 }
-
-func (f *fileSync) tryToRemove() (domain.FileId, error) {
-	it, err := f.queue.GetRemove()
-	if err == errQueueIsEmpty {
-		return "", errQueueIsEmpty
-	}
-	if err != nil {
-		return "", fmt.Errorf("get remove task from queue: %w", err)
-	}
+func (f *fileSync) tryToRemove(it *QueueItem) error {
 	spaceID, fileId := it.SpaceId, it.FileId
-	if err = f.removeFile(f.loopCtx, spaceID, fileId); err != nil {
-		return fileId, fmt.Errorf("remove file: %w", err)
+	err := f.removeFile(f.loopCtx, spaceID, fileId)
+	if err != nil {
+		addErr := f.removingQueue.add(f.loopCtx, it)
+		if addErr != nil {
+			log.Error("can't add file back to removing queue", zap.Error(addErr))
+		}
+		return fmt.Errorf("remove file: %w", err)
 	}
-	if err = f.queue.DoneRemove(it.FullFileId()); err != nil {
-		return fileId, fmt.Errorf("mark remove task as done: %w", err)
+
+	err = f.removingQueue.remove(it.FullFileId())
+	if err != nil {
+		return fmt.Errorf("mark remove task as done: %w", err)
 	}
 	f.updateSpaceUsageInformation(spaceID)
 
-	return fileId, nil
+	return nil
 }
 
 func (f *fileSync) RemoveSynchronously(spaceId string, fileId domain.FileId) (err error) {

@@ -20,14 +20,17 @@ import (
 )
 
 func (f *fileSync) AddFile(fileId domain.FullFileId, uploadedByUser bool, imported bool) (err error) {
-	err = f.queue.QueueUpload(fileId, uploadedByUser, imported)
-	if err == nil {
-		select {
-		case f.uploadPingCh <- struct{}{}:
-		default:
-		}
+	it := &QueueItem{
+		SpaceId:     fileId.SpaceId,
+		FileId:      fileId.FileId,
+		AddedByUser: uploadedByUser,
+		Imported:    imported,
+		Timestamp:   time.Now().UnixMilli(),
 	}
-	return
+	if !f.retryingQueue.has(it.FullFileId()) && !f.removingQueue.has(it.FullFileId()) {
+		return f.uploadingQueue.add(f.loopCtx, it)
+	}
+	return nil
 }
 
 func (f *fileSync) SendImportEvents() {
@@ -46,12 +49,16 @@ func (f *fileSync) ClearImportEvents() {
 
 func (f *fileSync) uploadLoop() {
 	for {
-		it, err := f.queue.GetUpload(f.loopCtx)
+		select {
+		case <-f.loopCtx.Done():
+			return
+		default:
+		}
+		it, err := f.uploadingQueue.getNext(f.loopCtx)
 		if err != nil {
 			log.Warn("can't get next file to upload", zap.Error(err))
 			continue
 		}
-		fmt.Println("upload", time.Now(), it.SpaceId, it.FileId)
 		err = f.tryToUpload(it)
 		if err != nil {
 			log.Warn("can't upload file", zap.String("fileId", it.FileId.String()), zap.Error(err))
@@ -68,12 +75,11 @@ func (f *fileSync) uploadDiscardedLoop() {
 			return
 		}
 
-		it, err := f.queue.GetDiscardedUpload(f.loopCtx)
+		it, err := f.retryingQueue.getNext(f.loopCtx)
 		if err != nil {
 			log.Warn("can't get next discarded file to upload", zap.Error(err))
 			continue
 		}
-		fmt.Println("discarded", time.Now(), it.SpaceId, it.FileId)
 		err = f.tryToUpload(it)
 		if err != nil {
 			log.Warn("can't upload previously discarded file", zap.String("fileId", it.FileId.String()), zap.Error(err))
@@ -96,22 +102,35 @@ func (f *fileSync) tryToUpload(it *QueueItem) error {
 				f.addImportEvent(spaceId)
 			}
 		}
-		if qerr := f.queue.QueueDiscarded(it.FullFileId()); qerr != nil {
-			log.Warn("can't push upload task to discarded queue", zap.String("fileId", fileId.String()), zap.Error(qerr))
+
+		err = f.uploadingQueue.remove(it.FullFileId())
+		if err != nil {
+			log.Error("can't remove upload task from queue", zap.String("fileId", fileId.String()), zap.Error(err))
+		}
+
+		err = f.retryingQueue.add(f.loopCtx, it)
+		if err != nil {
+			log.Error("can't add upload task to retrying queue", zap.String("fileId", fileId.String()), zap.Error(err))
 		}
 		return err
-
-		// Push to the back of the queue
-		// if qerr := f.queue.QueueUpload(it.FullFileId(), it.AddedByUser, it.Imported); qerr != nil {
-		// 	log.Warn("can't push upload task back to queue", zap.String("fileId", fileId.String()), zap.Error(qerr))
-		// }
-		// return err
 	}
 	f.runOnUploadedHook(fileId, spaceId)
 
 	f.updateSpaceUsageInformation(spaceId)
 
-	return f.queue.DoneUpload(it.FullFileId())
+	return f.removeFromUploadingQueues(it.FullFileId())
+}
+
+func (f *fileSync) removeFromUploadingQueues(id domain.FullFileId) error {
+	err := f.uploadingQueue.remove(id)
+	if err != nil {
+		return fmt.Errorf("remove upload task: %w", err)
+	}
+	err = f.retryingQueue.remove(id)
+	if err != nil {
+		return fmt.Errorf("remove upload task from retrying queue: %w", err)
+	}
+	return nil
 }
 
 func (f *fileSync) UploadSynchronously(spaceId string, fileId domain.FileId) error {
