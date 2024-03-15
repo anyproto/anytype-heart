@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -50,7 +52,8 @@ func (mw *Middleware) NotificationTest(cctx context.Context, req *pb.RpcNotifica
 		}
 		return m
 	}
-	err := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
+	err := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
+		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Payload: &model.NotificationPayloadOfTest{Test: &model.NotificationTest{}},

@@ -174,6 +174,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
 		return NewWidgetObject(sb, f.objectStore, f.layoutConverter, f.accountService), nil
+	case coresb.SmartBlockTypeNotificationObject:
+		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:

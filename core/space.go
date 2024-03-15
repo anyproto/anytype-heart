@@ -221,6 +221,7 @@ func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpace
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceRequestDeclineResponseError_NO_SUCH_SPACE),
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceRequestDeclineResponseError_REQUEST_FAILED),
 	)
+
 	return &pb.RpcSpaceRequestDeclineResponse{
 		Error: &pb.RpcSpaceRequestDeclineResponseError{
 			Code:        code,

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -213,7 +214,8 @@ func (e *export) sendNotification(err error, req pb.RpcObjectListExportRequest) 
 	if err != nil {
 		errCode = model.NotificationExport_UNKNOWN_ERROR
 	}
-	notificationSendErr := e.notificationService.CreateAndSendLocal(&model.Notification{
+	notificationSendErr := e.notificationService.CreateAndSend(&model.Notification{
+		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Payload: &model.NotificationPayloadOfExport{Export: &model.NotificationExport{
@@ -568,20 +570,20 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(sbType smartblock.SmartBlockType, object *model.ObjectInfo, includeArchived, isProtobuf bool) bool {
-	if object.Id == addr.AnytypeProfileId {
+func (e *export) objectValid(sbType smartblock.SmartBlockType, info *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
+	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && !validTypeForNonProtobuf(sbType) {
+	if !isProtobuf && !validTypeForNonProtobuf(sbType) && !validLayoutForNonProtobuf(info.Details) {
 		return false
 	}
 	if isProtobuf && !validType(sbType) {
 		return false
 	}
-	if strings.HasPrefix(object.Id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(object.Id, addr.BundledRelationURLPrefix) {
+	if strings.HasPrefix(info.Id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(info.Id, addr.BundledRelationURLPrefix) {
 		return false
 	}
-	if pbtypes.GetBool(object.Details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
+	if pbtypes.GetBool(info.Details, bundle.RelationKeyIsArchived.String()) && !includeArchived {
 		return false
 	}
 	return true
@@ -646,6 +648,11 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 	return sbType == smartblock.SmartBlockTypeProfilePage ||
 		sbType == smartblock.SmartBlockTypePage ||
 		sbType == smartblock.SmartBlockTypeFileObject
+}
+
+func validLayoutForNonProtobuf(details *types.Struct) bool {
+	return pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) != float64(model.ObjectType_collection) &&
+		pbtypes.GetFloat64(details, bundle.RelationKeyLayout.String()) != float64(model.ObjectType_set)
 }
 
 func (e *export) cleanupFile(wr writer) {

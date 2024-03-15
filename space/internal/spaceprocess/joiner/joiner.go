@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -35,6 +36,7 @@ func New(app *app.App, params Params) Joiner {
 	params.Status.Unlock()
 	child.Register(params.Status).
 		Register(newStatusChanger()).
+		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclwaiter.New(params.SpaceId,
 			joinHeadId,
 			// onFinish
@@ -63,6 +65,8 @@ func New(app *app.App, params Params) Joiner {
 				if err != nil {
 					params.Log.Error("failed to set persistent status", zap.Error(err))
 				}
+				aclNotificationSender := child.MustComponent(aclnotifications.CName).(aclnotifications.AclNotification)
+				aclNotificationSender.AddRecords(acl, 0, params.SpaceId, spaceinfo.AccountStatusDeleted)
 				return err
 			}))
 	return &joiner{
