@@ -15,6 +15,33 @@ import (
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
+var (
+	sepByte = []byte("/")[0]
+
+	uploadKeyPrefix    = []byte(keyPrefix + "queue/upload/")
+	removeKeyPrefix    = []byte(keyPrefix + "queue/remove/")
+	discardedKeyPrefix = []byte(keyPrefix + "queue/discarded/")
+)
+
+type QueueItem struct {
+	SpaceId     string
+	FileId      domain.FileId
+	Timestamp   int64
+	AddedByUser bool
+	Imported    bool
+}
+
+func (it *QueueItem) FullFileId() domain.FullFileId {
+	return domain.FullFileId{
+		SpaceId: it.SpaceId,
+		FileId:  it.FileId,
+	}
+}
+
+func (it *QueueItem) less(other *QueueItem) bool {
+	return it.Timestamp < other.Timestamp
+}
+
 type queue struct {
 	db           *badger.DB
 	keyFunc      func(id domain.FullFileId) []byte
@@ -86,9 +113,20 @@ func (q *queue) listItemsByPrefix() ([]*QueueItem, error) {
 		return nil, err
 	}
 	sort.Slice(items, func(i, j int) bool {
-		return items[i].Timestamp < items[j].Timestamp
+		return items[i].less(items[j])
 	})
 	return items, nil
+}
+
+func getQueueItem(item *badger.Item) (*QueueItem, error) {
+	var it QueueItem
+	err := item.Value(func(raw []byte) error {
+		return json.Unmarshal(raw, &it)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &it, nil
 }
 
 func extractFileAndSpaceID(item *badger.Item) (string, string) {
@@ -153,4 +191,16 @@ func (q *queue) length() int {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 	return len(q.set)
+}
+
+func uploadKey(fileId domain.FullFileId) (key []byte) {
+	return []byte(keyPrefix + "queue/upload/" + fileId.SpaceId + "/" + fileId.FileId.String())
+}
+
+func discardedKey(fileId domain.FullFileId) (key []byte) {
+	return []byte(keyPrefix + "queue/discarded/" + fileId.SpaceId + "/" + fileId.FileId.String())
+}
+
+func removeKey(fileId domain.FullFileId) (key []byte) {
+	return []byte(keyPrefix + "queue/remove/" + fileId.SpaceId + "/" + fileId.FileId.String())
 }
