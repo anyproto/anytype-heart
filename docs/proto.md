@@ -1552,6 +1552,7 @@
     - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [DeviceInfo](#anytype-model-DeviceInfo)
     - [Export](#anytype-model-Export)
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
@@ -24482,6 +24483,24 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-DeviceInfo"></a>
+
+### DeviceInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| addDate | [int64](#int64) |  |  |
+| archived | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Export"></a>
 
 ### Export
@@ -26010,6 +26029,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | MissingObject | 519 |  |
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
+| DeviceObject | 536 |  |
 
 
 
