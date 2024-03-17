@@ -426,7 +426,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
-	globalName, err := s.getProfileGlobalName()
+	globalName, err := s.getIdentityGlobalName(identityData.Identity)
 	if err != nil {
 		log.Error("failed to get profile global name", zap.Error(err))
 	}
@@ -481,20 +481,9 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	return profile, rawProfile, nil
 }
 
-func (s *service) getProfileGlobalName() (string, error) {
-	ethAddress := s.wallet.GetAccountEthAddress().Hex()
+func (s *service) getIdentityGlobalName(anyID string) (string, error) {
 	ctx := context.Background()
-
-	userAccount, err := s.namingService.GetUserAccount(ctx, &nameserviceproto.GetUserAccountRequest{
-		OwnerEthAddress: ethAddress,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	response, err := s.namingService.GetNameByAddress(ctx, &nameserviceproto.NameByAddressRequest{
-		OwnerScwEthAddress: userAccount.OwnerSmartContracWalletAddress,
-	})
+	response, err := s.namingService.GetNameByAnyId(ctx, &nameserviceproto.NameByAnyIdRequest{AnyAddress: anyID})
 	if err != nil {
 		return "", err
 	}

@@ -1661,7 +1661,7 @@
   },
   {
     "description": "Name of profile that the user could be mentioned by",
-    "format": "string",
+    "format": "shorttext",
     "hidden": false,
     "key": "globalName",
     "maxCount": 1,

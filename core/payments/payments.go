@@ -189,6 +189,8 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 		}
 	}
 
+	// 5 - save RequestedAnyName to details of local identity object
+
 	return &out, nil
 }
 
