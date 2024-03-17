@@ -546,6 +546,8 @@ message Rpc {
                 Error error = 1;
                 string token = 2;
                 string appToken = 3; // in case of mnemonic auth, need to be persisted by client
+                string accountId = 4; // temp, should be replaced with AccountInfo message
+
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -579,7 +581,6 @@ message Rpc {
                 }
             }
         }
-
 
     }
 
@@ -2588,7 +2589,6 @@ message Rpc {
             }
         }
     }
-
 
     message ObjectCollection {
         message Add {

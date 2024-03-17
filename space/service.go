@@ -56,6 +56,7 @@ type Service interface {
 	TechSpaceId() string
 	TechSpace() *clientspace.TechSpace
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
+	GetTechSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
@@ -71,6 +72,7 @@ type service struct {
 	config         *config.Config
 
 	personalSpaceId        string
+	techSpaceId            string
 	newAccount             bool
 	spaceControllers       map[string]spacecontroller.SpaceController
 	waiting                map[string]controllerWaiter
@@ -115,6 +117,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.waiting = make(map[string]controllerWaiter)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	if err != nil {
+		return
+	}
+	s.techSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.TechSpaceType)
 	if err != nil {
 		return
 	}
@@ -186,6 +192,10 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 
 func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, err error) {
 	return s.Get(ctx, s.personalSpaceId)
+}
+
+func (s *service) GetTechSpace(ctx context.Context) (sp clientspace.Space, err error) {
+	return s.Get(ctx, s.techSpaceId)
 }
 
 func (s *service) IsPersonal(id string) bool {

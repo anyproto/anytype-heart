@@ -225,6 +225,38 @@ func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.Sym
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
 }
 
+func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
+	profile := s.getProfileFromCache(identity)
+	if profile != nil {
+		return profile
+	}
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-s.closing:
+			return nil
+		case <-ticker.C:
+			profile = s.getProfileFromCache(identity)
+			if profile != nil {
+				return profile
+			}
+		}
+	}
+}
+
+func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {
+	s.lock.RLock()
+	if profile, ok := s.identityProfileCache[identity]; ok {
+		s.lock.RUnlock()
+		return profile
+	}
+	s.lock.RUnlock()
+	return nil
+}
+
 func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
 	s.cacheProfileDetails(profileDetails)
 	if s.pushIdentityTimer == nil {
