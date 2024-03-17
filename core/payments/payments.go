@@ -8,10 +8,16 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
@@ -71,9 +77,11 @@ func New() Service {
 }
 
 type service struct {
-	cache    cache.CacheService
-	ppclient ppclient.AnyPpClientService
-	wallet   wallet.Wallet
+	cache        cache.CacheService
+	ppclient     ppclient.AnyPpClientService
+	wallet       wallet.Wallet
+	spaceService space.Service
+	account      account.Service
 }
 
 func (s *service) Name() (name string) {
@@ -84,6 +92,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
+	s.spaceService = app.MustComponent[space.Service](a)
+	s.account = app.MustComponent[account.Service](a)
 
 	return nil
 }
@@ -190,6 +200,22 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 	}
 
 	// 5 - save RequestedAnyName to details of local identity object
+	spc, err := s.spaceService.Get(context.Background(), s.account.PersonalSpaceID())
+	if err != nil {
+		log.Error("failed to get personal space id")
+		return &out, nil
+	}
+	if err = spc.Do(spc.DerivedIDs().Profile, func(sb smartblock.SmartBlock) error {
+		if co, ok := sb.(basic.CommonOperations); ok {
+			return co.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
+				Key:   bundle.RelationKeyGlobalName.String(),
+				Value: pbtypes.String(status.RequestedAnyName),
+			}}, false)
+		}
+		return nil
+	}); err != nil {
+		log.Error("failed to set global name to profile object")
+	}
 
 	return &out, nil
 }
