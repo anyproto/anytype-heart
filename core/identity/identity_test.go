@@ -9,13 +9,16 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,6 +36,7 @@ const testObserverPeriod = 1 * time.Millisecond
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
+	ctrl := gomock.NewController(t)
 
 	identityRepoClient := newInMemoryIdentityRepo()
 	objectStore := objectstore.NewStoreFixture(t)
@@ -40,6 +44,8 @@ func newFixture(t *testing.T) *fixture {
 	spaceService := mock_space.NewMockService(t)
 	fileAclService := mock_fileacl.NewMockService(t)
 	dataStore := datastore.NewInMemory()
+	wallet := mock_wallet.NewMockWallet(t)
+	nsClient := mock_nameserviceclient.NewMockAnyNsClientServiceBase(ctrl)
 	err := dataStore.Run(ctx)
 	require.NoError(t, err)
 
@@ -51,6 +57,8 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(testutil.PrepareMock(ctx, a, fileAclService))
+	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(testutil.PrepareMock(ctx, a, nsClient))
 
 	svc := New(testObserverPeriod, 1*time.Microsecond)
 	err = svc.Init(a)
