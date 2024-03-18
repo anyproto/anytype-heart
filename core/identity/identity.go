@@ -96,6 +96,7 @@ type service struct {
 	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
 	identityProfileCache   map[string]*model.IdentityProfile
+	identityGlobalNames    map[string]string
 }
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
@@ -401,6 +402,13 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
+	if s.identityGlobalNames == nil && len(identities) != 0 {
+		err := s.fetchIdentitiesGlobalNames(identities)
+		if err != nil {
+			log.Error("error fetching identities global names from Naming Service", zap.Error(err))
+		}
+	}
+
 	for _, identityData := range identitiesData {
 		err := s.broadcastIdentityProfile(identityData)
 		if err != nil {
@@ -458,16 +466,11 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
-	prevProfile, ok := s.identityProfileCache[identityData.Identity]
-
-	// We are getting GlobalName of identity from Naming Node only on start of application
-	if !ok {
-		profile.GlobalName, err = s.getIdentityGlobalName(identityData.Identity)
-		if err != nil {
-			log.Error("failed to get profile global name", zap.Error(err))
-		}
+	if globalName, found := s.identityGlobalNames[identityData.Identity]; found {
+		profile.GlobalName = globalName
 	}
 
+	prevProfile, ok := s.identityProfileCache[identityData.Identity]
 	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
 
 	if hasUpdates {
@@ -516,15 +519,16 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	return profile, rawProfile, nil
 }
 
-func (s *service) getIdentityGlobalName(anyID string) (string, error) {
-	response, err := s.namingService.GetNameByAnyId(context.Background(), &nameserviceproto.NameByAnyIdRequest{AnyAddress: anyID})
+func (s *service) fetchIdentitiesGlobalNames(anyIDs []string) error {
+	s.identityGlobalNames = make(map[string]string, len(anyIDs))
+	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: anyIDs})
 	if err != nil {
-		return "", err
+		return err
 	}
-	if !response.Found {
-		return "", fmt.Errorf("global name not found")
+	for i, anyID := range anyIDs {
+		s.identityGlobalNames[anyID] = response.Results[i].Name
 	}
-	return response.Name, nil
+	return nil
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {

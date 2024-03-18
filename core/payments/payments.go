@@ -2,7 +2,6 @@ package payments
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -10,7 +9,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -111,10 +109,26 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
 	privKey := s.wallet.GetAccountPrivkey()
 
+	saveGlobalName := func(globalName string) {
+		spc, err := s.spaceService.Get(context.Background(), s.account.PersonalSpaceID())
+		if err != nil {
+			log.Error("failed to get personal space id:" + err.Error())
+			return
+		}
+		if err = spc.Do(s.account.MyParticipantId(s.account.PersonalSpaceID()), func(sb smartblock.SmartBlock) error {
+			st := sb.NewState()
+			st.SetDetailAndBundledRelation(bundle.RelationKeyGlobalName, pbtypes.String(globalName))
+			return sb.Apply(st, smartblock.NoRestrictions)
+		}); err != nil {
+			log.Error("failed to set global name to profile object:" + err.Error())
+		}
+	}
+
 	// 1 - check in cache
 	cached, err := s.cache.CacheGet()
 	// if NoCache -> skip returning from cache
 	if err == nil && !req.NoCache {
+		saveGlobalName(cached.RequestedAnyName)
 		return cached, nil
 	}
 
@@ -201,22 +215,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 	}
 
 	// 5 - save RequestedAnyName to details of local identity object
-	spc, err := s.spaceService.Get(context.Background(), s.account.PersonalSpaceID())
-	if err != nil {
-		log.Error("failed to get personal space id:" + err.Error())
-		return &out, nil
-	}
-	if err = spc.Do(s.account.MyParticipantId(s.account.PersonalSpaceID()), func(sb smartblock.SmartBlock) error {
-		if ds, ok := sb.(basic.DetailsSettable); ok {
-			return ds.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
-				Key:   bundle.RelationKeyGlobalName.String(),
-				Value: pbtypes.String(status.RequestedAnyName),
-			}}, false)
-		}
-		return errors.New("profile object is not details settable")
-	}); err != nil {
-		log.Error("failed to set global name to profile object:" + err.Error())
-	}
+	saveGlobalName(status.RequestedAnyName)
 
 	return &out, nil
 }
