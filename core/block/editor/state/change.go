@@ -251,6 +251,10 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		s.addNotification(ch.GetNotificationCreate().GetNotification())
 	case ch.GetNotificationUpdate() != nil:
 		s.updateNotification(ch.GetNotificationUpdate())
+	case ch.GetDeviceAdd() != nil:
+		s.addDevice(ch.GetDeviceAdd().GetDevice())
+	case ch.GetDeviceUpdate() != nil:
+		s.updateDevice(ch.GetDeviceUpdate())
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -460,6 +464,23 @@ func (s *State) updateNotification(update *pb.ChangeNotificationUpdate) {
 	s.notifications[update.Id].Status = update.Status
 }
 
+func (s *State) addDevice(deviceInfo *model.DeviceInfo) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	s.deviceStore[deviceInfo.Id] = deviceInfo
+}
+
+func (s *State) updateDevice(update *pb.ChangeDeviceUpdate) {
+	if s.deviceStore == nil {
+		return
+	}
+	if _, ok := s.deviceStore[update.Id]; !ok {
+		return
+	}
+	s.deviceStore[update.Id].Name = update.Name
+}
+
 func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
@@ -611,6 +632,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
 	s.changes = append(s.changes, s.diffFileInfo()...)
 	s.changes = append(s.changes, s.makeNotificationChanges()...)
+	s.changes = append(s.changes, s.makeDeviceInfoChanges()...)
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
@@ -820,6 +842,34 @@ func (s *State) makeNotificationChanges() []*pb.ChangeContent {
 			changes = append(changes, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfNotificationCreate{
 					NotificationCreate: &pb.ChangeNotificationCreate{Notification: notification},
+				},
+			})
+		}
+	}
+	return changes
+}
+
+func (s *State) makeDeviceInfoChanges() []*pb.ChangeContent {
+	if s.parent == nil || len(s.parent.ListDevices()) == 0 {
+		return nil
+	}
+	var changes []*pb.ChangeContent
+	for id, device := range s.deviceStore {
+		if d := s.parent.GetDevice(id); d != nil {
+			if device.Name != d.Name {
+				changes = append(changes, &pb.ChangeContent{
+					Value: &pb.ChangeContentValueOfDeviceUpdate{
+						DeviceUpdate: &pb.ChangeDeviceUpdate{
+							Id:   device.Id,
+							Name: device.Name,
+						},
+					},
+				})
+			}
+		} else {
+			changes = append(changes, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfDeviceAdd{
+					DeviceAdd: &pb.ChangeDeviceAdd{Device: device},
 				},
 			})
 		}

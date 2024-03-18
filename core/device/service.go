@@ -3,7 +3,8 @@ package device
 import (
 	"context"
 	"errors"
-	"fmt"
+	"os"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -12,8 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -25,29 +26,24 @@ var log = logging.Logger("notifications")
 
 type Service interface {
 	app.ComponentRunnable
-	UpdateName(name string) error
-	ListDevices() ([]*model.DeviceInfo, error)
+	UpdateName(ctx context.Context, id, name string) error
+	ListDevices(ctx context.Context) ([]*model.DeviceInfo, error)
 }
 
 func NewDevices() Service {
-	return &Devices{devices: make(map[string]*model.DeviceInfo, 0)}
+	return &Devices{}
 }
 
 type Devices struct {
-	devices        map[string]*model.DeviceInfo
 	deviceObjectId string
 	spaceService   space.Service
-	store          Store
+	wallet         wallet.Wallet
+	cancel         context.CancelFunc
 }
 
 func (d *Devices) Init(a *app.App) (err error) {
-	datastoreService := app.MustComponent[datastore.Datastore](a)
-	db, err := datastoreService.LocalStorage()
-	if err != nil {
-		return fmt.Errorf("failed to initialize notification store %w", err)
-	}
-	d.store = NewDeviceStore(db)
 	d.spaceService = app.MustComponent[space.Service](a)
+	d.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	return nil
 }
 
@@ -55,8 +51,15 @@ func (d *Devices) Name() (name string) {
 	return deviceService
 }
 
-func (d *Devices) Run(ctx context.Context) (err error) {
-	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeNotificationObject, "")
+func (d *Devices) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	d.cancel = cancel
+	go d.loadDevices(ctx)
+	return nil
+}
+
+func (d *Devices) loadDevices(ctx context.Context) {
+	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeDeviceObject, "")
 	if err != nil {
 		log.Errorf("failed to get devices object unique key: %v", err)
 		return
@@ -85,22 +88,83 @@ func (d *Devices) Run(ctx context.Context) (err error) {
 	if errors.Is(err, treestorage.ErrTreeExists) {
 		id, err := techSpace.DeriveObjectID(ctx, uk)
 		if err != nil {
-			log.Errorf("failed to derive notification object id: %v", err)
+			log.Errorf("failed to derive device object id: %v", err)
 			return
 		}
 		d.deviceObjectId = id
 	}
-	d.
+	if deviceObject == nil {
+		deviceObject, err = techSpace.GetObject(ctx, d.deviceObjectId)
+		if err != nil {
+			log.Errorf("failed to get device object id: %v", err)
+			return
+		}
+	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Errorf("failed to get hostname: %v", err)
+		return
+	}
+	st := deviceObject.NewState()
+	deviceId := d.wallet.GetDevicePrivkey().GetPublic().PeerId()
+	st.AddDevice(&model.DeviceInfo{
+		Id:      deviceId,
+		Name:    hostname,
+		AddDate: time.Now().Unix(),
+	})
+	err = deviceObject.Apply(st)
+	if err != nil {
+		log.Errorf("failed to apply device state: %v", err)
+		return
+	}
 }
 
-func (d *Devices) Close(ctx context.Context) (err error) {
-	return
+func (d *Devices) Close(ctx context.Context) error {
+	if d.cancel != nil {
+		d.cancel()
+	}
+	return nil
 }
 
-func (d *Devices) UpdateName(name string) error {
-	d.store.SaveDeviceInfo()
+func (d *Devices) SaveDeviceInfo(ctx context.Context, device *model.DeviceInfo) error {
+	spc, err := d.spaceService.Get(ctx, d.spaceService.TechSpaceId())
+	if err != nil {
+		return nil
+	}
+	return spc.Do(d.deviceObjectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		st.AddDevice(device)
+		return sb.Apply(st)
+	})
 }
 
-func (d *Devices) ListDevices() ([]*model.DeviceInfo, error) {
-	return d.ListDevices()
+func (d *Devices) UpdateName(ctx context.Context, id, name string) error {
+	spc, err := d.spaceService.Get(ctx, d.spaceService.TechSpaceId())
+	if err != nil {
+		return err
+	}
+	return spc.Do(d.deviceObjectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		st.SetDeviceName(id, name)
+		return sb.Apply(st)
+	})
+}
+
+func (d *Devices) ListDevices(ctx context.Context) ([]*model.DeviceInfo, error) {
+	spc, err := d.spaceService.Get(ctx, d.spaceService.TechSpaceId())
+	if err != nil {
+		return nil, err
+	}
+	var devices []*model.DeviceInfo
+	err = spc.Do(d.deviceObjectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		for _, info := range st.ListDevices() {
+			devices = append(devices, info)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return devices, nil
 }
