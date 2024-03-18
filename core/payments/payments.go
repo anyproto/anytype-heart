@@ -2,6 +2,7 @@ package payments
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -202,19 +203,19 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 	// 5 - save RequestedAnyName to details of local identity object
 	spc, err := s.spaceService.Get(context.Background(), s.account.PersonalSpaceID())
 	if err != nil {
-		log.Error("failed to get personal space id")
+		log.Error("failed to get personal space id:" + err.Error())
 		return &out, nil
 	}
-	if err = spc.Do(spc.DerivedIDs().Profile, func(sb smartblock.SmartBlock) error {
-		if co, ok := sb.(basic.CommonOperations); ok {
-			return co.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
+	if err = spc.Do(s.account.MyParticipantId(s.account.PersonalSpaceID()), func(sb smartblock.SmartBlock) error {
+		if ds, ok := sb.(basic.DetailsSettable); ok {
+			return ds.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
 				Key:   bundle.RelationKeyGlobalName.String(),
 				Value: pbtypes.String(status.RequestedAnyName),
 			}}, false)
 		}
-		return nil
+		return errors.New("profile object is not details settable")
 	}); err != nil {
-		log.Error("failed to set global name to profile object")
+		log.Error("failed to set global name to profile object:" + err.Error())
 	}
 
 	return &out, nil

@@ -514,8 +514,7 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 }
 
 func (s *service) getIdentityGlobalName(anyID string) (string, error) {
-	ctx := context.Background()
-	response, err := s.namingService.GetNameByAnyId(ctx, &nameserviceproto.NameByAnyIdRequest{AnyAddress: anyID})
+	response, err := s.namingService.GetNameByAnyId(context.Background(), &nameserviceproto.NameByAnyIdRequest{AnyAddress: anyID})
 	if err != nil {
 		return "", err
 	}

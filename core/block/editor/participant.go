@@ -3,8 +3,11 @@ package editor
 import (
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -12,11 +15,13 @@ import (
 
 type participant struct {
 	smartblock.SmartBlock
+	basic.AllOperations
 }
 
 func (f *ObjectFactory) newParticipant(sb smartblock.SmartBlock) *participant {
 	return &participant{
-		SmartBlock: sb,
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
 	}
 }
 
@@ -46,4 +51,8 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 	return false, nil
+}
+
+func (p *participant) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+	return p.AllOperations.SetDetails(ctx, details, showEvent)
 }
