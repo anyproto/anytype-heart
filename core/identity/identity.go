@@ -520,11 +520,14 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 }
 
 func (s *service) fetchIdentitiesGlobalNames(anyIDs []string) error {
-	s.identityGlobalNames = make(map[string]string, len(anyIDs))
 	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: anyIDs})
 	if err != nil {
 		return err
 	}
+	if response == nil {
+		return nil
+	}
+	s.identityGlobalNames = make(map[string]string, len(anyIDs))
 	for i, anyID := range anyIDs {
 		s.identityGlobalNames[anyID] = response.Results[i].Name
 	}
