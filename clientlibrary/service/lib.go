@@ -66,6 +66,9 @@ func SetEnv(key, value string) {
 
 func SetEventHandlerMobile(eh MessageHandler) {
 	SetEventHandler(func(event *pb.Event) {
+		if len(event.Messages) == 0 {
+			return
+		}
 		b, err := proto.Marshal(event)
 		if err != nil {
 			log.Errorf("eventHandler failed to marshal error: %s", err.Error())
