@@ -50,7 +50,7 @@ func (r *rpcHandler) BlockGet(ctx context.Context, req *fileproto.BlockGetReques
 	return
 }
 
-func (r *rpcHandler) BlockPush(ctx context.Context, req *fileproto.BlockPushRequest) (*fileproto.BlockPushResponse, error) {
+func (r *rpcHandler) BlockPush(ctx context.Context, req *fileproto.BlockPushRequest) (*fileproto.Ok, error) {
 	return nil, fileprotoerr.ErrForbidden
 
 }
@@ -72,7 +72,7 @@ func (r *rpcHandler) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheck
 	}, nil
 }
 
-func (r *rpcHandler) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRequest) (*fileproto.BlocksBindResponse, error) {
+func (r *rpcHandler) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRequest) (*fileproto.Ok, error) {
 	return nil, fileprotoerr.ErrForbidden
 }
 
@@ -82,4 +82,19 @@ func (r *rpcHandler) Check(ctx context.Context, request *fileproto.CheckRequest)
 	}
 	resp.SpaceIds, err = r.spaceStorage.AllSpaceIds()
 	return
+}
+
+func (r *rpcHandler) AccountLimitSet(ctx context.Context, in *fileproto.AccountLimitSetRequest) (*fileproto.Ok, error) {
+	// TODO:
+	return nil, fileprotoerr.ErrForbidden
+}
+
+func (r *rpcHandler) SpaceLimitSet(ctx context.Context, in *fileproto.SpaceLimitSetRequest) (*fileproto.Ok, error) {
+	// TODO:
+	return nil, fileprotoerr.ErrForbidden
+}
+
+func (r *rpcHandler) FilesGet(*fileproto.FilesGetRequest, fileproto.DRPCFile_FilesGetStream) error {
+	// TODO:
+	return fileprotoerr.ErrForbidden
 }

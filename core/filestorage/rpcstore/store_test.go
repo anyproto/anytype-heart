@@ -194,13 +194,13 @@ func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetReques
 	}
 }
 
-func (t *testServer) BlockPush(ctx context.Context, req *fileproto.BlockPushRequest) (*fileproto.BlockPushResponse, error) {
+func (t *testServer) BlockPush(ctx context.Context, req *fileproto.BlockPushRequest) (*fileproto.Ok, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.data[string(req.Cid)] = req.Data
 	fcids := t.files[req.FileId]
 	t.files[req.FileId] = append(fcids, req.Cid)
-	return &fileproto.BlockPushResponse{}, nil
+	return &fileproto.Ok{}, nil
 }
 
 func (t *testServer) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheckRequest) (resp *fileproto.BlocksCheckResponse, err error) {
@@ -220,11 +220,11 @@ func (t *testServer) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheck
 	return
 }
 
-func (t *testServer) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRequest) (*fileproto.BlocksBindResponse, error) {
+func (t *testServer) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRequest) (*fileproto.Ok, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.files[req.FileId] = append(t.files[req.FileId], req.Cids...)
-	return &fileproto.BlocksBindResponse{}, nil
+	return &fileproto.Ok{}, nil
 }
 
 func (t *testServer) FilesDelete(ctx context.Context, req *fileproto.FilesDeleteRequest) (*fileproto.FilesDeleteResponse, error) {
@@ -279,4 +279,16 @@ func (t *testServer) AccountInfo(ctx context.Context, req *fileproto.AccountInfo
 
 func (t *testServer) Check(ctx context.Context, req *fileproto.CheckRequest) (*fileproto.CheckResponse, error) {
 	return &fileproto.CheckResponse{AllowWrite: true}, nil
+}
+
+func (t *testServer) AccountLimitSet(ctx context.Context, in *fileproto.AccountLimitSetRequest) (*fileproto.Ok, error) {
+	return nil, nil
+}
+
+func (t *testServer) SpaceLimitSet(ctx context.Context, in *fileproto.SpaceLimitSetRequest) (*fileproto.Ok, error) {
+	return nil, nil
+}
+
+func (t *testServer) FilesGet(*fileproto.FilesGetRequest, fileproto.DRPCFile_FilesGetStream) error {
+	return nil
 }
