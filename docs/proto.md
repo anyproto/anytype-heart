@@ -629,6 +629,36 @@
     - [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request)
     - [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response)
     - [Rpc.Log.Send.Response.Error](#anytype-Rpc-Log-Send-Response-Error)
+    - [Rpc.Membership](#anytype-Rpc-Membership)
+    - [Rpc.Membership.Finalize](#anytype-Rpc-Membership-Finalize)
+    - [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request)
+    - [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response)
+    - [Rpc.Membership.Finalize.Response.Error](#anytype-Rpc-Membership-Finalize-Response-Error)
+    - [Rpc.Membership.GetPaymentUrl](#anytype-Rpc-Membership-GetPaymentUrl)
+    - [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request)
+    - [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response)
+    - [Rpc.Membership.GetPaymentUrl.Response.Error](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error)
+    - [Rpc.Membership.GetPortalLinkUrl](#anytype-Rpc-Membership-GetPortalLinkUrl)
+    - [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request)
+    - [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response)
+    - [Rpc.Membership.GetPortalLinkUrl.Response.Error](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error)
+    - [Rpc.Membership.GetStatus](#anytype-Rpc-Membership-GetStatus)
+    - [Rpc.Membership.GetStatus.Request](#anytype-Rpc-Membership-GetStatus-Request)
+    - [Rpc.Membership.GetStatus.Response](#anytype-Rpc-Membership-GetStatus-Response)
+    - [Rpc.Membership.GetStatus.Response.Error](#anytype-Rpc-Membership-GetStatus-Response-Error)
+    - [Rpc.Membership.GetVerificationEmail](#anytype-Rpc-Membership-GetVerificationEmail)
+    - [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request)
+    - [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response)
+    - [Rpc.Membership.GetVerificationEmail.Response.Error](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error)
+    - [Rpc.Membership.Tiers](#anytype-Rpc-Membership-Tiers)
+    - [Rpc.Membership.Tiers.Get](#anytype-Rpc-Membership-Tiers-Get)
+    - [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request)
+    - [Rpc.Membership.Tiers.Get.Response](#anytype-Rpc-Membership-Tiers-Get-Response)
+    - [Rpc.Membership.Tiers.Get.Response.Error](#anytype-Rpc-Membership-Tiers-Get-Response-Error)
+    - [Rpc.Membership.VerifyEmailCode](#anytype-Rpc-Membership-VerifyEmailCode)
+    - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
+    - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
+    - [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error)
     - [Rpc.Metrics](#anytype-Rpc-Metrics)
     - [Rpc.Metrics.SetParameters](#anytype-Rpc-Metrics-SetParameters)
     - [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request)
@@ -916,37 +946,6 @@
     - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
     - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
     - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
-    - [Rpc.Payments](#anytype-Rpc-Payments)
-    - [Rpc.Payments.Subscription](#anytype-Rpc-Payments-Subscription)
-    - [Rpc.Payments.Subscription.Finalize](#anytype-Rpc-Payments-Subscription-Finalize)
-    - [Rpc.Payments.Subscription.Finalize.Request](#anytype-Rpc-Payments-Subscription-Finalize-Request)
-    - [Rpc.Payments.Subscription.Finalize.Response](#anytype-Rpc-Payments-Subscription-Finalize-Response)
-    - [Rpc.Payments.Subscription.Finalize.Response.Error](#anytype-Rpc-Payments-Subscription-Finalize-Response-Error)
-    - [Rpc.Payments.Subscription.GetPaymentUrl](#anytype-Rpc-Payments-Subscription-GetPaymentUrl)
-    - [Rpc.Payments.Subscription.GetPaymentUrl.Request](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request)
-    - [Rpc.Payments.Subscription.GetPaymentUrl.Response](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response)
-    - [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error)
-    - [Rpc.Payments.Subscription.GetPortalLinkUrl](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl)
-    - [Rpc.Payments.Subscription.GetPortalLinkUrl.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request)
-    - [Rpc.Payments.Subscription.GetPortalLinkUrl.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response)
-    - [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error)
-    - [Rpc.Payments.Subscription.GetStatus](#anytype-Rpc-Payments-Subscription-GetStatus)
-    - [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request)
-    - [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response)
-    - [Rpc.Payments.Subscription.GetStatus.Response.Error](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error)
-    - [Rpc.Payments.Subscription.GetVerificationEmail](#anytype-Rpc-Payments-Subscription-GetVerificationEmail)
-    - [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request)
-    - [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response)
-    - [Rpc.Payments.Subscription.GetVerificationEmail.Response.Error](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error)
-    - [Rpc.Payments.Subscription.VerifyEmailCode](#anytype-Rpc-Payments-Subscription-VerifyEmailCode)
-    - [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request)
-    - [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response)
-    - [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error)
-    - [Rpc.Payments.Tiers](#anytype-Rpc-Payments-Tiers)
-    - [Rpc.Payments.Tiers.Get](#anytype-Rpc-Payments-Tiers-Get)
-    - [Rpc.Payments.Tiers.Get.Request](#anytype-Rpc-Payments-Tiers-Get-Request)
-    - [Rpc.Payments.Tiers.Get.Response](#anytype-Rpc-Payments-Tiers-Get-Response)
-    - [Rpc.Payments.Tiers.Get.Response.Error](#anytype-Rpc-Payments-Tiers-Get-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
@@ -1244,6 +1243,13 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype-Rpc-LinkPreview-Response-Error-Code)
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
+    - [Rpc.Membership.Finalize.Response.Error.Code](#anytype-Rpc-Membership-Finalize-Response-Error-Code)
+    - [Rpc.Membership.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code)
+    - [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code)
+    - [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code)
+    - [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code)
+    - [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code)
+    - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
@@ -1317,16 +1323,6 @@
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
-    - [Rpc.Payments.Subscription.Finalize.Response.Error.Code](#anytype-Rpc-Payments-Subscription-Finalize-Response-Error-Code)
-    - [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code)
-    - [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error-Code)
-    - [Rpc.Payments.Subscription.GetStatus.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code)
-    - [Rpc.Payments.Subscription.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error-Code)
-    - [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod)
-    - [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus)
-    - [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier)
-    - [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error-Code)
-    - [Rpc.Payments.Tiers.Get.Response.Error.Code](#anytype-Rpc-Payments-Tiers-Get-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1508,6 +1504,8 @@
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
+    - [Event.Membership](#anytype-Event-Membership)
+    - [Event.Membership.Update](#anytype-Event-Membership-Update)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Notification](#anytype-Event-Notification)
     - [Event.Notification.Send](#anytype-Event-Notification-Send)
@@ -1626,6 +1624,10 @@
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
     - [ManifestInfo](#anytype-model-ManifestInfo)
+    - [Membership](#anytype-model-Membership)
+    - [MembershipTierData](#anytype-model-MembershipTierData)
+    - [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature)
+    - [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -1659,9 +1661,6 @@
     - [Restrictions.DataviewRestrictions](#anytype-model-Restrictions-DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
-    - [SubscriptionTierData](#anytype-model-SubscriptionTierData)
-    - [SubscriptionTierData.Feature](#anytype-model-SubscriptionTierData-Feature)
-    - [SubscriptionTierData.FeaturesEntry](#anytype-model-SubscriptionTierData-FeaturesEntry)
   
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
@@ -1696,6 +1695,10 @@
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
+    - [Membership.Status](#anytype-model-Membership-Status)
+    - [Membership.Tier](#anytype-model-Membership-Tier)
+    - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
     - [Notification.Status](#anytype-model-Notification-Status)
@@ -1711,7 +1714,6 @@
     - [SmartBlockType](#anytype-model-SmartBlockType)
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceStatus](#anytype-model-SpaceStatus)
-    - [SubscriptionTierData.PeriodType](#anytype-model-SubscriptionTierData-PeriodType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -1963,17 +1965,16 @@
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | NotificationTest | [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request) | [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response) |  |
-| PaymentsSubscriptionGetStatus | [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request) | [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response) | Get current subscription status (tier, expiration date, etc.) WARNING: can be cached by Anytype Heart |
-| PaymentsSubscriptionGetPaymentUrl | [Rpc.Payments.Subscription.GetPaymentUrl.Request](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request) | [Rpc.Payments.Subscription.GetPaymentUrl.Response](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
-| PaymentsSubscriptionGetPortalLinkUrl | [Rpc.Payments.Subscription.GetPortalLinkUrl.Request](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request) | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
-| PaymentsSubscriptionGetVerificationEmail | [Rpc.Payments.Subscription.GetVerificationEmail.Request](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request) | [Rpc.Payments.Subscription.GetVerificationEmail.Response](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
-| PaymentsSubscriptionVerifyEmailCode | [Rpc.Payments.Subscription.VerifyEmailCode.Request](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request) | [Rpc.Payments.Subscription.VerifyEmailCode.Response](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (PaymentsSubscriptionGetVerificationEmail) |
-| PaymentsSubscriptionFinalize | [Rpc.Payments.Subscription.Finalize.Request](#anytype-Rpc-Payments-Subscription-Finalize-Request) | [Rpc.Payments.Subscription.Finalize.Response](#anytype-Rpc-Payments-Subscription-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call PaymentsSubscriptionFinalize to finish the process |
-| PaymentsGetTiers | [Rpc.Payments.Tiers.Get.Request](#anytype-Rpc-Payments-Tiers-Get-Request) | [Rpc.Payments.Tiers.Get.Response](#anytype-Rpc-Payments-Tiers-Get-Response) |  |
-| NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) | Name Service: *** hello.any -&gt; data |
+| MembershipGetStatus | [Rpc.Membership.GetStatus.Request](#anytype-Rpc-Membership-GetStatus-Request) | [Rpc.Membership.GetStatus.Response](#anytype-Rpc-Membership-GetStatus-Response) | Membership *** Get current subscription status (tier, expiration date, etc.) WARNING: can be cached by Anytype Heart |
+| MembershipGetPaymentUrl | [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request) | [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
+| MembershipGetPortalLinkUrl | [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request) | [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
+| MembershipGetVerificationEmail | [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request) | [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
+| MembershipVerifyEmailCode | [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request) | [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (MembershipGetVerificationEmail) |
+| MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
+| MembershipGetTiers | [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request) | [Rpc.Membership.Tiers.Get.Response](#anytype-Rpc-Membership-Tiers-Get-Response) |  |
+| NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
+| NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
-| NameServiceResolveSpaceId | [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request) | [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response) | bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a -&gt; hello.any |
-| NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) |  |
 | BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
 
  
@@ -11075,6 +11076,433 @@ returns blockShow event for given version
 
 
 
+<a name="anytype-Rpc-Membership"></a>
+
+### Rpc.Membership
+A Membership is a bundle of several &#34;Features&#34;
+every user should have one and only one tier 
+users can not have N tiers (no combining)
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Finalize"></a>
+
+### Rpc.Membership.Finalize
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Finalize-Request"></a>
+
+### Rpc.Membership.Finalize.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Finalize-Response"></a>
+
+### Rpc.Membership.Finalize.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.Finalize.Response.Error](#anytype-Rpc-Membership-Finalize-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Finalize-Response-Error"></a>
+
+### Rpc.Membership.Finalize.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.Finalize.Response.Error.Code](#anytype-Rpc-Membership-Finalize-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl"></a>
+
+### Rpc.Membership.GetPaymentUrl
+Generate a link to the payment provider
+where user can pay for the membership
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl-Request"></a>
+
+### Rpc.Membership.GetPaymentUrl.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedTier | [int32](#int32) |  |  |
+| paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
+| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl-Response"></a>
+
+### Rpc.Membership.GetPaymentUrl.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetPaymentUrl.Response.Error](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error) |  |  |
+| paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl-Response-Error"></a>
+
+### Rpc.Membership.GetPaymentUrl.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl"></a>
+
+### Rpc.Membership.GetPortalLinkUrl
+Generate a link to the portal where user can:
+a) change his billing details
+b) see payment info, invoices, etc
+c) cancel membership
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl-Request"></a>
+
+### Rpc.Membership.GetPortalLinkUrl.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl-Response"></a>
+
+### Rpc.Membership.GetPortalLinkUrl.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetPortalLinkUrl.Response.Error](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error) |  |  |
+| portalUrl | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error"></a>
+
+### Rpc.Membership.GetPortalLinkUrl.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus"></a>
+
+### Rpc.Membership.GetStatus
+Get the current status of the membership
+including the tier, status, dates, etc
+WARNING: this can be cached by Anytype heart
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus-Request"></a>
+
+### Rpc.Membership.GetStatus.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus-Response"></a>
+
+### Rpc.Membership.GetStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetStatus.Response.Error](#anytype-Rpc-Membership-GetStatus-Response-Error) |  |  |
+| data | [model.Membership](#anytype-model-Membership) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus-Response-Error"></a>
+
+### Rpc.Membership.GetStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail"></a>
+
+### Rpc.Membership.GetVerificationEmail
+Send an e-mail with verification code to the user
+can be called multiple times but with some timeout (N seconds) between calls
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail-Request"></a>
+
+### Rpc.Membership.GetVerificationEmail.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| email | [string](#string) |  |  |
+| subscribeToNewsletter | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail-Response"></a>
+
+### Rpc.Membership.GetVerificationEmail.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetVerificationEmail.Response.Error](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail-Response-Error"></a>
+
+### Rpc.Membership.GetVerificationEmail.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers"></a>
+
+### Rpc.Membership.Tiers
+Tiers can change on the backend so if you want to show users the latest data
+you can call this method to get the latest tiers
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get"></a>
+
+### Rpc.Membership.Tiers.Get
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get-Request"></a>
+
+### Rpc.Membership.Tiers.Get.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+| locale | [string](#string) |  |  |
+| paymentMethod | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get-Response"></a>
+
+### Rpc.Membership.Tiers.Get.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.Tiers.Get.Response.Error](#anytype-Rpc-Membership-Tiers-Get-Response-Error) |  |  |
+| tiers | [model.MembershipTierData](#anytype-model-MembershipTierData) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get-Response-Error"></a>
+
+### Rpc.Membership.Tiers.Get.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode"></a>
+
+### Rpc.Membership.VerifyEmailCode
+Verify the e-mail address of the user 
+need a correct code that was sent to the user when calling GetVerificationEmail
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode-Request"></a>
+
+### Rpc.Membership.VerifyEmailCode.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode-Response"></a>
+
+### Rpc.Membership.VerifyEmailCode.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode-Response-Error"></a>
+
+### Rpc.Membership.VerifyEmailCode.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Metrics"></a>
 
 ### Rpc.Metrics
@@ -15274,450 +15702,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Payments"></a>
-
-### Rpc.Payments
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription"></a>
-
-### Rpc.Payments.Subscription
-A Subscription (a Tier) is a bundle of several &#34;Features&#34;
-every user should have one and only one tier 
-users can not have N tiers (no combining)
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-Finalize"></a>
-
-### Rpc.Payments.Subscription.Finalize
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-Finalize-Request"></a>
-
-### Rpc.Payments.Subscription.Finalize.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-Finalize-Response"></a>
-
-### Rpc.Payments.Subscription.Finalize.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Subscription.Finalize.Response.Error](#anytype-Rpc-Payments-Subscription-Finalize-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-Finalize-Response-Error"></a>
-
-### Rpc.Payments.Subscription.Finalize.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Subscription.Finalize.Response.Error.Code](#anytype-Rpc-Payments-Subscription-Finalize-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl"></a>
-
-### Rpc.Payments.Subscription.GetPaymentUrl
-Generate a link to the payment provider
-where user can pay for the subscription
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Request"></a>
-
-### Rpc.Payments.Subscription.GetPaymentUrl.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| requestedTier | [int32](#int32) |  |  |
-| paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
-| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response"></a>
-
-### Rpc.Payments.Subscription.GetPaymentUrl.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error) |  |  |
-| paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error"></a>
-
-### Rpc.Payments.Subscription.GetPaymentUrl.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl"></a>
-
-### Rpc.Payments.Subscription.GetPortalLinkUrl
-Generate a link to the portal where user can:
-a) change his billing details
-b) see payment info, invoices, etc
-c) cancel the subscription
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Request"></a>
-
-### Rpc.Payments.Subscription.GetPortalLinkUrl.Request
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response"></a>
-
-### Rpc.Payments.Subscription.GetPortalLinkUrl.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error) |  |  |
-| portalUrl | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error"></a>
-
-### Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetStatus"></a>
-
-### Rpc.Payments.Subscription.GetStatus
-Get the current status of the subscription
-including the tier, status, dates, etc
-WARNING: this can be cached by Anytype heart
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetStatus-Request"></a>
-
-### Rpc.Payments.Subscription.GetStatus.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetStatus-Response"></a>
-
-### Rpc.Payments.Subscription.GetStatus.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Subscription.GetStatus.Response.Error](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error) |  |  |
-| tier | [int32](#int32) |  | it was SubscriptionTier before, changed to int32 to allow dynamic values |
-| status | [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus) |  |  |
-| dateStarted | [uint64](#uint64) |  |  |
-| dateEnds | [uint64](#uint64) |  |  |
-| isAutoRenew | [bool](#bool) |  |  |
-| paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
-| requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
-| userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
-| subscribeToNewsletter | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetStatus-Response-Error"></a>
-
-### Rpc.Payments.Subscription.GetStatus.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Subscription.GetStatus.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail"></a>
-
-### Rpc.Payments.Subscription.GetVerificationEmail
-Send an e-mail with verification code to the user
-can be called multiple times but with some timeout (N seconds) between calls
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail-Request"></a>
-
-### Rpc.Payments.Subscription.GetVerificationEmail.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| email | [string](#string) |  |  |
-| subscribeToNewsletter | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response"></a>
-
-### Rpc.Payments.Subscription.GetVerificationEmail.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Subscription.GetVerificationEmail.Response.Error](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error"></a>
-
-### Rpc.Payments.Subscription.GetVerificationEmail.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Subscription.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode"></a>
-
-### Rpc.Payments.Subscription.VerifyEmailCode
-Verify the e-mail address of the user 
-need a correct code that was sent to the user when calling GetVerificationEmail
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode-Request"></a>
-
-### Rpc.Payments.Subscription.VerifyEmailCode.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response"></a>
-
-### Rpc.Payments.Subscription.VerifyEmailCode.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error"></a>
-
-### Rpc.Payments.Subscription.VerifyEmailCode.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Subscription.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Tiers"></a>
-
-### Rpc.Payments.Tiers
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Tiers-Get"></a>
-
-### Rpc.Payments.Tiers.Get
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Tiers-Get-Request"></a>
-
-### Rpc.Payments.Tiers.Get.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
-| locale | [string](#string) |  |  |
-| paymentMethod | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Tiers-Get-Response"></a>
-
-### Rpc.Payments.Tiers.Get.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Payments.Tiers.Get.Response.Error](#anytype-Rpc-Payments-Tiers-Get-Response-Error) |  |  |
-| tiers | [model.SubscriptionTierData](#anytype-model-SubscriptionTierData) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Payments-Tiers-Get-Response-Error"></a>
-
-### Rpc.Payments.Tiers.Get.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Payments.Tiers.Get.Response.Error.Code](#anytype-Rpc-Payments-Tiers-Get-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Process"></a>
 
 ### Rpc.Process
@@ -19822,6 +19806,111 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Membership-Finalize-Response-Error-Code"></a>
+
+### Rpc.Membership.Finalize.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code"></a>
+
+### Rpc.Membership.GetPaymentUrl.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code"></a>
+
+### Rpc.Membership.GetPortalLinkUrl.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus-Response-Error-Code"></a>
+
+### Rpc.Membership.GetStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code"></a>
+
+### Rpc.Membership.GetVerificationEmail.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get-Response-Error-Code"></a>
+
+### Rpc.Membership.Tiers.Get.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code"></a>
+
+### Rpc.Membership.VerifyEmailCode.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
 <a name="anytype-Rpc-Metrics-SetParameters-Response-Error-Code"></a>
 
 ### Rpc.Metrics.SetParameters.Response.Error.Code
@@ -20796,159 +20885,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | READONLY_OBJECT_TYPE | 3 | ... |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-Finalize-Response-Error-Code"></a>
-
-### Rpc.Payments.Subscription.Finalize.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPaymentUrl-Response-Error-Code"></a>
-
-### Rpc.Payments.Subscription.GetPaymentUrl.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetPortalLinkUrl-Response-Error-Code"></a>
-
-### Rpc.Payments.Subscription.GetPortalLinkUrl.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code"></a>
-
-### Rpc.Payments.Subscription.GetStatus.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-GetVerificationEmail-Response-Error-Code"></a>
-
-### Rpc.Payments.Subscription.GetVerificationEmail.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-PaymentMethod"></a>
-
-### Rpc.Payments.Subscription.PaymentMethod
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| MethodCard | 0 |  |
-| MethodCrypto | 1 |  |
-| MethodApplePay | 2 |  |
-| MethodGooglePay | 3 |  |
-| MethodAppleInapp | 4 |  |
-| MethodGoogleInapp | 5 |  |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-SubscriptionStatus"></a>
-
-### Rpc.Payments.Subscription.SubscriptionStatus
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| StatusUnknown | 0 |  |
-| StatusPending | 1 | please wait a bit more |
-| StatusActive | 2 |  |
-| StatusPendingRequiresFinalization | 3 | in some cases we need to finalize the subscription: - if user has bought a subscription directly without first calling the BuySubscription method
-
-in this case please call Finalize to finish the process |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-SubscriptionTier"></a>
-
-### Rpc.Payments.Subscription.SubscriptionTier
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| TierNewUser | 0 |  |
-| TierExplorer | 1 | &#34;free&#34; tier |
-| TierBuilder1WeekTEST | 2 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
-| TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
-| TierBuilder | 4 |  |
-| TierCoCreator | 5 |  |
-
-
-
-<a name="anytype-Rpc-Payments-Subscription-VerifyEmailCode-Response-Error-Code"></a>
-
-### Rpc.Payments.Subscription.VerifyEmailCode.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-
-
-
-<a name="anytype-Rpc-Payments-Tiers-Get-Response-Error-Code"></a>
-
-### Rpc.Payments.Tiers.Get.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
 
 
 
@@ -23722,6 +23658,31 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Membership"></a>
+
+### Event.Membership
+
+
+
+
+
+
+
+<a name="anytype-Event-Membership-Update"></a>
+
+### Event.Membership.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| data | [model.Membership](#anytype-model-Membership) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -23794,6 +23755,7 @@ Precondition: user A opened a block
 | notificationSend | [Event.Notification.Send](#anytype-Event-Notification-Send) |  |  |
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
+| membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
 
 
 
@@ -25649,6 +25611,89 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Membership"></a>
+
+### Membership
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tier | [int32](#int32) |  | it was Tier before, changed to int32 to allow dynamic values |
+| status | [Membership.Status](#anytype-model-Membership-Status) |  |  |
+| dateStarted | [uint64](#uint64) |  |  |
+| dateEnds | [uint64](#uint64) |  |  |
+| isAutoRenew | [bool](#bool) |  |  |
+| paymentMethod | [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
+| requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
+| userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
+| subscribeToNewsletter | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipTierData"></a>
+
+### MembershipTierData
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [uint32](#uint32) |  | this is a unique ID of the tier you should hardcode this in your app and provide icon, graphics, etc for each tier (even for old/historical/inactive/hidden tiers) |
+| name | [string](#string) |  | localazied name of the tier |
+| description | [string](#string) |  | just a short technical description you don&#39;t have to use it, you can use your own UI-friendly texts |
+| isActive | [bool](#bool) |  | can you buy it (ON ALL PLATFORMS, without clarification)? |
+| isTest | [bool](#bool) |  | is this tier for debugging only? |
+| isHiddenTier | [bool](#bool) |  | hidden tiers are only visible once user got them |
+| periodType | [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType) |  | how long is the period of the subscription |
+| periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
+| priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
+| anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
+| anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
+| features | [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry) | repeated | each tier has a set of features each feature has a unique key: &#34;storage&#34;, &#34;invites&#34;, etc not using enum here to provide dynamic feature list:
+
+&#34;stoageGB&#34; -&gt; {64, &#34;&#34;} &#34;invites&#34; -&gt; {120, &#34;&#34;} &#34;spaces-public&#34; -&gt; {10, &#34;&#34;} ... |
+
+
+
+
+
+
+<a name="anytype-model-MembershipTierData-Feature"></a>
+
+### MembershipTierData.Feature
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| valueUint | [uint32](#uint32) |  | usually feature has uint value like &#34;storage&#34; - 120 |
+| valueStr | [string](#string) |  | in case feature will have string value |
+
+
+
+
+
+
+<a name="anytype-model-MembershipTierData-FeaturesEntry"></a>
+
+### MembershipTierData.FeaturesEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Metadata"></a>
 
 ### Metadata
@@ -26230,66 +26275,6 @@ stored |
 
 
 
-
-<a name="anytype-model-SubscriptionTierData"></a>
-
-### SubscriptionTierData
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [uint32](#uint32) |  | this is a unique ID of the tier you should hardcode this in your app and provide icon, graphics, etc for each tier (even for old/historical/inactive/hidden tiers) |
-| name | [string](#string) |  | localazied name of the tier |
-| description | [string](#string) |  | just a short technical description you don&#39;t have to use it, you can use your own UI-friendly texts |
-| isActive | [bool](#bool) |  | can you buy it (ON ALL PLATFORMS, without clarification)? |
-| isTest | [bool](#bool) |  | is this tier for debugging only? |
-| isHiddenTier | [bool](#bool) |  | hidden tiers are only visible once user got them |
-| periodType | [SubscriptionTierData.PeriodType](#anytype-model-SubscriptionTierData-PeriodType) |  | how long is the period of the subscription |
-| periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
-| priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
-| anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
-| anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
-| features | [SubscriptionTierData.FeaturesEntry](#anytype-model-SubscriptionTierData-FeaturesEntry) | repeated | each tier has a set of features each feature has a unique key: &#34;storage&#34;, &#34;invites&#34;, etc not using enum here to provide dynamic feature list:
-
-&#34;stoageGB&#34; -&gt; {64, &#34;&#34;} &#34;invites&#34; -&gt; {120, &#34;&#34;} &#34;spaces-public&#34; -&gt; {10, &#34;&#34;} ... |
-
-
-
-
-
-
-<a name="anytype-model-SubscriptionTierData-Feature"></a>
-
-### SubscriptionTierData.Feature
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| valueUint | [uint32](#uint32) |  | usually feature has uint value like &#34;storage&#34; - 120 |
-| valueStr | [string](#string) |  | in case feature will have string value |
-
-
-
-
-
-
-<a name="anytype-model-SubscriptionTierData-FeaturesEntry"></a>
-
-### SubscriptionTierData.FeaturesEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [SubscriptionTierData.Feature](#anytype-model-SubscriptionTierData-Feature) |  |  |
-
-
-
-
-
  
 
 
@@ -26815,6 +26800,70 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
+<a name="anytype-model-Membership-PaymentMethod"></a>
+
+### Membership.PaymentMethod
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| MethodCard | 0 |  |
+| MethodCrypto | 1 |  |
+| MethodApplePay | 2 |  |
+| MethodGooglePay | 3 |  |
+| MethodAppleInapp | 4 |  |
+| MethodGoogleInapp | 5 |  |
+
+
+
+<a name="anytype-model-Membership-Status"></a>
+
+### Membership.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| StatusUnknown | 0 |  |
+| StatusPending | 1 | please wait a bit more |
+| StatusActive | 2 |  |
+| StatusPendingRequiresFinalization | 3 | in some cases we need to finalize the process: - if user has bought membership directly without first calling the BuySubscription method
+
+in this case please call Finalize to finish the process |
+
+
+
+<a name="anytype-model-Membership-Tier"></a>
+
+### Membership.Tier
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TierNewUser | 0 |  |
+| TierExplorer | 1 | &#34;free&#34; tier |
+| TierBuilder1WeekTEST | 2 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
+| TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
+| TierBuilder | 4 |  |
+| TierCoCreator | 5 |  |
+
+
+
+<a name="anytype-model-MembershipTierData-PeriodType"></a>
+
+### MembershipTierData.PeriodType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PeriodTypeUnknown | 0 |  |
+| PeriodTypeUnlimited | 1 |  |
+| PeriodTypeDays | 2 |  |
+| PeriodTypeWeeks | 3 |  |
+| PeriodTypeMonths | 4 |  |
+| PeriodTypeYears | 5 |  |
+
+
+
 <a name="anytype-model-Notification-ActionType"></a>
 
 ### Notification.ActionType
@@ -27085,22 +27134,6 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SpaceActive | 8 | SpaceActive - the space is active in the network |
 | SpaceJoining | 9 | SpaceJoining - the account is joining the space |
 | SpaceRemoving | 10 | SpaceRemoving - the account is removing from space or the space is removed from network |
-
-
-
-<a name="anytype-model-SubscriptionTierData-PeriodType"></a>
-
-### SubscriptionTierData.PeriodType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| PeriodTypeUnknown | 0 |  |
-| PeriodTypeUnlimited | 1 |  |
-| PeriodTypeDays | 2 |  |
-| PeriodTypeWeeks | 3 |  |
-| PeriodTypeMonths | 4 |  |
-| PeriodTypeYears | 5 |  |
 
 
  

@@ -2,15 +2,19 @@ package payments
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/util/periodicsync"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
@@ -19,7 +23,13 @@ import (
 
 const CName = "payments"
 
-var log = logger.NewNamed(CName)
+var log = logging.Logger(CName).Desugar()
+
+const (
+	refreshIntervalSecs = 10
+	timeout             = 10 * time.Second
+	initialStatus       = -1
+)
 
 /*
 CACHE LOGICS:
@@ -51,19 +61,19 @@ CACHE LOGICS:
     -> clear cache (it will cause getting again from PP node next)
 */
 type Service interface {
-	GetSubscriptionStatus(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetStatusRequest) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error)
+	GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error)
 
-	GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) (*pb.RpcPaymentsSubscriptionGetPaymentUrlResponse, error)
-	GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) (*pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse, error)
+	GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error)
+	GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error)
 
-	GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest) (*pb.RpcPaymentsSubscriptionGetVerificationEmailResponse, error)
-	VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) (*pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse, error)
+	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
+	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
 
-	FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsSubscriptionFinalizeRequest) (*pb.RpcPaymentsSubscriptionFinalizeResponse, error)
+	FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error)
 
-	GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) (*pb.RpcPaymentsTiersGetResponse, error)
+	GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error)
 
-	app.Component
+	app.ComponentRunnable
 }
 
 func New() Service {
@@ -74,6 +84,10 @@ type service struct {
 	cache    cache.CacheService
 	ppclient ppclient.AnyPpClientService
 	wallet   wallet.Wallet
+
+	mx                sync.Mutex
+	periodicGetStatus periodicsync.PeriodicSync
+	eventSender       event.Sender
 }
 
 func (s *service) Name() (name string) {
@@ -84,19 +98,55 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
+	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
 
 	return nil
 }
 
 func (s *service) Run(_ context.Context) (err error) {
+	s.periodicGetStatus.Run()
 	return nil
 }
 
 func (s *service) Close(_ context.Context) (err error) {
+	s.periodicGetStatus.Close()
 	return nil
 }
 
-func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetStatusRequest) (*pb.RpcPaymentsSubscriptionGetStatusResponse, error) {
+func (s *service) getPeriodicStatus(ctx context.Context) error {
+	return nil
+	/*
+		// 1 - get subscription status (from cache or from PP node)
+		_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+
+		// 2 - send notification
+		if err != nil {
+			log.Error("can not get subscription status in the loop", zap.Error(err))
+		}
+
+
+			s.eventSender.Broadcast(&pb.Event{
+				Messages: []*pb.EventMessage{
+					{
+						Value: &pb.EventMessageValueOfMembershipUpdate{
+							MembershipUpdate: &pb.EventMembershipUpdate{
+								Data: &model.Membership{},
+							},
+						},
+					},
+				},
+			})
+
+		return err
+	*/
+}
+
+func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	log.Info("getting subscription status")
+
 	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
 	privKey := s.wallet.GetAccountPrivkey()
 
@@ -140,17 +190,19 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 		}
 	}
 
-	var out pb.RpcPaymentsSubscriptionGetStatusResponse
+	out := pb.RpcMembershipGetStatusResponse{
+		Data: &model.Membership{},
+	}
 
-	out.Tier = status.Tier
-	out.Status = pb.RpcPaymentsSubscriptionSubscriptionStatus(status.Status)
-	out.DateStarted = status.DateStarted
-	out.DateEnds = status.DateEnds
-	out.IsAutoRenew = status.IsAutoRenew
-	out.PaymentMethod = pb.RpcPaymentsSubscriptionPaymentMethod(status.PaymentMethod)
-	out.RequestedAnyName = status.RequestedAnyName
-	out.UserEmail = status.UserEmail
-	out.SubscribeToNewsletter = status.SubscribeToNewsletter
+	out.Data.Tier = status.Tier
+	out.Data.Status = model.MembershipStatus(status.Status)
+	out.Data.DateStarted = status.DateStarted
+	out.Data.DateEnds = status.DateEnds
+	out.Data.IsAutoRenew = status.IsAutoRenew
+	out.Data.PaymentMethod = model.MembershipPaymentMethod(status.PaymentMethod)
+	out.Data.RequestedAnyName = status.RequestedAnyName
+	out.Data.UserEmail = status.UserEmail
+	out.Data.SubscribeToNewsletter = status.SubscribeToNewsletter
 
 	// 3 - save into cache
 	// truncate nseconds here
@@ -173,8 +225,8 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 	// 4 - if cache was disabled but the tier is different or status is active -> enable cache again (we have received new data)
 	if !s.cache.IsCacheEnabled() {
 		// only when tier haschanged
-		isDiffTier := (cached != nil) && (cached.Tier != status.Tier)
-		isActive := (status.Status == psp.SubscriptionStatus(pb.RpcPaymentsSubscription_StatusActive))
+		isDiffTier := (cached != nil) && (cached.Data.Tier != status.Tier)
+		isActive := (status.Status == psp.SubscriptionStatus(psp.SubscriptionStatus_StatusActive))
 
 		log.Debug("checking if payment cache should be enabled again", zap.Bool("isDiffTier", isDiffTier), zap.Bool("isActive", isActive))
 
@@ -192,7 +244,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 	return &out, nil
 }
 
-func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPaymentUrlRequest) (*pb.RpcPaymentsSubscriptionGetPaymentUrlResponse, error) {
+func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
 	// 1 - send request
 	bsr := psp.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -229,7 +281,7 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscrip
 		return nil, err
 	}
 
-	var out pb.RpcPaymentsSubscriptionGetPaymentUrlResponse
+	var out pb.RpcMembershipGetPaymentUrlResponse
 	out.PaymentUrl = bsRet.PaymentUrl
 
 	// 2 - disable cache for 30 minutes
@@ -243,7 +295,7 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcPaymentsSubscrip
 	return &out, nil
 }
 
-func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetPortalLinkUrlRequest) (*pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse, error) {
+func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error) {
 	// 1 - send request
 	bsr := psp.GetSubscriptionPortalLinkRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -271,7 +323,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscrip
 		return nil, err
 	}
 
-	var out pb.RpcPaymentsSubscriptionGetPortalLinkUrlResponse
+	var out pb.RpcMembershipGetPortalLinkUrlResponse
 	out.PortalUrl = bsRet.PortalUrl
 
 	// 2 - disable cache for 30 minutes
@@ -284,7 +336,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcPaymentsSubscrip
 	return &out, nil
 }
 
-func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsSubscriptionGetVerificationEmailRequest) (*pb.RpcPaymentsSubscriptionGetVerificationEmailResponse, error) {
+func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error) {
 	// 1 - send request
 	bsr := psp.GetVerificationEmailRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -314,11 +366,11 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcPaymentsS
 		return nil, err
 	}
 
-	var out pb.RpcPaymentsSubscriptionGetVerificationEmailResponse
+	var out pb.RpcMembershipGetVerificationEmailResponse
 	return &out, nil
 }
 
-func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscriptionVerifyEmailCodeRequest) (*pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse, error) {
+func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error) {
 	// 1 - send request
 	bsr := psp.VerifyEmailRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -357,11 +409,11 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcPaymentsSubscr
 	}
 
 	// return out
-	var out pb.RpcPaymentsSubscriptionVerifyEmailCodeResponse
+	var out pb.RpcMembershipVerifyEmailCodeResponse
 	return &out, nil
 }
 
-func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsSubscriptionFinalizeRequest) (*pb.RpcPaymentsSubscriptionFinalizeResponse, error) {
+func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error) {
 	// 1 - send request
 	bsr := psp.FinalizeSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -400,11 +452,11 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcPaymentsS
 	}
 
 	// return out
-	var out pb.RpcPaymentsSubscriptionFinalizeResponse
+	var out pb.RpcMembershipFinalizeResponse
 	return &out, nil
 }
 
-func (s *service) GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetRequest) (*pb.RpcPaymentsTiersGetResponse, error) {
+func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
 	// 1 - send request
 	bsr := psp.GetTiersRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -436,18 +488,18 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetReque
 	}
 
 	// return out
-	var out pb.RpcPaymentsTiersGetResponse
+	var out pb.RpcMembershipTiersGetResponse
 
-	out.Tiers = make([]*model.SubscriptionTierData, len(tiers.Tiers))
+	out.Tiers = make([]*model.MembershipTierData, len(tiers.Tiers))
 	for i, tier := range tiers.Tiers {
-		out.Tiers[i] = &model.SubscriptionTierData{
+		out.Tiers[i] = &model.MembershipTierData{
 			Id:                    tier.Id,
 			Name:                  tier.Name,
 			Description:           tier.Description,
 			IsActive:              tier.IsActive,
 			IsTest:                tier.IsTest,
 			IsHiddenTier:          tier.IsHiddenTier,
-			PeriodType:            model.SubscriptionTierDataPeriodType(tier.PeriodType),
+			PeriodType:            model.MembershipTierDataPeriodType(tier.PeriodType),
 			PeriodValue:           tier.PeriodValue,
 			PriceStripeUsdCents:   tier.PriceStripeUsdCents,
 			AnyNamesCountIncluded: tier.AnyNamesCountIncluded,
@@ -455,9 +507,9 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetReque
 		}
 
 		// copy all features
-		out.Tiers[i].Features = make(map[string]*model.SubscriptionTierDataFeature)
+		out.Tiers[i].Features = make(map[string]*model.MembershipTierDataFeature)
 		for k, v := range tier.Features {
-			out.Tiers[i].Features[k] = &model.SubscriptionTierDataFeature{
+			out.Tiers[i].Features[k] = &model.MembershipTierDataFeature{
 				ValueStr:  v.ValueStr,
 				ValueUint: v.ValueUint,
 			}

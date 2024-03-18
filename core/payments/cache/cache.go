@@ -45,7 +45,7 @@ type StorageStructV1 struct {
 	DisableUntilTime time.Time
 
 	// v1 of the actual data
-	SubscriptionStatus pb.RpcPaymentsSubscriptionGetStatusResponse
+	SubscriptionStatus pb.RpcMembershipGetStatusResponse
 }
 
 func newStorageStructV1() *StorageStructV1 {
@@ -54,18 +54,18 @@ func newStorageStructV1() *StorageStructV1 {
 		LastUpdated:        time.Now().UTC(),
 		ExpireTime:         time.Time{},
 		DisableUntilTime:   time.Time{},
-		SubscriptionStatus: pb.RpcPaymentsSubscriptionGetStatusResponse{},
+		SubscriptionStatus: pb.RpcMembershipGetStatusResponse{},
 	}
 }
 
 type CacheService interface {
 	// if cache is disabled -> will return object and ErrCacheDisabled
 	// if cache is expired -> will return ErrCacheExpired
-	CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, err error)
+	CacheGet() (out *pb.RpcMembershipGetStatusResponse, err error)
 
 	// if cache is disabled -> will return no error
 	// if cache is expired -> will return no error
-	CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, ExpireTime time.Time) (err error)
+	CacheSet(in *pb.RpcMembershipGetStatusResponse, ExpireTime time.Time) (err error)
 
 	IsCacheEnabled() (enabled bool)
 
@@ -116,7 +116,7 @@ func (s *cacheservice) Close(_ context.Context) (err error) {
 	return s.db.Close()
 }
 
-func (s *cacheservice) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusResponse, err error) {
+func (s *cacheservice) CacheGet() (out *pb.RpcMembershipGetStatusResponse, err error) {
 	// 1 - check in storage
 	ss, err := s.get()
 	if err != nil {
@@ -147,7 +147,7 @@ func (s *cacheservice) CacheGet() (out *pb.RpcPaymentsSubscriptionGetStatusRespo
 	return &ss.SubscriptionStatus, nil
 }
 
-func (s *cacheservice) CacheSet(in *pb.RpcPaymentsSubscriptionGetStatusResponse, expireTime time.Time) (err error) {
+func (s *cacheservice) CacheSet(in *pb.RpcMembershipGetStatusResponse, expireTime time.Time) (err error) {
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {
