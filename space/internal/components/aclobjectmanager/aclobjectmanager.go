@@ -339,6 +339,7 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 		bundle.RelationKeyName.String():        pbtypes.String(profile.Name),
 		bundle.RelationKeyDescription.String(): pbtypes.String(profile.Description),
 		bundle.RelationKeyIconImage.String():   pbtypes.String(profile.IconCid),
+		bundle.RelationKeyGlobalName.String():  pbtypes.String(profile.GlobalName),
 	}}
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		return pbtypes.StructMerge(current, details, false), nil

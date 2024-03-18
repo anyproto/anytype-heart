@@ -458,13 +458,16 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
-	globalName, err := s.getIdentityGlobalName(identityData.Identity)
-	if err != nil {
-		log.Error("failed to get profile global name", zap.Error(err))
-	}
-	profile.GlobalName = globalName
-
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
+
+	// We are getting GlobalName of identity from Naming Node only on start of application
+	if !ok {
+		profile.GlobalName, err = s.getIdentityGlobalName(identityData.Identity)
+		if err != nil {
+			log.Error("failed to get profile global name", zap.Error(err))
+		}
+	}
+
 	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
 
 	if hasUpdates {
