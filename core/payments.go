@@ -11,6 +11,8 @@ func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMember
 	ps := getService[payments.Service](mw)
 	out, err := ps.GetSubscriptionStatus(ctx, req)
 
+	log.Debug("payments - client asked to get a subscription status")
+
 	if err != nil {
 		return &pb.RpcMembershipGetStatusResponse{
 			Error: &pb.RpcMembershipGetStatusResponseError{

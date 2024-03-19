@@ -98,8 +98,9 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
-	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
+	s.eventSender = app.MustComponent[event.Sender](a)
 
+	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
 	return nil
 }
 
@@ -114,38 +115,31 @@ func (s *service) Close(_ context.Context) (err error) {
 }
 
 func (s *service) getPeriodicStatus(ctx context.Context) error {
-	return nil
-	/*
-		// 1 - get subscription status (from cache or from PP node)
-		_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+	// get subscription status (from cache or from PP node)
+	// if status is changed -> it will send an event
+	log.Debug("periodic: getting subscription status from cache/PP node")
 
-		// 2 - send notification
-		if err != nil {
-			log.Error("can not get subscription status in the loop", zap.Error(err))
-		}
+	_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+	return err
+}
 
-
-			s.eventSender.Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{
-					{
-						Value: &pb.EventMessageValueOfMembershipUpdate{
-							MembershipUpdate: &pb.EventMembershipUpdate{
-								Data: &model.Membership{},
-							},
-						},
+func (s *service) sendEvent(status *pb.RpcMembershipGetStatusResponse) {
+	s.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfMembershipUpdate{
+					MembershipUpdate: &pb.EventMembershipUpdate{
+						Data: status.Data,
 					},
 				},
-			})
-
-		return err
-	*/
+			},
+		},
+	})
 }
 
 func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-
-	log.Info("getting subscription status")
 
 	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
 	privKey := s.wallet.GetAccountPrivkey()
@@ -222,14 +216,15 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		return nil, err
 	}
 
+	isDiffTier := (cached != nil) && (cached.Data.Tier != status.Tier)
+	isDiffStatus := (cached != nil) && (cached.Data.Status != model.MembershipStatus(status.Status))
+	isActive := (status.Status == psp.SubscriptionStatus_StatusActive)
+
 	// 4 - if cache was disabled but the tier is different or status is active -> enable cache again (we have received new data)
 	if !s.cache.IsCacheEnabled() {
-		// only when tier haschanged
-		isDiffTier := (cached != nil) && (cached.Data.Tier != status.Tier)
-		isActive := (status.Status == psp.SubscriptionStatus(psp.SubscriptionStatus_StatusActive))
-
 		log.Debug("checking if payment cache should be enabled again", zap.Bool("isDiffTier", isDiffTier), zap.Bool("isActive", isActive))
 
+		// do not enable cache if status is not active
 		if cached == nil || (isDiffTier || isActive) {
 			log.Debug("enabling cache again")
 
@@ -239,6 +234,13 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 				return nil, err
 			}
 		}
+	}
+
+	// 5 - if status is changed -> send the event
+	// if no cache -> also send the event
+	if cached == nil || isDiffTier || isDiffStatus {
+		log.Info("subscription status has changed. sending EventMembershipUpdate")
+		s.sendEvent(&out)
 	}
 
 	return &out, nil

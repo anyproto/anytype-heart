@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/periodicsync/mock_periodicsync"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,7 @@ import (
 
 	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -35,11 +37,12 @@ var subsExpire time.Time = timeNow.Add(365 * 24 * time.Hour)
 var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
 type fixture struct {
-	a        *app.App
-	ctrl     *gomock.Controller
-	cache    *mock_cache.MockCacheService
-	ppclient *mock_ppclient.MockAnyPpClientService
-	wallet   *mock_wallet.MockWallet
+	a           *app.App
+	ctrl        *gomock.Controller
+	cache       *mock_cache.MockCacheService
+	ppclient    *mock_ppclient.MockAnyPpClientService
+	wallet      *mock_wallet.MockWallet
+	eventSender *mock_event.MockSender
 
 	*service
 }
@@ -54,6 +57,8 @@ func newFixture(t *testing.T) *fixture {
 	fx.cache = mock_cache.NewMockCacheService(t)
 	fx.ppclient = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
 	fx.wallet = mock_wallet.NewMockWallet(t)
+	fx.eventSender = mock_event.NewMockSender(t)
+	fx.periodicGetStatus = mock_periodicsync.NewMockPeriodicSync(fx.ctrl)
 
 	// init w mock
 	SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
@@ -72,10 +77,13 @@ func newFixture(t *testing.T) *fixture {
 	fx.wallet.EXPECT().Account().Return(&ak)
 	fx.wallet.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
 
+	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
+
 	fx.a.Register(fx.service).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet))
+		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender))
 
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -94,11 +102,11 @@ func TestGetStatus(t *testing.T) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
-		}).Once()
-		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -116,11 +124,11 @@ func TestGetStatus(t *testing.T) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
-		}).Once()
-		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		// Call the function being tested
 		req := pb.RpcMembershipGetStatusRequest{
@@ -164,11 +172,11 @@ func TestGetStatus(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
 		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
-		}).Once()
-		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -214,12 +222,12 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		// here: cache is disabled
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheDisabled).Once()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheDisabled)
 		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
-		}).Once()
-		fx.cache.EXPECT().IsCacheEnabled().Return(false).Once()
-		fx.cache.EXPECT().CacheEnable().Return(nil).Once()
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -264,10 +272,10 @@ func TestGetStatus(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
 		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return errors.New("can not write to cache!")
-		}).Once()
+		})
 
 		// Call the function being tested
 		_, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -295,7 +303,7 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		// HERE>>>
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil).Once()
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -335,12 +343,12 @@ func TestGetStatus(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
 		// here time.Now() will be passed which can be a bit different from the the cacheExpireTime
 		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
-		}).Once()
-		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -387,11 +395,11 @@ func TestGetStatus(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Once()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
 		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
-		}).Once()
-		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -440,13 +448,13 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		// return real struct and error
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, cache.ErrCacheDisabled).Once()
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, cache.ErrCacheDisabled)
 		fx.cache.EXPECT().CacheSet(&psgsr2, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
-		}).Once()
-		fx.cache.EXPECT().IsCacheEnabled().Return(false).Once()
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
 		// this should be called
-		fx.cache.EXPECT().CacheEnable().Return(nil).Once()
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -467,6 +475,16 @@ func TestGetPaymentURL(t *testing.T) {
 		fx.ppclient.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.BuySubscriptionResponse, error) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		//ethPrivateKey := ecdsa.PrivateKey{}
 		//w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
@@ -498,6 +516,16 @@ func TestGetPaymentURL(t *testing.T) {
 
 		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
 			RequestedTier:    int32(model.Membership_TierBuilder),
@@ -517,6 +545,16 @@ func TestGetPortalURL(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
 		fx.ppclient.EXPECT().GetSubscriptionPortalLink(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetSubscriptionPortalLinkResponse, error) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
@@ -532,6 +570,16 @@ func TestGetPortalURL(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
+
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.ppclient.EXPECT().GetSubscriptionPortalLink(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetSubscriptionPortalLinkResponse, error) {
 			return &psp.GetSubscriptionPortalLinkResponse{
@@ -556,6 +604,17 @@ func TestGetVerificationEmail(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		//
 		fx.ppclient.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
@@ -574,6 +633,17 @@ func TestGetVerificationEmail(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		//
 		fx.ppclient.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
 			return &psp.GetVerificationEmailResponse{}, nil
 		}).MinTimes(1)
@@ -595,6 +665,17 @@ func TestVerifyEmailCode(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		//
 		// no errors
 		fx.ppclient.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyEmailResponse, error) {
 			return nil, errors.New("bad error")
@@ -615,6 +696,17 @@ func TestVerifyEmailCode(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		//
 		// no errors
 		fx.ppclient.EXPECT().VerifyEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyEmailResponse, error) {
 			return &psp.VerifyEmailResponse{}, nil
@@ -639,6 +731,16 @@ func TestFinalizeSubscription(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
 		// no errors
 		fx.ppclient.EXPECT().FinalizeSubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.FinalizeSubscriptionResponse, error) {
 			return nil, errors.New("bad error")
@@ -657,6 +759,16 @@ func TestFinalizeSubscription(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
+
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// no errors
 		fx.ppclient.EXPECT().FinalizeSubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.FinalizeSubscriptionResponse, error) {
@@ -681,6 +793,16 @@ func TestGetTiers(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
@@ -698,6 +820,16 @@ func TestGetTiers(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
 			return &psp.GetTiersResponse{}, nil
 		}).MinTimes(1)
@@ -714,6 +846,16 @@ func TestGetTiers(t *testing.T) {
 	t.Run("success if response", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
+
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{}, nil
+		})
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().IsCacheEnabled().Return(false)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
 			return &psp.GetTiersResponse{
