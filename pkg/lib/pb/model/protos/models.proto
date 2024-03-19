@@ -1149,7 +1149,58 @@ message ManifestInfo {
     string language = 12;
 }
 
-message SubscriptionTierData {
+message Membership {
+    enum Tier {
+        TierNewUser = 0;
+        // "free" tier
+        TierExplorer = 1;
+        // this tier can be used just for testing in debug mode
+        // it will still create an active subscription, but with NO features
+        TierBuilder1WeekTEST = 2;
+        // this tier can be used just for testing in debug mode
+        // it will still create an active subscription, but with NO features
+        TierCoCreator1WeekTEST = 3;
+        TierBuilder = 4;
+        TierCoCreator = 5;
+    }
+    
+    enum Status {
+        StatusUnknown = 0;
+        // please wait a bit more
+        StatusPending = 1;
+        StatusActive = 2;
+        // in some cases we need to finalize the process:
+        // - if user has bought membership directly without first calling
+        // the BuySubscription method
+        // 
+        // in this case please call Finalize to finish the process
+        StatusPendingRequiresFinalization = 3;
+    }
+    
+    enum PaymentMethod {
+        MethodCard = 0;
+        MethodCrypto = 1;
+        MethodApplePay = 2;
+        MethodGooglePay = 3;
+        MethodAppleInapp = 4;
+        MethodGoogleInapp = 5;
+    }
+
+    // it was Tier before, changed to int32 to allow dynamic values
+    int32 tier = 1;
+    Status status = 2;
+    uint64 dateStarted = 3;
+    uint64 dateEnds = 4;
+    bool isAutoRenew = 5;
+    PaymentMethod paymentMethod = 6;
+    // can be empty if user did not ask for any name
+    string requestedAnyName = 7;
+    // if the email was verified by the user or set during the checkout - it will be here
+    string userEmail = 8;
+    bool subscribeToNewsletter = 9;
+}
+
+message MembershipTierData {
     enum PeriodType {
         PeriodTypeUnknown = 0;
         PeriodTypeUnlimited = 1;
