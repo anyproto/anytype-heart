@@ -5,13 +5,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/payments"
 	"github.com/anyproto/anytype-heart/pb"
+	"go.uber.org/zap"
 )
 
 func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse {
 	ps := getService[payments.Service](mw)
 	out, err := ps.GetSubscriptionStatus(ctx, req)
 
-	log.Debug("payments - client asked to get a subscription status")
+	log.Debug("payments - client asked to get a subscription status", zap.Any("req", req), zap.Any("out", out))
 
 	if err != nil {
 		return &pb.RpcMembershipGetStatusResponse{
@@ -28,6 +29,8 @@ func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMember
 func (mw *Middleware) MembershipGetPaymentUrl(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) *pb.RpcMembershipGetPaymentUrlResponse {
 	ps := getService[payments.Service](mw)
 	out, err := ps.GetPaymentURL(ctx, req)
+
+	log.Error("payments - client asked to get a payment url", zap.Any("req", req), zap.Any("out", out))
 
 	if err != nil {
 		return &pb.RpcMembershipGetPaymentUrlResponse{
