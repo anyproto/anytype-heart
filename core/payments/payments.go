@@ -109,26 +109,11 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
 	privKey := s.wallet.GetAccountPrivkey()
 
-	saveGlobalName := func(globalName string) {
-		spc, err := s.spaceService.Get(context.Background(), s.account.PersonalSpaceID())
-		if err != nil {
-			log.Error("failed to get personal space id:" + err.Error())
-			return
-		}
-		if err = spc.Do(s.account.MyParticipantId(s.account.PersonalSpaceID()), func(sb smartblock.SmartBlock) error {
-			st := sb.NewState()
-			st.SetDetailAndBundledRelation(bundle.RelationKeyGlobalName, pbtypes.String(globalName))
-			return sb.Apply(st, smartblock.NoRestrictions)
-		}); err != nil {
-			log.Error("failed to set global name to profile object:" + err.Error())
-		}
-	}
-
 	// 1 - check in cache
 	cached, err := s.cache.CacheGet()
 	// if NoCache -> skip returning from cache
 	if err == nil && !req.NoCache {
-		saveGlobalName(cached.RequestedAnyName)
+		s.saveGlobalNameToMyIdentity(cached.RequestedAnyName)
 		return cached, nil
 	}
 
@@ -215,7 +200,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcPayments
 	}
 
 	// 5 - save RequestedAnyName to details of local identity object
-	saveGlobalName(status.RequestedAnyName)
+	s.saveGlobalNameToMyIdentity(status.RequestedAnyName)
 
 	return &out, nil
 }
@@ -493,4 +478,19 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcPaymentsTiersGetReque
 	}
 
 	return &out, nil
+}
+
+func (s *service) saveGlobalNameToMyIdentity(globalName string) {
+	spc, err := s.spaceService.Get(context.Background(), s.account.PersonalSpaceID())
+	if err != nil {
+		log.Error("failed to get personal space id:" + err.Error())
+		return
+	}
+	if err = spc.Do(s.account.MyParticipantId(s.account.PersonalSpaceID()), func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyGlobalName, pbtypes.String(globalName))
+		return sb.Apply(st, smartblock.NoRestrictions)
+	}); err != nil {
+		log.Error("failed to set global name to profile object:" + err.Error())
+	}
 }

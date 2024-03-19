@@ -402,11 +402,8 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
-	if s.identityGlobalNames == nil && len(identities) != 0 {
-		err := s.fetchIdentitiesGlobalNames(identities)
-		if err != nil {
-			log.Error("error fetching identities global names from Naming Service", zap.Error(err))
-		}
+	if err = s.fetchGlobalNames(identities); err != nil {
+		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
 	}
 
 	for _, identityData := range identitiesData {
@@ -519,16 +516,19 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	return profile, rawProfile, nil
 }
 
-func (s *service) fetchIdentitiesGlobalNames(anyIDs []string) error {
-	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: anyIDs})
+func (s *service) fetchGlobalNames(identities []string) error {
+	if s.identityGlobalNames != nil || len(identities) == 0 {
+		return nil
+	}
+	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
 	if err != nil {
 		return err
 	}
 	if response == nil {
 		return nil
 	}
-	s.identityGlobalNames = make(map[string]string, len(anyIDs))
-	for i, anyID := range anyIDs {
+	s.identityGlobalNames = make(map[string]string, len(identities))
+	for i, anyID := range identities {
 		s.identityGlobalNames[anyID] = response.Results[i].Name
 	}
 	return nil
