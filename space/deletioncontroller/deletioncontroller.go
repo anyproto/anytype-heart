@@ -24,7 +24,7 @@ const CName = "client.space.deletioncontroller"
 var log = logger.NewNamed(CName)
 
 const (
-	loopPeriodSecs = 60
+	loopPeriodSecs = 180
 	loopTimeout    = time.Second * 120
 )
 
