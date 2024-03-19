@@ -10,10 +10,14 @@ import (
 	"github.com/cheggaaa/mb"
 	"golang.org/x/net/context"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "common.components.aclnotifications"
@@ -26,6 +30,7 @@ type aclNotificationRecord struct {
 	spaceId       string
 	aclId         string
 	accountStatus spaceinfo.AccountStatus
+	spaceName     string
 }
 
 type NotificationSender interface {
@@ -42,6 +47,7 @@ type aclNotificationSender struct {
 	identityService     dependencies.IdentityService
 	notificationService NotificationSender
 	batcher             *mb.MB
+	objectStore         objectstore.ObjectStore
 }
 
 func NewAclNotificationSender() AclNotification {
@@ -51,6 +57,7 @@ func NewAclNotificationSender() AclNotification {
 func (n *aclNotificationSender) Init(a *app.App) (err error) {
 	n.identityService = app.MustComponent[dependencies.IdentityService](a)
 	n.notificationService = app.MustComponent[NotificationSender](a)
+	n.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -75,6 +82,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	spaceId string,
 	accountStatus spaceinfo.AccountStatus,
 ) {
+	spaceName := n.getSpaceName(spaceId)
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
 	if lastNotificationId != "" {
 		acl.IterateFrom(lastNotificationId, func(record *list.AclRecord) (IsContinue bool) {
@@ -84,6 +92,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 				spaceId:       spaceId,
 				aclId:         acl.Id(),
 				accountStatus: accountStatus,
+				spaceName:     spaceName,
 			})
 			if err != nil {
 				logger.Errorf("failed to add acl record, %s", err)
@@ -99,11 +108,32 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 			spaceId:       spaceId,
 			aclId:         acl.Id(),
 			accountStatus: accountStatus,
+			spaceName:     spaceName,
 		})
 		if err != nil {
 			logger.Errorf("failed to add acl record, %s", err)
 		}
 	}
+}
+
+func (n *aclNotificationSender) getSpaceName(spaceId string) string {
+	records, _, err := n.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		logger.Errorf("failed to get details for acl record, %s", err)
+	}
+	var spaceName string
+	if len(records) > 0 {
+		spaceName = pbtypes.GetString(records[0].Details, bundle.RelationKeyName.String())
+	}
+	return spaceName
 }
 
 func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
@@ -232,6 +262,7 @@ func (n *aclNotificationSender) sendJoinRequest(ctx context.Context,
 			Identity:     pubKey.Account(),
 			IdentityName: name,
 			IdentityIcon: iconCid,
+			SpaceName:    notificationRecord.spaceName,
 		}},
 		Space:     notificationRecord.spaceId,
 		AclHeadId: notificationRecord.aclId,
@@ -262,6 +293,7 @@ func (n *aclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrec
 			ParticipantRequestApproved: &model.NotificationParticipantRequestApproved{
 				SpaceId:     notificationRecord.spaceId,
 				Permissions: mapProtoPermissionToAcl(reqApprove.Permissions),
+				SpaceName:   notificationRecord.spaceName,
 			},
 		},
 		Space:     notificationRecord.spaceId,
@@ -291,6 +323,7 @@ func (n *aclNotificationSender) sendAccountRequestRemove(ctx context.Context,
 			Identity:     aclNotificationRecord.record.Identity.Account(),
 			IdentityName: name,
 			IdentityIcon: iconCid,
+			SpaceName:    aclNotificationRecord.spaceName,
 		}},
 		Space:     aclNotificationRecord.spaceId,
 		AclHeadId: aclNotificationRecord.aclId,
@@ -328,6 +361,7 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 			Identity:     aclNotificationRecord.record.Identity.Account(),
 			IdentityName: name,
 			IdentityIcon: iconCid,
+			SpaceName:    aclNotificationRecord.spaceName,
 		}},
 		Space:     aclNotificationRecord.spaceId,
 		AclHeadId: aclNotificationRecord.aclId,
@@ -347,7 +381,8 @@ func (n *aclNotificationSender) sendParticipantRequestDecline(aclNotificationRec
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfParticipantRequestDecline{
 			ParticipantRequestDecline: &model.NotificationParticipantRequestDecline{
-				SpaceId: aclNotificationRecord.spaceId,
+				SpaceId:   aclNotificationRecord.spaceId,
+				SpaceName: aclNotificationRecord.spaceName,
 			},
 		},
 		Space:     aclNotificationRecord.spaceId,
@@ -385,6 +420,7 @@ func (n *aclNotificationSender) sendParticipantPermissionChanges(reqPermissionCh
 			ParticipantPermissionsChange: &model.NotificationParticipantPermissionsChange{
 				SpaceId:     aclNotificationRecord.spaceId,
 				Permissions: mapProtoPermissionToAcl(permissions),
+				SpaceName:   aclNotificationRecord.spaceName,
 			},
 		},
 		Space:     aclNotificationRecord.spaceId,
