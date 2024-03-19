@@ -16,13 +16,32 @@ type rpcHandler struct {
 	spaceStorage storage.ClientStorage
 }
 
+func (r *rpcHandler) BlockPush(ctx context.Context, request *fileproto.BlockPushRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
+func (r *rpcHandler) BlocksBind(ctx context.Context, request *fileproto.BlocksBindRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
+func (r *rpcHandler) FilesGet(request *fileproto.FilesGetRequest, stream fileproto.DRPCFile_FilesGetStream) error {
+	return fileprotoerr.ErrForbidden
+}
+
+func (r *rpcHandler) AccountLimitSet(ctx context.Context, request *fileproto.AccountLimitSetRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
+func (r *rpcHandler) SpaceLimitSet(ctx context.Context, request *fileproto.SpaceLimitSetRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
 func (r *rpcHandler) FilesDelete(ctx context.Context, request *fileproto.FilesDeleteRequest) (*fileproto.FilesDeleteResponse, error) {
 	return nil, fileprotoerr.ErrForbidden
 }
 
 func (r *rpcHandler) FilesInfo(ctx context.Context, request *fileproto.FilesInfoRequest) (*fileproto.FilesInfoResponse, error) {
 	return nil, fileprotoerr.ErrForbidden
-
 }
 
 func (r *rpcHandler) SpaceInfo(ctx context.Context, request *fileproto.SpaceInfoRequest) (*fileproto.SpaceInfoResponse, error) {
@@ -50,11 +69,14 @@ func (r *rpcHandler) BlockGet(ctx context.Context, req *fileproto.BlockGetReques
 	return
 }
 
+<<<<<<< HEAD
 func (r *rpcHandler) BlockPush(ctx context.Context, req *fileproto.BlockPushRequest) (*fileproto.Ok, error) {
 	return nil, fileprotoerr.ErrForbidden
 
 }
 
+=======
+>>>>>>> origin/main
 func (r *rpcHandler) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheckRequest) (*fileproto.BlocksCheckResponse, error) {
 	cids := make([]cid.Cid, 0, len(req.Cids))
 	for _, cd := range req.Cids {
@@ -72,10 +94,13 @@ func (r *rpcHandler) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheck
 	}, nil
 }
 
+<<<<<<< HEAD
 func (r *rpcHandler) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRequest) (*fileproto.Ok, error) {
 	return nil, fileprotoerr.ErrForbidden
 }
 
+=======
+>>>>>>> origin/main
 func (r *rpcHandler) Check(ctx context.Context, request *fileproto.CheckRequest) (resp *fileproto.CheckResponse, err error) {
 	resp = &fileproto.CheckResponse{
 		AllowWrite: false,

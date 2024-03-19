@@ -233,20 +233,20 @@ func (s *service) AccountMetadataPayload() []byte {
 	return s.accountMetadataPayload
 }
 
-func (s *service) UpdateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus, isOwned bool) error {
+func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	s.mu.Lock()
-	ctrl := s.spaceControllers[spaceId]
+	ctrl := s.spaceControllers[status.SpaceId]
 	s.mu.Unlock()
 	if ctrl == nil {
-		return fmt.Errorf("no such space: %s", spaceId)
+		return fmt.Errorf("no such space: %s", status.SpaceId)
 	}
 	err := ctrl.UpdateRemoteStatus(ctx, status)
 	if err != nil {
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
-	if !isOwned && status == spaceinfo.RemoteStatusDeleted {
+	if !status.IsOwned && status.RemoteStatus == spaceinfo.RemoteStatusDeleted {
 		return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
-			SpaceID:       spaceId,
+			SpaceID:       status.SpaceId,
 			AccountStatus: spaceinfo.AccountStatusRemoving,
 		})
 	}

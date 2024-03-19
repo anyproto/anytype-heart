@@ -144,6 +144,8 @@ func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocal
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
+	st.SetLocalDetail(bundle.RelationKeySpaceMembersWriteLimit.String(), pbtypes.Int64(int64(info.WriteLimit)))
+	st.SetLocalDetail(bundle.RelationKeySpaceMembersReadLimit.String(), pbtypes.Int64(int64(info.ReadLimit)))
 	s.log.Infof("set space local status: %s, remote status: %s", info.LocalStatus.String(), info.RemoteStatus.String())
 }
 

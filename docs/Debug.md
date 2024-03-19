@@ -25,7 +25,7 @@ You can find all endpoints in `/debug` page. For example: http://localhost:6061/
 In order to log mw gRPC requests/responses use `ANYTYPE_GRPC_LOG` env var:
 - `ANYTYPE_LOG_LEVEL="grpc=DEBUG" ANYTYPE_GRPC_LOG=1` - log only method names
 - `ANYTYPE_LOG_LEVEL="grpc=DEBUG" ANYTYPE_GRPC_LOG=2` - log method names  + payloads for commands
-- `ANYTYPE_LOG_LEVEL="grpc=DEBUG" ANYTYPE_GRPC_LOG=2` - log method names  + payloads for commands&events
+- `ANYTYPE_LOG_LEVEL="grpc=DEBUG" ANYTYPE_GRPC_LOG=3` - log method names  + payloads for commands&events
 
 ### gRPC tracing
 1. Run jaeger UI on the local machine:
@@ -33,8 +33,9 @@ In order to log mw gRPC requests/responses use `ANYTYPE_GRPC_LOG` env var:
 2. Run mw with `ANYTYPE_GRPC_TRACE` env var:
 - `ANYTYPE_GRPC_TRACE=1` - log only method names/times
 - `ANYTYPE_GRPC_TRACE=2` - log method names  + payloads for commands
-- `ANYTYPE_GRPC_TRACE=2` - log method names  + payloads for commands&events
+- `ANYTYPE_GRPC_TRACE=3` - log method names  + payloads for commands&events
 3. Open Jaeger UI at http://localhost:16686
+4. If you can't see anything use JAEGER_SAMPLER_TYPE="const" and JAEGER_SAMPLER_PARAM=1 env vars to force sampling
 
 ### Debug tree
 1. You can use `cmd/debugtree.go` to perform different operations with tree exported in zip archive (`rpc DebugTree`)
