@@ -64,12 +64,17 @@ type Service interface {
 	app.ComponentRunnable
 }
 
+type coordinatorStatusUpdater interface {
+	UpdateCoordinatorStatus()
+}
+
 type service struct {
 	techSpace      *clientspace.TechSpace
 	factory        spacefactory.SpaceFactory
 	spaceCore      spacecore.SpaceCoreService
 	accountService accountservice.Service
 	config         *config.Config
+	updater        coordinatorStatusUpdater
 
 	personalSpaceId        string
 	techSpaceId            string
@@ -115,6 +120,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.config = app.MustComponent[*config.Config](a)
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
+	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	if err != nil {
