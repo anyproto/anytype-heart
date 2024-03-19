@@ -50,6 +50,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
+	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -268,7 +269,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(profiler.New()).
 		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
-		Register(notifications.New())
+		Register(notifications.New()).
+		Register(device.NewDevices())
 }
 
 func MiddlewareVersion() string {

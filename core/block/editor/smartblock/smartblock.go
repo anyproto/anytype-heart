@@ -1325,19 +1325,21 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 
 func hasChanges(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if isStoreOrNotificationChanges(ch) {
+		if isSuitableChanges(ch) {
 			return true
 		}
 	}
 	return false
 }
 
-func isStoreOrNotificationChanges(ch *pb.ChangeContent) bool {
+func isSuitableChanges(ch *pb.ChangeContent) bool {
 	return ch.GetStoreKeySet() != nil ||
 		ch.GetStoreKeyUnset() != nil ||
 		ch.GetStoreSliceUpdate() != nil ||
 		ch.GetNotificationCreate() != nil ||
-		ch.GetNotificationUpdate() != nil
+		ch.GetNotificationUpdate() != nil ||
+		ch.GetDeviceUpdate() != nil ||
+		ch.GetDeviceAdd() != nil
 }
 
 func hasDetailsMsgs(msgs []simple.EventMessage) bool {

@@ -50,6 +50,7 @@ enum SmartBlockType {
     FileObject = 0x215;
 
     NotificationObject = 0x217;
+    DeviceObject = 0x218;
 }
 
 message Block {
@@ -1146,4 +1147,11 @@ message ManifestInfo {
     int32 fileSize = 10;
     repeated string categories = 11;
     string language = 12;
+}
+
+message DeviceInfo {
+    string id = 1;
+    string name = 2;
+    int64 addDate = 3;
+    bool archived = 4;
 }
