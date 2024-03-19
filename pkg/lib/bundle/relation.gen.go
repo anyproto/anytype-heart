@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "1fe26c5c7e1e64a1f8894a2770e27ea046b8f94686a20a21bdda696f9fb17aad"
+const RelationChecksum = "083b65b88df2fbb6aa1ed2bc8bc0442354ba03ec909d8b6b534518b582b521c4"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -2100,7 +2100,7 @@ var (
 		},
 		RelationKeySpaceMembersReadLimit: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Space members read limit",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
@@ -2114,7 +2114,7 @@ var (
 		},
 		RelationKeySpaceMembersWriteLimit: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Space members write limit",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
