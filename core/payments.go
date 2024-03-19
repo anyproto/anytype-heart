@@ -3,9 +3,10 @@ package core
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/payments"
 	"github.com/anyproto/anytype-heart/pb"
-	"go.uber.org/zap"
 )
 
 func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse {

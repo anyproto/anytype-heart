@@ -292,15 +292,3 @@ func (t *testServer) AccountInfo(ctx context.Context, req *fileproto.AccountInfo
 func (t *testServer) Check(ctx context.Context, req *fileproto.CheckRequest) (*fileproto.CheckResponse, error) {
 	return &fileproto.CheckResponse{AllowWrite: true}, nil
 }
-
-func (t *testServer) AccountLimitSet(ctx context.Context, in *fileproto.AccountLimitSetRequest) (*fileproto.Ok, error) {
-	return nil, nil
-}
-
-func (t *testServer) SpaceLimitSet(ctx context.Context, in *fileproto.SpaceLimitSetRequest) (*fileproto.Ok, error) {
-	return nil, nil
-}
-
-func (t *testServer) FilesGet(*fileproto.FilesGetRequest, fileproto.DRPCFile_FilesGetStream) error {
-	return nil
-}
