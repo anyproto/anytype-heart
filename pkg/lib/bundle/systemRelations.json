@@ -73,6 +73,8 @@
   "spaceAccessType",
   "spaceInviteFileCid",
   "spaceInviteFileKey",
+  "spaceMembersReadLimit",
+  "spaceMembersWriteLimit",
   "participantPermissions",
   "participantStatus",
   "latestAclHeadId",
