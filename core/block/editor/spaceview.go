@@ -144,9 +144,13 @@ func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocal
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
-	st.SetLocalDetail(bundle.RelationKeyWritersLimit.String(), pbtypes.Int64(int64(info.WriteLimit)))
-	st.SetLocalDetail(bundle.RelationKeyReadersLimit.String(), pbtypes.Int64(int64(info.ReadLimit)))
-	s.log.Infof("set space local status: %s, remote status: %s", info.LocalStatus.String(), info.RemoteStatus.String())
+	if info.WriteLimit != 0 || info.ReadLimit != 0 {
+		st.SetLocalDetail(bundle.RelationKeyWritersLimit.String(), pbtypes.Int64(int64(info.WriteLimit)))
+		st.SetLocalDetail(bundle.RelationKeyReadersLimit.String(), pbtypes.Int64(int64(info.ReadLimit)))
+		s.log.Infof("set space local status: %s, remote status: %s, write members: %d, read members: %d", info.LocalStatus.String(), info.RemoteStatus.String(), info.WriteLimit, info.ReadLimit)
+	} else {
+		s.log.Infof("set space local status: %s, remote status: %s", info.LocalStatus.String(), info.RemoteStatus.String())
+	}
 }
 
 func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
