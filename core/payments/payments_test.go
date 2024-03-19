@@ -16,10 +16,14 @@ import (
 
 	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+
+	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 
 	"github.com/stretchr/testify/assert"
@@ -34,11 +38,13 @@ var subsExpire time.Time = timeNow.Add(365 * 24 * time.Hour)
 var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
 type fixture struct {
-	a        *app.App
-	ctrl     *gomock.Controller
-	cache    *mock_cache.MockCacheService
-	ppclient *mock_ppclient.MockAnyPpClientService
-	wallet   *mock_wallet.MockWallet
+	a            *app.App
+	ctrl         *gomock.Controller
+	cache        *mock_cache.MockCacheService
+	ppclient     *mock_ppclient.MockAnyPpClientService
+	wallet       *mock_wallet.MockWallet
+	spaceService *mock_space.MockService
+	account      *mock_account.MockService
 
 	*service
 }
@@ -53,6 +59,8 @@ func newFixture(t *testing.T) *fixture {
 	fx.cache = mock_cache.NewMockCacheService(t)
 	fx.ppclient = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
 	fx.wallet = mock_wallet.NewMockWallet(t)
+	fx.spaceService = mock_space.NewMockService(t)
+	fx.account = mock_account.NewMockService(t)
 
 	// init w mock
 	SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
@@ -74,7 +82,9 @@ func newFixture(t *testing.T) *fixture {
 	fx.a.Register(fx.service).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet))
+		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceService)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.account))
 
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -99,6 +109,14 @@ func TestGetStatus(t *testing.T) {
 		}).Once()
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.NoError(t, err)
@@ -121,9 +139,17 @@ func TestGetStatus(t *testing.T) {
 		}).Once()
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+
 		// Call the function being tested
 		req := pb.RpcPaymentsSubscriptionGetStatusRequest{
-			/// >>> here:
+			// / >>> here:
 			NoCache: true,
 		}
 		resp, err := fx.GetSubscriptionStatus(ctx, &req)
@@ -166,6 +192,14 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		}).Once()
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
@@ -215,6 +249,14 @@ func TestGetStatus(t *testing.T) {
 		}).Once()
 		fx.cache.EXPECT().IsCacheEnabled().Return(false).Once()
 		fx.cache.EXPECT().CacheEnable().Return(nil).Once()
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
@@ -267,8 +309,8 @@ func TestGetStatus(t *testing.T) {
 		assert.Error(t, err)
 
 		// resp object is nil in case of error
-		//assert.Equal(t, pb.RpcPaymentsSubscriptionGetStatusResponseErrorCode(pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR), resp.Error.Code)
-		//assert.Equal(t, "can not write to cache!", resp.Error.Description)
+		// assert.Equal(t, pb.RpcPaymentsSubscriptionGetStatusResponseErrorCode(pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR), resp.Error.Code)
+		// assert.Equal(t, "can not write to cache!", resp.Error.Description)
 	})
 
 	t.Run("success if in cache", func(t *testing.T) {
@@ -287,6 +329,14 @@ func TestGetStatus(t *testing.T) {
 
 		// HERE>>>
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil).Once()
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
@@ -330,6 +380,14 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		}).Once()
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
@@ -379,6 +437,14 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		}).Once()
 		fx.cache.EXPECT().IsCacheEnabled().Return(true).Once()
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
@@ -433,6 +499,14 @@ func TestGetStatus(t *testing.T) {
 		// this should be called
 		fx.cache.EXPECT().CacheEnable().Return(nil).Once()
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcPaymentsSubscriptionGetStatusRequest{})
 		assert.NoError(t, err)
@@ -453,8 +527,8 @@ func TestGetPaymentURL(t *testing.T) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
-		//ethPrivateKey := ecdsa.PrivateKey{}
-		//w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
+		// ethPrivateKey := ecdsa.PrivateKey{}
+		// w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentUrlRequest{
