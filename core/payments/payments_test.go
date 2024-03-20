@@ -17,12 +17,16 @@ import (
 
 	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+
+	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 
 	"github.com/stretchr/testify/assert"
@@ -37,12 +41,14 @@ var subsExpire time.Time = timeNow.Add(365 * 24 * time.Hour)
 var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
 type fixture struct {
-	a           *app.App
-	ctrl        *gomock.Controller
-	cache       *mock_cache.MockCacheService
-	ppclient    *mock_ppclient.MockAnyPpClientService
-	wallet      *mock_wallet.MockWallet
-	eventSender *mock_event.MockSender
+	a            *app.App
+	ctrl         *gomock.Controller
+	cache        *mock_cache.MockCacheService
+	ppclient     *mock_ppclient.MockAnyPpClientService
+	wallet       *mock_wallet.MockWallet
+	spaceService *mock_space.MockService
+	account      *mock_account.MockService
+	eventSender  *mock_event.MockSender
 
 	*service
 }
@@ -57,6 +63,8 @@ func newFixture(t *testing.T) *fixture {
 	fx.cache = mock_cache.NewMockCacheService(t)
 	fx.ppclient = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
 	fx.wallet = mock_wallet.NewMockWallet(t)
+	fx.spaceService = mock_space.NewMockService(t)
+	fx.account = mock_account.NewMockService(t)
 	fx.eventSender = mock_event.NewMockSender(t)
 	fx.periodicGetStatus = mock_periodicsync.NewMockPeriodicSync(fx.ctrl)
 
@@ -79,10 +87,20 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
 
+	spc := mock_clientspace.NewMockSpace(t)
+	fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Maybe().Return(spc, nil)
+
+	fx.account.EXPECT().PersonalSpaceID().Maybe().Return("")
+	fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Maybe().Return("")
+
+	spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Maybe().Return(nil)
+
 	fx.a.Register(fx.service).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceService)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.account)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender))
 
 	require.NoError(t, fx.a.Start(ctx))
@@ -132,7 +150,7 @@ func TestGetStatus(t *testing.T) {
 
 		// Call the function being tested
 		req := pb.RpcMembershipGetStatusRequest{
-			/// >>> here:
+			// / >>> here:
 			NoCache: true,
 		}
 		resp, err := fx.GetSubscriptionStatus(ctx, &req)
@@ -282,8 +300,8 @@ func TestGetStatus(t *testing.T) {
 		assert.Error(t, err)
 
 		// resp object is nil in case of error
-		//assert.Equal(t, pb.RpcPaymentsSubscriptionGetStatusResponseErrorCode(pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR), resp.Error.Code)
-		//assert.Equal(t, "can not write to cache!", resp.Error.Description)
+		// assert.Equal(t, pb.RpcPaymentsSubscriptionGetStatusResponseErrorCode(pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR), resp.Error.Code)
+		// assert.Equal(t, "can not write to cache!", resp.Error.Description)
 	})
 
 	t.Run("success if in cache", func(t *testing.T) {
@@ -486,8 +504,8 @@ func TestGetPaymentURL(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(false)
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
-		//ethPrivateKey := ecdsa.PrivateKey{}
-		//w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
+		// ethPrivateKey := ecdsa.PrivateKey{}
+		// w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
@@ -766,7 +784,7 @@ func TestFinalizeSubscription(t *testing.T) {
 		})
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
-		})
+		}).Maybe()
 		fx.cache.EXPECT().IsCacheEnabled().Return(false)
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 

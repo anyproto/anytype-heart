@@ -10,12 +10,17 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
@@ -81,9 +86,11 @@ func New() Service {
 }
 
 type service struct {
-	cache    cache.CacheService
-	ppclient ppclient.AnyPpClientService
-	wallet   wallet.Wallet
+	cache        cache.CacheService
+	ppclient     ppclient.AnyPpClientService
+	wallet       wallet.Wallet
+	spaceService space.Service
+	account      account.Service
 
 	mx                sync.Mutex
 	periodicGetStatus periodicsync.PeriodicSync
@@ -98,6 +105,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
+	s.spaceService = app.MustComponent[space.Service](a)
+	s.account = app.MustComponent[account.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 
 	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
@@ -148,6 +157,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	cached, err := s.cache.CacheGet()
 	// if NoCache -> skip returning from cache
 	if err == nil && !req.NoCache {
+		s.saveGlobalNameToMyIdentity(cached.Data.RequestedAnyName)
 		return cached, nil
 	}
 
@@ -242,6 +252,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		log.Info("subscription status has changed. sending EventMembershipUpdate")
 		s.sendEvent(&out)
 	}
+
+	// 6 - save RequestedAnyName to details of local identity object
+	s.saveGlobalNameToMyIdentity(status.RequestedAnyName)
 
 	return &out, nil
 }
@@ -519,4 +532,19 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 	}
 
 	return &out, nil
+}
+
+func (s *service) saveGlobalNameToMyIdentity(globalName string) {
+	spc, err := s.spaceService.Get(context.Background(), s.account.PersonalSpaceID())
+	if err != nil {
+		log.Error("failed to get personal space id:" + err.Error())
+		return
+	}
+	if err = spc.Do(s.account.MyParticipantId(s.account.PersonalSpaceID()), func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyGlobalName, pbtypes.String(globalName))
+		return sb.Apply(st, smartblock.NoRestrictions)
+	}); err != nil {
+		log.Error("failed to set global name to profile object:" + err.Error())
+	}
 }

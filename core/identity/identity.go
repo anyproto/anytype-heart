@@ -8,6 +8,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
@@ -17,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -73,6 +76,8 @@ type service struct {
 	spaceIdDeriver     spaceIdDeriver
 	identityRepoClient identityRepoClient
 	fileAclService     fileacl.Service
+	wallet             wallet.Wallet
+	namingService      nameserviceclient.AnyNsClientService
 	closing            chan struct{}
 	startedCh          chan struct{}
 	techSpaceId        string
@@ -91,6 +96,7 @@ type service struct {
 	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
 	identityProfileCache   map[string]*model.IdentityProfile
+	identityGlobalNames    map[string]string
 }
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
@@ -114,6 +120,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.identityRepoClient = app.MustComponent[identityRepoClient](a)
 	s.fileAclService = app.MustComponent[fileacl.Service](a)
 	s.dbProvider = app.MustComponent[datastore.Datastore](a)
+	s.wallet = app.MustComponent[wallet.Wallet](a)
+	s.namingService = app.MustComponent[nameserviceclient.AnyNsClientService](a)
 	return
 }
 
@@ -282,6 +290,7 @@ func (s *service) cacheProfileDetails(details *types.Struct) {
 		Name:        pbtypes.GetString(details, bundle.RelationKeyName.String()),
 		Description: pbtypes.GetString(details, bundle.RelationKeyDescription.String()),
 		IconCid:     pbtypes.GetString(details, bundle.RelationKeyIconImage.String()),
+		GlobalName:  pbtypes.GetString(details, bundle.RelationKeyGlobalName.String()),
 	}
 
 	s.lock.RLock()
@@ -318,6 +327,7 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context) error {
 		Description:        pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyDescription.String()),
 		IconCid:            iconCid,
 		IconEncryptionKeys: iconEncryptionKeys,
+		GlobalName:         pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyGlobalName.String()),
 	}
 	data, err := proto.Marshal(identityProfile)
 	if err != nil {
@@ -392,6 +402,10 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
+	if err = s.fetchGlobalNames(identities); err != nil {
+		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
+	}
+
 	for _, identityData := range identitiesData {
 		err := s.broadcastIdentityProfile(identityData)
 		if err != nil {
@@ -449,6 +463,10 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
+	if globalName, found := s.identityGlobalNames[identityData.Identity]; found {
+		profile.GlobalName = globalName
+	}
+
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
 	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
 
@@ -496,6 +514,26 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 		return nil, nil, fmt.Errorf("no profile data found")
 	}
 	return profile, rawProfile, nil
+}
+
+func (s *service) fetchGlobalNames(identities []string) error {
+	if s.identityGlobalNames != nil || len(identities) == 0 {
+		return nil
+	}
+	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
+	if err != nil {
+		return err
+	}
+	if response == nil {
+		return nil
+	}
+	s.identityGlobalNames = make(map[string]string, len(identities))
+	for i, anyID := range identities {
+		if response.Results[i].Found {
+			s.identityGlobalNames[anyID] = response.Results[i].Name
+		}
+	}
+	return nil
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {

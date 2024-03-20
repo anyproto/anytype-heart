@@ -25480,6 +25480,7 @@ Used to decode block meta only, without the content itself
 | iconCid | [string](#string) |  |  |
 | iconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | description | [string](#string) |  |  |
+| globalName | [string](#string) |  |  |
 
 
 
