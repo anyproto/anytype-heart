@@ -160,24 +160,6 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	return respDetails, newID, nil
 }
 
-func (oc *ObjectCreator) createStaticObject(ctx context.Context, spaceID string, newID string, st *state.State) (*types.Struct, string, error) {
-	spc, err := oc.spaceService.Get(ctx, spaceID)
-	if err != nil {
-		return nil, "", fmt.Errorf("get space %s: %w", spaceID, err)
-	}
-	object, err := spc.GetObject(ctx, newID)
-	if err != nil {
-		return nil, "", err
-	}
-	s := object.NewState()
-	st.SetParent(s)
-	err = object.Apply(st)
-	if err != nil {
-		return nil, "", err
-	}
-	return object.Details(), newID, nil
-}
-
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption && sbType != coresb.SmartBlockTypeFileObject
 }
