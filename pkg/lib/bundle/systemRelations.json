@@ -52,7 +52,6 @@
   "spaceDashboardId",
   "recommendedRelations",
   "iconOption",
-  "spaceAccessibility",
   "widthInPixels",
   "heightInPixels",
   "fileExt",
@@ -65,8 +64,18 @@
   "profileOwnerIdentity",
   "fileBackupStatus",
   "fileId",
+  "fileIndexingStatus",
   "origin",
   "revision",
   "imageKind",
-  "importType"
+  "importType",
+  "spaceAccessType",
+  "spaceInviteFileCid",
+  "spaceInviteFileKey",
+  "spaceMembersReadLimit",
+  "spaceMembersWriteLimit",
+  "participantPermissions",
+  "participantStatus",
+  "latestAclHeadId",
+  "identity"
 ]

@@ -2,6 +2,7 @@ package filestore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -11,6 +12,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -110,38 +112,36 @@ type FileStore interface {
 	SetIsFileImported(fileId domain.FileId, isImported bool) error
 	SetFileSize(fileId domain.FileId, size int) error
 	GetFileSize(fileId domain.FileId) (int, error)
-	SetFileOrigin(fileId domain.FileId, origin model.ObjectOrigin) error
-	GetFileOrigin(fileId domain.FileId) (int, error)
-	SetFileImportType(hash string, importType model.ImportType) error
-	GetFileImportType(hash string) (int, error)
+	GetFileOrigin(fileId domain.FileId) (objectorigin.ObjectOrigin, error)
+	SetFileOrigin(fileId domain.FileId, origin objectorigin.ObjectOrigin) error
 }
 
 func New() FileStore {
 	return &dsFileStore{}
 }
 
-func (ls *dsFileStore) Init(a *app.App) (err error) {
-	ls.dsIface = app.MustComponent[datastore.Datastore](a)
+func (s *dsFileStore) Init(a *app.App) (err error) {
+	s.dsIface = app.MustComponent[datastore.Datastore](a)
 	return nil
 }
 
-func (ls *dsFileStore) Run(context.Context) (err error) {
-	ls.db, err = ls.dsIface.LocalStorage()
+func (s *dsFileStore) Run(context.Context) (err error) {
+	s.db, err = s.dsIface.LocalStorage()
 	if err != nil {
 		return err
 	}
 	return
 }
 
-func (ls *dsFileStore) Name() (name string) {
+func (s *dsFileStore) Name() (name string) {
 	return CName
 }
 
-func (m *dsFileStore) Prefix() string {
+func (s *dsFileStore) Prefix() string {
 	return "files"
 }
 
-func (m *dsFileStore) Indexes() []localstore.Index {
+func (s *dsFileStore) Indexes() []localstore.Index {
 	return []localstore.Index{
 		indexMillChecksum,
 		indexMillSourceOpts,
@@ -149,8 +149,8 @@ func (m *dsFileStore) Indexes() []localstore.Index {
 	}
 }
 
-func (m *dsFileStore) AddFileVariant(file *storage.FileInfo) error {
-	return m.updateTxn(func(txn *badger.Txn) error {
+func (s *dsFileStore) AddFileVariant(file *storage.FileInfo) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		fileInfoKey := filesInfoBase.ChildString(file.Hash)
 
 		log.Debugf("file add %s", file.Hash)
@@ -172,7 +172,7 @@ func (m *dsFileStore) AddFileVariant(file *storage.FileInfo) error {
 			return err
 		}
 
-		err = localstore.AddIndexesWithTxn(m, txn, file, file.Hash)
+		err = localstore.AddIndexesWithTxn(s, txn, file, file.Hash)
 		if err != nil {
 			return err
 		}
@@ -181,8 +181,8 @@ func (m *dsFileStore) AddFileVariant(file *storage.FileInfo) error {
 }
 
 // AddMulti add multiple files and ignores possible duplicate errors, tx with all inserts discarded in case of other errors
-func (m *dsFileStore) AddFileVariants(upsert bool, files ...*storage.FileInfo) error {
-	return m.updateTxn(func(txn *badger.Txn) error {
+func (s *dsFileStore) AddFileVariants(upsert bool, files ...*storage.FileInfo) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		for _, file := range files {
 			fileInfoKey := filesInfoBase.ChildString(file.Hash)
 			exists, err := badgerhelper.Has(txn, fileInfoKey.Bytes())
@@ -203,7 +203,7 @@ func (m *dsFileStore) AddFileVariants(upsert bool, files ...*storage.FileInfo) e
 				return err
 			}
 
-			err = localstore.AddIndexesWithTxn(m, txn, file, file.Hash)
+			err = localstore.AddIndexesWithTxn(s, txn, file, file.Hash)
 			if err != nil {
 				return err
 			}
@@ -212,13 +212,13 @@ func (m *dsFileStore) AddFileVariants(upsert bool, files ...*storage.FileInfo) e
 	})
 }
 
-func (m *dsFileStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
-	return m.updateTxn(func(txn *badger.Txn) error {
+func (s *dsFileStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		for _, fk := range fileKeys {
 			if len(fk.EncryptionKeys) == 0 {
 				continue
 			}
-			err := m.addSingleFileKeys(txn, fk)
+			err := s.addSingleFileKeys(txn, fk)
 			if err != nil {
 				if err == localstore.ErrDuplicateKey {
 					continue
@@ -230,8 +230,8 @@ func (m *dsFileStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
 	})
 }
 
-func (m *dsFileStore) RemoveEmptyFileKeys() error {
-	return m.updateTxn(func(txn *badger.Txn) error {
+func (s *dsFileStore) RemoveEmptyFileKeys() error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		res := localstore.GetKeys(txn, filesKeysBase.String(), 0)
 
 		fileIds, err := localstore.GetLeavesFromResults(res)
@@ -242,7 +242,7 @@ func (m *dsFileStore) RemoveEmptyFileKeys() error {
 		var removed int
 		for _, fileId := range fileIds {
 			// TODO USE TXN
-			v, err := m.GetFileKeys(domain.FileId(fileId))
+			v, err := s.GetFileKeys(domain.FileId(fileId))
 			if err != nil {
 				if err != nil {
 					log.Errorf("RemoveEmptyFileKeys failed to get keys: %s", err)
@@ -252,7 +252,7 @@ func (m *dsFileStore) RemoveEmptyFileKeys() error {
 			if len(v) == 0 {
 				removed++
 				// TODO USE TXN
-				err = m.deleteFileKeys(domain.FileId(fileId))
+				err = s.deleteFileKeys(domain.FileId(fileId))
 				if err != nil {
 					log.Errorf("RemoveEmptyFileKeys failed to delete empty file keys: %s", err)
 				}
@@ -265,14 +265,14 @@ func (m *dsFileStore) RemoveEmptyFileKeys() error {
 	})
 }
 
-func (m *dsFileStore) deleteFileKeys(fileId domain.FileId) error {
-	return m.updateTxn(func(txn *badger.Txn) error {
+func (s *dsFileStore) deleteFileKeys(fileId domain.FileId) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		fileKeysKey := filesKeysBase.ChildString(fileId.String())
 		return txn.Delete(fileKeysKey.Bytes())
 	})
 }
 
-func (m *dsFileStore) addSingleFileKeys(txn *badger.Txn, fileKeys domain.FileEncryptionKeys) error {
+func (s *dsFileStore) addSingleFileKeys(txn *badger.Txn, fileKeys domain.FileEncryptionKeys) error {
 	fileKeysKey := filesKeysBase.ChildString(fileKeys.FileId.String())
 
 	exists, err := badgerhelper.Has(txn, fileKeysKey.Bytes())
@@ -288,9 +288,9 @@ func (m *dsFileStore) addSingleFileKeys(txn *badger.Txn, fileKeys domain.FileEnc
 	})
 }
 
-func (m *dsFileStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
+func (s *dsFileStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
 	fileKeysKey := filesKeysBase.ChildString(fileId.String())
-	fileKeys, err := badgerhelper.GetValue(m.db, fileKeysKey.Bytes(), func(raw []byte) (v storage.FileKeys, err error) {
+	fileKeys, err := badgerhelper.GetValue(s.db, fileKeysKey.Bytes(), func(raw []byte) (v storage.FileKeys, err error) {
 		return v, proto.Unmarshal(raw, &v)
 	})
 	if badgerhelper.IsNotFound(err) {
@@ -302,9 +302,9 @@ func (m *dsFileStore) GetFileKeys(fileId domain.FileId) (map[string]string, erro
 	return fileKeys.KeysByPath, nil
 }
 
-func (m *dsFileStore) LinkFileVariantToFile(fileId domain.FileId, childId domain.FileContentId) error {
-	return m.updateTxn(func(txn *badger.Txn) error {
-		file, err := m.getChild(txn, childId)
+func (s *dsFileStore) LinkFileVariantToFile(fileId domain.FileId, childId domain.FileContentId) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
+		file, err := s.getChild(txn, childId)
 		if err != nil {
 			return err
 		}
@@ -332,13 +332,13 @@ func (m *dsFileStore) LinkFileVariantToFile(fileId domain.FileId, childId domain
 	})
 }
 
-func (m *dsFileStore) GetFileVariant(childId domain.FileContentId) (*storage.FileInfo, error) {
-	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
-		return m.getChild(txn, childId)
+func (s *dsFileStore) GetFileVariant(childId domain.FileContentId) (*storage.FileInfo, error) {
+	return badgerhelper.ViewTxnWithResult(s.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
+		return s.getChild(txn, childId)
 	})
 }
 
-func (m *dsFileStore) getChild(txn *badger.Txn, childId domain.FileContentId) (*storage.FileInfo, error) {
+func (s *dsFileStore) getChild(txn *badger.Txn, childId domain.FileContentId) (*storage.FileInfo, error) {
 	fileInfoKey := filesInfoBase.ChildString(childId.String())
 	file, err := badgerhelper.GetValueTxn(txn, fileInfoKey.Bytes(), unmarshalFileInfo)
 	if badgerhelper.IsNotFound(err) {
@@ -350,8 +350,8 @@ func (m *dsFileStore) getChild(txn *badger.Txn, childId domain.FileContentId) (*
 	return file, nil
 }
 
-func (m *dsFileStore) GetFileVariantByChecksum(mill string, checksum string) (*storage.FileInfo, error) {
-	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
+func (s *dsFileStore) GetFileVariantByChecksum(mill string, checksum string) (*storage.FileInfo, error) {
+	return badgerhelper.ViewTxnWithResult(s.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
 		key, err := localstore.GetKeyByIndex(indexMillChecksum, txn, &storage.FileInfo{Mill: mill, Checksum: checksum})
 		if err != nil {
 			return nil, err
@@ -360,8 +360,8 @@ func (m *dsFileStore) GetFileVariantByChecksum(mill string, checksum string) (*s
 	})
 }
 
-func (m *dsFileStore) GetFileVariantBySource(mill string, source string, opts string) (*storage.FileInfo, error) {
-	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
+func (s *dsFileStore) GetFileVariantBySource(mill string, source string, opts string) (*storage.FileInfo, error) {
+	return badgerhelper.ViewTxnWithResult(s.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
 		key, err := localstore.GetKeyByIndex(indexMillSourceOpts, txn, &storage.FileInfo{Mill: mill, Source: source, Opts: opts})
 		if err != nil {
 			return nil, err
@@ -370,8 +370,8 @@ func (m *dsFileStore) GetFileVariantBySource(mill string, source string, opts st
 	})
 }
 
-func (m *dsFileStore) ListFileIds() ([]domain.FileId, error) {
-	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) ([]domain.FileId, error) {
+func (s *dsFileStore) ListFileIds() ([]domain.FileId, error) {
+	return badgerhelper.ViewTxnWithResult(s.db, func(txn *badger.Txn) ([]domain.FileId, error) {
 		targetPrefix := localstore.IndexBase.ChildString(indexTargets.Prefix).ChildString(indexTargets.Name).String()
 
 		keys := localstore.GetKeys(txn, targetPrefix, 0)
@@ -388,9 +388,9 @@ func (m *dsFileStore) ListFileIds() ([]domain.FileId, error) {
 	})
 }
 
-func (m *dsFileStore) ListFileVariants(fileId domain.FileId) ([]*storage.FileInfo, error) {
-	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) ([]*storage.FileInfo, error) {
-		files, err := m.listByTarget(txn, fileId)
+func (s *dsFileStore) ListFileVariants(fileId domain.FileId) ([]*storage.FileInfo, error) {
+	return badgerhelper.ViewTxnWithResult(s.db, func(txn *badger.Txn) ([]*storage.FileInfo, error) {
+		files, err := s.listByTarget(txn, fileId)
 		if err != nil {
 			return nil, err
 		}
@@ -399,7 +399,7 @@ func (m *dsFileStore) ListFileVariants(fileId domain.FileId) ([]*storage.FileInf
 	})
 }
 
-func (m *dsFileStore) listByTarget(txn *badger.Txn, fileId domain.FileId) ([]*storage.FileInfo, error) {
+func (s *dsFileStore) listByTarget(txn *badger.Txn, fileId domain.FileId) ([]*storage.FileInfo, error) {
 	results, err := localstore.GetKeysByIndexParts(txn, indexTargets.Prefix, indexTargets.Name, []string{fileId.String()}, "", indexTargets.Hash, 0)
 	if err != nil {
 		return nil, err
@@ -421,8 +421,8 @@ func (m *dsFileStore) listByTarget(txn *badger.Txn, fileId domain.FileId) ([]*st
 	return files, nil
 }
 
-func (m *dsFileStore) ListAllFileVariants() ([]*storage.FileInfo, error) {
-	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) ([]*storage.FileInfo, error) {
+func (s *dsFileStore) ListAllFileVariants() ([]*storage.FileInfo, error) {
+	return badgerhelper.ViewTxnWithResult(s.db, func(txn *badger.Txn) ([]*storage.FileInfo, error) {
 		keys := localstore.GetKeys(txn, filesInfoBase.String(), 0)
 
 		childrenIds, err := localstore.GetLeavesFromResults(keys)
@@ -432,7 +432,7 @@ func (m *dsFileStore) ListAllFileVariants() ([]*storage.FileInfo, error) {
 
 		infos := make([]*storage.FileInfo, 0, len(childrenIds))
 		for _, childId := range childrenIds {
-			info, err := m.getChild(txn, domain.FileContentId(childId))
+			info, err := s.getChild(txn, domain.FileContentId(childId))
 			if err != nil {
 				return nil, err
 			}
@@ -444,9 +444,9 @@ func (m *dsFileStore) ListAllFileVariants() ([]*storage.FileInfo, error) {
 	})
 }
 
-func (m *dsFileStore) DeleteFile(fileId domain.FileId) error {
-	return m.updateTxn(func(txn *badger.Txn) error {
-		files, err := m.listByTarget(txn, fileId)
+func (s *dsFileStore) DeleteFile(fileId domain.FileId) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
+		files, err := s.listByTarget(txn, fileId)
 		if err != nil {
 			return fmt.Errorf("list files by target: %w", err)
 		}
@@ -459,7 +459,7 @@ func (m *dsFileStore) DeleteFile(fileId domain.FileId) error {
 			file.Targets = slice.RemoveMut(file.Targets, fileId.String())
 
 			if len(file.Targets) == 0 {
-				if derr := m.deleteFile(txn, file); derr != nil {
+				if derr := s.deleteFile(txn, file); derr != nil {
 					return fmt.Errorf("failed to delete file %s: %w", file.Hash, derr)
 				}
 			} else {
@@ -484,8 +484,8 @@ func (m *dsFileStore) DeleteFile(fileId domain.FileId) error {
 	})
 }
 
-func (m *dsFileStore) deleteFile(txn *badger.Txn, file *storage.FileInfo) error {
-	err := localstore.RemoveIndexesWithTxn(m, txn, file, file.Hash)
+func (s *dsFileStore) deleteFile(txn *badger.Txn, file *storage.FileInfo) error {
+	err := localstore.RemoveIndexesWithTxn(s, txn, file, file.Hash)
 	if err != nil {
 		return err
 	}
@@ -494,64 +494,75 @@ func (m *dsFileStore) deleteFile(txn *badger.Txn, file *storage.FileInfo) error 
 	return txn.Delete(fileInfoKey.Bytes())
 }
 
-func (m *dsFileStore) GetChunksCount(fileId domain.FileId) (int, error) {
+func (s *dsFileStore) GetChunksCount(fileId domain.FileId) (int, error) {
 	key := chunksCountBase.ChildString(fileId.String())
-	return m.getInt(key)
+	return s.getInt(key)
 }
 
-func (m *dsFileStore) SetChunksCount(fileId domain.FileId, chunksCount int) error {
+func (s *dsFileStore) SetChunksCount(fileId domain.FileId, chunksCount int) error {
 	key := chunksCountBase.ChildString(fileId.String())
-	return m.setInt(key, chunksCount)
+	return s.setInt(key, chunksCount)
 }
 
-func (m *dsFileStore) IsFileImported(fileId domain.FileId) (bool, error) {
+func (s *dsFileStore) IsFileImported(fileId domain.FileId) (bool, error) {
 	key := isImportedBase.ChildString(fileId.String())
-	raw, err := m.getInt(key)
+	raw, err := s.getInt(key)
 	if err == localstore.ErrNotFound {
 		return false, nil
 	}
 	return raw == 1, err
 }
 
-func (m *dsFileStore) SetIsFileImported(fileId domain.FileId, isImported bool) error {
+func (s *dsFileStore) SetIsFileImported(fileId domain.FileId, isImported bool) error {
 	var raw int
 	if isImported {
 		raw = 1
 	}
 	key := isImportedBase.ChildString(fileId.String())
-	return m.setInt(key, raw)
+	return s.setInt(key, raw)
 }
 
-func (m *dsFileStore) GetFileSize(fileId domain.FileId) (int, error) {
+func (s *dsFileStore) GetFileSize(fileId domain.FileId) (int, error) {
 	key := fileSizeBase.ChildString(fileId.String())
-	return m.getInt(key)
+	return s.getInt(key)
 }
 
-func (m *dsFileStore) SetFileSize(fileId domain.FileId, status int) error {
+func (s *dsFileStore) SetFileSize(fileId domain.FileId, status int) error {
 	key := fileSizeBase.ChildString(fileId.String())
-	return m.setInt(key, status)
+	return s.setInt(key, status)
 }
 
-func (ls *dsFileStore) SetFileOrigin(fileId domain.FileId, origin model.ObjectOrigin) error {
-	key := fileOrigin.ChildString(fileId.String())
-	return ls.setInt(key, int(origin))
+// GetFileOrigin returns object origin stored only for files created before Files-as-Objects version
+func (s *dsFileStore) GetFileOrigin(fileId domain.FileId) (objectorigin.ObjectOrigin, error) {
+	origin, err := s.getInt(fileOrigin.ChildString(fileId.String()))
+	if err != nil {
+		return objectorigin.None(), fmt.Errorf("failed to get file origin: %w", err)
+	}
+
+	// ImportType could be missing for non-import origins
+	importType, err := s.getInt(fileImportType.ChildString(fileId.String()))
+	if err != nil && !errors.Is(err, localstore.ErrNotFound) {
+		return objectorigin.None(), fmt.Errorf("failed to get file import type: %w", err)
+	}
+
+	return objectorigin.ObjectOrigin{
+		Origin:     model.ObjectOrigin(origin),
+		ImportType: model.ImportType(importType),
+	}, nil
 }
 
-func (ls *dsFileStore) GetFileOrigin(fileId domain.FileId) (int, error) {
-	key := fileOrigin.ChildString(fileId.String())
-	return ls.getInt(key)
+func (s *dsFileStore) SetFileOrigin(fileId domain.FileId, origin objectorigin.ObjectOrigin) error {
+	err := s.setInt(fileOrigin.ChildString(fileId.String()), int(origin.Origin))
+	if err != nil {
+		return fmt.Errorf("failed to set file origin: %w", err)
+	}
+	err = s.setInt(fileImportType.ChildString(fileId.String()), int(origin.ImportType))
+	if err != nil {
+		return fmt.Errorf("failed to set file import type: %w", err)
+	}
+	return nil
 }
 
-func (ls *dsFileStore) SetFileImportType(hash string, importType model.ImportType) error {
-	key := fileImportType.ChildString(hash)
-	return ls.setInt(key, int(importType))
-}
-
-func (ls *dsFileStore) GetFileImportType(hash string) (int, error) {
-	key := fileImportType.ChildString(hash)
-	return ls.getInt(key)
-}
-
-func (ls *dsFileStore) Close(ctx context.Context) (err error) {
+func (s *dsFileStore) Close(ctx context.Context) (err error) {
 	return nil
 }

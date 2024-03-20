@@ -90,9 +90,7 @@ var (
 		model.ObjectType_relationOptionsList: {
 			model.Restrictions_Template,
 		},
-		model.ObjectType_database: {
-			model.Restrictions_Template,
-		},
+		model.ObjectType_participant: objRestrictAll,
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
@@ -122,15 +120,12 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		smartblock.SmartBlockTypeFileObject:      objFileRestrictions,
-		smartblock.SmartBlockTypeArchive:         objRestrictAll,
-		smartblock.SmartBlockTypeBundledRelation: objRestrictAll,
-		smartblock.SmartBlockTypeSubObject: {
-			model.Restrictions_Blocks,
-			model.Restrictions_LayoutChange,
-			model.Restrictions_TypeChange,
-			model.Restrictions_Template,
-		},
+		smartblock.SmartBlockTypeFileObject:        objFileRestrictions,
+		smartblock.SmartBlockTypeArchive:           objRestrictAll,
+		smartblock.SmartBlockTypeBundledRelation:   objRestrictAll,
+		smartblock.SmartBlockTypeSubObject:         objRestrictEdit,
+		smartblock.SmartBlockTypeObjectType:        objRestrictEdit,
+		smartblock.SmartBlockTypeRelation:          objRestrictEdit,
 		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
 		smartblock.SmartBlockTypeBundledTemplate:   objRestrictAll,
 		smartblock.SmartBlockTypeTemplate: {
@@ -151,6 +146,7 @@ var (
 		smartblock.SmartBlockTypeAccountOld: {
 			model.Restrictions_Template,
 		},
+		smartblock.SmartBlockTypeParticipant: objRestrictAll,
 	}
 )
 
@@ -213,22 +209,25 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 }
 
 func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
+	r = objectRestrictionsBySBType[uk.SmartblockType()]
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
 		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
-			return sysTypesRestrictions
+			r = sysTypesRestrictions
 		}
+		if t, _ := bundle.GetType(domain.TypeKey(key)); t != nil && t.RestrictObjectCreation {
+			r = append(r, model.Restrictions_CreateObjectOfThisType)
+		}
+		return r
 	case smartblock.SmartBlockTypeRelation:
 		key := uk.InternalKey()
 		if lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
-			return sysRelationsRestrictions
+			r = sysRelationsRestrictions
 		}
-	default:
-		// we assume that all sb types are exists in objectRestrictionsBySBType
-		return objectRestrictionsBySBType[uk.SmartblockType()]
 	}
-	return
+	// we assume that all sb types exist in objectRestrictionsBySBType
+	return r
 }
 
 func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) DataviewRestrictions {

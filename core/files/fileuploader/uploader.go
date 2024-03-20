@@ -101,6 +101,7 @@ type Uploader interface {
 	SetFile(path string) Uploader
 	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
+	SetCustomEncryptionKeys(keys map[string]string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
@@ -156,10 +157,11 @@ type uploader struct {
 	opts              []files.AddOption
 	groupID           string
 
-	tempDirProvider   core.TempDirProvider
-	fileService       files.Service
-	origin            objectorigin.ObjectOrigin
-	additionalDetails *types.Struct
+	tempDirProvider      core.TempDirProvider
+	fileService          files.Service
+	origin               objectorigin.ObjectOrigin
+	additionalDetails    *types.Struct
+	customEncryptionKeys map[string]string
 }
 
 type bufioSeekClose struct {
@@ -224,12 +226,23 @@ func (u *uploader) SetAdditionalDetails(details *types.Struct) Uploader {
 
 func (u *uploader) SetBytes(b []byte) Uploader {
 	u.getReader = func(_ context.Context) (*fileReader, error) {
+		buf := bytes.NewReader(b)
+		bufReaderSize := bufio.NewReaderSize(buf, bufSize)
 		return &fileReader{
 			bufioSeekClose: &bufioSeekClose{
-				Reader: bufio.NewReaderSize(bytes.NewReader(b), bufSize),
+				Reader: bufReaderSize,
+				seek: func(offset int64, whence int) (int64, error) {
+					bufReaderSize.Reset(buf)
+					return buf.Seek(offset, whence)
+				},
 			},
 		}, nil
 	}
+	return u
+}
+
+func (u *uploader) SetCustomEncryptionKeys(keys map[string]string) Uploader {
+	u.customEncryptionKeys = keys
 	return u
 }
 
@@ -360,7 +373,11 @@ func (u *uploader) UploadAsync(ctx context.Context) (result chan UploadResult) {
 		u.block = u.block.Copy().(file.Block)
 	}
 	go func() {
-		result <- u.Upload(ctx)
+		res := u.Upload(ctx)
+		if res.Err != nil {
+			log.Errorf("upload async: %v", res.Err)
+		}
+		result <- res
 		close(result)
 	}()
 	return
@@ -414,14 +431,17 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
 	}
+	if u.customEncryptionKeys != nil {
+		opts = append(opts, files.WithCustomEncryptionKeys(u.customEncryptionKeys))
+	}
 
 	if len(u.opts) > 0 {
 		opts = append(opts, u.opts...)
 	}
 
-	var addResult *addToStorageResult
+	var addResult *files.AddResult
 	if u.fileType == model.BlockContentFile_Image {
-		addResult, err = u.addImageToStorage(ctx, opts)
+		addResult, err = u.fileService.ImageAdd(ctx, u.spaceId, opts...)
 		if errors.Is(err, image.ErrFormat) || errors.Is(err, mill.ErrFormatSupportNotEnabled) {
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
 		}
@@ -429,13 +449,15 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			return UploadResult{Err: fmt.Errorf("add image to storage: %w", err)}
 		}
 	} else {
-		addResult, err = u.addFileToStorage(ctx, opts)
+		addResult, err = u.fileService.FileAdd(ctx, u.spaceId, opts...)
 		if err != nil {
 			return UploadResult{Err: fmt.Errorf("add file to storage: %w", err)}
 		}
 	}
-	result.MIME = addResult.mime
-	result.Size = addResult.size
+	defer addResult.Commit()
+
+	result.MIME = addResult.MIME
+	result.Size = addResult.Size
 
 	fileObjectId, fileObjectDetails, err := u.getOrCreateFileObject(ctx, addResult)
 	if err != nil {
@@ -459,54 +481,11 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	return
 }
 
-type addToStorageResult struct {
-	fileId     domain.FileId
-	fileKeys   *domain.FileEncryptionKeys
-	fileExists bool
-	mime       string
-	size       int64
-}
-
-func (u *uploader) addImageToStorage(ctx context.Context, addOptions []files.AddOption) (*addToStorageResult, error) {
-	addResult, err := u.fileService.ImageAdd(ctx, u.spaceId, addOptions...)
-	if err != nil {
-		return nil, err
-	}
-	res := &addToStorageResult{
-		fileId:     addResult.FileId,
-		fileKeys:   addResult.EncryptionKeys,
-		fileExists: addResult.IsExisting,
-	}
-	orig, _ := addResult.Image.GetOriginalFile(ctx)
-	if orig != nil {
-		res.mime = orig.Meta().Media
-		res.size = orig.Meta().Size
-	}
-	return res, nil
-}
-
-func (u *uploader) addFileToStorage(ctx context.Context, addOptions []files.AddOption) (*addToStorageResult, error) {
-	addResult, err := u.fileService.FileAdd(ctx, u.spaceId, addOptions...)
-	if err != nil {
-		return nil, err
-	}
-	res := &addToStorageResult{
-		fileId:     addResult.FileId,
-		fileKeys:   addResult.EncryptionKeys,
-		fileExists: addResult.IsExisting,
-	}
-	if meta := addResult.File.Meta(); meta != nil {
-		res.mime = meta.Media
-		res.size = meta.Size
-	}
-	return res, nil
-}
-
-func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToStorageResult) (string, *types.Struct, error) {
-	if addResult.fileExists {
+func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.AddResult) (string, *types.Struct, error) {
+	if addResult.IsExisting {
 		id, details, err := u.fileObjectService.GetObjectDetailsByFileId(domain.FullFileId{
 			SpaceId: u.spaceId,
-			FileId:  addResult.fileId,
+			FileId:  addResult.FileId,
 		})
 		if err == nil {
 			return id, details, nil
@@ -520,8 +499,8 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *addToSt
 	}
 
 	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
-		FileId:            addResult.fileId,
-		EncryptionKeys:    addResult.fileKeys.EncryptionKeys,
+		FileId:            addResult.FileId,
+		EncryptionKeys:    addResult.EncryptionKeys.EncryptionKeys,
 		ObjectOrigin:      u.origin,
 		AdditionalDetails: u.additionalDetails,
 	})

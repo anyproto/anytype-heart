@@ -33,10 +33,12 @@ var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
 type FileSync interface {
 	AddFile(spaceId string, fileId domain.FileId, uploadedByUser, imported bool) (err error)
+	UploadSynchronously(spaceId string, fileId domain.FileId) error
 	OnUploadStarted(func(fileId domain.FileId) error)
 	OnUploaded(func(fileId domain.FileId) error)
 	OnLimited(func(fileId domain.FileId) error)
 	RemoveFile(spaceId string, fileId domain.FileId) (err error)
+	RemoveSynchronously(spaceId string, fileId domain.FileId) (err error)
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)
@@ -57,29 +59,24 @@ type QueueInfo struct {
 	RemovingQueue  []*QueueItem
 }
 
-type personalSpaceIDGetter interface {
-	PersonalSpaceID() string
-}
-
 type SyncStatus struct {
 	QueueLen int
 }
 
 type fileSync struct {
-	dbProvider       datastore.Datastore
-	rpcStore         rpcstore.RpcStore
-	queue            *fileSyncStore
-	loopCtx          context.Context
-	loopCancel       context.CancelFunc
-	uploadPingCh     chan struct{}
-	removePingCh     chan struct{}
-	dagService       ipld.DAGService
-	fileStore        filestore.FileStore
-	eventSender      event.Sender
-	onUploaded       func(fileId domain.FileId) error
-	onUploadStarted  func(fileId domain.FileId) error
-	onLimited        func(fileId domain.FileId) error
-	personalIDGetter personalSpaceIDGetter
+	dbProvider      datastore.Datastore
+	rpcStore        rpcstore.RpcStore
+	queue           *fileSyncStore
+	loopCtx         context.Context
+	loopCancel      context.CancelFunc
+	uploadPingCh    chan struct{}
+	removePingCh    chan struct{}
+	dagService      ipld.DAGService
+	fileStore       filestore.FileStore
+	eventSender     event.Sender
+	onUploaded      func(fileId domain.FileId) error
+	onUploadStarted func(fileId domain.FileId) error
+	onLimited       func(fileId domain.FileId) error
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -94,7 +91,6 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
-	f.personalIDGetter = app.MustComponent[personalSpaceIDGetter](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
@@ -131,9 +127,8 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	go f.runNodeUsageUpdater()
-
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
+	go f.runNodeUsageUpdater()
 	go f.addLoop()
 	go f.removeLoop()
 	return

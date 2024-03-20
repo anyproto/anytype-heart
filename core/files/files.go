@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -23,7 +24,6 @@ import (
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -44,10 +44,6 @@ import (
 
 const (
 	CName = "files"
-
-	// We have legacy nodes structure that allowed us to add directories and "0" means the first directory
-	// Now we have only one directory in which we have either single file or image variants
-	fileLinkName = "0"
 )
 
 var log = logging.Logger("anytype-files")
@@ -55,13 +51,13 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
-	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*FileAddResult, error)
+	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
 	FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error)
 	FileOffload(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
-	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*ImageAddResult, error)
+	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error)
 
 	app.Component
@@ -72,13 +68,17 @@ type service struct {
 	commonFile  fileservice.FileService
 	fileSync    filesync.FileSync
 	dagService  ipld.DAGService
-	resolver    idresolver.Resolver
 	fileStorage filestorage.FileStorage
 	objectStore objectstore.ObjectStore
+
+	lock              sync.Mutex
+	addOperationLocks map[string]*sync.Mutex
 }
 
 func New() Service {
-	return &service{}
+	return &service{
+		addOperationLocks: make(map[string]*sync.Mutex),
+	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -88,7 +88,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
@@ -107,39 +106,58 @@ var ValidContentLinkNames = []string{"content"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
-type FileAddResult struct {
+type AddResult struct {
 	FileId         domain.FileId
-	File           File
 	EncryptionKeys *domain.FileEncryptionKeys
 	IsExisting     bool // Is file already added by user?
+
+	MIME string
+	Size int64
+
+	lock *sync.Mutex
 }
 
-func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOption) (*FileAddResult, error) {
+// Commit transaction of adding a file
+func (r *AddResult) Commit() {
+	r.lock.Unlock()
+}
+
+func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
 	}
 
-	err := s.normalizeOptions(ctx, spaceId, &opts)
+	err := s.normalizeOptions(&opts)
 	if err != nil {
 		return nil, err
 	}
 
-	fileInfo, fileNode, err := s.addFileNode(ctx, spaceId, &m.Blob{}, opts)
+	addLock := s.lockAddOperation(opts.checksum)
+
+	fileInfo, fileNode, err := s.addFileNode(ctx, spaceId, &m.Blob{}, opts, schema.LinkFile)
 	if errors.Is(err, errFileExists) {
-		return s.newExistingFileResult(spaceId, fileInfo)
+		res, err := s.newExistingFileResult(addLock, fileInfo)
+		if err != nil {
+			addLock.Unlock()
+			return nil, err
+		}
+		return res, nil
 	}
 	if err != nil {
+		addLock.Unlock()
 		return nil, err
 	}
 
 	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, fileInfo, fileNode)
 	if err != nil {
+		addLock.Unlock()
 		return nil, err
 	}
 	fileId := domain.FileId(rootNode.Cid().String())
 	err = s.fileStore.LinkFileVariantToFile(fileId, domain.FileContentId(fileInfo.Hash))
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("link file variant to file: %w", err)
 	}
 
@@ -149,31 +167,38 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	}
 	err = s.fileStore.AddFileKeys(fileKeys)
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
 	err = s.storeFileSize(spaceId, fileId)
 	if err != nil {
+		addLock.Unlock()
 		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
-	return &FileAddResult{
+	return &AddResult{
 		FileId:         fileId,
-		File:           s.newFile(spaceId, fileId, fileInfo),
 		EncryptionKeys: &fileKeys,
+		Size:           fileInfo.Size_,
+		MIME:           opts.Media,
+		lock:           addLock,
 	}, nil
 }
 
-func (s *service) newExistingFileResult(spaceId string, fileInfo *storage.FileInfo) (*FileAddResult, error) {
+func (s *service) newExistingFileResult(lock *sync.Mutex, fileInfo *storage.FileInfo) (*AddResult, error) {
 	fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(fileInfo)
 	if err != nil {
 		return nil, err
 	}
-	return &FileAddResult{
+	return &AddResult{
 		IsExisting:     true,
 		FileId:         fileId,
-		File:           s.newFile(spaceId, fileId, fileInfo),
 		EncryptionKeys: keys,
+		Size:           fileInfo.Size_,
+		MIME:           fileInfo.Media,
+
+		lock: lock,
 	}, nil
 }
 
@@ -218,7 +243,7 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 		l := schema.LinkByName(dirNode.Links(), ValidContentLinkNames)
 		info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
 		if err == nil {
-			fileKeys.EncryptionKeys[encryptionKeyPath(fileLinkName)] = info.Key
+			fileKeys.EncryptionKeys[encryptionKeyPath(schema.LinkFile)] = info.Key
 		} else {
 			log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), id.FileId.String()+"/"+dirLink.Name)
 		}
@@ -266,11 +291,11 @@ func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo 
 	outer := uio.NewDirectory(dagService)
 	outer.SetCidBuilder(cidBuilder)
 
-	err := helpers.AddLinkToDirectory(ctx, dagService, outer, fileLinkName, fileNode.Cid().String())
+	err := helpers.AddLinkToDirectory(ctx, dagService, outer, schema.LinkFile, fileNode.Cid().String())
 	if err != nil {
 		return nil, nil, err
 	}
-	keys.KeysByPath[encryptionKeyPath(fileLinkName)] = fileInfo.Key
+	keys.KeysByPath[encryptionKeyPath(schema.LinkFile)] = fileInfo.Key
 
 	node, err := outer.GetNode()
 	if err != nil {
@@ -454,22 +479,7 @@ var errFileExists = errors.New("file exists")
 	- meta
 	- content
 */
-func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, ipld.Node, error) {
-	var source string
-	if conf.Use != "" {
-		source = conf.Use
-	} else {
-		var err error
-		source, err = checksum(conf.Reader, false)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to calculate checksum: %w", err)
-		}
-		_, err = conf.Reader.Seek(0, io.SeekStart)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to seek reader: %w", err)
-		}
-	}
-
+func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions, linkName string) (*storage.FileInfo, ipld.Node, error) {
 	opts, err := mill.Options(map[string]interface{}{
 		"plaintext": false,
 	})
@@ -477,7 +487,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, nil, err
 	}
 
-	if efile, _ := s.fileStore.GetFileVariantBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
+	if efile, _ := s.fileStore.GetFileVariantBySource(mill.ID(), conf.checksum, opts); efile != nil && efile.MetaHash != "" {
 		return efile, nil, errFileExists
 	}
 
@@ -488,12 +498,12 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 
 	// count the result size after the applied mill
 	readerWithCounter := datacounter.NewReaderCounter(res.File)
-	check, err := checksum(readerWithCounter, false)
+	variantChecksum, err := checksum(readerWithCounter, false)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if efile, _ := s.fileStore.GetFileVariantByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
+	if efile, _ := s.fileStore.GetFileVariantByChecksum(mill.ID(), variantChecksum); efile != nil && efile.MetaHash != "" {
 		return efile, nil, errFileExists
 	}
 
@@ -510,8 +520,8 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 
 	fileInfo := &storage.FileInfo{
 		Mill:             mill.ID(),
-		Checksum:         check,
-		Source:           source,
+		Checksum:         variantChecksum,
+		Source:           conf.checksum,
 		Opts:             opts,
 		Media:            conf.Media,
 		Name:             conf.Name,
@@ -521,7 +531,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		Size_:            int64(readerWithCounter.Count()),
 	}
 
-	key, err := symmetric.NewRandom()
+	key, err := getOrGenerateSymmetricKey(linkName, conf)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -567,6 +577,17 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, nil, fmt.Errorf("add file pair node: %w", err)
 	}
 	return fileInfo, pairNode, nil
+}
+
+func getOrGenerateSymmetricKey(linkName string, opts AddOptions) (symmetric.Key, error) {
+	if key, exists := opts.CustomEncryptionKeys[encryptionKeyPath(linkName)]; exists {
+		symKey, err := symmetric.FromString(key)
+		if err == nil {
+			return symKey, nil
+		}
+		return symmetric.NewRandom()
+	}
+	return symmetric.NewRandom()
 }
 
 // addFilePairNode has structure:
@@ -632,7 +653,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullFileId, updat
 	if looksLikeFileNode(dirNode) {
 		var key string
 		if keys != nil {
-			key = keys[encryptionKeyPath(fileLinkName)]
+			key = keys[encryptionKeyPath(schema.LinkFile)]
 		}
 
 		fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, id.FileId.String()+"/"+dirLink.Name, key)
@@ -743,7 +764,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 }
 
 func encryptionKeyPath(linkName string) string {
-	if linkName == fileLinkName {
+	if linkName == schema.LinkFile {
 		return "/0/"
 	}
 	return "/0/" + linkName + "/"
@@ -756,4 +777,17 @@ func (s *service) getInnerDirNode(ctx context.Context, dagService ipld.DAGServic
 	dirLink := outerDirLinks[0]
 	node, err := helpers.NodeAtLink(ctx, dagService, dirLink)
 	return node, dirLink, err
+}
+
+func (s *service) lockAddOperation(checksum string) *sync.Mutex {
+	s.lock.Lock()
+	opLock, ok := s.addOperationLocks[checksum]
+	if !ok {
+		opLock = &sync.Mutex{}
+		s.addOperationLocks[checksum] = opLock
+	}
+	s.lock.Unlock()
+
+	opLock.Lock()
+	return opLock
 }

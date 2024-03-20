@@ -50,6 +50,18 @@ service ClientCommands {
     // Space
     // ***
     rpc SpaceDelete (anytype.Rpc.Space.Delete.Request) returns (anytype.Rpc.Space.Delete.Response);
+    rpc SpaceInviteGenerate (anytype.Rpc.Space.InviteGenerate.Request) returns (anytype.Rpc.Space.InviteGenerate.Response);
+    rpc SpaceInviteGetCurrent (anytype.Rpc.Space.InviteGetCurrent.Request) returns (anytype.Rpc.Space.InviteGetCurrent.Response);
+    rpc SpaceInviteRevoke(anytype.Rpc.Space.InviteRevoke.Request) returns (anytype.Rpc.Space.InviteRevoke.Response);
+    rpc SpaceInviteView(anytype.Rpc.Space.InviteView.Request) returns (anytype.Rpc.Space.InviteView.Response);
+    rpc SpaceJoin (anytype.Rpc.Space.Join.Request) returns (anytype.Rpc.Space.Join.Response);
+    rpc SpaceJoinCancel (anytype.Rpc.Space.JoinCancel.Request) returns (anytype.Rpc.Space.JoinCancel.Response);
+    rpc SpaceExit (anytype.Rpc.Space.Exit.Request) returns (anytype.Rpc.Space.Exit.Response);
+    rpc SpaceStopSharing (anytype.Rpc.Space.StopSharing.Request) returns (anytype.Rpc.Space.StopSharing.Response);
+    rpc SpaceRequestApprove (anytype.Rpc.Space.RequestApprove.Request) returns (anytype.Rpc.Space.RequestApprove.Response);
+    rpc SpaceRequestDecline (anytype.Rpc.Space.RequestDecline.Request) returns (anytype.Rpc.Space.RequestDecline.Response);
+    rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
+    rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
 
     // Object
     // ***
@@ -156,7 +168,8 @@ service ClientCommands {
     // The artist info is available in the object details
     rpc UnsplashDownload (anytype.Rpc.Unsplash.Download.Request) returns (anytype.Rpc.Unsplash.Download.Response);
 
-    rpc DownloadManifest (anytype.Rpc.DownloadManifest.Request) returns (anytype.Rpc.DownloadManifest.Response);
+    rpc GalleryDownloadManifest (anytype.Rpc.Gallery.DownloadManifest.Request) returns (anytype.Rpc.Gallery.DownloadManifest.Response);
+    rpc GalleryDownloadIndex (anytype.Rpc.Gallery.DownloadIndex.Request) returns (anytype.Rpc.Gallery.DownloadIndex.Response);
 
     // General Block commands
     // ***
@@ -230,7 +243,7 @@ service ClientCommands {
     rpc BlockDataviewSortAdd (anytype.Rpc.BlockDataview.Sort.Add.Request) returns (anytype.Rpc.BlockDataview.Sort.Add.Response);
     rpc BlockDataviewSortRemove (anytype.Rpc.BlockDataview.Sort.Remove.Request) returns (anytype.Rpc.BlockDataview.Sort.Remove.Response);
     rpc BlockDataviewSortReplace (anytype.Rpc.BlockDataview.Sort.Replace.Request) returns (anytype.Rpc.BlockDataview.Sort.Replace.Response);
-    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.Sort.Request) returns (anytype.Rpc.BlockDataview.Sort.Sort.Response);
+    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.SSort.Request) returns (anytype.Rpc.BlockDataview.Sort.SSort.Response);
 
     rpc BlockDataviewViewRelationAdd (anytype.Rpc.BlockDataview.ViewRelation.Add.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Add.Response);
     rpc BlockDataviewViewRelationRemove (anytype.Rpc.BlockDataview.ViewRelation.Remove.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Remove.Response);
@@ -278,6 +291,7 @@ service ClientCommands {
 
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 
+    rpc DebugStat (anytype.Rpc.Debug.Stat.Request) returns (anytype.Rpc.Debug.Stat.Response);
     rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
     rpc DebugTreeHeads (anytype.Rpc.Debug.TreeHeads.Request) returns (anytype.Rpc.Debug.TreeHeads.Response);
     rpc DebugSpaceSummary (anytype.Rpc.Debug.SpaceSummary.Request) returns (anytype.Rpc.Debug.SpaceSummary.Response);
@@ -293,6 +307,8 @@ service ClientCommands {
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);
 
     rpc NotificationList (anytype.Rpc.Notification.List.Request) returns (anytype.Rpc.Notification.List.Response);
-
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
+    rpc NotificationTest (anytype.Rpc.Notification.Test.Request) returns (anytype.Rpc.Notification.Test.Response);
+
+    rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
 }

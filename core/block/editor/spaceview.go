@@ -14,16 +14,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const (
-	SpacePrivate  = 0
-	SpacePersonal = 1
-)
+var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
@@ -35,14 +34,18 @@ type spaceService interface {
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
 type SpaceView struct {
 	smartblock.SmartBlock
-	spaceService spaceService
+	spaceService      spaceService
+	fileObjectService fileobject.Service
+	log               *logging.Sugared
 }
 
 // newSpaceView creates a new SpaceView with given deps
-func newSpaceView(sb smartblock.SmartBlock, spaceService spaceService) *SpaceView {
+func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 	return &SpaceView{
-		SmartBlock:   sb,
-		spaceService: spaceService,
+		SmartBlock:        sb,
+		spaceService:      f.spaceService,
+		log:               spaceViewLog,
+		fileObjectService: f.fileObjectService,
 	}
 }
 
@@ -55,11 +58,11 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	if err != nil {
 		return
 	}
+	s.log = s.log.With("spaceId", spaceID)
 
 	s.DisableLayouts()
 	info := s.getSpaceInfo(ctx.State)
-	// TODO: [MR] set persistent status on the basis of context
-	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
+	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus, AclHeadId: info.AclHeadId}
 	s.setSpacePersistentInfo(ctx.State, newPersistentInfo)
 	s.setSpaceLocalInfo(ctx.State, spaceinfo.SpaceLocalInfo{
 		SpaceID:      spaceID,
@@ -108,9 +111,27 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
+	st := s.NewState()
+	prev := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
+	// Can't change access level for personal space
+	if prev == spaceinfo.AccessTypePersonal {
+		return nil
+	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, pbtypes.Int64(int64(acc)))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
 	st := s.NewState()
 	s.setSpacePersistentInfo(st, info)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
 	return s.Apply(st)
 }
 
@@ -123,11 +144,20 @@ func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocal
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
+	st.SetLocalDetail(bundle.RelationKeySpaceMembersWriteLimit.String(), pbtypes.Int64(int64(info.WriteLimit)))
+	st.SetLocalDetail(bundle.RelationKeySpaceMembersReadLimit.String(), pbtypes.Int64(int64(info.ReadLimit)))
+	s.log.Infof("set space local status: %s, remote status: %s", info.LocalStatus.String(), info.RemoteStatus.String())
 }
 
 func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
+	log := s.log
+	if info.AclHeadId != "" {
+		log = log.With("aclHeadId", info.AclHeadId)
+		st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
+	}
+	log.Infof("set space account status: %s", info.AccountStatus.String())
 }
 
 // targetSpaceID returns space id from the root of space object's tree
@@ -152,6 +182,7 @@ func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpacePersisten
 	return spaceinfo.SpacePersistentInfo{
 		SpaceID:       pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()),
 		AccountStatus: spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String())),
+		AclHeadId:     pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()),
 	}
 }
 
@@ -162,7 +193,6 @@ var workspaceKeysToCopy = []string{
 	bundle.RelationKeySpaceDashboardId.String(),
 	bundle.RelationKeyCreator.String(),
 	bundle.RelationKeyCreatedDate.String(),
-	bundle.RelationKeySpaceAccessibility.String(),
 }
 
 func (s *SpaceView) SetSpaceData(details *types.Struct) error {
@@ -170,6 +200,22 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 	var changed bool
 	for k, v := range details.Fields {
 		if slices.Contains(workspaceKeysToCopy, k) {
+			// Special case for migration to Files as Objects to handle following situation:
+			// - We have an icon in Workspace that was created in pre-Files as Objects version
+			// - We migrate it, change old id to new id
+			// - Now we need to push details to SpaceView. But if we push NEW id, then old clients will not be able to display image
+			// - So we need to push old id
+			if k == bundle.RelationKeyIconImage.String() {
+				fileId, err := s.fileObjectService.GetFileIdFromObject(v.GetStringValue())
+				if err == nil {
+					switch v.Kind.(type) {
+					case *types.Value_StringValue:
+						v = pbtypes.String(fileId.FileId.String())
+					case *types.Value_ListValue:
+						v = pbtypes.StringList([]string{fileId.FileId.String()})
+					}
+				}
+			}
 			changed = true
 			st.SetDetailAndBundledRelation(domain.RelationKey(k), v)
 		}

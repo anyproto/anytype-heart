@@ -79,6 +79,16 @@
     "source": "details"
   },
   {
+    "description": "Latest Acl head id",
+    "format": "longtext",
+    "hidden": true,
+    "key": "latestAclHeadId",
+    "maxCount": 1,
+    "name": "Latest acl head id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "instructions",
@@ -133,6 +143,26 @@
     "key": "restrictions",
     "maxCount": 1,
     "name": "Object restrictions",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Space members read limit",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceMembersReadLimit",
+    "maxCount": 1,
+    "name": "Space members read limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Space members write limit",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceMembersWriteLimit",
+    "maxCount": 1,
+    "name": "Space members write limit",
     "readonly": true,
     "source": "derived"
   },
@@ -554,12 +584,13 @@
   {
     "description": "Human which created this object",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "creator",
     "maxCount": 1,
     "name": "Created by",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Recommended layout for new templates and objects of specific objec",
@@ -609,8 +640,10 @@
     "source": "details",
     "objectTypes": [
       "profile",
-      "contact"
-    ]
+      "contact",
+      "participant"
+    ],
+    "revision": 1
   },
   {
     "description": "Name of artist",
@@ -751,8 +784,10 @@
     "source": "details",
     "objectTypes": [
       "profile",
-      "contact"
-    ]
+      "contact",
+      "participant"
+    ],
+    "revision": 1
   },
   {
     "format": "longtext",
@@ -1123,10 +1158,10 @@
     "hidden": false,
     "key": "links",
     "maxCount": 0,
-    "name": "Links from this object",
+    "name": "Links",
     "readonly": true,
     "source": "derived",
-    "revision": 2
+    "revision": 3
   },
   {
     "format": "number",
@@ -1164,10 +1199,11 @@
     "maxCount": 1,
     "name": "Last modified by",
     "objectTypes": [
-      "profile"
+      "participant"
     ],
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Relation allows multi values",
@@ -1365,6 +1401,16 @@
     "source": "details"
   },
   {
+    "description": "Space access type, see enum model.SpaceAccessType",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceAccessType",
+    "maxCount": 1,
+    "name": "Space access type",
+    "readonly": false,
+    "source": "derived"
+  },
+  {
     "description": "File path or url with original object",
     "format": "longtext",
     "hidden": true,
@@ -1391,6 +1437,16 @@
     "key": "fileBackupStatus",
     "maxCount": 1,
     "name": "File backup status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "File indexing status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileIndexingStatus",
+    "maxCount": 1,
+    "name": "File indexing status",
     "readonly": true,
     "source": "details"
   },
@@ -1439,10 +1495,10 @@
     "key": "backlinks",
     "maxCount": 0,
     "hidden": false,
-    "name": "Links to this object",
+    "name": "Backlinks",
     "readonly": true,
     "source": "local",
-    "revision": 2
+    "revision": 3
   },
   {
     "description": "Relation that indicates document has been uninstalled",
@@ -1491,6 +1547,56 @@
     "key": "spaceAccountStatus",
     "maxCount": 1,
     "name": "Space account status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "CID of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileCid",
+    "maxCount": 1,
+    "name": "CID of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Encoded encryption key of invite file for current space. It stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteFileKey",
+    "maxCount": 1,
+    "name": "Encoded encryption key of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Participant permissions. Possible values: models.ParticipantPermissions",
+    "format": "number",
+    "hidden": true,
+    "key": "participantPermissions",
+    "maxCount": 1,
+    "name": "Participant permissions",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Identity",
+    "format": "longtext",
+    "hidden": true,
+    "key": "identity",
+    "maxCount": 1,
+    "name": "Identity",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Participant status. Possible values: models.ParticipantStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "participantStatus",
+    "maxCount": 1,
+    "name": "Participant status",
     "readonly": true,
     "source": "details"
   },

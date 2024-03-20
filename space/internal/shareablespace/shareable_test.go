@@ -36,6 +36,28 @@ type spaceStatusMock struct {
 	persistentUpdater func(status spaceinfo.AccountStatus)
 }
 
+func (s *spaceStatusMock) Run(ctx context.Context) (err error) {
+	return
+}
+
+func (s *spaceStatusMock) Close(ctx context.Context) (err error) {
+	return
+}
+
+func (s *spaceStatusMock) LatestAclHeadId() string {
+	return ""
+}
+
+func (s *spaceStatusMock) UpdatePersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) {
+	s.UpdatePersistentStatus(ctx, info.AccountStatus)
+}
+
+func (s *spaceStatusMock) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error) {
+	return s.SetPersistentStatus(ctx, info.AccountStatus)
+}
+
+var _ spacestatus.SpaceStatus = (*spaceStatusMock)(nil)
+
 func (s *spaceStatusMock) Init(a *app.App) (err error) {
 	return nil
 }
@@ -72,8 +94,8 @@ func (s *spaceStatusMock) UpdatePersistentStatus(ctx context.Context, status spa
 	s.accountStatus = status
 }
 
-func (s *spaceStatusMock) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
-	s.remoteStatus = status
+func (s *spaceStatusMock) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+	s.remoteStatus = status.RemoteStatus
 	return nil
 }
 
@@ -96,6 +118,10 @@ func (s *spaceStatusMock) SetLocalInfo(ctx context.Context, info spaceinfo.Space
 	return nil
 }
 
+func (s *spaceStatusMock) SetAccessType(ctx context.Context, status spaceinfo.AccessType) (err error) {
+	return nil
+}
+
 type inviting struct {
 	inviteReceived atomic.Bool
 	status         spacestatus.SpaceStatus
@@ -113,10 +139,10 @@ func (i *inviting) Start(ctx context.Context) error {
 	go func() {
 		i.inviteReceived.Store(true)
 		i.status.Lock()
-		i.status.SetPersistentStatus(ctx, spaceinfo.AccountStatusLoading)
+		i.status.SetPersistentStatus(ctx, spaceinfo.AccountStatusActive)
 		i.status.Unlock()
 	}()
-	i.reg.register(mode.ModeInviting)
+	i.reg.register(mode.ModeJoining)
 	return nil
 }
 
@@ -190,7 +216,7 @@ func (f factory) Process(md mode.Mode) mode.Process {
 	switch md {
 	case mode.ModeInitial:
 		return initial.New()
-	case mode.ModeInviting:
+	case mode.ModeJoining:
 		return newInviting(f.status, f.reg)
 	case mode.ModeLoading:
 		return newLoading(f.status, f.reg)
@@ -230,7 +256,9 @@ func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 	}
 	s.persistentUpdater = func(status spaceinfo.AccountStatus) {
 		go func() {
-			err := controller.UpdateStatus(context.Background(), status)
+			err := controller.UpdateInfo(context.Background(), spaceinfo.SpacePersistentInfo{
+				AccountStatus: status,
+			})
 			require.NoError(t, err)
 		}()
 	}
@@ -249,15 +277,15 @@ func (fx *fixture) stop() {
 }
 
 func TestSpaceController_InvitingLoading(t *testing.T) {
-	fx := newFixture(t, spaceinfo.AccountStatusInviting)
+	fx := newFixture(t, spaceinfo.AccountStatusJoining)
 	defer fx.stop()
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, mode.ModeInviting, fx.ctrl.Mode())
+	require.Equal(t, mode.ModeJoining, fx.ctrl.Mode())
 	time.Sleep(100 * time.Millisecond)
 	fx.reg.Lock()
 	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeInviting, mode.ModeLoading}, fx.reg.modes)
+	require.Equal(t, []mode.Mode{mode.ModeJoining, mode.ModeLoading}, fx.reg.modes)
 }
 
 func TestSpaceController_LoadingDeleting(t *testing.T) {
@@ -266,7 +294,9 @@ func TestSpaceController_LoadingDeleting(t *testing.T) {
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeLoading, fx.ctrl.Mode())
-	err = fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusDeleted)
+	err = fx.ctrl.UpdateInfo(context.Background(), spaceinfo.SpacePersistentInfo{
+		AccountStatus: spaceinfo.AccountStatusDeleted,
+	})
 	require.NoError(t, err)
 	fx.reg.Lock()
 	defer fx.reg.Unlock()
@@ -283,7 +313,9 @@ func TestSpaceController_LoadingDeletingMultipleWaiters(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
-			err := fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusDeleted)
+			err := fx.ctrl.UpdateInfo(context.Background(), spaceinfo.SpacePersistentInfo{
+				AccountStatus: spaceinfo.AccountStatusDeleted,
+			})
 			require.NoError(t, err)
 			wg.Done()
 		}()
@@ -312,7 +344,9 @@ func TestSpaceController_DeletingInvalid(t *testing.T) {
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
-	err = fx.ctrl.UpdateStatus(context.Background(), spaceinfo.AccountStatusLoading)
+	err = fx.ctrl.UpdateInfo(context.Background(), spaceinfo.SpacePersistentInfo{
+		AccountStatus: spaceinfo.AccountStatusActive,
+	})
 	require.Error(t, err)
 	fx.reg.Lock()
 	defer fx.reg.Unlock()

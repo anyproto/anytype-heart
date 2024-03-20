@@ -3,34 +3,34 @@ package editor
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
 	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
 	return &File{
-		SmartBlock: sb,
-		// TODO TEMP
-		AllOperations: basicComponent,
+		SmartBlock:     sb,
+		ChangeReceiver: sb.(source.ChangeReceiver),
+		AllOperations:  basicComponent,
+		Text:           stext.NewText(sb, f.objectStore, f.eventSender), fileObjectService: f.fileObjectService,
 	}
 }
 
 type File struct {
 	smartblock.SmartBlock
+	source.ChangeReceiver
 	basic.AllOperations
+	stext.Text
+	fileObjectService fileobject.Service
 }
 
 func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -41,79 +41,12 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
 			}
 
-			details := ctx.State.CombinedDetails()
-			fileType := fileblock.DetectTypeByMIME(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
-
-			fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
-			ext := pbtypes.GetString(details, bundle.RelationKeyFileExt.String())
-
-			if ext != "" && !strings.HasSuffix(fname, "."+ext) {
-				fname = fname + "." + ext
-			}
-
-			var blocks []*model.Block
-			blocks = append(blocks, &model.Block{
-				Id: "file",
-				Content: &model.BlockContentOfFile{
-					File: &model.BlockContentFile{
-						Name:           fname,
-						Mime:           pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
-						TargetObjectId: p.Id(),
-						Type:           fileType,
-						Size_:          int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
-						State:          model.BlockContentFile_Done,
-						AddedAt:        int64(pbtypes.GetFloat64(details, bundle.RelationKeyFileMimeType.String())),
-					},
-				}})
-
-			switch fileType {
-			case model.BlockContentFile_Image:
-				s.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(p.Id()))
-
-				if pbtypes.GetInt64(details, bundle.RelationKeyWidthInPixels.String()) != 0 {
-					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))
-				}
-
-				if pbtypes.GetInt64(details, bundle.RelationKeyHeightInPixels.String()) != 0 {
-					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyHeightInPixels))
-				}
-
-				if pbtypes.GetString(details, bundle.RelationKeyCamera.String()) != "" {
-					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyCamera))
-				}
-
-				if pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()) != 0 {
-					blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
-				}
-				if pbtypes.GetString(details, bundle.RelationKeyMediaArtistName.String()) != "" {
-					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistName))
-				}
-				if pbtypes.GetString(details, bundle.RelationKeyMediaArtistURL.String()) != "" {
-					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistURL))
-				}
-			default:
-				blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
-			}
-
-			template.InitTemplate(s,
-				template.WithEmpty,
-				template.WithTitle,
-				template.WithDefaultFeaturedRelations,
-				template.WithFeaturedRelations,
-				template.WithRootBlocks(blocks),
-				template.WithAllBlocksEditsRestricted,
-			)
-		},
-	}
-}
-
-func makeRelationBlock(relationKey domain.RelationKey) *model.Block {
-	return &model.Block{
-		Id: relationKey.String(),
-		Content: &model.BlockContentOfRelation{
-			Relation: &model.BlockContentRelation{
-				Key: relationKey.String(),
-			},
+			// Other blocks added:
+			// - While creating file object, if we use synchronous metadata indexing mode
+			// - In background metadata indexer, if we use asynchronous metadata indexing mode
+			//
+			// See fileobject.Service
+			p.fileObjectService.InitEmptyFileState(ctx.State)
 		},
 	}
 }

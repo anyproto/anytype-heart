@@ -21,6 +21,9 @@ import (
 //export SetEventHandler
 func SetEventHandler(pf C.proxyFunc, ctx unsafe.Pointer) {
 	service.SetEventHandler(func(event *pb.Event) {
+		if len(event.Messages) == 0 {
+			return
+		}
 		b, err := proto.Marshal(event)
 		if err != nil {
 			fmt.Printf("failed to encode event: %s\n", err.Error())
@@ -34,6 +37,16 @@ func SetEventHandler(pf C.proxyFunc, ctx unsafe.Pointer) {
 			fmt.Printf("failed to send event to nil eventHandler: %s", string(eventB))
 		}
 	})
+}
+
+//export RunDebugServer
+func RunDebugServer(addr *C.char) {
+	service.RunDebugServer(C.GoString(addr))
+}
+
+//export SetLogLevels
+func SetLogLevels(levels *C.char) {
+	service.SetLogLevels(C.GoString(levels))
 }
 
 //export Command

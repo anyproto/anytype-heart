@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -27,51 +29,65 @@ type oldFile struct {
 }
 
 func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
-	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
-	id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-
+	fileId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	filesKeys := map[string]string{}
 	for _, fileKeys := range sn.Snapshot.FileKeys {
-		if fileKeys.Hash == id {
+		if fileKeys.Hash == fileId {
 			filesKeys = fileKeys.Keys
 			break
 		}
 	}
 
-	// If we got keys we can just create file object with existing file CID
-	if len(filesKeys) > 0 {
-		err := f.fileStore.AddFileKeys(domain.FileEncryptionKeys{
-			FileId:         domain.FileId(id),
-			EncryptionKeys: filesKeys,
-		})
+	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	if filePath != "" {
+		name := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, name, filePath, origin, filesKeys)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("add file keys: %w", err)
+			log.Error("handling old file object: upload file", zap.Error(err))
 		}
-		objectId, err := f.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(id)}, origin)
-		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create file object: %w", err)
+		if err == nil {
+			return fileObjectId, treestorage.TreeStorageCreatePayload{}, nil
 		}
-		return objectId, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
-	params := pb.RpcFileUploadRequest{
-		SpaceId:   spaceId,
-		LocalPath: filePath,
+	err := f.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		FileId:         domain.FileId(fileId),
+		EncryptionKeys: filesKeys,
+	})
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("add file keys: %w", err)
 	}
+	objectId, err := f.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fileId)}, origin)
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create file object: %w", err)
+	}
+	return objectId, treestorage.TreeStorageCreatePayload{}, nil
+}
+
+func uploadFile(ctx context.Context, blockService *block.Service, spaceId string, name string, filePath string, origin objectorigin.ObjectOrigin, encryptionKeys map[string]string) (string, error) {
+	params := pb.RpcFileUploadRequest{
+		SpaceId: spaceId,
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String(name),
+			},
+		},
+	}
+
 	if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
-		params = pb.RpcFileUploadRequest{
-			SpaceId:   spaceId,
-			LocalPath: filePath,
-		}
+		params.Url = filePath
+	} else {
+		params.LocalPath = filePath
 	}
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: params,
 		ObjectOrigin:         origin,
+		CustomEncryptionKeys: encryptionKeys,
 	}
 
-	hash, _, err := f.blockService.UploadFile(ctx, spaceId, dto)
+	fileObjectId, _, err := blockService.UploadFile(ctx, spaceId, dto)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
+		return "", err
 	}
-	return hash, treestorage.TreeStorageCreatePayload{}, nil
+	return fileObjectId, nil
 }

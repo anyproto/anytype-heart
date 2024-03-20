@@ -36,9 +36,12 @@ type Service interface {
 	Delete(ctx context.Context) (toBeDeleted int64, err error)
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
+	SignData(data []byte) (signature []byte, err error)
 	PersonalSpaceID() string
-	IdentityObjectId() string
-	LocalProfile() (Profile, error)
+	MyParticipantId(string) string
+	// ProfileObjectId returns id of Profile object stored in personal space
+	ProfileObjectId() (string, error)
+	ProfileInfo() (Profile, error)
 }
 
 type service struct {
@@ -54,7 +57,7 @@ type service struct {
 
 	picker          getblock.ObjectGetter
 	once            sync.Once
-	personalSpaceID string
+	personalSpaceId string
 }
 
 func New() Service {
@@ -71,7 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.config = app.MustComponent[*config.Config](a)
 	s.picker = app.MustComponent[getblock.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.personalSpaceID, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	return
 }
 
@@ -91,8 +94,12 @@ func (s *service) AccountID() string {
 	return s.wallet.Account().SignKey.GetPublic().Account()
 }
 
+func (s *service) SignData(data []byte) (signature []byte, err error) {
+	return s.wallet.Account().SignKey.Sign(data)
+}
+
 func (s *service) PersonalSpaceID() string {
-	return s.personalSpaceID
+	return s.personalSpaceId
 }
 
 func (s *service) Name() (name string) {
@@ -100,6 +107,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error) {
+
 	deviceKey := s.wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().PeerId()
 
@@ -130,7 +138,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		return nil, fmt.Errorf("failed to derive tech space id: %w", err)
 	}
 
-	ids, err := s.getIds(ctx, spaceID)
+	ids, err := s.getDerivedIds(ctx, spaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get derived ids: %w", err)
 	}
@@ -161,7 +169,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 	}, nil
 }
 
-func (s *service) getIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
+func (s *service) getDerivedIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
 	spc, err := s.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return ids, fmt.Errorf("failed to get space: %w", err)
@@ -173,7 +181,7 @@ func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
 	if s.config.AnalyticsId != "" {
 		return s.config.AnalyticsId, nil
 	}
-	ids, err := s.getIds(ctx, s.personalSpaceID)
+	ids, err := s.getDerivedIds(ctx, s.personalSpaceId)
 	if err != nil {
 		return "", fmt.Errorf("failed to get derived ids: %w", err)
 	}

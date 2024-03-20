@@ -36,7 +36,7 @@ type ObjectDeleter interface {
 
 type accountService interface {
 	PersonalSpaceID() string
-	IdentityObjectId() string
+	MyParticipantId(spaceId string) string
 }
 
 type ObjectFactory struct {
@@ -58,7 +58,7 @@ type ObjectFactory struct {
 	fileObjectService   fileobject.Service
 	processService      process.Service
 	fileUploaderService fileuploader.Service
-	objectDeleter      ObjectDeleter
+	objectDeleter       ObjectDeleter
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -128,13 +128,13 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	}
 
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
+	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {
 	return smartblock.New(
 		space,
-		f.accountService.IdentityObjectId(),
+		f.accountService.MyParticipantId(space.Id()),
 		f.fileStore,
 		f.restrictionService,
 		f.objectStore,
@@ -152,7 +152,6 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeIdentity,
 		coresb.SmartBlockTypeRelationOption:
 		return f.newPage(sb), nil
 	case coresb.SmartBlockTypeArchive:
@@ -170,16 +169,17 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeWorkspace:
 		return f.newWorkspace(sb), nil
 	case coresb.SmartBlockTypeSpaceView:
-		return newSpaceView(
-			sb,
-			f.spaceService,
-		), nil
+		return f.newSpaceView(sb), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
 		return NewWidgetObject(sb, f.objectStore, f.layoutConverter, f.accountService), nil
+	case coresb.SmartBlockTypeNotificationObject:
+		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
+	case coresb.SmartBlockTypeParticipant:
+		return f.newParticipant(sb), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}
