@@ -1,7 +1,7 @@
 package common
 
 import (
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec
 	"encoding/hex"
 	"path/filepath"
 	"sort"
@@ -40,7 +40,7 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	if emoji == "" {
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
-	h := md5.Sum([]byte(sourcePath))
+	h := md5.Sum([]byte(sourcePath)) //nolint:gosec
 	hash := hex.EncodeToString(h[:])
 	fields := map[string]*types.Value{
 		bundle.RelationKeyName.String():             pbtypes.String(name),
