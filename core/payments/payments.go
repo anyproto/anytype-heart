@@ -83,12 +83,11 @@ func New() Service {
 }
 
 type service struct {
-	cache        cache.CacheService
-	ppclient     ppclient.AnyPpClientService
-	wallet       wallet.Wallet
-	spaceService space.Service
-	account      account.Service
-
+	cache             cache.CacheService
+	ppclient          ppclient.AnyPpClientService
+	wallet            wallet.Wallet
+	spaceService      space.Service
+	account           account.Service
 	mx                sync.Mutex
 	periodicGetStatus periodicsync.PeriodicSync
 	eventSender       event.Sender
@@ -105,12 +104,17 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.account = app.MustComponent[account.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
-
 	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
 	return nil
 }
 
-func (s *service) Run(_ context.Context) (err error) {
+func (s *service) Run(ctx context.Context) (err error) {
+	// skip running loop if called from tests
+	val := ctx.Value("dontRunPeriodicGetStatus")
+	if val != nil && val.(bool) {
+		return nil
+	}
+
 	s.periodicGetStatus.Run()
 	return nil
 }
