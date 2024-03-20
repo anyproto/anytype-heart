@@ -126,10 +126,10 @@ func (n *notificationService) Close(_ context.Context) (err error) {
 }
 
 func (n *notificationService) CreateAndSend(notification *model.Notification) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
 	notification.CreateTime = time.Now().Unix()
 	if !notification.IsLocal {
+		n.mu.Lock()
+		defer n.mu.Unlock()
 		var exist bool
 		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 			stateNotification := s.GetNotificationById(notification.Id)
