@@ -46,7 +46,7 @@ func newFixture(t *testing.T) *fixture {
 	dataStore := datastore.NewInMemory()
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
-	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).AnyTimes()
+	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, nil)
 	err := dataStore.Run(ctx)
 	require.NoError(t, err)
 
