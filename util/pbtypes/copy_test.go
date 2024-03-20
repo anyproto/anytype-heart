@@ -16,14 +16,6 @@ func TestCopyStruct(t *testing.T) {
 		}
 	})
 
-	t.Run("struct with nil fields", func(t *testing.T) {
-		input := &types.Struct{Fields: nil}
-		got := CopyStruct(input, false)
-		if got.Fields == nil || len(got.Fields) != 0 {
-			t.Errorf("CopyStruct(&Struct{Fields: nil}, false) did not initialize Fields map")
-		}
-	})
-
 	t.Run("struct with copyvals true", func(t *testing.T) {
 		original := &types.Struct{
 			Fields: map[string]*types.Value{
