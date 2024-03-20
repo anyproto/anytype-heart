@@ -124,9 +124,8 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []str
 		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusNotExists {
 			continue
 		}
-		isOwned := false
-		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusCreated && nodeStatus.Permissions == coordinatorproto.SpacePermissions_SpacePermissionsOwner {
-			isOwned = true
+		isOwned := nodeStatus.Permissions == coordinatorproto.SpacePermissions_SpacePermissionsOwner
+		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusCreated && isOwned {
 			ownedIds = append(ownedIds, ids[idx])
 		}
 		remoteStatus := convStatus(nodeStatus.Status)
