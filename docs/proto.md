@@ -23760,6 +23760,7 @@ Precondition: user A and user B opened the same block
 | bundledTemplates | [string](#string) |  |  |
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
+| areOldFilesRemoved | [bool](#bool) |  |  |
 
 
 
