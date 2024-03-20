@@ -73,6 +73,7 @@ func (d *deletionController) AddSpaceToDelete(spaceId string) {
 	d.mx.Lock()
 	defer d.mx.Unlock()
 	d.toDelete[spaceId] = struct{}{}
+	d.updater.notify()
 }
 
 func (d *deletionController) UpdateCoordinatorStatus() {
