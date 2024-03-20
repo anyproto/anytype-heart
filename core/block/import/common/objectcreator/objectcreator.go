@@ -142,8 +142,6 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 			log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 			return nil, "", err
 		}
-	} else if sn.SbType == coresb.SmartBlockTypeParticipant {
-		return oc.createStaticObject(ctx, spaceID, newID, st)
 	} else {
 		if canUpdateObject(sn.SbType) {
 			respDetails = oc.updateExistingObject(st, oldIDtoNew, newID)
