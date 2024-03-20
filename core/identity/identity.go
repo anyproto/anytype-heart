@@ -529,7 +529,9 @@ func (s *service) fetchGlobalNames(identities []string) error {
 	}
 	s.identityGlobalNames = make(map[string]string, len(identities))
 	for i, anyID := range identities {
-		s.identityGlobalNames[anyID] = response.Results[i].Name
+		if response.Results[i].Found {
+			s.identityGlobalNames[anyID] = response.Results[i].Name
+		}
 	}
 	return nil
 }
