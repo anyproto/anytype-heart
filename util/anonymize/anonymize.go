@@ -150,7 +150,7 @@ func Block(b *model.Block) (res *model.Block) {
 }
 
 func Struct(in *types.Struct) (res *types.Struct) {
-	res = pbtypes.CopyStruct(in, true)
+	res = pbtypes.CopyStruct(in, false)
 	if res != nil && res.Fields != nil {
 		for k, v := range res.Fields {
 			if k != "featuredRelations" {

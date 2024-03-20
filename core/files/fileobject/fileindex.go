@@ -216,7 +216,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	}
 	st.AddBundledRelations(keys...)
 
-	details = pbtypes.StructMerge(prevDetails, details, true)
+	details = pbtypes.StructMerge(prevDetails, details, false)
 	st.SetDetails(details)
 
 	err = ind.addBlocks(st, details, id.ObjectID)
