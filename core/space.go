@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
@@ -23,7 +24,7 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 	// 1. user is an owner
 	// 2. user already left a request to delete
 	// 3. user is not a member of the space anymore
-	if err == nil || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) || errors.Is(err, list.ErrNoSuchAccount) {
+	if err == nil || errors.Is(err, spacestorage.ErrSpaceStorageMissing) || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) || errors.Is(err, list.ErrNoSuchAccount) {
 		err = spaceService.Delete(cctx, req.SpaceId)
 	}
 	code := mapErrorCode(err,
@@ -164,10 +165,17 @@ func (mw *Middleware) SpaceStopSharing(cctx context.Context, req *pb.RpcSpaceSto
 }
 
 func (mw *Middleware) SpaceJoinCancel(cctx context.Context, req *pb.RpcSpaceJoinCancelRequest) *pb.RpcSpaceJoinCancelResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := aclService.CancelJoin(cctx, req.SpaceId)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceJoinCancelResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceJoinCancelResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceJoinCancelResponseError_REQUEST_FAILED),
+	)
 	return &pb.RpcSpaceJoinCancelResponse{
 		Error: &pb.RpcSpaceJoinCancelResponseError{
-			Code:        1,
-			Description: getErrorDescription(fmt.Errorf("not implemented")),
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
@@ -214,6 +222,7 @@ func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpace
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceRequestDeclineResponseError_NO_SUCH_SPACE),
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceRequestDeclineResponseError_REQUEST_FAILED),
 	)
+
 	return &pb.RpcSpaceRequestDeclineResponse{
 		Error: &pb.RpcSpaceRequestDeclineResponseError{
 			Code:        code,

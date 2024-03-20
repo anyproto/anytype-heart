@@ -16,10 +16,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
@@ -33,6 +36,7 @@ type SpaceView struct {
 	smartblock.SmartBlock
 	spaceService      spaceService
 	fileObjectService fileobject.Service
+	log               *logging.Sugared
 }
 
 // newSpaceView creates a new SpaceView with given deps
@@ -40,6 +44,7 @@ func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 	return &SpaceView{
 		SmartBlock:        sb,
 		spaceService:      f.spaceService,
+		log:               spaceViewLog,
 		fileObjectService: f.fileObjectService,
 	}
 }
@@ -53,6 +58,7 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	if err != nil {
 		return
 	}
+	s.log = s.log.With("spaceId", spaceID)
 
 	s.DisableLayouts()
 	info := s.getSpaceInfo(ctx.State)
@@ -138,14 +144,20 @@ func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocal
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
+	st.SetLocalDetail(bundle.RelationKeySpaceMembersWriteLimit.String(), pbtypes.Int64(int64(info.WriteLimit)))
+	st.SetLocalDetail(bundle.RelationKeySpaceMembersReadLimit.String(), pbtypes.Int64(int64(info.ReadLimit)))
+	s.log.Infof("set space local status: %s, remote status: %s", info.LocalStatus.String(), info.RemoteStatus.String())
 }
 
 func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
+	log := s.log
 	if info.AclHeadId != "" {
+		log = log.With("aclHeadId", info.AclHeadId)
 		st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
 	}
+	log.Infof("set space account status: %s", info.AccountStatus.String())
 }
 
 // targetSpaceID returns space id from the root of space object's tree

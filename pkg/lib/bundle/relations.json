@@ -147,6 +147,26 @@
     "source": "derived"
   },
   {
+    "description": "Space members read limit",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceMembersReadLimit",
+    "maxCount": 1,
+    "name": "Space members read limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Space members write limit",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceMembersWriteLimit",
+    "maxCount": 1,
+    "name": "Space members write limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Adds the object to the highlighted dataview in space",
     "format": "checkbox",
     "hidden": true,
@@ -564,12 +584,13 @@
   {
     "description": "Human which created this object",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "creator",
     "maxCount": 1,
     "name": "Created by",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Recommended layout for new templates and objects of specific objec",

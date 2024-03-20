@@ -51,12 +51,13 @@ func (mw *Middleware) WalletConvert(cctx context.Context, req *pb.RpcWalletConve
 }
 
 func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
-	token, err := mw.applicationService.CreateSession(req)
+	token, accountId, err := mw.applicationService.CreateSession(req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrBadInput, pb.RpcWalletCreateSessionResponseError_BAD_INPUT),
 	)
 	return &pb.RpcWalletCreateSessionResponse{
-		Token: token,
+		Token:     token,
+		AccountId: accountId,
 		Error: &pb.RpcWalletCreateSessionResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),

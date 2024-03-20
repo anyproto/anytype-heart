@@ -36,6 +36,14 @@ type spaceStatusMock struct {
 	persistentUpdater func(status spaceinfo.AccountStatus)
 }
 
+func (s *spaceStatusMock) Run(ctx context.Context) (err error) {
+	return
+}
+
+func (s *spaceStatusMock) Close(ctx context.Context) (err error) {
+	return
+}
+
 func (s *spaceStatusMock) LatestAclHeadId() string {
 	return ""
 }
@@ -86,8 +94,8 @@ func (s *spaceStatusMock) UpdatePersistentStatus(ctx context.Context, status spa
 	s.accountStatus = status
 }
 
-func (s *spaceStatusMock) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
-	s.remoteStatus = status
+func (s *spaceStatusMock) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+	s.remoteStatus = status.RemoteStatus
 	return nil
 }
 

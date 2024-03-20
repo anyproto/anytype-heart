@@ -28,6 +28,21 @@ func IsSystemRelation(relationKey domain.RelationKey) bool {
 	return ok
 }
 
+func makeInternalTypesTypesMap() map[domain.TypeKey]struct{} {
+	res := make(map[domain.TypeKey]struct{}, len(SystemTypes))
+	for _, k := range InternalTypes {
+		res[k] = struct{}{}
+	}
+	return res
+}
+
+var internalTypesTypesMap = makeInternalTypesTypesMap()
+
+func IsInternalType(typeKey domain.TypeKey) bool {
+	_, ok := internalTypesTypesMap[typeKey]
+	return ok
+}
+
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKey{
 	coresb.SmartBlockTypePage:        TypeKeyPage,
 	coresb.SmartBlockTypeProfilePage: TypeKeyProfile,

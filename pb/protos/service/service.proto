@@ -243,7 +243,7 @@ service ClientCommands {
     rpc BlockDataviewSortAdd (anytype.Rpc.BlockDataview.Sort.Add.Request) returns (anytype.Rpc.BlockDataview.Sort.Add.Response);
     rpc BlockDataviewSortRemove (anytype.Rpc.BlockDataview.Sort.Remove.Request) returns (anytype.Rpc.BlockDataview.Sort.Remove.Response);
     rpc BlockDataviewSortReplace (anytype.Rpc.BlockDataview.Sort.Replace.Request) returns (anytype.Rpc.BlockDataview.Sort.Replace.Response);
-    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.Sort.Request) returns (anytype.Rpc.BlockDataview.Sort.Sort.Response);
+    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.SSort.Request) returns (anytype.Rpc.BlockDataview.Sort.SSort.Response);
 
     rpc BlockDataviewViewRelationAdd (anytype.Rpc.BlockDataview.ViewRelation.Add.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Add.Response);
     rpc BlockDataviewViewRelationRemove (anytype.Rpc.BlockDataview.ViewRelation.Remove.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Remove.Response);
@@ -291,6 +291,7 @@ service ClientCommands {
 
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 
+    rpc DebugStat (anytype.Rpc.Debug.Stat.Request) returns (anytype.Rpc.Debug.Stat.Response);
     rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
     rpc DebugTreeHeads (anytype.Rpc.Debug.TreeHeads.Request) returns (anytype.Rpc.Debug.TreeHeads.Response);
     rpc DebugSpaceSummary (anytype.Rpc.Debug.SpaceSummary.Request) returns (anytype.Rpc.Debug.SpaceSummary.Response);
