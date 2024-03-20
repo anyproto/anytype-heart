@@ -650,6 +650,10 @@
     - [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request)
     - [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response)
     - [Rpc.Membership.GetVerificationEmail.Response.Error](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error)
+    - [Rpc.Membership.IsNameValid](#anytype-Rpc-Membership-IsNameValid)
+    - [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request)
+    - [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response)
+    - [Rpc.Membership.IsNameValid.Response.Error](#anytype-Rpc-Membership-IsNameValid-Response-Error)
     - [Rpc.Membership.Tiers](#anytype-Rpc-Membership-Tiers)
     - [Rpc.Membership.Tiers.Get](#anytype-Rpc-Membership-Tiers-Get)
     - [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request)
@@ -1248,6 +1252,7 @@
     - [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code)
     - [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code)
+    - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
     - [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
@@ -1698,6 +1703,7 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [Membership.Tier](#anytype-model-Membership-Tier)
+    - [MembershipTierData.NameValidity](#anytype-model-MembershipTierData-NameValidity)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
@@ -1966,6 +1972,7 @@
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | NotificationTest | [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request) | [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response) |  |
 | MembershipGetStatus | [Rpc.Membership.GetStatus.Request](#anytype-Rpc-Membership-GetStatus-Request) | [Rpc.Membership.GetStatus.Response](#anytype-Rpc-Membership-GetStatus-Response) | Membership *** Get current subscription status (tier, expiration date, etc.) WARNING: can be cached by Anytype Heart |
+| MembershipIsNameValid | [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request) | [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response) |  |
 | MembershipGetPaymentUrl | [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request) | [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
 | MembershipGetPortalLinkUrl | [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request) | [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
 | MembershipGetVerificationEmail | [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request) | [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
@@ -11376,6 +11383,66 @@ can be called multiple times but with some timeout (N seconds) between calls
 
 
 
+<a name="anytype-Rpc-Membership-IsNameValid"></a>
+
+### Rpc.Membership.IsNameValid
+Check if the requested name is valid for the requested tier
+before requesting a payment link and paying
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-IsNameValid-Request"></a>
+
+### Rpc.Membership.IsNameValid.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedTier | [int32](#int32) |  |  |
+| requestedAnyName | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-IsNameValid-Response"></a>
+
+### Rpc.Membership.IsNameValid.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.IsNameValid.Response.Error](#anytype-Rpc-Membership-IsNameValid-Response-Error) |  |  |
+| code | [model.MembershipTierData.NameValidity](#anytype-model-MembershipTierData-NameValidity) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-IsNameValid-Response-Error"></a>
+
+### Rpc.Membership.IsNameValid.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Membership-Tiers"></a>
 
 ### Rpc.Membership.Tiers
@@ -19881,6 +19948,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Membership-IsNameValid-Response-Error-Code"></a>
+
+### Rpc.Membership.IsNameValid.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
 <a name="anytype-Rpc-Membership-Tiers-Get-Response-Error-Code"></a>
 
 ### Rpc.Membership.Tiers.Get.Response.Error.Code
@@ -26846,6 +26928,22 @@ in this case please call Finalize to finish the process |
 | TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
 | TierBuilder | 4 |  |
 | TierCoCreator | 5 |  |
+
+
+
+<a name="anytype-model-MembershipTierData-NameValidity"></a>
+
+### MembershipTierData.NameValidity
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Valid | 0 |  |
+| NoDotAny | 1 |  |
+| TooShort | 2 |  |
+| TooLong | 3 |  |
+| HasInvalidChars | 4 |  |
+| TierFeatureNoName | 5 | if everything is fine - &#34;name is already taken&#34; check should be done in the NS see IsNameAvailable() |
 
 
 

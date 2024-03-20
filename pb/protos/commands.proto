@@ -6396,6 +6396,38 @@ message Rpc {
         }
 
         /**
+        * Check if the requested name is valid for the requested tier
+        * before requesting a payment link and paying
+        */
+        message IsNameValid {
+            message Request {
+                int32 requestedTier = 1;
+                string requestedAnyName = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.MembershipTierData.NameValidity code = 2;
+                string description = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                    }
+                }
+            }
+        }
+
+        /**
         * Generate a link to the payment provider
         * where user can pay for the membership
         */

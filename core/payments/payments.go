@@ -67,15 +67,12 @@ CACHE LOGICS:
 */
 type Service interface {
 	GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error)
-
+	IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error)
 	GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error)
 	GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error)
-
 	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
-
 	FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error)
-
 	GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error)
 
 	app.ComponentRunnable
@@ -256,6 +253,25 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	// 6 - save RequestedAnyName to details of local identity object
 	s.saveGlobalNameToMyIdentity(status.RequestedAnyName)
 
+	return &out, nil
+}
+
+func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
+	// 1 - send request
+	invr := psp.IsNameValidRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		RequestedTier:    req.RequestedTier,
+		RequestedAnyName: req.RequestedAnyName,
+	}
+
+	resp, err := s.ppclient.IsNameValid(ctx, &invr)
+	if err != nil {
+		return nil, err
+	}
+
+	var out pb.RpcMembershipIsNameValidResponse
+	out.Code = model.MembershipTierDataNameValidity(resp.Code)
+	out.Description = resp.Description
 	return &out, nil
 }
 

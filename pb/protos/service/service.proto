@@ -315,6 +315,7 @@ service ClientCommands {
     // Get current subscription status (tier, expiration date, etc.)
     // WARNING: can be cached by Anytype Heart
     rpc MembershipGetStatus (anytype.Rpc.Membership.GetStatus.Request) returns (anytype.Rpc.Membership.GetStatus.Response);
+    rpc MembershipIsNameValid( anytype.Rpc.Membership.IsNameValid.Request) returns (anytype.Rpc.Membership.IsNameValid.Response);
     // Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
     rpc MembershipGetPaymentUrl (anytype.Rpc.Membership.GetPaymentUrl.Request) returns (anytype.Rpc.Membership.GetPaymentUrl.Response);
     // Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:

@@ -27,6 +27,22 @@ func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMember
 	return out
 }
 
+func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) *pb.RpcMembershipIsNameValidResponse {
+	ps := getService[payments.Service](mw)
+	out, err := ps.IsNameValid(ctx, req)
+
+	if err != nil {
+		return &pb.RpcMembershipIsNameValidResponse{
+			Error: &pb.RpcMembershipIsNameValidResponseError{
+				Code:        pb.RpcMembershipIsNameValidResponseError_UNKNOWN_ERROR,
+				Description: err.Error(),
+			},
+		}
+	}
+
+	return out
+}
+
 func (mw *Middleware) MembershipGetPaymentUrl(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) *pb.RpcMembershipGetPaymentUrlResponse {
 	ps := getService[payments.Service](mw)
 	out, err := ps.GetPaymentURL(ctx, req)
