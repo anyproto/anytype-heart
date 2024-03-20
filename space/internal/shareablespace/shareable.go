@@ -162,3 +162,7 @@ func (s *spaceController) Close(ctx context.Context) error {
 	s.sm.Close()
 	return nil
 }
+
+func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
+	return s.status.GetPersistentStatus()
+}

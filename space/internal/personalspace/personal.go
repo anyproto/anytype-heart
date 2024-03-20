@@ -106,3 +106,7 @@ func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersi
 func (s *spaceController) Close(ctx context.Context) error {
 	return s.loader.Close(ctx)
 }
+
+func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
+	return 0
+}

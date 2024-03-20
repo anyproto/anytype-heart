@@ -91,3 +91,7 @@ func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spacein
 func (s *spaceController) Close(ctx context.Context) error {
 	return nil
 }
+
+func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
+	return 0
+}
