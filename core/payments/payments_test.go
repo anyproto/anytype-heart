@@ -119,12 +119,12 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		spc := mock_clientspace.NewMockSpace(t)
-		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
 
-		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
-		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
 
-		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -149,12 +149,12 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		spc := mock_clientspace.NewMockSpace(t)
-		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
 
-		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
-		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
 
-		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Call the function being tested
 		req := pb.RpcMembershipGetStatusRequest{
@@ -205,12 +205,12 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		spc := mock_clientspace.NewMockSpace(t)
-		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
 
-		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
-		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
 
-		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -264,12 +264,12 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		spc := mock_clientspace.NewMockSpace(t)
-		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
 
-		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
-		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
 
-		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -348,12 +348,12 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil)
 
 		spc := mock_clientspace.NewMockSpace(t)
-		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
 
-		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
-		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
 
-		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -401,12 +401,12 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		spc := mock_clientspace.NewMockSpace(t)
-		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
 
-		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
-		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
 
-		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -460,12 +460,12 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		spc := mock_clientspace.NewMockSpace(t)
-		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
 
-		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
-		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
 
-		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -523,12 +523,12 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		spc := mock_clientspace.NewMockSpace(t)
-		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Once().Return(spc, nil)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
 
-		fx.account.EXPECT().PersonalSpaceID().Twice().Return("")
-		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Once().Return("")
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
 
-		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Once().Return(nil)
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -559,6 +559,14 @@ func TestGetPaymentURL(t *testing.T) {
 		})
 		fx.cache.EXPECT().IsCacheEnabled().Return(false)
 		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// ethPrivateKey := ecdsa.PrivateKey{}
 		// w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
@@ -600,6 +608,14 @@ func TestGetPaymentURL(t *testing.T) {
 		fx.cache.EXPECT().IsCacheEnabled().Return(false)
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
+
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
 			RequestedTier:    int32(model.Membership_TierBuilder),
@@ -633,6 +649,14 @@ func TestGetPortalURL(t *testing.T) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
+
 		// Create a test request
 		req := &pb.RpcMembershipGetPortalLinkUrlRequest{}
 
@@ -662,6 +686,14 @@ func TestGetPortalURL(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPortalLinkUrlRequest{}
@@ -693,6 +725,14 @@ func TestGetVerificationEmail(t *testing.T) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
+
 		// Create a test request
 		req := &pb.RpcMembershipGetVerificationEmailRequest{}
 		req.Email = "some@mail.com"
@@ -721,6 +761,14 @@ func TestGetVerificationEmail(t *testing.T) {
 		fx.ppclient.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
 			return &psp.GetVerificationEmailResponse{}, nil
 		}).MinTimes(1)
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		// Create a test request
 		req := &pb.RpcMembershipGetVerificationEmailRequest{}
@@ -757,6 +805,14 @@ func TestVerifyEmailCode(t *testing.T) {
 
 		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
+
 		// Create a test request
 		req := &pb.RpcMembershipVerifyEmailCodeRequest{}
 		req.Code = "1234"
@@ -790,6 +846,14 @@ func TestVerifyEmailCode(t *testing.T) {
 
 		fx.cache.EXPECT().CacheClear().Return(nil).Once()
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
+
 		// Create a test request
 		req := &pb.RpcMembershipVerifyEmailCodeRequest{}
 		req.Code = "1234"
@@ -822,6 +886,14 @@ func TestFinalizeSubscription(t *testing.T) {
 
 		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
+
 		// Create a test request
 		req := &pb.RpcMembershipFinalizeRequest{}
 
@@ -853,6 +925,14 @@ func TestFinalizeSubscription(t *testing.T) {
 
 		fx.cache.EXPECT().CacheClear().Return(nil).Once()
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
+
 		// Create a test request
 		req := &pb.RpcMembershipFinalizeRequest{}
 
@@ -881,6 +961,14 @@ func TestGetTiers(t *testing.T) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
+
 		req := pb.RpcMembershipTiersGetRequest{
 			NoCache:       true,
 			Locale:        "EN_us",
@@ -907,6 +995,14 @@ func TestGetTiers(t *testing.T) {
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
 			return &psp.GetTiersResponse{}, nil
 		}).MinTimes(1)
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
 			NoCache:       true,
@@ -945,6 +1041,14 @@ func TestGetTiers(t *testing.T) {
 				},
 			}, nil
 		}).MinTimes(1)
+
+		spc := mock_clientspace.NewMockSpace(t)
+		fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Return(spc, nil)
+
+		fx.account.EXPECT().PersonalSpaceID().Return("")
+		fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Return("")
+
+		spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
 			NoCache:       true,
