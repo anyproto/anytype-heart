@@ -45,6 +45,7 @@ type notificationService struct {
 	spaceService       space.Service
 	picker             block.ObjectGetter
 	spaceCore          spacecore.SpaceCoreService
+	mu                 sync.Mutex
 
 	sync.RWMutex
 	lastNotificationIdToAcl map[string]string
@@ -125,6 +126,8 @@ func (n *notificationService) Close(_ context.Context) (err error) {
 }
 
 func (n *notificationService) CreateAndSend(notification *model.Notification) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 	notification.CreateTime = time.Now().Unix()
 	if !notification.IsLocal {
 		var exist bool
