@@ -56,6 +56,7 @@ type Service interface {
 	TechSpaceId() string
 	TechSpace() *clientspace.TechSpace
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
+	GetTechSpace(ctx context.Context) (space clientspace.Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
@@ -71,6 +72,7 @@ type service struct {
 	config         *config.Config
 
 	personalSpaceId        string
+	techSpaceId            string
 	newAccount             bool
 	spaceControllers       map[string]spacecontroller.SpaceController
 	waiting                map[string]controllerWaiter
@@ -115,6 +117,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.waiting = make(map[string]controllerWaiter)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	if err != nil {
+		return
+	}
+	s.techSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.TechSpaceType)
 	if err != nil {
 		return
 	}
@@ -188,6 +194,10 @@ func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, e
 	return s.Get(ctx, s.personalSpaceId)
 }
 
+func (s *service) GetTechSpace(ctx context.Context) (sp clientspace.Space, err error) {
+	return s.Get(ctx, s.techSpaceId)
+}
+
 func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceId == id
 }
@@ -223,20 +233,20 @@ func (s *service) AccountMetadataPayload() []byte {
 	return s.accountMetadataPayload
 }
 
-func (s *service) UpdateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus, isOwned bool) error {
+func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	s.mu.Lock()
-	ctrl := s.spaceControllers[spaceId]
+	ctrl := s.spaceControllers[status.SpaceId]
 	s.mu.Unlock()
 	if ctrl == nil {
-		return fmt.Errorf("no such space: %s", spaceId)
+		return fmt.Errorf("no such space: %s", status.SpaceId)
 	}
 	err := ctrl.UpdateRemoteStatus(ctx, status)
 	if err != nil {
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
-	if !isOwned && status == spaceinfo.RemoteStatusDeleted {
+	if !status.IsOwned && status.RemoteStatus == spaceinfo.RemoteStatusDeleted {
 		return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
-			SpaceID:       spaceId,
+			SpaceID:       status.SpaceId,
 			AccountStatus: spaceinfo.AccountStatusRemoving,
 		})
 	}

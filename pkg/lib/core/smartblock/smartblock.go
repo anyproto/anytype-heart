@@ -35,7 +35,8 @@ const (
 	SmartBlockTypeSpaceView      = SmartBlockType(model.SmartBlockType_SpaceView)
 	SmartBlockTypeRelationOption = SmartBlockType(model.SmartBlockType_STRelationOption)
 
-	SmartBlockTypeMissingObject = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeMissingObject      = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeNotificationObject = SmartBlockType(model.SmartBlockType_NotificationObject)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")

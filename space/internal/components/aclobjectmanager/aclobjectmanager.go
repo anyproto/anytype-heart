@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -15,10 +16,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -53,9 +54,9 @@ type aclObjectManager struct {
 	modifier            dependencies.DetailsModifier
 	identityService     dependencies.IdentityService
 	indexer             dependencies.SpaceIndexer
-	notificationService notifications.Notifications
 	statService         debugstat.StatService
 	started             bool
+	notificationService aclnotifications.AclNotification
 
 	ownerMetadata     []byte
 	mx                sync.Mutex
@@ -96,7 +97,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
 	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
-	a.notificationService = app.MustComponent[notifications.Notifications](ap)
+	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
 	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
 	if a.statService == nil {
 		a.statService = debugstat.NewNoOp()
@@ -166,6 +167,11 @@ func (a *aclObjectManager) process() {
 	}
 }
 
+func (a *aclObjectManager) sendNotifications(common commonspace.Space) {
+	permissions := common.Acl().AclState().Permissions(common.Acl().AclState().AccountKey().GetPublic())
+	a.notificationService.AddRecords(common.Acl().(list.AclList), permissions, a.sp.Id(), spaceinfo.AccountStatusActive)
+}
+
 func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error {
 	myIdentity, metadataKey, profileDetails := a.identityService.GetMyProfileDetails()
 	id := domain.NewParticipantId(a.sp.Id(), myIdentity)
@@ -211,6 +217,9 @@ func (a *aclObjectManager) processAcl() (err error) {
 	lastIndexed := a.lastIndexed
 	a.mx.Unlock()
 	if lastIndexed == common.Acl().Head().Id {
+		a.mx.Lock()
+		a.sendNotifications(common)
+		a.mx.Unlock()
 		return nil
 	}
 	decrypt := func(key crypto.PubKey) ([]byte, error) {
@@ -244,6 +253,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		return
 	}
 	a.lastIndexed = common.Acl().Head().Id
+	a.sendNotifications(common)
 	return
 }
 

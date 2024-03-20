@@ -38,7 +38,7 @@ type spaceController struct {
 	techSpace techspace.TechSpace
 }
 
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	return nil
 }
 

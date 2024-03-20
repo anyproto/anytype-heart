@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
@@ -23,7 +24,7 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 	// 1. user is an owner
 	// 2. user already left a request to delete
 	// 3. user is not a member of the space anymore
-	if err == nil || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) || errors.Is(err, list.ErrNoSuchAccount) {
+	if err == nil || errors.Is(err, spacestorage.ErrSpaceStorageMissing) || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) || errors.Is(err, list.ErrNoSuchAccount) {
 		err = spaceService.Delete(cctx, req.SpaceId)
 	}
 	code := mapErrorCode(err,
@@ -221,6 +222,7 @@ func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpace
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceRequestDeclineResponseError_NO_SUCH_SPACE),
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceRequestDeclineResponseError_REQUEST_FAILED),
 	)
+
 	return &pb.RpcSpaceRequestDeclineResponse{
 		Error: &pb.RpcSpaceRequestDeclineResponseError{
 			Code:        code,
