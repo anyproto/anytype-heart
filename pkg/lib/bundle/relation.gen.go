@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "17aa972447461d521b69ff8d355550a117a28f089898d9c40548045529a737ba"
+const RelationChecksum = "2605deb293bdc030affb1b577770ad825adafcc68e3040412b3de47445f6ec5e"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -26,6 +26,8 @@ const (
 	RelationKeyTemplateIsBundled         domain.RelationKey = "templateIsBundled"
 	RelationKeyDateOfBirth               domain.RelationKey = "dateOfBirth"
 	RelationKeyRestrictions              domain.RelationKey = "restrictions"
+	RelationKeySpaceMembersReadLimit     domain.RelationKey = "spaceMembersReadLimit"
+	RelationKeySpaceMembersWriteLimit    domain.RelationKey = "spaceMembersWriteLimit"
 	RelationKeyIsHighlighted             domain.RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage            domain.RelationKey = "thumbnailImage"
 	RelationKeyAttachments               domain.RelationKey = "attachments"
@@ -2106,6 +2108,34 @@ var (
 			Key:              "spaceLocalStatus",
 			MaxCount:         1,
 			Name:             "Space local status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceMembersReadLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space members read limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceMembersReadLimit",
+			Key:              "spaceMembersReadLimit",
+			MaxCount:         1,
+			Name:             "Space members read limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceMembersWriteLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space members write limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceMembersWriteLimit",
+			Key:              "spaceMembersWriteLimit",
+			MaxCount:         1,
+			Name:             "Space members write limit",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

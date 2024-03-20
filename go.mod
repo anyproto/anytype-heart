@@ -1,6 +1,6 @@
 module github.com/anyproto/anytype-heart
 
-go 1.20
+go 1.22
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
@@ -97,7 +97,7 @@ require (
 	google.golang.org/grpc v1.62.1
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.1
-	storj.io/drpc v0.0.33
+	storj.io/drpc v0.0.34
 
 )
 

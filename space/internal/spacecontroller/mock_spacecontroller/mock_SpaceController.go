@@ -348,7 +348,7 @@ func (_c *MockSpaceController_UpdateInfo_Call) RunAndReturn(run func(context.Con
 }
 
 // UpdateRemoteStatus provides a mock function with given fields: ctx, status
-func (_m *MockSpaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+func (_m *MockSpaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	ret := _m.Called(ctx, status)
 
 	if len(ret) == 0 {
@@ -356,7 +356,7 @@ func (_m *MockSpaceController) UpdateRemoteStatus(ctx context.Context, status sp
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.RemoteStatus) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.SpaceRemoteStatusInfo) error); ok {
 		r0 = rf(ctx, status)
 	} else {
 		r0 = ret.Error(0)
@@ -372,14 +372,14 @@ type MockSpaceController_UpdateRemoteStatus_Call struct {
 
 // UpdateRemoteStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - status spaceinfo.RemoteStatus
+//   - status spaceinfo.SpaceRemoteStatusInfo
 func (_e *MockSpaceController_Expecter) UpdateRemoteStatus(ctx interface{}, status interface{}) *MockSpaceController_UpdateRemoteStatus_Call {
 	return &MockSpaceController_UpdateRemoteStatus_Call{Call: _e.mock.On("UpdateRemoteStatus", ctx, status)}
 }
 
-func (_c *MockSpaceController_UpdateRemoteStatus_Call) Run(run func(ctx context.Context, status spaceinfo.RemoteStatus)) *MockSpaceController_UpdateRemoteStatus_Call {
+func (_c *MockSpaceController_UpdateRemoteStatus_Call) Run(run func(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo)) *MockSpaceController_UpdateRemoteStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(spaceinfo.RemoteStatus))
+		run(args[0].(context.Context), args[1].(spaceinfo.SpaceRemoteStatusInfo))
 	})
 	return _c
 }
@@ -389,7 +389,7 @@ func (_c *MockSpaceController_UpdateRemoteStatus_Call) Return(_a0 error) *MockSp
 	return _c
 }
 
-func (_c *MockSpaceController_UpdateRemoteStatus_Call) RunAndReturn(run func(context.Context, spaceinfo.RemoteStatus) error) *MockSpaceController_UpdateRemoteStatus_Call {
+func (_c *MockSpaceController_UpdateRemoteStatus_Call) RunAndReturn(run func(context.Context, spaceinfo.SpaceRemoteStatusInfo) error) *MockSpaceController_UpdateRemoteStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

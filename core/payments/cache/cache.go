@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const CName = "cache"
@@ -50,11 +51,14 @@ type StorageStructV1 struct {
 
 func newStorageStructV1() *StorageStructV1 {
 	return &StorageStructV1{
-		CurrentVersion:     1,
-		LastUpdated:        time.Now().UTC(),
-		ExpireTime:         time.Time{},
-		DisableUntilTime:   time.Time{},
-		SubscriptionStatus: pb.RpcMembershipGetStatusResponse{},
+		CurrentVersion:   1,
+		LastUpdated:      time.Now().UTC(),
+		ExpireTime:       time.Time{},
+		DisableUntilTime: time.Time{},
+		SubscriptionStatus: pb.RpcMembershipGetStatusResponse{
+			// empty struct, but non-nil Data field
+			Data: &model.Membership{},
+		},
 	}
 }
 

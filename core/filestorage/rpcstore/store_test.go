@@ -181,6 +181,18 @@ type testServer struct {
 	files map[string][][]byte
 }
 
+func (t *testServer) FilesGet(request *fileproto.FilesGetRequest, stream fileproto.DRPCFile_FilesGetStream) error {
+	return fileprotoerr.ErrForbidden
+}
+
+func (t *testServer) AccountLimitSet(ctx context.Context, request *fileproto.AccountLimitSetRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
+func (t *testServer) SpaceLimitSet(ctx context.Context, request *fileproto.SpaceLimitSetRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
 func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -279,16 +291,4 @@ func (t *testServer) AccountInfo(ctx context.Context, req *fileproto.AccountInfo
 
 func (t *testServer) Check(ctx context.Context, req *fileproto.CheckRequest) (*fileproto.CheckResponse, error) {
 	return &fileproto.CheckResponse{AllowWrite: true}, nil
-}
-
-func (t *testServer) AccountLimitSet(ctx context.Context, in *fileproto.AccountLimitSetRequest) (*fileproto.Ok, error) {
-	return nil, nil
-}
-
-func (t *testServer) SpaceLimitSet(ctx context.Context, in *fileproto.SpaceLimitSetRequest) (*fileproto.Ok, error) {
-	return nil, nil
-}
-
-func (t *testServer) FilesGet(*fileproto.FilesGetRequest, fileproto.DRPCFile_FilesGetStream) error {
-	return nil
 }

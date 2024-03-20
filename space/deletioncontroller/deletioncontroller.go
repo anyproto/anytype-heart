@@ -24,7 +24,7 @@ const CName = "client.space.deletioncontroller"
 var log = logger.NewNamed(CName)
 
 const (
-	loopPeriodSecs = 60
+	loopPeriodSecs = 180
 	loopTimeout    = time.Second * 120
 )
 
@@ -38,7 +38,7 @@ func New() DeletionController {
 }
 
 type spaceManager interface {
-	UpdateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus, isOwned bool) error
+	UpdateRemoteStatus(ctx context.Context, spaceStatusInfo spaceinfo.SpaceRemoteStatusInfo) error
 	AllSpaceIds() (ids []string)
 }
 
@@ -126,7 +126,16 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []str
 			ownedIds = append(ownedIds, ids[idx])
 		}
 		remoteStatus := convStatus(nodeStatus.Status)
-		err := d.spaceManager.UpdateRemoteStatus(ctx, ids[idx], remoteStatus, isOwned)
+		statusInfo := spaceinfo.SpaceRemoteStatusInfo{
+			SpaceId:      ids[idx],
+			RemoteStatus: remoteStatus,
+			IsOwned:      isOwned,
+		}
+		if nodeStatus.Limits != nil {
+			statusInfo.WriteLimit = nodeStatus.Limits.WriteMembers
+			statusInfo.ReadLimit = nodeStatus.Limits.ReadMembers
+		}
+		err := d.spaceManager.UpdateRemoteStatus(ctx, statusInfo)
 		if err != nil {
 			log.Warn("remote status update error", zap.Error(err), zap.String("spaceId", ids[idx]))
 			return

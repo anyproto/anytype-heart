@@ -550,7 +550,7 @@ func TestGetPaymentURL(t *testing.T) {
 			return nil, errors.New("bad error")
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired).Maybe()
+		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
 		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &psp.GetSubscriptionResponse{}, nil
 		})

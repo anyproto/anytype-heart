@@ -114,7 +114,7 @@ func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePe
 	}
 }
 
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	s.status.Lock()
 	defer s.status.Unlock()
 	return s.status.SetRemoteStatus(ctx, status)
