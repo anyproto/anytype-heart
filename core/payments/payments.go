@@ -224,33 +224,28 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	isDiffTier := (cached != nil) && (cached.Data.Tier != status.Tier)
 	isDiffStatus := (cached != nil) && (cached.Data.Status != model.MembershipStatus(status.Status))
-	isActive := (status.Status == psp.SubscriptionStatus_StatusActive)
-
-	// 4 - if cache was disabled but the tier is different or status is active -> enable cache again (we have received new data)
-	if !s.cache.IsCacheEnabled() {
-		log.Debug("checking if payment cache should be enabled again", zap.Bool("isDiffTier", isDiffTier), zap.Bool("isActive", isActive))
-
-		// do not enable cache if status is not active
-		if cached == nil || (isDiffTier || isActive) {
-			log.Debug("enabling cache again")
-
-			// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
-			err := s.cache.CacheEnable()
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
 
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cached))
 
-	// 5 - if status is changed -> send the event
-	// if no cache -> also send the event
-	if cached == nil || isDiffTier || isDiffStatus {
+	// 4 - if cache was disabled but the tier is different or status is active
+	if cached == nil || (isDiffTier || isDiffStatus) {
 		log.Info("subscription status has changed. sending EventMembershipUpdate",
-			zap.Bool("cache was empty", cached == nil), zap.Bool("isDiffTier", isDiffTier), zap.Bool("isDiffStatus", isDiffStatus),
+			zap.Bool("cache was empty", cached == nil),
+			zap.Bool("isDiffTier", isDiffTier),
+			zap.Bool("isDiffStatus", isDiffStatus),
 		)
+
+		// 4.1 - send the event
 		s.sendEvent(&out)
+
+		// 4.2 - enable cache again (we have received new data)
+		log.Info("enabling cache again")
+
+		// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
+		err := s.cache.CacheEnable()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &out, nil
