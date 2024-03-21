@@ -402,7 +402,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
-	if err = s.fetchGlobalNames(identities); err != nil {
+	if err = s.fetchGlobalNames(append(identities, s.myIdentity)); err != nil {
 		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
 	}
 
@@ -517,7 +517,7 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 }
 
 func (s *service) fetchGlobalNames(identities []string) error {
-	if s.identityGlobalNames != nil || len(identities) == 0 {
+	if s.identityGlobalNames != nil {
 		return nil
 	}
 	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
@@ -529,7 +529,18 @@ func (s *service) fetchGlobalNames(identities []string) error {
 	}
 	s.identityGlobalNames = make(map[string]string, len(identities))
 	for i, anyID := range identities {
-		if response.Results[i].Found {
+		if !response.Results[i].Found {
+			continue
+		}
+		if anyID == s.myIdentity {
+			s.currentProfileDetailsLock.Lock()
+			details := pbtypes.CopyStruct(s.currentProfileDetails)
+			s.currentProfileDetailsLock.Unlock()
+			details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(response.Results[i].Name)
+			if err = s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
+				return err
+			}
+		} else {
 			s.identityGlobalNames[anyID] = response.Results[i].Name
 		}
 	}

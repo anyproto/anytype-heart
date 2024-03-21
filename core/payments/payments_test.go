@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/periodicsync/mock_periodicsync"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -18,18 +19,13 @@ import (
 	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var ctx = context.Background()
@@ -46,8 +42,6 @@ type fixture struct {
 	cache             *mock_cache.MockCacheService
 	ppclient          *mock_ppclient.MockAnyPpClientService
 	wallet            *mock_wallet.MockWallet
-	spaceService      *mock_space.MockService
-	account           *mock_account.MockService
 	eventSender       *mock_event.MockSender
 	periodicGetStatus *mock_periodicsync.MockPeriodicSync
 
@@ -64,8 +58,6 @@ func newFixture(t *testing.T) *fixture {
 	fx.cache = mock_cache.NewMockCacheService(t)
 	fx.ppclient = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
 	fx.wallet = mock_wallet.NewMockWallet(t)
-	fx.spaceService = mock_space.NewMockService(t)
-	fx.account = mock_account.NewMockService(t)
 	fx.eventSender = mock_event.NewMockSender(t)
 
 	// init w mock
@@ -87,22 +79,12 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
 
-	spc := mock_clientspace.NewMockSpace(t)
-	fx.spaceService.EXPECT().Get(context.Background(), mock.AnythingOfType("string")).Maybe().Return(spc, nil)
-
-	fx.account.EXPECT().PersonalSpaceID().Maybe().Return("")
-	fx.account.EXPECT().MyParticipantId(mock.AnythingOfType("string")).Maybe().Return("")
-
-	spc.EXPECT().Do(mock.AnythingOfType("string"), mock.AnythingOfType("func(smartblock.SmartBlock) error")).Maybe().Return(nil)
-
 	ctx = context.WithValue(ctx, "dontRunPeriodicGetStatus", true)
 
 	fx.a.Register(fx.service).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceService)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.account)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender))
 
 	require.NoError(t, fx.a.Start(ctx))
