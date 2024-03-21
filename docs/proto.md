@@ -24802,6 +24802,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24820,6 +24821,7 @@ Used to decode block meta only, without the content itself
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24836,6 +24838,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24851,6 +24854,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24869,6 +24873,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24887,6 +24892,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
