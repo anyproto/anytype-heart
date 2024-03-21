@@ -164,7 +164,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		_, err := fx.CacheGet()
-		require.Equal(t, ErrCacheExpired, err)
+		require.Equal(t, ErrCacheDbError, err)
 	})
 
 	t.Run("should succeed", func(t *testing.T) {

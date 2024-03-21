@@ -156,8 +156,11 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	// 1 - check in cache
 	cached, err := s.cache.CacheGet()
+
 	// if NoCache -> skip returning from cache
 	if err == nil && !req.NoCache {
+		log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cached", cached))
+
 		s.saveGlobalNameToMyIdentity(cached.Data.RequestedAnyName)
 		return cached, nil
 	}
@@ -183,6 +186,8 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		Payload:   payload,
 		Signature: signature,
 	}
+
+	log.Debug("get sub from PP node", zap.Any("cached", cached), zap.Bool("noCache", req.NoCache))
 
 	status, err := s.ppclient.GetSubscriptionStatus(ctx, &reqSigned)
 	if err != nil {
@@ -212,14 +217,15 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	// 3 - save into cache
 	// truncate nseconds here
 	var cacheExpireTime time.Time = time.Unix(int64(status.DateEnds), 0)
+	isExpired := time.Now().UTC().After(cacheExpireTime)
 
 	// if subscription DateEns is null - then default expire time is in 10 days
 	// or until user clicks on a “Pay by card/crypto” or “Manage” button
-	if status.DateEnds == 0 {
-		log.Debug("setting cache to 10 days because subscription DateEnds is null")
+	if status.DateEnds == 0 || isExpired {
+		log.Debug("setting cache to +1 day because subscription is isExpired")
 
 		timeNow := time.Now().UTC()
-		cacheExpireTime = timeNow.Add(10 * 24 * time.Hour)
+		cacheExpireTime = timeNow.Add(1 * 24 * time.Hour)
 	}
 
 	err = s.cache.CacheSet(&out, cacheExpireTime)
@@ -247,10 +253,14 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		}
 	}
 
+	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cached))
+
 	// 5 - if status is changed -> send the event
 	// if no cache -> also send the event
 	if cached == nil || isDiffTier || isDiffStatus {
-		log.Info("subscription status has changed. sending EventMembershipUpdate")
+		log.Info("subscription status has changed. sending EventMembershipUpdate",
+			zap.Bool("cache was empty", cached == nil), zap.Bool("isDiffTier", isDiffTier), zap.Bool("isDiffStatus", isDiffStatus),
+		)
 		s.sendEvent(&out)
 	}
 

@@ -10,10 +10,10 @@ import (
 )
 
 func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse {
+	log.Info("payments - client asked to get a subscription status", zap.Any("req", req))
+
 	ps := getService[payments.Service](mw)
 	out, err := ps.GetSubscriptionStatus(ctx, req)
-
-	log.Debug("payments - client asked to get a subscription status", zap.Any("req", req), zap.Any("out", out))
 
 	if err != nil {
 		return &pb.RpcMembershipGetStatusResponse{

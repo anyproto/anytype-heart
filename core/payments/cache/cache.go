@@ -22,8 +22,7 @@ const CName = "cache"
 var log = logger.NewNamed(CName)
 
 var (
-	ErrCacheDbError = errors.New("cache db error")
-
+	ErrCacheDbError            = errors.New("cache db error")
 	ErrUnsupportedCacheVersion = errors.New("unsupported cache version")
 	ErrCacheDisabled           = errors.New("cache is disabled")
 	ErrCacheExpired            = errors.New("cache is empty")
@@ -125,8 +124,7 @@ func (s *cacheservice) CacheGet() (out *pb.RpcMembershipGetStatusResponse, err e
 	ss, err := s.get()
 	if err != nil {
 		log.Error("can not get subscription status from cache", zap.Error(err))
-		// do not translate error here!
-		return nil, ErrCacheExpired
+		return nil, ErrCacheDbError
 	}
 
 	if ss.CurrentVersion != 1 {
