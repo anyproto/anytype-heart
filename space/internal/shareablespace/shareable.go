@@ -164,5 +164,7 @@ func (s *spaceController) Close(ctx context.Context) error {
 }
 
 func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
+	s.status.Lock()
+	defer s.status.Unlock()
 	return s.status.GetPersistentStatus()
 }
