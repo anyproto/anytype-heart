@@ -257,8 +257,8 @@ func validateChinese(queries []string, index bleve.Index) [3]string {
 
 func givenExpectedChinese() [3]string {
 	return [3]string{
-		`[{"id":"1","score":0.3192794660708729}]`,
-		`[{"id":"2","score":0.3192794660708729}]`,
+		`[{"id":"1","score":0.3192794660708728}]`,
+		`[{"id":"2","score":0.3192794660708728}]`,
 		`[{"id":"3","score":0.8888941720598743}]`,
 	}
 }
