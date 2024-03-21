@@ -291,11 +291,13 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 		docs[id] = r.Details
 		ids = append(ids, id)
 	}
+	var nestedDocsIds []string
 	if includeNested {
 		for _, id := range ids {
-			e.getNested(spaceId, id, docs)
+			nestedDocsIds = e.getNested(spaceId, id, docs)
 		}
 	}
+	ids = append(ids, nestedDocsIds...)
 	if includeFiles {
 		for _, id := range ids {
 			err = e.fillLinkedFiles(spc, id, docs)
@@ -338,12 +340,13 @@ func (e *export) addDerivedObjects(spaceId string, docs map[string]*types.Struct
 	return nil
 }
 
-func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
+func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) []string {
 	links, err := e.objectStore.GetOutboundLinksByID(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err)
-		return
+		return nil
 	}
+	var nestedDocsIds []string
 	for _, link := range links {
 		if _, exists := docs[link]; !exists {
 			sbt, sbtErr := e.sbtProvider.Type(spaceID, link)
@@ -361,10 +364,12 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 			}
 			if len(rec) > 0 {
 				docs[link] = rec[0].Details
-				e.getNested(spaceID, link, docs)
+				nestedDocsIds = append(nestedDocsIds, link)
+				nestedDocsIds = append(nestedDocsIds, e.getNested(spaceID, link, docs)...)
 			}
 		}
 	}
+	return nestedDocsIds
 }
 
 func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*types.Struct) error {
@@ -549,7 +554,7 @@ func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlo
 	origName := file.Meta().Name
 	rootPath := "files"
 	if exportAllSpaces {
-		rootPath = filepath.Join(spaceDirectory, string(filepath.Separator), fileObject.Space().Id(), string(filepath.Separator), rootPath)
+		rootPath = filepath.Join(spaceDirectory, fileObject.Space().Id(), rootPath)
 	}
 	fileName = wr.Namer().Get(rootPath, fileObject.Id(), filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.Background())
