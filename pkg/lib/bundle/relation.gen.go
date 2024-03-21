@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "083b65b88df2fbb6aa1ed2bc8bc0442354ba03ec909d8b6b534518b582b521c4"
+const RelationChecksum = "621cf86429879ad8a5713e819e2280ef1f5522ec9dcd8d0f813966bfa8723b0b"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -26,8 +26,8 @@ const (
 	RelationKeyTemplateIsBundled         domain.RelationKey = "templateIsBundled"
 	RelationKeyDateOfBirth               domain.RelationKey = "dateOfBirth"
 	RelationKeyRestrictions              domain.RelationKey = "restrictions"
-	RelationKeySpaceMembersReadLimit     domain.RelationKey = "spaceMembersReadLimit"
-	RelationKeySpaceMembersWriteLimit    domain.RelationKey = "spaceMembersWriteLimit"
+	RelationKeyReadersLimit              domain.RelationKey = "readersLimit"
+	RelationKeyWritersLimit              domain.RelationKey = "writersLimit"
 	RelationKeyIsHighlighted             domain.RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage            domain.RelationKey = "thumbnailImage"
 	RelationKeyAttachments               domain.RelationKey = "attachments"
@@ -1624,6 +1624,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyReadersLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Readers limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brreadersLimit",
+			Key:              "readersLimit",
+			MaxCount:         1,
+			Name:             "Readers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyRecommendedLayout: {
 
 			DataSource:       model.Relation_details,
@@ -2098,34 +2112,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeySpaceMembersReadLimit: {
-
-			DataSource:       model.Relation_derived,
-			Description:      "Space members read limit",
-			Format:           model.RelationFormat_number,
-			Hidden:           true,
-			Id:               "_brspaceMembersReadLimit",
-			Key:              "spaceMembersReadLimit",
-			MaxCount:         1,
-			Name:             "Space members read limit",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeySpaceMembersWriteLimit: {
-
-			DataSource:       model.Relation_derived,
-			Description:      "Space members write limit",
-			Format:           model.RelationFormat_number,
-			Hidden:           true,
-			Id:               "_brspaceMembersWriteLimit",
-			Key:              "spaceMembersWriteLimit",
-			MaxCount:         1,
-			Name:             "Space members write limit",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeySpaceRemoteStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -2428,6 +2414,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space",
 			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWritersLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Writers limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brwritersLimit",
+			Key:              "writersLimit",
+			MaxCount:         1,
+			Name:             "Writers limit",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

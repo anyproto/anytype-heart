@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
@@ -20,11 +21,16 @@ import (
 
 var log = logger.NewNamed("common.space.shareablespace")
 
+type statusUpdater interface {
+	UpdateCoordinatorStatus()
+}
+
 type spaceController struct {
 	spaceId           string
 	app               *app.App
 	status            spacestatus.SpaceStatus
 	lastUpdatedStatus spaceinfo.AccountStatus
+	updater           statusUpdater
 
 	sm *mode.StateMachine
 }
@@ -39,6 +45,10 @@ func NewSpaceController(
 		lastUpdatedStatus: info.AccountStatus,
 		app:               a,
 	}
+	// this is done for tests to not complicate them :-)
+	if updater, ok := a.Component(deletioncontroller.CName).(statusUpdater); ok {
+		s.updater = updater
+	}
 	sm, err := mode.NewStateMachine(s, log.With(zap.String("spaceId", spaceId)))
 	if err != nil {
 		return nil, err
@@ -52,6 +62,11 @@ func (s *spaceController) SpaceId() string {
 }
 
 func (s *spaceController) Start(ctx context.Context) error {
+	defer func() {
+		if s.updater != nil {
+			s.updater.UpdateCoordinatorStatus()
+		}
+	}()
 	switch s.status.GetPersistentStatus() {
 	case spaceinfo.AccountStatusDeleted:
 		_, err := s.sm.ChangeMode(mode.ModeOffloading)
