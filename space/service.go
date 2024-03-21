@@ -67,6 +67,10 @@ type Service interface {
 	app.ComponentRunnable
 }
 
+type coordinatorStatusUpdater interface {
+	UpdateCoordinatorStatus()
+}
+
 type NotificationSender interface {
 	CreateAndSend(notification *model.Notification) error
 }
@@ -78,6 +82,7 @@ type service struct {
 	accountService      accountservice.Service
 	config              *config.Config
 	notificationService NotificationSender
+	updater        coordinatorStatusUpdater
 
 	personalSpaceId        string
 	techSpaceId            string
@@ -123,6 +128,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.config = app.MustComponent[*config.Config](a)
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
+	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	if err != nil {

@@ -23760,6 +23760,7 @@ Precondition: user A and user B opened the same block
 | bundledTemplates | [string](#string) |  |  |
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
+| areOldFilesRemoved | [bool](#bool) |  |  |
 
 
 
@@ -24801,6 +24802,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24819,6 +24821,7 @@ Used to decode block meta only, without the content itself
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24835,6 +24838,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24850,6 +24854,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24868,6 +24873,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24886,6 +24892,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 

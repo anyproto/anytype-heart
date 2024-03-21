@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/anyproto/any-sync/util/periodicsync"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -24,13 +23,14 @@ const CName = "client.space.deletioncontroller"
 var log = logger.NewNamed(CName)
 
 const (
-	loopPeriodSecs = 180
-	loopTimeout    = time.Second * 120
+	loopInterval = time.Second * 180
+	loopTimeout  = time.Second * 120
 )
 
 type DeletionController interface {
 	app.ComponentRunnable
-	AddSpace(spaceId string)
+	AddSpaceToDelete(spaceId string)
+	UpdateCoordinatorStatus()
 }
 
 func New() DeletionController {
@@ -49,9 +49,9 @@ type deletionController struct {
 	joiningClient aclclient.AclJoiningClient
 	keys          *accountdata.AccountKeys
 
-	periodicCall periodicsync.PeriodicSync
-	mx           sync.Mutex
-	toDelete     map[string]struct{}
+	updater  *updateLoop
+	mx       sync.Mutex
+	toDelete map[string]struct{}
 }
 
 func (d *deletionController) Init(a *app.App) (err error) {
@@ -60,7 +60,7 @@ func (d *deletionController) Init(a *app.App) (err error) {
 	d.joiningClient = a.MustComponent(aclclient.CName).(aclclient.AclJoiningClient)
 	d.spaceManager = app.MustComponent[spaceManager](a)
 	d.keys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
-	d.periodicCall = periodicsync.NewPeriodicSync(loopPeriodSecs, loopTimeout, d.loopIterate, log)
+	d.updater = newUpdateLoop(d.loopIterate, loopInterval, loopTimeout)
 	d.toDelete = make(map[string]struct{})
 	return
 }
@@ -69,19 +69,24 @@ func (d *deletionController) Name() (name string) {
 	return CName
 }
 
-func (d *deletionController) AddSpace(spaceId string) {
+func (d *deletionController) AddSpaceToDelete(spaceId string) {
 	d.mx.Lock()
 	defer d.mx.Unlock()
 	d.toDelete[spaceId] = struct{}{}
+	d.updater.notify()
+}
+
+func (d *deletionController) UpdateCoordinatorStatus() {
+	d.updater.notify()
 }
 
 func (d *deletionController) Run(ctx context.Context) error {
-	d.periodicCall.Run()
+	d.updater.Run()
 	return nil
 }
 
 func (d *deletionController) Close(ctx context.Context) error {
-	d.periodicCall.Close()
+	d.updater.Close()
 	return nil
 }
 
@@ -120,9 +125,8 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []str
 		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusNotExists {
 			continue
 		}
-		isOwned := false
-		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusCreated && nodeStatus.Permissions == coordinatorproto.SpacePermissions_SpacePermissionsOwner {
-			isOwned = true
+		isOwned := nodeStatus.Permissions == coordinatorproto.SpacePermissions_SpacePermissionsOwner
+		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusCreated && isOwned {
 			ownedIds = append(ownedIds, ids[idx])
 		}
 		remoteStatus := convStatus(nodeStatus.Status)

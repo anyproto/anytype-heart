@@ -147,22 +147,22 @@
     "source": "derived"
   },
   {
-    "description": "Space members read limit",
+    "description": "Readers limit",
     "format": "number",
     "hidden": true,
-    "key": "spaceMembersReadLimit",
+    "key": "readersLimit",
     "maxCount": 1,
-    "name": "Space members read limit",
+    "name": "Readers limit",
     "readonly": true,
     "source": "derived"
   },
   {
-    "description": "Space members write limit",
+    "description": "Writers limit",
     "format": "number",
     "hidden": true,
-    "key": "spaceMembersWriteLimit",
+    "key": "writersLimit",
     "maxCount": 1,
-    "name": "Space members write limit",
+    "name": "Writers limit",
     "readonly": true,
     "source": "derived"
   },
