@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -68,12 +71,17 @@ type coordinatorStatusUpdater interface {
 	UpdateCoordinatorStatus()
 }
 
+type NotificationSender interface {
+	CreateAndSend(notification *model.Notification) error
+}
+
 type service struct {
-	techSpace      *clientspace.TechSpace
-	factory        spacefactory.SpaceFactory
-	spaceCore      spacecore.SpaceCoreService
-	accountService accountservice.Service
-	config         *config.Config
+	techSpace           *clientspace.TechSpace
+	factory             spacefactory.SpaceFactory
+	spaceCore           spacecore.SpaceCoreService
+	accountService      accountservice.Service
+	config              *config.Config
+	notificationService NotificationSender
 	updater        coordinatorStatusUpdater
 
 	personalSpaceId        string
@@ -142,6 +150,8 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	s.notificationService = app.MustComponent[NotificationSender](a)
+
 	return err
 }
 
@@ -251,12 +261,35 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.Space
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
 	if !status.IsOwned && status.RemoteStatus == spaceinfo.RemoteStatusDeleted {
+		accountStatus := ctrl.GetStatus()
+		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
+			s.sendNotification(status.SpaceId)
+		}
 		return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
 			SpaceID:       status.SpaceId,
 			AccountStatus: spaceinfo.AccountStatusRemoving,
 		})
+
 	}
 	return nil
+}
+
+func (s *service) sendNotification(spaceId string) {
+	identity := s.accountService.Account().SignKey.GetPublic().Account()
+	notificationId := strings.Join([]string{spaceId, identity}, "_")
+	err := s.notificationService.CreateAndSend(&model.Notification{
+		Id:         notificationId,
+		CreateTime: time.Now().Unix(),
+		Payload: &model.NotificationPayloadOfParticipantRemove{
+			ParticipantRemove: &model.NotificationParticipantRemove{
+				SpaceId: spaceId,
+			},
+		},
+		Space: spaceId,
+	})
+	if err != nil {
+		log.Error("failed to send notification", zap.Error(err), zap.String("spaceId", spaceId))
+	}
 }
 
 func (s *service) SpaceViewId(spaceId string) (spaceViewId string, err error) {
