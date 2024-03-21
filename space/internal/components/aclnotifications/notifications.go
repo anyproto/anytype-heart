@@ -124,6 +124,11 @@ func (n *aclNotificationSender) getSpaceName(spaceId string) string {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(spaceId),
 			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+			},
 		},
 	})
 	if err != nil {
