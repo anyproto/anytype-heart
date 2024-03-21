@@ -791,7 +791,7 @@ func (e *export) processObject(object *types.Struct,
 	if err != nil {
 		return nil, err
 	}
-	return derivedObjects, nil
+	return e.handleSetOfRelation(object, derivedObjects)
 }
 
 func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Record) ([]database.Record, error) {
@@ -964,5 +964,35 @@ func (e *export) addTemplates(id string, derivedObjects []database.Record) ([]da
 		return nil, err
 	}
 	derivedObjects = append(derivedObjects, templates...)
+	return derivedObjects, nil
+}
+
+func (e *export) handleSetOfRelation(object *types.Struct, derivedObjects []database.Record) ([]database.Record, error) {
+	setOfList := pbtypes.GetStringList(object, bundle.RelationKeySetOf.String())
+	if len(setOfList) > 0 {
+		types, _, err := e.objectStore.Query(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.StringList(setOfList),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		derivedObjects = append(derivedObjects, types...)
+	}
 	return derivedObjects, nil
 }
