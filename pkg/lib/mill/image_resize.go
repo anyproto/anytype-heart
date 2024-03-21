@@ -74,8 +74,10 @@ type ImageResize struct {
 	Opts ImageResizeOpts
 }
 
+const ImageResizeId = "/image/resize"
+
 func (m *ImageResize) ID() string {
-	return "/image/resize"
+	return ImageResizeId
 }
 
 func (m *ImageResize) Pin() bool {

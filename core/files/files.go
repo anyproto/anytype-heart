@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path"
-	"strings"
 	"sync"
 	"time"
 
@@ -277,6 +275,54 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 	return fileKeys.EncryptionKeys, nil
 }
 
+func (s *service) fileRestoreKeysNew(ctx context.Context, id domain.FullFileId) (map[string]string, error) {
+	// fileKeys := domain.FileEncryptionKeys{
+	// 	FileId:         id.FileId,
+	// 	EncryptionKeys: make(map[string]string),
+	// }
+
+	variants, err := s.fileStore.ListFileVariants(id.FileId)
+	_ = variants
+	return nil, err
+	//
+	// if looksLikeFileNode(dirNode) {
+	// 	l := schema.LinkByName(dirNode.Links(), ValidContentLinkNames)
+	// 	info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
+	// 	if err == nil {
+	// 		fileKeys.EncryptionKeys[encryptionKeyPath(schema.LinkFile)] = info.Key
+	// 	} else {
+	// 		log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), id.FileId.String()+"/"+dirLink.Name)
+	// 	}
+	// } else {
+	// 	for _, link := range dirNode.Links() {
+	// 		innerLinks, err := helpers.LinksAtCid(ctx, dagService, link.Cid.String())
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	//
+	// 		l := schema.LinkByName(innerLinks, ValidContentLinkNames)
+	// 		if l == nil {
+	// 			continue
+	// 		}
+	//
+	// 		info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
+	//
+	// 		if err == nil {
+	// 			fileKeys.EncryptionKeys[encryptionKeyPath(link.Name)] = info.Key
+	// 		} else {
+	// 			log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), "/"+dirLink.Name+"/"+link.Name+"/")
+	// 		}
+	// 	}
+	// }
+	//
+	// err = s.fileStore.AddFileKeys(fileKeys)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to save file keys: %w", err)
+	// }
+	//
+	// return fileKeys.EncryptionKeys, nil
+}
+
 // addFileRootNode has structure:
 /*
 - dir (outer)
@@ -307,34 +353,6 @@ func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo 
 		return nil, nil, err
 	}
 	return node, keys, nil
-}
-
-func (s *service) fileGetInfoForPath(ctx context.Context, spaceID string, pth string) (*storage.FileInfo, error) {
-	if !strings.HasPrefix(pth, "/ipfs/") {
-		return nil, fmt.Errorf("path should starts with '/ipfs/...'")
-	}
-
-	// Path example: /ipfs/bafybeig6lm2kfqqbyh7zwpwb4tszv4upq4lok6pdlzfe4w4a44cfbjiwkm/0/original
-	// Path parts:  0 1    2                                                           3 4
-	pthParts := strings.Split(pth, "/")
-	if len(pthParts) < 4 {
-		return nil, fmt.Errorf("path is too short: it should match '/ipfs/:hash/...'")
-	}
-
-	id := domain.FullFileId{
-		SpaceId: spaceID,
-		FileId:  domain.FileId(pthParts[2]),
-	}
-	keys, err := s.FileGetKeys(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrive file keys: %w", err)
-	}
-
-	if key, exists := keys.EncryptionKeys[encryptionKeyPath(path.Base(pth))]; exists {
-		return s.fileInfoFromPath(ctx, id.SpaceId, id.FileId, pth, key)
-	}
-
-	return nil, fmt.Errorf("key not found")
 }
 
 func (s *service) FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error) {
