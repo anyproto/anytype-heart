@@ -141,7 +141,7 @@
     "format": "number",
     "hidden": true,
     "key": "restrictions",
-    "maxCount": 1,
+    "maxCount": 0,
     "name": "Object restrictions",
     "readonly": true,
     "source": "derived"
