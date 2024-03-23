@@ -1201,17 +1201,6 @@ message Membership {
 }
 
 message MembershipTierData {
-    enum NameValidity {
-        Valid = 0;
-        NoDotAny = 1;
-        TooShort = 2;
-        TooLong = 3;
-        HasInvalidChars = 4;
-        TierFeatureNoName = 5;
-        // if everything is fine - "name is already taken" check should be done in the NS
-        // see IsNameAvailable()
-    }
-
     enum PeriodType {
         PeriodTypeUnknown = 0;
         PeriodTypeUnlimited = 1;

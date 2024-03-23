@@ -6402,14 +6402,12 @@ message Rpc {
         message IsNameValid {
             message Request {
                 int32 requestedTier = 1;
+                // full name including .any suffix
                 string requestedAnyName = 2;
             }
 
             message Response {
                 Error error = 1;
-
-                anytype.model.MembershipTierData.NameValidity code = 2;
-                string description = 3;
 
                 message Error {
                     Code code = 1;
@@ -6420,8 +6418,12 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
 
-                        NOT_LOGGED_IN = 3;
-                        PAYMENT_NODE_ERROR = 4;
+                        TOO_SHORT = 3;
+                        TOO_LONG = 4;
+                        HAS_INVALID_CHARS = 5;
+                        TIER_FEATURES_NO_NAME = 6;
+                        // if everything is fine - "name is already taken" check should be done in the NS
+                        // see IsNameAvailable()
                     }
                 }
             }

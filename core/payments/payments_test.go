@@ -108,7 +108,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().IsCacheEnabled().Return(true)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -130,7 +130,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().IsCacheEnabled().Return(true)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		req := pb.RpcMembershipGetStatusRequest{
@@ -178,7 +178,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().IsCacheEnabled().Return(true)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -228,7 +228,6 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().IsCacheEnabled().Return(false)
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
@@ -345,12 +344,12 @@ func TestGetStatus(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
 		// here time.Now() will be passed which can be a bit different from the the cacheExpireTime
 		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().IsCacheEnabled().Return(true)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -401,7 +400,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().IsCacheEnabled().Return(true)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -454,9 +453,8 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(&psgsr2, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().IsCacheEnabled().Return(false)
 		// this should be called
-		fx.cache.EXPECT().CacheEnable().Return(nil)
+		fx.cache.EXPECT().CacheEnable().Return(nil).Maybe()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
