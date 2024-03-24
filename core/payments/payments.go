@@ -31,6 +31,10 @@ const (
 	initialStatus       = -1
 )
 
+type identitiesUpdater interface {
+	UpdateIdentities()
+}
+
 /*
 CACHE LOGICS:
  1. User installs Anytype
@@ -84,6 +88,7 @@ type service struct {
 	mx                sync.Mutex
 	periodicGetStatus periodicsync.PeriodicSync
 	eventSender       event.Sender
+	profileUpdater    identitiesUpdater
 }
 
 func (s *service) Name() (name string) {
@@ -96,6 +101,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
+	s.profileUpdater = app.MustComponent[identitiesUpdater](a)
 	return nil
 }
 
@@ -224,6 +230,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	isDiffTier := (cached != nil) && (cached.Data.Tier != status.Tier)
 	isDiffStatus := (cached != nil) && (cached.Data.Status != model.MembershipStatus(status.Status))
+	isDiffRequestedName := (cached != nil) && (cached.Data.RequestedAnyName != status.RequestedAnyName)
 
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cached))
 
@@ -246,6 +253,11 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// 5 - if requested any name has changed, then we need to update details of local identity
+	if isDiffRequestedName {
+		s.profileUpdater.UpdateIdentities()
 	}
 
 	return &out, nil

@@ -10,8 +10,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
+	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -32,7 +34,11 @@ type fixture struct {
 	coordinatorClient *inMemoryIdentityRepo
 }
 
-const testObserverPeriod = 1 * time.Millisecond
+const (
+	testObserverPeriod = 1 * time.Millisecond
+	globalName         = "anytypeuser.any"
+	identity           = "identity1"
+)
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
@@ -46,7 +52,15 @@ func newFixture(t *testing.T) *fixture {
 	dataStore := datastore.NewInMemory()
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
-	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, nil)
+	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{identity, ""}}).AnyTimes().
+		Return(&nameserviceproto.BatchNameByAddressResponse{Results: []*nameserviceproto.NameByAddressResponse{{
+			Found: true,
+			Name:  globalName,
+		}, {
+			Found: false,
+			Name:  "",
+		},
+		}}, nil)
 	err := dataStore.Run(ctx)
 	require.NoError(t, err)
 
@@ -72,6 +86,7 @@ func newFixture(t *testing.T) *fixture {
 	db, err := dataStore.LocalStorage()
 	require.NoError(t, err)
 	svcRef.db = db
+	svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
 	fx := &fixture{
 		service:           svcRef,
 		coordinatorClient: identityRepoClient,
@@ -154,8 +169,9 @@ func TestIdentityProfileCache(t *testing.T) {
 	profileSymKey, err := crypto.NewRandomAES()
 	require.NoError(t, err)
 	wantProfile := &model.IdentityProfile{
-		Identity: identity,
-		Name:     "name1",
+		Identity:   identity,
+		Name:       "name1",
+		GlobalName: globalName,
 	}
 	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
@@ -183,8 +199,9 @@ func TestObservers(t *testing.T) {
 	profileSymKey, err := crypto.NewRandomAES()
 	require.NoError(t, err)
 	wantProfile := &model.IdentityProfile{
-		Identity: identity,
-		Name:     "name1",
+		Identity:   identity,
+		Name:       "name1",
+		GlobalName: globalName,
 	}
 	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
@@ -212,6 +229,7 @@ func TestObservers(t *testing.T) {
 			Identity:    identity,
 			Name:        "name1 edited",
 			Description: "my description",
+			GlobalName:  globalName,
 		}
 		wantData2 := marshalProfile(t, wantProfile2, profileSymKey)
 
@@ -229,13 +247,15 @@ func TestObservers(t *testing.T) {
 
 	wantCalls := []*model.IdentityProfile{
 		{
-			Identity: identity,
-			Name:     "name1",
+			Identity:   identity,
+			Name:       "name1",
+			GlobalName: globalName,
 		},
 		{
 			Identity:    identity,
 			Name:        "name1 edited",
 			Description: "my description",
+			GlobalName:  globalName,
 		},
 	}
 	assert.Equal(t, wantCalls, callbackCalls)

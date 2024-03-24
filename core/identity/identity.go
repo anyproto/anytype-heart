@@ -42,6 +42,8 @@ var (
 type Service interface {
 	GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct)
 
+	UpdateIdentities()
+
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
 	// UnregisterIdentity removes the observer for the identity in specified space
@@ -226,6 +228,13 @@ func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.Sym
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
 }
 
+func (s *service) UpdateIdentities() {
+	select {
+	case s.identityForceUpdate <- struct{}{}:
+	default:
+	}
+}
+
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
 	profile := s.getProfileFromCache(identity)
 	if profile != nil {
@@ -362,8 +371,8 @@ func (s *service) observeIdentitiesLoop() {
 	defer ticker.Stop()
 
 	ctx := context.Background()
-	observe := func() {
-		err := s.observeIdentities(ctx)
+	observe := func(forceUpdate bool) {
+		err := s.observeIdentities(ctx, forceUpdate)
 		if err != nil {
 			log.Error("error observing identities", zap.Error(err))
 		}
@@ -373,9 +382,9 @@ func (s *service) observeIdentitiesLoop() {
 		case <-s.closing:
 			return
 		case <-s.identityForceUpdate:
-			observe()
+			observe(true)
 		case <-ticker.C:
-			observe()
+			observe(false)
 		}
 	}
 }
@@ -383,7 +392,7 @@ func (s *service) observeIdentitiesLoop() {
 const identityRepoDataKind = "profile"
 
 // TODO Maybe we need to use backoff in case of error from coordinator
-func (s *service) observeIdentities(ctx context.Context) error {
+func (s *service) observeIdentities(ctx context.Context, forceUpdate bool) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -402,7 +411,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
-	if err = s.fetchGlobalNames(append(identities, s.myIdentity)); err != nil {
+	if err = s.fetchGlobalNames(append(identities, s.myIdentity), forceUpdate); err != nil {
 		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
 	}
 
@@ -516,8 +525,8 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	return profile, rawProfile, nil
 }
 
-func (s *service) fetchGlobalNames(identities []string) error {
-	if s.identityGlobalNames != nil {
+func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error {
+	if s.identityGlobalNames != nil && !forceUpdate {
 		return nil
 	}
 	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
@@ -533,9 +542,9 @@ func (s *service) fetchGlobalNames(identities []string) error {
 			continue
 		}
 		if anyID == s.myIdentity {
-			s.currentProfileDetailsLock.Lock()
+			s.currentProfileDetailsLock.RLock()
 			details := pbtypes.CopyStruct(s.currentProfileDetails)
-			s.currentProfileDetailsLock.Unlock()
+			s.currentProfileDetailsLock.RUnlock()
 			details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(response.Results[i].Name)
 			if err = s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
 				return err
