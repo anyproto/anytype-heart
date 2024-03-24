@@ -32,27 +32,31 @@ var validators = []validator{
 	validateDetails,
 	validateObjectTypes,
 	validateBlockLinks,
-	validateFileKeys,
 	validateDeleted,
 	validateRelationOption,
 }
 
 func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	for _, rel := range s.Snapshot.Data.RelationLinks {
+	linksToDelete := make(map[string]int)
+	for i, rel := range s.Snapshot.Data.RelationLinks {
 		if bundle.HasRelation(rel.Key) {
 			continue
 		}
 		if _, found := info.customTypesAndRelations[rel.Key]; found {
 			continue
 		}
-		err = multierror.Append(err, fmt.Errorf("object '%s' contains link to unknown relation: %s(%s)", id,
-			rel.Key, pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String())))
+		linksToDelete[rel.Key] = i
+
+	}
+	for key, i := range linksToDelete {
+		fmt.Println("WARNING: object", id, "contains link to unknown relation:", key, ", so it was deleted from snapshot")
+		s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks[:i], s.Snapshot.Data.RelationLinks[i+1:]...)
 	}
 	return err
 }
 
-func validateRelationBlocks(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
+func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	var relKeys []string
 	for _, b := range s.Snapshot.Data.Blocks {
@@ -67,6 +71,13 @@ func validateRelationBlocks(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) 
 				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
 					Key:    rk,
 					Format: rel.Format,
+				})
+				continue
+			}
+			if relInfo, found := info.customTypesAndRelations[rk]; found {
+				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
+					Key:    rk,
+					Format: relInfo.relationFormat,
 				})
 				continue
 			}
