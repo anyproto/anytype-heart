@@ -26,6 +26,11 @@ import (
 
 type validator func(snapshot *pb.SnapshotWithType, info *useCaseInfo) error
 
+type keyWithIndex struct {
+	key   string
+	index int
+}
+
 var validators = []validator{
 	validateRelationLinks,
 	validateRelationBlocks,
@@ -38,7 +43,7 @@ var validators = []validator{
 
 func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	linksToDelete := make(map[string]int)
+	linksToDelete := make([]keyWithIndex, 0)
 	for i, rel := range s.Snapshot.Data.RelationLinks {
 		if bundle.HasRelation(rel.Key) {
 			continue
@@ -46,12 +51,12 @@ func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error
 		if _, found := info.customTypesAndRelations[rel.Key]; found {
 			continue
 		}
-		linksToDelete[rel.Key] = i
+		linksToDelete = append([]keyWithIndex{{key: rel.Key, index: i}}, linksToDelete...)
 
 	}
-	for key, i := range linksToDelete {
-		fmt.Println("WARNING: object", id, "contains link to unknown relation:", key, ", so it was deleted from snapshot")
-		s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks[:i], s.Snapshot.Data.RelationLinks[i+1:]...)
+	for _, kwi := range linksToDelete {
+		fmt.Println("WARNING: object", id, "contains link to unknown relation:", kwi.key, ", so it was deleted from snapshot")
+		s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks[:kwi.index], s.Snapshot.Data.RelationLinks[kwi.index+1:]...)
 	}
 	return err
 }
