@@ -91,13 +91,13 @@ func TestPayments_DisableCache(t *testing.T) {
 		err := fx.CacheDisableForNextMinutes(60)
 		require.NoError(t, err)
 
-		_, err = fx.CacheGet()
+		_, _, err = fx.CacheGet()
 		require.Equal(t, ErrCacheDisabled, err)
 
 		err = fx.CacheClear()
 		require.NoError(t, err)
 
-		_, err = fx.CacheGet()
+		_, _, err = fx.CacheGet()
 		require.Equal(t, ErrCacheExpired, err)
 	})
 }
@@ -145,7 +145,11 @@ func TestPayments_ClearCache(t *testing.T) {
 				Tier:   int32(model.Membership_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
-		}, timePlus5Hours,
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timePlus5Hours,
 		)
 
 		require.NoError(t, err)
@@ -153,7 +157,7 @@ func TestPayments_ClearCache(t *testing.T) {
 		err = fx.CacheClear()
 		require.NoError(t, err)
 
-		_, err = fx.CacheGet()
+		_, _, err = fx.CacheGet()
 		require.Equal(t, ErrCacheExpired, err)
 	})
 }
@@ -163,7 +167,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		_, err := fx.CacheGet()
+		_, _, err := fx.CacheGet()
 		require.Equal(t, ErrCacheDbError, err)
 	})
 
@@ -179,10 +183,14 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 				Tier:   int32(model.Membership_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
-		}, timePlus5Hours)
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timePlus5Hours)
 		require.NoError(t, err)
 
-		out, err := fx.CacheGet()
+		out, _, err := fx.CacheGet()
 		require.NoError(t, err)
 		require.Equal(t, int32(model.Membership_TierExplorer), out.Data.Tier)
 		require.Equal(t, model.Membership_StatusActive, out.Data.Status)
@@ -193,10 +201,14 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 				// here
 				Status: model.Membership_StatusUnknown,
 			},
-		}, timePlus5Hours)
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timePlus5Hours)
 		require.NoError(t, err)
 
-		out, err = fx.CacheGet()
+		out, _, err = fx.CacheGet()
 		require.NoError(t, err)
 		require.Equal(t, int32(model.Membership_TierExplorer), out.Data.Tier)
 		require.Equal(t, model.Membership_StatusUnknown, out.Data.Status)
@@ -223,10 +235,14 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 				Tier:   int32(model.Membership_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
-		}, timePlus5Hours)
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timePlus5Hours)
 		require.NoError(t, err)
 
-		out, err := fx.CacheGet()
+		out, _, err := fx.CacheGet()
 		require.Equal(t, ErrCacheDisabled, err)
 		// HERE: weird semantics, error is returned too :-)
 		require.Equal(t, int32(model.Membership_TierExplorer), out.Data.Tier)
@@ -237,7 +253,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		en = fx.IsCacheEnabled()
 		require.Equal(t, true, en)
 
-		out, err = fx.CacheGet()
+		out, _, err = fx.CacheGet()
 		require.NoError(t, err)
 		require.Equal(t, int32(model.Membership_TierExplorer), out.Data.Tier)
 	})
@@ -254,13 +270,17 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 				Tier:   int32(model.Membership_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
-		}, timePlus5Hours)
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timePlus5Hours)
 		require.NoError(t, err)
 
 		err = fx.CacheClear()
 		require.NoError(t, err)
 
-		_, err = fx.CacheGet()
+		_, _, err = fx.CacheGet()
 		require.Equal(t, ErrCacheExpired, err)
 	})
 }
@@ -278,10 +298,14 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 				Tier:   int32(model.Membership_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
-		}, timePlus5Hours)
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timePlus5Hours)
 		require.Equal(t, nil, err)
 
-		out, err := fx.CacheGet()
+		out, _, err := fx.CacheGet()
 		require.NoError(t, err)
 		require.Equal(t, int32(model.Membership_TierExplorer), out.Data.Tier)
 		require.Equal(t, model.Membership_StatusActive, out.Data.Status)
@@ -302,7 +326,11 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 				Tier:   int32(model.Membership_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
-		}, timePlus5Hours)
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timePlus5Hours)
 		require.Equal(t, nil, err)
 	})
 
@@ -321,7 +349,11 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 				Tier:   int32(model.Membership_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
-		}, timePlus5Hours)
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timePlus5Hours)
 		require.Equal(t, nil, err)
 	})
 
@@ -339,10 +371,14 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 				Tier:   int32(model.Membership_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
-		}, timeNull)
+		},
+			&pb.RpcMembershipTiersGetResponse{
+				Tiers: []*model.MembershipTierData{},
+			},
+			timeNull)
 		require.Equal(t, nil, err)
 
-		_, err = fx.CacheGet()
+		_, _, err = fx.CacheGet()
 		require.Equal(t, ErrCacheExpired, err)
 	})
 }

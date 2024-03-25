@@ -2,6 +2,7 @@ package payments
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -147,12 +148,13 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	privKey := s.wallet.GetAccountPrivkey()
 
 	// 1 - check in cache
-	cached, err := s.cache.CacheGet()
+	// tiers var. is unused here
+	cachedStatus, _, err := s.cache.CacheGet()
 
 	// if NoCache -> skip returning from cache
-	if err == nil && !req.NoCache {
-		log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cached", cached))
-		return cached, nil
+	if !req.NoCache && (err == nil) && (cachedStatus != nil) && (cachedStatus.Data != nil) {
+		log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
+		return cachedStatus, nil
 	}
 
 	// 2 - send request to PP node
@@ -177,7 +179,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		Signature: signature,
 	}
 
-	log.Debug("get sub from PP node", zap.Any("cached", cached), zap.Bool("noCache", req.NoCache))
+	log.Debug("get sub from PP node", zap.Any("cachedStatus", cachedStatus), zap.Bool("noCache", req.NoCache))
 
 	status, err := s.ppclient.GetSubscriptionStatus(ctx, &reqSigned)
 	if err != nil {
@@ -218,20 +220,21 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		cacheExpireTime = timeNow.Add(1 * 24 * time.Hour)
 	}
 
-	err = s.cache.CacheSet(&out, cacheExpireTime)
+	// update only status, not tiers
+	err = s.cache.CacheSet(&out, nil, cacheExpireTime)
 	if err != nil {
 		return nil, err
 	}
 
-	isDiffTier := (cached != nil) && (cached.Data.Tier != status.Tier)
-	isDiffStatus := (cached != nil) && (cached.Data.Status != model.MembershipStatus(status.Status))
+	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data.Tier != status.Tier)
+	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
 
-	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cached))
+	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
 
 	// 4 - if cache was disabled but the tier is different or status is active
-	if cached == nil || (isDiffTier || isDiffStatus) {
+	if cachedStatus == nil || (isDiffTier || isDiffStatus) {
 		log.Info("subscription status has changed. sending EventMembershipUpdate",
-			zap.Bool("cache was empty", cached == nil),
+			zap.Bool("cache was empty", cachedStatus == nil),
 			zap.Bool("isDiffTier", isDiffTier),
 			zap.Bool("isDiffStatus", isDiffStatus),
 		)
@@ -253,29 +256,66 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 }
 
 func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
-	// 1 - send request
-	invr := psp.IsNameValidRequest{
-		// payment node will check if signature matches with this OwnerAnyID
-		RequestedTier:    req.RequestedTier,
-		RequestedAnyName: req.RequestedAnyName,
-	}
+	var code psp.IsNameValidResponse_Code
+	var desc string
 
-	resp, err := s.ppclient.IsNameValid(ctx, &invr)
+	out := pb.RpcMembershipIsNameValidResponse{}
+
+	/*
+		// 1 - send request to PP node and ask her please
+		invr := psp.IsNameValidRequest{
+			// payment node will check if signature matches with this OwnerAnyID
+			RequestedTier:    req.RequestedTier,
+			RequestedAnyName: req.RequestedAnyName,
+		}
+
+		resp, err := s.ppclient.IsNameValid(ctx, &invr)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.Code == psp.IsNameValidResponse_Valid {
+			// no error
+			return &out, nil
+		}
+
+		out.Error = &pb.RpcMembershipIsNameValidResponseError{}
+		code = resp.Code
+		desc = resp.Description
+	*/
+
+	// get all tiers from cache or PP node
+	tiers, err := s.GetTiers(ctx, &pb.RpcMembershipTiersGetRequest{
+		NoCache: false,
+		// TODO: warning! no locale and payment method are passed here!
+		// Locale:        "",
+		// PaymentMethod: pb.RpcMembershipPaymentMethod_PAYMENT_METHOD_UNKNOWN,
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	out := pb.RpcMembershipIsNameValidResponse{}
-	if resp.Code == psp.IsNameValidResponse_Valid {
-		// no error
-		return &out, nil
+	if tiers.Tiers == nil {
+		return nil, errors.New("no tiers received")
 	}
 
-	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
+	// find req.RequestedTier
+	var tier *model.MembershipTierData
+	for _, t := range tiers.Tiers {
+		if t.Id == uint32(req.RequestedTier) {
+			tier = t
+			break
+		}
+	}
+	if tier == nil {
+		return nil, errors.New("requested tier not found")
+	}
 
-	switch resp.Code {
+	code = s.validateAnyName(*tier, req.RequestedAnyName)
+
+	switch code {
 	case psp.IsNameValidResponse_NoDotAny:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_BAD_INPUT
+		out.Error.Description = "No .any at the end of the name"
 	case psp.IsNameValidResponse_TooShort:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TOO_SHORT
 	case psp.IsNameValidResponse_TooLong:
@@ -288,9 +328,45 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_UNKNOWN_ERROR
 	}
 
-	out.Error.Description = resp.Description
+	out.Error.Description = desc
 
 	return &out, nil
+}
+
+func (s *service) validateAnyName(tier model.MembershipTierData, name string) psp.IsNameValidResponse_Code {
+	if name == "" {
+		// empty name means we don't want to register name, and this is valid
+		return psp.IsNameValidResponse_Valid
+	}
+
+	// if name has no .any postfix -> error
+	if len(name) < 4 || name[len(name)-4:] != ".any" {
+		return psp.IsNameValidResponse_NoDotAny
+	}
+
+	// for extra safety normalize name here too!
+	name, err := normalizeAnyName(name)
+	if err != nil {
+		log.Debug("can not normalize name", zap.Error(err), zap.String("name", name))
+		return psp.IsNameValidResponse_HasInvalidChars
+	}
+
+	// remove .any postfix
+	name = name[:len(name)-4]
+
+	// if minLen is zero - means "no check is required"
+	if tier.AnyNamesCountIncluded == 0 {
+		return psp.IsNameValidResponse_TierFeatureNoName
+	}
+	if tier.AnyNameMinLength == 0 {
+		return psp.IsNameValidResponse_TierFeatureNoName
+	}
+	if uint32(len(name)) < tier.AnyNameMinLength {
+		return psp.IsNameValidResponse_TooShort
+	}
+
+	// valid
+	return psp.IsNameValidResponse_Valid
 }
 
 func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
@@ -506,10 +582,22 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 }
 
 func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
-	// 1 - send request
+	// 1 - check in cache
+	// status var. is unused here
+	cachedStatus, cachedTiers, err := s.cache.CacheGet()
+
+	// if NoCache -> skip returning from cache
+	if !req.NoCache && (err == nil) && (cachedTiers != nil) && (cachedTiers.Tiers != nil) {
+		log.Debug("returning tiers from cache", zap.Error(err), zap.Any("cachedTiers", cachedTiers))
+		return cachedTiers, nil
+	}
+
+	// 2 - send request
 	bsr := psp.GetTiersRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId:    s.wallet.Account().SignKey.GetPublic().Account(),
+		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
+
+		// WARNING: we will save to cache data for THIS locale and payment method!!!
 		Locale:        req.Locale,
 		PaymentMethod: req.PaymentMethod,
 	}
@@ -533,6 +621,9 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 	// empty return or error
 	tiers, err := s.ppclient.GetAllTiers(ctx, &reqSigned)
 	if err != nil {
+		// if error here -> we do not create empty array
+		// with GetStatus above the logic is different
+		// there we create empty status and save it to cache
 		return nil, err
 	}
 
@@ -563,6 +654,22 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 				ValueUint: v.ValueUint,
 			}
 		}
+	}
+
+	// 3 - update tiers, not status
+	var cacheExpireTime time.Time
+	if cachedStatus != nil {
+		cacheExpireTime = time.Unix(int64(cachedStatus.Data.DateEnds), 0)
+	} else {
+		log.Debug("setting tiers cache to +1 day")
+
+		timeNow := time.Now().UTC()
+		cacheExpireTime = timeNow.Add(1 * 24 * time.Hour)
+	}
+
+	err = s.cache.CacheSet(nil, &out, cacheExpireTime)
+	if err != nil {
+		return nil, err
 	}
 
 	return &out, nil

@@ -31,6 +31,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 	ps := getService[payments.Service](mw)
 	out, err := ps.IsNameValid(ctx, req)
 
+	// something bad has happened
 	if err != nil {
 		return &pb.RpcMembershipIsNameValidResponse{
 			Error: &pb.RpcMembershipIsNameValidResponseError{
@@ -40,6 +41,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 		}
 	}
 
+	// out.Error will contain validation error if something is wrong with the name
 	return out
 }
 
