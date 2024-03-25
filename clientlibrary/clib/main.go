@@ -21,6 +21,9 @@ import (
 //export SetEventHandler
 func SetEventHandler(pf C.proxyFunc, ctx unsafe.Pointer) {
 	service.SetEventHandler(func(event *pb.Event) {
+		if len(event.Messages) == 0 {
+			return
+		}
 		b, err := proto.Marshal(event)
 		if err != nil {
 			fmt.Printf("failed to encode event: %s\n", err.Error())

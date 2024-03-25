@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -74,7 +75,8 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 				// per space
 				FulltextErase: ForceFulltextEraseCounter,
 				// global
-				BundledObjects: ForceBundledObjectsReindexCounter,
+				BundledObjects:     ForceBundledObjectsReindexCounter,
+				AreOldFilesRemoved: true,
 			}
 		}
 	}
@@ -110,6 +112,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
 		flags.enableAll()
 	}
+	if !checksums.AreOldFilesRemoved {
+		flags.removeOldFiles = true
+	}
 	return flags, nil
 }
 
@@ -122,6 +127,12 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	if err != nil {
 		return fmt.Errorf("remove common indexes: %w", err)
 	}
+
+	err = i.removeOldFiles(space.Id(), flags)
+	if err != nil {
+		return fmt.Errorf("remove old files: %w", err)
+	}
+
 	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
@@ -222,6 +233,47 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	}
 
 	return i.saveLatestChecksums(space.Id())
+}
+
+func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
+	if !flags.removeOldFiles {
+		return nil
+	}
+	ids, _, err := i.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value: pbtypes.IntList(
+					int(model.ObjectType_file),
+					int(model.ObjectType_image),
+					int(model.ObjectType_video),
+					int(model.ObjectType_audio),
+				),
+			},
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_Empty,
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("query old files: %w", err)
+	}
+	for _, id := range ids {
+		if domain.IsFileId(id) {
+			err = i.store.DeleteDetails(id)
+			if err != nil {
+				log.Errorf("delete old file %s: %s", id, err)
+			}
+		}
+	}
+	return nil
 }
 
 func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
@@ -434,6 +486,7 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 		FulltextErase:                    ForceFulltextEraseCounter,
 		BundledObjects:                   ForceBundledObjectsReindexCounter,
 		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+		AreOldFilesRemoved:               true,
 	}
 	return i.store.SaveChecksums(spaceID, &checksums)
 }

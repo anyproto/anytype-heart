@@ -68,5 +68,6 @@ func (s *service) create(ctx context.Context) (sp clientspace.Space, err error) 
 	}
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
+	s.updater.UpdateCoordinatorStatus()
 	return
 }

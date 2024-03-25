@@ -181,6 +181,18 @@ type testServer struct {
 	files map[string][][]byte
 }
 
+func (t *testServer) FilesGet(request *fileproto.FilesGetRequest, stream fileproto.DRPCFile_FilesGetStream) error {
+	return fileprotoerr.ErrForbidden
+}
+
+func (t *testServer) AccountLimitSet(ctx context.Context, request *fileproto.AccountLimitSetRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
+func (t *testServer) SpaceLimitSet(ctx context.Context, request *fileproto.SpaceLimitSetRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
 func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -194,13 +206,13 @@ func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetReques
 	}
 }
 
-func (t *testServer) BlockPush(ctx context.Context, req *fileproto.BlockPushRequest) (*fileproto.BlockPushResponse, error) {
+func (t *testServer) BlockPush(ctx context.Context, req *fileproto.BlockPushRequest) (*fileproto.Ok, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.data[string(req.Cid)] = req.Data
 	fcids := t.files[req.FileId]
 	t.files[req.FileId] = append(fcids, req.Cid)
-	return &fileproto.BlockPushResponse{}, nil
+	return &fileproto.Ok{}, nil
 }
 
 func (t *testServer) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheckRequest) (resp *fileproto.BlocksCheckResponse, err error) {
@@ -220,11 +232,11 @@ func (t *testServer) BlocksCheck(ctx context.Context, req *fileproto.BlocksCheck
 	return
 }
 
-func (t *testServer) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRequest) (*fileproto.BlocksBindResponse, error) {
+func (t *testServer) BlocksBind(ctx context.Context, req *fileproto.BlocksBindRequest) (*fileproto.Ok, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.files[req.FileId] = append(t.files[req.FileId], req.Cids...)
-	return &fileproto.BlocksBindResponse{}, nil
+	return &fileproto.Ok{}, nil
 }
 
 func (t *testServer) FilesDelete(ctx context.Context, req *fileproto.FilesDeleteRequest) (*fileproto.FilesDeleteResponse, error) {

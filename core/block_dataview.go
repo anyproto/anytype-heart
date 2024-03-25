@@ -469,16 +469,16 @@ func (mw *Middleware) BlockDataviewSortReplace(cctx context.Context, req *pb.Rpc
 	return resp(err)
 }
 
-func (mw *Middleware) BlockDataviewSortSort(cctx context.Context, req *pb.RpcBlockDataviewSortSortRequest) *pb.RpcBlockDataviewSortSortResponse {
+func (mw *Middleware) BlockDataviewSortSort(cctx context.Context, req *pb.RpcBlockDataviewSortSSortRequest) *pb.RpcBlockDataviewSortSSortResponse {
 	ctx := mw.newContext(cctx)
-	resp := func(err error) *pb.RpcBlockDataviewSortSortResponse {
-		r := &pb.RpcBlockDataviewSortSortResponse{
-			Error: &pb.RpcBlockDataviewSortSortResponseError{
-				Code: pb.RpcBlockDataviewSortSortResponseError_NULL,
+	resp := func(err error) *pb.RpcBlockDataviewSortSSortResponse {
+		r := &pb.RpcBlockDataviewSortSSortResponse{
+			Error: &pb.RpcBlockDataviewSortSSortResponseError{
+				Code: pb.RpcBlockDataviewSortSSortResponseError_NULL,
 			},
 		}
 		if err != nil {
-			r.Error.Code = pb.RpcBlockDataviewSortSortResponseError_UNKNOWN_ERROR
+			r.Error.Code = pb.RpcBlockDataviewSortSSortResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
 			r.Event = mw.getResponseEvent(ctx)

@@ -175,6 +175,7 @@ install-dev-android: setup-go build-android
 	# Print the updated gradle file (for verification)
 	@cd $(CLIENT_ANDROID_PATH) && make setup_local_mw
 	@cd $(CLIENT_ANDROID_PATH) && make normalize_mw_imports
+	@cd $(CLIENT_ANDROID_PATH) && make clean_protos
 
 setup-gomobile:
 	go build -o deps golang.org/x/mobile/cmd/gomobile

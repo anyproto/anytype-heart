@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -22,8 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	textutil "github.com/anyproto/anytype-heart/util/text"
-
-	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 )
 
 func TestCommonSmart_pasteHtml(t *testing.T) {
@@ -1570,5 +1569,106 @@ func givenBlockWithStyle(style model.BlockContentTextStyle, emoji string) *model
 				IconEmoji: emoji,
 			},
 		},
+	}
+}
+
+func Test_splitStringIntoParagraphs(t *testing.T) {
+	type args struct {
+		s                  string
+		lineBreakSoftLimit int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			"double",
+			args{
+				s: `aaa
+
+bbb
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"double with whitespaces",
+			args{
+				s: `aaa
+   
+bbb
+ 
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"more than 2 line breaks with whitespaces",
+			args{
+				s: `aaa
+   
+
+ 
+  
+
+
+bbb
+
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"single",
+			args{
+				s: `aaa
+bbb`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{`aaa
+bbb`},
+		},
+		{
+			"mixed",
+			args{
+				s: `aaa
+bbb
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{`aaa
+bbb`, "ccc"},
+		},
+		{
+			"soft limit",
+			args{
+				s: `very long string that is longer than the soft limit
+bbb`,
+				lineBreakSoftLimit: 15,
+			},
+			[]string{`very long string that is longer than the soft limit`, `bbb`},
+		},
+		{
+			"soft limit disabled",
+			args{
+				s: `very long string
+bbb`,
+				lineBreakSoftLimit: 0,
+			},
+			[]string{`very long string
+bbb`},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, splitStringIntoParagraphs(tt.args.s, tt.args.lineBreakSoftLimit), "splitStringIntoParagraphs(%v, %v)", tt.args.s, tt.args.lineBreakSoftLimit)
+		})
 	}
 }

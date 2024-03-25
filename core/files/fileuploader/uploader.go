@@ -373,7 +373,11 @@ func (u *uploader) UploadAsync(ctx context.Context) (result chan UploadResult) {
 		u.block = u.block.Copy().(file.Block)
 	}
 	go func() {
-		result <- u.Upload(ctx)
+		res := u.Upload(ctx)
+		if res.Err != nil {
+			log.Errorf("upload async: %v", res.Err)
+		}
+		result <- res
 		close(result)
 	}()
 	return

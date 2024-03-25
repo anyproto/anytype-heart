@@ -23,7 +23,7 @@ type SpaceStatus interface {
 	LatestAclHeadId() string
 	UpdatePersistentStatus(ctx context.Context, status spaceinfo.AccountStatus)
 	UpdatePersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo)
-	SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error
+	SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error
 	SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error)
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SetLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error
@@ -40,6 +40,8 @@ type spaceStatus struct {
 	latestAclHeadId string
 	techSpace       techspace.TechSpace
 	statService     debugstat.StatService
+	readLimit       uint32
+	writeLimit      uint32
 }
 
 func (s *spaceStatus) ProvideStat() any {
@@ -120,8 +122,10 @@ func (s *spaceStatus) LatestAclHeadId() string {
 	return s.latestAclHeadId
 }
 
-func (s *spaceStatus) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
-	s.remoteStatus = status
+func (s *spaceStatus) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+	s.remoteStatus = status.RemoteStatus
+	s.readLimit = status.ReadLimit
+	s.writeLimit = status.WriteLimit
 	return s.setCurrentLocalInfo(ctx)
 }
 
@@ -172,6 +176,8 @@ func (s *spaceStatus) setCurrentLocalInfo(ctx context.Context) (err error) {
 		SpaceID:      s.spaceId,
 		LocalStatus:  s.localStatus,
 		RemoteStatus: s.remoteStatus,
+		ReadLimit:    s.readLimit,
+		WriteLimit:   s.writeLimit,
 	})
 }
 

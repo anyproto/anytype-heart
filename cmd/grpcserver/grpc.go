@@ -28,6 +28,7 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/opentracing/opentracing-go"
 	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/process"
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
@@ -303,31 +304,58 @@ func startReportMemory() {
 			var maxAlloc uint64
 			var meanCPU float64
 			var maxHeapObjects uint64
-			var m runtime.MemStats
+			var maxRSS uint64
+			var maxNative uint64
+			var memStats runtime.MemStats
+			var curProc *process.Process
 			times := 60 * 3
 			rev := getRev()
+			pid := os.Getpid()
+
+			curProc, err := process.NewProcess(int32(pid))
+			if err != nil {
+				fmt.Printf("Can't get current process: %s\n", err)
+				return
+			}
+
 			_ = writeCpuProfile(rev, func() {
 				for i := 0; i < times; i++ {
-					runtime.ReadMemStats(&m)
+
+					memInfo, err := curProc.MemoryInfo()
+					if err != nil {
+						fmt.Printf("Can't get rss: %s\n", err)
+					}
+
+					runtime.ReadMemStats(&memStats)
 					percent, err := cpu.Percent(time.Second, false)
 					if err != nil {
-						fmt.Printf("Can't get cpu")
+						fmt.Printf("Can't get cpu percent: %s\n", err)
 					}
-					if maxAlloc < m.Alloc {
-						maxAlloc = m.Alloc
+
+					if maxRSS < memInfo.RSS {
+						maxRSS = memInfo.RSS
 					}
-					if maxHeapObjects < m.HeapObjects {
-						maxHeapObjects = m.HeapObjects
+					if maxAlloc < memStats.Alloc {
+						maxAlloc = memStats.Alloc
+					}
+					if maxHeapObjects < memStats.HeapObjects {
+						maxHeapObjects = memStats.HeapObjects
+					}
+					if maxNative < memInfo.RSS-memStats.Alloc && memInfo.RSS > memStats.Alloc {
+						maxNative = memInfo.RSS - memStats.Alloc
 					}
 					meanCPU += percent[0]
 					time.Sleep(time.Second)
 				}
+
 				err := sendMetrics(
 					map[string]uint64{
 						"MaxAlloc":    uint64(float64(maxAlloc) / 1024 / 1024),
-						"TotalAlloc":  uint64(float64(m.TotalAlloc) / 1024 / 1024),
-						"Mallocs":     m.Mallocs,
-						"Frees":       m.Frees,
+						"TotalAlloc":  uint64(float64(memStats.TotalAlloc) / 1024 / 1024),
+						"MaxNative":   uint64(float64(maxNative) / 1024 / 1024),
+						"MaxRSS":      uint64(float64(maxRSS) / 1024 / 1024),
+						"Mallocs":     memStats.Mallocs,
+						"Frees":       memStats.Frees,
 						"MeanCpu":     uint64(meanCPU / float64(times)),
 						"HeapObjects": maxHeapObjects,
 					},

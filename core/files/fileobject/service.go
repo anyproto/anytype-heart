@@ -586,7 +586,8 @@ func (s *service) DeleteFileData(objectId string) error {
 			},
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fullId.FileId.String()),
 			},
 		},
 	})

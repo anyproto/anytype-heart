@@ -94,8 +94,8 @@ func (s *spaceStatusMock) UpdatePersistentStatus(ctx context.Context, status spa
 	s.accountStatus = status
 }
 
-func (s *spaceStatusMock) SetRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
-	s.remoteStatus = status
+func (s *spaceStatusMock) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+	s.remoteStatus = status.RemoteStatus
 	return nil
 }
 

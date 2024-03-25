@@ -141,8 +141,28 @@
     "format": "number",
     "hidden": true,
     "key": "restrictions",
-    "maxCount": 1,
+    "maxCount": 0,
     "name": "Object restrictions",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Readers limit",
+    "format": "number",
+    "hidden": true,
+    "key": "readersLimit",
+    "maxCount": 1,
+    "name": "Readers limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Writers limit",
+    "format": "number",
+    "hidden": true,
+    "key": "writersLimit",
+    "maxCount": 1,
+    "name": "Writers limit",
     "readonly": true,
     "source": "derived"
   },
