@@ -101,6 +101,10 @@ func (ind *indexer) initQuery() {
 				),
 			},
 			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+			{
 				RelationKey: bundle.RelationKeyFileIndexingStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Empty,
 			},
