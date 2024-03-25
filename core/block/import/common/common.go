@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -196,11 +197,14 @@ func isBundledObjects(targetObjectID string) bool {
 
 func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
 	if iconImage := block.Model().GetText().GetIconImage(); iconImage != "" {
-		newTarget := oldIDtoNew[iconImage]
-		if newTarget == "" {
-			newTarget = addr.MissingObject
+		_, err := cid.Decode(iconImage)
+		if err == nil { // this can be url, because for notion import we store url to picture
+			newTarget := oldIDtoNew[iconImage]
+			if newTarget == "" {
+				newTarget = addr.MissingObject
+			}
+			block.Model().GetText().IconImage = newTarget
 		}
-		block.Model().GetText().IconImage = newTarget
 	}
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
