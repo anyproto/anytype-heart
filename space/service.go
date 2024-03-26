@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -281,8 +280,7 @@ func (s *service) sendNotification(spaceId string) {
 	notificationId := strings.Join([]string{spaceId, identity}, "_")
 	spaceName := s.spaceNameGetter.GetSpaceName(spaceId)
 	err := s.notificationService.CreateAndSend(&model.Notification{
-		Id:         notificationId,
-		CreateTime: time.Now().Unix(),
+		Id: notificationId,
 		Payload: &model.NotificationPayloadOfParticipantRemove{
 			ParticipantRemove: &model.NotificationParticipantRemove{
 				SpaceId:   spaceId,
