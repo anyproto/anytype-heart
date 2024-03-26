@@ -2833,6 +2833,11 @@ message Rpc {
                 string optionId = 1;
                 string afterId = 2; // move it after the given id
                 string beforeId = 3; // move it before the given id
+                OptionsSort sort = 4;
+                enum OptionsSort {
+                    OlderFirst = 0;
+                    NewerFirst = 1; // the reverse sorting, used for multi-select tags. Swaps the meaning of afterId and beforeId
+                }
             }
 
             message Response {

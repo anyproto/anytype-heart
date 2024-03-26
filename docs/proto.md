@@ -1270,6 +1270,7 @@
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
+    - [Rpc.Relation.MoveOption.Request.OptionsSort](#anytype-Rpc-Relation-MoveOption-Request-OptionsSort)
     - [Rpc.Relation.MoveOption.Response.Error.Code](#anytype-Rpc-Relation-MoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
@@ -15104,6 +15105,7 @@ Available undo/redo operations
 | optionId | [string](#string) |  |  |
 | afterId | [string](#string) |  | move it after the given id |
 | beforeId | [string](#string) |  | move it before the given id |
+| sort | [Rpc.Relation.MoveOption.Request.OptionsSort](#anytype-Rpc-Relation-MoveOption-Request-OptionsSort) |  |  |
 
 
 
@@ -20059,6 +20061,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | OPTION_USED_BY_OBJECTS | 3 |  |
+
+
+
+<a name="anytype-Rpc-Relation-MoveOption-Request-OptionsSort"></a>
+
+### Rpc.Relation.MoveOption.Request.OptionsSort
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OlderFirst | 0 |  |
+| NewerFirst | 1 | the reverse sorting, used for multi-select tags. Swaps the meaning of afterId and beforeId |
 
 
 

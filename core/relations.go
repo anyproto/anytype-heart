@@ -100,6 +100,9 @@ func (mw *Middleware) RelationMoveOption(cctx context.Context, request *pb.RpcRe
 
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
+		if request.Sort == pb.RpcRelationMoveOptionRequest_NewerFirst {
+			request.BeforeId, request.AfterId = request.AfterId, request.BeforeId
+		}
 		err = bs.MoveOption(request.OptionId, request.AfterId, request.BeforeId)
 		return err
 	})
