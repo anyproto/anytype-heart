@@ -47,7 +47,7 @@ type KeyOrder struct {
 	SpaceID        string
 	Key            string
 	Type           model.BlockContentDataviewSortType
-	EmptyLast      bool // consider empty strings as the last, not first
+	EmptyPlacement model.BlockContentDataviewSortEmptyType
 	RelationFormat model.RelationFormat
 	IncludeTime    bool
 	Store          ObjectStore
@@ -77,11 +77,17 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 	comp := 0
 	_, aString := av.GetKind().(*types.Value_StringValue)
 	_, bString := bv.GetKind().(*types.Value_StringValue)
-	if ko.EmptyLast && (aString || av == nil) && (bString || bv == nil) {
+	if ko.isSpecialSortOfEmptyValuesNeed(av, bv, aString, bString) {
 		if av.GetStringValue() == "" && bv.GetStringValue() != "" {
 			comp = 1
 		} else if av.GetStringValue() != "" && bv.GetStringValue() == "" {
 			comp = -1
+		}
+		if ko.Type == model.BlockContentDataviewSort_Desc && ko.EmptyPlacement == model.BlockContentDataviewSort_End {
+			comp = -comp
+		}
+		if ko.Type == model.BlockContentDataviewSort_Asc && ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+			comp = -comp
 		}
 	}
 	if aString && bString && comp == 0 {
@@ -89,6 +95,11 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 		comp = ko.comparator.CompareString(av.GetStringValue(), bv.GetStringValue())
 	}
 	return comp
+}
+
+func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av *types.Value, bv *types.Value, aString bool, bString bool) bool {
+	return (ko.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified) &&
+		(aString || av == nil) && (bString || bv == nil)
 }
 
 func (ko *KeyOrder) handleTag(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {

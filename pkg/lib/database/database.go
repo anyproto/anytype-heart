@@ -121,7 +121,7 @@ func extractOrder(spaceID string, sorts []*model.BlockContentDataviewSort, store
 				SpaceID:        spaceID,
 				Key:            sort.RelationKey,
 				Type:           sort.Type,
-				EmptyLast:      sort.RelationKey == bundle.RelationKeyName.String(),
+				EmptyPlacement: sort.EmptyPlacement,
 				IncludeTime:    isIncludeTime(sorts, sort),
 				RelationFormat: sort.Format,
 				Store:          store,
