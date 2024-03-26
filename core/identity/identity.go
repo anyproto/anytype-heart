@@ -42,6 +42,8 @@ var (
 type Service interface {
 	GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct)
 
+	UpdateGlobalNames()
+
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
 	// UnregisterIdentity removes the observer for the identity in specified space
@@ -89,14 +91,15 @@ type service struct {
 	pushIdentityTimer         *time.Timer   // timer for batching
 	pushIdentityBatchTimeout  time.Duration
 
-	identityObservePeriod time.Duration
-	identityForceUpdate   chan struct{}
-	lock                  sync.RWMutex
+	identityObservePeriod  time.Duration
+	identityForceUpdate    chan struct{}
+	globalNamesForceUpdate chan struct{}
+	lock                   sync.RWMutex
 	// identity => spaceId => observer
 	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
 	identityProfileCache   map[string]*model.IdentityProfile
-	identityGlobalNames    map[string]string
+	identityGlobalNames    map[string]*nameserviceproto.NameByAddressResponse
 }
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
@@ -104,10 +107,12 @@ func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Dura
 		startedCh:                make(chan struct{}),
 		closing:                  make(chan struct{}),
 		identityForceUpdate:      make(chan struct{}),
+		globalNamesForceUpdate:   make(chan struct{}),
 		identityObservePeriod:    identityObservePeriod,
 		identityObservers:        make(map[string]map[string]*observer),
 		identityEncryptionKeys:   make(map[string]crypto.SymKey),
 		identityProfileCache:     make(map[string]*model.IdentityProfile),
+		identityGlobalNames:      make(map[string]*nameserviceproto.NameByAddressResponse),
 		pushIdentityBatchTimeout: pushIdentityBatchTimeout,
 	}
 }
@@ -224,6 +229,13 @@ func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.Sym
 	defer s.currentProfileDetailsLock.RUnlock()
 
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
+}
+
+func (s *service) UpdateGlobalNames() {
+	select {
+	case s.globalNamesForceUpdate <- struct{}{}:
+	default:
+	}
 }
 
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
@@ -362,8 +374,8 @@ func (s *service) observeIdentitiesLoop() {
 	defer ticker.Stop()
 
 	ctx := context.Background()
-	observe := func() {
-		err := s.observeIdentities(ctx)
+	observe := func(globalNamesForceUpdate bool) {
+		err := s.observeIdentities(ctx, globalNamesForceUpdate)
 		if err != nil {
 			log.Error("error observing identities", zap.Error(err))
 		}
@@ -373,9 +385,11 @@ func (s *service) observeIdentitiesLoop() {
 		case <-s.closing:
 			return
 		case <-s.identityForceUpdate:
-			observe()
+			observe(false)
+		case <-s.globalNamesForceUpdate:
+			observe(true)
 		case <-ticker.C:
-			observe()
+			observe(false)
 		}
 	}
 }
@@ -383,7 +397,7 @@ func (s *service) observeIdentitiesLoop() {
 const identityRepoDataKind = "profile"
 
 // TODO Maybe we need to use backoff in case of error from coordinator
-func (s *service) observeIdentities(ctx context.Context) error {
+func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate bool) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -402,7 +416,7 @@ func (s *service) observeIdentities(ctx context.Context) error {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
-	if err = s.fetchGlobalNames(append(identities, s.myIdentity)); err != nil {
+	if err = s.fetchGlobalNames(append(identities, s.myIdentity), globalNamesForceUpdate); err != nil {
 		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
 	}
 
@@ -463,8 +477,8 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
-	if globalName, found := s.identityGlobalNames[identityData.Identity]; found {
-		profile.GlobalName = globalName
+	if globalName, found := s.identityGlobalNames[identityData.Identity]; found && globalName.Found {
+		profile.GlobalName = globalName.Name
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
@@ -516,8 +530,8 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	return profile, rawProfile, nil
 }
 
-func (s *service) fetchGlobalNames(identities []string) error {
-	if s.identityGlobalNames != nil {
+func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error {
+	if len(s.identityGlobalNames) == len(identities) && !forceUpdate {
 		return nil
 	}
 	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
@@ -527,21 +541,16 @@ func (s *service) fetchGlobalNames(identities []string) error {
 	if response == nil {
 		return nil
 	}
-	s.identityGlobalNames = make(map[string]string, len(identities))
 	for i, anyID := range identities {
-		if !response.Results[i].Found {
-			continue
-		}
-		if anyID == s.myIdentity {
-			s.currentProfileDetailsLock.Lock()
+		s.identityGlobalNames[anyID] = response.Results[i]
+		if anyID == s.myIdentity && response.Results[i].Found {
+			s.currentProfileDetailsLock.RLock()
 			details := pbtypes.CopyStruct(s.currentProfileDetails)
-			s.currentProfileDetailsLock.Unlock()
+			s.currentProfileDetailsLock.RUnlock()
 			details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(response.Results[i].Name)
 			if err = s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
 				return err
 			}
-		} else {
-			s.identityGlobalNames[anyID] = response.Results[i].Name
 		}
 	}
 	return nil

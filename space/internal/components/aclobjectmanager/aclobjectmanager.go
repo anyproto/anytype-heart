@@ -184,6 +184,7 @@ func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error 
 	details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyDescription.String()))
 	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
 	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
+	details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyGlobalName.String()))
 	err = a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		return pbtypes.StructMerge(current, details, false), nil
 	})

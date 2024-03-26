@@ -36,6 +36,18 @@ var subsExpire time.Time = timeNow.Add(365 * 24 * time.Hour)
 // truncate nseconds
 var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
+type mockGlobalNamesUpdater struct{}
+
+func (u *mockGlobalNamesUpdater) UpdateGlobalNames() {}
+
+func (u *mockGlobalNamesUpdater) Init(*app.App) (err error) {
+	return nil
+}
+
+func (u *mockGlobalNamesUpdater) Name() string {
+	return ""
+}
+
 type fixture struct {
 	a                 *app.App
 	ctrl              *gomock.Controller
@@ -44,6 +56,7 @@ type fixture struct {
 	wallet            *mock_wallet.MockWallet
 	eventSender       *mock_event.MockSender
 	periodicGetStatus *mock_periodicsync.MockPeriodicSync
+	identitiesUpdater *mockGlobalNamesUpdater
 
 	*service
 }
@@ -85,7 +98,8 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender))
+		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender)).
+		Register(fx.identitiesUpdater)
 
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -178,7 +192,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -228,7 +242,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
