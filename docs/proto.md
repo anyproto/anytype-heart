@@ -15631,7 +15631,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| identity | [string](#string) |  |  |
+| identities | [string](#string) | repeated |  |
 
 
 
@@ -20218,6 +20218,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
+| NO_APPROVE_REQUESTS | 104 |  |
 
 
 

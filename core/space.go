@@ -263,6 +263,23 @@ func (mw *Middleware) SpaceParticipantPermissionsChange(cctx context.Context, re
 	}
 }
 
+func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLeaveApproveRequest) *pb.RpcSpaceLeaveApproveResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := approveLeave(cctx, req.SpaceId, req.Identities, aclService)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceLeaveApproveResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceLeaveApproveResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceLeaveApproveResponseError_REQUEST_FAILED),
+		errToCode(acl.ErrRequestNotExists, pb.RpcSpaceLeaveApproveResponseError_NO_APPROVE_REQUESTS),
+	)
+	return &pb.RpcSpaceLeaveApproveResponse{
+		Error: &pb.RpcSpaceLeaveApproveResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
 	inviteFileKey, err := acl.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
@@ -301,6 +318,18 @@ func remove(ctx context.Context, spaceId string, identities []string, aclService
 		keys = append(keys, key)
 	}
 	return aclService.Remove(ctx, spaceId, keys)
+}
+
+func approveLeave(ctx context.Context, spaceId string, identities []string, aclService acl.AclService) error {
+	keys := make([]crypto.PubKey, 0, len(identities))
+	for _, identity := range identities {
+		key, err := crypto.DecodeAccountAddress(identity)
+		if err != nil {
+			return err
+		}
+		keys = append(keys, key)
+	}
+	return aclService.ApproveLeave(ctx, spaceId, keys)
 }
 
 func permissionsChange(ctx context.Context, spaceId string, changes []*model.ParticipantPermissionChange, aclService acl.AclService) error {
