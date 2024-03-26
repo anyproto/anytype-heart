@@ -63,6 +63,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/payments"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -94,6 +95,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/unsplash"
 	"github.com/anyproto/anytype-heart/util/vcs"
+
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+
+	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 )
 
 var (
@@ -270,7 +276,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(profiler.New()).
 		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
-		Register(notifications.New())
+		Register(notifications.New()).
+		Register(paymentserviceclient.New()).
+		Register(nameserviceclient.New()).
+		Register(payments.New()).
+		Register(paymentscache.New())
 }
 
 func MiddlewareVersion() string {
