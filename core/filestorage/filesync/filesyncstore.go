@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	keyPrefix = "/filesyncindex/"
+	keyPrefix = "/filesync/"
 )
 
 type fileSyncStore struct {

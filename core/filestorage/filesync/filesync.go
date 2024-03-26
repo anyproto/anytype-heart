@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	queue2 "github.com/anyproto/anytype-heart/core/queue"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -76,9 +77,9 @@ type fileSync struct {
 	onUploadStarted func(fileId domain.FileId) error
 	onLimited       func(fileId domain.FileId) error
 
-	uploadingQueue *queue
-	retryingQueue  *queue
-	removingQueue  *queue
+	uploadingQueue *queue2.Queue[*QueueItem]
+	retryingQueue  *queue2.Queue[*QueueItem]
+	removingQueue  *queue2.Queue[*QueueItem]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -119,6 +120,10 @@ func (f *fileSync) Name() (name string) {
 	return CName
 }
 
+func makeQueueItem() *QueueItem {
+	return &QueueItem{}
+}
+
 func (f *fileSync) Run(ctx context.Context) (err error) {
 	db, err := f.dbProvider.SpaceStorage()
 	if err != nil {
@@ -129,35 +134,15 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	{
-		q, err := newQueue(db, uploadKeyPrefix, uploadKey)
-		if err != nil {
-			return fmt.Errorf("new uploading queue: %w", err)
-		}
-		f.uploadingQueue = q
-	}
-
-	{
-		q, err := newQueue(db, discardedKeyPrefix, discardedKey)
-		if err != nil {
-			return fmt.Errorf("new retrying queue: %w", err)
-		}
-		f.retryingQueue = q
-	}
-
-	{
-		q, err := newQueue(db, removeKeyPrefix, removeKey)
-		if err != nil {
-			return fmt.Errorf("new removing queue: %w", err)
-		}
-		f.removingQueue = q
-	}
+	f.uploadingQueue = queue2.New(db, log.Logger, uploadKeyPrefix, makeQueueItem, f.uploadingHandler)
+	f.uploadingQueue.Run()
+	f.retryingQueue = queue2.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.uploadingHandler, queue2.WithHandlerTickPeriod(loopTimeout))
+	f.retryingQueue.Run()
+	f.removingQueue = queue2.New(db, log.Logger, removeKeyPrefix, makeQueueItem, f.removingHandler)
+	f.removingQueue.Run()
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.runNodeUsageUpdater()
-	go f.uploadLoop()
-	go f.uploadDiscardedLoop()
-	go f.removeLoop()
 	return
 }
 
@@ -174,13 +159,13 @@ func (f *fileSync) Close(ctx context.Context) error {
 		}
 	}()
 
-	if err := f.uploadingQueue.close(); err != nil {
+	if err := f.uploadingQueue.Close(); err != nil {
 		log.Error("can't close uploading queue: %v", zap.Error(err))
 	}
-	if err := f.retryingQueue.close(); err != nil {
+	if err := f.retryingQueue.Close(); err != nil {
 		log.Error("can't close retrying queue: %v", zap.Error(err))
 	}
-	if err := f.removingQueue.close(); err != nil {
+	if err := f.removingQueue.Close(); err != nil {
 		log.Error("can't close removing queue: %v", zap.Error(err))
 	}
 
@@ -189,6 +174,6 @@ func (f *fileSync) Close(ctx context.Context) error {
 
 func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {
 	return SyncStatus{
-		QueueLen: f.uploadingQueue.length(),
+		QueueLen: f.uploadingQueue.Len(),
 	}, nil
 }

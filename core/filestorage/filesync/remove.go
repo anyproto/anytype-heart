@@ -7,57 +7,29 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	queue2 "github.com/anyproto/anytype-heart/core/queue"
 )
 
 func (f *fileSync) RemoveFile(fileId domain.FullFileId) error {
-	err := f.removeFromUploadingQueues(fileId)
+	err := f.removeFromUploadingQueues(&QueueItem{SpaceId: fileId.SpaceId, FileId: fileId.FileId})
 	if err != nil {
 		return fmt.Errorf("remove from uploading queues: %w", err)
 	}
-	return f.removingQueue.add(f.loopCtx, &QueueItem{
+	return f.removingQueue.Add(&QueueItem{
 		SpaceId: fileId.SpaceId,
 		FileId:  fileId.FileId,
 	})
 }
 
-func (f *fileSync) removeLoop() {
-	for {
-		select {
-		case <-f.loopCtx.Done():
-			return
-		default:
-		}
-
-		it, err := f.removingQueue.getNext(f.loopCtx)
-		if err != nil {
-			log.Warn("can't get next file to upload", zap.Error(err))
-			continue
-		}
-		err = f.tryToRemove(it)
-		if err != nil {
-			log.Warn("can't remove file", zap.String("fileId", it.FileId.String()), zap.Error(err))
-			continue
-		}
-	}
-}
-func (f *fileSync) tryToRemove(it *QueueItem) error {
+func (f *fileSync) removingHandler(ctx context.Context, it *QueueItem) (queue2.Action, error) {
 	spaceID, fileId := it.SpaceId, it.FileId
 	err := f.removeFile(f.loopCtx, spaceID, fileId)
 	if err != nil {
-		addErr := f.removingQueue.add(f.loopCtx, it)
-		if addErr != nil {
-			log.Error("can't add file back to removing queue", zap.Error(addErr))
-		}
-		return fmt.Errorf("remove file: %w", err)
-	}
-
-	err = f.removingQueue.remove(it.FullFileId())
-	if err != nil {
-		return fmt.Errorf("mark remove task as done: %w", err)
+		return queue2.ActionRetry, fmt.Errorf("remove file: %w", err)
 	}
 	f.updateSpaceUsageInformation(spaceID)
 
-	return nil
+	return queue2.ActionDone, nil
 }
 
 func (f *fileSync) RemoveSynchronously(spaceId string, fileId domain.FileId) (err error) {

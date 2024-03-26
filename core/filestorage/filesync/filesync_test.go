@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 var ctx = context.Background()
@@ -54,12 +53,6 @@ func TestFileSync_AddFile(t *testing.T) {
 		assert.Empty(t, prevUsage.Spaces)
 		assert.Zero(t, prevUsage.TotalBytesUsage)
 		assert.Zero(t, prevUsage.TotalCidsCount)
-
-		fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
-		fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
-		fx.fileStoreMock.EXPECT().ListFileVariants(fileId).Return([]*storage.FileInfo{
-			{}, // We can use just empty struct here, because we don't use any fields
-		}, nil).AnyTimes()
 
 		// Add file to upload queue
 		err = fx.AddFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false)
@@ -130,11 +123,6 @@ func TestFileSync_AddFile(t *testing.T) {
 		fileId := domain.FileId(fileNode.Cid().String())
 		spaceId := "space1"
 
-		fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
-		fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
-		fx.fileStoreMock.EXPECT().ListFileVariants(fileId).Return([]*storage.FileInfo{
-			{}, // We can use just empty struct here, because we don't use any fields
-		}, nil).AnyTimes()
 		require.NoError(t, fx.AddFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false))
 		fx.waitLimitReachedEvent(t, time.Second*5)
 		fx.waitEmptyQueue(t, time.Second*5)
@@ -167,12 +155,7 @@ func newFixture(t *testing.T, limit int) *fixture {
 		a:           new(app.App),
 	}
 
-	fileStoreMock := NewMockFileStore(fx.ctrl)
-	fileStoreMock.EXPECT().Name().Return(filestore.CName).AnyTimes()
-	fileStoreMock.EXPECT().Init(gomock.Any()).AnyTimes()
-	fileStoreMock.EXPECT().Run(gomock.Any()).AnyTimes()
-	fileStoreMock.EXPECT().Close(gomock.Any()).AnyTimes()
-	fx.fileStoreMock = fileStoreMock
+	fileStore := filestore.New()
 
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Name().Return("event")
@@ -192,7 +175,7 @@ func newFixture(t *testing.T, limit int) *fixture {
 		Register(datastore.NewInMemory()).
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.FileSync).
-		Register(fileStoreMock).
+		Register(fileStore).
 		Register(sender)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -201,7 +184,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 type fixture struct {
 	FileSync
 	fileService      fileservice.FileService
-	fileStoreMock    *MockFileStore
 	localFileStorage fileblockstore.BlockStoreLocal
 	ctrl             *gomock.Controller
 	a                *app.App

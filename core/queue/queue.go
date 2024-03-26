@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/cheggaaa/mb/v3"
 	"github.com/dgraph-io/badger/v4"
@@ -44,6 +45,7 @@ type Queue[T Item] struct {
 	batcher      *mb.MB[T]
 	factoryFunc  FactoryFunc[T]
 	handler      HandlerFunc[T]
+	options      options
 
 	lock sync.Mutex
 	// set is used to keep track of queued items. If item has been added to queue and removed without processing
@@ -54,14 +56,27 @@ type Queue[T Item] struct {
 	ctxCancel context.CancelFunc
 }
 
+type options struct {
+	handlerTickPeriod time.Duration
+}
+
+type Option func(*options)
+
+func WithHandlerTickPeriod(period time.Duration) Option {
+	return func(o *options) {
+		o.handlerTickPeriod = period
+	}
+}
+
 func New[T Item](
 	db *badger.DB,
 	logger *zap.Logger,
 	badgerPrefix []byte,
 	factoryFunc FactoryFunc[T],
 	handler HandlerFunc[T],
+	opts ...Option,
 ) *Queue[T] {
-	return &Queue[T]{
+	q := &Queue[T]{
 		logger:       logger,
 		db:           db,
 		badgerPrefix: badgerPrefix,
@@ -69,11 +84,16 @@ func New[T Item](
 		handler:      handler,
 		factoryFunc:  factoryFunc,
 		set:          make(map[string]struct{}),
+		options:      options{},
 	}
+	for _, opt := range opts {
+		opt(&q.options)
+	}
+	q.ctx, q.ctxCancel = context.WithCancel(context.Background())
+	return q
 }
 
 func (q *Queue[T]) Run() {
-	q.ctx, q.ctxCancel = context.WithCancel(context.Background())
 	err := q.restore()
 	if err != nil {
 		q.logger.Error("can't restore queue", zap.String("prefix", string(q.badgerPrefix)), zap.Error(err))
@@ -97,6 +117,13 @@ func (q *Queue[T]) loop() {
 		}
 		if err != nil {
 			q.logger.Error("handle next", zap.Error(err))
+		}
+		if q.options.handlerTickPeriod > 0 {
+			select {
+			case <-time.After(q.options.handlerTickPeriod):
+			case <-q.ctx.Done():
+				return
+			}
 		}
 	}
 
@@ -195,8 +222,9 @@ func (q *Queue[T]) unmarshalItem(item *badger.Item) (T, error) {
 	return it, nil
 }
 
-func (q *Queue[T]) Close() {
+func (q *Queue[T]) Close() error {
 	q.ctxCancel()
+	return q.batcher.Close()
 }
 
 func (q *Queue[T]) makeKey(itemKey string) []byte {
