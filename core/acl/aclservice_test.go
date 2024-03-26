@@ -117,23 +117,27 @@ func TestService_ApproveLeave(t *testing.T) {
 			{"a.init::a", nil},
 			{"a.invite::invId", nil},
 			{"b.join::invId", nil},
+			{"c.join::invId", nil},
 			{"a.approve::b,r", nil},
+			{"a.approve::c,r", nil},
 			{"b.request_remove::b", nil},
+			{"c.request_remove::c", nil},
 		}
 		for _, cmd := range cmds {
 			err := exec.Execute(cmd.cmd)
 			require.Equal(t, cmd.err, err, cmd)
 		}
-		identity := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
-		acl := mockSyncAcl{exec.ActualAccounts()["b"].Acl}
+		identityB := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
+		identityC := exec.ActualAccounts()["c"].Keys.SignKey.GetPublic()
+		acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
 		mockCommonSpace.EXPECT().Acl().Return(acl)
 		aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockCommonSpace.EXPECT().AclClient().Return(aclClient)
 		aclClient.EXPECT().RemoveAccounts(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, payload list.AccountRemovePayload) error {
-			require.Equal(t, []crypto.PubKey{identity}, payload.Identities)
+			require.Equal(t, []crypto.PubKey{identityB, identityC}, payload.Identities)
 			return nil
 		}).Return(nil)
-		err := fx.ApproveLeave(ctx, spaceId, identity)
+		err := fx.ApproveLeave(ctx, spaceId, []crypto.PubKey{identityB, identityC})
 		require.NoError(t, err)
 	})
 	t.Run("fail", func(t *testing.T) {
@@ -153,16 +157,20 @@ func TestService_ApproveLeave(t *testing.T) {
 			{"a.init::a", nil},
 			{"a.invite::invId", nil},
 			{"b.join::invId", nil},
+			{"c.join::invId", nil},
 			{"a.approve::b,r", nil},
+			{"a.approve::c,r", nil},
+			{"c.request_remove::c", nil},
 		}
 		for _, cmd := range cmds {
 			err := exec.Execute(cmd.cmd)
 			require.Equal(t, cmd.err, err, cmd)
 		}
-		identity := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
-		acl := mockSyncAcl{exec.ActualAccounts()["b"].Acl}
+		identityB := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
+		identityC := exec.ActualAccounts()["c"].Keys.SignKey.GetPublic()
+		acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
 		mockCommonSpace.EXPECT().Acl().Return(acl)
-		err := fx.ApproveLeave(ctx, spaceId, identity)
+		err := fx.ApproveLeave(ctx, spaceId, []crypto.PubKey{identityB, identityC})
 		require.Error(t, err)
 	})
 }

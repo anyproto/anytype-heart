@@ -55,6 +55,7 @@ type AclService interface {
 	GetCurrentInvite(spaceId string) (*InviteInfo, error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
+	ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error
 	StopSharing(ctx context.Context, spaceId string) error
 	CancelJoin(ctx context.Context, spaceId string) (err error)
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error
@@ -196,7 +197,7 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 	return nil
 }
 
-func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identity crypto.PubKey) error {
+func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error {
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -204,19 +205,27 @@ func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identity 
 	acl := sp.CommonSpace().Acl()
 	acl.RLock()
 	st := acl.AclState()
-	foundIdentity := false
+	identitiesMap := map[string]struct{}{}
+	for _, identity := range identities {
+		identitiesMap[identity.Account()] = struct{}{}
+	}
 	for _, rec := range st.RemoveRecords() {
-		if rec.RequestIdentity.Equals(identity) {
-			foundIdentity = true
-			break
+		for _, identity := range identities {
+			if rec.RequestIdentity.Equals(identity) {
+				delete(identitiesMap, identity.Account())
+			}
 		}
 	}
-	if !foundIdentity {
+	if len(identitiesMap) != 0 {
 		acl.RUnlock()
-		return fmt.Errorf("%w with identity: %s", ErrRequestNotExists, identity.Account())
+		var identitiesString string
+		for identity := range identitiesMap {
+			identitiesString += identity + ", "
+		}
+		return fmt.Errorf("%w with identities: %s", ErrRequestNotExists, identitiesString)
 	}
 	acl.RUnlock()
-	return a.Remove(ctx, spaceId, []crypto.PubKey{identity})
+	return a.Remove(ctx, spaceId, identities)
 }
 
 func (a *aclService) Leave(ctx context.Context, spaceId string) error {
