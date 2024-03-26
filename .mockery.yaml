@@ -16,6 +16,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/getblock:
     interfaces:
       ObjectGetter:
+      ObjectGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
@@ -55,6 +56,9 @@ packages:
     interfaces:
       Cache:
   github.com/anyproto/anytype-heart/metrics/amplitude:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/invitestore:
     interfaces:
       Service:
   github.com/anyproto/anytype-heart/core/indexer:

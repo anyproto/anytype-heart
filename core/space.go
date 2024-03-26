@@ -67,7 +67,7 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 	inviteInfo, err := aclService.GetCurrentInvite(req.SpaceId)
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(acl.ErrInviteNotExist, pb.RpcSpaceInviteGetCurrentResponseError_NO_ACTIVE_INVITE),
+			errToCode(acl.ErrInviteNotExists, pb.RpcSpaceInviteGetCurrentResponseError_NO_ACTIVE_INVITE),
 		)
 		return &pb.RpcSpaceInviteGetCurrentResponse{
 			Error: &pb.RpcSpaceInviteGetCurrentResponseError{

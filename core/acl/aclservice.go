@@ -34,7 +34,8 @@ const CName = "common.acl.aclservice"
 var log = logging.Logger(CName).Desugar()
 
 var (
-	ErrInviteNotExist       = errors.New("invite doesn't exist")
+	ErrInviteNotExists      = errors.New("invite doesn't exist")
+	ErrRequestNotExists     = errors.New("request doesn't exist")
 	ErrPersonalSpace        = errors.New("sharing of personal space is forbidden")
 	ErrInviteBadSignature   = errors.New("invite has bad signature")
 	ErrIncorrectPermissions = errors.New("incorrect permissions")
@@ -77,8 +78,8 @@ type aclService struct {
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
-	a.joiningClient = ap.MustComponent(aclclient.CName).(aclclient.AclJoiningClient)
-	a.spaceService = ap.MustComponent(space.CName).(space.Service)
+	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
+	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteStore = app.MustComponent[invitestore.Service](ap)
 	a.fileAcl = app.MustComponent[fileacl.Service](ap)
@@ -193,6 +194,29 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
 	return nil
+}
+
+func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identity crypto.PubKey) error {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	acl := sp.CommonSpace().Acl()
+	acl.RLock()
+	st := acl.AclState()
+	foundIdentity := false
+	for _, rec := range st.RemoveRecords() {
+		if rec.RequestIdentity.Equals(identity) {
+			foundIdentity = true
+			break
+		}
+	}
+	if !foundIdentity {
+		acl.RUnlock()
+		return fmt.Errorf("%w with identity: %s", ErrRequestNotExists, identity.Account())
+	}
+	acl.RUnlock()
+	return a.Remove(ctx, spaceId, []crypto.PubKey{identity})
 }
 
 func (a *aclService) Leave(ctx context.Context, spaceId string) error {
@@ -465,7 +489,7 @@ func (a *aclService) GetCurrentInvite(spaceId string) (*InviteInfo, error) {
 		return nil, fmt.Errorf("get existing invite file info: %w", err)
 	}
 	if fileCid == "" {
-		return nil, ErrInviteNotExist
+		return nil, ErrInviteNotExists
 	}
 	return &InviteInfo{
 		InviteFileCid: fileCid,
