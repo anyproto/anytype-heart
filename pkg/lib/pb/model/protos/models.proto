@@ -1009,6 +1009,7 @@ message Notification {
         string identity = 2;
         string identityName = 3;
         string identityIcon = 4;
+        string spaceName = 5;
     }
 
     message Test {}
@@ -1016,6 +1017,7 @@ message Notification {
     message ParticipantRequestApproved {
         string spaceId = 1;
         ParticipantPermissions permissions = 2;
+        string spaceName = 5;
     }
 
     message RequestToLeave {
@@ -1023,6 +1025,7 @@ message Notification {
         string identity = 2;
         string identityName = 3;
         string identityIcon = 4;
+        string spaceName = 5;
     }
 
     message ParticipantRemove {
@@ -1030,15 +1033,18 @@ message Notification {
         string identityName = 2;
         string identityIcon = 3;
         string spaceId = 4;
+        string spaceName = 5;
     }
 
     message ParticipantRequestDecline {
         string spaceId = 1;
+        string spaceName = 3;
     }
 
     message ParticipantPermissionsChange {
         string spaceId = 1;
         ParticipantPermissions permissions = 2;
+        string spaceName = 3;
     }
 
     enum Status {
@@ -1201,17 +1207,6 @@ message Membership {
 }
 
 message MembershipTierData {
-    enum NameValidity {
-        Valid = 0;
-        NoDotAny = 1;
-        TooShort = 2;
-        TooLong = 3;
-        HasInvalidChars = 4;
-        TierFeatureNoName = 5;
-        // if everything is fine - "name is already taken" check should be done in the NS
-        // see IsNameAvailable()
-    }
-
     enum PeriodType {
         PeriodTypeUnknown = 0;
         PeriodTypeUnlimited = 1;

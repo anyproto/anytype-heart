@@ -37,31 +37,32 @@ type identitiesUpdater interface {
 
 /*
 CACHE LOGICS:
+
  1. User installs Anytype
     -> cache is clean
 
-2. client gets his subscription from MW
+ 2. client gets his subscription from MW
 
-  - if cache is disabled and 30 minutes elapsed
+    - if cache is disabled and 30 minutes elapsed
     -> enable cache again
 
-  - if cache is disabled or cache is clean or cache is expired
+    - if cache is disabled or cache is clean or cache is expired
     -> ask from PP node, then save to cache:
 
-    x if got no info -> cache it for 10 days
-    x if got into without expiration -> cache it for 10 days
+    x if got no info -> cache it for N days
+    x if got into without expiration -> cache it for N days
     x if got info -> cache it for until it expires
     x if cache was disabled before and tier has changed or status is active -> enable cache again
     x if can not connect to PP node -> return error
     x if can not write to cache -> return error
 
-  - if we have it in cache
+    - if we have it in cache
     -> return from cache
 
-    3. User clicks on a “Pay by card/crypto” or “Manage” button:
+ 3. User clicks on a “Pay by card/crypto” or “Manage” button:
     -> disable cache for 30 minutes (so we always get from PP node)
 
-    4. User confirms his e-mail code
+ 4. User confirms his e-mail code
     -> clear cache (it will cause getting again from PP node next)
 */
 type Service interface {
@@ -276,9 +277,31 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 		return nil, err
 	}
 
-	var out pb.RpcMembershipIsNameValidResponse
-	out.Code = model.MembershipTierDataNameValidity(resp.Code)
-	out.Description = resp.Description
+	out := pb.RpcMembershipIsNameValidResponse{}
+	if resp.Code == psp.IsNameValidResponse_Valid {
+		// no error
+		return &out, nil
+	}
+
+	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
+
+	switch resp.Code {
+	case psp.IsNameValidResponse_NoDotAny:
+		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_BAD_INPUT
+	case psp.IsNameValidResponse_TooShort:
+		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TOO_SHORT
+	case psp.IsNameValidResponse_TooLong:
+		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TOO_LONG
+	case psp.IsNameValidResponse_HasInvalidChars:
+		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS
+	case psp.IsNameValidResponse_TierFeatureNoName:
+		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME
+	default:
+		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_UNKNOWN_ERROR
+	}
+
+	out.Error.Description = resp.Description
+
 	return &out, nil
 }
 

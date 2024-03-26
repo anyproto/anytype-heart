@@ -16,6 +16,7 @@ type SpaceController interface {
 	SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
 	UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error
 	Close(ctx context.Context) error
+	GetStatus() spaceinfo.AccountStatus
 }
 
 type DeleteController interface {

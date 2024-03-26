@@ -1703,7 +1703,6 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [Membership.Tier](#anytype-model-Membership-Tier)
-    - [MembershipTierData.NameValidity](#anytype-model-MembershipTierData-NameValidity)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
@@ -11403,7 +11402,7 @@ before requesting a payment link and paying
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | requestedTier | [int32](#int32) |  |  |
-| requestedAnyName | [string](#string) |  |  |
+| requestedAnyName | [string](#string) |  | full name including .any suffix |
 
 
 
@@ -11419,8 +11418,6 @@ before requesting a payment link and paying
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Membership.IsNameValid.Response.Error](#anytype-Rpc-Membership-IsNameValid-Response-Error) |  |  |
-| code | [model.MembershipTierData.NameValidity](#anytype-model-MembershipTierData-NameValidity) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -19958,8 +19955,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
+| TOO_SHORT | 3 |  |
+| TOO_LONG | 4 |  |
+| HAS_INVALID_CHARS | 5 |  |
+| TIER_FEATURES_NO_NAME | 6 | if everything is fine - &#34;name is already taken&#34; check should be done in the NS see IsNameAvailable() |
 
 
 
@@ -24785,6 +24784,7 @@ Precondition: user A and user B opened the same block
 | bundledTemplates | [string](#string) |  |  |
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
+| areOldFilesRemoved | [bool](#bool) |  |  |
 
 
 
@@ -25910,6 +25910,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -25928,6 +25929,7 @@ Used to decode block meta only, without the content itself
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -25944,6 +25946,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -25959,6 +25962,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -25977,6 +25981,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -25995,6 +26000,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -26928,22 +26934,6 @@ in this case please call Finalize to finish the process |
 | TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
 | TierBuilder | 4 |  |
 | TierCoCreator | 5 |  |
-
-
-
-<a name="anytype-model-MembershipTierData-NameValidity"></a>
-
-### MembershipTierData.NameValidity
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Valid | 0 |  |
-| NoDotAny | 1 |  |
-| TooShort | 2 |  |
-| TooLong | 3 |  |
-| HasInvalidChars | 4 |  |
-| TierFeatureNoName | 5 | if everything is fine - &#34;name is already taken&#34; check should be done in the NS see IsNameAvailable() |
 
 
 
