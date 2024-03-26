@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/anyproto/any-sync/node/nodeclient"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -219,6 +220,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientserver.New()).
 		Register(streampool.New()).
 		Register(coordinatorclient.New()).
+		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(aclclient.NewAclJoiningClient()).

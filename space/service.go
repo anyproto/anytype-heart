@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
@@ -82,7 +82,8 @@ type service struct {
 	accountService      accountservice.Service
 	config              *config.Config
 	notificationService NotificationSender
-	updater        coordinatorStatusUpdater
+	updater             coordinatorStatusUpdater
+	spaceNameGetter     objectstore.SpaceNameGetter
 
 	personalSpaceId        string
 	techSpaceId            string
@@ -151,7 +152,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	s.notificationService = app.MustComponent[NotificationSender](a)
-
+	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	return err
 }
 
@@ -277,12 +278,13 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.Space
 func (s *service) sendNotification(spaceId string) {
 	identity := s.accountService.Account().SignKey.GetPublic().Account()
 	notificationId := strings.Join([]string{spaceId, identity}, "_")
+	spaceName := s.spaceNameGetter.GetSpaceName(spaceId)
 	err := s.notificationService.CreateAndSend(&model.Notification{
-		Id:         notificationId,
-		CreateTime: time.Now().Unix(),
+		Id: notificationId,
 		Payload: &model.NotificationPayloadOfParticipantRemove{
 			ParticipantRemove: &model.NotificationParticipantRemove{
-				SpaceId: spaceId,
+				SpaceId:   spaceId,
+				SpaceName: spaceName,
 			},
 		},
 		Space: spaceId,

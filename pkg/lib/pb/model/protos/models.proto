@@ -985,6 +985,7 @@ message Notification {
         model.Import.Type importType = 3;
         string spaceId = 4;
         string name = 5;
+        string spaceName = 6;
     }
 
     message Export {
@@ -1002,6 +1003,7 @@ message Notification {
         model.Import.ErrorCode errorCode = 2;
         string spaceId = 3;
         string name = 4;
+        string spaceName = 5;
     }
 
     message RequestToJoin {
