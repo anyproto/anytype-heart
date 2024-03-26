@@ -32,7 +32,7 @@ func NewStoreFixture(t *testing.T) *StoreFixture {
 	walletService.EXPECT().Name().Return(wallet.CName)
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
 
-	fullText := ftsearch.New()
+	fullText := ftsearch.BleveNew()
 	testApp := &app.App{}
 	testApp.Register(walletService)
 	err := fullText.Init(testApp)
