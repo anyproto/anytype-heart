@@ -42,7 +42,7 @@ var (
 type Service interface {
 	GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct)
 
-	UpdateIdentities()
+	UpdateGlobalNames()
 
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
@@ -231,7 +231,7 @@ func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.Sym
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
 }
 
-func (s *service) UpdateIdentities() {
+func (s *service) UpdateGlobalNames() {
 	select {
 	case s.globalNamesForceUpdate <- struct{}{}:
 	default:

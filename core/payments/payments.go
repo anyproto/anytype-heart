@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -13,8 +14,6 @@ import (
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
-
-	"unicode/utf8"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
@@ -34,8 +33,8 @@ const (
 	initialStatus       = -1
 )
 
-type identitiesUpdater interface {
-	UpdateIdentities()
+type globalNamesUpdater interface {
+	UpdateGlobalNames()
 }
 
 /*
@@ -92,7 +91,7 @@ type service struct {
 	mx                sync.Mutex
 	periodicGetStatus periodicsync.PeriodicSync
 	eventSender       event.Sender
-	profileUpdater    identitiesUpdater
+	profileUpdater    globalNamesUpdater
 }
 
 func (s *service) Name() (name string) {
@@ -105,7 +104,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
-	s.profileUpdater = app.MustComponent[identitiesUpdater](a)
+	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
 	return nil
 }
 
@@ -263,7 +262,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	// 5 - if requested any name has changed, then we need to update details of local identity
 	if isDiffRequestedName {
-		s.profileUpdater.UpdateIdentities()
+		s.profileUpdater.UpdateGlobalNames()
 	}
 
 	return &out, nil

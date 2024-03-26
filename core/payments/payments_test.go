@@ -36,15 +36,15 @@ var subsExpire time.Time = timeNow.Add(365 * 24 * time.Hour)
 // truncate nseconds
 var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
-type mockIdentitiesUpdater struct{}
+type mockGlobalNamesUpdater struct{}
 
-func (u *mockIdentitiesUpdater) UpdateIdentities() {}
+func (u *mockGlobalNamesUpdater) UpdateGlobalNames() {}
 
-func (u *mockIdentitiesUpdater) Init(*app.App) (err error) {
+func (u *mockGlobalNamesUpdater) Init(*app.App) (err error) {
 	return nil
 }
 
-func (u *mockIdentitiesUpdater) Name() string {
+func (u *mockGlobalNamesUpdater) Name() string {
 	return ""
 }
 
@@ -56,7 +56,7 @@ type fixture struct {
 	wallet            *mock_wallet.MockWallet
 	eventSender       *mock_event.MockSender
 	periodicGetStatus *mock_periodicsync.MockPeriodicSync
-	identitiesUpdater *mockIdentitiesUpdater
+	identitiesUpdater *mockGlobalNamesUpdater
 
 	*service
 }
@@ -192,7 +192,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -242,7 +242,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
