@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	queue2 "github.com/anyproto/anytype-heart/core/queue"
+	"github.com/anyproto/anytype-heart/core/queue"
 )
 
 func (f *fileSync) RemoveFile(fileId domain.FullFileId) error {
@@ -21,15 +21,15 @@ func (f *fileSync) RemoveFile(fileId domain.FullFileId) error {
 	})
 }
 
-func (f *fileSync) removingHandler(ctx context.Context, it *QueueItem) (queue2.Action, error) {
+func (f *fileSync) removingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
 	spaceID, fileId := it.SpaceId, it.FileId
 	err := f.removeFile(f.loopCtx, spaceID, fileId)
 	if err != nil {
-		return queue2.ActionRetry, fmt.Errorf("remove file: %w", err)
+		return queue.ActionRetry, fmt.Errorf("remove file: %w", err)
 	}
 	f.updateSpaceUsageInformation(spaceID)
 
-	return queue2.ActionDone, nil
+	return queue.ActionDone, nil
 }
 
 func (f *fileSync) RemoveSynchronously(spaceId string, fileId domain.FileId) (err error) {

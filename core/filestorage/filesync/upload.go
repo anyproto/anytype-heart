@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	queue2 "github.com/anyproto/anytype-heart/core/queue"
+	"github.com/anyproto/anytype-heart/core/queue"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -48,7 +48,7 @@ func (f *fileSync) ClearImportEvents() {
 	f.importEvents = nil
 }
 
-func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue2.Action, error) {
+func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
 	f.runOnUploadStartedHook(fileId, spaceId)
 	if err := f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
@@ -67,13 +67,13 @@ func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue2.
 		if err != nil {
 			log.Error("can't add upload task to retrying queue", zap.String("fileId", fileId.String()), zap.Error(err))
 		}
-		return queue2.ActionDone, err
+		return queue.ActionDone, err
 	}
 	f.runOnUploadedHook(fileId, spaceId)
 
 	f.updateSpaceUsageInformation(spaceId)
 
-	return queue2.ActionDone, f.removeFromUploadingQueues(it)
+	return queue.ActionDone, f.removeFromUploadingQueues(it)
 }
 
 func (f *fileSync) removeFromUploadingQueues(item *QueueItem) error {

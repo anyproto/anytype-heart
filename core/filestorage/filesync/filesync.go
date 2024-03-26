@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
-	queue2 "github.com/anyproto/anytype-heart/core/queue"
+	"github.com/anyproto/anytype-heart/core/queue"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -77,9 +77,9 @@ type fileSync struct {
 	onUploadStarted func(fileId domain.FileId) error
 	onLimited       func(fileId domain.FileId) error
 
-	uploadingQueue *queue2.Queue[*QueueItem]
-	retryingQueue  *queue2.Queue[*QueueItem]
-	removingQueue  *queue2.Queue[*QueueItem]
+	uploadingQueue *queue.Queue[*QueueItem]
+	retryingQueue  *queue.Queue[*QueueItem]
+	removingQueue  *queue.Queue[*QueueItem]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -134,11 +134,11 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	f.uploadingQueue = queue2.New(db, log.Logger, uploadKeyPrefix, makeQueueItem, f.uploadingHandler)
+	f.uploadingQueue = queue.New(db, log.Logger, uploadKeyPrefix, makeQueueItem, f.uploadingHandler)
 	f.uploadingQueue.Run()
-	f.retryingQueue = queue2.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.uploadingHandler, queue2.WithHandlerTickPeriod(loopTimeout))
+	f.retryingQueue = queue.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.uploadingHandler, queue.WithHandlerTickPeriod(loopTimeout))
 	f.retryingQueue.Run()
-	f.removingQueue = queue2.New(db, log.Logger, removeKeyPrefix, makeQueueItem, f.removingHandler)
+	f.removingQueue = queue.New(db, log.Logger, removeKeyPrefix, makeQueueItem, f.removingHandler)
 	f.removingQueue.Run()
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
