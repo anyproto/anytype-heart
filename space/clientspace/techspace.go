@@ -38,6 +38,7 @@ func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 			common:                 deps.CommonSpace,
 			loadMandatoryObjectsCh: make(chan struct{}),
 			personalSpaceId:        deps.PersonalSpaceId,
+			myIdentity:             deps.AccountService.Account().SignKey.GetPublic(),
 		},
 		TechSpace: deps.TechSpace,
 	}

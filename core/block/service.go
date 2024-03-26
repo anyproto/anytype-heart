@@ -205,7 +205,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
-		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags); err != nil {
+		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
 		afterApplyTime := time.Now()
@@ -798,7 +798,7 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 		return "", nil, err
 	}
 
-	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, true)
+	res := s.bookmark.FetchBookmarkContent(req.SpaceId, url, req.AddPageContent)
 	content := res()
 	shouldUpdateDetails := s.updateBookmarkContentWithUserDetails(req.Details, objectDetails, content)
 	if shouldUpdateDetails {

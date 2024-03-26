@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -794,14 +795,15 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 
 	originImport := objectorigin.Import(req.Type)
 	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
-
-	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSendLocal(&model.Notification{
+	code := common.GetImportErrorCode(err)
+	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
+		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Space:   req.SpaceId,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
 			ProcessId:  processID,
-			ErrorCode:  common.GetImportErrorCode(err),
+			ErrorCode:  code,
 			ImportType: req.Type,
 			SpaceId:    req.SpaceId,
 		}},
@@ -809,22 +811,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	if notificationSendErr != nil {
 		log.Errorf("failed to send notification: %v", notificationSendErr)
 	}
-
-	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionId, nil)
-	}
-	switch {
-	case errors.Is(err, common.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)
-	case errors.Is(err, common.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
-	case errors.Is(err, common.ErrLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
-	case errors.Is(err, common.ErrFileLoad):
-		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, "", err)
-	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
-	}
+	return response(pb.RpcObjectImportResponseErrorCode(code), rootCollectionId, err)
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
@@ -913,8 +900,6 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace); err != nil {
-		return response(pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectImportExperienceResponseError_NULL, nil)
+	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
+	return response(common.GetGalleryResponseCode(err), err)
 }

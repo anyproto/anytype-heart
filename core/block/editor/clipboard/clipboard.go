@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -225,7 +226,8 @@ func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang
 	return firstTextBlock != nil &&
 		lastTextBlock == nil &&
 		rang != nil &&
-		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
+		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text)) &&
+		rang.To > 0
 }
 
 func unlinkAndClearBlocks(
@@ -315,8 +317,6 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, nil
 	}
 
-	textArr := strings.Split(req.TextSlot, "\n")
-
 	if len(req.FocusedBlockId) > 0 {
 		block := cb.Pick(req.FocusedBlockId)
 		if block != nil {
@@ -327,10 +327,12 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 	}
 
 	mdText := whitespace.WhitespaceNormalizeString(req.TextSlot)
-
 	blocks, _, err := anymark.MarkdownToBlocks([]byte(mdText), "", []string{})
 	if err != nil {
-		return cb.pasteRawText(ctx, req, textArr, groupId)
+		// in case we've failed to parse the text as a valid markdown,
+		// split it into text paragraphs with the same logic like in anymark and paste it as a plain text
+		paragraphs := splitStringIntoParagraphs(req.TextSlot, anymark.TextBlockLengthSoftLimit)
+		return cb.pasteRawText(ctx, req, paragraphs, groupId)
 	}
 	req.AnySlot = append(req.AnySlot, blocks...)
 
@@ -452,6 +454,7 @@ func (cb *clipboard) pasteAny(
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
+	blockIds = ctrl.blockIds
 
 	if len(missingRelationKeys) > 0 {
 		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
@@ -638,4 +641,46 @@ func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, 
 		}
 	}
 	return texts, numberedCount
+}
+
+// splitStringIntoParagraphs splits text into pararagraphs
+// - when text has a double line break, it is considered as a paragraph separator
+// - when text has a single line break, it is considered as a soft line break, not a paragraph separator
+// - when text has a single line break and the current block is longer than the soft limit, it is considered as a paragraph separator
+// - func consider line with whitespaces as a paragraph separator (e.g. "\n   \n")
+func splitStringIntoParagraphs(s string, lineBreakSoftLimit int) []string {
+	var blocks []string
+	var currentBlock strings.Builder
+
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.TrimSpace(line) == "" { // This is a simple proxy for a double line break.
+			if currentBlock.Len() > 0 {
+				blocks = append(blocks, currentBlock.String())
+				currentBlock.Reset()
+			}
+			continue
+		}
+
+		// Add line to current block with space handling for the soft limit.
+		if lineBreakSoftLimit > 0 && currentBlock.Len()+len(line) > lineBreakSoftLimit && currentBlock.Len() > 0 {
+			// Append the current block and start a new one
+			blocks = append(blocks, currentBlock.String())
+			currentBlock.Reset()
+		}
+
+		if currentBlock.Len() > 0 {
+			currentBlock.WriteString("\n")
+		}
+		currentBlock.WriteString(line)
+	}
+
+	// Don't forget to add the last block if it exists.
+	if currentBlock.Len() > 0 {
+		blocks = append(blocks, currentBlock.String())
+	}
+
+	return blocks
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -225,6 +226,40 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	}
 
 	return ids
+}
+
+func (l *Dataview) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	for _, view := range l.content.Views {
+		for _, filter := range view.Filters {
+			l.migrateFilesInFilter(filter, migrateFunc)
+		}
+	}
+}
+
+func (l *Dataview) migrateFilesInFilter(filter *model.BlockContentDataviewFilter, migrateFunc func(oldHash string) (newHash string)) {
+	if filter.Format != model.RelationFormat_object && filter.Format != model.RelationFormat_file {
+		return
+	}
+	if filter.Value == nil {
+		return
+	}
+	switch v := filter.Value.Kind.(type) {
+	case *types.Value_StringValue:
+		filter.Value = pbtypes.String(migrateFunc(v.StringValue))
+	case *types.Value_ListValue:
+		var changed bool
+		ids := pbtypes.ListValueToStrings(v.ListValue)
+		for i, id := range ids {
+			newId := migrateFunc(id)
+			if newId != id {
+				ids[i] = newId
+				changed = true
+			}
+		}
+		if changed {
+			filter.Value = pbtypes.StringList(ids)
+		}
+	}
 }
 
 func getIdsFromFilters(filters []*model.BlockContentDataviewFilter) (ids []string) {
@@ -480,4 +515,8 @@ func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) err
 	}
 
 	return nil
+}
+
+func (d *Dataview) IsEmpty() bool {
+	return d.content.TargetObjectId == "" && len(d.content.Views) == 0
 }

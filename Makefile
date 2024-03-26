@@ -80,6 +80,7 @@ test-deps:
 	@go build -o deps github.com/vektra/mockery/v2
 	@go generate ./...
 	@$(DEPS_PATH)/mockery --disable-version-string
+	@go run ./cmd/testcase generate-json-helpers
 
 clear-test-deps:
 	@echo 'Removing test mocks...'
@@ -174,6 +175,7 @@ install-dev-android: setup-go build-android
 	# Print the updated gradle file (for verification)
 	@cd $(CLIENT_ANDROID_PATH) && make setup_local_mw
 	@cd $(CLIENT_ANDROID_PATH) && make normalize_mw_imports
+	@cd $(CLIENT_ANDROID_PATH) && make clean_protos
 
 setup-gomobile:
 	go build -o deps golang.org/x/mobile/cmd/gomobile

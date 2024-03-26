@@ -797,6 +797,53 @@ func (_c *MockFileSync_RemoveFile_Call) RunAndReturn(run func(string, domain.Fil
 	return _c
 }
 
+// RemoveSynchronously provides a mock function with given fields: spaceId, fileId
+func (_m *MockFileSync) RemoveSynchronously(spaceId string, fileId domain.FileId) error {
+	ret := _m.Called(spaceId, fileId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveSynchronously")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, domain.FileId) error); ok {
+		r0 = rf(spaceId, fileId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileSync_RemoveSynchronously_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveSynchronously'
+type MockFileSync_RemoveSynchronously_Call struct {
+	*mock.Call
+}
+
+// RemoveSynchronously is a helper method to define mock.On call
+//   - spaceId string
+//   - fileId domain.FileId
+func (_e *MockFileSync_Expecter) RemoveSynchronously(spaceId interface{}, fileId interface{}) *MockFileSync_RemoveSynchronously_Call {
+	return &MockFileSync_RemoveSynchronously_Call{Call: _e.mock.On("RemoveSynchronously", spaceId, fileId)}
+}
+
+func (_c *MockFileSync_RemoveSynchronously_Call) Run(run func(spaceId string, fileId domain.FileId)) *MockFileSync_RemoveSynchronously_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(domain.FileId))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_RemoveSynchronously_Call) Return(err error) *MockFileSync_RemoveSynchronously_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileSync_RemoveSynchronously_Call) RunAndReturn(run func(string, domain.FileId) error) *MockFileSync_RemoveSynchronously_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *MockFileSync) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -983,6 +1030,53 @@ func (_c *MockFileSync_SyncStatus_Call) Return(ss filesync.SyncStatus, err error
 }
 
 func (_c *MockFileSync_SyncStatus_Call) RunAndReturn(run func() (filesync.SyncStatus, error)) *MockFileSync_SyncStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UploadSynchronously provides a mock function with given fields: spaceId, fileId
+func (_m *MockFileSync) UploadSynchronously(spaceId string, fileId domain.FileId) error {
+	ret := _m.Called(spaceId, fileId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UploadSynchronously")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, domain.FileId) error); ok {
+		r0 = rf(spaceId, fileId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileSync_UploadSynchronously_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UploadSynchronously'
+type MockFileSync_UploadSynchronously_Call struct {
+	*mock.Call
+}
+
+// UploadSynchronously is a helper method to define mock.On call
+//   - spaceId string
+//   - fileId domain.FileId
+func (_e *MockFileSync_Expecter) UploadSynchronously(spaceId interface{}, fileId interface{}) *MockFileSync_UploadSynchronously_Call {
+	return &MockFileSync_UploadSynchronously_Call{Call: _e.mock.On("UploadSynchronously", spaceId, fileId)}
+}
+
+func (_c *MockFileSync_UploadSynchronously_Call) Run(run func(spaceId string, fileId domain.FileId)) *MockFileSync_UploadSynchronously_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(domain.FileId))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_UploadSynchronously_Call) Return(_a0 error) *MockFileSync_UploadSynchronously_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFileSync_UploadSynchronously_Call) RunAndReturn(run func(string, domain.FileId) error) *MockFileSync_UploadSynchronously_Call {
 	_c.Call.Return(run)
 	return _c
 }

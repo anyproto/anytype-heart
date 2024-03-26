@@ -23,6 +23,7 @@ const (
 	SmartBlockTypeBundledRelation   = SmartBlockType(model.SmartBlockType_BundledRelation)
 	SmartBlockTypeSubObject         = SmartBlockType(model.SmartBlockType_SubObject)
 	SmartBlockTypeBundledObjectType = SmartBlockType(model.SmartBlockType_BundledObjectType)
+	SmartBlockTypeParticipant       = SmartBlockType(model.SmartBlockType_Participant)
 	SmartBlockTypeAnytypeProfile    = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeIdentity          = SmartBlockType(model.SmartBlockType_Identity)
@@ -34,7 +35,8 @@ const (
 	SmartBlockTypeSpaceView      = SmartBlockType(model.SmartBlockType_SpaceView)
 	SmartBlockTypeRelationOption = SmartBlockType(model.SmartBlockType_STRelationOption)
 
-	SmartBlockTypeMissingObject = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeMissingObject      = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeNotificationObject = SmartBlockType(model.SmartBlockType_NotificationObject)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")

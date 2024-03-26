@@ -53,13 +53,14 @@ type MetricsService interface {
 }
 
 type service struct {
-	lock         sync.RWMutex
-	appVersion   string
-	startVersion string
-	userId       string
-	deviceId     string
-	platform     string
-	clients      [2]*client
+	lock           sync.RWMutex
+	appVersion     string
+	startVersion   string
+	userId         string
+	deviceId       string
+	platform       string
+	clients        [2]*client
+	alreadyRunning bool
 }
 
 func (s *service) SendSampled(ev SamplableEvent) {
@@ -161,9 +162,14 @@ func (s *service) GetStartVersion() string {
 func (s *service) Run() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if s.alreadyRunning {
+		return
+	}
+	s.alreadyRunning = true
+
 	for _, c := range s.clients {
 		c.ctx, c.cancel = context.WithCancel(context.Background())
-		c.batcher = mb.New[amplitude.Event](0)
+		c.setBatcher(mb.New[amplitude.Event](0))
 		go c.startAggregating()
 		go c.startSendingBatchMessages(s)
 	}
@@ -171,10 +177,11 @@ func (s *service) Run() {
 
 func (s *service) Close() {
 	s.lock.Lock()
+	defer s.lock.Unlock()
 	for _, c := range s.clients {
 		c.Close()
 	}
-	defer s.lock.Unlock()
+	s.alreadyRunning = false
 }
 
 func (s *service) Send(ev amplitude.Event) {

@@ -32,8 +32,8 @@ func New() LinkPreview {
 }
 
 const (
-	// read no more than 400 kb
-	maxBytesToRead     = 400000
+	// read no more than 10 mb
+	maxBytesToRead     = 10 * 1024 * 1024
 	maxDescriptionSize = 200
 )
 

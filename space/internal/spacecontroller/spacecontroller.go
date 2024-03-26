@@ -12,9 +12,11 @@ type SpaceController interface {
 	Start(ctx context.Context) error
 	Mode() mode.Mode
 	Current() any
-	UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error
-	UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error
+	UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
+	SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
+	UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error
 	Close(ctx context.Context) error
+	GetStatus() spaceinfo.AccountStatus
 }
 
 type DeleteController interface {

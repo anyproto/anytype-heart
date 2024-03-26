@@ -44,9 +44,12 @@ enum SmartBlockType {
     SpaceView = 0x212;
 
     Identity = 0x214;
+    Participant = 0x216;
     MissingObject = 0x207;
 
     FileObject = 0x215;
+
+    NotificationObject = 0x217;
 }
 
 message Block {
@@ -662,6 +665,8 @@ message Restrictions {
         Template = 7;
         // restricts duplicate object
         Duplicate = 8;
+        // can be set only for types. Restricts creating objects of this type
+        CreateObjectOfThisType = 9;
     }
 
 
@@ -704,6 +709,7 @@ message ObjectType {
     bool installedByDefault = 11;
     string key = 12; // name of objectType (can be localized for bundled types)
     int64 revision = 13; // revision of system objectType. Used to check if we should change type content or not
+    bool restrictObjectCreation = 14; // restricts creating objects of this type for users
 
     enum Layout {
         basic = 0;
@@ -725,8 +731,9 @@ message ObjectType {
         video = 16;
         date = 17;
         spaceView = 18;
+        participant = 19;
 
-        database = 20; // to be released later
+        pdf = 20;
     }
 }
 
@@ -905,6 +912,39 @@ enum SpaceStatus {
     RemoteDeleted = 6;
     // SpaceDeleted - the space should be deleted in the network
     SpaceDeleted = 7;
+    // SpaceActive - the space is active in the network
+    SpaceActive = 8;
+    // SpaceJoining - the account is joining the space
+    SpaceJoining = 9;
+    // SpaceRemoving - the account is removing from space or the space is removed from network
+    SpaceRemoving = 10;
+}
+
+message ParticipantPermissionChange {
+    string identity = 1;
+    ParticipantPermissions perms = 2;
+}
+
+enum ParticipantPermissions {
+    Reader = 0;
+    Writer = 1;
+    Owner = 2;
+    NoPermissions = 3;
+}
+
+enum ParticipantStatus {
+    Joining = 0;
+    Active = 1;
+    Removed = 2;
+    Declined = 3;
+    Removing = 4;
+    Canceled = 5;
+}
+
+enum SpaceAccessType {
+    Private = 0;
+    Personal = 1;
+    Shared = 2;
 }
 
 message Metadata {
@@ -928,8 +968,16 @@ message Notification {
         Import import = 6;
         Export export = 8;
         GalleryImport galleryImport = 9;
+        RequestToJoin requestToJoin = 10;
+        Test test = 11;
+        ParticipantRequestApproved participantRequestApproved = 13;
+        RequestToLeave requestToLeave = 15;
+        ParticipantRemove participantRemove = 16;
+        ParticipantRequestDecline participantRequestDecline = 17;
+        ParticipantPermissionsChange participantPermissionsChange = 18;
     }
     string space = 7;
+    string aclHeadId = 14;
 
     message Import {
         string processId = 1;
@@ -954,6 +1002,49 @@ message Notification {
         model.Import.ErrorCode errorCode = 2;
         string spaceId = 3;
         string name = 4;
+    }
+
+    message RequestToJoin {
+        string spaceId = 1;
+        string identity = 2;
+        string identityName = 3;
+        string identityIcon = 4;
+        string spaceName = 5;
+    }
+
+    message Test {}
+
+    message ParticipantRequestApproved {
+        string spaceId = 1;
+        ParticipantPermissions permissions = 2;
+        string spaceName = 5;
+    }
+
+    message RequestToLeave {
+        string spaceId = 1;
+        string identity = 2;
+        string identityName = 3;
+        string identityIcon = 4;
+        string spaceName = 5;
+    }
+
+    message ParticipantRemove {
+        string identity = 1;
+        string identityName = 2;
+        string identityIcon = 3;
+        string spaceId = 4;
+        string spaceName = 5;
+    }
+
+    message ParticipantRequestDecline {
+        string spaceId = 1;
+        string spaceName = 3;
+    }
+
+    message ParticipantPermissionsChange {
+        string spaceId = 1;
+        ParticipantPermissions permissions = 2;
+        string spaceName = 3;
     }
 
     enum Status {
@@ -999,17 +1090,41 @@ message Import {
         IMPORT_IS_CANCELED = 6;
         LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
         FILE_LOAD_ERROR = 8;
+        INSUFFICIENT_PERMISSIONS = 9;
     }
 }
 
-message FileEncryptionKey {
-    string path = 1;
-    string key = 2;
+message Invite {
+    bytes payload = 1;
+    bytes signature = 2;
+}
+
+message InvitePayload {
+    string creatorIdentity = 1;
+    string creatorName = 2;
+    bytes inviteKey = 3;
+    string spaceId = 4;
+    string spaceName = 5;
+    string spaceIconCid = 6;
+    repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
+}
+
+message IdentityProfile {
+    string identity = 1;
+    string name = 2;
+    string iconCid = 3;
+    repeated FileEncryptionKey iconEncryptionKeys = 4;
+    string description = 5;
 }
 
 message FileInfo {
     string fileId = 1;
     repeated FileEncryptionKey encryptionKeys = 2;
+}
+
+message FileEncryptionKey {
+  string path = 1;
+  string key = 2;
 }
 
 enum ImageKind {

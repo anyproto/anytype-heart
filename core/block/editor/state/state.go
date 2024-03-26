@@ -117,6 +117,7 @@ type State struct {
 	details           *types.Struct
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
+	notifications     map[string]*model.Notification
 
 	migrationVersion uint32
 
@@ -133,6 +134,8 @@ type State struct {
 	groupId                  string
 	noObjectType             bool
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
+	parentIdsCache           map[string]string
+	isParentIdsCacheEnabled  bool
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -201,6 +204,7 @@ func (s *State) Add(b simple.Block) (ok bool) {
 	if s.Pick(id) == nil {
 		s.blocks[id] = b
 		s.blockInit(b)
+		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
 		return true
 	}
 	return false
@@ -210,8 +214,18 @@ func (s *State) Set(b simple.Block) {
 	if !s.Exists(b.Model().Id) {
 		s.Add(b)
 	} else {
+		s.removeFromCache(s.Pick(b.Model().Id).Model().ChildrenIds...)
+		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
 		s.blocks[b.Model().Id] = b
 		s.blockInit(b)
+	}
+}
+
+func (s *State) removeFromCache(ids ...string) {
+	if s.isParentIdsCacheEnabled {
+		for _, id := range ids {
+			delete(s.parentIdsCache, id)
+		}
 	}
 }
 
@@ -269,6 +283,7 @@ func (s *State) Unlink(id string) (ok bool) {
 	if parent := s.GetParentOf(id); parent != nil {
 		parentM := parent.Model()
 		parentM.ChildrenIds = slice.RemoveMut(parentM.ChildrenIds, id)
+		s.removeFromCache(id)
 		return true
 	}
 	return
@@ -308,6 +323,13 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	if s.isParentIdsCacheEnabled {
+		if parentId, ok := s.getParentIdsCache()[id]; ok {
+			return s.Pick(parentId)
+		}
+		return
+	}
+
 	s.Iterate(func(b simple.Block) bool {
 		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
 			res = b
@@ -316,6 +338,32 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		return true
 	})
 	return
+}
+
+func (s *State) ResetParentIdsCache() {
+	s.parentIdsCache = nil
+	s.isParentIdsCacheEnabled = false
+}
+
+func (s *State) EnableParentIdsCache() bool {
+	if s.isParentIdsCacheEnabled {
+		return true
+	}
+	s.isParentIdsCacheEnabled = true
+	return false
+}
+
+func (s *State) getParentIdsCache() map[string]string {
+	if s.parentIdsCache == nil {
+		s.parentIdsCache = make(map[string]string)
+		s.Iterate(func(block simple.Block) bool {
+			for _, id := range block.Model().ChildrenIds {
+				s.parentIdsCache[id] = block.Model().Id
+			}
+			return true
+		})
+	}
+	return s.parentIdsCache
 }
 
 func (s *State) IsChild(parentId, childId string) bool {
@@ -422,6 +470,12 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
+	alreadyEnabled := s.EnableParentIdsCache()
+	defer func() {
+		if !alreadyEnabled {
+			s.ResetParentIdsCache()
+		}
+	}()
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -648,24 +702,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.relationLinks = s.relationLinks
 	}
 
-	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
-		// revert lastModified update if we don't have any actual changes being made
-		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
-		prevModifiedBy := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedBy.String())
-		if s.localDetails != nil {
-			if _, isNull := prevModifiedDate.GetKind().(*types.Value_NullValue); prevModifiedDate == nil || isNull {
-				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
-			} else {
-				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
-			}
-			if _, isNull := prevModifiedBy.GetKind().(*types.Value_NullValue); prevModifiedBy == nil || isNull {
-				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed by: prev value is nil")
-			} else {
-				s.localDetails.Fields[bundle.RelationKeyLastModifiedBy.String()] = prevModifiedBy
-			}
-		}
-	}
-
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
 		if diff := pbtypes.StructDiff(prev, s.localDetails); diff != nil {
@@ -692,8 +728,11 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.originalCreatedTimestamp = s.originalCreatedTimestamp
 	}
 
-	msgs = s.processTrailingDuplicatedEvents(msgs)
+	if s.parent != nil && s.notifications != nil {
+		s.parent.notifications = s.notifications
+	}
 
+	msgs = s.processTrailingDuplicatedEvents(msgs)
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -728,6 +767,9 @@ func (s *State) intermediateApply() {
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
+	}
+	if s.notifications != nil {
+		s.parent.notifications = s.notifications
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
 	s.parent.fileInfo = s.fileInfo
@@ -1122,33 +1164,57 @@ func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
 // ModifyLinkedFilesInDetails iterates over all file object ids in details and modifies them using modifier function.
 // Detail is saved only if at least one id is changed
 func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
-	det := s.Details()
-	if det == nil || det.Fields == nil {
+	details := s.Details()
+	if details == nil || details.Fields == nil {
 		return
 	}
 
 	for _, key := range s.FileRelationKeys() {
 		if key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, key)
+			v := pbtypes.GetString(details, key)
 			_, err := cid.Decode(v)
 			if err != nil {
 				// this is an exception cause coverId can contain not a file hash but color
 				continue
 			}
 		}
-		if ids := pbtypes.GetStringList(det, key); len(ids) > 0 {
-			var anyChanges bool
-			for i, oldId := range ids {
-				if oldId == "" {
-					continue
-				}
-				newId := modifier(oldId)
-				if oldId != newId {
-					ids[i] = newId
-					anyChanges = true
-				}
+
+		s.modifyIdsInDetail(details, key, modifier)
+	}
+}
+
+// ModifyLinkedObjectsInDetails iterates over all object ids in details and modifies them using modifier function.
+// Detail is saved only if at least one id is changed
+func (s *State) ModifyLinkedObjectsInDetails(modifier func(id string) string) {
+	details := s.Details()
+	if details == nil || details.Fields == nil {
+		return
+	}
+	for _, rel := range s.GetRelationLinks() {
+		if rel.Format == model.RelationFormat_object {
+			s.modifyIdsInDetail(details, rel.Key, modifier)
+		}
+	}
+}
+
+func (s *State) modifyIdsInDetail(details *types.Struct, key string, modifier func(id string) string) {
+	if ids := pbtypes.GetStringList(details, key); len(ids) > 0 {
+		var anyChanges bool
+		for i, oldId := range ids {
+			if oldId == "" {
+				continue
 			}
-			if anyChanges {
+			newId := modifier(oldId)
+			if oldId != newId {
+				ids[i] = newId
+				anyChanges = true
+			}
+		}
+		if anyChanges {
+			switch details.Fields[key].Kind.(type) {
+			case *types.Value_StringValue:
+				s.SetDetail(key, pbtypes.String(ids[0]))
+			case *types.Value_ListValue:
 				s.SetDetail(key, pbtypes.StringList(ids))
 			}
 		}
@@ -1299,6 +1365,7 @@ func (s *State) Copy() *State {
 		uniqueKeyInternal:        s.uniqueKeyInternal,
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
 		fileInfo:                 s.fileInfo,
+		notifications:            s.notifications,
 	}
 	return copy
 }
@@ -1830,6 +1897,47 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
 	}
 	s.AddRelationLinks(links...)
+}
+
+func (s *State) GetNotificationById(id string) *model.Notification {
+	iterState := s.findStateWithNonEmptyNotifications()
+	if iterState == nil {
+		return nil
+	}
+	if notification, ok := iterState.notifications[id]; ok {
+		return notification
+	}
+	return nil
+}
+
+func (s *State) AddNotification(notification *model.Notification) {
+	if s.notifications == nil {
+		s.notifications = make(map[string]*model.Notification)
+	}
+	if s.parent != nil {
+		for _, n := range s.parent.ListNotifications() {
+			if _, ok := s.notifications[n.Id]; !ok {
+				s.notifications[n.Id] = pbtypes.CopyNotification(n)
+			}
+		}
+	}
+	s.notifications[notification.Id] = notification
+}
+
+func (s *State) ListNotifications() map[string]*model.Notification {
+	iterState := s.findStateWithNonEmptyNotifications()
+	if iterState == nil {
+		return nil
+	}
+	return iterState.notifications
+}
+
+func (s *State) findStateWithNonEmptyNotifications() *State {
+	iterState := s
+	for iterState != nil && iterState.notifications == nil {
+		iterState = iterState.parent
+	}
+	return iterState
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation

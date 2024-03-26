@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -22,8 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	textutil "github.com/anyproto/anytype-heart/util/text"
-
-	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 )
 
 func TestCommonSmart_pasteHtml(t *testing.T) {
@@ -149,13 +148,13 @@ func TestCommonSmart_pasteAny(t *testing.T) {
 		checkBlockText(t, sb, []string{"11111", "22222", "aaaaa", "bbbbb", "55555"})
 	})
 
-	t.Run("9. Save id of focused block", func(t *testing.T) {
+	t.Run("9. Return ids of new blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
-		pasteAny(t, sb, "4", model.Range{}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
+		ids, isSameFocusedBlock := pasteAny(t, sb, "4", model.Range{}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "44444", "55555"})
-		assert.Equal(t, sb.Blocks()[5].Id, "4")
+		assert.Len(t, ids, 2)
+		assert.False(t, isSameFocusedBlock)
 	})
-
 }
 
 func TestCommonSmart_splitMarks(t *testing.T) {
@@ -1310,6 +1309,124 @@ func Test_CopyAndCutText(t *testing.T) {
 		assert.Equal(t, expected, textSlotCopy)
 		assert.Equal(t, expected, textSlotCut)
 	})
+
+	t.Run("cut/copy - text range from 0", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 7},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 7},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "some te"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 2)
+	})
+
+	t.Run("cut/copy - text range from 0 to the end of block", func(t *testing.T) {
+		// given
+		const expected = "some text 1"
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: int32(len(expected))},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: int32(len(expected))},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 1)
+	})
+
+	t.Run("cut/copy - inner text range", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(sb)
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 2, To: 8},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 2, To: 8},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "me tex"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 2)
+	})
+
+	t.Run("cut/copy - text range from 0 to 0", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		bl := givenBlockWithStyle(0, "")
+		insertBlock(s, bl, "")
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(sb)
+		textSlotCopy, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			Blocks:            []*model.Block{bl},
+		})
+		textSlotCut, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			Blocks:            []*model.Block{bl},
+		})
+
+		// then
+		require.NoError(t, err)
+		const expected = "some text 1"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+		assert.Len(t, sb.Blocks(), 1)
+		assert.Len(t, anySlotCopy, 1)
+		assert.Len(t, anySlotCut, 1)
+	})
 }
 
 func givenRow3Level1NumberedBlock(s *state.State) *model.Block {
@@ -1452,5 +1569,106 @@ func givenBlockWithStyle(style model.BlockContentTextStyle, emoji string) *model
 				IconEmoji: emoji,
 			},
 		},
+	}
+}
+
+func Test_splitStringIntoParagraphs(t *testing.T) {
+	type args struct {
+		s                  string
+		lineBreakSoftLimit int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			"double",
+			args{
+				s: `aaa
+
+bbb
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"double with whitespaces",
+			args{
+				s: `aaa
+   
+bbb
+ 
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"more than 2 line breaks with whitespaces",
+			args{
+				s: `aaa
+   
+
+ 
+  
+
+
+bbb
+
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{"aaa", "bbb", "ccc"},
+		},
+		{
+			"single",
+			args{
+				s: `aaa
+bbb`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{`aaa
+bbb`},
+		},
+		{
+			"mixed",
+			args{
+				s: `aaa
+bbb
+
+ccc`,
+				lineBreakSoftLimit: 1024,
+			},
+			[]string{`aaa
+bbb`, "ccc"},
+		},
+		{
+			"soft limit",
+			args{
+				s: `very long string that is longer than the soft limit
+bbb`,
+				lineBreakSoftLimit: 15,
+			},
+			[]string{`very long string that is longer than the soft limit`, `bbb`},
+		},
+		{
+			"soft limit disabled",
+			args{
+				s: `very long string
+bbb`,
+				lineBreakSoftLimit: 0,
+			},
+			[]string{`very long string
+bbb`},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, splitStringIntoParagraphs(tt.args.s, tt.args.lineBreakSoftLimit), "splitStringIntoParagraphs(%v, %v)", tt.args.s, tt.args.lineBreakSoftLimit)
+		})
 	}
 }

@@ -76,14 +76,22 @@ func (s *spaceController) SpaceId() string {
 	return addr.AnytypeMarketplaceWorkspace
 }
 
-func (s *spaceController) UpdateStatus(ctx context.Context, status spaceinfo.AccountStatus) error {
+func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	return nil
 }
 
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	return nil
+}
+
+func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	return nil
 }
 
 func (s *spaceController) Close(ctx context.Context) error {
 	return nil
+}
+
+func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
+	return spaceinfo.AccountStatusUnknown
 }

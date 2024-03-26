@@ -20,6 +20,10 @@ import (
 
 var log = logging.Logger("anytype-anymark")
 
+// BlockLengthSoftLimit is the soft limit for the length of a text block.
+// In case text block length exceeds this limit and the soft line break found(e.g. single \n) the new text block will be started.
+const TextBlockLengthSoftLimit = 1024
+
 type Renderer struct {
 	*blocksRenderer
 }
@@ -393,7 +397,7 @@ func (r *Renderer) renderText(_ util.BufWriter,
 	segment := n.Segment
 
 	r.AddTextToBuffer(string(segment.Value(source)))
-	if n.HardLineBreak() {
+	if n.HardLineBreak() || n.SoftLineBreak() && r.TextBufferLen() > TextBlockLengthSoftLimit {
 		r.openTextBlockWithStyle(false, model.BlockContentText_Paragraph, nil)
 
 	} else if n.SoftLineBreak() {

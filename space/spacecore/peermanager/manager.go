@@ -39,7 +39,6 @@ func (n *clientPeerManager) Init(_ *app.App) (err error) {
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
-	go n.manageResponsiblePeers()
 	return
 }
 
@@ -48,6 +47,7 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
+	go n.manageResponsiblePeers()
 	return
 }
 

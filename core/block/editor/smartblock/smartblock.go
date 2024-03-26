@@ -11,6 +11,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
@@ -32,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -59,6 +60,7 @@ const (
 	DoSnapshot
 	SkipIfNoChanges
 	KeepInternalFlags
+	IgnoreNoPermissions // Used only for read-only actions like InitObject or OpenObject
 )
 
 type Hook int
@@ -87,7 +89,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 func New(
 	space Space,
-	currentProfileId string,
+	currentParticipantId string,
 	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
@@ -95,12 +97,12 @@ func New(
 	eventSender event.Sender,
 ) SmartBlock {
 	s := &smartBlock{
-		currentProfileId: currentProfileId,
-		space:            space,
-		hooks:            map[Hook][]HookCallback{},
-		hooksOnce:        map[string]struct{}{},
-		Locker:           &sync.Mutex{},
-		sessions:         map[string]session.Context{},
+		currentParticipantId: currentParticipantId,
+		space:                space,
+		hooks:                map[Hook][]HookCallback{},
+		hooksOnce:            map[string]struct{}{},
+		Locker:               &sync.Mutex{},
+		sessions:             map[string]session.Context{},
 
 		fileStore:          fileStore,
 		restrictionService: restrictionService,
@@ -214,15 +216,15 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	currentProfileId string
-	depIds           []string // slice must be sorted
-	sessions         map[string]session.Context
-	undo             undo.History
-	source           source.Source
-	lastDepDetails   map[string]*pb.EventObjectDetailsSet
-	restrictions     restriction.Restrictions
-	isDeleted        bool
-	disableLayouts   bool
+	currentParticipantId string
+	depIds               []string // slice must be sorted
+	sessions             map[string]session.Context
+	undo                 undo.History
+	source               source.Source
+	lastDepDetails       map[string]*pb.EventObjectDetailsSet
+	restrictions         restriction.Restrictions
+	isDeleted            bool
+	disableLayouts       bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -344,7 +346,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	ctx.State.AddBundledRelations(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
-		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentProfileId, "", sb.objectStore).Migrate(ctx.State)
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(ctx.State)
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
@@ -549,13 +551,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return ErrIsDeleted
 	}
 	var (
-		sendEvent         = true
-		addHistory        = true
-		doSnapshot        = false
-		checkRestrictions = true
-		hooks             = true
-		skipIfNoChanges   = false
-		keepInternalFlags = false
+		sendEvent           = true
+		addHistory          = true
+		doSnapshot          = false
+		checkRestrictions   = true
+		hooks               = true
+		skipIfNoChanges     = false
+		keepInternalFlags   = false
+		ignoreNoPermissions = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -573,6 +576,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			skipIfNoChanges = true
 		case KeepInternalFlags:
 			keepInternalFlags = true
+		case IgnoreNoPermissions:
+			ignoreNoPermissions = true
 		}
 	}
 
@@ -599,16 +604,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		if lastModifiedFromState > 0 {
 			lastModified = time.Unix(lastModifiedFromState, 0)
 		}
-		s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
 
 		if existingCreatedDate := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()); existingCreatedDate == 0 || existingCreatedDate > lastModified.Unix() {
 			// this can happen if we don't have creation date in the root change
 			s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
 		}
 	}
-
-	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentProfileId))
-	s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
 
 	sb.beforeStateApply(s)
 
@@ -648,6 +649,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	pushChange := func() error {
+		if !sb.source.ReadOnly() {
+			// We can set details directly in object's state, they'll be indexed correctly
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentParticipantId))
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
+		}
 		fileDetailsKeys := st.FileRelationKeys()
 		var fileDetailsKeysFiltered []string
 		for _, ch := range changes {
@@ -665,6 +671,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			DoSnapshot:        doSnapshot,
 		}
 		changeId, err = sb.source.PushChange(pushChangeParams)
+		// For read-only mode
+		if errors.Is(err, list.ErrInsufficientPermissions) && ignoreNoPermissions {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
@@ -689,7 +699,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				sb.undo.Add(act)
 			}
 		}
-	} else if hasStoreChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
+	} else if hasChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		err = pushChange()
 		if err != nil {
@@ -742,7 +752,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentProfileId, "", sb.objectStore).Migrate(s)
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -919,12 +929,21 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 
 	if creatorIdentityObjectId != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
+	} else {
+		// For derived objects we set current identity
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(sb.currentParticipantId))
 	}
 
 	if originalCreated := s.OriginalCreatedTimestamp(); originalCreated > 0 {
 		// means we have imported object, so we need to set original created date
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(originalCreated)))
-		s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
+		// Only set AddedDate once because we have a side effect with treeCreatedDate:
+		// - When we import object, treeCreateDate is set to time.Now()
+		// - But after push it is changed to original modified date
+		// - So after account recovery we will get treeCreateDate = original modified date, which is not equal to AddedDate
+		if pbtypes.GetInt64(s.Details(), bundle.RelationKeyAddedDate.String()) == 0 {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
+		}
 	} else {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(treeCreatedDate)))
 	}
@@ -1220,7 +1239,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 
 	for _, link := range links {
 		// sync backlinks of identity and profile objects in personal space
-		if strings.HasPrefix(link, addr.IdentityPrefix) && sb.space.IsPersonal() {
+		if strings.HasPrefix(link, domain.ParticipantPrefix) && sb.space.IsPersonal() {
 			links = append(links, sb.space.DerivedIDs().Profile)
 			break
 		}
@@ -1304,15 +1323,21 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }
 
-func hasStoreChanges(changes []*pb.ChangeContent) bool {
+func hasChanges(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if ch.GetStoreKeySet() != nil ||
-			ch.GetStoreKeyUnset() != nil ||
-			ch.GetStoreSliceUpdate() != nil {
+		if isStoreOrNotificationChanges(ch) {
 			return true
 		}
 	}
 	return false
+}
+
+func isStoreOrNotificationChanges(ch *pb.ChangeContent) bool {
+	return ch.GetStoreKeySet() != nil ||
+		ch.GetStoreKeyUnset() != nil ||
+		ch.GetStoreSliceUpdate() != nil ||
+		ch.GetNotificationCreate() != nil ||
+		ch.GetNotificationUpdate() != nil
 }
 
 func hasDetailsMsgs(msgs []simple.EventMessage) bool {

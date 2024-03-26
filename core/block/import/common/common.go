@@ -1,13 +1,15 @@
 package common
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -31,16 +33,6 @@ var randomIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔
 
 var log = logging.Logger("import")
 
-func GetSourceDetail(fileName, importPath string) string {
-	var source bytes.Buffer
-	source.WriteString(strings.TrimPrefix(filepath.Ext(fileName), "."))
-	source.WriteString(":")
-	source.WriteString(importPath)
-	source.WriteRune(filepath.Separator)
-	source.WriteString(fileName)
-	return source.String()
-}
-
 func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
 	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
@@ -49,9 +41,11 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	if emoji == "" {
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
+	h := sha256.Sum256([]byte(sourcePath))
+	hash := hex.EncodeToString(h[:])
 	fields := map[string]*types.Value{
 		bundle.RelationKeyName.String():             pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String():   pbtypes.String(sourcePath),
+		bundle.RelationKeySourceFilePath.String():   pbtypes.String(hash),
 		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
 		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
@@ -168,15 +162,20 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 }
 
 func handleFileBlock(oldIdToNew map[string]string, block simple.Block, st *state.State) {
-	targetObjectId := block.Model().GetFile().TargetObjectId
-	if targetObjectId == "" {
-		return
+	if targetObjectId := block.Model().GetFile().TargetObjectId; targetObjectId != "" {
+		newId := oldIdToNew[targetObjectId]
+		if newId == "" {
+			newId = addr.MissingObject
+		}
+		block.Model().GetFile().TargetObjectId = newId
 	}
-	newId := oldIdToNew[targetObjectId]
-	if newId == "" {
-		newId = addr.MissingObject
+	if hash := block.Model().GetFile().GetHash(); hash != "" {
+		// Means that we created file object for this file
+		newId := oldIdToNew[hash]
+		if newId != "" {
+			block.Model().GetFile().TargetObjectId = newId
+		}
 	}
-	block.Model().GetFile().TargetObjectId = newId
 	st.Set(simple.New(block.Model()))
 }
 
@@ -198,11 +197,14 @@ func isBundledObjects(targetObjectID string) bool {
 
 func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
 	if iconImage := block.Model().GetText().GetIconImage(); iconImage != "" {
-		newTarget := oldIDtoNew[iconImage]
-		if newTarget == "" {
-			newTarget = addr.MissingObject
+		_, err := cid.Decode(iconImage)
+		if err == nil { // this can be url, because for notion import we store url to picture
+			newTarget := oldIDtoNew[iconImage]
+			if newTarget == "" {
+				newTarget = addr.MissingObject
+			}
+			block.Model().GetText().IconImage = newTarget
 		}
-		block.Model().GetText().IconImage = newTarget
 	}
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
