@@ -91,14 +91,15 @@ type service struct {
 	pushIdentityTimer         *time.Timer   // timer for batching
 	pushIdentityBatchTimeout  time.Duration
 
-	identityObservePeriod time.Duration
-	identityForceUpdate   chan struct{}
-	lock                  sync.RWMutex
+	identityObservePeriod  time.Duration
+	identityForceUpdate    chan struct{}
+	globalNamesForceUpdate chan struct{}
+	lock                   sync.RWMutex
 	// identity => spaceId => observer
 	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
 	identityProfileCache   map[string]*model.IdentityProfile
-	identityGlobalNames    map[string]string
+	identityGlobalNames    map[string]*nameserviceproto.NameByAddressResponse
 }
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
@@ -106,10 +107,12 @@ func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Dura
 		startedCh:                make(chan struct{}),
 		closing:                  make(chan struct{}),
 		identityForceUpdate:      make(chan struct{}),
+		globalNamesForceUpdate:   make(chan struct{}),
 		identityObservePeriod:    identityObservePeriod,
 		identityObservers:        make(map[string]map[string]*observer),
 		identityEncryptionKeys:   make(map[string]crypto.SymKey),
 		identityProfileCache:     make(map[string]*model.IdentityProfile),
+		identityGlobalNames:      make(map[string]*nameserviceproto.NameByAddressResponse),
 		pushIdentityBatchTimeout: pushIdentityBatchTimeout,
 	}
 }
@@ -230,7 +233,7 @@ func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.Sym
 
 func (s *service) UpdateIdentities() {
 	select {
-	case s.identityForceUpdate <- struct{}{}:
+	case s.globalNamesForceUpdate <- struct{}{}:
 	default:
 	}
 }
@@ -371,8 +374,8 @@ func (s *service) observeIdentitiesLoop() {
 	defer ticker.Stop()
 
 	ctx := context.Background()
-	observe := func(forceUpdate bool) {
-		err := s.observeIdentities(ctx, forceUpdate)
+	observe := func(globalNamesForceUpdate bool) {
+		err := s.observeIdentities(ctx, globalNamesForceUpdate)
 		if err != nil {
 			log.Error("error observing identities", zap.Error(err))
 		}
@@ -382,6 +385,8 @@ func (s *service) observeIdentitiesLoop() {
 		case <-s.closing:
 			return
 		case <-s.identityForceUpdate:
+			observe(false)
+		case <-s.globalNamesForceUpdate:
 			observe(true)
 		case <-ticker.C:
 			observe(false)
@@ -472,8 +477,8 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
-	if globalName, found := s.identityGlobalNames[identityData.Identity]; found {
-		profile.GlobalName = globalName
+	if globalName, found := s.identityGlobalNames[identityData.Identity]; found && globalName.Found {
+		profile.GlobalName = globalName.Name
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
@@ -526,7 +531,7 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 }
 
 func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error {
-	if s.identityGlobalNames != nil && !forceUpdate {
+	if len(s.identityGlobalNames) == len(identities) && !forceUpdate {
 		return nil
 	}
 	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
@@ -536,12 +541,9 @@ func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error 
 	if response == nil {
 		return nil
 	}
-	s.identityGlobalNames = make(map[string]string, len(identities))
 	for i, anyID := range identities {
-		if !response.Results[i].Found {
-			continue
-		}
-		if anyID == s.myIdentity {
+		s.identityGlobalNames[anyID] = response.Results[i]
+		if anyID == s.myIdentity && response.Results[i].Found {
 			s.currentProfileDetailsLock.RLock()
 			details := pbtypes.CopyStruct(s.currentProfileDetails)
 			s.currentProfileDetailsLock.RUnlock()
@@ -549,8 +551,6 @@ func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error 
 			if err = s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
 				return err
 			}
-		} else {
-			s.identityGlobalNames[anyID] = response.Results[i].Name
 		}
 	}
 	return nil
