@@ -87,8 +87,8 @@ func newFixture(t *testing.T) *fixture {
 		SignKey: decodedSignKey,
 	}
 
-	fx.wallet.EXPECT().Account().Return(&ak)
-	fx.wallet.EXPECT().GetAccountPrivkey().Return(decodedSignKey)
+	fx.wallet.EXPECT().Account().Return(&ak).Maybe()
+	fx.wallet.EXPECT().GetAccountPrivkey().Return(decodedSignKey).Maybe()
 
 	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
 
@@ -118,8 +118,8 @@ func TestGetStatus(t *testing.T) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
@@ -140,8 +140,8 @@ func TestGetStatus(t *testing.T) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
@@ -188,11 +188,11 @@ func TestGetStatus(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().CacheEnable().Return(nil)
+		//fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -238,11 +238,11 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		// here: cache is disabled
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheDisabled)
-		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, cache.ErrCacheDisabled)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().CacheEnable().Return(nil)
+		//fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -287,8 +287,8 @@ func TestGetStatus(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return errors.New("can not write to cache!")
 		})
 
@@ -318,7 +318,7 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		// HERE>>>
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil)
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -359,9 +359,10 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheEnable().Return(nil)
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
 		// here time.Now() will be passed which can be a bit different from the the cacheExpireTime
-		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDisabled)
+		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
 
@@ -410,8 +411,8 @@ func TestGetStatus(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(&psgsr, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
@@ -463,10 +464,11 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		// return real struct and error
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, cache.ErrCacheDisabled)
-		fx.cache.EXPECT().CacheSet(&psgsr2, cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDisabled)
+		fx.cache.EXPECT().CacheSet(&psgsr2, mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
 			return nil
 		})
+
 		// this should be called
 		fx.cache.EXPECT().CacheEnable().Return(nil).Maybe()
 
@@ -699,7 +701,7 @@ func TestFinalizeSubscription(t *testing.T) {
 }
 
 func TestGetTiers(t *testing.T) {
-	t.Run("fail if pp client returned error", func(t *testing.T) {
+	t.Run("fail if no cache, pp client returned error", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
@@ -707,8 +709,10 @@ func TestGetTiers(t *testing.T) {
 			return nil, errors.New("test error")
 		}).MinTimes(1)
 
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
+
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       true,
+			NoCache:       false,
 			Locale:        "EN_us",
 			PaymentMethod: 0,
 		}
@@ -716,9 +720,14 @@ func TestGetTiers(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("success if empty response", func(t *testing.T) {
+	t.Run("success if no cache, empty response", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
+
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+			return nil
+		})
 
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
 			return &psp.GetTiersResponse{}, nil
@@ -733,9 +742,14 @@ func TestGetTiers(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("success if response", func(t *testing.T) {
+	t.Run("success if no cache, response", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
+
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+			return nil
+		})
 
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
 			return &psp.GetTiersResponse{
@@ -753,7 +767,7 @@ func TestGetTiers(t *testing.T) {
 		}).MinTimes(1)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       true,
+			NoCache:       false,
 			Locale:        "EN_us",
 			PaymentMethod: 0,
 		}
@@ -766,5 +780,292 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
 		assert.Equal(t, true, out.Tiers[0].IsActive)
 		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+	})
+
+	t.Run("success if status is in cache", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Data: &model.Membership{
+				Tier:             int32(sr.Tier),
+				Status:           model.MembershipStatus(sr.Status),
+				DateStarted:      sr.DateStarted,
+				DateEnds:         sr.DateEnds,
+				IsAutoRenew:      sr.IsAutoRenew,
+				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				RequestedAnyName: sr.RequestedAnyName,
+			},
+		}
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+			return nil
+		})
+
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
+			return &psp.GetTiersResponse{
+
+				Tiers: []*psp.TierData{
+					{
+						Id:           1,
+						Name:         "Explorer",
+						Description:  "Explorer tier",
+						IsActive:     true,
+						IsHiddenTier: false,
+					},
+				},
+			}, nil
+		}).MinTimes(1)
+
+		req := pb.RpcMembershipTiersGetRequest{
+			NoCache:       false,
+			Locale:        "EN_us",
+			PaymentMethod: 0,
+		}
+		out, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(out.Tiers))
+
+		assert.Equal(t, uint32(1), out.Tiers[0].Id)
+		assert.Equal(t, "Explorer", out.Tiers[0].Name)
+		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
+		assert.Equal(t, true, out.Tiers[0].IsActive)
+		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+	})
+
+	t.Run("success if full status is in cache", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Data: &model.Membership{
+				Tier:             int32(sr.Tier),
+				Status:           model.MembershipStatus(sr.Status),
+				DateStarted:      sr.DateStarted,
+				DateEnds:         sr.DateEnds,
+				IsAutoRenew:      sr.IsAutoRenew,
+				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				RequestedAnyName: sr.RequestedAnyName,
+			},
+		}
+
+		tgr := pb.RpcMembershipTiersGetResponse{
+			Tiers: []*model.MembershipTierData{
+				{
+					Id:           1,
+					Name:         "Explorer",
+					Description:  "Explorer tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+			},
+		}
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
+
+		req := pb.RpcMembershipTiersGetRequest{
+			NoCache:       false,
+			Locale:        "EN_us",
+			PaymentMethod: 0,
+		}
+		out, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(out.Tiers))
+
+		assert.Equal(t, uint32(1), out.Tiers[0].Id)
+		assert.Equal(t, "Explorer", out.Tiers[0].Name)
+		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
+		assert.Equal(t, true, out.Tiers[0].IsActive)
+		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+	})
+}
+
+func TestIsNameValid(t *testing.T) {
+	t.Run("success if reading from cache", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		tgr := pb.RpcMembershipTiersGetResponse{
+			Tiers: []*model.MembershipTierData{
+				{
+					Id:                    1,
+					Name:                  "Explorer",
+					Description:           "Explorer tier",
+					IsActive:              true,
+					IsHiddenTier:          false,
+					AnyNamesCountIncluded: 1,
+					AnyNameMinLength:      5,
+				},
+				{
+					Id:                    2,
+					Name:                  "Suppa",
+					Description:           "Suppa tieren",
+					IsActive:              true,
+					IsHiddenTier:          false,
+					AnyNamesCountIncluded: 2,
+					AnyNameMinLength:      7,
+				},
+				{
+					Id:                    3,
+					Name:                  "NoNamme",
+					Description:           "Nicht Suppa tieren",
+					IsActive:              true,
+					IsHiddenTier:          false,
+					AnyNamesCountIncluded: 0,
+					AnyNameMinLength:      0,
+				},
+			},
+		}
+		fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
+
+		req := pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    0,
+			RequestedAnyName: "something.any",
+		}
+		resp, err := fx.IsNameValid(ctx, &req)
+		assert.Error(t, err)
+		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponse)(nil), resp)
+
+		// 2
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    1,
+			RequestedAnyName: "something.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+
+		// 3
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    2,
+			RequestedAnyName: "somet.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TOO_SHORT, resp.Error.Code)
+
+		// 4
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    3,
+			RequestedAnyName: "somet.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
+
+		// 5
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    4,
+			RequestedAnyName: "somet.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.Error(t, err)
+	})
+
+	t.Run("success if asking directly from node", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
+			return &psp.GetTiersResponse{
+
+				Tiers: []*psp.TierData{
+					{
+						Id:                    1,
+						Name:                  "Explorer",
+						Description:           "Explorer tier",
+						IsActive:              true,
+						IsHiddenTier:          false,
+						AnyNamesCountIncluded: 1,
+						AnyNameMinLength:      5,
+					},
+					{
+						Id:                    2,
+						Name:                  "Suppa",
+						Description:           "Suppa tieren",
+						IsActive:              true,
+						IsHiddenTier:          false,
+						AnyNamesCountIncluded: 2,
+						AnyNameMinLength:      7,
+					},
+					{
+						Id:                    3,
+						Name:                  "NoNamme",
+						Description:           "Nicht Suppa tieren",
+						IsActive:              true,
+						IsHiddenTier:          false,
+						AnyNamesCountIncluded: 0,
+						AnyNameMinLength:      0,
+					},
+				},
+			}, nil
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+			return nil
+		})
+
+		req := pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    0,
+			RequestedAnyName: "something.any",
+		}
+		resp, err := fx.IsNameValid(ctx, &req)
+		assert.Error(t, err)
+		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponse)(nil), resp)
+
+		// 2
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    1,
+			RequestedAnyName: "something.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+
+		// 3
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    2,
+			RequestedAnyName: "somet.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TOO_SHORT, resp.Error.Code)
+
+		// 4
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    3,
+			RequestedAnyName: "somet.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
+
+		// 5
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    4,
+			RequestedAnyName: "somet.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.Error(t, err)
 	})
 }
