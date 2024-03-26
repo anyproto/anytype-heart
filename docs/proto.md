@@ -24768,6 +24768,7 @@ Used to decode block meta only, without the content itself
 | errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24787,6 +24788,7 @@ Used to decode block meta only, without the content itself
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
