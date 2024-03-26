@@ -233,9 +233,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		return nil, err
 	}
 
-	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data.Tier != status.Tier)
-	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
-	isDiffRequestedName := (cachedStatus != nil) && (cachedStatus.Data.RequestedAnyName != status.RequestedAnyName)
+	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
+	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
+	isDiffRequestedName := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.RequestedAnyName != status.RequestedAnyName)
 
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
 
@@ -619,7 +619,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 
 		// WARNING: we will save to cache data for THIS locale and payment method!!!
 		Locale:        req.Locale,
-		PaymentMethod: req.PaymentMethod,
+		PaymentMethod: uint32(req.PaymentMethod),
 	}
 
 	payload, err := bsr.Marshal()

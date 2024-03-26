@@ -11471,7 +11471,7 @@ you can call this method to get the latest tiers
 | ----- | ---- | ----- | ----------- |
 | noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
 | locale | [string](#string) |  |  |
-| paymentMethod | [uint32](#uint32) |  |  |
+| paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
 
 
 
