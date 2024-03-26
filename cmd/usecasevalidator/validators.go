@@ -54,9 +54,9 @@ func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error
 		linksToDelete = append([]keyWithIndex{{key: rel.Key, index: i}}, linksToDelete...)
 
 	}
-	for _, kwi := range linksToDelete {
-		fmt.Println("WARNING: object", id, "contains link to unknown relation:", kwi.key, ", so it was deleted from snapshot")
-		s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks[:kwi.index], s.Snapshot.Data.RelationLinks[kwi.index+1:]...)
+	for _, link := range linksToDelete {
+		fmt.Println("WARNING: object", id, "contains link to unknown relation:", link.key, ", so it was deleted from snapshot")
+		s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks[:link.index], s.Snapshot.Data.RelationLinks[link.index+1:]...)
 	}
 	return err
 }
