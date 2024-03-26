@@ -38,7 +38,7 @@ type spaceController struct {
 	techSpace techspace.TechSpace
 }
 
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.RemoteStatus) error {
+func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	return nil
 }
 
@@ -105,4 +105,8 @@ func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersi
 
 func (s *spaceController) Close(ctx context.Context) error {
 	return s.loader.Close(ctx)
+}
+
+func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
+	return spaceinfo.AccountStatusUnknown
 }

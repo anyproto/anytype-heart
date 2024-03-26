@@ -207,6 +207,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
 		st, changes, sinceSnapshot, err := BuildStateFull(s.spaceID, d.(*state.State), ot, "")
+		defer st.ResetParentIdsCache()
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {
@@ -270,6 +271,7 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 
 func (s *source) buildState() (doc state.Doc, err error) {
 	st, _, changesAppliedSinceSnapshot, err := BuildState(s.spaceID, nil, s.ObjectTree)
+	defer st.ResetParentIdsCache()
 	if err != nil {
 		return
 	}
@@ -340,10 +342,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	change := s.buildChange(params)
 
-	// TODO: GO-2151 Need to enable snappy compression when all clients will be able to decode snappy
-	// data, dataType, err := MarshalChange(change)
-	dataType := ""
-	data, err := change.Marshal()
+	data, dataType, err := MarshalChange(change)
 
 	if err != nil {
 		return
@@ -540,6 +539,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		startId = ot.Root().Id
 	} else {
 		st = initState
+		st.EnableParentIdsCache()
 		startId = st.ChangeId()
 	}
 
@@ -561,6 +561,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 					st = state.NewDoc(ot.Id(), nil).(*state.State)
 				}
 				st.SetChangeId(change.Id)
+				st.EnableParentIdsCache()
 				return true
 			}
 
@@ -572,10 +573,10 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
 					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey)).(*state.State)
-					return true
 				} else {
 					st = st.NewState()
 				}
+				st.EnableParentIdsCache()
 				return true
 			}
 			if model.Snapshot != nil {
@@ -605,7 +606,6 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 	return
 }
 
-// BuildStateFull is deprecated, used in tests only, use BuildState instead
 func BuildStateFull(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
@@ -618,6 +618,7 @@ func BuildStateFull(spaceId string, initState *state.State, ot objecttree.Readab
 	} else {
 		st = initState
 		startId = st.ChangeId()
+		st.EnableParentIdsCache()
 	}
 
 	var lastMigrationVersion uint32
@@ -628,6 +629,7 @@ func BuildStateFull(spaceId string, initState *state.State, ot objecttree.Readab
 		if change.Id == ot.Id() {
 			st = state.NewDoc(ot.Id(), nil).(*state.State)
 			st.SetChangeId(change.Id)
+			st.EnableParentIdsCache()
 			return true
 		}
 
@@ -643,6 +645,7 @@ func BuildStateFull(spaceId string, initState *state.State, ot objecttree.Readab
 			} else {
 				st = st.NewState()
 			}
+			st.EnableParentIdsCache()
 			return true
 		}
 		if model.Snapshot != nil {

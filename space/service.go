@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -64,12 +67,22 @@ type Service interface {
 	app.ComponentRunnable
 }
 
+type coordinatorStatusUpdater interface {
+	UpdateCoordinatorStatus()
+}
+
+type NotificationSender interface {
+	CreateAndSend(notification *model.Notification) error
+}
+
 type service struct {
-	techSpace      *clientspace.TechSpace
-	factory        spacefactory.SpaceFactory
-	spaceCore      spacecore.SpaceCoreService
-	accountService accountservice.Service
-	config         *config.Config
+	techSpace           *clientspace.TechSpace
+	factory             spacefactory.SpaceFactory
+	spaceCore           spacecore.SpaceCoreService
+	accountService      accountservice.Service
+	config              *config.Config
+	notificationService NotificationSender
+	updater        coordinatorStatusUpdater
 
 	personalSpaceId        string
 	techSpaceId            string
@@ -115,6 +128,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.config = app.MustComponent[*config.Config](a)
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
+	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	if err != nil {
@@ -136,6 +150,8 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	s.notificationService = app.MustComponent[NotificationSender](a)
+
 	return err
 }
 
@@ -233,24 +249,47 @@ func (s *service) AccountMetadataPayload() []byte {
 	return s.accountMetadataPayload
 }
 
-func (s *service) UpdateRemoteStatus(ctx context.Context, spaceId string, status spaceinfo.RemoteStatus, isOwned bool) error {
+func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	s.mu.Lock()
-	ctrl := s.spaceControllers[spaceId]
+	ctrl := s.spaceControllers[status.SpaceId]
 	s.mu.Unlock()
 	if ctrl == nil {
-		return fmt.Errorf("no such space: %s", spaceId)
+		return fmt.Errorf("no such space: %s", status.SpaceId)
 	}
 	err := ctrl.UpdateRemoteStatus(ctx, status)
 	if err != nil {
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
-	if !isOwned && status == spaceinfo.RemoteStatusDeleted {
+	if !status.IsOwned && status.RemoteStatus == spaceinfo.RemoteStatusDeleted {
+		accountStatus := ctrl.GetStatus()
+		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
+			s.sendNotification(status.SpaceId)
+		}
 		return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
-			SpaceID:       spaceId,
+			SpaceID:       status.SpaceId,
 			AccountStatus: spaceinfo.AccountStatusRemoving,
 		})
+
 	}
 	return nil
+}
+
+func (s *service) sendNotification(spaceId string) {
+	identity := s.accountService.Account().SignKey.GetPublic().Account()
+	notificationId := strings.Join([]string{spaceId, identity}, "_")
+	err := s.notificationService.CreateAndSend(&model.Notification{
+		Id:         notificationId,
+		CreateTime: time.Now().Unix(),
+		Payload: &model.NotificationPayloadOfParticipantRemove{
+			ParticipantRemove: &model.NotificationParticipantRemove{
+				SpaceId: spaceId,
+			},
+		},
+		Space: spaceId,
+	})
+	if err != nil {
+		log.Error("failed to send notification", zap.Error(err), zap.String("spaceId", spaceId))
+	}
 }
 
 func (s *service) SpaceViewId(spaceId string) (spaceViewId string, err error) {

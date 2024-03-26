@@ -290,10 +290,10 @@
     - [Rpc.BlockDataview.Sort.Replace.Request](#anytype-Rpc-BlockDataview-Sort-Replace-Request)
     - [Rpc.BlockDataview.Sort.Replace.Response](#anytype-Rpc-BlockDataview-Sort-Replace-Response)
     - [Rpc.BlockDataview.Sort.Replace.Response.Error](#anytype-Rpc-BlockDataview-Sort-Replace-Response-Error)
-    - [Rpc.BlockDataview.Sort.Sort](#anytype-Rpc-BlockDataview-Sort-Sort)
-    - [Rpc.BlockDataview.Sort.Sort.Request](#anytype-Rpc-BlockDataview-Sort-Sort-Request)
-    - [Rpc.BlockDataview.Sort.Sort.Response](#anytype-Rpc-BlockDataview-Sort-Sort-Response)
-    - [Rpc.BlockDataview.Sort.Sort.Response.Error](#anytype-Rpc-BlockDataview-Sort-Sort-Response-Error)
+    - [Rpc.BlockDataview.Sort.SSort](#anytype-Rpc-BlockDataview-Sort-SSort)
+    - [Rpc.BlockDataview.Sort.SSort.Request](#anytype-Rpc-BlockDataview-Sort-SSort-Request)
+    - [Rpc.BlockDataview.Sort.SSort.Response](#anytype-Rpc-BlockDataview-Sort-SSort-Response)
+    - [Rpc.BlockDataview.Sort.SSort.Response.Error](#anytype-Rpc-BlockDataview-Sort-SSort-Response-Error)
     - [Rpc.BlockDataview.View](#anytype-Rpc-BlockDataview-View)
     - [Rpc.BlockDataview.View.Create](#anytype-Rpc-BlockDataview-View-Create)
     - [Rpc.BlockDataview.View.Create.Request](#anytype-Rpc-BlockDataview-View-Create-Request)
@@ -1115,7 +1115,7 @@
     - [Rpc.BlockDataview.Sort.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Sort.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Remove-Response-Error-Code)
     - [Rpc.BlockDataview.Sort.Replace.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Replace-Response-Error-Code)
-    - [Rpc.BlockDataview.Sort.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Sort-Response-Error-Code)
+    - [Rpc.BlockDataview.Sort.SSort.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-SSort-Response-Error-Code)
     - [Rpc.BlockDataview.View.Create.Response.Error.Code](#anytype-Rpc-BlockDataview-View-Create-Response-Error-Code)
     - [Rpc.BlockDataview.View.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-View-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.View.SetActive.Response.Error.Code](#anytype-Rpc-BlockDataview-View-SetActive-Response-Error-Code)
@@ -1848,7 +1848,7 @@
 | BlockDataviewSortAdd | [Rpc.BlockDataview.Sort.Add.Request](#anytype-Rpc-BlockDataview-Sort-Add-Request) | [Rpc.BlockDataview.Sort.Add.Response](#anytype-Rpc-BlockDataview-Sort-Add-Response) |  |
 | BlockDataviewSortRemove | [Rpc.BlockDataview.Sort.Remove.Request](#anytype-Rpc-BlockDataview-Sort-Remove-Request) | [Rpc.BlockDataview.Sort.Remove.Response](#anytype-Rpc-BlockDataview-Sort-Remove-Response) |  |
 | BlockDataviewSortReplace | [Rpc.BlockDataview.Sort.Replace.Request](#anytype-Rpc-BlockDataview-Sort-Replace-Request) | [Rpc.BlockDataview.Sort.Replace.Response](#anytype-Rpc-BlockDataview-Sort-Replace-Response) |  |
-| BlockDataviewSortSort | [Rpc.BlockDataview.Sort.Sort.Request](#anytype-Rpc-BlockDataview-Sort-Sort-Request) | [Rpc.BlockDataview.Sort.Sort.Response](#anytype-Rpc-BlockDataview-Sort-Sort-Response) |  |
+| BlockDataviewSortSort | [Rpc.BlockDataview.Sort.SSort.Request](#anytype-Rpc-BlockDataview-Sort-SSort-Request) | [Rpc.BlockDataview.Sort.SSort.Response](#anytype-Rpc-BlockDataview-Sort-SSort-Response) |  |
 | BlockDataviewViewRelationAdd | [Rpc.BlockDataview.ViewRelation.Add.Request](#anytype-Rpc-BlockDataview-ViewRelation-Add-Request) | [Rpc.BlockDataview.ViewRelation.Add.Response](#anytype-Rpc-BlockDataview-ViewRelation-Add-Response) |  |
 | BlockDataviewViewRelationRemove | [Rpc.BlockDataview.ViewRelation.Remove.Request](#anytype-Rpc-BlockDataview-ViewRelation-Remove-Request) | [Rpc.BlockDataview.ViewRelation.Remove.Response](#anytype-Rpc-BlockDataview-ViewRelation-Remove-Response) |  |
 | BlockDataviewViewRelationReplace | [Rpc.BlockDataview.ViewRelation.Replace.Request](#anytype-Rpc-BlockDataview-ViewRelation-Replace-Request) | [Rpc.BlockDataview.ViewRelation.Replace.Response](#anytype-Rpc-BlockDataview-ViewRelation-Replace-Response) |  |
@@ -6074,19 +6074,19 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
-<a name="anytype-Rpc-BlockDataview-Sort-Sort"></a>
+<a name="anytype-Rpc-BlockDataview-Sort-SSort"></a>
 
-### Rpc.BlockDataview.Sort.Sort
-
-
+### Rpc.BlockDataview.Sort.SSort
 
 
 
 
 
-<a name="anytype-Rpc-BlockDataview-Sort-Sort-Request"></a>
 
-### Rpc.BlockDataview.Sort.Sort.Request
+
+<a name="anytype-Rpc-BlockDataview-Sort-SSort-Request"></a>
+
+### Rpc.BlockDataview.Sort.SSort.Request
 
 
 
@@ -6102,15 +6102,15 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
-<a name="anytype-Rpc-BlockDataview-Sort-Sort-Response"></a>
+<a name="anytype-Rpc-BlockDataview-Sort-SSort-Response"></a>
 
-### Rpc.BlockDataview.Sort.Sort.Response
+### Rpc.BlockDataview.Sort.SSort.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataview.Sort.Sort.Response.Error](#anytype-Rpc-BlockDataview-Sort-Sort-Response-Error) |  |  |
+| error | [Rpc.BlockDataview.Sort.SSort.Response.Error](#anytype-Rpc-BlockDataview-Sort-SSort-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
@@ -6118,15 +6118,15 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
-<a name="anytype-Rpc-BlockDataview-Sort-Sort-Response-Error"></a>
+<a name="anytype-Rpc-BlockDataview-Sort-SSort-Response-Error"></a>
 
-### Rpc.BlockDataview.Sort.Sort.Response.Error
+### Rpc.BlockDataview.Sort.SSort.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataview.Sort.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Sort-Response-Error-Code) |  |  |
+| code | [Rpc.BlockDataview.Sort.SSort.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-SSort-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -17999,9 +17999,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockDataview-Sort-Sort-Response-Error-Code"></a>
+<a name="anytype-Rpc-BlockDataview-Sort-SSort-Response-Error-Code"></a>
 
-### Rpc.BlockDataview.Sort.Sort.Response.Error.Code
+### Rpc.BlockDataview.Sort.SSort.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -23760,6 +23760,7 @@ Precondition: user A and user B opened the same block
 | bundledTemplates | [string](#string) |  |  |
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
+| areOldFilesRemoved | [bool](#bool) |  |  |
 
 
 
@@ -24801,6 +24802,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24819,6 +24821,7 @@ Used to decode block meta only, without the content itself
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24835,6 +24838,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | permissions | [ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24850,6 +24854,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24868,6 +24873,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24886,6 +24892,7 @@ Used to decode block meta only, without the content itself
 | identity | [string](#string) |  |  |
 | identityName | [string](#string) |  |  |
 | identityIcon | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 

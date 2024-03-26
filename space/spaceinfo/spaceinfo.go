@@ -81,10 +81,20 @@ func (a AccountStatus) String() string {
 	return ""
 }
 
+type SpaceRemoteStatusInfo struct {
+	SpaceId      string
+	RemoteStatus RemoteStatus
+	WriteLimit   uint32
+	ReadLimit    uint32
+	IsOwned      bool
+}
+
 type SpaceLocalInfo struct {
 	SpaceID      string
 	LocalStatus  LocalStatus
 	RemoteStatus RemoteStatus
+	WriteLimit   uint32
+	ReadLimit    uint32
 }
 
 type SpacePersistentInfo struct {

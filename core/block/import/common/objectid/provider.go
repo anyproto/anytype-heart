@@ -66,6 +66,7 @@ func NewIDProvider(
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeFile] = oldFile
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
+	p.idProviderBySmartBlockType[sb.SmartBlockTypeParticipant] = newParticipant()
 	return p
 }
 
