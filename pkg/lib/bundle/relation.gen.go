@@ -180,6 +180,7 @@ const (
 	RelationKeyRevision                  domain.RelationKey = "revision"
 	RelationKeyImageKind                 domain.RelationKey = "imageKind"
 	RelationKeyImportType                domain.RelationKey = "importType"
+	RelationKeyGlobalName                domain.RelationKey = "globalName"
 )
 
 var (
@@ -853,6 +854,19 @@ var (
 			Key:              "genre",
 			Name:             "Genre",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyGlobalName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Name of profile that the user could be mentioned by",
+			Format:           model.RelationFormat_shorttext,
+			Id:               "_brglobalName",
+			Key:              "globalName",
+			MaxCount:         1,
+			Name:             "Global name",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
