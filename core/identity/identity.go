@@ -392,7 +392,7 @@ func (s *service) observeIdentitiesLoop() {
 const identityRepoDataKind = "profile"
 
 // TODO Maybe we need to use backoff in case of error from coordinator
-func (s *service) observeIdentities(ctx context.Context, forceUpdate bool) error {
+func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate bool) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -411,7 +411,7 @@ func (s *service) observeIdentities(ctx context.Context, forceUpdate bool) error
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
-	if err = s.fetchGlobalNames(append(identities, s.myIdentity), forceUpdate); err != nil {
+	if err = s.fetchGlobalNames(append(identities, s.myIdentity), globalNamesForceUpdate); err != nil {
 		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
 	}
 
