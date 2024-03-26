@@ -477,6 +477,16 @@
     "source": "details"
   },
   {
+    "description": "Specify if object discovery is hidden",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isHiddenDiscovery",
+    "maxCount": 1,
+    "name": "Discovery hidden",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "additional",
