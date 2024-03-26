@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "67d698d3d741b253096f0d87630713273a42e99c44108e2bdfdcfac5fcbc2b58"
+const RelationChecksum = "ea9094e3456b6bd94818e8e4f1b52d29eedf9a8aef41e84d75a69546e5b5f8ca"
 const (
 	RelationKeyTag                         domain.RelationKey = "tag"
 	RelationKeyCamera                      domain.RelationKey = "camera"
@@ -19,6 +19,7 @@ const (
 	RelationKeyRelationFormatObjectTypes   domain.RelationKey = "relationFormatObjectTypes"
 	RelationKeyRelationKey                 domain.RelationKey = "relationKey"
 	RelationKeyRelationOptionColor         domain.RelationKey = "relationOptionColor"
+	RelationKeyLatestAclHeadId             domain.RelationKey = "latestAclHeadId"
 	RelationKeyRelationOptionOrder         domain.RelationKey = "relationOptionOrder"
 	RelationKeyRelationOptionInternalOrder domain.RelationKey = "relationOptionInternalOrder"
 	RelationKeyInstructions                domain.RelationKey = "instructions"
@@ -27,6 +28,8 @@ const (
 	RelationKeyTemplateIsBundled           domain.RelationKey = "templateIsBundled"
 	RelationKeyDateOfBirth                 domain.RelationKey = "dateOfBirth"
 	RelationKeyRestrictions                domain.RelationKey = "restrictions"
+	RelationKeyReadersLimit                domain.RelationKey = "readersLimit"
+	RelationKeyWritersLimit                domain.RelationKey = "writersLimit"
 	RelationKeyIsHighlighted               domain.RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage              domain.RelationKey = "thumbnailImage"
 	RelationKeyAttachments                 domain.RelationKey = "attachments"
@@ -58,6 +61,7 @@ const (
 	RelationKeyLinkedContacts              domain.RelationKey = "linkedContacts"
 	RelationKeyRottenTomatoesRating        domain.RelationKey = "rottenTomatoesRating"
 	RelationKeyIsHidden                    domain.RelationKey = "isHidden"
+	RelationKeyIsHiddenDiscovery           domain.RelationKey = "isHiddenDiscovery"
 	RelationKeyAdditional                  domain.RelationKey = "additional"
 	RelationKeyBudget                      domain.RelationKey = "budget"
 	RelationKeyMediaArtistName             domain.RelationKey = "mediaArtistName"
@@ -360,10 +364,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brbacklinks",
 			Key:              "backlinks",
-			Name:             "Links to this object",
+			Name:             "Backlinks",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         2,
+			Revision:         3,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBudget: {
@@ -568,13 +572,13 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Human which created this object",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brcreator",
 			Key:              "creator",
 			MaxCount:         1,
 			Name:             "Created by",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyDateOfBirth: {
@@ -1126,6 +1130,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIsHiddenDiscovery: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Specify if object discovery is hidden",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisHiddenDiscovery",
+			Key:              "isHiddenDiscovery",
+			MaxCount:         1,
+			Name:             "Discovery hidden",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIsHighlighted: {
 
 			DataSource:       model.Relation_account,
@@ -1250,6 +1268,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyLatestAclHeadId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Latest Acl head id",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brlatestAclHeadId",
+			Key:              "latestAclHeadId",
+			MaxCount:         1,
+			Name:             "Latest acl head id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyLayout: {
 
 			DataSource:       model.Relation_details,
@@ -1310,10 +1342,10 @@ var (
 			Format:           model.RelationFormat_object,
 			Id:               "_brlinks",
 			Key:              "links",
-			Name:             "Links from this object",
+			Name:             "Links",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         2,
+			Revision:         3,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLogic: {
@@ -1609,6 +1641,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyReadersLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Readers limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brreadersLimit",
+			Key:              "readersLimit",
+			MaxCount:         1,
+			Name:             "Readers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyRecommendedLayout: {
 
 			DataSource:       model.Relation_details,
@@ -1807,7 +1853,6 @@ var (
 			Hidden:           true,
 			Id:               "_brrestrictions",
 			Key:              "restrictions",
-			MaxCount:         1,
 			Name:             "Object restrictions",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
@@ -2413,6 +2458,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space",
 			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWritersLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Writers limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brwritersLimit",
+			Key:              "writersLimit",
+			MaxCount:         1,
+			Name:             "Writers limit",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

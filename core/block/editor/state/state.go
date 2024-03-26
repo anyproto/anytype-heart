@@ -117,6 +117,7 @@ type State struct {
 	details           *types.Struct
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
+	notifications     map[string]*model.Notification
 
 	migrationVersion uint32
 
@@ -339,9 +340,17 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 	return
 }
 
-func (s *State) resetParentIdsCache() {
+func (s *State) ResetParentIdsCache() {
 	s.parentIdsCache = nil
 	s.isParentIdsCacheEnabled = false
+}
+
+func (s *State) EnableParentIdsCache() bool {
+	if s.isParentIdsCacheEnabled {
+		return true
+	}
+	s.isParentIdsCacheEnabled = true
+	return false
 }
 
 func (s *State) getParentIdsCache() map[string]string {
@@ -461,7 +470,12 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
-	defer s.resetParentIdsCache()
+	alreadyEnabled := s.EnableParentIdsCache()
+	defer func() {
+		if !alreadyEnabled {
+			s.ResetParentIdsCache()
+		}
+	}()
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -714,6 +728,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.originalCreatedTimestamp = s.originalCreatedTimestamp
 	}
 
+	if s.parent != nil && s.notifications != nil {
+		s.parent.notifications = s.notifications
+	}
+
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
@@ -749,6 +767,9 @@ func (s *State) intermediateApply() {
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
+	}
+	if s.notifications != nil {
+		s.parent.notifications = s.notifications
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
 	s.parent.fileInfo = s.fileInfo
@@ -1344,6 +1365,7 @@ func (s *State) Copy() *State {
 		uniqueKeyInternal:        s.uniqueKeyInternal,
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
 		fileInfo:                 s.fileInfo,
+		notifications:            s.notifications,
 	}
 	return copy
 }
@@ -1875,6 +1897,47 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
 	}
 	s.AddRelationLinks(links...)
+}
+
+func (s *State) GetNotificationById(id string) *model.Notification {
+	iterState := s.findStateWithNonEmptyNotifications()
+	if iterState == nil {
+		return nil
+	}
+	if notification, ok := iterState.notifications[id]; ok {
+		return notification
+	}
+	return nil
+}
+
+func (s *State) AddNotification(notification *model.Notification) {
+	if s.notifications == nil {
+		s.notifications = make(map[string]*model.Notification)
+	}
+	if s.parent != nil {
+		for _, n := range s.parent.ListNotifications() {
+			if _, ok := s.notifications[n.Id]; !ok {
+				s.notifications[n.Id] = pbtypes.CopyNotification(n)
+			}
+		}
+	}
+	s.notifications[notification.Id] = notification
+}
+
+func (s *State) ListNotifications() map[string]*model.Notification {
+	iterState := s.findStateWithNonEmptyNotifications()
+	if iterState == nil {
+		return nil
+	}
+	return iterState.notifications
+}
+
+func (s *State) findStateWithNonEmptyNotifications() *State {
+	iterState := s
+	for iterState != nil && iterState.notifications == nil {
+		iterState = iterState.parent
+	}
+	return iterState
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation

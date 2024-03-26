@@ -144,13 +144,6 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	}
 
 	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
-	if req.AdditionalDetails != nil {
-		for k, v := range req.AdditionalDetails.GetFields() {
-			if _, ok := details.Fields[k]; !ok {
-				details.Fields[k] = pbtypes.CopyVal(v)
-			}
-		}
-	}
 
 	payload, err := space.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
 		Time:           time.Now(),
@@ -173,6 +166,12 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		err := s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
 		if err != nil {
 			return "", nil, fmt.Errorf("inject metadata to state: %w", err)
+		}
+	}
+
+	if req.AdditionalDetails != nil {
+		for k, v := range req.AdditionalDetails.GetFields() {
+			createState.SetDetailAndBundledRelation(domain.RelationKey(k), v)
 		}
 	}
 
@@ -587,7 +586,8 @@ func (s *service) DeleteFileData(objectId string) error {
 			},
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fullId.FileId.String()),
 			},
 		},
 	})

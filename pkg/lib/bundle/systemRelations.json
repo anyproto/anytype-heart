@@ -41,10 +41,10 @@
   "isReadonly",
   "isDeleted",
   "isHidden",
+  "isHiddenDiscovery",
   "done",
   "isArchived",
   "templateIsBundled",
-  "tag",
   "smartblockTypes",
   "targetObjectType",
   "recommendedLayout",
@@ -75,7 +75,10 @@
   "spaceAccessType",
   "spaceInviteFileCid",
   "spaceInviteFileKey",
+  "readersLimit",
+  "writersLimit",
   "participantPermissions",
   "participantStatus",
+  "latestAclHeadId",
   "identity"
 ]

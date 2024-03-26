@@ -904,6 +904,7 @@ func TestProfileMigrationExtractCustomState(t *testing.T) {
 	for k, _ := range originalState.Details().GetFields() {
 		require.Contains(t, whitelistedDetailKeys, k, "old state should not contain %s", k)
 	}
+	require.Equal(t, bundle.TypeKeyPage, extractedState.ObjectTypeKey())
 
 	_, err = ExtractCustomState(originalState.NewState())
 	require.ErrorIsf(t, err, ErrNoCustomStateFound, "should return error on the second time call")

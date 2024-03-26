@@ -79,6 +79,16 @@
     "source": "details"
   },
   {
+    "description": "Latest Acl head id",
+    "format": "longtext",
+    "hidden": true,
+    "key": "latestAclHeadId",
+    "maxCount": 1,
+    "name": "Latest acl head id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Relation option order",
     "format": "longtext",
     "hidden": true,
@@ -151,8 +161,28 @@
     "format": "number",
     "hidden": true,
     "key": "restrictions",
-    "maxCount": 1,
+    "maxCount": 0,
     "name": "Object restrictions",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Readers limit",
+    "format": "number",
+    "hidden": true,
+    "key": "readersLimit",
+    "maxCount": 1,
+    "name": "Readers limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Writers limit",
+    "format": "number",
+    "hidden": true,
+    "key": "writersLimit",
+    "maxCount": 1,
+    "name": "Writers limit",
     "readonly": true,
     "source": "derived"
   },
@@ -467,6 +497,16 @@
     "source": "details"
   },
   {
+    "description": "Specify if object discovery is hidden",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isHiddenDiscovery",
+    "maxCount": 1,
+    "name": "Discovery hidden",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "additional",
@@ -574,12 +614,13 @@
   {
     "description": "Human which created this object",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "creator",
     "maxCount": 1,
     "name": "Created by",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Recommended layout for new templates and objects of specific objec",
@@ -1147,10 +1188,10 @@
     "hidden": false,
     "key": "links",
     "maxCount": 0,
-    "name": "Links from this object",
+    "name": "Links",
     "readonly": true,
     "source": "derived",
-    "revision": 2
+    "revision": 3
   },
   {
     "format": "number",
@@ -1484,10 +1525,10 @@
     "key": "backlinks",
     "maxCount": 0,
     "hidden": false,
-    "name": "Links to this object",
+    "name": "Backlinks",
     "readonly": true,
     "source": "local",
-    "revision": 2
+    "revision": 3
   },
   {
     "description": "Relation that indicates document has been uninstalled",

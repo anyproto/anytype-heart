@@ -5,7 +5,9 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -14,10 +16,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -52,13 +54,34 @@ type aclObjectManager struct {
 	modifier            dependencies.DetailsModifier
 	identityService     dependencies.IdentityService
 	indexer             dependencies.SpaceIndexer
-	notificationService notifications.Notifications
+	statService         debugstat.StatService
 	started             bool
+	notificationService aclnotifications.AclNotification
 
 	ownerMetadata     []byte
 	mx                sync.Mutex
 	lastIndexed       string
 	addedParticipants map[string]struct{}
+}
+
+func (a *aclObjectManager) ProvideStat() any {
+	select {
+	case <-a.waitLoad:
+		if a.loadErr != nil {
+			return parseAcl(nil, a.status.SpaceId())
+		}
+		return parseAcl(a.sp.CommonSpace().Acl(), a.status.SpaceId())
+	default:
+		return parseAcl(nil, a.status.SpaceId())
+	}
+}
+
+func (a *aclObjectManager) StatId() string {
+	return a.status.SpaceId()
+}
+
+func (a *aclObjectManager) StatType() string {
+	return CName
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
@@ -74,7 +97,12 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
 	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
-	a.notificationService = app.MustComponent[notifications.Notifications](ap)
+	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
+	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
+	if a.statService == nil {
+		a.statService = debugstat.NewNoOp()
+	}
+	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
 	return nil
@@ -103,6 +131,7 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	a.cancel()
 	<-a.wait
 	a.identityService.UnregisterIdentitiesInSpace(a.status.SpaceId())
+	a.statService.RemoveProvider(a)
 	return
 }
 
@@ -136,6 +165,11 @@ func (a *aclObjectManager) process() {
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 	}
+}
+
+func (a *aclObjectManager) sendNotifications(common commonspace.Space) {
+	permissions := common.Acl().AclState().Permissions(common.Acl().AclState().AccountKey().GetPublic())
+	a.notificationService.AddRecords(common.Acl().(list.AclList), permissions, a.sp.Id(), spaceinfo.AccountStatusActive)
 }
 
 func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error {
@@ -183,6 +217,9 @@ func (a *aclObjectManager) processAcl() (err error) {
 	lastIndexed := a.lastIndexed
 	a.mx.Unlock()
 	if lastIndexed == common.Acl().Head().Id {
+		a.mx.Lock()
+		a.sendNotifications(common)
+		a.mx.Unlock()
 		return nil
 	}
 	decrypt := func(key crypto.PubKey) ([]byte, error) {
@@ -199,18 +236,31 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
-	err = a.processStates(states, common.Acl().AclState().Identity())
+	a.status.Lock()
+	aclHeadId := a.status.LatestAclHeadId()
+	a.status.Unlock()
+	var upToDate bool
+	if aclHeadId != "" {
+		_, err := common.Acl().Get(aclHeadId)
+		if err == nil {
+			upToDate = true
+		}
+	} else {
+		upToDate = true
+	}
+	err = a.processStates(states, upToDate, common.Acl().AclState().Identity())
 	if err != nil {
 		return
 	}
 	a.lastIndexed = common.Acl().Head().Id
+	a.sendNotifications(common)
 	return
 }
 
-func (a *aclObjectManager) processStates(states []list.AccountState, myIdentity crypto.PubKey) (err error) {
+func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	var numActiveUsers int
 	for _, state := range states {
-		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) {
+		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
 			a.status.Lock()
 			err := a.status.SetPersistentStatus(a.ctx, spaceinfo.AccountStatusRemoving)
 			if err != nil {
@@ -365,5 +415,6 @@ func buildParticipantDetails(
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
+		bundle.RelationKeyIsHiddenDiscovery.String():      pbtypes.Bool(status != model.ParticipantStatus_Active),
 	}}
 }
