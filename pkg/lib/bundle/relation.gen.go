@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "ae2464df23c777d39a4285deac06430672ca6d5b41698101834847a1f2258311"
+const RelationChecksum = "9e3ac8ec63c696e079d382d3802799f26dd4bdb979437135c6201204de9defd0"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -59,6 +59,7 @@ const (
 	RelationKeyLinkedContacts            domain.RelationKey = "linkedContacts"
 	RelationKeyRottenTomatoesRating      domain.RelationKey = "rottenTomatoesRating"
 	RelationKeyIsHidden                  domain.RelationKey = "isHidden"
+	RelationKeyIsHiddenDiscovery         domain.RelationKey = "isHiddenDiscovery"
 	RelationKeyAdditional                domain.RelationKey = "additional"
 	RelationKeyBudget                    domain.RelationKey = "budget"
 	RelationKeyMediaArtistName           domain.RelationKey = "mediaArtistName"
@@ -1138,6 +1139,20 @@ var (
 			MaxCount:         1,
 			Name:             "Hidden",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsHiddenDiscovery: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Specify if object discovery is hidden",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisHiddenDiscovery",
+			Key:              "isHiddenDiscovery",
+			MaxCount:         1,
+			Name:             "Discovery hidden",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

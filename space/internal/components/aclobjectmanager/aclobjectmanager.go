@@ -416,5 +416,6 @@ func buildParticipantDetails(
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
+		bundle.RelationKeyIsHiddenDiscovery.String():      pbtypes.Bool(status != model.ParticipantStatus_Active),
 	}}
 }

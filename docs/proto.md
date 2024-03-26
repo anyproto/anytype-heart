@@ -21340,6 +21340,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT | 101 | means the client logged into another account or the account directory has been cleaned |
 
 
 
