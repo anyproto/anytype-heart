@@ -14,6 +14,8 @@ import (
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
+	"unicode/utf8"
+
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -368,7 +370,7 @@ func (s *service) validateAnyName(tier model.MembershipTierData, name string) ps
 	if tier.AnyNameMinLength == 0 {
 		return psp.IsNameValidResponse_TierFeatureNoName
 	}
-	if uint32(len(name)) < tier.AnyNameMinLength {
+	if uint32(utf8.RuneCountInString(name)) < tier.AnyNameMinLength {
 		return psp.IsNameValidResponse_TooShort
 	}
 
