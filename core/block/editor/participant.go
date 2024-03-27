@@ -40,6 +40,7 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
+		template.WithAddedFeaturedRelation(bundle.RelationKeyIdentity),
 	)
 	return nil
 }
