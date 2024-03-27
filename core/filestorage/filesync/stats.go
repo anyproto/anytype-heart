@@ -70,7 +70,9 @@ func (f *fileSync) runNodeUsageUpdater() {
 		select {
 		case <-ticker.C:
 			cachedUsage, cachedUsageExists, _ := f.getCachedNodeUsage()
-			_, err := f.getAndUpdateNodeUsage(context.Background())
+			ctx, cancel := context.WithCancel(f.loopCtx)
+			_, err := f.getAndUpdateNodeUsage(ctx)
+			cancel()
 			if err != nil {
 				log.Warn("updater: can't update node usage", zap.Error(err))
 			} else {
@@ -104,7 +106,9 @@ func (f *fileSync) precacheNodeUsage() {
 	}
 
 	// Load actual node usage
-	_, err = f.getAndUpdateNodeUsage(context.Background())
+	ctx, cancel := context.WithCancel(f.loopCtx)
+	defer cancel()
+	_, err = f.getAndUpdateNodeUsage(ctx)
 	if err != nil {
 		log.Error("can't init node usage cache", zap.Error(err))
 	}
