@@ -64,13 +64,26 @@ func (s FileStat) IsPinned() bool {
 func (f *fileSync) runNodeUsageUpdater() {
 	f.precacheNodeUsage()
 
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
+			cachedUsage, cachedUsageExists, _ := f.getCachedNodeUsage()
 			_, err := f.getAndUpdateNodeUsage(context.Background())
 			if err != nil {
 				log.Error("updater: can't update node usage", zap.Error(err))
+			} else {
+				updatedUsage, updatedUsageExists, _ := f.getCachedNodeUsage()
+				if cachedUsageExists && updatedUsageExists && cachedUsage.BytesLeft == updatedUsage.BytesLeft {
+					// looks like we don't have active uploads we should actively follow
+					// let's slow down the updates
+					ticker.Reset(time.Minute)
+				} else {
+					// we have activity, or updated BytesLeft for the first time
+					// let's keep the updates frequent
+					ticker.Reset(time.Second * 10)
+				}
 			}
 		case <-f.loopCtx.Done():
 			return
