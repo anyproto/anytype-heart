@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
@@ -218,11 +219,11 @@ func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identitie
 	}
 	if len(identitiesMap) != 0 {
 		acl.RUnlock()
-		var identitiesString string
+		identities := make([]string, 0, len(identitiesMap))
 		for identity := range identitiesMap {
-			identitiesString += identity + ", "
+			identities = append(identities, identity)
 		}
-		return fmt.Errorf("%w with identities: %s", ErrRequestNotExists, identitiesString)
+		return fmt.Errorf("%w with identities: %s", ErrRequestNotExists, strings.Join(identities, ", "))
 	}
 	acl.RUnlock()
 	return a.Remove(ctx, spaceId, identities)
