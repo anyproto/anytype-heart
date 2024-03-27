@@ -64,13 +64,35 @@ func (s FileStat) IsPinned() bool {
 func (f *fileSync) runNodeUsageUpdater() {
 	f.precacheNodeUsage()
 
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(time.Second * 10)
+	slowMode := false
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			_, err := f.getAndUpdateNodeUsage(context.Background())
+			cachedUsage, cachedUsageExists, _ := f.getCachedNodeUsage()
+			ctx, cancel := context.WithCancel(f.loopCtx)
+			_, err := f.getAndUpdateNodeUsage(ctx)
+			cancel()
 			if err != nil {
-				log.Error("updater: can't update node usage", zap.Error(err))
+				log.Warn("updater: can't update node usage", zap.Error(err))
+			} else {
+				updatedUsage, updatedUsageExists, _ := f.getCachedNodeUsage()
+				if cachedUsageExists && updatedUsageExists && cachedUsage.BytesLeft == updatedUsage.BytesLeft {
+					// looks like we don't have active uploads we should actively follow
+					// let's slow down the updates
+					if !slowMode {
+						ticker.Reset(time.Minute)
+						slowMode = true
+					}
+				} else {
+					// we have activity, or updated BytesLeft for the first time
+					// let's keep the updates frequent
+					if slowMode {
+						ticker.Reset(time.Second * 10)
+						slowMode = false
+					}
+				}
 			}
 		case <-f.loopCtx.Done():
 			return
@@ -91,17 +113,11 @@ func (f *fileSync) precacheNodeUsage() {
 	}
 
 	// Load actual node usage
-	_, err = f.getAndUpdateNodeUsage(context.Background())
+	ctx, cancel := context.WithCancel(f.loopCtx)
+	defer cancel()
+	_, err = f.getAndUpdateNodeUsage(ctx)
 	if err != nil {
 		log.Error("can't init node usage cache", zap.Error(err))
-
-		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
-		err = f.queue.setNodeUsage(NodeUsage{
-			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
-		})
-		if err != nil {
-			log.Error("can't set default limits", zap.Error(err))
-		}
 	}
 }
 
