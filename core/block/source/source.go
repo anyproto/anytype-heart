@@ -498,7 +498,7 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 		})
 		if err != nil {
 			// New file
-			log.Debugf("can't get file key for hash: %v: %v", h, err)
+			log.Infof("can't get file key for hash: %v: %v", h, err)
 			continue
 		}
 		// Migrated file
