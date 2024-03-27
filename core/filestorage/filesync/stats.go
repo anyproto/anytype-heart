@@ -65,6 +65,7 @@ func (f *fileSync) runNodeUsageUpdater() {
 	f.precacheNodeUsage()
 
 	ticker := time.NewTicker(time.Second * 10)
+	slowMode := false
 	defer ticker.Stop()
 	for {
 		select {
@@ -80,11 +81,17 @@ func (f *fileSync) runNodeUsageUpdater() {
 				if cachedUsageExists && updatedUsageExists && cachedUsage.BytesLeft == updatedUsage.BytesLeft {
 					// looks like we don't have active uploads we should actively follow
 					// let's slow down the updates
-					ticker.Reset(time.Minute)
+					if !slowMode {
+						ticker.Reset(time.Minute)
+						slowMode = true
+					}
 				} else {
 					// we have activity, or updated BytesLeft for the first time
 					// let's keep the updates frequent
-					ticker.Reset(time.Second * 10)
+					if slowMode {
+						ticker.Reset(time.Second * 10)
+						slowMode = false
+					}
 				}
 			}
 		case <-f.loopCtx.Done():
