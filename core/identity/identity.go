@@ -545,7 +545,7 @@ func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error 
 		s.identityGlobalNames[anyID] = response.Results[i]
 		if anyID == s.myIdentity && response.Results[i].Found {
 			s.currentProfileDetailsLock.RLock()
-			details := pbtypes.CopyStruct(s.currentProfileDetails)
+			details := pbtypes.CopyStruct(s.currentProfileDetails, true)
 			s.currentProfileDetailsLock.RUnlock()
 			details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(response.Results[i].Name)
 			if err = s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
