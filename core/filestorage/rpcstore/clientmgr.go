@@ -99,14 +99,14 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 		if cl.peerId == c.peerId {
 			return true
 		}
-		if slices.Contains(cl.spaceIds, t.spaceId) {
+		if len(cl.spaceIds) == 0 || slices.Contains(cl.spaceIds, t.spaceId) {
 			taskClientIds = append(taskClientIds, cl.peerId)
 		}
 		return true
 	})
 	if taskErr != nil {
 		for _, peerId := range taskClientIds {
-			log.Debug("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
+			log.Info("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
 			if !slices.Contains(t.denyPeerIds, peerId) {
 				t.denyPeerIds = append(t.denyPeerIds, c.peerId)
 				err := m.add(t.ctx, t)
