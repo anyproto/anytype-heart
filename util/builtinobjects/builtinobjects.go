@@ -214,6 +214,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		path             string
 		removeFunc       = func() {}
 		sendNotification = func(code model.ImportErrorCode) {
+			spaceName := b.store.GetSpaceName(spaceID)
 			nErr := b.notifications.CreateAndSend(&model.Notification{
 				Id:      uuid.New().String(),
 				Status:  model.Notification_Created,
@@ -224,6 +225,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 					ErrorCode: code,
 					SpaceId:   spaceID,
 					Name:      title,
+					SpaceName: spaceName,
 				}},
 			})
 			if nErr != nil {

@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-sync v0.3.35-0.20240326083127-d35337d897fd
+	github.com/anyproto/any-sync v0.3.35
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.10
@@ -23,6 +23,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/dsoprea/go-exif/v3 v3.0.1
 	github.com/dsoprea/go-jpeg-image-structure/v2 v2.0.0-20210512043942-b434301c6836
+	github.com/ethereum/go-ethereum v1.13.12
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-shiori/go-readability v0.0.0-20220215145315-dd6828d2f09b
@@ -81,6 +82,7 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/fastjson v1.6.4
 	github.com/vektra/mockery/v2 v2.38.0
+	github.com/wealdtech/go-ens/v3 v3.6.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yuin/goldmark v1.7.0
 	go.uber.org/atomic v1.11.0
@@ -106,7 +108,9 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
+	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/RoaringBitmap/roaring v1.2.3 // indirect
+	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
@@ -144,6 +148,7 @@ require (
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
 	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
+	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dsoprea/go-iptc v0.0.0-20200609062250-162ae6b44feb // indirect
@@ -153,7 +158,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.0.4 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
-	github.com/ethereum/go-ethereum v1.13.12 // indirect
 	github.com/fogleman/gg v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
@@ -174,6 +178,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/pprof v0.0.0-20240207164012-fb44976bdcd5 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.5 // indirect
@@ -233,8 +238,9 @@ require (
 	github.com/quic-go/quic-go v0.40.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
+	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
@@ -249,6 +255,7 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
+	github.com/wealdtech/go-multicodec v1.4.0 // indirect
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
