@@ -94,3 +94,6 @@ packages:
   github.com/anyproto/anytype-heart/core/payments/cache:
     interfaces:
       CacheService:
+  github.com/anyproto/anytype-heart/core/block/object/idresolver:
+    interfaces:
+      Resolver:
