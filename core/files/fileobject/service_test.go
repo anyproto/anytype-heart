@@ -2,6 +2,7 @@ package fileobject
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -35,17 +38,20 @@ import (
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	bb "github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
-	fileService   files.Service
-	objectStore   *objectstore.StoreFixture
-	objectCreator *objectCreatorStub
-	spaceService  *mock_space.MockService
-
+	fileService     files.Service
+	objectStore     *objectstore.StoreFixture
+	objectCreator   *objectCreatorStub
+	spaceService    *mock_space.MockService
+	spaceIdResolver *mock_idresolver.MockResolver
 	*service
 }
+
+const testResolveRetryDelay = 5 * time.Millisecond
 
 func newFixture(t *testing.T) *fixture {
 	fileStore := filestore.New()
@@ -60,8 +66,9 @@ func newFixture(t *testing.T) *fixture {
 	eventSender := mock_event.NewMockSender(t)
 	fileService := files.New()
 	spaceService := mock_space.NewMockService(t)
+	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
-	svc := New()
+	svc := New(testResolveRetryDelay, testResolveRetryDelay)
 
 	ctx := context.Background()
 	a := new(app.App)
@@ -77,6 +84,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(fileService)
 	a.Register(objectCreator)
 	a.Register(svc)
+	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
 
 	err := a.Start(ctx)
 	require.NoError(t, err)
@@ -86,10 +94,11 @@ func newFixture(t *testing.T) *fixture {
 	})
 
 	fx := &fixture{
-		fileService:   fileService,
-		objectStore:   objectStore,
-		objectCreator: objectCreator,
-		spaceService:  spaceService,
+		fileService:     fileService,
+		objectStore:     objectStore,
+		objectCreator:   objectCreator,
+		spaceService:    spaceService,
+		spaceIdResolver: spaceIdResolver,
 
 		service: svc.(*service),
 	}
@@ -342,4 +351,93 @@ func expectIndexerCalled(t *testing.T, fx *fixture, waitIndexerCh chan struct{},
 	})
 
 	fx.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(space, nil)
+}
+
+const testFileObjectId = "bafyreiebxsn65332wl7qavcxxkfwnsroba5x5h2sshcn7f7cr66ztixb54"
+
+func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
+	t.Run("with invalid id expect error", func(t *testing.T) {
+		fx := newFixture(t)
+		_, err := fx.GetFileIdFromObjectWaitLoad(context.Background(), "invalid")
+		require.Error(t, err)
+	})
+
+	t.Run("with file id expect error", func(t *testing.T) {
+		fx := newFixture(t)
+		_, err := fx.GetFileIdFromObjectWaitLoad(context.Background(), testFileId.String())
+		require.Error(t, err)
+	})
+
+	t.Run("with not yet loaded object load object and when timed out expect return error", func(t *testing.T) {
+		fx := newFixture(t)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+		defer cancel()
+
+		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return("", fmt.Errorf("not yet resolved"))
+
+		_, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		require.Error(t, err)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+
+	t.Run("with not yet loaded object load object and return it's file id", func(t *testing.T) {
+		fx := newFixture(t)
+
+		ctx := context.Background()
+		spaceId := "spaceId"
+		resolvedSpace := mutex.NewValue("")
+		resolvedSpaceErr := mutex.NewValue(fmt.Errorf("not yet resolved"))
+		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).RunAndReturn(func(_ string) (string, error) {
+			return resolvedSpace.Get(), resolvedSpaceErr.Get()
+		})
+
+		go func() {
+			time.Sleep(3 * testResolveRetryDelay)
+			resolvedSpace.Set(spaceId)
+			resolvedSpaceErr.Set(nil)
+		}()
+
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
+			sb := smarttest.New(testFileObjectId)
+
+			st := sb.Doc.(*state.State)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(testFileId.String()))
+
+			return apply(sb)
+		})
+
+		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
+
+		id, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		require.NoError(t, err)
+		assert.Equal(t, domain.FullFileId{
+			SpaceId: spaceId,
+			FileId:  testFileId,
+		}, id)
+	})
+
+	t.Run("with loaded object without file id expect error", func(t *testing.T) {
+		fx := newFixture(t)
+
+		ctx := context.Background()
+		spaceId := "spaceId"
+		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return(spaceId, nil)
+
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
+			sb := smarttest.New(testFileObjectId)
+
+			st := sb.Doc.(*state.State)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(""))
+
+			return apply(sb)
+		})
+
+		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
+
+		_, err := fx.GetFileIdFromObjectWaitLoad(ctx, testFileObjectId)
+		require.ErrorIs(t, err, ErrEmptyFileId)
+	})
 }

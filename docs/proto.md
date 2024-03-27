@@ -997,6 +997,10 @@
     - [Rpc.Space.JoinCancel.Request](#anytype-Rpc-Space-JoinCancel-Request)
     - [Rpc.Space.JoinCancel.Response](#anytype-Rpc-Space-JoinCancel-Response)
     - [Rpc.Space.JoinCancel.Response.Error](#anytype-Rpc-Space-JoinCancel-Response-Error)
+    - [Rpc.Space.LeaveApprove](#anytype-Rpc-Space-LeaveApprove)
+    - [Rpc.Space.LeaveApprove.Request](#anytype-Rpc-Space-LeaveApprove-Request)
+    - [Rpc.Space.LeaveApprove.Response](#anytype-Rpc-Space-LeaveApprove-Response)
+    - [Rpc.Space.LeaveApprove.Response.Error](#anytype-Rpc-Space-LeaveApprove-Response-Error)
     - [Rpc.Space.ParticipantPermissionsChange](#anytype-Rpc-Space-ParticipantPermissionsChange)
     - [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request)
     - [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response)
@@ -1339,6 +1343,7 @@
     - [Rpc.Space.InviteView.Response.Error.Code](#anytype-Rpc-Space-InviteView-Response-Error-Code)
     - [Rpc.Space.Join.Response.Error.Code](#anytype-Rpc-Space-Join-Response-Error-Code)
     - [Rpc.Space.JoinCancel.Response.Error.Code](#anytype-Rpc-Space-JoinCancel-Response-Error-Code)
+    - [Rpc.Space.LeaveApprove.Response.Error.Code](#anytype-Rpc-Space-LeaveApprove-Response-Error-Code)
     - [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code)
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
@@ -1786,6 +1791,7 @@
 | SpaceStopSharing | [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request) | [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response) |  |
 | SpaceRequestApprove | [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request) | [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response) |  |
 | SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
+| SpaceLeaveApprove | [Rpc.Space.LeaveApprove.Request](#anytype-Rpc-Space-LeaveApprove-Request) | [Rpc.Space.LeaveApprove.Response](#anytype-Rpc-Space-LeaveApprove-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
@@ -16428,6 +16434,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-LeaveApprove"></a>
+
+### Rpc.Space.LeaveApprove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-LeaveApprove-Request"></a>
+
+### Rpc.Space.LeaveApprove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identities | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-LeaveApprove-Response"></a>
+
+### Rpc.Space.LeaveApprove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.LeaveApprove.Response.Error](#anytype-Rpc-Space-LeaveApprove-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-LeaveApprove-Response-Error"></a>
+
+### Rpc.Space.LeaveApprove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.LeaveApprove.Response.Error.Code](#anytype-Rpc-Space-LeaveApprove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-ParticipantPermissionsChange"></a>
 
 ### Rpc.Space.ParticipantPermissionsChange
@@ -18027,6 +18090,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
+| ACCOUNT_CREATION_IS_CANCELED | 107 |  |
 | CONFIG_FILE_NOT_FOUND | 200 |  |
 | CONFIG_FILE_INVALID | 201 |  |
 | CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
@@ -18188,6 +18252,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 | FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 | ACCOUNT_IS_DELETED | 111 |  |
+| ACCOUNT_LOAD_IS_CANCELED | 112 |  |
 | CONFIG_FILE_NOT_FOUND | 200 |  |
 | CONFIG_FILE_INVALID | 201 |  |
 | CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
@@ -21137,6 +21202,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
+
+
+
+<a name="anytype-Rpc-Space-LeaveApprove-Response-Error-Code"></a>
+
+### Rpc.Space.LeaveApprove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+| NO_APPROVE_REQUESTS | 104 |  |
 
 
 
