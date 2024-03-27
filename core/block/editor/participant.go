@@ -39,8 +39,8 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyIdentity),
+		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 	)
 	return nil
 }
