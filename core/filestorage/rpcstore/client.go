@@ -49,11 +49,18 @@ type client struct {
 	mu              sync.Mutex
 }
 
+func (c *client) checkSpaceFilter(t *task) bool {
+	// Only if we have a filter for spaceId
+	if len(c.spaceIds) > 0 && !slices.Contains(c.spaceIds, t.spaceId) {
+		return false
+	}
+	return true
+}
+
 // opLoop gets tasks from taskQueue
 func (c *client) opLoop(ctx context.Context) {
 	defer close(c.opLoopDone)
 	c.mu.Lock()
-	spaceIds := c.spaceIds
 	allowWrite := c.allowWrite
 	c.mu.Unlock()
 	cond := c.taskQueue.NewCond().WithFilter(func(t *task) bool {
@@ -63,10 +70,7 @@ func (c *client) opLoop(ctx context.Context) {
 		if slices.Index(t.denyPeerIds, c.peerId) != -1 {
 			return false
 		}
-		if len(spaceIds) > 0 && slices.Index(spaceIds, t.spaceId) == -1 {
-			return false
-		}
-		return true
+		return c.checkSpaceFilter(t)
 	})
 	for {
 		t, err := cond.WithPriority(c.stat.Score()).WaitOne(ctx)

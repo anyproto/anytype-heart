@@ -105,7 +105,7 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 		if cl.peerId == c.peerId {
 			return true
 		}
-		if len(cl.spaceIds) == 0 || slices.Contains(cl.spaceIds, t.spaceId) {
+		if cl.checkSpaceFilter(t) {
 			taskClientIds = append(taskClientIds, cl.peerId)
 		}
 		return true
