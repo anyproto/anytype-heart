@@ -94,14 +94,6 @@ func (f *fileSync) precacheNodeUsage() {
 	_, err = f.getAndUpdateNodeUsage(context.Background())
 	if err != nil {
 		log.Error("can't init node usage cache", zap.Error(err))
-
-		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
-		err = f.queue.setNodeUsage(NodeUsage{
-			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
-		})
-		if err != nil {
-			log.Error("can't set default limits", zap.Error(err))
-		}
 	}
 }
 
