@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
@@ -16,13 +17,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func newClient(ctx context.Context, s *service, peerId string, tq *mb.MB[*task]) (*client, error) {
+func newClient(ctx context.Context, pool pool.Pool, peerId string, tq *mb.MB[*task]) (*client, error) {
 	c := &client{
 		peerId:     peerId,
 		taskQueue:  tq,
 		opLoopDone: make(chan struct{}),
 		stat:       newStat(),
-		s:          s,
+		pool:       pool,
 	}
 	if err := c.checkConnectivity(ctx); err != nil {
 		return nil, err
@@ -44,7 +45,7 @@ type client struct {
 	opLoopDone      chan struct{}
 	opLoopCtxCancel context.CancelFunc
 	stat            *stat
-	s               *service
+	pool            pool.Pool
 	mu              sync.Mutex
 }
 
@@ -77,7 +78,7 @@ func (c *client) opLoop(ctx context.Context) {
 }
 
 func (c *client) delete(ctx context.Context, spaceID string, fileIds ...domain.FileId) (err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -98,7 +99,7 @@ func (c *client) delete(ctx context.Context, spaceID string, fileIds ...domain.F
 }
 
 func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, cd cid.Cid, data []byte) (err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -120,7 +121,7 @@ func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, 
 
 // get sends the get request to the stream and adds task to waiting list
 func (c *client) get(ctx context.Context, spaceID string, cd cid.Cid) (data []byte, err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -145,7 +146,7 @@ func (c *client) get(ctx context.Context, spaceID string, cd cid.Cid) (data []by
 }
 
 func (c *client) checkBlocksAvailability(ctx context.Context, spaceID string, cids ...cid.Cid) ([]*fileproto.BlockAvailability, error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +169,7 @@ func (c *client) checkBlocksAvailability(ctx context.Context, spaceID string, ci
 }
 
 func (c *client) bind(ctx context.Context, spaceID string, fileId domain.FileId, cids ...cid.Cid) error {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return err
 	}
@@ -187,7 +188,7 @@ func (c *client) bind(ctx context.Context, spaceID string, fileId domain.FileId,
 }
 
 func (c *client) accountInfo(ctx context.Context) (info *fileproto.AccountInfoResponse, err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -199,7 +200,7 @@ func (c *client) accountInfo(ctx context.Context) (info *fileproto.AccountInfoRe
 }
 
 func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -213,7 +214,7 @@ func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto
 }
 
 func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []domain.FileId) (info []*fileproto.FileInfo, err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
@@ -236,7 +237,7 @@ func (c *client) filesInfo(ctx context.Context, spaceId string, fileIds []domain
 }
 
 func (c *client) checkConnectivity(ctx context.Context) (err error) {
-	p, err := c.s.pool.Get(ctx, c.peerId)
+	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
 		return
 	}
