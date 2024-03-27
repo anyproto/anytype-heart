@@ -1379,6 +1379,52 @@ func (_c *MockObjectStore_GetRelationLink_Call) RunAndReturn(run func(string, st
 	return _c
 }
 
+// GetSpaceName provides a mock function with given fields: spaceId
+func (_m *MockObjectStore) GetSpaceName(spaceId string) string {
+	ret := _m.Called(spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSpaceName")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(spaceId)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockObjectStore_GetSpaceName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSpaceName'
+type MockObjectStore_GetSpaceName_Call struct {
+	*mock.Call
+}
+
+// GetSpaceName is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockObjectStore_Expecter) GetSpaceName(spaceId interface{}) *MockObjectStore_GetSpaceName_Call {
+	return &MockObjectStore_GetSpaceName_Call{Call: _e.mock.On("GetSpaceName", spaceId)}
+}
+
+func (_c *MockObjectStore_GetSpaceName_Call) Run(run func(spaceId string)) *MockObjectStore_GetSpaceName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetSpaceName_Call) Return(_a0 string) *MockObjectStore_GetSpaceName_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_GetSpaceName_Call) RunAndReturn(run func(string) string) *MockObjectStore_GetSpaceName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUniqueKeyById provides a mock function with given fields: id
 func (_m *MockObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 	ret := _m.Called(id)

@@ -311,5 +311,36 @@ service ClientCommands {
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
     rpc NotificationTest (anytype.Rpc.Notification.Test.Request) returns (anytype.Rpc.Notification.Test.Response);
 
+    // Membership
+    // ***
+    // Get current subscription status (tier, expiration date, etc.)
+    // WARNING: can be cached by Anytype Heart
+    rpc MembershipGetStatus (anytype.Rpc.Membership.GetStatus.Request) returns (anytype.Rpc.Membership.GetStatus.Response);
+    rpc MembershipIsNameValid( anytype.Rpc.Membership.IsNameValid.Request) returns (anytype.Rpc.Membership.IsNameValid.Response);
+    // Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
+    rpc MembershipGetPaymentUrl (anytype.Rpc.Membership.GetPaymentUrl.Request) returns (anytype.Rpc.Membership.GetPaymentUrl.Response);
+    // Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
+    // a) change his billing details
+    // b) see payment info, invoices, etc
+    // c) cancel the subscription
+    rpc MembershipGetPortalLinkUrl (anytype.Rpc.Membership.GetPortalLinkUrl.Request) returns (anytype.Rpc.Membership.GetPortalLinkUrl.Response);
+    // Send a verification code to the user's email. The user should enter this code to verify his email.
+    rpc MembershipGetVerificationEmail (anytype.Rpc.Membership.GetVerificationEmail.Request) returns (anytype.Rpc.Membership.GetVerificationEmail.Response);
+    // Verify the user's email with the code received in the previous step (MembershipGetVerificationEmail)
+    rpc MembershipVerifyEmailCode (anytype.Rpc.Membership.VerifyEmailCode.Request) returns (anytype.Rpc.Membership.VerifyEmailCode.Response);
+    // If your subscription is in PendingRequiresFinalization:
+    // please call MembershipFinalize to finish the process
+    rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
+
+    rpc MembershipGetTiers (anytype.Rpc.Membership.Tiers.Get.Request) returns (anytype.Rpc.Membership.Tiers.Get.Response);
+
+    // Name Service:
+    // ***
+    // hello.any -> data
+    rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
+    rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
+    // 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any
+    rpc NameServiceResolveAnyId( anytype.Rpc.NameService.ResolveAnyId.Request ) returns (anytype.Rpc.NameService.ResolveAnyId.Response);
+    
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
 }

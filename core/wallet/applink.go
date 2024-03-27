@@ -19,6 +19,8 @@ import (
 
 const appLinkKeysDirectory = "auth"
 
+var ErrAppLinkNotFound = fmt.Errorf("app link file not found in the account directory")
+
 type AppLinkPayload struct {
 	AccountPrivateKey []byte `json:"key"` // stored only for the main client app
 	AppName           string `json:"app_name"`
@@ -67,7 +69,7 @@ func writeAppLinkFile(accountPk crypto.PrivKey, dir string, payload *AppLinkPayl
 	hash := sha256.Sum256(key.Bytes())
 	f, err := os.Create(filepath.Join(dir, fmt.Sprintf("%x", hash)+".json"))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create app key file in the account: %w", err)
 	}
 	// todo: change perms?
 
@@ -88,6 +90,10 @@ func readAppLinkFile(pubKey crypto.PubKey, dir string, appKey string) (*AppLinkP
 	hash := sha256.Sum256(symKeyBytes)
 	f, err := os.Open(filepath.Join(dir, fmt.Sprintf("%x", hash)+".json"))
 	if err != nil {
+		// in case it is not found, we return a special error
+		if os.IsNotExist(err) {
+			return nil, ErrAppLinkNotFound
+		}
 		return nil, err
 	}
 	defer f.Close()

@@ -629,11 +629,63 @@
     - [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request)
     - [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response)
     - [Rpc.Log.Send.Response.Error](#anytype-Rpc-Log-Send-Response-Error)
+    - [Rpc.Membership](#anytype-Rpc-Membership)
+    - [Rpc.Membership.Finalize](#anytype-Rpc-Membership-Finalize)
+    - [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request)
+    - [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response)
+    - [Rpc.Membership.Finalize.Response.Error](#anytype-Rpc-Membership-Finalize-Response-Error)
+    - [Rpc.Membership.GetPaymentUrl](#anytype-Rpc-Membership-GetPaymentUrl)
+    - [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request)
+    - [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response)
+    - [Rpc.Membership.GetPaymentUrl.Response.Error](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error)
+    - [Rpc.Membership.GetPortalLinkUrl](#anytype-Rpc-Membership-GetPortalLinkUrl)
+    - [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request)
+    - [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response)
+    - [Rpc.Membership.GetPortalLinkUrl.Response.Error](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error)
+    - [Rpc.Membership.GetStatus](#anytype-Rpc-Membership-GetStatus)
+    - [Rpc.Membership.GetStatus.Request](#anytype-Rpc-Membership-GetStatus-Request)
+    - [Rpc.Membership.GetStatus.Response](#anytype-Rpc-Membership-GetStatus-Response)
+    - [Rpc.Membership.GetStatus.Response.Error](#anytype-Rpc-Membership-GetStatus-Response-Error)
+    - [Rpc.Membership.GetVerificationEmail](#anytype-Rpc-Membership-GetVerificationEmail)
+    - [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request)
+    - [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response)
+    - [Rpc.Membership.GetVerificationEmail.Response.Error](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error)
+    - [Rpc.Membership.IsNameValid](#anytype-Rpc-Membership-IsNameValid)
+    - [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request)
+    - [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response)
+    - [Rpc.Membership.IsNameValid.Response.Error](#anytype-Rpc-Membership-IsNameValid-Response-Error)
+    - [Rpc.Membership.Tiers](#anytype-Rpc-Membership-Tiers)
+    - [Rpc.Membership.Tiers.Get](#anytype-Rpc-Membership-Tiers-Get)
+    - [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request)
+    - [Rpc.Membership.Tiers.Get.Response](#anytype-Rpc-Membership-Tiers-Get-Response)
+    - [Rpc.Membership.Tiers.Get.Response.Error](#anytype-Rpc-Membership-Tiers-Get-Response-Error)
+    - [Rpc.Membership.VerifyEmailCode](#anytype-Rpc-Membership-VerifyEmailCode)
+    - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
+    - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
+    - [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error)
     - [Rpc.Metrics](#anytype-Rpc-Metrics)
     - [Rpc.Metrics.SetParameters](#anytype-Rpc-Metrics-SetParameters)
     - [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request)
     - [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response)
     - [Rpc.Metrics.SetParameters.Response.Error](#anytype-Rpc-Metrics-SetParameters-Response-Error)
+    - [Rpc.NameService](#anytype-Rpc-NameService)
+    - [Rpc.NameService.ResolveAnyId](#anytype-Rpc-NameService-ResolveAnyId)
+    - [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request)
+    - [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response)
+    - [Rpc.NameService.ResolveAnyId.Response.Error](#anytype-Rpc-NameService-ResolveAnyId-Response-Error)
+    - [Rpc.NameService.ResolveName](#anytype-Rpc-NameService-ResolveName)
+    - [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request)
+    - [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response)
+    - [Rpc.NameService.ResolveName.Response.Error](#anytype-Rpc-NameService-ResolveName-Response-Error)
+    - [Rpc.NameService.ResolveSpaceId](#anytype-Rpc-NameService-ResolveSpaceId)
+    - [Rpc.NameService.ResolveSpaceId.Request](#anytype-Rpc-NameService-ResolveSpaceId-Request)
+    - [Rpc.NameService.ResolveSpaceId.Response](#anytype-Rpc-NameService-ResolveSpaceId-Response)
+    - [Rpc.NameService.ResolveSpaceId.Response.Error](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error)
+    - [Rpc.NameService.UserAccount](#anytype-Rpc-NameService-UserAccount)
+    - [Rpc.NameService.UserAccount.Get](#anytype-Rpc-NameService-UserAccount-Get)
+    - [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request)
+    - [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response)
+    - [Rpc.NameService.UserAccount.Get.Response.Error](#anytype-Rpc-NameService-UserAccount-Get-Response-Error)
     - [Rpc.Navigation](#anytype-Rpc-Navigation)
     - [Rpc.Navigation.GetObjectInfoWithLinks](#anytype-Rpc-Navigation-GetObjectInfoWithLinks)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request)
@@ -1199,7 +1251,19 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype-Rpc-LinkPreview-Response-Error-Code)
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
+    - [Rpc.Membership.Finalize.Response.Error.Code](#anytype-Rpc-Membership-Finalize-Response-Error-Code)
+    - [Rpc.Membership.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code)
+    - [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code)
+    - [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code)
+    - [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code)
+    - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
+    - [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code)
+    - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
+    - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
+    - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
+    - [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code)
+    - [Rpc.NameService.UserAccount.Get.Response.Error.Code](#anytype-Rpc-NameService-UserAccount-Get-Response-Error-Code)
     - [Rpc.Navigation.Context](#anytype-Rpc-Navigation-Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response-Error-Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
@@ -1451,6 +1515,8 @@
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
+    - [Event.Membership](#anytype-Event-Membership)
+    - [Event.Membership.Update](#anytype-Event-Membership-Update)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Notification](#anytype-Event-Notification)
     - [Event.Notification.Send](#anytype-Event-Notification-Send)
@@ -1569,6 +1635,10 @@
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
     - [ManifestInfo](#anytype-model-ManifestInfo)
+    - [Membership](#anytype-model-Membership)
+    - [MembershipTierData](#anytype-model-MembershipTierData)
+    - [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature)
+    - [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -1636,6 +1706,10 @@
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
+    - [Membership.Status](#anytype-model-Membership-Status)
+    - [Membership.Tier](#anytype-model-Membership-Tier)
+    - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
     - [Notification.Status](#anytype-model-Notification-Status)
@@ -1903,6 +1977,17 @@
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | NotificationTest | [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request) | [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response) |  |
+| MembershipGetStatus | [Rpc.Membership.GetStatus.Request](#anytype-Rpc-Membership-GetStatus-Request) | [Rpc.Membership.GetStatus.Response](#anytype-Rpc-Membership-GetStatus-Response) | Membership *** Get current subscription status (tier, expiration date, etc.) WARNING: can be cached by Anytype Heart |
+| MembershipIsNameValid | [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request) | [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response) |  |
+| MembershipGetPaymentUrl | [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request) | [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
+| MembershipGetPortalLinkUrl | [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request) | [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
+| MembershipGetVerificationEmail | [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request) | [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
+| MembershipVerifyEmailCode | [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request) | [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (MembershipGetVerificationEmail) |
+| MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
+| MembershipGetTiers | [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request) | [Rpc.Membership.Tiers.Get.Response](#anytype-Rpc-Membership-Tiers-Get-Response) |  |
+| NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
+| NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
+| NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
 
  
@@ -11004,6 +11089,491 @@ returns blockShow event for given version
 
 
 
+<a name="anytype-Rpc-Membership"></a>
+
+### Rpc.Membership
+A Membership is a bundle of several &#34;Features&#34;
+every user should have one and only one tier 
+users can not have N tiers (no combining)
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Finalize"></a>
+
+### Rpc.Membership.Finalize
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Finalize-Request"></a>
+
+### Rpc.Membership.Finalize.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Finalize-Response"></a>
+
+### Rpc.Membership.Finalize.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.Finalize.Response.Error](#anytype-Rpc-Membership-Finalize-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Finalize-Response-Error"></a>
+
+### Rpc.Membership.Finalize.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.Finalize.Response.Error.Code](#anytype-Rpc-Membership-Finalize-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl"></a>
+
+### Rpc.Membership.GetPaymentUrl
+Generate a link to the payment provider
+where user can pay for the membership
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl-Request"></a>
+
+### Rpc.Membership.GetPaymentUrl.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedTier | [int32](#int32) |  |  |
+| paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
+| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl-Response"></a>
+
+### Rpc.Membership.GetPaymentUrl.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetPaymentUrl.Response.Error](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error) |  |  |
+| paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl-Response-Error"></a>
+
+### Rpc.Membership.GetPaymentUrl.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl"></a>
+
+### Rpc.Membership.GetPortalLinkUrl
+Generate a link to the portal where user can:
+a) change his billing details
+b) see payment info, invoices, etc
+c) cancel membership
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl-Request"></a>
+
+### Rpc.Membership.GetPortalLinkUrl.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl-Response"></a>
+
+### Rpc.Membership.GetPortalLinkUrl.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetPortalLinkUrl.Response.Error](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error) |  |  |
+| portalUrl | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error"></a>
+
+### Rpc.Membership.GetPortalLinkUrl.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus"></a>
+
+### Rpc.Membership.GetStatus
+Get the current status of the membership
+including the tier, status, dates, etc
+WARNING: this can be cached by Anytype heart
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus-Request"></a>
+
+### Rpc.Membership.GetStatus.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus-Response"></a>
+
+### Rpc.Membership.GetStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetStatus.Response.Error](#anytype-Rpc-Membership-GetStatus-Response-Error) |  |  |
+| data | [model.Membership](#anytype-model-Membership) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus-Response-Error"></a>
+
+### Rpc.Membership.GetStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail"></a>
+
+### Rpc.Membership.GetVerificationEmail
+Send an e-mail with verification code to the user
+can be called multiple times but with some timeout (N seconds) between calls
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail-Request"></a>
+
+### Rpc.Membership.GetVerificationEmail.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| email | [string](#string) |  |  |
+| subscribeToNewsletter | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail-Response"></a>
+
+### Rpc.Membership.GetVerificationEmail.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetVerificationEmail.Response.Error](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail-Response-Error"></a>
+
+### Rpc.Membership.GetVerificationEmail.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-IsNameValid"></a>
+
+### Rpc.Membership.IsNameValid
+Check if the requested name is valid for the requested tier
+before requesting a payment link and paying
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-IsNameValid-Request"></a>
+
+### Rpc.Membership.IsNameValid.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedTier | [int32](#int32) |  |  |
+| requestedAnyName | [string](#string) |  | full name including .any suffix |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-IsNameValid-Response"></a>
+
+### Rpc.Membership.IsNameValid.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.IsNameValid.Response.Error](#anytype-Rpc-Membership-IsNameValid-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-IsNameValid-Response-Error"></a>
+
+### Rpc.Membership.IsNameValid.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers"></a>
+
+### Rpc.Membership.Tiers
+Tiers can change on the backend so if you want to show users the latest data
+you can call this method to get the latest tiers
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get"></a>
+
+### Rpc.Membership.Tiers.Get
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get-Request"></a>
+
+### Rpc.Membership.Tiers.Get.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+| locale | [string](#string) |  |  |
+| paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get-Response"></a>
+
+### Rpc.Membership.Tiers.Get.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.Tiers.Get.Response.Error](#anytype-Rpc-Membership-Tiers-Get-Response-Error) |  |  |
+| tiers | [model.MembershipTierData](#anytype-model-MembershipTierData) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get-Response-Error"></a>
+
+### Rpc.Membership.Tiers.Get.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode"></a>
+
+### Rpc.Membership.VerifyEmailCode
+Verify the e-mail address of the user 
+need a correct code that was sent to the user when calling GetVerificationEmail
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode-Request"></a>
+
+### Rpc.Membership.VerifyEmailCode.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode-Response"></a>
+
+### Rpc.Membership.VerifyEmailCode.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode-Response-Error"></a>
+
+### Rpc.Membership.VerifyEmailCode.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Metrics"></a>
 
 ### Rpc.Metrics
@@ -11064,6 +11634,258 @@ returns blockShow event for given version
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService"></a>
+
+### Rpc.NameService
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveAnyId"></a>
+
+### Rpc.NameService.ResolveAnyId
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveAnyId-Request"></a>
+
+### Rpc.NameService.ResolveAnyId.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| anyId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveAnyId-Response"></a>
+
+### Rpc.NameService.ResolveAnyId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ResolveAnyId.Response.Error](#anytype-Rpc-NameService-ResolveAnyId-Response-Error) |  |  |
+| found | [bool](#bool) |  |  |
+| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveAnyId-Response-Error"></a>
+
+### Rpc.NameService.ResolveAnyId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName"></a>
+
+### Rpc.NameService.ResolveName
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Request"></a>
+
+### Rpc.NameService.ResolveName.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Response"></a>
+
+### Rpc.NameService.ResolveName.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ResolveName.Response.Error](#anytype-Rpc-NameService-ResolveName-Response-Error) |  |  |
+| available | [bool](#bool) |  |  |
+| ownerScwEthAddress | [string](#string) |  | EOA -&gt; SCW -&gt; name This field is non-empty only if name is &#34;already registered&#34; |
+| ownerEthAddress | [string](#string) |  | This field is non-empty only if name is &#34;already registered&#34; |
+| ownerAnyAddress | [string](#string) |  | A content hash attached to this name This field is non-empty only if name is &#34;already registered&#34; |
+| spaceId | [string](#string) |  | A SpaceId attached to this name This field is non-empty only if name is &#34;already registered&#34; |
+| nameExpires | [int64](#int64) |  | A timestamp when this name expires |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Response-Error"></a>
+
+### Rpc.NameService.ResolveName.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveSpaceId"></a>
+
+### Rpc.NameService.ResolveSpaceId
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveSpaceId-Request"></a>
+
+### Rpc.NameService.ResolveSpaceId.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveSpaceId-Response"></a>
+
+### Rpc.NameService.ResolveSpaceId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ResolveSpaceId.Response.Error](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error) |  |  |
+| found | [bool](#bool) |  |  |
+| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveSpaceId-Response-Error"></a>
+
+### Rpc.NameService.ResolveSpaceId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount"></a>
+
+### Rpc.NameService.UserAccount
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get"></a>
+
+### Rpc.NameService.UserAccount.Get
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get-Request"></a>
+
+### Rpc.NameService.UserAccount.Get.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get-Response"></a>
+
+### Rpc.NameService.UserAccount.Get.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.UserAccount.Get.Response.Error](#anytype-Rpc-NameService-UserAccount-Get-Response-Error) |  |  |
+| anyNameAttached | [string](#string) |  | this will use ReverseResolve to get current name user can buy many names, but only 1 name can be set as &#34;current&#34;: ETH address &lt;-&gt; name |
+| namesCountLeft | [uint64](#uint64) |  | Number of names that the user can reserve |
+| operationsCountLeft | [uint64](#uint64) |  | Number of operations: update name, add new data, etc |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get-Response-Error"></a>
+
+### Rpc.NameService.UserAccount.Get.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.UserAccount.Get.Response.Error.Code](#anytype-Rpc-NameService-UserAccount-Get-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19114,6 +19936,128 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Membership-Finalize-Response-Error-Code"></a>
+
+### Rpc.Membership.Finalize.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code"></a>
+
+### Rpc.Membership.GetPaymentUrl.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code"></a>
+
+### Rpc.Membership.GetPortalLinkUrl.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetStatus-Response-Error-Code"></a>
+
+### Rpc.Membership.GetStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code"></a>
+
+### Rpc.Membership.GetVerificationEmail.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-IsNameValid-Response-Error-Code"></a>
+
+### Rpc.Membership.IsNameValid.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| TOO_SHORT | 3 |  |
+| TOO_LONG | 4 |  |
+| HAS_INVALID_CHARS | 5 |  |
+| TIER_FEATURES_NO_NAME | 6 | if everything is fine - &#34;name is already taken&#34; check should be done in the NS see IsNameAvailable() |
+
+
+
+<a name="anytype-Rpc-Membership-Tiers-Get-Response-Error-Code"></a>
+
+### Rpc.Membership.Tiers.Get.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code"></a>
+
+### Rpc.Membership.VerifyEmailCode.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
 <a name="anytype-Rpc-Metrics-SetParameters-Response-Error-Code"></a>
 
 ### Rpc.Metrics.SetParameters.Response.Error.Code
@@ -19124,6 +20068,60 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code"></a>
+
+### Rpc.NameService.ResolveAnyId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Response-Error-Code"></a>
+
+### Rpc.NameService.ResolveName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code"></a>
+
+### Rpc.NameService.ResolveSpaceId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-NameService-UserAccount-Get-Response-Error-Code"></a>
+
+### Rpc.NameService.UserAccount.Get.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| BAD_NAME_RESOLVE | 4 |  |
 
 
 
@@ -20433,6 +21431,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT | 101 | means the client logged into another account or the account directory has been cleaned |
 
 
 
@@ -22832,6 +23831,31 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Membership"></a>
+
+### Event.Membership
+
+
+
+
+
+
+
+<a name="anytype-Event-Membership-Update"></a>
+
+### Event.Membership.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| data | [model.Membership](#anytype-model-Membership) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -22904,6 +23928,7 @@ Precondition: user A opened a block
 | notificationSend | [Event.Notification.Send](#anytype-Event-Notification-Send) |  |  |
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
+| membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
 
 
 
@@ -24629,6 +25654,7 @@ Used to decode block meta only, without the content itself
 | iconCid | [string](#string) |  |  |
 | iconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | description | [string](#string) |  |  |
+| globalName | [string](#string) |  |  |
 
 
 
@@ -24760,6 +25786,89 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Membership"></a>
+
+### Membership
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tier | [int32](#int32) |  | it was Tier before, changed to int32 to allow dynamic values |
+| status | [Membership.Status](#anytype-model-Membership-Status) |  |  |
+| dateStarted | [uint64](#uint64) |  |  |
+| dateEnds | [uint64](#uint64) |  |  |
+| isAutoRenew | [bool](#bool) |  |  |
+| paymentMethod | [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
+| requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
+| userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
+| subscribeToNewsletter | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipTierData"></a>
+
+### MembershipTierData
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [uint32](#uint32) |  | this is a unique ID of the tier you should hardcode this in your app and provide icon, graphics, etc for each tier (even for old/historical/inactive/hidden tiers) |
+| name | [string](#string) |  | localazied name of the tier |
+| description | [string](#string) |  | just a short technical description you don&#39;t have to use it, you can use your own UI-friendly texts |
+| isActive | [bool](#bool) |  | can you buy it (ON ALL PLATFORMS, without clarification)? |
+| isTest | [bool](#bool) |  | is this tier for debugging only? |
+| isHiddenTier | [bool](#bool) |  | hidden tiers are only visible once user got them |
+| periodType | [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType) |  | how long is the period of the subscription |
+| periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
+| priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
+| anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
+| anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
+| features | [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry) | repeated | each tier has a set of features each feature has a unique key: &#34;storage&#34;, &#34;invites&#34;, etc not using enum here to provide dynamic feature list:
+
+&#34;stoageGB&#34; -&gt; {64, &#34;&#34;} &#34;invites&#34; -&gt; {120, &#34;&#34;} &#34;spaces-public&#34; -&gt; {10, &#34;&#34;} ... |
+
+
+
+
+
+
+<a name="anytype-model-MembershipTierData-Feature"></a>
+
+### MembershipTierData.Feature
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| valueUint | [uint32](#uint32) |  | usually feature has uint value like &#34;storage&#34; - 120 |
+| valueStr | [string](#string) |  | in case feature will have string value |
+
+
+
+
+
+
+<a name="anytype-model-MembershipTierData-FeaturesEntry"></a>
+
+### MembershipTierData.FeaturesEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Metadata"></a>
 
 ### Metadata
@@ -24858,6 +25967,7 @@ Used to decode block meta only, without the content itself
 | errorCode | [Import.ErrorCode](#anytype-model-Import-ErrorCode) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -24877,6 +25987,7 @@ Used to decode block meta only, without the content itself
 | importType | [Import.Type](#anytype-model-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+| spaceName | [string](#string) |  |  |
 
 
 
@@ -25869,6 +26980,70 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype-model-Membership-PaymentMethod"></a>
+
+### Membership.PaymentMethod
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| MethodCard | 0 |  |
+| MethodCrypto | 1 |  |
+| MethodApplePay | 2 |  |
+| MethodGooglePay | 3 |  |
+| MethodAppleInapp | 4 |  |
+| MethodGoogleInapp | 5 |  |
+
+
+
+<a name="anytype-model-Membership-Status"></a>
+
+### Membership.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| StatusUnknown | 0 |  |
+| StatusPending | 1 | please wait a bit more |
+| StatusActive | 2 |  |
+| StatusPendingRequiresFinalization | 3 | in some cases we need to finalize the process: - if user has bought membership directly without first calling the BuySubscription method
+
+in this case please call Finalize to finish the process |
+
+
+
+<a name="anytype-model-Membership-Tier"></a>
+
+### Membership.Tier
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TierNewUser | 0 |  |
+| TierExplorer | 1 | &#34;free&#34; tier |
+| TierBuilder1WeekTEST | 2 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
+| TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
+| TierBuilder | 4 |  |
+| TierCoCreator | 5 |  |
+
+
+
+<a name="anytype-model-MembershipTierData-PeriodType"></a>
+
+### MembershipTierData.PeriodType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PeriodTypeUnknown | 0 |  |
+| PeriodTypeUnlimited | 1 |  |
+| PeriodTypeDays | 2 |  |
+| PeriodTypeWeeks | 3 |  |
+| PeriodTypeMonths | 4 |  |
+| PeriodTypeYears | 5 |  |
 
 
 

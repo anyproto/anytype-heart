@@ -1708,5 +1708,15 @@
     "name": "Import Type",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Name of profile that the user could be mentioned by",
+    "format": "shorttext",
+    "hidden": false,
+    "key": "globalName",
+    "maxCount": 1,
+    "name": "Global name",
+    "readonly": true,
+    "source": "details"
   }
 ]
