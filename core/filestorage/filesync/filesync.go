@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/queue"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -32,20 +33,18 @@ var loopTimeout = time.Minute
 var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
 type FileSync interface {
-	AddFile(spaceId string, fileId domain.FileId, uploadedByUser, imported bool) (err error)
+	AddFile(fileId domain.FullFileId, uploadedByUser, imported bool) (err error)
 	UploadSynchronously(spaceId string, fileId domain.FileId) error
 	OnUploadStarted(func(fileId domain.FileId) error)
 	OnUploaded(func(fileId domain.FileId) error)
 	OnLimited(func(fileId domain.FileId) error)
-	RemoveFile(spaceId string, fileId domain.FileId) (err error)
+	RemoveFile(fileId domain.FullFileId) (err error)
 	RemoveSynchronously(spaceId string, fileId domain.FileId) (err error)
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, hashes []domain.FileId) ([]FileStat, error)
 	SyncStatus() (ss SyncStatus, err error)
-	HasUpload(spaceId string, fileId domain.FileId) (ok bool, err error)
-	IsFileUploadLimited(spaceId string, fileId domain.FileId) (ok bool, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
@@ -64,9 +63,9 @@ type SyncStatus struct {
 }
 
 type fileSync struct {
+	store           *fileSyncStore
 	dbProvider      datastore.Datastore
 	rpcStore        rpcstore.RpcStore
-	queue           *fileSyncStore
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
 	uploadPingCh    chan struct{}
@@ -77,6 +76,10 @@ type fileSync struct {
 	onUploaded      func(fileId domain.FileId) error
 	onUploadStarted func(fileId domain.FileId) error
 	onLimited       func(fileId domain.FileId) error
+
+	uploadingQueue *queue.Queue[*QueueItem]
+	retryingQueue  *queue.Queue[*QueueItem]
+	removingQueue  *queue.Queue[*QueueItem]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -117,20 +120,29 @@ func (f *fileSync) Name() (name string) {
 	return CName
 }
 
+func makeQueueItem() *QueueItem {
+	return &QueueItem{}
+}
+
 func (f *fileSync) Run(ctx context.Context) (err error) {
 	db, err := f.dbProvider.SpaceStorage()
 	if err != nil {
 		return
 	}
-	f.queue, err = newFileSyncStore(db)
+	f.store, err = newFileSyncStore(db)
 	if err != nil {
 		return
 	}
 
+	f.uploadingQueue = queue.New(db, log.Logger, uploadKeyPrefix, makeQueueItem, f.uploadingHandler)
+	f.uploadingQueue.Run()
+	f.retryingQueue = queue.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.uploadingHandler, queue.WithHandlerTickPeriod(loopTimeout))
+	f.retryingQueue.Run()
+	f.removingQueue = queue.New(db, log.Logger, removeKeyPrefix, makeQueueItem, f.removingHandler)
+	f.removingQueue.Run()
+
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.runNodeUsageUpdater()
-	go f.addLoop()
-	go f.removeLoop()
 	return
 }
 
@@ -147,15 +159,21 @@ func (f *fileSync) Close(ctx context.Context) error {
 		}
 	}()
 
+	if err := f.uploadingQueue.Close(); err != nil {
+		log.Error("can't close uploading queue: %v", zap.Error(err))
+	}
+	if err := f.retryingQueue.Close(); err != nil {
+		log.Error("can't close retrying queue: %v", zap.Error(err))
+	}
+	if err := f.removingQueue.Close(); err != nil {
+		log.Error("can't close removing queue: %v", zap.Error(err))
+	}
+
 	return nil
 }
 
 func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {
-	ql, err := f.queue.QueueLen()
-	if err != nil {
-		return
-	}
 	return SyncStatus{
-		QueueLen: ql,
+		QueueLen: f.uploadingQueue.Len(),
 	}, nil
 }

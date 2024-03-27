@@ -130,7 +130,7 @@ func TestFileAdd(t *testing.T) {
 	})
 
 	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
-		err = fx.fileSyncService.AddFile(spaceId, got.FileId, true, false)
+		err = fx.fileSyncService.AddFile(domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
 		require.NoError(t, err)
 		<-uploaded
 		infos, err := fx.rpcStore.FilesInfo(ctx, spaceId, got.FileId)

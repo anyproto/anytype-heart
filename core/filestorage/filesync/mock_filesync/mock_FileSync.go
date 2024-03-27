@@ -29,17 +29,17 @@ func (_m *MockFileSync) EXPECT() *MockFileSync_Expecter {
 	return &MockFileSync_Expecter{mock: &_m.Mock}
 }
 
-// AddFile provides a mock function with given fields: spaceId, fileId, uploadedByUser, imported
-func (_m *MockFileSync) AddFile(spaceId string, fileId domain.FileId, uploadedByUser bool, imported bool) error {
-	ret := _m.Called(spaceId, fileId, uploadedByUser, imported)
+// AddFile provides a mock function with given fields: fileId, uploadedByUser, imported
+func (_m *MockFileSync) AddFile(fileId domain.FullFileId, uploadedByUser bool, imported bool) error {
+	ret := _m.Called(fileId, uploadedByUser, imported)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddFile")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, domain.FileId, bool, bool) error); ok {
-		r0 = rf(spaceId, fileId, uploadedByUser, imported)
+	if rf, ok := ret.Get(0).(func(domain.FullFileId, bool, bool) error); ok {
+		r0 = rf(fileId, uploadedByUser, imported)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -53,17 +53,16 @@ type MockFileSync_AddFile_Call struct {
 }
 
 // AddFile is a helper method to define mock.On call
-//   - spaceId string
-//   - fileId domain.FileId
+//   - fileId domain.FullFileId
 //   - uploadedByUser bool
 //   - imported bool
-func (_e *MockFileSync_Expecter) AddFile(spaceId interface{}, fileId interface{}, uploadedByUser interface{}, imported interface{}) *MockFileSync_AddFile_Call {
-	return &MockFileSync_AddFile_Call{Call: _e.mock.On("AddFile", spaceId, fileId, uploadedByUser, imported)}
+func (_e *MockFileSync_Expecter) AddFile(fileId interface{}, uploadedByUser interface{}, imported interface{}) *MockFileSync_AddFile_Call {
+	return &MockFileSync_AddFile_Call{Call: _e.mock.On("AddFile", fileId, uploadedByUser, imported)}
 }
 
-func (_c *MockFileSync_AddFile_Call) Run(run func(spaceId string, fileId domain.FileId, uploadedByUser bool, imported bool)) *MockFileSync_AddFile_Call {
+func (_c *MockFileSync_AddFile_Call) Run(run func(fileId domain.FullFileId, uploadedByUser bool, imported bool)) *MockFileSync_AddFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.FileId), args[2].(bool), args[3].(bool))
+		run(args[0].(domain.FullFileId), args[1].(bool), args[2].(bool))
 	})
 	return _c
 }
@@ -73,7 +72,7 @@ func (_c *MockFileSync_AddFile_Call) Return(err error) *MockFileSync_AddFile_Cal
 	return _c
 }
 
-func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(string, domain.FileId, bool, bool) error) *MockFileSync_AddFile_Call {
+func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(domain.FullFileId, bool, bool) error) *MockFileSync_AddFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -390,63 +389,6 @@ func (_c *MockFileSync_FileStat_Call) RunAndReturn(run func(context.Context, str
 	return _c
 }
 
-// HasUpload provides a mock function with given fields: spaceId, fileId
-func (_m *MockFileSync) HasUpload(spaceId string, fileId domain.FileId) (bool, error) {
-	ret := _m.Called(spaceId, fileId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for HasUpload")
-	}
-
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string, domain.FileId) (bool, error)); ok {
-		return rf(spaceId, fileId)
-	}
-	if rf, ok := ret.Get(0).(func(string, domain.FileId) bool); ok {
-		r0 = rf(spaceId, fileId)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func(string, domain.FileId) error); ok {
-		r1 = rf(spaceId, fileId)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockFileSync_HasUpload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasUpload'
-type MockFileSync_HasUpload_Call struct {
-	*mock.Call
-}
-
-// HasUpload is a helper method to define mock.On call
-//   - spaceId string
-//   - fileId domain.FileId
-func (_e *MockFileSync_Expecter) HasUpload(spaceId interface{}, fileId interface{}) *MockFileSync_HasUpload_Call {
-	return &MockFileSync_HasUpload_Call{Call: _e.mock.On("HasUpload", spaceId, fileId)}
-}
-
-func (_c *MockFileSync_HasUpload_Call) Run(run func(spaceId string, fileId domain.FileId)) *MockFileSync_HasUpload_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.FileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_HasUpload_Call) Return(ok bool, err error) *MockFileSync_HasUpload_Call {
-	_c.Call.Return(ok, err)
-	return _c
-}
-
-func (_c *MockFileSync_HasUpload_Call) RunAndReturn(run func(string, domain.FileId) (bool, error)) *MockFileSync_HasUpload_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Init provides a mock function with given fields: a
 func (_m *MockFileSync) Init(a *app.App) error {
 	ret := _m.Called(a)
@@ -489,63 +431,6 @@ func (_c *MockFileSync_Init_Call) Return(err error) *MockFileSync_Init_Call {
 }
 
 func (_c *MockFileSync_Init_Call) RunAndReturn(run func(*app.App) error) *MockFileSync_Init_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// IsFileUploadLimited provides a mock function with given fields: spaceId, fileId
-func (_m *MockFileSync) IsFileUploadLimited(spaceId string, fileId domain.FileId) (bool, error) {
-	ret := _m.Called(spaceId, fileId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for IsFileUploadLimited")
-	}
-
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string, domain.FileId) (bool, error)); ok {
-		return rf(spaceId, fileId)
-	}
-	if rf, ok := ret.Get(0).(func(string, domain.FileId) bool); ok {
-		r0 = rf(spaceId, fileId)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func(string, domain.FileId) error); ok {
-		r1 = rf(spaceId, fileId)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockFileSync_IsFileUploadLimited_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsFileUploadLimited'
-type MockFileSync_IsFileUploadLimited_Call struct {
-	*mock.Call
-}
-
-// IsFileUploadLimited is a helper method to define mock.On call
-//   - spaceId string
-//   - fileId domain.FileId
-func (_e *MockFileSync_Expecter) IsFileUploadLimited(spaceId interface{}, fileId interface{}) *MockFileSync_IsFileUploadLimited_Call {
-	return &MockFileSync_IsFileUploadLimited_Call{Call: _e.mock.On("IsFileUploadLimited", spaceId, fileId)}
-}
-
-func (_c *MockFileSync_IsFileUploadLimited_Call) Run(run func(spaceId string, fileId domain.FileId)) *MockFileSync_IsFileUploadLimited_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.FileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_IsFileUploadLimited_Call) Return(ok bool, err error) *MockFileSync_IsFileUploadLimited_Call {
-	_c.Call.Return(ok, err)
-	return _c
-}
-
-func (_c *MockFileSync_IsFileUploadLimited_Call) RunAndReturn(run func(string, domain.FileId) (bool, error)) *MockFileSync_IsFileUploadLimited_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -750,17 +635,17 @@ func (_c *MockFileSync_OnUploaded_Call) RunAndReturn(run func(func(domain.FileId
 	return _c
 }
 
-// RemoveFile provides a mock function with given fields: spaceId, fileId
-func (_m *MockFileSync) RemoveFile(spaceId string, fileId domain.FileId) error {
-	ret := _m.Called(spaceId, fileId)
+// RemoveFile provides a mock function with given fields: fileId
+func (_m *MockFileSync) RemoveFile(fileId domain.FullFileId) error {
+	ret := _m.Called(fileId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RemoveFile")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, domain.FileId) error); ok {
-		r0 = rf(spaceId, fileId)
+	if rf, ok := ret.Get(0).(func(domain.FullFileId) error); ok {
+		r0 = rf(fileId)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -774,15 +659,14 @@ type MockFileSync_RemoveFile_Call struct {
 }
 
 // RemoveFile is a helper method to define mock.On call
-//   - spaceId string
-//   - fileId domain.FileId
-func (_e *MockFileSync_Expecter) RemoveFile(spaceId interface{}, fileId interface{}) *MockFileSync_RemoveFile_Call {
-	return &MockFileSync_RemoveFile_Call{Call: _e.mock.On("RemoveFile", spaceId, fileId)}
+//   - fileId domain.FullFileId
+func (_e *MockFileSync_Expecter) RemoveFile(fileId interface{}) *MockFileSync_RemoveFile_Call {
+	return &MockFileSync_RemoveFile_Call{Call: _e.mock.On("RemoveFile", fileId)}
 }
 
-func (_c *MockFileSync_RemoveFile_Call) Run(run func(spaceId string, fileId domain.FileId)) *MockFileSync_RemoveFile_Call {
+func (_c *MockFileSync_RemoveFile_Call) Run(run func(fileId domain.FullFileId)) *MockFileSync_RemoveFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.FileId))
+		run(args[0].(domain.FullFileId))
 	})
 	return _c
 }
@@ -792,7 +676,7 @@ func (_c *MockFileSync_RemoveFile_Call) Return(err error) *MockFileSync_RemoveFi
 	return _c
 }
 
-func (_c *MockFileSync_RemoveFile_Call) RunAndReturn(run func(string, domain.FileId) error) *MockFileSync_RemoveFile_Call {
+func (_c *MockFileSync_RemoveFile_Call) RunAndReturn(run func(domain.FullFileId) error) *MockFileSync_RemoveFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
