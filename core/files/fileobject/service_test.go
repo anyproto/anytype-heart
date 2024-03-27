@@ -47,6 +47,20 @@ type fixture struct {
 	*service
 }
 
+type dummyObjectGetter struct{}
+
+func (g *dummyObjectGetter) Init(_ *app.App) error {
+	return nil
+}
+
+func (g *dummyObjectGetter) Name() string {
+	return "dummyObjectGetter"
+}
+
+func (g *dummyObjectGetter) GetObject(ctx context.Context, id string) (smartblock.SmartBlock, error) {
+	return nil, nil
+}
+
 func newFixture(t *testing.T) *fixture {
 	fileStore := filestore.New()
 	objectStore := objectstore.NewStoreFixture(t)
@@ -60,6 +74,7 @@ func newFixture(t *testing.T) *fixture {
 	eventSender := mock_event.NewMockSender(t)
 	fileService := files.New()
 	spaceService := mock_space.NewMockService(t)
+	objectGetter := &dummyObjectGetter{}
 
 	svc := New()
 
@@ -77,6 +92,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(fileService)
 	a.Register(objectCreator)
 	a.Register(svc)
+	a.Register(objectGetter)
 
 	err := a.Start(ctx)
 	require.NoError(t, err)
