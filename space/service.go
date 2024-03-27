@@ -95,7 +95,7 @@ type service struct {
 	repKey                 uint64
 
 	mu        sync.Mutex
-	ctx       context.Context
+	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
 	ctxCancel context.CancelFunc
 	isClosing atomic.Bool
 }
@@ -165,11 +165,11 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
-	err = s.initTechSpace()
+	err = s.initTechSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	err = s.initPersonalSpace()
+	err = s.initPersonalSpace(ctx)
 	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 			err = ErrSpaceNotExists
