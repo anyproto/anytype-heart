@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -50,6 +51,7 @@ type Service interface {
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
+	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
 	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
@@ -70,6 +72,7 @@ type service struct {
 	fileSync      filesync.FileSync
 	fileStore     filestore.FileStore
 	objectStore   objectstore.ObjectStore
+	objectGetter  getblock.ObjectGetter
 
 	indexer *indexer
 }
@@ -89,6 +92,7 @@ func (s *service) Init(a *app.App) error {
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.objectGetter = app.MustComponent[getblock.ObjectGetter](a)
 	s.indexer = s.newIndexer()
 	return nil
 }
@@ -348,6 +352,23 @@ func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error
 		SpaceId: spaceId,
 		FileId:  domain.FileId(fileId),
 	}, nil
+}
+
+func (s *service) GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error) {
+	var id domain.FullFileId
+	err := getblock.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
+		details := sb.Details()
+		id.FileId = domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String()))
+		if id.FileId == "" {
+			return fmt.Errorf("empty file hash")
+		}
+		id.SpaceId = sb.SpaceID()
+		return nil
+	})
+	if err != nil {
+		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
+	}
+	return id, nil
 }
 
 func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.ChangeFileKeys, fileId string, origin objectorigin.ObjectOrigin) string {
