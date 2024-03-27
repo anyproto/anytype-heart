@@ -10,14 +10,11 @@ import (
 	"github.com/cheggaaa/mb"
 	"golang.org/x/net/context"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "common.components.aclnotifications"
@@ -47,7 +44,7 @@ type aclNotificationSender struct {
 	identityService     dependencies.IdentityService
 	notificationService NotificationSender
 	batcher             *mb.MB
-	objectStore         objectstore.ObjectStore
+	spaceNameGetter     objectstore.SpaceNameGetter
 }
 
 func NewAclNotificationSender() AclNotification {
@@ -57,7 +54,7 @@ func NewAclNotificationSender() AclNotification {
 func (n *aclNotificationSender) Init(a *app.App) (err error) {
 	n.identityService = app.MustComponent[dependencies.IdentityService](a)
 	n.notificationService = app.MustComponent[NotificationSender](a)
-	n.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	n.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	return nil
 }
 
@@ -82,7 +79,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	spaceId string,
 	accountStatus spaceinfo.AccountStatus,
 ) {
-	spaceName := n.getSpaceName(spaceId)
+	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
 	if lastNotificationId != "" {
 		acl.IterateFrom(lastNotificationId, func(record *list.AclRecord) (IsContinue bool) {
@@ -114,31 +111,6 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 			logger.Errorf("failed to add acl record, %s", err)
 		}
 	}
-}
-
-func (n *aclNotificationSender) getSpaceName(spaceId string) string {
-	records, _, err := n.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-			{
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			},
-		},
-	})
-	if err != nil {
-		logger.Errorf("failed to get details for acl record, %s", err)
-	}
-	var spaceName string
-	if len(records) > 0 {
-		spaceName = pbtypes.GetString(records[0].Details, bundle.RelationKeyName.String())
-	}
-	return spaceName
 }
 
 func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
