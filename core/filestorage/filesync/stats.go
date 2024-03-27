@@ -72,7 +72,7 @@ func (f *fileSync) runNodeUsageUpdater() {
 			cachedUsage, cachedUsageExists, _ := f.getCachedNodeUsage()
 			_, err := f.getAndUpdateNodeUsage(context.Background())
 			if err != nil {
-				log.Error("updater: can't update node usage", zap.Error(err))
+				log.Warn("updater: can't update node usage", zap.Error(err))
 			} else {
 				updatedUsage, updatedUsageExists, _ := f.getCachedNodeUsage()
 				if cachedUsageExists && updatedUsageExists && cachedUsage.BytesLeft == updatedUsage.BytesLeft {
