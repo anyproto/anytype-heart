@@ -972,13 +972,23 @@ func TestIsNameValid(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
 
-		// 5
+		// 5 - TIER NOT FOUND will return error immediately
+		// not response
 		req = pb.RpcMembershipIsNameValidRequest{
 			RequestedTier:    4,
 			RequestedAnyName: "somet.any",
 		}
-		resp, err = fx.IsNameValid(ctx, &req)
+		_, err = fx.IsNameValid(ctx, &req)
 		assert.Error(t, err)
+
+		// 6 - space between
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier:    1,
+			RequestedAnyName: "some thing.any",
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
 	})
 
 	t.Run("success if asking directly from node", func(t *testing.T) {

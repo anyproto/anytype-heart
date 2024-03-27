@@ -6597,7 +6597,7 @@ message Rpc {
 
                     string locale = 2;
 
-                    uint32 paymentMethod = 3;
+                    anytype.model.Membership.PaymentMethod paymentMethod = 3;
                 }
     
                 message Response {
