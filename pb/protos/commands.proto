@@ -6418,6 +6418,10 @@ message Rpc {
 
                         NOT_LOGGED_IN = 3;
                         PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        MEMBERSHIP_NOT_FOUND = 6;
+                        MEMBERSHIP_WRONG_STATE = 7;
                     }
                 }
             }
@@ -6429,7 +6433,8 @@ message Rpc {
         */
         message IsNameValid {
             message Request {
-                int32 requestedTier = 1;
+                uint32 requestedTier = 1;
+
                 // full name including .any suffix
                 string requestedAnyName = 2;
             }
@@ -6452,6 +6457,11 @@ message Rpc {
                         TIER_FEATURES_NO_NAME = 6;
                         // if everything is fine - "name is already taken" check should be done in the NS
                         // see IsNameAvailable()
+                        TIER_NOT_FOUND = 7;
+
+                        NOT_LOGGED_IN = 8;
+                        PAYMENT_NODE_ERROR = 9;
+                        CACHE_ERROR = 10;
                     }
                 }
             }
@@ -6463,7 +6473,7 @@ message Rpc {
         */
         message GetPaymentUrl {
             message Request {
-                int32 requestedTier = 1;
+                uint32 requestedTier = 1;
                 
                 anytype.model.Membership.PaymentMethod paymentMethod = 2;
 
@@ -6490,6 +6500,13 @@ message Rpc {
 
                         NOT_LOGGED_IN = 3;
                         PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+                        
+                        TIER_NOT_FOUND = 6;
+                        TIER_INVALID = 7;
+                        PAYMENT_METHOD_INVALID = 8;
+                        BAD_ANYNAME = 9;
+                        MEMBERSHIP_ALREADY_EXISTS = 10;
                     }
                 }
             }
@@ -6522,6 +6539,7 @@ message Rpc {
 
                         NOT_LOGGED_IN = 3;
                         PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
                     }
                 }
             }
@@ -6548,6 +6566,12 @@ message Rpc {
 
                         NOT_LOGGED_IN = 3;
                         PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        MEMBERSHIP_NOT_FOUND = 6;
+                        MEMBERSHIP_WRONG_STATE = 7;
+
+                        BAD_ANYNAME = 8;
                     }
                 }
             }
@@ -6578,6 +6602,14 @@ message Rpc {
 
                         NOT_LOGGED_IN = 3;
                         PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        EMAIL_WRONG_FORMAT = 6;
+                        EMAIL_ALREADY_VERIFIED = 7;
+                        EMAIL_ALREDY_SENT = 8;
+                        EMAIL_FAILED_TO_SEND = 9;
+                        
+                        MEMBERSHIP_ALREADY_EXISTS = 10;                        
                     }
                 }
             }
@@ -6606,6 +6638,14 @@ message Rpc {
 
                         NOT_LOGGED_IN = 3;
                         PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        EMAIL_ALREADY_VERIFIED = 6;
+                        CODE_EXPIRED = 7;
+                        CODE_WRONG = 8;
+
+                        MEMBERSHIP_NOT_FOUND = 9;
+                        MEMBERSHIP_ALREADY_ACTIVE = 10;
                     }
                 }
             }
@@ -6642,6 +6682,7 @@ message Rpc {
 
                             NOT_LOGGED_IN = 3;
                             PAYMENT_NODE_ERROR = 4;
+                            CACHE_ERROR = 5;
                         }
                     }
                 }

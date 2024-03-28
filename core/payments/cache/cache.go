@@ -21,6 +21,7 @@ const CName = "cache"
 var log = logger.NewNamed(CName)
 
 var (
+	ErrCacheDbNotInitialized   = errors.New("cache db is not initialized")
 	ErrCacheDbError            = errors.New("cache db error")
 	ErrUnsupportedCacheVersion = errors.New("unsupported cache version")
 	ErrCacheDisabled           = errors.New("cache is disabled")
@@ -255,7 +256,7 @@ func (s *cacheservice) CacheClear() (err error) {
 
 func (s *cacheservice) get() (out *StorageStructV1, err error) {
 	if s.db == nil {
-		return nil, errors.New("db is not initialized")
+		return nil, ErrCacheDbNotInitialized
 	}
 
 	s.m.Lock()

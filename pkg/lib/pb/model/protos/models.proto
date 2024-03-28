@@ -1195,7 +1195,7 @@ message Membership {
     }
 
     // it was Tier before, changed to int32 to allow dynamic values
-    int32 tier = 1;
+    uint32 tier = 1;
     Status status = 2;
     uint64 dateStarted = 3;
     uint64 dateEnds = 4;

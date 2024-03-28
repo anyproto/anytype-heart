@@ -128,7 +128,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(psp.SubscriptionStatus_StatusUnknown), resp.Data.Status)
 	})
 
@@ -154,7 +154,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &req)
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(psp.SubscriptionStatus_StatusUnknown), resp.Data.Status)
 	})
 
@@ -163,7 +163,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -174,7 +174,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -198,7 +198,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
 		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
@@ -212,7 +212,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -223,7 +223,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -248,7 +248,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
 		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
@@ -262,7 +262,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -273,7 +273,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -307,7 +307,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(psp.SubscriptionTier_TierExplorer),
+				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 				Status:           model.MembershipStatus(2),
 				DateStarted:      uint64(timeNow.Unix()),
 				DateEnds:         uint64(subsExpire.Unix()),
@@ -324,7 +324,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 	})
 
@@ -333,7 +333,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierUnknown),
+			Tier:             uint32(psp.SubscriptionTier_TierUnknown),
 			Status:           psp.SubscriptionStatus_StatusUnknown,
 			DateStarted:      0,
 			DateEnds:         0,
@@ -344,7 +344,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -370,7 +370,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(0), resp.Data.Status)
 		assert.Equal(t, uint64(0), resp.Data.DateStarted)
 		assert.Equal(t, uint64(0), resp.Data.DateEnds)
@@ -386,7 +386,7 @@ func TestGetStatus(t *testing.T) {
 		var subsExpire5 time.Time = timeNow.Add(365 * 24 * time.Hour)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire5.Unix()),
@@ -397,7 +397,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -421,7 +421,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 	})
 
@@ -433,7 +433,7 @@ func TestGetStatus(t *testing.T) {
 
 		// this is from PP node
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierBuilder1Year),
+			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire5.Unix()),
@@ -445,7 +445,7 @@ func TestGetStatus(t *testing.T) {
 		// this is from DB
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(model.Membership_TierExplorer),
+				Tier:             uint32(model.Membership_TierExplorer),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -457,7 +457,7 @@ func TestGetStatus(t *testing.T) {
 
 		// this is the new state
 		var psgsr2 pb.RpcMembershipGetStatusResponse = psgsr
-		psgsr2.Data.Tier = int32(model.Membership_TierBuilder)
+		psgsr2.Data.Tier = uint32(model.Membership_TierBuilder)
 
 		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
@@ -476,7 +476,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierBuilder1Year), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierBuilder1Year), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 	})
 }
@@ -497,7 +497,7 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
-			RequestedTier:    int32(model.Membership_TierBuilder),
+			RequestedTier:    uint32(model.Membership_TierBuilder),
 			PaymentMethod:    model.Membership_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
@@ -524,7 +524,7 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
-			RequestedTier:    int32(model.Membership_TierBuilder),
+			RequestedTier:    uint32(model.Membership_TierBuilder),
 			PaymentMethod:    model.Membership_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
@@ -787,7 +787,7 @@ func TestGetTiers(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -798,7 +798,7 @@ func TestGetTiers(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -848,7 +848,7 @@ func TestGetTiers(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -859,7 +859,7 @@ func TestGetTiers(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,

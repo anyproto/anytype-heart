@@ -11175,7 +11175,7 @@ where user can pay for the membership
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| requestedTier | [int32](#int32) |  |  |
+| requestedTier | [uint32](#uint32) |  |  |
 | paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
 | requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
 
@@ -11407,7 +11407,7 @@ before requesting a payment link and paying
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| requestedTier | [int32](#int32) |  |  |
+| requestedTier | [uint32](#uint32) |  |  |
 | requestedAnyName | [string](#string) |  | full name including .any suffix |
 
 
@@ -19945,6 +19945,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| MEMBERSHIP_NOT_FOUND | 6 |  |
+| MEMBERSHIP_WRONG_STATE | 7 |  |
+| BAD_ANYNAME | 8 |  |
 
 
 
@@ -19960,6 +19964,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| TIER_NOT_FOUND | 6 |  |
+| TIER_INVALID | 7 |  |
+| PAYMENT_METHOD_INVALID | 8 |  |
+| BAD_ANYNAME | 9 |  |
+| MEMBERSHIP_ALREADY_EXISTS | 10 |  |
 
 
 
@@ -19975,6 +19985,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
 
 
 
@@ -19990,6 +20001,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| MEMBERSHIP_NOT_FOUND | 6 |  |
+| MEMBERSHIP_WRONG_STATE | 7 |  |
 
 
 
@@ -20005,6 +20019,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| EMAIL_WRONG_FORMAT | 6 |  |
+| EMAIL_ALREADY_VERIFIED | 7 |  |
+| EMAIL_ALREDY_SENT | 8 |  |
+| EMAIL_FAILED_TO_SEND | 9 |  |
+| MEMBERSHIP_ALREADY_EXISTS | 10 |  |
 
 
 
@@ -20021,7 +20041,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | TOO_SHORT | 3 |  |
 | TOO_LONG | 4 |  |
 | HAS_INVALID_CHARS | 5 |  |
-| TIER_FEATURES_NO_NAME | 6 | if everything is fine - &#34;name is already taken&#34; check should be done in the NS see IsNameAvailable() |
+| TIER_FEATURES_NO_NAME | 6 |  |
+| TIER_NOT_FOUND | 7 | if everything is fine - &#34;name is already taken&#34; check should be done in the NS see IsNameAvailable() |
+| NOT_LOGGED_IN | 8 |  |
+| PAYMENT_NODE_ERROR | 9 |  |
+| CACHE_ERROR | 10 |  |
 
 
 
@@ -20037,6 +20061,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
 
 
 
@@ -20052,6 +20077,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| EMAIL_ALREADY_VERIFIED | 6 |  |
+| CODE_EXPIRED | 7 |  |
+| CODE_WRONG | 8 |  |
+| MEMBERSHIP_NOT_FOUND | 9 |  |
+| MEMBERSHIP_ALREADY_ACTIVE | 10 |  |
 
 
 
@@ -25783,7 +25814,7 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| tier | [int32](#int32) |  | it was Tier before, changed to int32 to allow dynamic values |
+| tier | [uint32](#uint32) |  | it was Tier before, changed to int32 to allow dynamic values |
 | status | [Membership.Status](#anytype-model-Membership-Status) |  |  |
 | dateStarted | [uint64](#uint64) |  |  |
 | dateEnds | [uint64](#uint64) |  |  |
