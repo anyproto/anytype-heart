@@ -155,19 +155,19 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		err := s.fts.Index(ftsearch.SearchDoc{
-			Id:    "id1",
+			Id:    "id1/b/123",
 			Title: "name",
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
-			Id:    "id2",
+			Id:    "id2/b/321",
 			Title: "some important note",
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
-			Id:    "id3",
+			Id:    "id3/b/435",
 			Title: "",
 			Text:  "very important text",
 		})
