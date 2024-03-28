@@ -3,6 +3,7 @@ package objectstore
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/dgraph-io/badger/v4"
@@ -43,7 +44,19 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 				return err
 			}
 			rec := database.Record{Details: details.Details}
-			// todo: pass the inner block/relation to the result
+			id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
+			if metadata, ok := filters.FulltextMetadata[id]; ok && details.Details != nil {
+				detailsCopy := pbtypes.CopyStructReuseValues(details.Details)
+				if strings.HasPrefix(metadata.InnerPath, "r-") {
+					detailsCopy.Fields["_relation"] = pbtypes.String(metadata.InnerPath[2:])
+				} else if strings.HasPrefix(metadata.InnerPath, "b-") {
+					detailsCopy.Fields["_block"] = pbtypes.String(metadata.InnerPath[2:])
+				}
+				if metadata.Highlight != "" {
+					detailsCopy.Fields["_highlight"] = pbtypes.String(metadata.Highlight)
+				}
+				rec.Details = detailsCopy
+			}
 
 			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {
 				records = append(records, rec)
@@ -125,9 +138,24 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 		return objectResults[i].Score > objectResults[j].Score
 	})
 
+	filters.FulltextMetadata = make(map[string]database.FulltextMetadata)
+
 	var objectIds = make([]string, 0, len(objectResults))
 	for _, result := range objectResults {
-		objectIds = append(objectIds, domain.NewFromPath(result.ID).ObjectId)
+		path := domain.NewFromPath(result.ID)
+		var highlight string
+		for _, v := range result.Fragments {
+			if len(v) > 0 {
+				highlight = v[0]
+				break
+			}
+		}
+		filters.FulltextMetadata[path.ObjectId] = database.FulltextMetadata{
+			InnerPath: path.ObjectRelativePath(),
+			Highlight: highlight,
+		}
+
+		objectIds = append(objectIds, path.ObjectId)
 	}
 
 	idsQuery := newIdsFilter(objectIds)

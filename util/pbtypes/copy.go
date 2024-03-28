@@ -55,6 +55,29 @@ func CopyStruct(s *types.Struct, copyVals bool) *types.Struct {
 	return copiedStruct
 }
 
+// CopyStructReuseValues copies the struct but leaves the pointers to the values the same
+// can be used when you need to replace or add some specific values without altering the original values
+func CopyStructReuseValues(s *types.Struct) *types.Struct {
+	if s == nil {
+		return nil
+	}
+	// this state shouldn't happen in the protobuf,
+	// but in Go wrapper it possible so lets copy the exact state
+	if s.Fields == nil {
+		return &types.Struct{}
+	}
+
+	copiedStruct := &types.Struct{
+		Fields: make(map[string]*types.Value, len(s.Fields)),
+	}
+
+	for key, value := range s.Fields {
+		copiedStruct.Fields[key] = value
+	}
+
+	return copiedStruct
+}
+
 func CopyVal(v *types.Value) *types.Value {
 	if v == nil {
 		return nil

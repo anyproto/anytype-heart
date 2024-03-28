@@ -207,6 +207,9 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results sear
 	}
 
 	searchRequest := bleve.NewSearchRequest(rootQuery)
+	searchRequest.Highlight = bleve.NewHighlightWithStyle("html")
+	searchRequest.Highlight.Fields = []string{fieldText}
+
 	searchRequest.Size = 100
 	searchRequest.Explain = true
 	searchResult, err := f.index.Search(searchRequest)
