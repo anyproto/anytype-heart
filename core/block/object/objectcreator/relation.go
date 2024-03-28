@@ -34,7 +34,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 		return "", nil, fmt.Errorf("missing relation name")
 	}
 
-	object = pbtypes.CopyStruct(details)
+	object = pbtypes.CopyStruct(details, false)
 	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	if key == "" {
 		key = bson.NewObjectId().Hex()

@@ -413,6 +413,20 @@ func (mr *MockObjectStoreMockRecorder) GetRelationLink(arg0, arg1 any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationLink", reflect.TypeOf((*MockObjectStore)(nil).GetRelationLink), arg0, arg1)
 }
 
+// GetSpaceName mocks base method.
+func (m *MockObjectStore) GetSpaceName(arg0 string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSpaceName", arg0)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSpaceName indicates an expected call of GetSpaceName.
+func (mr *MockObjectStoreMockRecorder) GetSpaceName(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSpaceName", reflect.TypeOf((*MockObjectStore)(nil).GetSpaceName), arg0)
+}
+
 // GetUniqueKeyById mocks base method.
 func (m *MockObjectStore) GetUniqueKeyById(arg0 string) (domain.UniqueKey, error) {
 	m.ctrl.T.Helper()

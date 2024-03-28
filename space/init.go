@@ -26,14 +26,14 @@ func (s *service) initMarketplaceSpace(ctx context.Context) error {
 	return nil
 }
 
-func (s *service) initTechSpace() (err error) {
-	s.techSpace, err = s.factory.CreateAndSetTechSpace(s.ctx)
+func (s *service) initTechSpace(ctx context.Context) (err error) {
+	s.techSpace, err = s.factory.CreateAndSetTechSpace(ctx)
 	return
 }
 
-func (s *service) initPersonalSpace() (err error) {
+func (s *service) initPersonalSpace(ctx context.Context) (err error) {
 	if s.newAccount {
-		return s.createPersonalSpace(s.ctx)
+		return s.createPersonalSpace(ctx)
 	}
-	return s.loadPersonalSpace(s.ctx)
+	return s.loadPersonalSpace(ctx)
 }

@@ -199,7 +199,7 @@ func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []st
 }
 
 func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
-	detCopy := pbtypes.CopyStruct(details)
+	detCopy := pbtypes.CopyStruct(details, false)
 	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
 	s.RLock()
 	defer s.RUnlock()

@@ -34,7 +34,7 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
 
-	object = pbtypes.CopyStruct(details)
+	object = pbtypes.CopyStruct(details, false)
 	object.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
 

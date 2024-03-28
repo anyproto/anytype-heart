@@ -26,7 +26,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
-	object := pbtypes.CopyStruct(details)
+	object := pbtypes.CopyStruct(details, false)
 
 	if _, ok := object.Fields[bundle.RelationKeyRecommendedLayout.String()]; !ok {
 		object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(model.ObjectType_basic))

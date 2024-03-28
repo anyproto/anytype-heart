@@ -9,13 +9,19 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
+	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -27,12 +33,19 @@ import (
 type fixture struct {
 	*service
 	coordinatorClient *inMemoryIdentityRepo
+	spaceService      *mock_space.MockService
+	accountService    *mock_account.MockService
 }
 
-const testObserverPeriod = 1 * time.Millisecond
+const (
+	testObserverPeriod = 1 * time.Millisecond
+	globalName         = "anytypeuser.any"
+	identity           = "identity1"
+)
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
+	ctrl := gomock.NewController(t)
 
 	identityRepoClient := newInMemoryIdentityRepo()
 	objectStore := objectstore.NewStoreFixture(t)
@@ -40,6 +53,17 @@ func newFixture(t *testing.T) *fixture {
 	spaceService := mock_space.NewMockService(t)
 	fileAclService := mock_fileacl.NewMockService(t)
 	dataStore := datastore.NewInMemory()
+	wallet := mock_wallet.NewMockWallet(t)
+	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
+	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{identity, ""}}).AnyTimes().
+		Return(&nameserviceproto.BatchNameByAddressResponse{Results: []*nameserviceproto.NameByAddressResponse{{
+			Found: true,
+			Name:  globalName,
+		}, {
+			Found: false,
+			Name:  "",
+		},
+		}}, nil)
 	err := dataStore.Run(ctx)
 	require.NoError(t, err)
 
@@ -51,6 +75,8 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(testutil.PrepareMock(ctx, a, fileAclService))
+	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(testutil.PrepareMock(ctx, a, nsClient))
 
 	svc := New(testObserverPeriod, 1*time.Microsecond)
 	err = svc.Init(a)
@@ -63,8 +89,11 @@ func newFixture(t *testing.T) *fixture {
 	db, err := dataStore.LocalStorage()
 	require.NoError(t, err)
 	svcRef.db = db
+	svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
 	fx := &fixture{
 		service:           svcRef,
+		spaceService:      spaceService,
+		accountService:    accountService,
 		coordinatorClient: identityRepoClient,
 	}
 	go fx.observeIdentitiesLoop()
@@ -145,8 +174,9 @@ func TestIdentityProfileCache(t *testing.T) {
 	profileSymKey, err := crypto.NewRandomAES()
 	require.NoError(t, err)
 	wantProfile := &model.IdentityProfile{
-		Identity: identity,
-		Name:     "name1",
+		Identity:   identity,
+		Name:       "name1",
+		GlobalName: globalName,
 	}
 	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
@@ -174,8 +204,9 @@ func TestObservers(t *testing.T) {
 	profileSymKey, err := crypto.NewRandomAES()
 	require.NoError(t, err)
 	wantProfile := &model.IdentityProfile{
-		Identity: identity,
-		Name:     "name1",
+		Identity:   identity,
+		Name:       "name1",
+		GlobalName: globalName,
 	}
 	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
@@ -203,6 +234,7 @@ func TestObservers(t *testing.T) {
 			Identity:    identity,
 			Name:        "name1 edited",
 			Description: "my description",
+			GlobalName:  globalName,
 		}
 		wantData2 := marshalProfile(t, wantProfile2, profileSymKey)
 
@@ -220,13 +252,15 @@ func TestObservers(t *testing.T) {
 
 	wantCalls := []*model.IdentityProfile{
 		{
-			Identity: identity,
-			Name:     "name1",
+			Identity:   identity,
+			Name:       "name1",
+			GlobalName: globalName,
 		},
 		{
 			Identity:    identity,
 			Name:        "name1 edited",
 			Description: "my description",
+			GlobalName:  globalName,
 		},
 	}
 	assert.Equal(t, wantCalls, callbackCalls)
@@ -248,6 +282,30 @@ func (s spaceIdDeriverStub) Init(a *app.App) (err error) { return nil }
 func (s spaceIdDeriverStub) Name() (name string) { return "spaceIdDeriverStub" }
 
 func (s spaceIdDeriverStub) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
-	// TODO implement me
-	panic("implement me")
+	return fmt.Sprintf("spaceId-%s", spaceType), nil
+}
+
+func TestStartWithError(t *testing.T) {
+	fx := newFixture(t)
+
+	fx.accountService.EXPECT().AccountID().Return("identity1")
+	fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(nil, fmt.Errorf("space error"))
+
+	err := fx.Run(context.Background())
+	require.Error(t, err)
+	err = fx.Close(context.Background())
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+
+	go func() {
+		_, _, _ = fx.GetMyProfileDetails()
+		close(done)
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("GetMyProfileDetails should not block")
+	case <-done:
+	}
 }

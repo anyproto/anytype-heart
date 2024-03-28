@@ -108,6 +108,7 @@ type ObjectStore interface {
 	IndexerStore
 	AccountStore
 	VirtualSpacesStore
+	SpaceNameGetter
 
 	SubscribeForAll(callback func(rec database.Record))
 

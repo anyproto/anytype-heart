@@ -184,6 +184,7 @@ func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error 
 	details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyDescription.String()))
 	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
 	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
+	details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyGlobalName.String()))
 	err = a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		return pbtypes.StructMerge(current, details, false), nil
 	})
@@ -339,6 +340,7 @@ func (a *aclObjectManager) updateParticipantFromIdentity(ctx context.Context, id
 		bundle.RelationKeyName.String():        pbtypes.String(profile.Name),
 		bundle.RelationKeyDescription.String(): pbtypes.String(profile.Description),
 		bundle.RelationKeyIconImage.String():   pbtypes.String(profile.IconCid),
+		bundle.RelationKeyGlobalName.String():  pbtypes.String(profile.GlobalName),
 	}}
 	return a.modifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 		return pbtypes.StructMerge(current, details, false), nil
@@ -415,5 +417,6 @@ func buildParticipantDetails(
 		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
 		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
 		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
+		bundle.RelationKeyIsHiddenDiscovery.String():      pbtypes.Bool(status != model.ParticipantStatus_Active),
 	}}
 }

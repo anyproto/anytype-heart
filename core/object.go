@@ -774,7 +774,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
-			d := pbtypes.CopyStruct(current)
+			d := pbtypes.CopyStruct(current, false)
 			return internalflag.PutToDetails(d, req.InternalFlags), nil
 		})
 	})
@@ -795,6 +795,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 
 	originImport := objectorigin.Import(req.Type)
 	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
+	spaceName := getService[objectstore.SpaceNameGetter](mw).GetSpaceName(req.SpaceId)
 	code := common.GetImportErrorCode(err)
 	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
 		Id:      uuid.New().String(),
@@ -806,6 +807,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 			ErrorCode:  code,
 			ImportType: req.Type,
 			SpaceId:    req.SpaceId,
+			SpaceName:  spaceName,
 		}},
 	})
 	if notificationSendErr != nil {

@@ -27,8 +27,10 @@ type Service struct {
 	rootPath          string
 	clientWithVersion string
 	eventSender       event.Sender
+	sessions          session.Service
 
-	sessions session.Service
+	appAccountStartInProcessCancel      context.CancelFunc
+	appAccountStartInProcessCancelMutex sync.Mutex
 }
 
 func New() *Service {

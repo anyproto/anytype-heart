@@ -4,8 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 )
+
+type ObjectGetterComponent interface {
+	app.Component
+	ObjectGetter
+}
 
 type ObjectGetter interface {
 	GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)

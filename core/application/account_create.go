@@ -65,7 +65,17 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	newAcc := &model.Account{Id: accountID}
 
+	// in case accountCreate got canceled by other request we loose nothing
+	s.appAccountStartInProcessCancelMutex.Lock()
+	ctx, s.appAccountStartInProcessCancel = context.WithCancel(ctx)
+	s.appAccountStartInProcessCancelMutex.Unlock()
 	s.app, err = anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
+	s.appAccountStartInProcessCancelMutex.Lock()
+	s.appAccountStartInProcessCancel = nil
+	s.appAccountStartInProcessCancelMutex.Unlock()
+	if errors.Is(ctx.Err(), context.Canceled) {
+		// todo: remove local data in case of account create cancelation
+	}
 	if err != nil {
 		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}

@@ -140,24 +140,32 @@ func (r *clientds) Init(a *app.App) (err error) {
 	opts.ValueDir = opts.Dir
 
 	r.localstoreDS, err = openBadgerWithRecover(opts)
+	err = oserror.TransformError(err)
 	if err != nil && strings.Contains(err.Error(), "checksum mismatch") {
 		// because localstore contains mostly recoverable info (with th only exception of objects' lastOpenedDate)
 		// we can just remove and recreate it
 		err2 := os.Rename(opts.Dir, filepath.Join(opts.Dir, "-corrupted"))
 		log.Errorf("failed to rename corrupted localstore: %s", err2)
-		r.localstoreDS, err = openBadgerWithRecover(opts)
-	}
-
-	if err != nil {
-		return oserror.TransformError(err)
+		var errAfterRemove error
+		r.localstoreDS, errAfterRemove = openBadgerWithRecover(opts)
+		errAfterRemove = oserror.TransformError(errAfterRemove)
+		log.With("db", "localstore").With("reset", true).With("err_remove", errAfterRemove).With("err", err.Error()).Errorf("failed to open db")
+		if errAfterRemove != nil {
+			// should not happen, but just in case
+			return errAfterRemove
+		}
+	} else if err != nil {
+		log.With("db", "localstore").With("reset", false).With("err", err.Error()).Errorf("failed to open db")
+		return err
 	}
 	opts = r.cfg.Spacestore
 	opts.Dir = r.getRepoPath(SpaceDSDir)
 	opts.ValueDir = opts.Dir
 	r.spaceDS, err = openBadgerWithRecover(opts)
-
 	if err != nil {
-		return oserror.TransformError(err)
+		err = oserror.TransformError(err)
+		log.With("db", "spacestore").With("reset", false).With("err", err.Error()).Errorf("failed to open db")
+		return err
 	}
 
 	r.running = true

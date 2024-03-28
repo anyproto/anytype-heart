@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
@@ -82,7 +82,8 @@ type service struct {
 	accountService      accountservice.Service
 	config              *config.Config
 	notificationService NotificationSender
-	updater        coordinatorStatusUpdater
+	updater             coordinatorStatusUpdater
+	spaceNameGetter     objectstore.SpaceNameGetter
 
 	personalSpaceId        string
 	techSpaceId            string
@@ -94,7 +95,7 @@ type service struct {
 	repKey                 uint64
 
 	mu        sync.Mutex
-	ctx       context.Context
+	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
 	ctxCancel context.CancelFunc
 	isClosing atomic.Bool
 }
@@ -151,7 +152,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	s.notificationService = app.MustComponent[NotificationSender](a)
-
+	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	return err
 }
 
@@ -164,11 +165,11 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
-	err = s.initTechSpace()
+	err = s.initTechSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	err = s.initPersonalSpace()
+	err = s.initPersonalSpace(ctx)
 	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 			err = ErrSpaceNotExists
@@ -277,12 +278,13 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.Space
 func (s *service) sendNotification(spaceId string) {
 	identity := s.accountService.Account().SignKey.GetPublic().Account()
 	notificationId := strings.Join([]string{spaceId, identity}, "_")
+	spaceName := s.spaceNameGetter.GetSpaceName(spaceId)
 	err := s.notificationService.CreateAndSend(&model.Notification{
-		Id:         notificationId,
-		CreateTime: time.Now().Unix(),
+		Id: notificationId,
 		Payload: &model.NotificationPayloadOfParticipantRemove{
 			ParticipantRemove: &model.NotificationParticipantRemove{
-				SpaceId: spaceId,
+				SpaceId:   spaceId,
+				SpaceName: spaceName,
 			},
 		},
 		Space: spaceId,

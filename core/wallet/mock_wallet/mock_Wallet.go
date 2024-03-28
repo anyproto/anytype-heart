@@ -6,7 +6,11 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	accountdata "github.com/anyproto/any-sync/commonspace/object/accountdata"
 
+	common "github.com/ethereum/go-ethereum/common"
+
 	crypto "github.com/anyproto/any-sync/util/crypto"
+
+	ecdsa "crypto/ecdsa"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -69,6 +73,100 @@ func (_c *MockWallet_Account_Call) Return(_a0 *accountdata.AccountKeys) *MockWal
 }
 
 func (_c *MockWallet_Account_Call) RunAndReturn(run func() *accountdata.AccountKeys) *MockWallet_Account_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccountEthAddress provides a mock function with given fields:
+func (_m *MockWallet) GetAccountEthAddress() common.Address {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountEthAddress")
+	}
+
+	var r0 common.Address
+	if rf, ok := ret.Get(0).(func() common.Address); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(common.Address)
+		}
+	}
+
+	return r0
+}
+
+// MockWallet_GetAccountEthAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountEthAddress'
+type MockWallet_GetAccountEthAddress_Call struct {
+	*mock.Call
+}
+
+// GetAccountEthAddress is a helper method to define mock.On call
+func (_e *MockWallet_Expecter) GetAccountEthAddress() *MockWallet_GetAccountEthAddress_Call {
+	return &MockWallet_GetAccountEthAddress_Call{Call: _e.mock.On("GetAccountEthAddress")}
+}
+
+func (_c *MockWallet_GetAccountEthAddress_Call) Run(run func()) *MockWallet_GetAccountEthAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockWallet_GetAccountEthAddress_Call) Return(_a0 common.Address) *MockWallet_GetAccountEthAddress_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockWallet_GetAccountEthAddress_Call) RunAndReturn(run func() common.Address) *MockWallet_GetAccountEthAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccountEthPrivkey provides a mock function with given fields:
+func (_m *MockWallet) GetAccountEthPrivkey() *ecdsa.PrivateKey {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountEthPrivkey")
+	}
+
+	var r0 *ecdsa.PrivateKey
+	if rf, ok := ret.Get(0).(func() *ecdsa.PrivateKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ecdsa.PrivateKey)
+		}
+	}
+
+	return r0
+}
+
+// MockWallet_GetAccountEthPrivkey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountEthPrivkey'
+type MockWallet_GetAccountEthPrivkey_Call struct {
+	*mock.Call
+}
+
+// GetAccountEthPrivkey is a helper method to define mock.On call
+func (_e *MockWallet_Expecter) GetAccountEthPrivkey() *MockWallet_GetAccountEthPrivkey_Call {
+	return &MockWallet_GetAccountEthPrivkey_Call{Call: _e.mock.On("GetAccountEthPrivkey")}
+}
+
+func (_c *MockWallet_GetAccountEthPrivkey_Call) Run(run func()) *MockWallet_GetAccountEthPrivkey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockWallet_GetAccountEthPrivkey_Call) Return(_a0 *ecdsa.PrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockWallet_GetAccountEthPrivkey_Call) RunAndReturn(run func() *ecdsa.PrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
 	_c.Call.Return(run)
 	return _c
 }

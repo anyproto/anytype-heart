@@ -874,7 +874,7 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
-	return pbtypes.CopyStruct(storedDetails.GetDetails()), nil
+	return pbtypes.CopyStruct(storedDetails.GetDetails(), true), nil
 }
 
 func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
