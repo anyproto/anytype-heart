@@ -695,9 +695,29 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 		}
 
 		// copy all features
-		out.Tiers[i].Features = make(map[string]*model.MembershipTierDataFeature)
+		out.Tiers[i].Features = make(map[uint32]*model.MembershipTierDataFeature)
+
 		for k, v := range tier.Features {
-			out.Tiers[i].Features[k] = &model.MembershipTierDataFeature{
+			var featureId uint32
+
+			switch k {
+			case "storageGBs":
+				featureId = uint32(model.MembershipTierData_StorageGBs)
+			case "invites":
+				featureId = uint32(model.MembershipTierData_Invites)
+			case "spaceReaders":
+				featureId = uint32(model.MembershipTierData_SpaceReaders)
+			case "spaceWriters":
+				featureId = uint32(model.MembershipTierData_SpaceWriters)
+			case "sharedSpaces":
+				featureId = uint32(model.MembershipTierData_SharedSpaces)
+			default:
+				// skip
+				log.Info("unknown tier feature", zap.String("tier", tier.Name), zap.String("feature", k))
+				continue
+			}
+
+			out.Tiers[i].Features[featureId] = &model.MembershipTierDataFeature{
 				ValueStr:  v.ValueStr,
 				ValueUint: v.ValueUint,
 			}

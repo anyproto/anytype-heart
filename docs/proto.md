@@ -1708,6 +1708,7 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [Membership.Tier](#anytype-model-Membership-Tier)
+    - [MembershipTierData.FeatureId](#anytype-model-MembershipTierData-FeatureId)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
@@ -25848,9 +25849,7 @@ Used to decode block meta only, without the content itself
 | priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
 | anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
 | anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
-| features | [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry) | repeated | each tier has a set of features each feature has a unique key: &#34;storage&#34;, &#34;invites&#34;, etc not using enum here to provide dynamic feature list:
-
-&#34;stoageGB&#34; -&gt; {64, &#34;&#34;} &#34;invites&#34; -&gt; {120, &#34;&#34;} &#34;spaces-public&#34; -&gt; {10, &#34;&#34;} ... |
+| features | [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry) | repeated | each tier has a set of features the key is FeatureId |
 
 
 
@@ -25881,7 +25880,7 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
+| key | [uint32](#uint32) |  |  |
 | value | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) |  |  |
 
 
@@ -27048,6 +27047,22 @@ in this case please call Finalize to finish the process |
 | TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
 | TierBuilder | 4 |  |
 | TierCoCreator | 5 |  |
+
+
+
+<a name="anytype-model-MembershipTierData-FeatureId"></a>
+
+### MembershipTierData.FeatureId
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unknown | 0 |  |
+| StorageGBs | 1 |  |
+| Invites | 2 |  |
+| SpaceWriters | 3 |  |
+| SpaceReaders | 4 |  |
+| SharedSpaces | 5 |  |
 
 
 

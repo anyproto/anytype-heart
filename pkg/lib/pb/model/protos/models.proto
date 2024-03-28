@@ -1217,6 +1217,15 @@ message MembershipTierData {
         PeriodTypeMonths = 4;
         PeriodTypeYears = 5;  
     }
+
+    enum FeatureId {
+        Unknown = 0;
+        StorageGBs = 1;
+        Invites = 2;
+        SpaceWriters = 3;
+        SpaceReaders = 4;
+        SharedSpaces = 5;
+    }
     
     message Feature {
         // usually feature has uint value
@@ -1254,12 +1263,6 @@ message MembershipTierData {
     // somename.any - len of 8
     uint32 anyNameMinLength = 11;
     // each tier has a set of features
-    // each feature has a unique key: "storage", "invites", etc
-    // not using enum here to provide dynamic feature list:
-    // 
-    // "stoageGB" -> {64, ""}
-    // "invites" -> {120, ""}
-    // "spaces-public" -> {10, ""}
-    // ...
-    map<string, Feature> features = 12;
+    // the key is FeatureId
+    map<uint32, Feature> features = 12;
 }
