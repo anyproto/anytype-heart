@@ -85,7 +85,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
@@ -208,7 +208,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
 		Register(syncstatusprovider.New()).
-		Register(storage.New()).
+		Register(sqlitestorage.New()).
 		Register(secureservice.New()).
 		Register(metric.New()).
 		Register(server.New()).

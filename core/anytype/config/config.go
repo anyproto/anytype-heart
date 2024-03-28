@@ -256,6 +256,10 @@ func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
 }
 
+func (c *Config) GetSpaceStorePath() string {
+	return filepath.Join(c.RepoPath, "spaceStore.db")
+}
+
 func (c *Config) IsNewAccount() bool {
 	return c.NewAccount
 }
