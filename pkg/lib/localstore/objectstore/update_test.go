@@ -68,7 +68,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 
 	t.Run("with existing details write nil details and expect nothing is changed", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj := makeObjectWithName("id1", "foo")
+		obj := MakeObjectWithName("id1", "foo")
 		s.AddObjects(t, []TestObject{obj})
 
 		err := s.UpdateObjectDetails("id1", nil)
@@ -81,7 +81,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 
 	t.Run("with write same details expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj := makeObjectWithName("id1", "foo")
+		obj := MakeObjectWithName("id1", "foo")
 		s.AddObjects(t, []TestObject{obj})
 
 		err := s.UpdateObjectDetails("id1", makeDetails(obj))
@@ -90,7 +90,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 
 	t.Run("with updated details just store them", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj := makeObjectWithName("id1", "foo")
+		obj := MakeObjectWithName("id1", "foo")
 		s.AddObjects(t, []TestObject{obj})
 
 		newObj := makeObjectWithNameAndDescription("id1", "foo", "bar")
@@ -106,19 +106,19 @@ func TestUpdateObjectDetails(t *testing.T) {
 func TestSendUpdatesToSubscriptions(t *testing.T) {
 	t.Run("with details are not changed expect no updates are sent", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		s.AddObjects(t, []TestObject{makeObjectWithName("id1", "foo")})
+		s.AddObjects(t, []TestObject{MakeObjectWithName("id1", "foo")})
 
 		s.SubscribeForAll(func(rec database.Record) {
 			require.Fail(t, "unexpected call")
 		})
 
-		err := s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", "foo")))
+		err := s.UpdateObjectDetails("id1", makeDetails(MakeObjectWithName("id1", "foo")))
 		require.Equal(t, ErrDetailsNotChanged, err)
 	})
 
 	t.Run("with new details", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj := makeObjectWithName("id1", "foo")
+		obj := MakeObjectWithName("id1", "foo")
 
 		var called int
 		s.SubscribeForAll(func(rec database.Record) {
@@ -132,7 +132,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 
 	t.Run("with updated details", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		s.AddObjects(t, []TestObject{makeObjectWithName("id1", "foo")})
+		s.AddObjects(t, []TestObject{MakeObjectWithName("id1", "foo")})
 
 		updatedObj := makeObjectWithNameAndDescription("id1", "foobar", "bar")
 		var called int
@@ -326,7 +326,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		// when
 		err := s.ModifyObjectDetails("id", nil)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		got, err := s.GetDetails("id")
 		assert.NoError(t, err)
@@ -336,7 +336,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 	t.Run("modifier modifies details", func(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)
-		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
+		s.AddObjects(t, []TestObject{MakeObjectWithName("id", "foo")})
 
 		// when
 		err := s.ModifyObjectDetails("id", func(details *types.Struct) (*types.Struct, error) {
@@ -344,7 +344,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 			return details, nil
 		})
 
-		//then
+		// then
 		assert.NoError(t, err)
 		want := makeDetails(TestObject{
 			bundle.RelationKeyId:      pbtypes.String("id"),
@@ -359,14 +359,14 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 	t.Run("if modifier wipes details - id remains", func(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)
-		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
+		s.AddObjects(t, []TestObject{MakeObjectWithName("id", "foo")})
 
 		// when
 		err := s.ModifyObjectDetails("id", func(_ *types.Struct) (*types.Struct, error) {
 			return nil, nil
 		})
 
-		//then
+		// then
 		assert.NoError(t, err)
 		want := makeDetails(TestObject{
 			bundle.RelationKeyId: pbtypes.String("id"),

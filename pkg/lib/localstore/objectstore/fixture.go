@@ -82,7 +82,7 @@ func generateObjectWithRandomID() TestObject {
 	}
 }
 
-func makeObjectWithName(id string, name string) TestObject {
+func MakeObjectWithName(id string, name string) TestObject {
 	return TestObject{
 		bundle.RelationKeyId:      pbtypes.String(id),
 		bundle.RelationKeyName:    pbtypes.String(name),

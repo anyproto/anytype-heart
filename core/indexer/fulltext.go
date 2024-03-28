@@ -87,29 +87,14 @@ func (i *indexer) runFullTextIndexer() {
 }
 
 func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.SearchDoc) error) (err error) {
-	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
-	objectPath := domain.NewFromPath(id)
-
-	err = block.DoContext(i.picker, ctx, objectPath.ObjectId, func(sb smartblock2.SmartBlock) error {
+	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		indexDetails, _ := sb.Type().Indexable()
 		if !indexDetails {
 			return nil
 		}
 
-		if err = i.store.UpdateObjectSnippet(id, sb.Snippet()); err != nil {
-			return fmt.Errorf("update object snippet: %w", err)
-		}
-
-		title := pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String())
-		if sb.ObjectTypeKey() == bundle.TypeKeyNote || title == "" {
-			title = sb.Snippet()
-		}
-
 		for _, rel := range sb.GetRelationLinks() {
-			if objectPath.HasRelation() && rel.Key != objectPath.RelationKey {
-				continue
-			}
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
 				continue
 			}
@@ -123,6 +108,7 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 				SpaceID: sb.SpaceID(),
 				Text:    val,
 			}
+
 			if rel.Key == bundle.RelationKeyName.String() {
 				f.Title = val
 			}
@@ -133,9 +119,6 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 		}
 
 		sb.Iterate(func(b simple.Block) (isContinue bool) {
-			if objectPath.HasBlock() && b.Model().Id != objectPath.BlockId {
-				return true
-			}
 
 			if tb := b.Model().GetText(); tb != nil {
 				if len(strings.TrimSpace(tb.Text)) == 0 {
@@ -146,8 +129,8 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
 					SpaceID: sb.SpaceID(),
 				}
-				if len(doc.Text) > ftBlockMaxSize {
-					doc.Text = doc.Text[0:ftBlockMaxSize]
+				if len(tb.Text) > ftBlockMaxSize {
+					doc.Text = tb.Text[:ftBlockMaxSize]
 				} else {
 					doc.Text = tb.Text
 				}
