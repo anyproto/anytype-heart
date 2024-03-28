@@ -93,14 +93,14 @@ func Test_transformBadgerError(t *testing.T) {
 			if tt.pathseparator != "" && tt.pathseparator != string(os.PathSeparator) {
 				t.Skipf("Test is not applicable for the current platform")
 			}
-			resultErr := transformBadgerError(tt.args.err)
+			resultErr := anonymizeBadgerError(tt.args.err)
 
 			if tt.wantErr == nil {
 				require.Nil(t, resultErr)
 				return
 			}
 
-			require.EqualError(t, transformBadgerError(tt.args.err), tt.wantErr.Error())
+			require.EqualError(t, anonymizeBadgerError(tt.args.err), tt.wantErr.Error())
 		})
 	}
 }
