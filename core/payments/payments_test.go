@@ -733,6 +733,20 @@ func TestGetTiers(t *testing.T) {
 			return &psp.GetTiersResponse{}, nil
 		}).MinTimes(1)
 
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{
+				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+				Status:           psp.SubscriptionStatus_StatusActive,
+				DateStarted:      uint64(timeNow.Unix()),
+				DateEnds:         uint64(subsExpire.Unix()),
+				IsAutoRenew:      true,
+				PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+				RequestedAnyName: "something.any",
+			}, nil
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
 		req := pb.RpcMembershipTiersGetRequest{
 			NoCache:       true,
 			Locale:        "EN_us",
@@ -765,6 +779,20 @@ func TestGetTiers(t *testing.T) {
 				},
 			}, nil
 		}).MinTimes(1)
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{
+				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+				Status:           psp.SubscriptionStatus_StatusActive,
+				DateStarted:      uint64(timeNow.Unix()),
+				DateEnds:         uint64(subsExpire.Unix()),
+				IsAutoRenew:      true,
+				PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+				RequestedAnyName: "something.any",
+			}, nil
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
 			NoCache:       false,
@@ -894,6 +922,145 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, uint32(1), out.Tiers[0].Id)
 		assert.Equal(t, "Explorer", out.Tiers[0].Name)
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
+		assert.Equal(t, true, out.Tiers[0].IsActive)
+		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+	})
+
+	t.Run("success if full status is in cache and higher then Explorer", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+		/*
+			fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+				return &sr, nil
+			}).MinTimes(1)
+		*/
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Data: &model.Membership{
+				Tier:             uint32(sr.Tier),
+				Status:           model.MembershipStatus(sr.Status),
+				DateStarted:      sr.DateStarted,
+				DateEnds:         sr.DateEnds,
+				IsAutoRenew:      sr.IsAutoRenew,
+				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				RequestedAnyName: sr.RequestedAnyName,
+			},
+		}
+
+		tgr := pb.RpcMembershipTiersGetResponse{
+			Tiers: []*model.MembershipTierData{
+				{
+					Id:           1,
+					Name:         "Explorer",
+					Description:  "Explorer tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+				{
+					Id:           2,
+					Name:         "Builder",
+					Description:  "Builder tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+				{
+					Id:           3,
+					Name:         "Special",
+					Description:  "Special tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+			},
+		}
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
+
+		req := pb.RpcMembershipTiersGetRequest{
+			NoCache:       false,
+			Locale:        "EN_us",
+			PaymentMethod: 0,
+		}
+		out, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(out.Tiers))
+
+		assert.Equal(t, uint32(2), out.Tiers[0].Id)
+		assert.Equal(t, "Builder", out.Tiers[0].Name)
+		assert.Equal(t, "Builder tier", out.Tiers[0].Description)
+		assert.Equal(t, true, out.Tiers[0].IsActive)
+		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+	})
+
+	t.Run("success if full status is in cache and higher then Explorer, no status cache", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &sr, nil
+		}).MinTimes(1)
+
+		tgr := pb.RpcMembershipTiersGetResponse{
+			Tiers: []*model.MembershipTierData{
+				{
+					Id:           1,
+					Name:         "Explorer",
+					Description:  "Explorer tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+				{
+					Id:           2,
+					Name:         "Builder",
+					Description:  "Builder tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+				{
+					Id:           3,
+					Name:         "Special",
+					Description:  "Special tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+			},
+		}
+		fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
+		// should call it to save status
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		req := pb.RpcMembershipTiersGetRequest{
+			NoCache:       false,
+			Locale:        "EN_us",
+			PaymentMethod: 0,
+		}
+		out, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(out.Tiers))
+
+		assert.Equal(t, uint32(2), out.Tiers[0].Id)
+		assert.Equal(t, "Builder", out.Tiers[0].Name)
+		assert.Equal(t, "Builder tier", out.Tiers[0].Description)
 		assert.Equal(t, true, out.Tiers[0].IsActive)
 		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
 	})

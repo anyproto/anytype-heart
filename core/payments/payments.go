@@ -309,7 +309,9 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	*/
 
 	// 1 - get all tiers from cache or PP node
-	tiers, err := s.GetTiers(ctx, &pb.RpcMembershipTiersGetRequest{
+	// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
+	// and first is much simpler/faster
+	tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipTiersGetRequest{
 		NoCache: false,
 		// TODO: warning! no locale and payment method are passed here!
 		// Locale:        "",
@@ -627,6 +629,36 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 }
 
 func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
+	// 1 - get all tiers (including Explorer)
+	out, err := s.getAllTiers(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2 - remove explorer
+	status, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+	if err != nil {
+		log.Error("can not get subscription status", zap.Error(err))
+		return nil, err
+	}
+	// if your are on 0-tier OR on Explorer -> return full list
+	if status.Data.Tier <= uint32(model.Membership_TierExplorer) {
+		return out, nil
+	}
+
+	// If the current tier is higher than Explorer, show the list without Explorer (downgrading is not allowed)
+	filtered := &pb.RpcMembershipTiersGetResponse{
+		Tiers: make([]*model.MembershipTierData, 0, len(out.Tiers)-1),
+	}
+	for _, tier := range out.Tiers {
+		if tier.Id != uint32(model.Membership_TierExplorer) {
+			filtered.Tiers = append(filtered.Tiers, tier)
+		}
+	}
+	return filtered, nil
+}
+
+func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
 	// 1 - check in cache
 	// status var. is unused here
 	cachedStatus, cachedTiers, err := s.cache.CacheGet()
@@ -675,7 +707,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 		return nil, err
 	}
 
-	// return out
+	// 3 - return out
 	var out pb.RpcMembershipTiersGetResponse
 
 	out.Tiers = make([]*model.MembershipTierData, len(tiers.Tiers))

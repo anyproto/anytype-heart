@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/net"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+
 	"github.com/anyproto/anytype-heart/core/payments"
 	"github.com/anyproto/anytype-heart/pb"
 )
