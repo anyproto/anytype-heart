@@ -99,7 +99,10 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 
 	var resultsByObjectId = make(map[string][]*search.DocumentMatch)
 	for _, result := range results {
-		path := domain.NewFromPath(result.ID)
+		path, err := domain.NewFromPath(result.ID)
+		if err != nil {
+			return filters, fmt.Errorf("fullText search: %w", err)
+		}
 		if _, ok := resultsByObjectId[path.ObjectId]; !ok {
 			resultsByObjectId[path.ObjectId] = make([]*search.DocumentMatch, 0, 1)
 		}
@@ -127,7 +130,11 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 
 	var objectIds = make([]string, 0, len(objectResults))
 	for _, result := range objectResults {
-		objectIds = append(objectIds, domain.NewFromPath(result.ID).ObjectId)
+		path, err := domain.NewFromPath(result.ID)
+		if err != nil {
+			return filters, fmt.Errorf("fullText search: %w", err)
+		}
+		objectIds = append(objectIds, path.ObjectId)
 	}
 
 	idsQuery := newIdsFilter(objectIds)

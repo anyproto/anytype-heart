@@ -17,6 +17,9 @@ packages:
     interfaces:
       ObjectGetter:
       ObjectGetterComponent:
+  github.com/anyproto/anytype-heart/core/block/source:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
@@ -67,6 +70,9 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore:
     interfaces:
       SpaceCoreService:
+  github.com/anyproto/anytype-heart/space/spacecore/storage:
+    interfaces:
+      ClientStorage:
   github.com/anyproto/anytype-heart/space/internal/techspace:
     interfaces:
       TechSpace:
@@ -98,6 +104,15 @@ packages:
   github.com/anyproto/anytype-heart/core/payments/cache:
     interfaces:
       CacheService:
+  github.com/anyproto/anytype-heart/util/builtintemplate:
+    interfaces:
+      BuiltinTemplate:
+  github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore:
+    interfaces:
+      FileStore:
+  github.com/anyproto/anytype-heart/core/block:
+    interfaces:
+      ObjectGetter:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:

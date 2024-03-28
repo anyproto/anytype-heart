@@ -89,9 +89,11 @@ func (i *indexer) runFullTextIndexer() {
 func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.SearchDoc) error) (err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
-	objectPath := domain.NewFromPath(id)
+	if err != nil {
+		log.Error("new object path: %v", err)
+	}
 
-	err = block.DoContext(i.picker, ctx, objectPath.ObjectId, func(sb smartblock2.SmartBlock) error {
+	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		indexDetails, _ := sb.Type().Indexable()
 		if !indexDetails {
 			return nil
@@ -107,9 +109,6 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 		}
 
 		for _, rel := range sb.GetRelationLinks() {
-			if objectPath.HasRelation() && rel.Key != objectPath.RelationKey {
-				continue
-			}
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
 				continue
 			}
@@ -133,9 +132,6 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 		}
 
 		sb.Iterate(func(b simple.Block) (isContinue bool) {
-			if objectPath.HasBlock() && b.Model().Id != objectPath.BlockId {
-				return true
-			}
 
 			if tb := b.Model().GetText(); tb != nil {
 				if len(strings.TrimSpace(tb.Text)) == 0 {

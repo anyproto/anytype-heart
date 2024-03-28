@@ -1,10 +1,13 @@
 package domain
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 const (
 	// ObjectPathSeparator is the separator between object id and block id or relation key
-	objectPathSeparator = "-"
+	objectPathSeparator = "/"
 	blockPrefix         = "b"
 	relationPrefix      = "r"
 )
@@ -63,13 +66,13 @@ func NewObjectPathWithRelation(objectId, relationKey string) ObjectPath {
 	}
 }
 
-func NewFromPath(path string) ObjectPath {
+func NewFromPath(path string) (ObjectPath, error) {
 	parts := strings.Split(path, objectPathSeparator)
 	if len(parts) == 3 && parts[1] == blockPrefix {
-		return NewObjectPathWithRelation(parts[0], parts[2])
+		return NewObjectPathWithBlock(parts[0], parts[2]), nil
 	}
 	if len(parts) == 3 && parts[1] == relationPrefix {
-		return NewObjectPathWithRelation(parts[0], parts[2])
+		return NewObjectPathWithRelation(parts[0], parts[2]), nil
 	}
-	return ObjectPath{ObjectId: path}
+	return ObjectPath{ObjectId: path}, fmt.Errorf("fts invalid path: %s", path)
 }
