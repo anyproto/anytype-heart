@@ -15,6 +15,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -32,6 +33,8 @@ import (
 type fixture struct {
 	*service
 	coordinatorClient *inMemoryIdentityRepo
+	spaceService      *mock_space.MockService
+	accountService    *mock_account.MockService
 }
 
 const (
@@ -89,6 +92,8 @@ func newFixture(t *testing.T) *fixture {
 	svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
 	fx := &fixture{
 		service:           svcRef,
+		spaceService:      spaceService,
+		accountService:    accountService,
 		coordinatorClient: identityRepoClient,
 	}
 	go fx.observeIdentitiesLoop()
@@ -277,6 +282,30 @@ func (s spaceIdDeriverStub) Init(a *app.App) (err error) { return nil }
 func (s spaceIdDeriverStub) Name() (name string) { return "spaceIdDeriverStub" }
 
 func (s spaceIdDeriverStub) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
-	// TODO implement me
-	panic("implement me")
+	return fmt.Sprintf("spaceId-%s", spaceType), nil
+}
+
+func TestStartWithError(t *testing.T) {
+	fx := newFixture(t)
+
+	fx.accountService.EXPECT().AccountID().Return("identity1")
+	fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(nil, fmt.Errorf("space error"))
+
+	err := fx.Run(context.Background())
+	require.Error(t, err)
+	err = fx.Close(context.Background())
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+
+	go func() {
+		_, _, _ = fx.GetMyProfileDetails()
+		close(done)
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("GetMyProfileDetails should not block")
+	case <-done:
+	}
 }
