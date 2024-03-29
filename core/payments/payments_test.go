@@ -712,9 +712,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		_, err := fx.GetTiers(ctx, &req)
 		assert.Error(t, err)
@@ -748,9 +747,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       true,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: true,
+			Locale:  "EN_us",
 		}
 		_, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -766,7 +764,7 @@ func TestGetTiers(t *testing.T) {
 		})
 
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
-			return &psp.GetTiersResponse{
+			out := &psp.GetTiersResponse{
 
 				Tiers: []*psp.TierData{
 					{
@@ -777,7 +775,22 @@ func TestGetTiers(t *testing.T) {
 						IsHiddenTier: false,
 					},
 				},
-			}, nil
+			}
+
+			// create Features map
+			out.Tiers[0].Features = make(map[string]*psp.Feature)
+
+			out.Tiers[0].Features["storageGBs"] = &psp.Feature{
+				ValueUint: 12,
+			}
+			out.Tiers[0].Features["invites"] = &psp.Feature{
+				ValueUint: 100,
+			}
+			out.Tiers[0].Features["sharedSpaces"] = &psp.Feature{
+				ValueUint: 12,
+			}
+
+			return out, nil
 		}).MinTimes(1)
 
 		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
@@ -795,9 +808,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -808,6 +820,9 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
 		assert.Equal(t, true, out.Tiers[0].IsActive)
 		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+		// should be converted to array
+		assert.Equal(t, 3, len(out.Tiers[0].Features))
+		assert.Equal(t, model.MembershipTierData_StorageGBs, out.Tiers[0].Features[0].FeatureId)
 	})
 
 	t.Run("success if status is in cache", func(t *testing.T) {
@@ -856,9 +871,8 @@ func TestGetTiers(t *testing.T) {
 		}).MinTimes(1)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -911,9 +925,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -985,9 +998,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -1050,9 +1062,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)

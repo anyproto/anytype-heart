@@ -71,8 +71,6 @@ func (mw *Middleware) MembershipGetPaymentUrl(ctx context.Context, req *pb.RpcMe
 	ps := getService[payments.Service](mw)
 	out, err := ps.GetPaymentURL(ctx, req)
 
-	log.Error("payments - client asked to get a payment url", zap.Any("req", req), zap.Any("out", out))
-
 	if err != nil {
 		code := mapErrorCode(err,
 			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipGetPaymentUrlResponseError_NOT_LOGGED_IN),

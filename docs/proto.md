@@ -1637,7 +1637,6 @@
     - [Membership](#anytype-model-Membership)
     - [MembershipTierData](#anytype-model-MembershipTierData)
     - [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature)
-    - [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -11478,7 +11477,6 @@ you can call this method to get the latest tiers
 | ----- | ---- | ----- | ----------- |
 | noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
 | locale | [string](#string) |  |  |
-| paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
 
 
 
@@ -25849,7 +25847,7 @@ Used to decode block meta only, without the content itself
 | priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
 | anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
 | anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
-| features | [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry) | repeated | each tier has a set of features the key is FeatureId |
+| features | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) | repeated | each tier has a set of features the key is FeatureId |
 
 
 
@@ -25864,24 +25862,9 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| featureId | [MembershipTierData.FeatureId](#anytype-model-MembershipTierData-FeatureId) |  |  |
 | valueUint | [uint32](#uint32) |  | usually feature has uint value like &#34;storage&#34; - 120 |
 | valueStr | [string](#string) |  | in case feature will have string value |
-
-
-
-
-
-
-<a name="anytype-model-MembershipTierData-FeaturesEntry"></a>
-
-### MembershipTierData.FeaturesEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [uint32](#uint32) |  |  |
-| value | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) |  |  |
 
 
 
@@ -27009,7 +26992,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MethodCard | 0 |  |
+| MethodCard | 0 | Stripe |
 | MethodCrypto | 1 |  |
 | MethodApplePay | 2 |  |
 | MethodGooglePay | 3 |  |

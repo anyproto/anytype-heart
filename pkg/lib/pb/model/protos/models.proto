@@ -1186,7 +1186,7 @@ message Membership {
     }
     
     enum PaymentMethod {
-        MethodCard = 0;
+        MethodCard = 0; // Stripe
         MethodCrypto = 1;
         MethodApplePay = 2;
         MethodGooglePay = 3;
@@ -1228,12 +1228,14 @@ message MembershipTierData {
     }
     
     message Feature {
+        FeatureId featureId = 1;
+
         // usually feature has uint value
         // like "storage" - 120
-        uint32 valueUint = 1;
+        uint32 valueUint = 2;
 
         // in case feature will have string value
-        string valueStr = 2;
+        string valueStr = 3;
     }
 
     // this is a unique ID of the tier
@@ -1264,5 +1266,5 @@ message MembershipTierData {
     uint32 anyNameMinLength = 11;
     // each tier has a set of features
     // the key is FeatureId
-    map<uint32, Feature> features = 12;
+    repeated Feature features = 12;
 }

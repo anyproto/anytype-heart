@@ -675,8 +675,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 
 		// WARNING: we will save to cache data for THIS locale and payment method!!!
-		Locale:        req.Locale,
-		PaymentMethod: uint32(req.PaymentMethod),
+		Locale: req.Locale,
 	}
 
 	payload, err := bsr.Marshal()
@@ -727,32 +726,36 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 		}
 
 		// copy all features
-		out.Tiers[i].Features = make(map[uint32]*model.MembershipTierDataFeature)
+		out.Tiers[i].Features = make([]*model.MembershipTierDataFeature, len(tier.Features))
 
+		j := 0
 		for k, v := range tier.Features {
-			var featureId uint32
+			var featureId model.MembershipTierDataFeatureId
 
 			switch k {
 			case "storageGBs":
-				featureId = uint32(model.MembershipTierData_StorageGBs)
+				featureId = model.MembershipTierData_StorageGBs
 			case "invites":
-				featureId = uint32(model.MembershipTierData_Invites)
+				featureId = model.MembershipTierData_Invites
 			case "spaceReaders":
-				featureId = uint32(model.MembershipTierData_SpaceReaders)
+				featureId = model.MembershipTierData_SpaceReaders
 			case "spaceWriters":
-				featureId = uint32(model.MembershipTierData_SpaceWriters)
+				featureId = model.MembershipTierData_SpaceWriters
 			case "sharedSpaces":
-				featureId = uint32(model.MembershipTierData_SharedSpaces)
+				featureId = model.MembershipTierData_SharedSpaces
 			default:
 				// skip
 				log.Info("unknown tier feature", zap.String("tier", tier.Name), zap.String("feature", k))
 				continue
 			}
 
-			out.Tiers[i].Features[featureId] = &model.MembershipTierDataFeature{
-				ValueStr:  v.ValueStr,
+			out.Tiers[i].Features[j] = &model.MembershipTierDataFeature{
+				FeatureId: featureId,
 				ValueUint: v.ValueUint,
+				ValueStr:  v.ValueStr,
 			}
+
+			j++
 		}
 	}
 
