@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -220,109 +219,6 @@ func (s *service) storeFileSize(spaceId string, fileId domain.FileId) error {
 	return err
 }
 
-// fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
-func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (map[string]string, error) {
-	dagService := s.dagServiceForSpace(id.SpaceId)
-	outerDirLinks, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
-	if err != nil {
-		return nil, fmt.Errorf("get links of outer dir: %w", err)
-	}
-	dirNode, dirLink, err := s.getInnerDirNode(ctx, dagService, outerDirLinks)
-	if err != nil {
-		return nil, fmt.Errorf("get inner dir node: %w", err)
-	}
-
-	fileKeys := domain.FileEncryptionKeys{
-		FileId:         id.FileId,
-		EncryptionKeys: make(map[string]string),
-	}
-
-	if looksLikeFileNode(dirNode) {
-		l := schema.LinkByName(dirNode.Links(), ValidContentLinkNames)
-		info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
-		if err == nil {
-			fileKeys.EncryptionKeys[encryptionKeyPath(schema.LinkFile)] = info.Key
-		} else {
-			log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), id.FileId.String()+"/"+dirLink.Name)
-		}
-	} else {
-		for _, link := range dirNode.Links() {
-			innerLinks, err := helpers.LinksAtCid(ctx, dagService, link.Cid.String())
-			if err != nil {
-				return nil, err
-			}
-
-			l := schema.LinkByName(innerLinks, ValidContentLinkNames)
-			if l == nil {
-				continue
-			}
-
-			info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
-
-			if err == nil {
-				fileKeys.EncryptionKeys[encryptionKeyPath(link.Name)] = info.Key
-			} else {
-				log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), "/"+dirLink.Name+"/"+link.Name+"/")
-			}
-		}
-	}
-
-	err = s.fileStore.AddFileKeys(fileKeys)
-	if err != nil {
-		return nil, fmt.Errorf("failed to save file keys: %w", err)
-	}
-
-	return fileKeys.EncryptionKeys, nil
-}
-
-func (s *service) fileRestoreKeysNew(ctx context.Context, id domain.FullFileId) (map[string]string, error) {
-	// fileKeys := domain.FileEncryptionKeys{
-	// 	FileId:         id.FileId,
-	// 	EncryptionKeys: make(map[string]string),
-	// }
-
-	variants, err := s.fileStore.ListFileVariants(id.FileId)
-	_ = variants
-	return nil, err
-	//
-	// if looksLikeFileNode(dirNode) {
-	// 	l := schema.LinkByName(dirNode.Links(), ValidContentLinkNames)
-	// 	info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
-	// 	if err == nil {
-	// 		fileKeys.EncryptionKeys[encryptionKeyPath(schema.LinkFile)] = info.Key
-	// 	} else {
-	// 		log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), id.FileId.String()+"/"+dirLink.Name)
-	// 	}
-	// } else {
-	// 	for _, link := range dirNode.Links() {
-	// 		innerLinks, err := helpers.LinksAtCid(ctx, dagService, link.Cid.String())
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	//
-	// 		l := schema.LinkByName(innerLinks, ValidContentLinkNames)
-	// 		if l == nil {
-	// 			continue
-	// 		}
-	//
-	// 		info, err := s.fileStore.GetFileVariant(domain.FileContentId(l.Cid.String()))
-	//
-	// 		if err == nil {
-	// 			fileKeys.EncryptionKeys[encryptionKeyPath(link.Name)] = info.Key
-	// 		} else {
-	// 			log.Warnf("fileRestoreKeys not found in db %s(%s)", dirNode.Cid().String(), "/"+dirLink.Name+"/"+link.Name+"/")
-	// 		}
-	// 	}
-	// }
-	//
-	// err = s.fileStore.AddFileKeys(fileKeys)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to save file keys: %w", err)
-	// }
-	//
-	// return fileKeys.EncryptionKeys, nil
-}
-
 // addFileRootNode has structure:
 /*
 - dir (outer)
@@ -356,31 +252,15 @@ func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo 
 }
 
 func (s *service) FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error) {
-	m, err := s.fileStore.GetFileKeys(id.FileId)
+	keys, err := s.fileStore.GetFileKeys(id.FileId)
 	if err != nil {
-		if err != localstore.ErrNotFound {
-			return nil, err
-		}
-	} else {
-		return &domain.FileEncryptionKeys{
-			FileId:         id.FileId,
-			EncryptionKeys: m,
-		}, nil
+		return nil, err
 	}
-
-	// in case we don't have keys cached fot this file
-	// we should have all the CIDs locally, so 5s is more than enough
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	fileKeysRestored, err := s.fileRestoreKeys(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to restore file keys: %w", err)
-	}
-
 	return &domain.FileEncryptionKeys{
 		FileId:         id.FileId,
-		EncryptionKeys: fileKeysRestored,
+		EncryptionKeys: keys,
 	}, nil
+
 }
 
 func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId domain.FileId, path string, key string) (*storage.FileInfo, error) {
