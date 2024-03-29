@@ -163,7 +163,7 @@ func (_c *MockService_FileByHash_Call) RunAndReturn(run func(context.Context, do
 }
 
 // FileGetKeys provides a mock function with given fields: id
-func (_m *MockService) FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error) {
+func (_m *MockService) FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error) {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
@@ -172,10 +172,10 @@ func (_m *MockService) FileGetKeys(id domain.FullFileId) (*domain.FileEncryption
 
 	var r0 *domain.FileEncryptionKeys
 	var r1 error
-	if rf, ok := ret.Get(0).(func(domain.FullFileId) (*domain.FileEncryptionKeys, error)); ok {
+	if rf, ok := ret.Get(0).(func(domain.FileId) (*domain.FileEncryptionKeys, error)); ok {
 		return rf(id)
 	}
-	if rf, ok := ret.Get(0).(func(domain.FullFileId) *domain.FileEncryptionKeys); ok {
+	if rf, ok := ret.Get(0).(func(domain.FileId) *domain.FileEncryptionKeys); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
@@ -183,7 +183,7 @@ func (_m *MockService) FileGetKeys(id domain.FullFileId) (*domain.FileEncryption
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(domain.FullFileId) error); ok {
+	if rf, ok := ret.Get(1).(func(domain.FileId) error); ok {
 		r1 = rf(id)
 	} else {
 		r1 = ret.Error(1)
@@ -198,14 +198,14 @@ type MockService_FileGetKeys_Call struct {
 }
 
 // FileGetKeys is a helper method to define mock.On call
-//   - id domain.FullFileId
+//   - id domain.FileId
 func (_e *MockService_Expecter) FileGetKeys(id interface{}) *MockService_FileGetKeys_Call {
 	return &MockService_FileGetKeys_Call{Call: _e.mock.On("FileGetKeys", id)}
 }
 
-func (_c *MockService_FileGetKeys_Call) Run(run func(id domain.FullFileId)) *MockService_FileGetKeys_Call {
+func (_c *MockService_FileGetKeys_Call) Run(run func(id domain.FileId)) *MockService_FileGetKeys_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(domain.FullFileId))
+		run(args[0].(domain.FileId))
 	})
 	return _c
 }
@@ -215,7 +215,7 @@ func (_c *MockService_FileGetKeys_Call) Return(_a0 *domain.FileEncryptionKeys, _
 	return _c
 }
 
-func (_c *MockService_FileGetKeys_Call) RunAndReturn(run func(domain.FullFileId) (*domain.FileEncryptionKeys, error)) *MockService_FileGetKeys_Call {
+func (_c *MockService_FileGetKeys_Call) RunAndReturn(run func(domain.FileId) (*domain.FileEncryptionKeys, error)) *MockService_FileGetKeys_Call {
 	_c.Call.Return(run)
 	return _c
 }

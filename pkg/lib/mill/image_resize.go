@@ -153,7 +153,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	if exifData != nil {
 		orientation, err = getJpegOrientation(exifData)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get jpeg orientation: %w", err)
+			log.Errorf("failed to get jpeg orientation: %v", err)
 		}
 		_, err = r.Seek(0, io.SeekStart)
 		if err != nil {
@@ -168,10 +168,6 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 		}
 
 		img = reverseOrientation(img, orientation)
-		if err != nil {
-			err = fmt.Errorf("failed to fix img orientation: %w", err)
-			return nil, err
-		}
 		imgConfig.Width, imgConfig.Height = img.Bounds().Max.X, img.Bounds().Max.Y
 	}
 

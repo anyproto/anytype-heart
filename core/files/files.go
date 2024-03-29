@@ -50,7 +50,7 @@ var _ Service = (*service)(nil)
 type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
-	FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error)
+	FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error)
 	FileOffload(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
@@ -133,8 +133,9 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	addLock := s.lockAddOperation(opts.checksum)
 
 	fileInfo, fileNode, err := s.addFileNode(ctx, spaceId, &m.Blob{}, opts, schema.LinkFile)
-	if errors.Is(err, errFileExists) {
-		res, err := s.newExistingFileResult(addLock, fileInfo)
+	var errExists *errFileExists
+	if errors.As(err, &errExists) {
+		res, err := s.newExistingFileResult(addLock, errExists.fileId)
 		if err != nil {
 			addLock.Unlock()
 			return nil, err
@@ -152,10 +153,12 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, err
 	}
 	fileId := domain.FileId(rootNode.Cid().String())
-	err = s.fileStore.LinkFileVariantToFile(fileId, domain.FileContentId(fileInfo.Hash))
+
+	fileInfo.Targets = []string{fileId.String()}
+	err = s.fileStore.AddFileVariant(fileInfo)
 	if err != nil {
 		addLock.Unlock()
-		return nil, fmt.Errorf("link file variant to file: %w", err)
+		return nil, err
 	}
 
 	fileKeys := domain.FileEncryptionKeys{
@@ -183,20 +186,37 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	}, nil
 }
 
-func (s *service) newExistingFileResult(lock *sync.Mutex, fileInfo *storage.FileInfo) (*AddResult, error) {
-	fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(fileInfo)
+func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) (*AddResult, error) {
+	keys, err := s.FileGetKeys(fileId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get keys: %w", err)
 	}
+	variants, err := s.fileStore.ListFileVariants(fileId)
+	if err != nil {
+		return nil, fmt.Errorf("list variants: %w", err)
+	}
+	if len(variants) == 0 {
+		return nil, fmt.Errorf("variants not found")
+	}
+	var variant *storage.FileInfo
+	// Find largest variant
+	for _, v := range variants {
+		if variant == nil {
+			variant = v
+		} else if variant.Size_ < v.Size_ {
+			variant = v
+		}
+	}
+
 	return &AddResult{
 		IsExisting:     true,
 		FileId:         fileId,
 		EncryptionKeys: keys,
-		Size:           fileInfo.Size_,
-		MIME:           fileInfo.Media,
-
-		lock: lock,
+		MIME:           variant.GetMedia(),
+		Size:           variant.GetSize_(),
+		lock:           lock,
 	}, nil
+
 }
 
 func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo) (domain.FileId, *domain.FileEncryptionKeys, error) {
@@ -251,13 +271,13 @@ func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo 
 	return node, keys, nil
 }
 
-func (s *service) FileGetKeys(id domain.FullFileId) (*domain.FileEncryptionKeys, error) {
-	keys, err := s.fileStore.GetFileKeys(id.FileId)
+func (s *service) FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error) {
+	keys, err := s.fileStore.GetFileKeys(id)
 	if err != nil {
 		return nil, err
 	}
 	return &domain.FileEncryptionKeys{
-		FileId:         id.FileId,
+		FileId:         id,
 		EncryptionKeys: keys,
 	}, nil
 
@@ -369,7 +389,20 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 	return dec.DecryptReader(fd)
 }
 
-var errFileExists = errors.New("file exists")
+type errFileExists struct {
+	fileId domain.FileId
+}
+
+func newErrFileExists(variant *storage.FileInfo) error {
+	if len(variant.Targets) > 0 {
+		return &errFileExists{fileId: domain.FileId(variant.Targets[0])}
+	}
+	return fmt.Errorf("file exists but has no targets")
+}
+
+func (e *errFileExists) Error() string {
+	return "file already exists"
+}
 
 // addFileNode adds a file node to the DAG. This node has structure:
 /*
@@ -386,7 +419,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	if efile, _ := s.fileStore.GetFileVariantBySource(mill.ID(), conf.checksum, opts); efile != nil && efile.MetaHash != "" {
-		return efile, nil, errFileExists
+		return efile, nil, newErrFileExists(efile)
 	}
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
@@ -402,7 +435,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	if efile, _ := s.fileStore.GetFileVariantByChecksum(mill.ID(), variantChecksum); efile != nil && efile.MetaHash != "" {
-		return efile, nil, errFileExists
+		return efile, nil, newErrFileExists(efile)
 	}
 
 	_, err = conf.Reader.Seek(0, io.SeekStart)
@@ -464,11 +497,6 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, nil, err
 	}
 	fileInfo.MetaHash = metaNode.Cid().String()
-
-	err = s.fileStore.AddFileVariant(fileInfo)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	pairNode, err := s.addFilePairNode(ctx, spaceID, fileInfo)
 	if err != nil {

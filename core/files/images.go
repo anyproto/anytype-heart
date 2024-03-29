@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
@@ -62,8 +62,9 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	addLock := s.lockAddOperation(opts.checksum)
 
 	dirEntries, err := s.addImageNodes(ctx, spaceId, opts)
-	if errors.Is(err, errFileExists) {
-		res, err := s.newExisingImageResult(addLock, dirEntries)
+	var errExists *errFileExists
+	if errors.As(err, &errExists) {
+		res, err := s.newExistingFileResult(addLock, errExists.fileId)
 		if err != nil {
 			addLock.Unlock()
 			return nil, err
@@ -96,12 +97,20 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 
 	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
+	var successfullyAdded []domain.FileContentId
 	for _, variant := range dirEntries {
-		err = s.fileStore.LinkFileVariantToFile(id.FileId, domain.FileContentId(variant.fileInfo.Hash))
-		if err != nil {
+		variant.fileInfo.Targets = []string{id.FileId.String()}
+		err = s.fileStore.AddFileVariant(variant.fileInfo)
+		if err != nil && !errors.Is(err, localstore.ErrDuplicateKey) {
+			// Cleanup
+			deleteErr := s.fileStore.DeleteFileVariants(successfullyAdded)
+			if deleteErr != nil {
+				log.Errorf("cleanup: failed to delete file variants %s", deleteErr)
+			}
 			addLock.Unlock()
-			return nil, fmt.Errorf("failed to link file variant to file: %w", err)
+			return nil, fmt.Errorf("failed to store file variant: %w", err)
 		}
+		successfullyAdded = append(successfullyAdded, domain.FileContentId(variant.fileInfo.Hash))
 	}
 
 	err = s.storeFileSize(spaceId, fileId)
@@ -143,31 +152,7 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts Add
 			return nil, err
 		}
 		added, fileNode, err := s.addFileNode(ctx, spaceID, stepMill, *opts, link.Name)
-		if errors.Is(err, errFileExists) {
-			// If we found out that original variant is already exists, so we are trying to add the same file.
-			if link.Name == "original" {
-				return []dirEntry{
-					{
-						name:     link.Name,
-						fileInfo: added,
-					},
-				}, errFileExists
-			} else {
-				// If we have multiple variants with the same hash, for example "original" and "large",
-				// we need to find the previously added file node
-				var found bool
-				for _, entry := range dirEntries {
-					if entry.fileInfo.Hash == added.Hash {
-						fileNode = entry.fileNode
-						found = true
-						break
-					}
-				}
-				if !found {
-					return nil, fmt.Errorf("handling existing variant: failed to find file node for %s", link.Name)
-				}
-			}
-		} else if err != nil {
+		if err != nil {
 			return nil, err
 		}
 		dirEntries = append(dirEntries, dirEntry{
@@ -203,6 +188,7 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 	inner.SetCidBuilder(cidBuilder)
 
 	for _, entry := range dirEntries {
+
 		err := helpers.AddLinkToDirectory(ctx, dagService, inner, entry.name, entry.fileNode.Cid().String())
 		if err != nil {
 			return nil, nil, err
@@ -234,26 +220,6 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 		return nil, nil, err
 	}
 	return outerNode, keys, nil
-}
-
-func (s *service) newExisingImageResult(lock *sync.Mutex, dirEntries []dirEntry) (*AddResult, error) {
-	if len(dirEntries) == 0 {
-		return nil, errors.New("no image variants")
-	}
-	entry := dirEntries[0]
-	fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(entry.fileInfo)
-	if err != nil {
-		return nil, err
-	}
-	return &AddResult{
-		IsExisting:     true,
-		FileId:         fileId,
-		MIME:           entry.fileInfo.Media,
-		Size:           entry.fileInfo.Size_,
-		EncryptionKeys: keys,
-		lock:           lock,
-	}, nil
-
 }
 
 func newVariantsByWidth(dirEntries []dirEntry) map[int]*storage.FileInfo {
