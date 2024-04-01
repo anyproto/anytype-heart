@@ -648,7 +648,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 
 	// If the current tier is higher than Explorer, show the list without Explorer (downgrading is not allowed)
 	filtered := &pb.RpcMembershipTiersGetResponse{
-		Tiers: make([]*model.MembershipTierData, 0, len(out.Tiers)-1),
+		Tiers: make([]*model.MembershipTierData, 0),
 	}
 	for _, tier := range out.Tiers {
 		if tier.Id != uint32(model.Membership_TierExplorer) {
