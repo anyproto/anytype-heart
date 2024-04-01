@@ -1637,7 +1637,6 @@
     - [Membership](#anytype-model-Membership)
     - [MembershipTierData](#anytype-model-MembershipTierData)
     - [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature)
-    - [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -1708,6 +1707,7 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [Membership.Tier](#anytype-model-Membership-Tier)
+    - [MembershipTierData.FeatureId](#anytype-model-MembershipTierData-FeatureId)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
@@ -11175,7 +11175,7 @@ where user can pay for the membership
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| requestedTier | [int32](#int32) |  |  |
+| requestedTier | [uint32](#uint32) |  |  |
 | paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
 | requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
 
@@ -11407,7 +11407,7 @@ before requesting a payment link and paying
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| requestedTier | [int32](#int32) |  |  |
+| requestedTier | [uint32](#uint32) |  |  |
 | requestedAnyName | [string](#string) |  | full name including .any suffix |
 
 
@@ -11477,7 +11477,6 @@ you can call this method to get the latest tiers
 | ----- | ---- | ----- | ----------- |
 | noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
 | locale | [string](#string) |  |  |
-| paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
 
 
 
@@ -19947,6 +19946,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| MEMBERSHIP_NOT_FOUND | 6 |  |
+| MEMBERSHIP_WRONG_STATE | 7 |  |
+| BAD_ANYNAME | 8 |  |
 
 
 
@@ -19962,6 +19965,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| TIER_NOT_FOUND | 6 |  |
+| TIER_INVALID | 7 |  |
+| PAYMENT_METHOD_INVALID | 8 |  |
+| BAD_ANYNAME | 9 |  |
+| MEMBERSHIP_ALREADY_EXISTS | 10 |  |
 
 
 
@@ -19977,6 +19986,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
 
 
 
@@ -19992,6 +20002,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| MEMBERSHIP_NOT_FOUND | 6 |  |
+| MEMBERSHIP_WRONG_STATE | 7 |  |
 
 
 
@@ -20007,6 +20020,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| EMAIL_WRONG_FORMAT | 6 |  |
+| EMAIL_ALREADY_VERIFIED | 7 |  |
+| EMAIL_ALREDY_SENT | 8 |  |
+| EMAIL_FAILED_TO_SEND | 9 |  |
+| MEMBERSHIP_ALREADY_EXISTS | 10 |  |
 
 
 
@@ -20023,7 +20042,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | TOO_SHORT | 3 |  |
 | TOO_LONG | 4 |  |
 | HAS_INVALID_CHARS | 5 |  |
-| TIER_FEATURES_NO_NAME | 6 | if everything is fine - &#34;name is already taken&#34; check should be done in the NS see IsNameAvailable() |
+| TIER_FEATURES_NO_NAME | 6 |  |
+| TIER_NOT_FOUND | 7 | if everything is fine - &#34;name is already taken&#34; check should be done in the NS see IsNameAvailable() |
+| NOT_LOGGED_IN | 8 |  |
+| PAYMENT_NODE_ERROR | 9 |  |
+| CACHE_ERROR | 10 |  |
 
 
 
@@ -20039,6 +20062,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
 
 
 
@@ -20054,6 +20078,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| EMAIL_ALREADY_VERIFIED | 6 |  |
+| CODE_EXPIRED | 7 |  |
+| CODE_WRONG | 8 |  |
+| MEMBERSHIP_NOT_FOUND | 9 |  |
+| MEMBERSHIP_ALREADY_ACTIVE | 10 |  |
 
 
 
@@ -25785,7 +25815,7 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| tier | [int32](#int32) |  | it was Tier before, changed to int32 to allow dynamic values |
+| tier | [uint32](#uint32) |  | it was Tier before, changed to int32 to allow dynamic values |
 | status | [Membership.Status](#anytype-model-Membership-Status) |  |  |
 | dateStarted | [uint64](#uint64) |  |  |
 | dateEnds | [uint64](#uint64) |  |  |
@@ -25819,9 +25849,7 @@ Used to decode block meta only, without the content itself
 | priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
 | anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
 | anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
-| features | [MembershipTierData.FeaturesEntry](#anytype-model-MembershipTierData-FeaturesEntry) | repeated | each tier has a set of features each feature has a unique key: &#34;storage&#34;, &#34;invites&#34;, etc not using enum here to provide dynamic feature list:
-
-&#34;stoageGB&#34; -&gt; {64, &#34;&#34;} &#34;invites&#34; -&gt; {120, &#34;&#34;} &#34;spaces-public&#34; -&gt; {10, &#34;&#34;} ... |
+| features | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) | repeated | each tier has a set of features the key is FeatureId |
 
 
 
@@ -25836,24 +25864,9 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| featureId | [MembershipTierData.FeatureId](#anytype-model-MembershipTierData-FeatureId) |  |  |
 | valueUint | [uint32](#uint32) |  | usually feature has uint value like &#34;storage&#34; - 120 |
 | valueStr | [string](#string) |  | in case feature will have string value |
-
-
-
-
-
-
-<a name="anytype-model-MembershipTierData-FeaturesEntry"></a>
-
-### MembershipTierData.FeaturesEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) |  |  |
 
 
 
@@ -26981,7 +26994,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MethodCard | 0 |  |
+| MethodCard | 0 | Stripe |
 | MethodCrypto | 1 |  |
 | MethodApplePay | 2 |  |
 | MethodGooglePay | 3 |  |
@@ -27019,6 +27032,22 @@ in this case please call Finalize to finish the process |
 | TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
 | TierBuilder | 4 |  |
 | TierCoCreator | 5 |  |
+
+
+
+<a name="anytype-model-MembershipTierData-FeatureId"></a>
+
+### MembershipTierData.FeatureId
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unknown | 0 |  |
+| StorageGBs | 1 |  |
+| Invites | 2 |  |
+| SpaceWriters | 3 |  |
+| SpaceReaders | 4 |  |
+| SharedSpaces | 5 |  |
 
 
 

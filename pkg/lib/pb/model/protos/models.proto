@@ -1186,7 +1186,7 @@ message Membership {
     }
     
     enum PaymentMethod {
-        MethodCard = 0;
+        MethodCard = 0; // Stripe
         MethodCrypto = 1;
         MethodApplePay = 2;
         MethodGooglePay = 3;
@@ -1195,7 +1195,7 @@ message Membership {
     }
 
     // it was Tier before, changed to int32 to allow dynamic values
-    int32 tier = 1;
+    uint32 tier = 1;
     Status status = 2;
     uint64 dateStarted = 3;
     uint64 dateEnds = 4;
@@ -1217,14 +1217,25 @@ message MembershipTierData {
         PeriodTypeMonths = 4;
         PeriodTypeYears = 5;  
     }
+
+    enum FeatureId {
+        Unknown = 0;
+        StorageGBs = 1;
+        Invites = 2;
+        SpaceWriters = 3;
+        SpaceReaders = 4;
+        SharedSpaces = 5;
+    }
     
     message Feature {
+        FeatureId featureId = 1;
+
         // usually feature has uint value
         // like "storage" - 120
-        uint32 valueUint = 1;
+        uint32 valueUint = 2;
 
         // in case feature will have string value
-        string valueStr = 2;
+        string valueStr = 3;
     }
 
     // this is a unique ID of the tier
@@ -1254,12 +1265,6 @@ message MembershipTierData {
     // somename.any - len of 8
     uint32 anyNameMinLength = 11;
     // each tier has a set of features
-    // each feature has a unique key: "storage", "invites", etc
-    // not using enum here to provide dynamic feature list:
-    // 
-    // "stoageGB" -> {64, ""}
-    // "invites" -> {120, ""}
-    // "spaces-public" -> {10, ""}
-    // ...
-    map<string, Feature> features = 12;
+    // the key is FeatureId
+    repeated Feature features = 12;
 }

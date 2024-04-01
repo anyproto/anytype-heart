@@ -128,7 +128,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(psp.SubscriptionStatus_StatusUnknown), resp.Data.Status)
 	})
 
@@ -154,7 +154,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &req)
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(psp.SubscriptionStatus_StatusUnknown), resp.Data.Status)
 	})
 
@@ -163,7 +163,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -174,7 +174,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -198,7 +198,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
 		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
@@ -212,7 +212,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -223,7 +223,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -248,7 +248,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
 		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
@@ -262,7 +262,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -273,7 +273,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -307,7 +307,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(psp.SubscriptionTier_TierExplorer),
+				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 				Status:           model.MembershipStatus(2),
 				DateStarted:      uint64(timeNow.Unix()),
 				DateEnds:         uint64(subsExpire.Unix()),
@@ -324,7 +324,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 	})
 
@@ -333,7 +333,7 @@ func TestGetStatus(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierUnknown),
+			Tier:             uint32(psp.SubscriptionTier_TierUnknown),
 			Status:           psp.SubscriptionStatus_StatusUnknown,
 			DateStarted:      0,
 			DateEnds:         0,
@@ -344,7 +344,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -370,7 +370,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(0), resp.Data.Status)
 		assert.Equal(t, uint64(0), resp.Data.DateStarted)
 		assert.Equal(t, uint64(0), resp.Data.DateEnds)
@@ -386,7 +386,7 @@ func TestGetStatus(t *testing.T) {
 		var subsExpire5 time.Time = timeNow.Add(365 * 24 * time.Hour)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire5.Unix()),
@@ -397,7 +397,7 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -421,7 +421,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 	})
 
@@ -433,7 +433,7 @@ func TestGetStatus(t *testing.T) {
 
 		// this is from PP node
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierBuilder1Year),
+			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire5.Unix()),
@@ -445,7 +445,7 @@ func TestGetStatus(t *testing.T) {
 		// this is from DB
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(model.Membership_TierExplorer),
+				Tier:             uint32(model.Membership_TierExplorer),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -457,7 +457,7 @@ func TestGetStatus(t *testing.T) {
 
 		// this is the new state
 		var psgsr2 pb.RpcMembershipGetStatusResponse = psgsr
-		psgsr2.Data.Tier = int32(model.Membership_TierBuilder)
+		psgsr2.Data.Tier = uint32(model.Membership_TierBuilder)
 
 		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
@@ -476,7 +476,7 @@ func TestGetStatus(t *testing.T) {
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, int32(psp.SubscriptionTier_TierBuilder1Year), resp.Data.Tier)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierBuilder1Year), resp.Data.Tier)
 		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
 	})
 }
@@ -497,7 +497,7 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
-			RequestedTier:    int32(model.Membership_TierBuilder),
+			RequestedTier:    uint32(model.Membership_TierBuilder),
 			PaymentMethod:    model.Membership_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
@@ -524,7 +524,7 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
-			RequestedTier:    int32(model.Membership_TierBuilder),
+			RequestedTier:    uint32(model.Membership_TierBuilder),
 			PaymentMethod:    model.Membership_MethodCrypto,
 			RequestedAnyName: "something.any",
 		}
@@ -712,9 +712,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		_, err := fx.GetTiers(ctx, &req)
 		assert.Error(t, err)
@@ -733,10 +732,23 @@ func TestGetTiers(t *testing.T) {
 			return &psp.GetTiersResponse{}, nil
 		}).MinTimes(1)
 
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{
+				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+				Status:           psp.SubscriptionStatus_StatusActive,
+				DateStarted:      uint64(timeNow.Unix()),
+				DateEnds:         uint64(subsExpire.Unix()),
+				IsAutoRenew:      true,
+				PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+				RequestedAnyName: "something.any",
+			}, nil
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       true,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: true,
+			Locale:  "EN_us",
 		}
 		_, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -752,7 +764,7 @@ func TestGetTiers(t *testing.T) {
 		})
 
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
-			return &psp.GetTiersResponse{
+			out := &psp.GetTiersResponse{
 
 				Tiers: []*psp.TierData{
 					{
@@ -763,13 +775,41 @@ func TestGetTiers(t *testing.T) {
 						IsHiddenTier: false,
 					},
 				},
+			}
+
+			// create Features map
+			out.Tiers[0].Features = make(map[string]*psp.Feature)
+
+			out.Tiers[0].Features["storageGBs"] = &psp.Feature{
+				ValueUint: 12,
+			}
+			out.Tiers[0].Features["invites"] = &psp.Feature{
+				ValueUint: 100,
+			}
+			out.Tiers[0].Features["sharedSpaces"] = &psp.Feature{
+				ValueUint: 12,
+			}
+
+			return out, nil
+		}).MinTimes(1)
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{
+				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+				Status:           psp.SubscriptionStatus_StatusActive,
+				DateStarted:      uint64(timeNow.Unix()),
+				DateEnds:         uint64(subsExpire.Unix()),
+				IsAutoRenew:      true,
+				PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+				RequestedAnyName: "something.any",
 			}, nil
 		}).MinTimes(1)
 
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -780,6 +820,9 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
 		assert.Equal(t, true, out.Tiers[0].IsActive)
 		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+		// should be converted to array
+		assert.Equal(t, 3, len(out.Tiers[0].Features))
+		assert.Equal(t, model.MembershipTierData_StorageGBs, out.Tiers[0].Features[0].FeatureId)
 	})
 
 	t.Run("success if status is in cache", func(t *testing.T) {
@@ -787,7 +830,7 @@ func TestGetTiers(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -798,7 +841,7 @@ func TestGetTiers(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -828,9 +871,8 @@ func TestGetTiers(t *testing.T) {
 		}).MinTimes(1)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -848,7 +890,7 @@ func TestGetTiers(t *testing.T) {
 		defer fx.finish(t)
 
 		sr := psp.GetSubscriptionResponse{
-			Tier:             int32(psp.SubscriptionTier_TierExplorer),
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
@@ -859,7 +901,7 @@ func TestGetTiers(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             int32(sr.Tier),
+				Tier:             uint32(sr.Tier),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
@@ -883,9 +925,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:       false,
-			Locale:        "EN_us",
-			PaymentMethod: 0,
+			NoCache: false,
+			Locale:  "EN_us",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -894,6 +935,143 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, uint32(1), out.Tiers[0].Id)
 		assert.Equal(t, "Explorer", out.Tiers[0].Name)
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
+		assert.Equal(t, true, out.Tiers[0].IsActive)
+		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+	})
+
+	t.Run("success if full status is in cache and higher then Explorer", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+		/*
+			fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+				return &sr, nil
+			}).MinTimes(1)
+		*/
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Data: &model.Membership{
+				Tier:             uint32(sr.Tier),
+				Status:           model.MembershipStatus(sr.Status),
+				DateStarted:      sr.DateStarted,
+				DateEnds:         sr.DateEnds,
+				IsAutoRenew:      sr.IsAutoRenew,
+				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				RequestedAnyName: sr.RequestedAnyName,
+			},
+		}
+
+		tgr := pb.RpcMembershipTiersGetResponse{
+			Tiers: []*model.MembershipTierData{
+				{
+					Id:           1,
+					Name:         "Explorer",
+					Description:  "Explorer tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+				{
+					Id:           2,
+					Name:         "Builder",
+					Description:  "Builder tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+				{
+					Id:           3,
+					Name:         "Special",
+					Description:  "Special tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+			},
+		}
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
+
+		req := pb.RpcMembershipTiersGetRequest{
+			NoCache: false,
+			Locale:  "EN_us",
+		}
+		out, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(out.Tiers))
+
+		assert.Equal(t, uint32(2), out.Tiers[0].Id)
+		assert.Equal(t, "Builder", out.Tiers[0].Name)
+		assert.Equal(t, "Builder tier", out.Tiers[0].Description)
+		assert.Equal(t, true, out.Tiers[0].IsActive)
+		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
+	})
+
+	t.Run("success if full status is in cache and higher then Explorer, no status cache", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &sr, nil
+		}).MinTimes(1)
+
+		tgr := pb.RpcMembershipTiersGetResponse{
+			Tiers: []*model.MembershipTierData{
+				{
+					Id:           1,
+					Name:         "Explorer",
+					Description:  "Explorer tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+				{
+					Id:           2,
+					Name:         "Builder",
+					Description:  "Builder tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+				{
+					Id:           3,
+					Name:         "Special",
+					Description:  "Special tier",
+					IsActive:     true,
+					IsHiddenTier: false,
+				},
+			},
+		}
+		fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
+		// should call it to save status
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+			return nil
+		})
+		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		req := pb.RpcMembershipTiersGetRequest{
+			NoCache: false,
+			Locale:  "EN_us",
+		}
+		out, err := fx.GetTiers(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(out.Tiers))
+
+		assert.Equal(t, uint32(2), out.Tiers[0].Id)
+		assert.Equal(t, "Builder", out.Tiers[0].Name)
+		assert.Equal(t, "Builder tier", out.Tiers[0].Description)
 		assert.Equal(t, true, out.Tiers[0].IsActive)
 		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
 	})
