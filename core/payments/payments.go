@@ -42,7 +42,7 @@ var (
 )
 
 type globalNamesUpdater interface {
-	UpdateGlobalNames()
+	UpdateGlobalNames(myIdentityGlobalName string)
 }
 
 /*
@@ -273,7 +273,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	// 5 - if requested any name has changed, then we need to update details of local identity
 	if isDiffRequestedName {
-		s.profileUpdater.UpdateGlobalNames()
+		s.profileUpdater.UpdateGlobalNames(status.RequestedAnyName)
 	}
 
 	return &out, nil
