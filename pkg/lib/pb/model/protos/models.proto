@@ -1217,30 +1217,10 @@ message MembershipTierData {
         PeriodTypeMonths = 4;
         PeriodTypeYears = 5;  
     }
-
-    enum FeatureId {
-        Unknown = 0;
-        StorageGBs = 1;
-        Invites = 2;
-        SpaceWriters = 3;
-        SpaceReaders = 4;
-        SharedSpaces = 5;
-        AnyNames = 6;
-        CustomString = 7;   // just show "name"
-    }
     
     message Feature {
-        FeatureId featureId = 1;
-
         // localized
-        string name = 2;
-
-        // usually feature has uint value
-        // like "storage" - 120
-        uint32 valueUint = 3;
-
-        // in case feature will have string value
-        string valueStr = 4;
+        string description = 1;
     }
 
     // this is a unique ID of the tier
@@ -1267,4 +1247,6 @@ message MembershipTierData {
     uint32 anyNameMinLength = 9;
     // each tier has a set of features
     repeated Feature features = 10;
+    // green, blue, red, purple or custom color in string format #ff00ff
+    string colorStr = 11;
 }
