@@ -1247,6 +1247,6 @@ message MembershipTierData {
     uint32 anyNameMinLength = 9;
     // each tier has a set of features
     repeated Feature features = 10;
-    // green, blue, red, purple or custom color in string format #ff00ff
+    // green, blue, red, purple, custom
     string colorStr = 11;
 }
