@@ -70,20 +70,21 @@ type identityRepoClient interface {
 }
 
 type service struct {
-	dbProvider         datastore.Datastore
-	db                 *badger.DB
-	spaceService       space.Service
-	objectStore        objectstore.ObjectStore
-	accountService     account.Service
-	spaceIdDeriver     spaceIdDeriver
-	identityRepoClient identityRepoClient
-	fileAclService     fileacl.Service
-	wallet             wallet.Wallet
-	namingService      nameserviceclient.AnyNsClientService
-	closing            chan struct{}
-	startedCh          chan struct{}
-	techSpaceId        string
-	personalSpaceId    string
+	dbProvider          datastore.Datastore
+	db                  *badger.DB
+	spaceService        space.Service
+	objectStore         objectstore.ObjectStore
+	accountService      account.Service
+	spaceIdDeriver      spaceIdDeriver
+	identityRepoClient  identityRepoClient
+	fileAclService      fileacl.Service
+	wallet              wallet.Wallet
+	namingService       nameserviceclient.AnyNsClientService
+	componentCtx        context.Context
+	componentCtxCancel  context.CancelFunc
+	gotMyProfileDetails chan struct{}
+	techSpaceId         string
+	personalSpaceId     string
 
 	myIdentity                string
 	currentProfileDetailsLock sync.RWMutex
@@ -103,9 +104,11 @@ type service struct {
 }
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &service{
-		startedCh:                make(chan struct{}),
-		closing:                  make(chan struct{}),
+		componentCtx:             ctx,
+		componentCtxCancel:       cancel,
+		gotMyProfileDetails:      make(chan struct{}),
 		identityForceUpdate:      make(chan struct{}),
 		globalNamesForceUpdate:   make(chan struct{}),
 		identityObservePeriod:    identityObservePeriod,
@@ -162,7 +165,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
-	close(s.closing)
+	s.componentCtxCancel()
 	return nil
 }
 
@@ -194,7 +197,7 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 	}
 	go func() {
 		select {
-		case <-s.closing:
+		case <-s.componentCtx.Done():
 			closeSub()
 			return
 		}
@@ -224,7 +227,11 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 }
 
 func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct) {
-	<-s.startedCh
+	select {
+	case <-s.gotMyProfileDetails:
+	case <-s.componentCtx.Done():
+		return "", nil, nil
+	}
 	s.currentProfileDetailsLock.RLock()
 	defer s.currentProfileDetailsLock.RUnlock()
 
@@ -249,7 +256,7 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-s.closing:
+		case <-s.componentCtx.Done():
 			return nil
 		case <-ticker.C:
 			profile = s.getProfileFromCache(identity)
@@ -292,7 +299,7 @@ func (s *service) cacheProfileDetails(details *types.Struct) {
 	}
 	s.currentProfileDetailsLock.Lock()
 	if s.currentProfileDetails == nil {
-		close(s.startedCh)
+		close(s.gotMyProfileDetails)
 	}
 	s.currentProfileDetails = details
 	s.currentProfileDetailsLock.Unlock()
@@ -382,7 +389,7 @@ func (s *service) observeIdentitiesLoop() {
 	}
 	for {
 		select {
-		case <-s.closing:
+		case <-s.componentCtx.Done():
 			return
 		case <-s.identityForceUpdate:
 			observe(false)
