@@ -1217,11 +1217,6 @@ message MembershipTierData {
         PeriodTypeMonths = 4;
         PeriodTypeYears = 5;  
     }
-    
-    message Feature {
-        // localized
-        string description = 1;
-    }
 
     // this is a unique ID of the tier
     // you should hardcode this in your app and provide icon, graphics, etc for each tier 
@@ -1245,8 +1240,8 @@ message MembershipTierData {
     uint32 anyNamesCountIncluded = 8;
     // somename.any - is of len 8
     uint32 anyNameMinLength = 9;
-    // each tier has a set of features
-    repeated Feature features = 10;
+    // localized strings for the features
+    repeated string features = 10;
     // green, blue, red, purple, custom
     string colorStr = 11;
 }

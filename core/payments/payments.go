@@ -728,12 +728,10 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 		}
 
 		// copy all features
-		out.Tiers[i].Features = make([]*model.MembershipTierDataFeature, len(tier.Features))
+		out.Tiers[i].Features = make([]string, len(tier.Features))
 
 		for j, feature := range tier.Features {
-			out.Tiers[i].Features[j] = &model.MembershipTierDataFeature{
-				Description: feature.Description,
-			}
+			out.Tiers[i].Features[j] = feature.Description
 		}
 	}
 

@@ -816,7 +816,7 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
 		// should be converted to array
 		assert.Equal(t, 2, len(out.Tiers[0].Features))
-		assert.Equal(t, "special support", out.Tiers[0].Features[0].Description)
+		assert.Equal(t, "special support", out.Tiers[0].Features[0])
 	})
 
 	t.Run("success if status is in cache", func(t *testing.T) {

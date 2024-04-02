@@ -1636,7 +1636,6 @@
     - [ManifestInfo](#anytype-model-ManifestInfo)
     - [Membership](#anytype-model-Membership)
     - [MembershipTierData](#anytype-model-MembershipTierData)
-    - [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -25846,23 +25845,8 @@ Used to decode block meta only, without the content itself
 | priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
 | anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes also in the &#34;features&#34; list (see below) |
 | anyNameMinLength | [uint32](#uint32) |  | somename.any - is of len 8 |
-| features | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) | repeated | each tier has a set of features |
+| features | [string](#string) | repeated | localized strings for the features |
 | colorStr | [string](#string) |  | green, blue, red, purple, custom |
-
-
-
-
-
-
-<a name="anytype-model-MembershipTierData-Feature"></a>
-
-### MembershipTierData.Feature
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| description | [string](#string) |  | localized |
 
 
 
