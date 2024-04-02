@@ -516,6 +516,7 @@ func TestGetPaymentURL(t *testing.T) {
 		fx.ppclient.EXPECT().BuySubscription(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.BuySubscriptionResponse, error) {
 			var out psp.BuySubscriptionResponse
 			out.PaymentUrl = "https://xxxx.com"
+			out.BillingID = "killbillingid"
 
 			return &out, nil
 		}).MinTimes(1)
@@ -533,6 +534,7 @@ func TestGetPaymentURL(t *testing.T) {
 		resp, err := fx.GetPaymentURL(ctx, req)
 		assert.NoError(t, err)
 		assert.Equal(t, "https://xxxx.com", resp.PaymentUrl)
+		assert.Equal(t, "killbillingid", resp.BillingId)
 	})
 }
 

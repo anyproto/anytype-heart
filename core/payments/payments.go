@@ -441,8 +441,10 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPay
 		return nil, err
 	}
 
-	var out pb.RpcMembershipGetPaymentUrlResponse
-	out.PaymentUrl = bsRet.PaymentUrl
+	out := pb.RpcMembershipGetPaymentUrlResponse{
+		PaymentUrl: bsRet.PaymentUrl,
+		BillingId:  bsRet.BillingID,
+	}
 
 	// 2 - disable cache for 30 minutes
 	log.Debug("disabling cache for 30 minutes after payment URL was received")
@@ -715,9 +717,9 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 			Id:          tier.Id,
 			Name:        tier.Name,
 			Description: tier.Description,
-			//IsActive:              tier.IsActive,
+			// IsActive:              tier.IsActive,
 			IsTest: tier.IsTest,
-			//IsHiddenTier:          tier.IsHiddenTier,
+			// IsHiddenTier:          tier.IsHiddenTier,
 			PeriodType:          model.MembershipTierDataPeriodType(tier.PeriodType),
 			PeriodValue:         tier.PeriodValue,
 			PriceStripeUsdCents: tier.PriceStripeUsdCents,
