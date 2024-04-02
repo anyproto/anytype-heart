@@ -174,12 +174,12 @@ func (t *treeStorage) Delete() error {
 		return err
 	}
 
-	if _, err := t.service.stmt.deleteTree.Exec(t.treeId); err != nil {
+	if _, err := tx.Stmt(t.service.stmt.deleteTree).Exec(t.treeId); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
 
-	if _, err := t.service.stmt.deleteChangesByTree.Exec(t.treeId); err != nil {
+	if _, err := tx.Stmt(t.service.stmt.deleteChangesByTree).Exec(t.treeId); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
