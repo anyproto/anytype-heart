@@ -47,6 +47,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -856,7 +857,7 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 			},
 		},
 	})
-	if err != nil {
+	if err != nil && !badgerhelper.IsNotFound(err) {
 		return nil, err
 	}
 	if len(relation) == 0 {
@@ -916,7 +917,7 @@ func (e *export) getRelationOptions(relationOptions *types.Value) ([]database.Re
 			},
 		},
 	})
-	if err != nil {
+	if err != nil && !badgerhelper.IsNotFound(err) {
 		return nil, err
 	}
 	return relationOptionsDetails, nil
@@ -965,7 +966,7 @@ func (e *export) addTemplates(id string, derivedObjects []database.Record) ([]da
 			},
 		},
 	})
-	if err != nil {
+	if err != nil && !badgerhelper.IsNotFound(err) {
 		return nil, err
 	}
 	derivedObjects = append(derivedObjects, templates...)
@@ -994,7 +995,7 @@ func (e *export) handleSetOfRelation(object *types.Struct, derivedObjects []data
 				},
 			},
 		})
-		if err != nil {
+		if err != nil && !badgerhelper.IsNotFound(err) {
 			return nil, err
 		}
 		derivedObjects = append(derivedObjects, types...)
