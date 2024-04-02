@@ -1707,7 +1707,6 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [Membership.Tier](#anytype-model-Membership-Tier)
-    - [MembershipTierData.FeatureId](#anytype-model-MembershipTierData-FeatureId)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
@@ -11476,7 +11475,7 @@ you can call this method to get the latest tiers
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
-| locale | [string](#string) |  |  |
+| Language | [string](#string) |  | &#34;en&#34;, &#34;jp&#34;, &#34;lt&#34;, etc |
 
 
 
@@ -25841,15 +25840,14 @@ Used to decode block meta only, without the content itself
 | id | [uint32](#uint32) |  | this is a unique ID of the tier you should hardcode this in your app and provide icon, graphics, etc for each tier (even for old/historical/inactive/hidden tiers) |
 | name | [string](#string) |  | localazied name of the tier |
 | description | [string](#string) |  | just a short technical description you don&#39;t have to use it, you can use your own UI-friendly texts |
-| isActive | [bool](#bool) |  | can you buy it (ON ALL PLATFORMS, without clarification)? |
 | isTest | [bool](#bool) |  | is this tier for debugging only? |
-| isHiddenTier | [bool](#bool) |  | hidden tiers are only visible once user got them |
 | periodType | [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType) |  | how long is the period of the subscription |
 | periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
 | priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
-| anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes (not counted as a &#34;feature&#34; and not in the features list) |
-| anyNameMinLength | [uint32](#uint32) |  | somename.any - len of 8 |
-| features | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) | repeated | each tier has a set of features the key is FeatureId |
+| anyNamesCountIncluded | [uint32](#uint32) |  | number of ANY NS names that this tier includes also in the &#34;features&#34; list (see below) |
+| anyNameMinLength | [uint32](#uint32) |  | somename.any - is of len 8 |
+| features | [MembershipTierData.Feature](#anytype-model-MembershipTierData-Feature) | repeated | each tier has a set of features |
+| colorStr | [string](#string) |  | green, blue, red, purple, custom |
 
 
 
@@ -25864,9 +25862,7 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| featureId | [MembershipTierData.FeatureId](#anytype-model-MembershipTierData-FeatureId) |  |  |
-| valueUint | [uint32](#uint32) |  | usually feature has uint value like &#34;storage&#34; - 120 |
-| valueStr | [string](#string) |  | in case feature will have string value |
+| description | [string](#string) |  | localized |
 
 
 
@@ -27032,22 +27028,6 @@ in this case please call Finalize to finish the process |
 | TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
 | TierBuilder | 4 |  |
 | TierCoCreator | 5 |  |
-
-
-
-<a name="anytype-model-MembershipTierData-FeatureId"></a>
-
-### MembershipTierData.FeatureId
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Unknown | 0 |  |
-| StorageGBs | 1 |  |
-| Invites | 2 |  |
-| SpaceWriters | 3 |  |
-| SpaceReaders | 4 |  |
-| SharedSpaces | 5 |  |
 
 
 

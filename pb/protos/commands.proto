@@ -6664,7 +6664,8 @@ message Rpc {
                     // by default this is false
                     bool noCache = 1;
 
-                    string locale = 2;
+                    // "en", "jp", "lt", etc
+                    string Language = 2;
                 }
     
                 message Response {

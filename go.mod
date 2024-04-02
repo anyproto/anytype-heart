@@ -7,9 +7,10 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-sync v0.3.36-0.20240327224635-807fe408e336
+	github.com/anyproto/any-sync v0.3.36-0.20240401214416-656bf2ebf443
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
+	github.com/avast/retry-go/v4 v4.5.1
 	github.com/blevesearch/bleve/v2 v2.3.10
 	github.com/chai2010/webp v1.1.1
 	github.com/cheggaaa/mb v1.0.3
@@ -114,7 +115,6 @@ require (
 	github.com/anyproto/go-chash v0.1.0 // indirect
 	github.com/anyproto/go-slip10 v1.0.0 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
-	github.com/avast/retry-go/v4 v4.5.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
@@ -265,6 +265,7 @@ require (
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/term v0.18.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.17.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect

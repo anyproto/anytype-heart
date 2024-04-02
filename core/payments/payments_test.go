@@ -712,8 +712,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache: false,
-			Locale:  "EN_us",
+			NoCache:  false,
+			Language: "en",
 		}
 		_, err := fx.GetTiers(ctx, &req)
 		assert.Error(t, err)
@@ -747,8 +747,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache: true,
-			Locale:  "EN_us",
+			NoCache:  true,
+			Language: "en",
 		}
 		_, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -773,21 +773,17 @@ func TestGetTiers(t *testing.T) {
 						Description:  "Explorer tier",
 						IsActive:     true,
 						IsHiddenTier: false,
+						// []*Feature
+						Features: []*psp.Feature{
+							{
+								Description: "special support",
+							},
+							{
+								Description: "storage GBs",
+							},
+						},
 					},
 				},
-			}
-
-			// create Features map
-			out.Tiers[0].Features = make(map[string]*psp.Feature)
-
-			out.Tiers[0].Features["storageGBs"] = &psp.Feature{
-				ValueUint: 12,
-			}
-			out.Tiers[0].Features["invites"] = &psp.Feature{
-				ValueUint: 100,
-			}
-			out.Tiers[0].Features["sharedSpaces"] = &psp.Feature{
-				ValueUint: 12,
 			}
 
 			return out, nil
@@ -808,8 +804,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache: false,
-			Locale:  "EN_us",
+			NoCache:  false,
+			Language: "en",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -818,11 +814,9 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, uint32(1), out.Tiers[0].Id)
 		assert.Equal(t, "Explorer", out.Tiers[0].Name)
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
-		assert.Equal(t, true, out.Tiers[0].IsActive)
-		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
 		// should be converted to array
-		assert.Equal(t, 3, len(out.Tiers[0].Features))
-		assert.Equal(t, model.MembershipTierData_StorageGBs, out.Tiers[0].Features[0].FeatureId)
+		assert.Equal(t, 2, len(out.Tiers[0].Features))
+		assert.Equal(t, "special support", out.Tiers[0].Features[0].Description)
 	})
 
 	t.Run("success if status is in cache", func(t *testing.T) {
@@ -871,8 +865,8 @@ func TestGetTiers(t *testing.T) {
 		}).MinTimes(1)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache: false,
-			Locale:  "EN_us",
+			NoCache:  false,
+			Language: "en",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -881,8 +875,6 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, uint32(1), out.Tiers[0].Id)
 		assert.Equal(t, "Explorer", out.Tiers[0].Name)
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
-		assert.Equal(t, true, out.Tiers[0].IsActive)
-		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
 	})
 
 	t.Run("success if full status is in cache", func(t *testing.T) {
@@ -914,19 +906,17 @@ func TestGetTiers(t *testing.T) {
 		tgr := pb.RpcMembershipTiersGetResponse{
 			Tiers: []*model.MembershipTierData{
 				{
-					Id:           1,
-					Name:         "Explorer",
-					Description:  "Explorer tier",
-					IsActive:     true,
-					IsHiddenTier: false,
+					Id:          1,
+					Name:        "Explorer",
+					Description: "Explorer tier",
 				},
 			},
 		}
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache: false,
-			Locale:  "EN_us",
+			NoCache:  false,
+			Language: "en",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -935,8 +925,6 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, uint32(1), out.Tiers[0].Id)
 		assert.Equal(t, "Explorer", out.Tiers[0].Name)
 		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
-		assert.Equal(t, true, out.Tiers[0].IsActive)
-		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
 	})
 
 	t.Run("success if full status is in cache and higher then Explorer", func(t *testing.T) {
@@ -973,33 +961,27 @@ func TestGetTiers(t *testing.T) {
 		tgr := pb.RpcMembershipTiersGetResponse{
 			Tiers: []*model.MembershipTierData{
 				{
-					Id:           1,
-					Name:         "Explorer",
-					Description:  "Explorer tier",
-					IsActive:     true,
-					IsHiddenTier: false,
+					Id:          1,
+					Name:        "Explorer",
+					Description: "Explorer tier",
 				},
 				{
-					Id:           2,
-					Name:         "Builder",
-					Description:  "Builder tier",
-					IsActive:     true,
-					IsHiddenTier: false,
+					Id:          2,
+					Name:        "Builder",
+					Description: "Builder tier",
 				},
 				{
-					Id:           3,
-					Name:         "Special",
-					Description:  "Special tier",
-					IsActive:     true,
-					IsHiddenTier: false,
+					Id:          3,
+					Name:        "Special",
+					Description: "Special tier",
 				},
 			},
 		}
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache: false,
-			Locale:  "EN_us",
+			NoCache:  false,
+			Language: "en",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -1008,8 +990,6 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, uint32(2), out.Tiers[0].Id)
 		assert.Equal(t, "Builder", out.Tiers[0].Name)
 		assert.Equal(t, "Builder tier", out.Tiers[0].Description)
-		assert.Equal(t, true, out.Tiers[0].IsActive)
-		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
 	})
 
 	t.Run("success if full status is in cache and higher then Explorer, no status cache", func(t *testing.T) {
@@ -1032,25 +1012,19 @@ func TestGetTiers(t *testing.T) {
 		tgr := pb.RpcMembershipTiersGetResponse{
 			Tiers: []*model.MembershipTierData{
 				{
-					Id:           1,
-					Name:         "Explorer",
-					Description:  "Explorer tier",
-					IsActive:     true,
-					IsHiddenTier: false,
+					Id:          1,
+					Name:        "Explorer",
+					Description: "Explorer tier",
 				},
 				{
-					Id:           2,
-					Name:         "Builder",
-					Description:  "Builder tier",
-					IsActive:     true,
-					IsHiddenTier: false,
+					Id:          2,
+					Name:        "Builder",
+					Description: "Builder tier",
 				},
 				{
-					Id:           3,
-					Name:         "Special",
-					Description:  "Special tier",
-					IsActive:     true,
-					IsHiddenTier: false,
+					Id:          3,
+					Name:        "Special",
+					Description: "Special tier",
 				},
 			},
 		}
@@ -1062,8 +1036,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache: false,
-			Locale:  "EN_us",
+			NoCache:  false,
+			Language: "en",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -1072,8 +1046,6 @@ func TestGetTiers(t *testing.T) {
 		assert.Equal(t, uint32(2), out.Tiers[0].Id)
 		assert.Equal(t, "Builder", out.Tiers[0].Name)
 		assert.Equal(t, "Builder tier", out.Tiers[0].Description)
-		assert.Equal(t, true, out.Tiers[0].IsActive)
-		assert.Equal(t, false, out.Tiers[0].IsHiddenTier)
 	})
 }
 
@@ -1088,8 +1060,6 @@ func TestIsNameValid(t *testing.T) {
 					Id:                    1,
 					Name:                  "Explorer",
 					Description:           "Explorer tier",
-					IsActive:              true,
-					IsHiddenTier:          false,
 					AnyNamesCountIncluded: 1,
 					AnyNameMinLength:      5,
 				},
@@ -1097,8 +1067,6 @@ func TestIsNameValid(t *testing.T) {
 					Id:                    2,
 					Name:                  "Suppa",
 					Description:           "Suppa tieren",
-					IsActive:              true,
-					IsHiddenTier:          false,
 					AnyNamesCountIncluded: 2,
 					AnyNameMinLength:      7,
 				},
@@ -1106,8 +1074,6 @@ func TestIsNameValid(t *testing.T) {
 					Id:                    3,
 					Name:                  "NoNamme",
 					Description:           "Nicht Suppa tieren",
-					IsActive:              true,
-					IsHiddenTier:          false,
 					AnyNamesCountIncluded: 0,
 					AnyNameMinLength:      0,
 				},
