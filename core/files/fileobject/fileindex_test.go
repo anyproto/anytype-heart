@@ -68,7 +68,7 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 				bundle.RelationKeyId:                 pbtypes.String("id3"),
 				bundle.RelationKeyFileId:             pbtypes.String("file3"),
 				bundle.RelationKeySpaceId:            pbtypes.String("space3"),
-				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
+				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)),
 				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_video)),
 			},
 			{
