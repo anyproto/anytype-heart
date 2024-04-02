@@ -11192,6 +11192,7 @@ where user can pay for the membership
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Membership.GetPaymentUrl.Response.Error](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error) |  |  |
 | paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
+| billingId | [string](#string) |  | billingID is only needed for mobile clients |
 
 
 
