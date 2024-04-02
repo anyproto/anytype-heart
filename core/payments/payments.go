@@ -675,7 +675,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 
 		// WARNING: we will save to cache data for THIS locale and payment method!!!
-		Language: req.Language,
+		Locale: req.Locale,
 	}
 
 	payload, err := bsr.Marshal()

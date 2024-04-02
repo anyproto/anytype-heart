@@ -712,8 +712,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:  false,
-			Language: "en",
+			NoCache: false,
+			Locale:  "en_US",
 		}
 		_, err := fx.GetTiers(ctx, &req)
 		assert.Error(t, err)
@@ -747,8 +747,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:  true,
-			Language: "en",
+			NoCache: true,
+			Locale:  "en_US",
 		}
 		_, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -804,8 +804,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:  false,
-			Language: "en",
+			NoCache: false,
+			Locale:  "en_US",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -865,8 +865,8 @@ func TestGetTiers(t *testing.T) {
 		}).MinTimes(1)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:  false,
-			Language: "en",
+			NoCache: false,
+			Locale:  "en_US",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -915,8 +915,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:  false,
-			Language: "en",
+			NoCache: false,
+			Locale:  "en_US",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -980,8 +980,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:  false,
-			Language: "en",
+			NoCache: false,
+			Locale:  "en_US",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)
@@ -1036,8 +1036,8 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		req := pb.RpcMembershipTiersGetRequest{
-			NoCache:  false,
-			Language: "en",
+			NoCache: false,
+			Locale:  "en_US",
 		}
 		out, err := fx.GetTiers(ctx, &req)
 		assert.NoError(t, err)

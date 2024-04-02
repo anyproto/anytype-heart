@@ -11475,7 +11475,7 @@ you can call this method to get the latest tiers
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
-| Language | [string](#string) |  | &#34;en&#34;, &#34;jp&#34;, &#34;lt&#34;, etc |
+| locale | [string](#string) |  |  |
 
 
 
