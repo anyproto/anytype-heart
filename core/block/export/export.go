@@ -363,7 +363,7 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 				log.Errorf("failed to query id %s, err: %s", qErr, err)
 				continue
 			}
-			if len(rec) > 0 {
+			if e.isLinkedObjectExist(rec) {
 				docs[link] = rec[0].Details
 				nestedDocsIds = append(nestedDocsIds, link)
 				nestedDocsIds = append(nestedDocsIds, e.getNested(spaceID, link, docs)...)
@@ -371,6 +371,10 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 		}
 	}
 	return nestedDocsIds
+}
+
+func (e *export) isLinkedObjectExist(rec []database.Record) bool {
+	return len(rec) > 0 && !pbtypes.GetBool(rec[0].Details, bundle.RelationKeyIsDeleted.String())
 }
 
 func (e *export) fillLinkedFiles(space clientspace.Space, id string, docs map[string]*types.Struct) error {
