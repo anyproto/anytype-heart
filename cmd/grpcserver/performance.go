@@ -288,7 +288,7 @@ func getFileSizes() map[string]uint64 {
 			} {
 				if lo.Contains(subdirFileNames, filename) {
 					size, _ := getSize(path.Join(subdirPath, filename))
-					resultsSizes[fmt.Sprintf("f_%s", filename)] = bytesToMegabytes(size)
+					resultsSizes[fmt.Sprintf("f_%s", strings.Replace(filename, ".", "_", -1))] = bytesToMegabytes(size)
 				}
 			}
 		}
