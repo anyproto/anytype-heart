@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
-	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
@@ -33,8 +33,16 @@ const (
 	initialStatus       = -1
 )
 
+var (
+	ErrCanNotSign   = errors.New("can not sign")
+	ErrCacheProblem = errors.New("cache problem")
+	ErrNoConnection = errors.New("can not connect to payment node")
+	ErrNoTiers      = errors.New("can not get tiers")
+	ErrNoTierFound  = errors.New("can not find requested tier")
+)
+
 type globalNamesUpdater interface {
-	UpdateGlobalNames()
+	UpdateGlobalNames(myIdentityGlobalName string)
 }
 
 /*
@@ -165,23 +173,24 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	}
 
 	// 2 - send request to PP node
-	gsr := psp.GetSubscriptionRequest{
+	gsr := proto.GetSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: ownerID,
 	}
-
 	payload, err := gsr.Marshal()
 	if err != nil {
-		return nil, err
+		log.Error("can not marshal GetSubscriptionRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
 	// this is the SignKey
 	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return nil, err
+		log.Error("can not sign GetSubscriptionRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
-	reqSigned := psp.GetSubscriptionRequestSigned{
+	reqSigned := proto.GetSubscriptionRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
@@ -193,9 +202,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		log.Info("creating empty subscription in cache because can not get subscription status from payment node")
 
 		// eat error and create empty status ("no tier") so that we will then save it to the cache
-		status = &psp.GetSubscriptionResponse{
-			Tier:   int32(psp.SubscriptionTier_TierUnknown),
-			Status: psp.SubscriptionStatus_StatusUnknown,
+		status = &proto.GetSubscriptionResponse{
+			Tier:   uint32(proto.SubscriptionTier_TierUnknown),
+			Status: proto.SubscriptionStatus_StatusUnknown,
 		}
 	}
 
@@ -230,7 +239,8 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	// update only status, not tiers
 	err = s.cache.CacheSet(&out, nil, cacheExpireTime)
 	if err != nil {
-		return nil, err
+		log.Error("can not save subscription status to cache", zap.Error(err))
+		return nil, ErrCacheProblem
 	}
 
 	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
@@ -256,27 +266,28 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
 		err := s.cache.CacheEnable()
 		if err != nil {
-			return nil, err
+			log.Error("can not enable cache", zap.Error(err))
+			return nil, ErrCacheProblem
 		}
 	}
 
 	// 5 - if requested any name has changed, then we need to update details of local identity
 	if isDiffRequestedName {
-		s.profileUpdater.UpdateGlobalNames()
+		s.profileUpdater.UpdateGlobalNames(status.RequestedAnyName)
 	}
 
 	return &out, nil
 }
 
 func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
-	var code psp.IsNameValidResponse_Code
+	var code proto.IsNameValidResponse_Code
 	var desc string
 
 	out := pb.RpcMembershipIsNameValidResponse{}
 
 	/*
 		// 1 - send request to PP node and ask her please
-		invr := psp.IsNameValidRequest{
+		invr := proto.IsNameValidRequest{
 			// payment node will check if signature matches with this OwnerAnyID
 			RequestedTier:    req.RequestedTier,
 			RequestedAnyName: req.RequestedAnyName,
@@ -287,7 +298,7 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 			return nil, err
 		}
 
-		if resp.Code == psp.IsNameValidResponse_Valid {
+		if resp.Code == proto.IsNameValidResponse_Valid {
 			// no error
 			return &out, nil
 		}
@@ -298,7 +309,9 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	*/
 
 	// 1 - get all tiers from cache or PP node
-	tiers, err := s.GetTiers(ctx, &pb.RpcMembershipTiersGetRequest{
+	// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
+	// and first is much simpler/faster
+	tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipTiersGetRequest{
 		NoCache: false,
 		// TODO: warning! no locale and payment method are passed here!
 		// Locale:        "",
@@ -308,24 +321,24 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 		return nil, err
 	}
 	if tiers.Tiers == nil {
-		return nil, errors.New("no tiers received")
+		return nil, ErrNoTiers
 	}
 
 	// find req.RequestedTier
 	var tier *model.MembershipTierData
 	for _, t := range tiers.Tiers {
-		if t.Id == uint32(req.RequestedTier) {
+		if t.Id == req.RequestedTier {
 			tier = t
 			break
 		}
 	}
 	if tier == nil {
-		return nil, errors.New("requested tier not found")
+		return nil, ErrNoTierFound
 	}
 
 	code = s.validateAnyName(*tier, req.RequestedAnyName)
 
-	if code == psp.IsNameValidResponse_Valid {
+	if code == proto.IsNameValidResponse_Valid {
 		// valid
 		return &out, nil
 	}
@@ -334,16 +347,16 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
 
 	switch code {
-	case psp.IsNameValidResponse_NoDotAny:
+	case proto.IsNameValidResponse_NoDotAny:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_BAD_INPUT
 		out.Error.Description = "No .any at the end of the name"
-	case psp.IsNameValidResponse_TooShort:
+	case proto.IsNameValidResponse_TooShort:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TOO_SHORT
-	case psp.IsNameValidResponse_TooLong:
+	case proto.IsNameValidResponse_TooLong:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TOO_LONG
-	case psp.IsNameValidResponse_HasInvalidChars:
+	case proto.IsNameValidResponse_HasInvalidChars:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS
-	case psp.IsNameValidResponse_TierFeatureNoName:
+	case proto.IsNameValidResponse_TierFeatureNoName:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME
 	default:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_UNKNOWN_ERROR
@@ -353,22 +366,22 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	return &out, nil
 }
 
-func (s *service) validateAnyName(tier model.MembershipTierData, name string) psp.IsNameValidResponse_Code {
+func (s *service) validateAnyName(tier model.MembershipTierData, name string) proto.IsNameValidResponse_Code {
 	if name == "" {
 		// empty name means we don't want to register name, and this is valid
-		return psp.IsNameValidResponse_Valid
+		return proto.IsNameValidResponse_Valid
 	}
 
 	// if name has no .any postfix -> error
 	if len(name) < 4 || name[len(name)-4:] != ".any" {
-		return psp.IsNameValidResponse_NoDotAny
+		return proto.IsNameValidResponse_NoDotAny
 	}
 
 	// for extra safety normalize name here too!
 	name, err := normalizeAnyName(name)
 	if err != nil {
 		log.Debug("can not normalize name", zap.Error(err), zap.String("name", name))
-		return psp.IsNameValidResponse_HasInvalidChars
+		return proto.IsNameValidResponse_HasInvalidChars
 	}
 
 	// remove .any postfix
@@ -376,22 +389,22 @@ func (s *service) validateAnyName(tier model.MembershipTierData, name string) ps
 
 	// if minLen is zero - means "no check is required"
 	if tier.AnyNamesCountIncluded == 0 {
-		return psp.IsNameValidResponse_TierFeatureNoName
+		return proto.IsNameValidResponse_TierFeatureNoName
 	}
 	if tier.AnyNameMinLength == 0 {
-		return psp.IsNameValidResponse_TierFeatureNoName
+		return proto.IsNameValidResponse_TierFeatureNoName
 	}
 	if uint32(utf8.RuneCountInString(name)) < tier.AnyNameMinLength {
-		return psp.IsNameValidResponse_TooShort
+		return proto.IsNameValidResponse_TooShort
 	}
 
 	// valid
-	return psp.IsNameValidResponse_Valid
+	return proto.IsNameValidResponse_Valid
 }
 
 func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
 	// 1 - send request
-	bsr := psp.BuySubscriptionRequest{
+	bsr := proto.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 
@@ -400,23 +413,25 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPay
 		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
 
 		RequestedTier: req.RequestedTier,
-		PaymentMethod: psp.PaymentMethod(req.PaymentMethod),
+		PaymentMethod: proto.PaymentMethod(req.PaymentMethod),
 
 		RequestedAnyName: req.RequestedAnyName,
 	}
 
 	payload, err := bsr.Marshal()
 	if err != nil {
-		return nil, err
+		log.Error("can not marshal BuySubscriptionRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
 	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return nil, err
+		log.Error("can not sign BuySubscriptionRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
-	reqSigned := psp.BuySubscriptionRequestSigned{
+	reqSigned := proto.BuySubscriptionRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
@@ -434,7 +449,8 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPay
 
 	err = s.cache.CacheDisableForNextMinutes(30)
 	if err != nil {
-		return nil, err
+		log.Error("can not disable cache", zap.Error(err))
+		return nil, ErrCacheProblem
 	}
 
 	return &out, nil
@@ -442,23 +458,25 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPay
 
 func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error) {
 	// 1 - send request
-	bsr := psp.GetSubscriptionPortalLinkRequest{
+	bsr := proto.GetSubscriptionPortalLinkRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 	}
 
 	payload, err := bsr.Marshal()
 	if err != nil {
-		return nil, err
+		log.Error("can not marshal GetSubscriptionPortalLinkRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
 	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return nil, err
+		log.Error("can not sign GetSubscriptionPortalLinkRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
-	reqSigned := psp.GetSubscriptionPortalLinkRequestSigned{
+	reqSigned := proto.GetSubscriptionPortalLinkRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
@@ -475,7 +493,8 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 	log.Debug("disabling cache for 30 minutes after portal link was received")
 	err = s.cache.CacheDisableForNextMinutes(30)
 	if err != nil {
-		return nil, err
+		log.Error("can not disable cache", zap.Error(err))
+		return nil, ErrCacheProblem
 	}
 
 	return &out, nil
@@ -483,7 +502,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 
 func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error) {
 	// 1 - send request
-	bsr := psp.GetVerificationEmailRequest{
+	bsr := proto.GetVerificationEmailRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId:            s.wallet.Account().SignKey.GetPublic().Account(),
 		Email:                 req.Email,
@@ -492,16 +511,18 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershi
 
 	payload, err := bsr.Marshal()
 	if err != nil {
-		return nil, err
+		log.Error("can not marshal GetVerificationEmailRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
 	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return nil, err
+		log.Error("can not sign GetVerificationEmailRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
-	reqSigned := psp.GetVerificationEmailRequestSigned{
+	reqSigned := proto.GetVerificationEmailRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
@@ -517,7 +538,7 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershi
 
 func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error) {
 	// 1 - send request
-	bsr := psp.VerifyEmailRequest{
+	bsr := proto.VerifyEmailRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId:      s.wallet.Account().SignKey.GetPublic().Account(),
 		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
@@ -526,16 +547,18 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 
 	payload, err := bsr.Marshal()
 	if err != nil {
-		return nil, err
+		log.Error("can not marshal VerifyEmailRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
 	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return nil, err
+		log.Error("can not sign VerifyEmailRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
-	reqSigned := psp.VerifyEmailRequestSigned{
+	reqSigned := proto.VerifyEmailRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
@@ -550,7 +573,8 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 	log.Debug("clearing cache after email verification code was confirmed")
 	err = s.cache.CacheClear()
 	if err != nil {
-		return nil, err
+		log.Error("can not clear cache", zap.Error(err))
+		return nil, ErrCacheProblem
 	}
 
 	// return out
@@ -560,7 +584,7 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 
 func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error) {
 	// 1 - send request
-	bsr := psp.FinalizeSubscriptionRequest{
+	bsr := proto.FinalizeSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId:       s.wallet.Account().SignKey.GetPublic().Account(),
 		OwnerEthAddress:  s.wallet.GetAccountEthAddress().Hex(),
@@ -569,16 +593,18 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 
 	payload, err := bsr.Marshal()
 	if err != nil {
-		return nil, err
+		log.Error("can not marshal FinalizeSubscriptionRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
 	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return nil, err
+		log.Error("can not sign FinalizeSubscriptionRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
-	reqSigned := psp.FinalizeSubscriptionRequestSigned{
+	reqSigned := proto.FinalizeSubscriptionRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
@@ -593,7 +619,8 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 	log.Debug("clearing cache after subscription was finalized")
 	err = s.cache.CacheClear()
 	if err != nil {
-		return nil, err
+		log.Error("can not clear cache", zap.Error(err))
+		return nil, ErrCacheProblem
 	}
 
 	// return out
@@ -602,6 +629,36 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 }
 
 func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
+	// 1 - get all tiers (including Explorer)
+	out, err := s.getAllTiers(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2 - remove explorer
+	status, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+	if err != nil {
+		log.Error("can not get subscription status", zap.Error(err))
+		return nil, err
+	}
+	// if your are on 0-tier OR on Explorer -> return full list
+	if status.Data.Tier <= uint32(model.Membership_TierExplorer) {
+		return out, nil
+	}
+
+	// If the current tier is higher than Explorer, show the list without Explorer (downgrading is not allowed)
+	filtered := &pb.RpcMembershipTiersGetResponse{
+		Tiers: make([]*model.MembershipTierData, 0),
+	}
+	for _, tier := range out.Tiers {
+		if tier.Id != uint32(model.Membership_TierExplorer) {
+			filtered.Tiers = append(filtered.Tiers, tier)
+		}
+	}
+	return filtered, nil
+}
+
+func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
 	// 1 - check in cache
 	// status var. is unused here
 	cachedStatus, cachedTiers, err := s.cache.CacheGet()
@@ -613,27 +670,28 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 	}
 
 	// 2 - send request
-	bsr := psp.GetTiersRequest{
+	bsr := proto.GetTiersRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 
 		// WARNING: we will save to cache data for THIS locale and payment method!!!
-		Locale:        req.Locale,
-		PaymentMethod: uint32(req.PaymentMethod),
+		Locale: req.Locale,
 	}
 
 	payload, err := bsr.Marshal()
 	if err != nil {
-		return nil, err
+		log.Error("can not marshal GetTiersRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
 	privKey := s.wallet.GetAccountPrivkey()
 	signature, err := privKey.Sign(payload)
 	if err != nil {
-		return nil, err
+		log.Error("can not sign GetTiersRequest", zap.Error(err))
+		return nil, ErrCanNotSign
 	}
 
-	reqSigned := psp.GetTiersRequestSigned{
+	reqSigned := proto.GetTiersRequestSigned{
 		Payload:   payload,
 		Signature: signature,
 	}
@@ -644,35 +702,36 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 		// if error here -> we do not create empty array
 		// with GetStatus above the logic is different
 		// there we create empty status and save it to cache
+		log.Error("can not get tiers from payment node", zap.Error(err))
 		return nil, err
 	}
 
-	// return out
+	// 3 - return out
 	var out pb.RpcMembershipTiersGetResponse
 
 	out.Tiers = make([]*model.MembershipTierData, len(tiers.Tiers))
 	for i, tier := range tiers.Tiers {
 		out.Tiers[i] = &model.MembershipTierData{
-			Id:                    tier.Id,
-			Name:                  tier.Name,
-			Description:           tier.Description,
-			IsActive:              tier.IsActive,
-			IsTest:                tier.IsTest,
-			IsHiddenTier:          tier.IsHiddenTier,
-			PeriodType:            model.MembershipTierDataPeriodType(tier.PeriodType),
-			PeriodValue:           tier.PeriodValue,
-			PriceStripeUsdCents:   tier.PriceStripeUsdCents,
+			Id:          tier.Id,
+			Name:        tier.Name,
+			Description: tier.Description,
+			//IsActive:              tier.IsActive,
+			IsTest: tier.IsTest,
+			//IsHiddenTier:          tier.IsHiddenTier,
+			PeriodType:          model.MembershipTierDataPeriodType(tier.PeriodType),
+			PeriodValue:         tier.PeriodValue,
+			PriceStripeUsdCents: tier.PriceStripeUsdCents,
+			// also in feature list
 			AnyNamesCountIncluded: tier.AnyNamesCountIncluded,
 			AnyNameMinLength:      tier.AnyNameMinLength,
+			ColorStr:              tier.ColorStr,
 		}
 
 		// copy all features
-		out.Tiers[i].Features = make(map[string]*model.MembershipTierDataFeature)
-		for k, v := range tier.Features {
-			out.Tiers[i].Features[k] = &model.MembershipTierDataFeature{
-				ValueStr:  v.ValueStr,
-				ValueUint: v.ValueUint,
-			}
+		out.Tiers[i].Features = make([]string, len(tier.Features))
+
+		for j, feature := range tier.Features {
+			out.Tiers[i].Features[j] = feature.Description
 		}
 	}
 
@@ -689,7 +748,8 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 
 	err = s.cache.CacheSet(nil, &out, cacheExpireTime)
 	if err != nil {
-		return nil, err
+		log.Error("can not save tiers to cache", zap.Error(err))
+		return nil, ErrCacheProblem
 	}
 
 	return &out, nil
