@@ -712,50 +712,26 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 	out.Tiers = make([]*model.MembershipTierData, len(tiers.Tiers))
 	for i, tier := range tiers.Tiers {
 		out.Tiers[i] = &model.MembershipTierData{
-			Id:                    tier.Id,
-			Name:                  tier.Name,
-			Description:           tier.Description,
-			IsActive:              tier.IsActive,
-			IsTest:                tier.IsTest,
-			IsHiddenTier:          tier.IsHiddenTier,
-			PeriodType:            model.MembershipTierDataPeriodType(tier.PeriodType),
-			PeriodValue:           tier.PeriodValue,
-			PriceStripeUsdCents:   tier.PriceStripeUsdCents,
+			Id:          tier.Id,
+			Name:        tier.Name,
+			Description: tier.Description,
+			//IsActive:              tier.IsActive,
+			IsTest: tier.IsTest,
+			//IsHiddenTier:          tier.IsHiddenTier,
+			PeriodType:          model.MembershipTierDataPeriodType(tier.PeriodType),
+			PeriodValue:         tier.PeriodValue,
+			PriceStripeUsdCents: tier.PriceStripeUsdCents,
+			// also in feature list
 			AnyNamesCountIncluded: tier.AnyNamesCountIncluded,
 			AnyNameMinLength:      tier.AnyNameMinLength,
+			ColorStr:              tier.ColorStr,
 		}
 
 		// copy all features
-		out.Tiers[i].Features = make([]*model.MembershipTierDataFeature, len(tier.Features))
+		out.Tiers[i].Features = make([]string, len(tier.Features))
 
-		j := 0
-		for k, v := range tier.Features {
-			var featureId model.MembershipTierDataFeatureId
-
-			switch k {
-			case "storageGBs":
-				featureId = model.MembershipTierData_StorageGBs
-			case "invites":
-				featureId = model.MembershipTierData_Invites
-			case "spaceReaders":
-				featureId = model.MembershipTierData_SpaceReaders
-			case "spaceWriters":
-				featureId = model.MembershipTierData_SpaceWriters
-			case "sharedSpaces":
-				featureId = model.MembershipTierData_SharedSpaces
-			default:
-				// skip
-				log.Info("unknown tier feature", zap.String("tier", tier.Name), zap.String("feature", k))
-				continue
-			}
-
-			out.Tiers[i].Features[j] = &model.MembershipTierDataFeature{
-				FeatureId: featureId,
-				ValueUint: v.ValueUint,
-				ValueStr:  v.ValueStr,
-			}
-
-			j++
+		for j, feature := range tier.Features {
+			out.Tiers[i].Features[j] = feature.Description
 		}
 	}
 
