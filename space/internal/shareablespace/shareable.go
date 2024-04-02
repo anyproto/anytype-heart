@@ -104,7 +104,7 @@ func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersi
 
 func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	s.status.Lock()
-	if s.lastUpdatedStatus == info.AccountStatus || (s.lastUpdatedStatus == spaceinfo.AccountStatusDeleted && info.AccountStatus == spaceinfo.AccountStatusRemoving) {
+	if s.lastUpdatedStatus == info.AccountStatus {
 		s.status.Unlock()
 		return nil
 	}
