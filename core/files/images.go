@@ -31,21 +31,11 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 		}
 	}
 
-	var variantsByWidth = make(map[int]*storage.FileInfo, len(files))
-	for _, f := range files {
-		if f.Mill != "/image/resize" {
-			continue
-		}
-
-		if v, exists := f.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = f
-		}
-	}
 	return &image{
-		spaceID:         id.SpaceId,
-		fileId:          id.FileId,
-		variantsByWidth: variantsByWidth,
-		service:         s,
+		spaceID:            id.SpaceId,
+		fileId:             id.FileId,
+		onlyResizeVariants: selectAndSortResizeVariants(files),
+		service:            s,
 	}, nil
 }
 
@@ -97,7 +87,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 
 	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
-	var successfullyAdded []domain.FileContentId
+	successfullyAdded := make([]domain.FileContentId, 0, len(dirEntries))
 	for _, variant := range dirEntries {
 		variant.fileInfo.Targets = []string{id.FileId.String()}
 		err = s.fileStore.AddFileVariant(variant.fileInfo)
@@ -220,27 +210,4 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 		return nil, nil, err
 	}
 	return outerNode, keys, nil
-}
-
-func newVariantsByWidth(dirEntries []dirEntry) map[int]*storage.FileInfo {
-	variantsByWidth := make(map[int]*storage.FileInfo, len(dirEntries))
-	for _, entry := range dirEntries {
-		if entry.fileInfo.Mill != "/image/resize" {
-			continue
-		}
-		if v, exists := entry.fileInfo.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = entry.fileInfo
-		}
-	}
-	return variantsByWidth
-}
-
-func (s *service) newImage(spaceId string, fileId domain.FileId, dirEntries []dirEntry) Image {
-	variantsByWidth := newVariantsByWidth(dirEntries)
-	return &image{
-		spaceID:         spaceId,
-		fileId:          fileId,
-		variantsByWidth: variantsByWidth,
-		service:         s,
-	}
 }
