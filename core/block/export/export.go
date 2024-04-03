@@ -259,10 +259,6 @@ func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest
 }
 
 func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested bool, includeFiles bool, isProtobuf bool) (map[string]*types.Struct, error) {
-	spc, err := e.spaceService.Get(context.Background(), spaceId)
-	if err != nil {
-		return nil, fmt.Errorf("get space: %w", err)
-	}
 	docs := make(map[string]*types.Struct)
 	res, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -300,6 +296,10 @@ func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested 
 	}
 	ids = append(ids, nestedDocsIds...)
 	if includeFiles {
+		spc, err := e.spaceService.Get(context.Background(), spaceId)
+		if err != nil {
+			return nil, fmt.Errorf("get space: %w", err)
+		}
 		for _, id := range ids {
 			err = e.fillLinkedFiles(spc, id, docs)
 			if err != nil {
@@ -804,6 +804,9 @@ func (e *export) addObjectType(objectTypeId string, derivedObjects []database.Re
 	objectTypeDetails, err := e.objectStore.GetDetails(objectTypeId)
 	if err != nil {
 		return nil, err
+	}
+	if objectTypeDetails == nil || objectTypeDetails.Details == nil || len(objectTypeDetails.Details.Fields) == 0 {
+		return derivedObjects, nil
 	}
 	uniqueKey := pbtypes.GetString(objectTypeDetails.Details, bundle.RelationKeyUniqueKey.String())
 	key, err := domain.GetTypeKeyFromRawUniqueKey(uniqueKey)
