@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9e3ac8ec63c696e079d382d3802799f26dd4bdb979437135c6201204de9defd0"
+const RelationChecksum = "9ba362793bac1de55f42cde514bc665317cf017c7625f14ab31ae4e73ac1830a"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -59,6 +59,7 @@ const (
 	RelationKeyLinkedContacts            domain.RelationKey = "linkedContacts"
 	RelationKeyRottenTomatoesRating      domain.RelationKey = "rottenTomatoesRating"
 	RelationKeyIsHidden                  domain.RelationKey = "isHidden"
+	RelationKeyIsShareable               domain.RelationKey = "isShareable"
 	RelationKeyIsHiddenDiscovery         domain.RelationKey = "isHiddenDiscovery"
 	RelationKeyAdditional                domain.RelationKey = "additional"
 	RelationKeyBudget                    domain.RelationKey = "budget"
@@ -1181,6 +1182,20 @@ var (
 			MaxCount:         1,
 			Name:             "Readonly",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsShareable: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Specify if the space is shareable",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisShareable",
+			Key:              "isShareable",
+			MaxCount:         1,
+			Name:             "Shareable",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

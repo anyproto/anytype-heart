@@ -1001,6 +1001,10 @@
     - [Rpc.Space.LeaveApprove.Request](#anytype-Rpc-Space-LeaveApprove-Request)
     - [Rpc.Space.LeaveApprove.Response](#anytype-Rpc-Space-LeaveApprove-Response)
     - [Rpc.Space.LeaveApprove.Response.Error](#anytype-Rpc-Space-LeaveApprove-Response-Error)
+    - [Rpc.Space.MakeShared](#anytype-Rpc-Space-MakeShared)
+    - [Rpc.Space.MakeShared.Request](#anytype-Rpc-Space-MakeShared-Request)
+    - [Rpc.Space.MakeShared.Response](#anytype-Rpc-Space-MakeShared-Response)
+    - [Rpc.Space.MakeShared.Response.Error](#anytype-Rpc-Space-MakeShared-Response-Error)
     - [Rpc.Space.ParticipantPermissionsChange](#anytype-Rpc-Space-ParticipantPermissionsChange)
     - [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request)
     - [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response)
@@ -1344,6 +1348,7 @@
     - [Rpc.Space.Join.Response.Error.Code](#anytype-Rpc-Space-Join-Response-Error-Code)
     - [Rpc.Space.JoinCancel.Response.Error.Code](#anytype-Rpc-Space-JoinCancel-Response-Error-Code)
     - [Rpc.Space.LeaveApprove.Response.Error.Code](#anytype-Rpc-Space-LeaveApprove-Response-Error-Code)
+    - [Rpc.Space.MakeShared.Response.Error.Code](#anytype-Rpc-Space-MakeShared-Response-Error-Code)
     - [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code)
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
@@ -1790,6 +1795,7 @@
 | SpaceRequestApprove | [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request) | [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response) |  |
 | SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
 | SpaceLeaveApprove | [Rpc.Space.LeaveApprove.Request](#anytype-Rpc-Space-LeaveApprove-Request) | [Rpc.Space.LeaveApprove.Response](#anytype-Rpc-Space-LeaveApprove-Response) |  |
+| SpaceMakeShared | [Rpc.Space.MakeShared.Request](#anytype-Rpc-Space-MakeShared-Request) | [Rpc.Space.MakeShared.Response](#anytype-Rpc-Space-MakeShared-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
@@ -16489,6 +16495,62 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-MakeShared"></a>
+
+### Rpc.Space.MakeShared
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-MakeShared-Request"></a>
+
+### Rpc.Space.MakeShared.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-MakeShared-Response"></a>
+
+### Rpc.Space.MakeShared.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.MakeShared.Response.Error](#anytype-Rpc-Space-MakeShared-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-MakeShared-Response-Error"></a>
+
+### Rpc.Space.MakeShared.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.MakeShared.Response.Error.Code](#anytype-Rpc-Space-MakeShared-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-ParticipantPermissionsChange"></a>
 
 ### Rpc.Space.ParticipantPermissionsChange
@@ -21248,6 +21310,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | NO_APPROVE_REQUESTS | 104 |  |
+
+
+
+<a name="anytype-Rpc-Space-MakeShared-Response-Error-Code"></a>
+
+### Rpc.Space.MakeShared.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
 
 
 
