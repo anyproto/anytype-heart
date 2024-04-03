@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
@@ -23,7 +24,7 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 	// 1. user is an owner
 	// 2. user already left a request to delete
 	// 3. user is not a member of the space anymore
-	if err == nil || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) || errors.Is(err, list.ErrNoSuchAccount) {
+	if err == nil || errors.Is(err, spacestorage.ErrSpaceStorageMissing) || errors.Is(err, list.ErrIsOwner) || errors.Is(err, list.ErrPendingRequest) || errors.Is(err, list.ErrNoSuchAccount) {
 		err = spaceService.Delete(cctx, req.SpaceId)
 	}
 	code := mapErrorCode(err,
@@ -66,7 +67,7 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 	inviteInfo, err := aclService.GetCurrentInvite(req.SpaceId)
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(acl.ErrInviteNotExist, pb.RpcSpaceInviteGetCurrentResponseError_NO_ACTIVE_INVITE),
+			errToCode(acl.ErrInviteNotExists, pb.RpcSpaceInviteGetCurrentResponseError_NO_ACTIVE_INVITE),
 		)
 		return &pb.RpcSpaceInviteGetCurrentResponse{
 			Error: &pb.RpcSpaceInviteGetCurrentResponseError{
@@ -262,6 +263,23 @@ func (mw *Middleware) SpaceParticipantPermissionsChange(cctx context.Context, re
 	}
 }
 
+func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLeaveApproveRequest) *pb.RpcSpaceLeaveApproveResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := approveLeave(cctx, req.SpaceId, req.Identities, aclService)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceLeaveApproveResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceLeaveApproveResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceLeaveApproveResponseError_REQUEST_FAILED),
+		errToCode(acl.ErrRequestNotExists, pb.RpcSpaceLeaveApproveResponseError_NO_APPROVE_REQUESTS),
+	)
+	return &pb.RpcSpaceLeaveApproveResponse{
+		Error: &pb.RpcSpaceLeaveApproveResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
 	inviteFileKey, err := acl.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
@@ -300,6 +318,18 @@ func remove(ctx context.Context, spaceId string, identities []string, aclService
 		keys = append(keys, key)
 	}
 	return aclService.Remove(ctx, spaceId, keys)
+}
+
+func approveLeave(ctx context.Context, spaceId string, identities []string, aclService acl.AclService) error {
+	keys := make([]crypto.PubKey, 0, len(identities))
+	for _, identity := range identities {
+		key, err := crypto.DecodeAccountAddress(identity)
+		if err != nil {
+			return err
+		}
+		keys = append(keys, key)
+	}
+	return aclService.ApproveLeave(ctx, spaceId, keys)
 }
 
 func permissionsChange(ctx context.Context, spaceId string, changes []*model.ParticipantPermissionChange, aclService acl.AclService) error {

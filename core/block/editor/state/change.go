@@ -143,8 +143,14 @@ func (s *State) Merge(s2 *State) *State {
 	return s
 }
 
+// ApplyChange used in tests only
 func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
-	defer s.resetParentIdsCache()
+	alreadyEnabled := s.EnableParentIdsCache()
+	defer func() {
+		if !alreadyEnabled {
+			s.ResetParentIdsCache()
+		}
+	}()
 	for _, ch := range changes {
 		if err = s.applyChange(ch); err != nil {
 			return
@@ -175,7 +181,12 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 
 // ApplyChangeIgnoreErr should be called with changes from the single pb.Change
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
-	defer s.resetParentIdsCache()
+	alreadyEnabled := s.EnableParentIdsCache()
+	defer func() {
+		if !alreadyEnabled {
+			s.ResetParentIdsCache()
+		}
+	}()
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
 			log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
@@ -267,7 +278,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
 	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det)
+		s.details = pbtypes.CopyStruct(det, false)
 	}
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value
@@ -285,7 +296,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 		}
 	}
 	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det)
+		s.details = pbtypes.CopyStruct(det, false)
 	}
 	delete(s.details.Fields, unset.Key)
 	return nil

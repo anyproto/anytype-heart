@@ -114,7 +114,7 @@ func (s *service) CreateTemplateStateWithDetails(
 }
 
 func extractTargetDetails(originDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
-	targetDetails := pbtypes.CopyStruct(originDetails)
+	targetDetails := pbtypes.CopyStruct(originDetails, true)
 	if templateDetails == nil {
 		return targetDetails
 	}

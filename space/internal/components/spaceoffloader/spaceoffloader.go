@@ -74,7 +74,7 @@ func (o *spaceOffloader) Run(ctx context.Context) (err error) {
 	}
 	localStatus := o.status.GetLocalStatus()
 	o.status.Unlock()
-	o.delController.AddSpace(o.status.SpaceId())
+	o.delController.AddSpaceToDelete(o.status.SpaceId())
 	if localStatus == spaceinfo.LocalStatusMissing {
 		o.offloaded.Store(true)
 		return nil

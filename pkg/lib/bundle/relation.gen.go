@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "182c2b3268428bd633d4a92322070958e778a9c54d4dfd9b66d8ca416f80ca17"
+const RelationChecksum = "9e3ac8ec63c696e079d382d3802799f26dd4bdb979437135c6201204de9defd0"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -26,6 +26,8 @@ const (
 	RelationKeyTemplateIsBundled         domain.RelationKey = "templateIsBundled"
 	RelationKeyDateOfBirth               domain.RelationKey = "dateOfBirth"
 	RelationKeyRestrictions              domain.RelationKey = "restrictions"
+	RelationKeyReadersLimit              domain.RelationKey = "readersLimit"
+	RelationKeyWritersLimit              domain.RelationKey = "writersLimit"
 	RelationKeyIsHighlighted             domain.RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage            domain.RelationKey = "thumbnailImage"
 	RelationKeyAttachments               domain.RelationKey = "attachments"
@@ -57,6 +59,7 @@ const (
 	RelationKeyLinkedContacts            domain.RelationKey = "linkedContacts"
 	RelationKeyRottenTomatoesRating      domain.RelationKey = "rottenTomatoesRating"
 	RelationKeyIsHidden                  domain.RelationKey = "isHidden"
+	RelationKeyIsHiddenDiscovery         domain.RelationKey = "isHiddenDiscovery"
 	RelationKeyAdditional                domain.RelationKey = "additional"
 	RelationKeyBudget                    domain.RelationKey = "budget"
 	RelationKeyMediaArtistName           domain.RelationKey = "mediaArtistName"
@@ -177,6 +180,7 @@ const (
 	RelationKeyRevision                  domain.RelationKey = "revision"
 	RelationKeyImageKind                 domain.RelationKey = "imageKind"
 	RelationKeyImportType                domain.RelationKey = "importType"
+	RelationKeyGlobalName                domain.RelationKey = "globalName"
 )
 
 var (
@@ -853,6 +857,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyGlobalName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Name of profile that the user could be mentioned by",
+			Format:           model.RelationFormat_shorttext,
+			Id:               "_brglobalName",
+			Key:              "globalName",
+			MaxCount:         1,
+			Name:             "Global name",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyHeightInPixels: {
 
 			DataSource:       model.Relation_details,
@@ -1122,6 +1139,20 @@ var (
 			MaxCount:         1,
 			Name:             "Hidden",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsHiddenDiscovery: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Specify if object discovery is hidden",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisHiddenDiscovery",
+			Key:              "isHiddenDiscovery",
+			MaxCount:         1,
+			Name:             "Discovery hidden",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1622,6 +1653,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyReadersLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Readers limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brreadersLimit",
+			Key:              "readersLimit",
+			MaxCount:         1,
+			Name:             "Readers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyRecommendedLayout: {
 
 			DataSource:       model.Relation_details,
@@ -1792,7 +1837,6 @@ var (
 			Hidden:           true,
 			Id:               "_brrestrictions",
 			Key:              "restrictions",
-			MaxCount:         1,
 			Name:             "Object restrictions",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
@@ -2398,6 +2442,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space",
 			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWritersLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Writers limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brwritersLimit",
+			Key:              "writersLimit",
+			MaxCount:         1,
+			Name:             "Writers limit",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

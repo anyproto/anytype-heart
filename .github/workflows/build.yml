@@ -40,18 +40,10 @@ jobs:
             echo "Invalid runner"
             exit 1
           fi
-      - name: fix android ndk bundle
-        run: |
-          majorVersion=23
-          ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk-bundle
-          SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
-          ndkVersion=$(${SDKMANAGER} --list | grep "ndk;${majorVersion}.*" | awk '{gsub("ndk;", ""); print $1}' | sort -V | tail -n1)
-          echo $ndkVersion
-          ln -sf $ANDROID_SDK_ROOT/ndk/$ndkVersion $ANDROID_NDK_ROOT
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: '~1.20.8'
+          go-version: 1.22
         if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
       - name: Setup GO
         run: |
@@ -76,8 +68,6 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install grpcurl
-          brew tap --custom-remote filosottile/musl-cross https://github.com/anyproto/homebrew-musl-cross.git
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
         if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
       - name: Checkout
@@ -288,7 +278,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: '~1.20.8'
+          go-version: 1.22
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV

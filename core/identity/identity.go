@@ -8,6 +8,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
@@ -17,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -38,6 +41,8 @@ var (
 
 type Service interface {
 	GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct)
+
+	UpdateGlobalNames(myIdentityGlobalName string)
 
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
@@ -65,18 +70,21 @@ type identityRepoClient interface {
 }
 
 type service struct {
-	dbProvider         datastore.Datastore
-	db                 *badger.DB
-	spaceService       space.Service
-	objectStore        objectstore.ObjectStore
-	accountService     account.Service
-	spaceIdDeriver     spaceIdDeriver
-	identityRepoClient identityRepoClient
-	fileAclService     fileacl.Service
-	closing            chan struct{}
-	startedCh          chan struct{}
-	techSpaceId        string
-	personalSpaceId    string
+	dbProvider          datastore.Datastore
+	db                  *badger.DB
+	spaceService        space.Service
+	objectStore         objectstore.ObjectStore
+	accountService      account.Service
+	spaceIdDeriver      spaceIdDeriver
+	identityRepoClient  identityRepoClient
+	fileAclService      fileacl.Service
+	wallet              wallet.Wallet
+	namingService       nameserviceclient.AnyNsClientService
+	componentCtx        context.Context
+	componentCtxCancel  context.CancelFunc
+	gotMyProfileDetails chan struct{}
+	techSpaceId         string
+	personalSpaceId     string
 
 	myIdentity                string
 	currentProfileDetailsLock sync.RWMutex
@@ -84,24 +92,30 @@ type service struct {
 	pushIdentityTimer         *time.Timer   // timer for batching
 	pushIdentityBatchTimeout  time.Duration
 
-	identityObservePeriod time.Duration
-	identityForceUpdate   chan struct{}
-	lock                  sync.RWMutex
+	identityObservePeriod  time.Duration
+	identityForceUpdate    chan struct{}
+	globalNamesForceUpdate chan struct{}
+	lock                   sync.RWMutex
 	// identity => spaceId => observer
 	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
 	identityProfileCache   map[string]*model.IdentityProfile
+	identityGlobalNames    map[string]*nameserviceproto.NameByAddressResponse
 }
 
 func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &service{
-		startedCh:                make(chan struct{}),
-		closing:                  make(chan struct{}),
+		componentCtx:             ctx,
+		componentCtxCancel:       cancel,
+		gotMyProfileDetails:      make(chan struct{}),
 		identityForceUpdate:      make(chan struct{}),
+		globalNamesForceUpdate:   make(chan struct{}),
 		identityObservePeriod:    identityObservePeriod,
 		identityObservers:        make(map[string]map[string]*observer),
 		identityEncryptionKeys:   make(map[string]crypto.SymKey),
 		identityProfileCache:     make(map[string]*model.IdentityProfile),
+		identityGlobalNames:      make(map[string]*nameserviceproto.NameByAddressResponse),
 		pushIdentityBatchTimeout: pushIdentityBatchTimeout,
 	}
 }
@@ -114,6 +128,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.identityRepoClient = app.MustComponent[identityRepoClient](a)
 	s.fileAclService = app.MustComponent[fileacl.Service](a)
 	s.dbProvider = app.MustComponent[datastore.Datastore](a)
+	s.wallet = app.MustComponent[wallet.Wallet](a)
+	s.namingService = app.MustComponent[nameserviceclient.AnyNsClientService](a)
 	return
 }
 
@@ -149,7 +165,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
-	close(s.closing)
+	s.componentCtxCancel()
 	return nil
 }
 
@@ -181,7 +197,7 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 	}
 	go func() {
 		select {
-		case <-s.closing:
+		case <-s.componentCtx.Done():
 			closeSub()
 			return
 		}
@@ -211,11 +227,24 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 }
 
 func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct) {
-	<-s.startedCh
+	select {
+	case <-s.gotMyProfileDetails:
+	case <-s.componentCtx.Done():
+		return "", nil, nil
+	}
 	s.currentProfileDetailsLock.RLock()
 	defer s.currentProfileDetailsLock.RUnlock()
 
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
+}
+
+func (s *service) UpdateGlobalNames(myIdentityGlobalName string) {
+	// we update globalName of local identity directly because Naming Node is not registering new name immediately
+	s.updateMyIdentityGlobalName(myIdentityGlobalName)
+	select {
+	case s.globalNamesForceUpdate <- struct{}{}:
+	default:
+	}
 }
 
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
@@ -229,7 +258,7 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-s.closing:
+		case <-s.componentCtx.Done():
 			return nil
 		case <-ticker.C:
 			profile = s.getProfileFromCache(identity)
@@ -272,7 +301,7 @@ func (s *service) cacheProfileDetails(details *types.Struct) {
 	}
 	s.currentProfileDetailsLock.Lock()
 	if s.currentProfileDetails == nil {
-		close(s.startedCh)
+		close(s.gotMyProfileDetails)
 	}
 	s.currentProfileDetails = details
 	s.currentProfileDetailsLock.Unlock()
@@ -282,6 +311,7 @@ func (s *service) cacheProfileDetails(details *types.Struct) {
 		Name:        pbtypes.GetString(details, bundle.RelationKeyName.String()),
 		Description: pbtypes.GetString(details, bundle.RelationKeyDescription.String()),
 		IconCid:     pbtypes.GetString(details, bundle.RelationKeyIconImage.String()),
+		GlobalName:  pbtypes.GetString(details, bundle.RelationKeyGlobalName.String()),
 	}
 
 	s.lock.RLock()
@@ -318,6 +348,7 @@ func (s *service) pushProfileToIdentityRegistry(ctx context.Context) error {
 		Description:        pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyDescription.String()),
 		IconCid:            iconCid,
 		IconEncryptionKeys: iconEncryptionKeys,
+		GlobalName:         pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyGlobalName.String()),
 	}
 	data, err := proto.Marshal(identityProfile)
 	if err != nil {
@@ -352,20 +383,22 @@ func (s *service) observeIdentitiesLoop() {
 	defer ticker.Stop()
 
 	ctx := context.Background()
-	observe := func() {
-		err := s.observeIdentities(ctx)
+	observe := func(globalNamesForceUpdate bool) {
+		err := s.observeIdentities(ctx, globalNamesForceUpdate)
 		if err != nil {
 			log.Error("error observing identities", zap.Error(err))
 		}
 	}
 	for {
 		select {
-		case <-s.closing:
+		case <-s.componentCtx.Done():
 			return
 		case <-s.identityForceUpdate:
-			observe()
+			observe(false)
+		case <-s.globalNamesForceUpdate:
+			observe(true)
 		case <-ticker.C:
-			observe()
+			observe(false)
 		}
 	}
 }
@@ -373,7 +406,7 @@ func (s *service) observeIdentitiesLoop() {
 const identityRepoDataKind = "profile"
 
 // TODO Maybe we need to use backoff in case of error from coordinator
-func (s *service) observeIdentities(ctx context.Context) error {
+func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate bool) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -390,6 +423,10 @@ func (s *service) observeIdentities(ctx context.Context) error {
 	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
 	if err != nil {
 		return fmt.Errorf("failed to pull identity: %w", err)
+	}
+
+	if err = s.fetchGlobalNames(append(identities, s.myIdentity), globalNamesForceUpdate); err != nil {
+		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
 	}
 
 	for _, identityData := range identitiesData {
@@ -449,6 +486,10 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 		return fmt.Errorf("find profile: %w", err)
 	}
 
+	if globalName, found := s.identityGlobalNames[identityData.Identity]; found && globalName.Found {
+		profile.GlobalName = globalName.Name
+	}
+
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
 	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
 
@@ -496,6 +537,36 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 		return nil, nil, fmt.Errorf("no profile data found")
 	}
 	return profile, rawProfile, nil
+}
+
+func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error {
+	if len(s.identityGlobalNames) == len(identities) && !forceUpdate {
+		return nil
+	}
+	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
+	if err != nil {
+		return err
+	}
+	if response == nil {
+		return nil
+	}
+	for i, anyID := range identities {
+		s.identityGlobalNames[anyID] = response.Results[i]
+		if anyID == s.myIdentity && response.Results[i].Found {
+			s.updateMyIdentityGlobalName(response.Results[i].Name)
+		}
+	}
+	return nil
+}
+
+func (s *service) updateMyIdentityGlobalName(name string) {
+	s.currentProfileDetailsLock.RLock()
+	details := pbtypes.CopyStruct(s.currentProfileDetails, true)
+	s.currentProfileDetailsLock.RUnlock()
+	details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(name)
+	if err := s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
+		log.Error("failed to update global name of my identity in store", zap.Error(err))
+	}
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {

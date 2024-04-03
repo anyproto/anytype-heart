@@ -66,7 +66,7 @@ func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s
 }
 
 func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
-	newDetails := pbtypes.CopyStruct(oldDetails)
+	newDetails := pbtypes.CopyStruct(oldDetails, false)
 	if newDetails == nil || newDetails.Fields == nil {
 		newDetails = &types.Struct{
 			Fields: make(map[string]*types.Value),

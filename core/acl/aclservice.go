@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
@@ -34,7 +35,8 @@ const CName = "common.acl.aclservice"
 var log = logging.Logger(CName).Desugar()
 
 var (
-	ErrInviteNotExist       = errors.New("invite doesn't exist")
+	ErrInviteNotExists      = errors.New("invite doesn't exist")
+	ErrRequestNotExists     = errors.New("request doesn't exist")
 	ErrPersonalSpace        = errors.New("sharing of personal space is forbidden")
 	ErrInviteBadSignature   = errors.New("invite has bad signature")
 	ErrIncorrectPermissions = errors.New("incorrect permissions")
@@ -54,6 +56,7 @@ type AclService interface {
 	GetCurrentInvite(spaceId string) (*InviteInfo, error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
+	ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error
 	StopSharing(ctx context.Context, spaceId string) error
 	CancelJoin(ctx context.Context, spaceId string) (err error)
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error
@@ -77,8 +80,8 @@ type aclService struct {
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
-	a.joiningClient = ap.MustComponent(aclclient.CName).(aclclient.AclJoiningClient)
-	a.spaceService = ap.MustComponent(space.CName).(space.Service)
+	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
+	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteStore = app.MustComponent[invitestore.Service](ap)
 	a.fileAcl = app.MustComponent[fileacl.Service](ap)
@@ -193,6 +196,37 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
 	return nil
+}
+
+func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	acl := sp.CommonSpace().Acl()
+	acl.RLock()
+	st := acl.AclState()
+	identitiesMap := map[string]struct{}{}
+	for _, identity := range identities {
+		identitiesMap[identity.Account()] = struct{}{}
+	}
+	for _, rec := range st.RemoveRecords() {
+		for _, identity := range identities {
+			if rec.RequestIdentity.Equals(identity) {
+				delete(identitiesMap, identity.Account())
+			}
+		}
+	}
+	if len(identitiesMap) != 0 {
+		acl.RUnlock()
+		identities := make([]string, 0, len(identitiesMap))
+		for identity := range identitiesMap {
+			identities = append(identities, identity)
+		}
+		return fmt.Errorf("%w with identities: %s", ErrRequestNotExists, strings.Join(identities, ", "))
+	}
+	acl.RUnlock()
+	return a.Remove(ctx, spaceId, identities)
 }
 
 func (a *aclService) Leave(ctx context.Context, spaceId string) error {
@@ -465,7 +499,7 @@ func (a *aclService) GetCurrentInvite(spaceId string) (*InviteInfo, error) {
 		return nil, fmt.Errorf("get existing invite file info: %w", err)
 	}
 	if fileCid == "" {
-		return nil, ErrInviteNotExist
+		return nil, ErrInviteNotExists
 	}
 	return &InviteInfo{
 		InviteFileCid: fileCid,
