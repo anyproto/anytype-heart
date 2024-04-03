@@ -103,5 +103,17 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.upsertBind, err = s.db.Prepare(`INSERT INTO binds (objectId, spaceId) VALUES (?, ?) ON CONFLICT (objectId) DO UPDATE SET spaceId = ?`); err != nil {
 		return
 	}
+	if s.stmt.deleteSpace, err = s.db.Prepare(`DELETE FROM spaces WHERE id = ?`); err != nil {
+		return
+	}
+	if s.stmt.deleteTreesBySpace, err = s.db.Prepare(`DELETE FROM trees WHERE spaceId = ?`); err != nil {
+		return
+	}
+	if s.stmt.deleteChangesBySpace, err = s.db.Prepare(`DELETE FROM changes WHERE spaceId = ?`); err != nil {
+		return
+	}
+	if s.stmt.deleteBindsBySpace, err = s.db.Prepare(`DELETE FROM binds WHERE spaceId = ?`); err != nil {
+		return
+	}
 	return
 }

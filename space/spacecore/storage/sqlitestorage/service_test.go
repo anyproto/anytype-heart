@@ -23,6 +23,34 @@ func TestStorageService_BindSpaceID(t *testing.T) {
 	assert.Equal(t, "spaceId", spaceId)
 }
 
+func TestStorageService_DeleteSpaceStorage(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	spaceId := payload.SpaceHeaderWithId.Id
+	store, err := createSpaceStorage(fx.storageService, payload)
+	require.NoError(t, err)
+	_, err = store.CreateTreeStorage(treeTestPayload())
+	require.NoError(t, err)
+	require.NoError(t, store.Close(ctx))
+	require.NoError(t, fx.BindSpaceID("spaceId", "objectId"))
+
+	require.NoError(t, fx.DeleteSpaceStorage(ctx, spaceId))
+
+	var expect0 = func(q string) {
+		var count int
+		require.NoError(t, fx.db.QueryRow(q, spaceId).Scan(&count))
+		assert.Equal(t, 0, count)
+	}
+
+	expect0("SELECT COUNT(*) FROM spaces WHERE id = ?")
+	expect0("SELECT COUNT(*) FROM trees WHERE spaceId = ?")
+	expect0("SELECT COUNT(*) FROM changes WHERE spaceId = ?")
+	expect0("SELECT COUNT(*) FROM binds WHERE spaceId = ?")
+
+}
+
 type fixture struct {
 	*storageService
 	a      *app.App

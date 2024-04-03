@@ -41,6 +41,10 @@ type storageService struct {
 		spaceIds,
 		spaceIsCreated,
 		upsertBind,
+		deleteSpace,
+		deleteTreesBySpace,
+		deleteChangesBySpace,
+		deleteBindsBySpace,
 		getBind *sql.Stmt
 	}
 	dbPath       string
@@ -183,7 +187,24 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 }
 
 func (s *storageService) deleteSpace(spaceId string) (err error) {
-	return
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, stmt := range []*sql.Stmt{
+		s.stmt.deleteSpace,
+		s.stmt.deleteChangesBySpace,
+		s.stmt.deleteBindsBySpace,
+		s.stmt.deleteTreesBySpace,
+	} {
+		if _, err = tx.Stmt(stmt).Exec(spaceId); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (s *storageService) unlockSpaceStorage(id string) {
