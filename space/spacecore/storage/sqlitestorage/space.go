@@ -61,7 +61,7 @@ func newSpaceStorage(s *storageService, spaceId string) (spacestorage.SpaceStora
 }
 
 func createSpaceStorage(s *storageService, payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
-	tx, err := s.db.Begin()
+	tx, err := s.writeDb.Begin()
 	if err != nil {
 		return nil, err
 	}

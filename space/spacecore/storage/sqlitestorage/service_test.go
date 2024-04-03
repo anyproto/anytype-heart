@@ -40,7 +40,7 @@ func TestStorageService_DeleteSpaceStorage(t *testing.T) {
 
 	var expect0 = func(q string) {
 		var count int
-		require.NoError(t, fx.db.QueryRow(q, spaceId).Scan(&count))
+		require.NoError(t, fx.writeDb.QueryRow(q, spaceId).Scan(&count))
 		assert.Equal(t, 0, count)
 	}
 
@@ -57,7 +57,7 @@ type fixture struct {
 	tmpDir string
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t require.TestingT) *fixture {
 	tmpDir, e := os.MkdirTemp("", "")
 	require.NoError(t, e)
 	fx := &fixture{
@@ -70,7 +70,7 @@ func newFixture(t *testing.T) *fixture {
 	return fx
 }
 
-func (fx *fixture) finish(t *testing.T) {
+func (fx *fixture) finish(t require.TestingT) {
 	require.NoError(t, fx.a.Close(ctx))
 	if fx.tmpDir != "" {
 		_ = os.RemoveAll(fx.tmpDir)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/url"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -18,8 +19,9 @@ type configGetter interface {
 }
 
 type storageService struct {
-	db   *sql.DB
-	stmt struct {
+	writeDb *sql.DB
+	readDb  *sql.DB
+	stmt    struct {
 		createSpace,
 		createTree,
 		createChange,
@@ -80,12 +82,26 @@ func (s *storageService) Init(a *app.App) (err error) {
 }
 
 func (s *storageService) Run(ctx context.Context) (err error) {
-	if s.db, err = sql.Open("sqlite3", s.dbPath); err != nil {
+	connectionUrlParams := make(url.Values)
+	connectionUrlParams.Add("_txlock", "immediate")
+	connectionUrlParams.Add("_journal_mode", "WAL")
+	connectionUrlParams.Add("_busy_timeout", "5000")
+	connectionUrlParams.Add("_synchronous", "NORMAL")
+	connectionUrlParams.Add("_cache_size", "10000000")
+	connectionUrlParams.Add("_foreign_keys", "true")
+	connectionUri := s.dbPath + "?" + connectionUrlParams.Encode()
+	if s.writeDb, err = sql.Open("sqlite3", connectionUri); err != nil {
 		return
 	}
-	if _, err = s.db.Exec(sqlCreateTables); err != nil {
+	s.writeDb.SetMaxOpenConns(1)
+	if _, err = s.writeDb.Exec(sqlCreateTables); err != nil {
 		return
 	}
+
+	if s.readDb, err = sql.Open("sqlite3", connectionUri); err != nil {
+		return
+	}
+	s.readDb.SetMaxOpenConns(10)
 
 	return initStmts(s)
 }
@@ -187,7 +203,7 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 }
 
 func (s *storageService) deleteSpace(spaceId string) (err error) {
-	tx, err := s.db.Begin()
+	tx, err := s.writeDb.Begin()
 	if err != nil {
 		return err
 	}
@@ -249,8 +265,11 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
-	if s.db != nil {
-		return s.db.Close()
+	if s.writeDb != nil {
+		err = errors.Join(err, s.writeDb.Close())
+	}
+	if s.readDb != nil {
+		err = errors.Join(err, s.readDb.Close())
 	}
 	return
 }

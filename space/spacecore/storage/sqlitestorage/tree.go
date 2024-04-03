@@ -35,7 +35,7 @@ func createTreeStorage(ss *spaceStorage, payload treestorage.TreeStorageCreatePa
 		heads:        []string{payload.RootRawChange.Id},
 	}
 
-	tx, err := ss.service.db.Begin()
+	tx, err := ss.service.writeDb.Begin()
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (t *treeStorage) AddRawChangesSetHeads(changes []*treechangeproto.RawTreeCh
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	tx, err := t.service.db.Begin()
+	tx, err := t.service.writeDb.Begin()
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (t *treeStorage) HasChange(ctx context.Context, id string) (bool, error) {
 }
 
 func (t *treeStorage) Delete() error {
-	tx, err := t.service.db.Begin()
+	tx, err := t.service.writeDb.Begin()
 	if err != nil {
 		return err
 	}

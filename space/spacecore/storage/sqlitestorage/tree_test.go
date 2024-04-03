@@ -1,6 +1,8 @@
 package sqlitestorage
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -93,9 +95,37 @@ func TestTreeStorage_Delete(t *testing.T) {
 	})
 }
 
+func BenchmarkSpaceStorage_CreateTreeStorage(b *testing.B) {
+	fx := newFixture(b)
+	defer fx.finish(b)
+
+	spacePayload := spaceTestPayload()
+	ss, err := createSpaceStorage(fx.storageService, spacePayload)
+	require.NoError(b, err)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for range b.N {
+		payload := treeTestPayload()
+		_, err = ss.CreateTreeStorage(payload)
+		require.NoError(b, err)
+	}
+}
+
+func randBytes(n int) []byte {
+	var b = make([]byte, n)
+	_, _ = rand.Read(b)
+	return b
+}
+
+func randId() string {
+	return hex.EncodeToString(randBytes(32))
+}
+
 func treeTestPayload() treestorage.TreeStorageCreatePayload {
-	rootRawChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("some"), Id: "someRootId"}
-	otherChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("some other"), Id: "otherId"}
+	rootRawChange := &treechangeproto.RawTreeChangeWithId{RawChange: randBytes(100), Id: randId()}
+	otherChange := &treechangeproto.RawTreeChangeWithId{RawChange: randBytes(100), Id: randId()}
 	changes := []*treechangeproto.RawTreeChangeWithId{rootRawChange, otherChange}
 	return treestorage.TreeStorageCreatePayload{
 		RootRawChange: rootRawChange,
