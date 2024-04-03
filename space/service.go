@@ -265,12 +265,11 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.Space
 		accountStatus := ctrl.GetStatus()
 		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
 			s.sendNotification(status.SpaceId)
+			return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
+				SpaceID:       status.SpaceId,
+				AccountStatus: spaceinfo.AccountStatusRemoving,
+			})
 		}
-		return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
-			SpaceID:       status.SpaceId,
-			AccountStatus: spaceinfo.AccountStatusRemoving,
-		})
-
 	}
 	return nil
 }

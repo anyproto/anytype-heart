@@ -67,10 +67,6 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		}
 		controller.EXPECT().UpdateRemoteStatus(context.Background(), statusInfo).Return(nil)
 		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusDeleted)
-		controller.EXPECT().SetInfo(context.Background(), spaceinfo.SpacePersistentInfo{
-			SpaceID:       spaceID,
-			AccountStatus: spaceinfo.AccountStatusRemoving,
-		}).Return(nil)
 		notifications := mock_notifications.NewMockNotifications(t)
 		s := service{
 			spaceControllers:    map[string]spacecontroller.SpaceController{spaceID: controller},
@@ -93,10 +89,6 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		}
 		controller.EXPECT().UpdateRemoteStatus(context.Background(), statusInfo).Return(nil)
 		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusRemoving)
-		controller.EXPECT().SetInfo(context.Background(), spaceinfo.SpacePersistentInfo{
-			SpaceID:       spaceID,
-			AccountStatus: spaceinfo.AccountStatusRemoving,
-		}).Return(nil)
 		notifications := mock_notifications.NewMockNotifications(t)
 		s := service{
 			spaceControllers:    map[string]spacecontroller.SpaceController{spaceID: controller},
@@ -177,7 +169,7 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 	})
-	t.Run("send notification, because space status - deleted, but we get space name with name Test", func(t *testing.T) {
+	t.Run("send notification, because space remote status - deleted, but we get space name with name Test", func(t *testing.T) {
 		// given
 		controller := mock_spacecontroller.NewMockSpaceController(t)
 		statusInfo := spaceinfo.SpaceRemoteStatusInfo{
