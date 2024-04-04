@@ -9,6 +9,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -27,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -42,6 +45,7 @@ var (
 	ErrIncorrectPermissions = errors.New("incorrect permissions")
 	ErrNoSuchUser           = errors.New("no such user")
 	ErrAclRequestFailed     = errors.New("acl request failed")
+	ErrLimitReached         = errors.New("limit reached")
 )
 
 type AccountPermissions struct {
@@ -57,6 +61,7 @@ type AclService interface {
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error
+	MakeShareable(ctx context.Context, spaceId string) error
 	StopSharing(ctx context.Context, spaceId string) error
 	CancelJoin(ctx context.Context, spaceId string) (err error)
 	Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error
@@ -74,6 +79,7 @@ type aclService struct {
 	joiningClient  aclclient.AclJoiningClient
 	spaceService   space.Service
 	accountService account.Service
+	coordClient    coordinatorclient.CoordinatorClient
 	inviteStore    invitestore.Service
 	fileAcl        fileacl.Service
 	objectGetter   getblock.ObjectGetter
@@ -86,11 +92,25 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.inviteStore = app.MustComponent[invitestore.Service](ap)
 	a.fileAcl = app.MustComponent[fileacl.Service](ap)
 	a.objectGetter = app.MustComponent[getblock.ObjectGetter](ap)
+	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	return nil
 }
 
 func (a *aclService) Name() (name string) {
 	return CName
+}
+
+func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
+	err := a.coordClient.SpaceMakeShareable(ctx, spaceId)
+	if err != nil {
+		if errors.Is(err, coordinatorproto.ErrSpaceLimitReached) {
+			return ErrLimitReached
+		}
+		return fmt.Errorf("make shareable: %w, %w", err, ErrAclRequestFailed)
+	}
+	info := spaceinfo.NewSpaceLocalInfo(spaceId)
+	info.SetShareableStatus(spaceinfo.ShareableStatusShareable)
+	return a.spaceService.TechSpace().SetLocalInfo(ctx, info)
 }
 
 func (a *aclService) Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) error {

@@ -20,7 +20,7 @@ func (s *service) Join(ctx context.Context, id, aclHeadId string) error {
 		ctrl := s.spaceControllers[id]
 		s.mu.Unlock()
 		if ctrl.Mode() != mode.ModeJoining {
-			return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
+			return ctrl.SetPersistentInfo(ctx, spaceinfo.SpacePersistentInfo{
 				SpaceID:       id,
 				AccountStatus: spaceinfo.AccountStatusJoining,
 				AclHeadId:     aclHeadId,

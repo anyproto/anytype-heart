@@ -104,12 +104,8 @@ func (s ShareableStatus) String() string {
 }
 
 type SpaceRemoteStatusInfo struct {
-	SpaceId         string
-	RemoteStatus    RemoteStatus
-	WriteLimit      uint32
-	ReadLimit       uint32
-	IsOwned         bool
-	ShareableStatus ShareableStatus
+	IsOwned   bool
+	LocalInfo SpaceLocalInfo
 }
 
 type AccessType int

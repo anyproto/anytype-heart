@@ -91,7 +91,7 @@ func (s *spaceController) Current() any {
 	return s.sm.GetProcess()
 }
 
-func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	s.status.Lock()
 	err := s.status.SetPersistentInfo(info)
 	if err != nil {
@@ -99,22 +99,29 @@ func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersi
 		return err
 	}
 	s.status.Unlock()
-	return s.UpdateInfo(ctx, info)
+	return s.Update()
 }
 
-func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
 	s.status.Lock()
-	if s.lastUpdatedStatus == info.GetAccountStatus() {
+	defer s.status.Unlock()
+	return s.status.SetLocalInfo(info)
+}
+
+func (s *spaceController) Update() error {
+	s.status.Lock()
+	status := s.status.GetPersistentStatus()
+	if s.lastUpdatedStatus == status {
 		s.status.Unlock()
 		return nil
 	}
-	s.lastUpdatedStatus = info.GetAccountStatus()
+	s.lastUpdatedStatus = status
 	s.status.Unlock()
 	updateStatus := func(mode mode.Mode) error {
 		_, err := s.sm.ChangeMode(mode)
 		return err
 	}
-	switch info.GetAccountStatus() {
+	switch status {
 	case spaceinfo.AccountStatusDeleted:
 		return updateStatus(mode.ModeOffloading)
 	case spaceinfo.AccountStatusJoining:

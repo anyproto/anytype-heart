@@ -38,10 +38,6 @@ type spaceController struct {
 	techSpace techspace.TechSpace
 }
 
-func (s *spaceController) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
-	return nil
-}
-
 func (s *spaceController) Start(ctx context.Context) (err error) {
 	// Check that space exists. If not, probably user is migrating from legacy version
 	_, err = s.spaceCore.Get(ctx, s.spaceId)
@@ -97,11 +93,15 @@ func (s *spaceController) newLoader() loader.Loader {
 	})
 }
 
-func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+func (s *spaceController) Update() error {
 	return nil
 }
 
-func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	return nil
+}
+
+func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
 	return nil
 }
 

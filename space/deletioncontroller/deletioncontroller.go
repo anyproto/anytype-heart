@@ -130,16 +130,21 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []str
 			ownedIds = append(ownedIds, ids[idx])
 		}
 		remoteStatus := convStatus(nodeStatus.Status)
-		statusInfo := spaceinfo.SpaceRemoteStatusInfo{
-			SpaceId:      ids[idx],
-			RemoteStatus: remoteStatus,
-			IsOwned:      isOwned,
+		shareableStatus := spaceinfo.ShareableStatusNotShareable
+		if nodeStatus.IsShared {
+			shareableStatus = spaceinfo.ShareableStatusShareable
 		}
+		info := spaceinfo.NewSpaceLocalInfo(ids[idx])
+		info.SetRemoteStatus(remoteStatus).
+			SetShareableStatus(shareableStatus)
 		if nodeStatus.Limits != nil {
-			statusInfo.WriteLimit = nodeStatus.Limits.WriteMembers
-			statusInfo.ReadLimit = nodeStatus.Limits.ReadMembers
+			info.SetWriteLimit(nodeStatus.Limits.WriteMembers).
+				SetReadLimit(nodeStatus.Limits.ReadMembers)
 		}
-		err := d.spaceManager.UpdateRemoteStatus(ctx, statusInfo)
+		err := d.spaceManager.UpdateRemoteStatus(ctx, spaceinfo.SpaceRemoteStatusInfo{
+			IsOwned:   isOwned,
+			LocalInfo: info,
+		})
 		if err != nil {
 			log.Warn("remote status update error", zap.Error(err), zap.String("spaceId", ids[idx]))
 			return

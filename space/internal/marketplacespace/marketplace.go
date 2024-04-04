@@ -76,15 +76,15 @@ func (s *spaceController) SpaceId() string {
 	return addr.AnytypeMarketplaceWorkspace
 }
 
-func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+func (s *spaceController) Update() error {
 	return nil
 }
 
-func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	return nil
 }
 
-func (s *spaceController) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
 	return nil
 }
 
