@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -91,7 +91,7 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
 	objectPath := domain.NewFromPath(id)
 
-	err = block.DoContext(i.picker, ctx, objectPath.ObjectId, func(sb smartblock2.SmartBlock) error {
+	err = cache.DoContext(i.picker, ctx, objectPath.ObjectId, func(sb smartblock2.SmartBlock) error {
 		indexDetails, _ := sb.Type().Indexable()
 		if !indexDetails {
 			return nil
