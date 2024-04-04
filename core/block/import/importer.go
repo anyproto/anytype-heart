@@ -167,7 +167,12 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(ctx context.Context, req *pb.RpcObjectImportRequest, c common.Converter, progress process.Progress, origin objectorigin.ObjectOrigin) (string, int64, error) {
+func (i *Import) importFromBuiltinConverter(ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	c common.Converter,
+	progress process.Progress,
+	origin objectorigin.ObjectOrigin,
+) (string, int64, error) {
 	allErrors := common.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
 	if !err.IsEmpty() {

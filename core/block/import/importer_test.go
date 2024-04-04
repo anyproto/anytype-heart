@@ -249,7 +249,6 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 
 	assert.NotNil(t, res.Err)
 	assert.Contains(t, res.Err.Error(), "converter error")
-	assert.Contains(t, res.Err.Error(), "converter error", "creator error")
 }
 
 func Test_ImportExternalPlugin(t *testing.T) {

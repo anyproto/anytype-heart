@@ -785,10 +785,16 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, rootCollectionID string, objectCount int64, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}, CollectionId: rootCollectionID, ObjectsCount: objectCount}
-		if err != nil {
-			m.Error.Description = err.Error()
+	response := func(code pb.RpcObjectImportResponseErrorCode, res *importer.ImportResponse) *pb.RpcObjectImportResponse {
+		m := &pb.RpcObjectImportResponse{
+			Error: &pb.RpcObjectImportResponseError{
+				Code: code,
+			},
+			CollectionId: res.RootCollectionId,
+			ObjectsCount: res.ObjectsCount,
+		}
+		if res.Err != nil {
+			m.Error.Description = res.Err.Error()
 		}
 		return m
 	}
@@ -813,7 +819,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	if notificationSendErr != nil {
 		log.Errorf("failed to send notification: %v", notificationSendErr)
 	}
-	return response(pb.RpcObjectImportResponseErrorCode(code), res.RootCollectionId, res.ObjectsCount, res.Err)
+	return response(pb.RpcObjectImportResponseErrorCode(code), res)
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
