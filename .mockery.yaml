@@ -55,7 +55,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:
-  github.com/anyproto/anytype-heart/metrics/amplitude:
+  github.com/anyproto/anytype-heart/metrics/anymetry:
     interfaces:
       Service:
   github.com/anyproto/anytype-heart/core/invitestore:
