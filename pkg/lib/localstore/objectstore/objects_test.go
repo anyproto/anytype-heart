@@ -86,13 +86,12 @@ func Test_removeByPrefix(t *testing.T) {
 func TestList(t *testing.T) {
 	s := NewStoreFixture(t)
 
-	obj1 := MakeObjectWithName("id1", "name1")
-	err := s.UpdateObjectSnippet("id1", "snippet1")
-	require.NoError(t, err)
+	obj1 := makeObjectWithName("id1", "name1")
+	obj1[bundle.RelationKeySnippet] = pbtypes.String("snippet1")
 
-	obj2 := MakeObjectWithName("id2", "name2")
+	obj2 := makeObjectWithName("id2", "name2")
 
-	obj3 := MakeObjectWithName("id3", "date")
+	obj3 := makeObjectWithName("id3", "date")
 	obj3[bundle.RelationKeyIsDeleted] = pbtypes.Bool(true)
 
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
@@ -127,8 +126,8 @@ func TestListIds(t *testing.T) {
 	t.Run("with not empty store", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		s.AddObjects(t, []TestObject{
-			MakeObjectWithName("id1", "name1"),
-			MakeObjectWithName("id2", "name2"),
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
 		})
 
 		got, err := s.ListIds()
@@ -140,9 +139,9 @@ func TestListIds(t *testing.T) {
 func TestHasIDs(t *testing.T) {
 	s := NewStoreFixture(t)
 	s.AddObjects(t, []TestObject{
-		MakeObjectWithName("id1", "name1"),
-		MakeObjectWithName("id2", "name2"),
-		MakeObjectWithName("id3", "name3"),
+		makeObjectWithName("id1", "name1"),
+		makeObjectWithName("id2", "name2"),
+		makeObjectWithName("id3", "name3"),
 	})
 
 	t.Run("none found", func(t *testing.T) {
@@ -169,9 +168,9 @@ func TestHasIDs(t *testing.T) {
 
 func TestGetWithLinksInfoByID(t *testing.T) {
 	s := NewStoreFixture(t)
-	obj1 := MakeObjectWithName("id1", "name1")
-	obj2 := MakeObjectWithName("id2", "name2")
-	obj3 := MakeObjectWithName("id3", "name3")
+	obj1 := makeObjectWithName("id1", "name1")
+	obj2 := makeObjectWithName("id2", "name2")
+	obj3 := makeObjectWithName("id3", "name3")
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 	err := s.UpdateObjectLinks("id1", []string{"id2", "id3"})
@@ -244,13 +243,10 @@ func TestDeleteObject(t *testing.T) {
 	t.Run("delete object", func(t *testing.T) {
 		// Arrange
 		s := NewStoreFixture(t)
-		obj := MakeObjectWithName("id1", "name1")
+		obj := makeObjectWithName("id1", "name1")
 		s.AddObjects(t, []TestObject{obj})
 
-		err := s.UpdateObjectSnippet("id1", "snippet1")
-		require.NoError(t, err)
-
-		err = s.UpdateObjectLinks("id2", []string{"id1"})
+		err := s.UpdateObjectLinks("id2", []string{"id1"})
 		require.NoError(t, err)
 
 		err = s.SaveLastIndexedHeadsHash("id1", "hash1")
@@ -297,7 +293,7 @@ func TestDeleteObject(t *testing.T) {
 
 func TestDeleteDetails(t *testing.T) {
 	s := NewStoreFixture(t)
-	s.AddObjects(t, []TestObject{MakeObjectWithName("id1", "name1")})
+	s.AddObjects(t, []TestObject{makeObjectWithName("id1", "name1")})
 
 	err := s.DeleteDetails("id1")
 	require.NoError(t, err)

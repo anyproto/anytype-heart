@@ -36,6 +36,7 @@ import (
 
 type IndexerFixture struct {
 	*indexer
+	pickerFx *mock_block.MockObjectGetter
 }
 
 func NewIndexerFixture(t *testing.T) *IndexerFixture {
@@ -49,7 +50,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	sourceService := mock_source.NewMockService(t)
 
-	fileStr := filestore.New()
+	fileStore := filestore.New()
 
 	testApp := &app.App{}
 	testApp.Register(walletService)
@@ -66,26 +67,29 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 		indexedFiles: &sync.Map{},
 	}
 
+	indexerFx := &IndexerFixture{
+		indexer: indxr,
+	}
+
 	indxr.newAccount = config.New().NewAccount
 	indxr.store = objectStore
 	indxr.storageService = clientStorage
 	indxr.source = sourceService
 	indxr.btHash = mock_indexer.NewMockHasher(t)
-	indxr.fileStore = fileStr
+	indxr.fileStore = fileStore
 	indxr.ftsearch = fullText
-	indxr.picker = mock_block.NewMockObjectGetter(t)
+	indexerFx.pickerFx = mock_block.NewMockObjectGetter(t)
+	indxr.picker = indexerFx.pickerFx
 	indxr.fileService = mock_files.NewMockService(t)
 	indxr.quit = make(chan struct{})
 	indxr.forceFt = make(chan struct{})
 
 	require.NoError(t, err)
-	return &IndexerFixture{
-		indexer: indxr,
-	}
+	return indexerFx
 }
 
 func TestPrepareSearchDocument_Success(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.SetSpaceId("spaceId1")
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -96,10 +100,10 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, "spaceId1", doc.SpaceID)
 		called = true
@@ -111,7 +115,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.SetSpaceId("spaceId1")
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -122,10 +126,10 @@ func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, "spaceId1", doc.SpaceID)
 		called = true
@@ -137,7 +141,7 @@ func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -149,10 +153,10 @@ func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
 			),
 		)))
 	smartTest.SetType(coresb.SmartBlockTypeDate)
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		called = true
 		return nil
 	})
@@ -162,16 +166,16 @@ func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	// Setting no text block
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
 		blockbuilder.ID("root"),
 	))
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		called = true
 		return nil
 	})
@@ -181,7 +185,7 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
 		Key:    bundle.RelationKeyName.String(),
@@ -192,10 +196,10 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 			bundle.RelationKeyName.String(): pbtypes.String("Title Text"),
 		},
 	})
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/r/name", doc.Id)
 		assert.Equal(t, "Title Text", doc.Text)
 		assert.Equal(t, "Title Text", doc.Title)
@@ -208,7 +212,7 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
 		Key:    bundle.RelationKeyName.String(),
@@ -219,10 +223,10 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 			bundle.RelationKeyName.String(): pbtypes.String("Title Text"),
 		},
 	})
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/r/name", doc.Id)
 		assert.Equal(t, "Title Text", doc.Text)
 		assert.Equal(t, "Title Text", doc.Title)
@@ -235,7 +239,7 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
 		Key:    bundle.RelationKeyName.String(),
@@ -247,10 +251,10 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 			bundle.RelationKeyName.String(): pbtypes.String(""),
 		},
 	})
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		called = true
 		return nil
 	})
@@ -260,7 +264,7 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	// Relation with wrong format
 	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
@@ -272,10 +276,10 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 			bundle.RelationKeyName.String(): pbtypes.String("Title Text"),
 		},
 	})
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		called = true
 		return nil
 	})
@@ -285,7 +289,7 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
 		blockbuilder.ID("root"),
@@ -295,10 +299,10 @@ func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, "Text content less than max size", doc.Text)
 		called = true
@@ -310,7 +314,7 @@ func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	maxSize := ftBlockMaxSize
 	textContent := strings.Repeat("a", maxSize) // Text content equal to max size
@@ -322,10 +326,10 @@ func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, textContent, doc.Text)
 		called = true
@@ -337,7 +341,7 @@ func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	maxSize := ftBlockMaxSize
 	textContent := strings.Repeat("a", maxSize+1) // Text content greater than max size
@@ -349,10 +353,10 @@ func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := ixr.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, maxSize, len(doc.Text))
 		called = true
@@ -364,7 +368,7 @@ func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
 }
 
 func TestRunFullTextIndexer(t *testing.T) {
-	ixr := NewIndexerFixture(t)
+	indexerFx := NewIndexerFixture(t)
 	for i := range 101 {
 		smartTest := smarttest.New("objectId" + strconv.Itoa(i))
 		smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -375,12 +379,12 @@ func TestRunFullTextIndexer(t *testing.T) {
 					blockbuilder.ID("blockId1"),
 				),
 			)))
-		ixr.store.AddToIndexQueue("objectId" + strconv.Itoa(i))
-		ixr.picker.(*mock_block.MockObjectGetter).EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil)
+		indexerFx.store.AddToIndexQueue("objectId" + strconv.Itoa(i))
+		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil)
 	}
 
-	ixr.runFullTextIndexer()
+	indexerFx.runFullTextIndexer()
 
-	count, _ := ixr.ftsearch.DocCount()
+	count, _ := indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(101), count)
 }

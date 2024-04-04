@@ -208,10 +208,10 @@ func TestQuery(t *testing.T) {
 
 	t.Run("with ascending order and filter", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj1 := MakeObjectWithName("id1", "dfg")
-		obj2 := MakeObjectWithName("id2", "abc")
-		obj3 := MakeObjectWithName("id3", "012")
-		obj4 := MakeObjectWithName("id4", "ignore")
+		obj1 := makeObjectWithName("id1", "dfg")
+		obj2 := makeObjectWithName("id2", "abc")
+		obj3 := makeObjectWithName("id3", "012")
+		obj4 := makeObjectWithName("id4", "ignore")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, obj4})
 
 		recs, _, err := s.Query(database.Query{
@@ -240,9 +240,9 @@ func TestQuery(t *testing.T) {
 
 	t.Run("with descending order", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj1 := MakeObjectWithName("id1", "dfg")
-		obj2 := MakeObjectWithName("id2", "abc")
-		obj3 := MakeObjectWithName("id3", "012")
+		obj1 := makeObjectWithName("id1", "dfg")
+		obj2 := makeObjectWithName("id2", "abc")
+		obj3 := makeObjectWithName("id3", "012")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		recs, _, err := s.Query(database.Query{
@@ -404,7 +404,7 @@ func TestQuery(t *testing.T) {
 			if i%2 == 0 {
 				objects = append(objects, generateObjectWithRandomID())
 			} else {
-				obj := MakeObjectWithName(fmt.Sprintf("id%02d", i), "this name")
+				obj := makeObjectWithName(fmt.Sprintf("id%02d", i), "this name")
 				filteredObjects = append(filteredObjects, obj)
 				objects = append(objects, obj)
 			}
@@ -443,9 +443,9 @@ func TestQuery(t *testing.T) {
 func TestQueryObjectIds(t *testing.T) {
 	t.Run("no filters", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj1 := MakeObjectWithName("id1", "name1")
-		obj2 := MakeObjectWithName("id2", "name2")
-		obj3 := MakeObjectWithName("id3", "name3")
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		ids, _, err := s.QueryObjectIDs(database.Query{})
@@ -490,7 +490,7 @@ func TestQueryRaw(t *testing.T) {
 
 	t.Run("with uninitialized filter expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj1 := MakeObjectWithName("id1", "name1")
+		obj1 := makeObjectWithName("id1", "name1")
 		s.AddObjects(t, []TestObject{obj1})
 
 		_, err := s.QueryRaw(&database.Filters{}, 0, 0)
@@ -499,9 +499,9 @@ func TestQueryRaw(t *testing.T) {
 
 	t.Run("no filters", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj1 := MakeObjectWithName("id1", "name1")
-		obj2 := MakeObjectWithName("id2", "name2")
-		obj3 := MakeObjectWithName("id3", "name3")
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		flt, err := database.NewFilters(database.Query{}, s)
@@ -585,9 +585,9 @@ func TestQueryById(t *testing.T) {
 
 	t.Run("just ordinary objects", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		obj1 := MakeObjectWithName("id1", "name1")
-		obj2 := MakeObjectWithName("id2", "name2")
-		obj3 := MakeObjectWithName("id3", "name3")
+		obj1 := makeObjectWithName("id1", "name1")
+		obj2 := makeObjectWithName("id2", "name2")
+		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		recs, err := s.QueryByID([]string{"id1", "id3"})
@@ -604,11 +604,11 @@ func TestQueryById(t *testing.T) {
 	t.Run("some objects are not indexable and derive details from its source", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		obj1 := MakeObjectWithName("id1", "name2")
+		obj1 := makeObjectWithName("id1", "name2")
 
 		// obj4 is not indexable, so don't try to add it to store
 		dateID := addr.DatePrefix + "01_02_2005"
-		obj2 := MakeObjectWithName(dateID, "i'm special")
+		obj2 := makeObjectWithName(dateID, "i'm special")
 
 		s.AddObjects(t, []TestObject{obj1})
 
@@ -622,9 +622,9 @@ func TestQueryById(t *testing.T) {
 
 func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 	s := NewStoreFixture(t)
-	obj1 := MakeObjectWithName("id1", "name1")
-	obj2 := MakeObjectWithName("id2", "name2")
-	obj3 := MakeObjectWithName("id3", "name3")
+	obj1 := makeObjectWithName("id1", "name1")
+	obj2 := makeObjectWithName("id2", "name2")
+	obj3 := makeObjectWithName("id3", "name3")
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 	recordsCh := make(chan *types.Struct)
@@ -648,7 +648,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 	})
 
 	t.Run("update details", func(t *testing.T) {
-		err = s.UpdateObjectDetails("id1", makeDetails(MakeObjectWithName("id1", "name1 updated")))
+		err = s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", "name1 updated")))
 		require.NoError(t, err)
 
 		select {
