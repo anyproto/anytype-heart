@@ -72,6 +72,7 @@ func Test_ImportSuccess(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.Nil(t, res.Err)
+	assert.Equal(t, int64(1), res.ObjectsCount)
 }
 
 func Test_ImportErrorFromConverter(t *testing.T) {
@@ -102,6 +103,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 
 	assert.NotNil(t, res.Err)
 	assert.Contains(t, res.Err.Error(), "converter error")
+	assert.Equal(t, int64(0), res.ObjectsCount)
 }
 
 func Test_ImportErrorFromObjectCreator(t *testing.T) {
@@ -148,6 +150,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.NotNil(t, res.Err)
+	assert.Equal(t, int64(0), res.ObjectsCount)
 	// assert.Contains(t, res.Err.Error(), "creator error")
 }
 
@@ -195,6 +198,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 
 	assert.NotNil(t, res.Err)
+	assert.Equal(t, int64(1), res.ObjectsCount)
 	assert.Contains(t, res.Err.Error(), "converter error")
 }
 
@@ -295,6 +299,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		SpaceId:               "space1",
 	}, objectorigin.Import(model.Import_Notion), nil)
 	assert.Nil(t, res.Err)
+	assert.Equal(t, int64(1), res.ObjectsCount)
 }
 
 func Test_ImportExternalPluginError(t *testing.T) {
@@ -321,6 +326,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 	}, objectorigin.Import(model.Import_Notion), nil)
 	assert.NotNil(t, res.Err)
 	assert.Contains(t, res.Err.Error(), common.ErrNoObjectsToImport.Error())
+	assert.Equal(t, int64(0), res.ObjectsCount)
 }
 
 func Test_ListImports(t *testing.T) {
