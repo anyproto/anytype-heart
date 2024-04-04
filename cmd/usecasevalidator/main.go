@@ -75,6 +75,7 @@ const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
 	errValidationFailed   = fmt.Errorf("validation failed")
+	errSkipObject         = fmt.Errorf("validation failed, but object can be skipped")
 )
 
 func main() {
@@ -358,6 +359,10 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 
 	if flags.validate {
 		if err = validate(snapshot, info); err != nil {
+			if errors.Is(err, errSkipObject) {
+				// some validators register errors mentioning that object can be excluded
+				return nil, nil
+			}
 			fmt.Println(err)
 			return nil, errValidationFailed
 		}
@@ -416,6 +421,9 @@ func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, v := range validators {
 		if e := v(snapshot, info); e != nil {
+			if errors.Is(e, errSkipObject) {
+				return errSkipObject
+			}
 			isValid = false
 			err = multierror.Append(err, e)
 		}
@@ -452,7 +460,8 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeySourceFilePath.String(),
 			bundle.RelationKeyLinks.String(),
 			bundle.RelationKeyBacklinks.String(),
-			bundle.RelationKeyWorkspaceId.String():
+			bundle.RelationKeyWorkspaceId.String(),
+			bundle.RelationKeyIdentityProfileLink.String():
 
 			delete(s.Data.Details.Fields, key)
 		}

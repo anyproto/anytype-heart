@@ -137,6 +137,15 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 
 			_, found := info.objects[val]
 			if !found {
+				if isBrokenTemplate(k, val) {
+					fmt.Println("WARNING: object", id, "is a template with no target type included in the archive, so it will be skipped")
+					return errSkipObject
+				}
+				if k == bundle.RelationKeyRecommendedRelations.String() {
+					// TODO: remove this fix as most of users should obtain version with fixed export of derived objects in GO-2821
+					delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyRecommendedRelations.String())
+					return nil
+				}
 				err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
 			}
 		}
@@ -239,16 +248,21 @@ func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
 }
 
 func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String()) {
-		return fmt.Errorf("object is archived")
+		fmt.Println("WARNING: object", id, " is archived, so it will be skipped")
+		return errSkipObject
 	}
 
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsDeleted.String()) {
-		return fmt.Errorf("object is deleted")
+		fmt.Println("WARNING: object", id, " is deleted, so it will be skipped")
+		return errSkipObject
 	}
 
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsUninstalled.String()) {
-		return fmt.Errorf("object is uninstalled")
+		fmt.Println("WARNING: object", id, " is uninstalled, so it will be skipped")
+		return errSkipObject
 	}
 
 	return nil
@@ -312,4 +326,8 @@ func isDefaultWidget(target string) bool {
 		widget.DefaultWidgetRecent,
 		widget.DefaultWidgetCollection,
 	}, target)
+}
+
+func isBrokenTemplate(key, value string) bool {
+	return key == bundle.RelationKeyTargetObjectType.String() && value == addr.MissingObject
 }
