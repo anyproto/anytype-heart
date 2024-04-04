@@ -2,11 +2,8 @@ package integration
 
 import (
 	"context"
-	"io"
-	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -14,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -150,17 +146,4 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 		fileObjectId := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
-}
-
-func assertImageAvailableInGateway(t *testing.T, app *testApplication, fileObjectId string) {
-	gw := getService[gateway.Gateway](app)
-	host := gw.Addr()
-	resp, err := http.Get("http://" + host + "/image/" + fileObjectId)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	defer resp.Body.Close()
-
-	raw, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	assert.True(t, len(raw) > 0)
 }

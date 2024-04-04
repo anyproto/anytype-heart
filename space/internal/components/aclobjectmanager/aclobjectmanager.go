@@ -173,7 +173,7 @@ func (a *aclObjectManager) sendNotifications(common commonspace.Space) {
 }
 
 func (a *aclObjectManager) initAndRegisterMyIdentity(ctx context.Context) error {
-	myIdentity, metadataKey, profileDetails := a.identityService.GetMyProfileDetails()
+	myIdentity, metadataKey, profileDetails := a.identityService.GetMyProfileDetails(a.ctx)
 	id := domain.NewParticipantId(a.sp.Id(), myIdentity)
 	_, err := a.sp.GetObject(ctx, id)
 	if err != nil {
