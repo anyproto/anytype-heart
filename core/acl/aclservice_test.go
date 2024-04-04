@@ -15,7 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
-	"github.com/anyproto/anytype-heart/core/block/getblock/mock_getblock"
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
 	"github.com/anyproto/anytype-heart/core/invitestore/mock_invitestore"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -32,7 +32,7 @@ type fixture struct {
 	mockJoiningClient  *mock_aclclient.MockAclJoiningClient
 	mockSpaceService   *mock_space.MockService
 	mockAccountService *mock_account.MockService
-	mockObjectGetter   *mock_getblock.MockObjectGetterComponent
+	mockObjectGetter   *mock_cache.MockObjectGetterComponent
 	mockFileAcl        *mock_fileacl.MockService
 	mockInviteStore    *mock_invitestore.MockService
 }
@@ -46,7 +46,7 @@ func newFixture(t *testing.T) *fixture {
 		mockJoiningClient:  mock_aclclient.NewMockAclJoiningClient(ctrl),
 		mockSpaceService:   mock_space.NewMockService(t),
 		mockAccountService: mock_account.NewMockService(t),
-		mockObjectGetter:   mock_getblock.NewMockObjectGetterComponent(t),
+		mockObjectGetter:   mock_cache.NewMockObjectGetterComponent(t),
 		mockFileAcl:        mock_fileacl.NewMockService(t),
 		mockInviteStore:    mock_invitestore.NewMockService(t),
 	}
