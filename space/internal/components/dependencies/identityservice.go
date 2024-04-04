@@ -10,7 +10,7 @@ import (
 )
 
 type IdentityService interface {
-	GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct)
+	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct)
 
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
