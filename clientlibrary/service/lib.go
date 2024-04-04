@@ -27,7 +27,7 @@ func init() {
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
 
 	PanicHandler = mw.OnPanic
-	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
+	metrics.Service.InitWithKeys(metrics.DefaultInHouseKey)
 	registerClientCommandsHandler(
 		&ClientCommandsHandlerProxy{
 			client: mw,
