@@ -40,7 +40,7 @@ var (
 )
 
 type Service interface {
-	GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct)
+	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct)
 
 	UpdateGlobalNames()
 
@@ -226,9 +226,12 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 	return nil
 }
 
-func (s *service) GetMyProfileDetails() (identity string, metadataKey crypto.SymKey, details *types.Struct) {
+func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct) {
 	select {
 	case <-s.gotMyProfileDetails:
+
+	case <-ctx.Done():
+		return "", nil, nil
 	case <-s.componentCtx.Done():
 		return "", nil, nil
 	}
