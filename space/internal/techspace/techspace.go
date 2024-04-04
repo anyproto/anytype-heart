@@ -59,6 +59,8 @@ type SpaceView interface {
 	SetAccessType(acc spaceinfo.AccessType) error
 	SetAclIsEmpty(isEmpty bool) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
+	RemoveExistingInvite() (cid string, err error)
+	ExistingFileInfo() (cid, key string, err error)
 }
 
 func New() TechSpace {

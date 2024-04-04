@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
@@ -37,6 +39,8 @@ const CName = "common.acl.aclservice"
 
 var log = logging.Logger(CName).Desugar()
 
+var sleepTime = time.Millisecond * 500
+
 var (
 	ErrInviteNotExists      = errors.New("invite doesn't exist")
 	ErrRequestNotExists     = errors.New("request doesn't exist")
@@ -51,6 +55,12 @@ var (
 type AccountPermissions struct {
 	Account     crypto.PubKey
 	Permissions model.ParticipantPermissions
+}
+
+type aclSpaceView interface {
+	sync.Locker
+	GetLocalInfo() spaceinfo.SpaceLocalInfo
+	RemoveExistingInvite() (cid string, err error)
 }
 
 type AclService interface {
@@ -168,11 +178,11 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
 	}
-	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
+	spaceView, err := a.spaceService.TechSpace().GetSpaceView(ctx, spaceId)
 	if err != nil {
 		return fmt.Errorf("get space view id: %w", err)
 	}
-	return a.removeExistingInviteFileInfo(ctx, spaceViewId)
+	return a.removeExistingInviteFileInfo(ctx, spaceView)
 }
 
 func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
@@ -267,23 +277,56 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return err
 	}
+	spaceView, err := a.spaceService.TechSpace().GetSpaceView(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	spaceView.Lock()
+	localInfo := spaceView.GetLocalInfo()
+	spaceView.Unlock()
+	acl := removeSpace.CommonSpace().Acl()
+	acl.RLock()
+	isEmpty := aclIsEmpty(acl)
+	head := acl.Head().Id
+	acl.RUnlock()
+	if isEmpty && localInfo.GetShareableStatus() != spaceinfo.ShareableStatusShareable {
+		return nil
+	}
 	newPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return err
 	}
-	cl := removeSpace.CommonSpace().AclClient()
-	err = cl.StopSharing(ctx, list.ReadKeyChangePayload{
-		MetadataKey: newPrivKey,
-		ReadKey:     crypto.NewAES(),
-	})
-	if err != nil {
-		return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+	if !isEmpty {
+		cl := removeSpace.CommonSpace().AclClient()
+		err = cl.StopSharing(ctx, list.ReadKeyChangePayload{
+			MetadataKey: newPrivKey,
+			ReadKey:     crypto.NewAES(),
+		})
+		if err != nil {
+			return fmt.Errorf("%w, %w", ErrAclRequestFailed, err)
+		}
+		acl.RLock()
+		head = acl.Head().Id
+		acl.RUnlock()
 	}
-	spaceViewId, err := a.spaceService.SpaceViewId(spaceId)
+	err = a.removeExistingInviteFileInfo(ctx, spaceView)
 	if err != nil {
-		return fmt.Errorf("get space view id: %w", err)
+		return fmt.Errorf("remove existing invite file info: %w", err)
 	}
-	return a.removeExistingInviteFileInfo(ctx, spaceViewId)
+	for {
+		err = a.coordClient.SpaceMakeUnshareable(ctx, spaceId, head)
+		if errors.Is(err, coordinatorproto.ErrAclHeadIsMissing) {
+			time.Sleep(sleepTime)
+			continue
+		}
+		break
+	}
+	if err != nil {
+		return err
+	}
+	info := spaceinfo.NewSpaceLocalInfo(spaceId)
+	info.SetShareableStatus(spaceinfo.ShareableStatusNotShareable)
+	return a.spaceService.TechSpace().SetLocalInfo(ctx, info)
 }
 
 func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
@@ -490,17 +533,10 @@ func (a *aclService) getExistingInviteFileInfo(spaceViewId string) (fileCid stri
 	return
 }
 
-func (a *aclService) removeExistingInviteFileInfo(ctx context.Context, spaceViewId string) (err error) {
-	var fileCid string
-	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
-		details := sb.Details()
-		fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
-		newState := sb.NewState()
-		newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
-		return sb.Apply(newState)
-	})
+func (a *aclService) removeExistingInviteFileInfo(ctx context.Context, spaceView aclSpaceView) (err error) {
+	fileCid, err := spaceView.RemoveExistingInvite()
 	if err != nil {
-		return err
+		return fmt.Errorf("remove existing invite: %w", err)
 	}
 	cId, err := cid.Decode(fileCid)
 	if err != nil {
@@ -614,4 +650,18 @@ func DecodeKeyFromBase58(rawString string) (crypto.SymKey, error) {
 		return nil, err
 	}
 	return crypto.UnmarshallAESKey(raw)
+}
+
+func aclIsEmpty(acl list.AclList) bool {
+	isEmpty := len(acl.AclState().Invites()) == 0
+	if !isEmpty {
+		return false
+	}
+	users := 0
+	for _, acc := range acl.AclState().CurrentAccounts() {
+		if !acc.Permissions.NoPermissions() {
+			users++
+		}
+	}
+	return users == 1
 }
