@@ -2,7 +2,6 @@ package spacestatus
 
 import (
 	"context"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
@@ -15,21 +14,19 @@ const CName = "client.components.spacestatus"
 
 type SpaceStatus interface {
 	app.ComponentRunnable
-	sync.Locker
 	SpaceId() string
 	GetLocalStatus() spaceinfo.LocalStatus
 	GetPersistentStatus() spaceinfo.AccountStatus
 	GetLatestAclHeadId() string
-	SetRemoteStatus(status spaceinfo.SpaceRemoteStatusInfo) error
 	SetPersistentStatus(status spaceinfo.AccountStatus) (err error)
 	SetPersistentInfo(info spaceinfo.SpacePersistentInfo) (err error)
 	SetLocalStatus(status spaceinfo.LocalStatus) error
 	SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(status spaceinfo.AccessType) (err error)
+	SetAclIsEmpty(isEmpty bool) (err error)
 }
 
 type spaceStatus struct {
-	sync.Mutex
 	spaceId     string
 	techSpace   techspace.TechSpace
 	spaceView   techspace.SpaceView
@@ -116,15 +113,6 @@ func (s *spaceStatus) GetLatestAclHeadId() string {
 	return info.GetAclHeadId()
 }
 
-func (s *spaceStatus) SetRemoteStatus(status spaceinfo.SpaceRemoteStatusInfo) error {
-	info := spaceinfo.NewSpaceLocalInfo(s.spaceId)
-	info.SetShareableStatus(status.ShareableStatus).
-		SetRemoteStatus(status.RemoteStatus).
-		SetReadLimit(status.ReadLimit).
-		SetWriteLimit(status.WriteLimit)
-	return s.SetLocalInfo(info)
-}
-
 func (s *spaceStatus) SetLocalStatus(status spaceinfo.LocalStatus) error {
 	info := spaceinfo.NewSpaceLocalInfo(s.spaceId)
 	info.SetLocalStatus(status)
@@ -153,6 +141,12 @@ func (s *spaceStatus) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	s.spaceView.Lock()
 	defer s.spaceView.Unlock()
 	return s.spaceView.SetAccessType(acc)
+}
+
+func (s *spaceStatus) SetAclIsEmpty(isEmpty bool) (err error) {
+	s.spaceView.Lock()
+	defer s.spaceView.Unlock()
+	return s.spaceView.SetAclIsEmpty(isEmpty)
 }
 
 type spaceStatusStat struct {

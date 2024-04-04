@@ -108,7 +108,7 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 	if space.Id() == b.personalSpaceId {
 		acc = spaceinfo.AccessTypePersonal
 	}
-	err = b.status.SetAccessType(ctx, acc)
+	err = b.status.SetAccessType(acc)
 	if err != nil {
 		return nil, fmt.Errorf("set access type: %w", err)
 	}

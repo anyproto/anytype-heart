@@ -138,9 +138,7 @@ func newInviting(status spacestatus.SpaceStatus, reg *modeRegister) mode.Process
 func (i *inviting) Start(ctx context.Context) error {
 	go func() {
 		i.inviteReceived.Store(true)
-		i.status.Lock()
-		i.status.SetPersistentStatus(ctx, spaceinfo.AccountStatusActive)
-		i.status.Unlock()
+		_ = i.status.SetPersistentStatus(spaceinfo.AccountStatusActive)
 	}()
 	i.reg.register(mode.ModeJoining)
 	return nil

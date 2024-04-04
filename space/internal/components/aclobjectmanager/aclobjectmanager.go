@@ -237,9 +237,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
-	a.status.Lock()
 	aclHeadId := a.status.GetLatestAclHeadId()
-	a.status.Unlock()
 	var upToDate bool
 	if aclHeadId != "" {
 		_, err := common.Acl().Get(aclHeadId)
@@ -262,16 +260,9 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 	var numActiveUsers int
 	for _, state := range states {
 		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
-			a.status.Lock()
-			err := a.status.SetPersistentStatus(a.ctx, spaceinfo.AccountStatusRemoving)
-			if err != nil {
-				a.status.Unlock()
-				return err
-			}
-			a.status.Unlock()
-			return nil
+			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
 		}
-		if !(state.Permissions.IsOwner() || state.Permissions.NoPermissions()) {
+		if !state.Permissions.NoPermissions() {
 			numActiveUsers++
 		}
 		err := a.updateParticipantFromAclState(a.ctx, state)
@@ -299,18 +290,8 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 		}
 		a.addedParticipants[accKey] = struct{}{}
 	}
-	acc := spaceinfo.AccessTypePrivate
-	if len(a.sp.CommonSpace().Acl().AclState().Invites()) > 0 {
-		acc = spaceinfo.AccessTypeShared
-	}
-	if numActiveUsers > 0 {
-		acc = spaceinfo.AccessTypeShared
-	}
-	err = a.status.SetAccessType(a.ctx, acc)
-	if err != nil {
-		return err
-	}
-	return nil
+	isEmpty := len(a.sp.CommonSpace().Acl().AclState().Invites()) == 0 && numActiveUsers == 1
+	return a.status.SetAclIsEmpty(isEmpty)
 }
 
 func (a *aclObjectManager) updateParticipantFromAclState(ctx context.Context, accState list.AccountState) (err error) {

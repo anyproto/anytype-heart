@@ -109,14 +109,38 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 
 func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
 	st := s.NewState()
+	prevAccessType := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
 	info.UpdateDetails(st).Log(log)
+	if prevAccessType != spaceinfo.AccessTypePersonal {
+		curShareable := spaceinfo.ShareableStatus(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceShareableStatus.String()))
+		switch curShareable {
+		case spaceinfo.ShareableStatusShareable:
+			stateSetAccessType(st, spaceinfo.AccessTypeShared)
+		case spaceinfo.ShareableStatusNotShareable:
+			stateSetAccessType(st, spaceinfo.AccessTypePrivate)
+		}
+	}
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
+	st := s.NewState()
+	prev := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
+	if prev == spaceinfo.AccessTypePersonal {
+		return nil
+	}
+	curShareable := spaceinfo.ShareableStatus(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceShareableStatus.String()))
+	if isEmpty && curShareable != spaceinfo.ShareableStatusShareable {
+		stateSetAccessType(st, spaceinfo.AccessTypePrivate)
+	} else {
+		stateSetAccessType(st, spaceinfo.AccessTypeShared)
+	}
 	return s.Apply(st)
 }
 
 func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	st := s.NewState()
 	prev := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
-	// Can't change access level for personal space
 	if prev == spaceinfo.AccessTypePersonal {
 		return nil
 	}
@@ -234,4 +258,8 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
+}
+
+func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, pbtypes.Int64(int64(accessType)))
 }

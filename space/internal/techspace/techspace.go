@@ -57,6 +57,7 @@ type SpaceView interface {
 	SetSpaceData(details *types.Struct) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
 	SetAccessType(acc spaceinfo.AccessType) error
+	SetAclIsEmpty(isEmpty bool) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 }
 

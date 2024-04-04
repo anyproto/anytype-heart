@@ -2,6 +2,7 @@ package shareablespace
 
 import (
 	"context"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -31,6 +32,7 @@ type spaceController struct {
 	status            spacestatus.SpaceStatus
 	lastUpdatedStatus spaceinfo.AccountStatus
 	updater           statusUpdater
+	mx                sync.Mutex
 
 	sm *mode.StateMachine
 }
@@ -92,31 +94,26 @@ func (s *spaceController) Current() any {
 }
 
 func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
-	s.status.Lock()
 	err := s.status.SetPersistentInfo(info)
 	if err != nil {
-		s.status.Unlock()
 		return err
 	}
-	s.status.Unlock()
 	return s.Update()
 }
 
 func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
-	s.status.Lock()
-	defer s.status.Unlock()
 	return s.status.SetLocalInfo(info)
 }
 
 func (s *spaceController) Update() error {
-	s.status.Lock()
+	s.mx.Lock()
 	status := s.status.GetPersistentStatus()
 	if s.lastUpdatedStatus == status {
-		s.status.Unlock()
+		s.mx.Unlock()
 		return nil
 	}
 	s.lastUpdatedStatus = status
-	s.status.Unlock()
+	s.mx.Unlock()
 	updateStatus := func(mode mode.Mode) error {
 		_, err := s.sm.ChangeMode(mode)
 		return err
@@ -131,12 +128,6 @@ func (s *spaceController) Update() error {
 	default:
 		return updateStatus(mode.ModeLoading)
 	}
-}
-
-func (s *spaceController) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
-	s.status.Lock()
-	defer s.status.Unlock()
-	return s.status.SetRemoteStatus(status)
 }
 
 func (s *spaceController) Delete(ctx context.Context) error {
@@ -183,7 +174,5 @@ func (s *spaceController) Close(ctx context.Context) error {
 }
 
 func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
-	s.status.Lock()
-	defer s.status.Unlock()
 	return s.status.GetPersistentStatus()
 }

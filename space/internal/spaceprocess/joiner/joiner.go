@@ -31,9 +31,7 @@ type Params struct {
 
 func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
-	params.Status.Lock()
 	joinHeadId := params.Status.GetLatestAclHeadId()
-	params.Status.Unlock()
 	child.Register(params.Status).
 		Register(newStatusChanger()).
 		Register(aclnotifications.NewAclNotificationSender()).
@@ -41,8 +39,6 @@ func New(app *app.App, params Params) Joiner {
 			joinHeadId,
 			// onFinish
 			func(acl list.AclList) error {
-				params.Status.Lock()
-				defer params.Status.Unlock()
 				info := spaceinfo.NewSpacePersistentInfo(params.SpaceId)
 				info.SetAccountStatus(spaceinfo.AccountStatusActive).
 					SetAclHeadId(acl.Head().Id)
@@ -54,8 +50,6 @@ func New(app *app.App, params Params) Joiner {
 			},
 			// onReject
 			func(acl list.AclList) error {
-				params.Status.Lock()
-				defer params.Status.Unlock()
 				info := spaceinfo.NewSpacePersistentInfo(params.SpaceId)
 				info.SetAccountStatus(spaceinfo.AccountStatusDeleted).
 					SetAclHeadId(acl.Head().Id)

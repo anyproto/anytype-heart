@@ -86,10 +86,10 @@ func (s *spaceController) SpaceId() string {
 
 func (s *spaceController) newLoader() loader.Loader {
 	return loader.New(s.app, loader.Params{
-		SpaceId:             s.spaceId,
-		Status:              spacestatus.New(s.spaceId),
-		StopIfMandatoryFail: true,
-		OwnerMetadata:       s.metadata,
+		SpaceId:       s.spaceId,
+		Status:        spacestatus.New(s.spaceId),
+		IsPersonal:    true,
+		OwnerMetadata: s.metadata,
 	})
 }
 

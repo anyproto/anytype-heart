@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -38,6 +39,7 @@ type spaceLoader struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	space  clientspace.Space
+	mx     sync.Mutex
 }
 
 func New(stopIfMandatoryFail, disableRemoteLoad bool) SpaceLoader {
@@ -64,12 +66,12 @@ func (s *spaceLoader) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) Close(ctx context.Context) (err error) {
-	s.status.Lock()
+	s.mx.Lock()
 	if s.loading == nil {
-		s.status.Unlock()
+		s.mx.Unlock()
 		return nil
 	}
-	s.status.Unlock()
+	s.mx.Unlock()
 	s.cancel()
 	sp, err := s.WaitLoad(ctx)
 	if err != nil {
@@ -79,8 +81,8 @@ func (s *spaceLoader) Close(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
-	s.status.Lock()
-	defer s.status.Unlock()
+	s.mx.Lock()
+	defer s.mx.Unlock()
 
 	if s.status.GetPersistentStatus() == spaceinfo.AccountStatusDeleted {
 		return ErrSpaceDeleted
@@ -95,8 +97,8 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
-	s.status.Lock()
-	defer s.status.Unlock()
+	s.mx.Lock()
+	defer s.mx.Unlock()
 
 	info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
 	switch {
@@ -121,7 +123,7 @@ func (s *spaceLoader) open(ctx context.Context) (clientspace.Space, error) {
 }
 
 func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
-	s.status.Lock()
+	s.mx.Lock()
 	status := s.status.GetLocalStatus()
 
 	switch status {
@@ -131,7 +133,7 @@ func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err e
 		// loading in progress, wait channel and retry
 		waitCh := s.loading.loadCh
 		loadErr := s.loading.loadErr
-		s.status.Unlock()
+		s.mx.Unlock()
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -149,6 +151,6 @@ func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err e
 	default:
 		err = fmt.Errorf("undefined space state: %v", status)
 	}
-	s.status.Unlock()
+	s.mx.Unlock()
 	return
 }

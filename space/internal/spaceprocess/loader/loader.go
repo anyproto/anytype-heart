@@ -28,17 +28,17 @@ type Loader interface {
 }
 
 type Params struct {
-	SpaceId             string
-	Status              spacestatus.SpaceStatus
-	StopIfMandatoryFail bool
-	OwnerMetadata       []byte
+	SpaceId       string
+	Status        spacestatus.SpaceStatus
+	IsPersonal    bool
+	OwnerMetadata []byte
 }
 
 func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
 	child.Register(params.Status).
 		Register(builder.New()).
-		Register(spaceloader.New(params.StopIfMandatoryFail, false)).
+		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclobjectmanager.New(params.OwnerMetadata))
 	return &loader{
