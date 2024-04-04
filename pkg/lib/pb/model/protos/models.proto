@@ -1178,6 +1178,12 @@ message Membership {
         MethodInappGoogle = 3;
     }
 
+    enum EmailVerificationStatus {
+        NotVerified = 0;
+        CodeSent = 1;
+        Verified = 2;
+    }
+
     // it was Tier before, changed to int32 to allow dynamic values
     uint32 tier = 1;
     Status status = 2;

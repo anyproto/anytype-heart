@@ -6582,6 +6582,35 @@ message Rpc {
         }
 
         /**
+        * Get the current status of the e-mail verification.
+        * Status can change if you call GetVerificationEmail or VerifyEmailCode
+        */
+        message GetVerificationEmailStatus {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.Membership.EmailVerificationStatus status = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                    }
+                }
+            }
+        }
+
+        /**
         * Send an e-mail with verification code to the user
         * can be called multiple times but with some timeout (N seconds) between calls
         */ 
