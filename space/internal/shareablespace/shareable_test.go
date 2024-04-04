@@ -44,7 +44,7 @@ func (s *spaceStatusMock) Close(ctx context.Context) (err error) {
 	return
 }
 
-func (s *spaceStatusMock) LatestAclHeadId() string {
+func (s *spaceStatusMock) GetLatestAclHeadId() string {
 	return ""
 }
 
@@ -113,8 +113,8 @@ func (s *spaceStatusMock) SetLocalStatus(ctx context.Context, status spaceinfo.L
 }
 
 func (s *spaceStatusMock) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
-	s.localStatus = info.LocalStatus
-	s.remoteStatus = info.RemoteStatus
+	s.localStatus = info.localStatus
+	s.remoteStatus = info.remoteStatus
 	return nil
 }
 

@@ -39,7 +39,7 @@
   "isReadonly",
   "isDeleted",
   "isHidden",
-  "isShareable",
+  "spaceShareableStatus",
   "isHiddenDiscovery",
   "done",
   "isArchived",

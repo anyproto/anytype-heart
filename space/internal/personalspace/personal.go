@@ -38,7 +38,7 @@ type spaceController struct {
 	techSpace techspace.TechSpace
 }
 
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+func (s *spaceController) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	return nil
 }
 
@@ -53,7 +53,9 @@ func (s *spaceController) Start(ctx context.Context) (err error) {
 	err = s.loader.Start(ctx)
 	// This could happen for old accounts
 	if errors.Is(err, spaceloader.ErrSpaceNotExists) {
-		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false, spaceinfo.SpacePersistentInfo{AccountStatus: spaceinfo.AccountStatusUnknown})
+		info := spaceinfo.NewSpacePersistentInfo(s.spaceId)
+		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false, info)
 		if err != nil {
 			return
 		}
@@ -89,7 +91,7 @@ func (s *spaceController) SpaceId() string {
 func (s *spaceController) newLoader() loader.Loader {
 	return loader.New(s.app, loader.Params{
 		SpaceId:             s.spaceId,
-		Status:              spacestatus.New(s.spaceId, spaceinfo.AccountStatusUnknown, ""),
+		Status:              spacestatus.New(s.spaceId),
 		StopIfMandatoryFail: true,
 		OwnerMetadata:       s.metadata,
 	})

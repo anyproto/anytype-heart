@@ -120,7 +120,7 @@ message Rpc {
             }
         }
 
-        message MakeShared {
+        message MakeShareable {
             message Request {
                 string spaceId = 1;
             }

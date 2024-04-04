@@ -18,10 +18,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "client.space.techspace"
@@ -43,6 +41,7 @@ type TechSpace interface {
 
 	TechSpaceId() string
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
+	GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) (err error)
@@ -53,6 +52,8 @@ type TechSpace interface {
 
 type SpaceView interface {
 	sync.Locker
+	GetPersistentInfo() spaceinfo.SpacePersistentInfo
+	GetLocalInfo() spaceinfo.SpaceLocalInfo
 	SetSpaceData(details *types.Struct) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
 	SetAccessType(acc spaceinfo.AccessType) error
@@ -119,7 +120,7 @@ func (s *techSpace) TechSpaceId() string {
 }
 
 func (s *techSpace) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
-	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
+	return s.doSpaceView(ctx, info.SpaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceLocalInfo(info)
 	})
 }
@@ -163,6 +164,22 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 	return getErr == nil, nil
 }
 
+func (s *techSpace) GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error) {
+	viewId, err := s.getViewIdLocked(ctx, spaceId)
+	if err != nil {
+		return nil, err
+	}
+	obj, err := s.objectCache.GetObject(ctx, viewId)
+	if err != nil {
+		return nil, err
+	}
+	spaceView, ok := obj.(SpaceView)
+	if !ok {
+		return nil, ErrNotASpaceView
+	}
+	return spaceView, nil
+}
+
 func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
 	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceData(details)
@@ -180,10 +197,7 @@ func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, info sp
 	}
 	initFunc := func(id string) *editorsb.InitContext {
 		st := state.NewDoc(id, nil).(*state.State)
-		st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
-		if info.AclHeadId != "" {
-			st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
-		}
+		info.UpdateDetails(st)
 		return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: st}
 	}
 	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{

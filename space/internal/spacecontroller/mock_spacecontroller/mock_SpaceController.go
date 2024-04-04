@@ -393,7 +393,7 @@ func (_c *MockSpaceController_UpdateInfo_Call) RunAndReturn(run func(context.Con
 }
 
 // UpdateRemoteStatus provides a mock function with given fields: ctx, status
-func (_m *MockSpaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+func (_m *MockSpaceController) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	ret := _m.Called(ctx, status)
 
 	if len(ret) == 0 {

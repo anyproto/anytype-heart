@@ -54,22 +54,24 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	if err = s.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	spaceID, err := s.targetSpaceID()
+	spaceId, err := s.targetSpaceID()
 	if err != nil {
 		return
 	}
-	s.log = s.log.With("spaceId", spaceID)
+	s.log = s.log.With("spaceId", spaceId)
 
 	s.DisableLayouts()
-	info := s.getSpaceInfo(ctx.State)
-	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus, AclHeadId: info.AclHeadId}
-	s.setSpacePersistentInfo(ctx.State, newPersistentInfo)
-	s.setSpaceLocalInfo(ctx.State, spaceinfo.SpaceLocalInfo{
-		SpaceID:      spaceID,
-		LocalStatus:  spaceinfo.LocalStatusUnknown,
-		RemoteStatus: spaceinfo.RemoteStatusUnknown,
-	})
-	s.spaceService.OnViewUpdated(newPersistentInfo)
+	info := spaceinfo.NewSpacePersistentInfoFromState(ctx.State)
+	newInfo := spaceinfo.NewSpacePersistentInfo(spaceId)
+	newInfo.SetAccountStatus(info.GetAccountStatus()).
+		SetAclHeadId(info.GetAclHeadId())
+	s.setSpacePersistentInfo(ctx.State, newInfo)
+	localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
+	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
+		SetRemoteStatus(spaceinfo.RemoteStatusUnknown).
+		UpdateDetails(ctx.State).
+		Log(log)
+	s.spaceService.OnViewUpdated(newInfo)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)
 	return
 }
@@ -107,7 +109,7 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 
 func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
 	st := s.NewState()
-	s.setSpaceLocalInfo(st, info)
+	info.UpdateDetails(st).Log(log)
 	return s.Apply(st)
 }
 
@@ -136,32 +138,21 @@ func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error
 }
 
 func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
-	s.spaceService.OnViewUpdated(s.getSpaceInfo(info.State))
+	s.spaceService.OnViewUpdated(s.getStatePersistentInfo(info.State))
 	return nil
 }
 
-func (s *SpaceView) setSpaceLocalInfo(st *state.State, info spaceinfo.SpaceLocalInfo) {
-	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
-	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
-	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
-	if info.WriteLimit != 0 || info.ReadLimit != 0 {
-		st.SetLocalDetail(bundle.RelationKeyWritersLimit.String(), pbtypes.Int64(int64(info.WriteLimit)))
-		st.SetLocalDetail(bundle.RelationKeyReadersLimit.String(), pbtypes.Int64(int64(info.ReadLimit)))
-		s.log.Infof("set space local status: %s, remote status: %s, write members: %d, read members: %d", info.LocalStatus.String(), info.RemoteStatus.String(), info.WriteLimit, info.ReadLimit)
-	} else {
-		s.log.Infof("set space local status: %s, remote status: %s", info.LocalStatus.String(), info.RemoteStatus.String())
-	}
+func (s *SpaceView) GetLocalInfo() spaceinfo.SpaceLocalInfo {
+	return spaceinfo.NewSpaceLocalInfoFromState(s)
+}
+
+func (s *SpaceView) GetPersistentInfo() spaceinfo.SpacePersistentInfo {
+	return spaceinfo.NewSpacePersistentInfoFromState(s)
 }
 
 func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.SpacePersistentInfo) {
-	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
-	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
-	log := s.log
-	if info.AclHeadId != "" {
-		log = log.With("aclHeadId", info.AclHeadId)
-		st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(info.AclHeadId))
-	}
-	log.Infof("set space account status: %s", info.AccountStatus.String())
+	info.UpdateDetails(st)
+	info.Log(s.log)
 }
 
 // targetSpaceID returns space id from the root of space object's tree
@@ -181,13 +172,12 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	return changePayload.Key, nil
 }
 
-func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
+func (s *SpaceView) getStatePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
 	details := st.CombinedDetails()
-	return spaceinfo.SpacePersistentInfo{
-		SpaceID:       pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()),
-		AccountStatus: spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String())),
-		AclHeadId:     pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()),
-	}
+	spaceInfo := spaceinfo.NewSpacePersistentInfo(pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()))
+	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String()))).
+		SetAclHeadId(pbtypes.GetString(details, bundle.RelationKeyLatestAclHeadId.String()))
+	return spaceInfo
 }
 
 var workspaceKeysToCopy = []string{

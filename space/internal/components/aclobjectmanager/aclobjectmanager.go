@@ -238,7 +238,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.status.Lock()
-	aclHeadId := a.status.LatestAclHeadId()
+	aclHeadId := a.status.GetLatestAclHeadId()
 	a.status.Unlock()
 	var upToDate bool
 	if aclHeadId != "" {

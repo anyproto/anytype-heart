@@ -477,16 +477,6 @@
     "source": "details"
   },
   {
-    "description": "Specify if the space is shareable",
-    "format": "checkbox",
-    "hidden": true,
-    "key": "isShareable",
-    "maxCount": 1,
-    "name": "Shareable",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Specify if object discovery is hidden",
     "format": "checkbox",
     "hidden": true,
@@ -1557,6 +1547,16 @@
     "key": "spaceRemoteStatus",
     "maxCount": 1,
     "name": "Space remote status",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Specify if the space is shareable",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceShareableStatus",
+    "maxCount": 1,
+    "name": "Space shareable status",
     "readonly": true,
     "source": "derived"
   },

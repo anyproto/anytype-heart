@@ -130,7 +130,7 @@ func TestTechSpace_SpaceViewExists(t *testing.T) {
 
 func TestTechSpace_SetInfo(t *testing.T) {
 	info := spaceinfo.SpaceLocalInfo{
-		SpaceID: "space.id",
+		SpaceId: "space.id",
 	}
 	viewId := "viewid"
 	spaceView := newSpaceViewStub(viewId)

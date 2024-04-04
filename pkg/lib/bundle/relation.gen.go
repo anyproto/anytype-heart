@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9ba362793bac1de55f42cde514bc665317cf017c7625f14ab31ae4e73ac1830a"
+const RelationChecksum = "612cc8ba15ddd79743b7ce5b50fbc931514ca585371dd5a9bb9699d5fed31f14"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -59,7 +59,6 @@ const (
 	RelationKeyLinkedContacts            domain.RelationKey = "linkedContacts"
 	RelationKeyRottenTomatoesRating      domain.RelationKey = "rottenTomatoesRating"
 	RelationKeyIsHidden                  domain.RelationKey = "isHidden"
-	RelationKeyIsShareable               domain.RelationKey = "isShareable"
 	RelationKeyIsHiddenDiscovery         domain.RelationKey = "isHiddenDiscovery"
 	RelationKeyAdditional                domain.RelationKey = "additional"
 	RelationKeyBudget                    domain.RelationKey = "budget"
@@ -167,6 +166,7 @@ const (
 	RelationKeyOrigin                    domain.RelationKey = "origin"
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
+	RelationKeySpaceShareableStatus      domain.RelationKey = "spaceShareableStatus"
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
@@ -1185,20 +1185,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyIsShareable: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Specify if the space is shareable",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brisShareable",
-			Key:              "isShareable",
-			MaxCount:         1,
-			Name:             "Shareable",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyIsUninstalled: {
 
 			DataSource:       model.Relation_details,
@@ -2165,6 +2151,20 @@ var (
 			Key:              "spaceRemoteStatus",
 			MaxCount:         1,
 			Name:             "Space remote status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceShareableStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Specify if the space is shareable",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceShareableStatus",
+			Key:              "spaceShareableStatus",
+			MaxCount:         1,
+			Name:             "Space shareable status",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

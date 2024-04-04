@@ -84,7 +84,7 @@ func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersi
 	return nil
 }
 
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+func (s *spaceController) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	return nil
 }
 

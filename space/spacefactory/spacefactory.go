@@ -74,7 +74,9 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte)
 	if err != nil {
 		return
 	}
-	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true, spaceinfo.SpacePersistentInfo{AccountStatus: spaceinfo.AccountStatusUnknown}); err != nil {
+	info := spaceinfo.NewSpacePersistentInfo(coreSpace.Id())
+	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true, info); err != nil {
 		if errors.Is(err, techspace.ErrSpaceViewExists) {
 			return s.NewPersonalSpace(ctx, metadata)
 		}
@@ -136,19 +138,14 @@ func (s *spaceFactory) CreateInvitingSpace(ctx context.Context, id, aclHeadId st
 	if err != nil {
 		return
 	}
+	info := spaceinfo.NewSpacePersistentInfo(id)
+	info.SetAclHeadId(aclHeadId).SetAccountStatus(spaceinfo.AccountStatusJoining)
 	if !exists {
-		if err := s.techSpace.SpaceViewCreate(ctx, id, true, spaceinfo.SpacePersistentInfo{
-			AccountStatus: spaceinfo.AccountStatusJoining,
-			AclHeadId:     aclHeadId,
-		}); err != nil {
+		if err := s.techSpace.SpaceViewCreate(ctx, id, true, info); err != nil {
 			return nil, err
 		}
 	}
-	ctrl, err := shareablespace.NewSpaceController(id, spaceinfo.SpacePersistentInfo{
-		SpaceID:       id,
-		AccountStatus: spaceinfo.AccountStatusJoining,
-		AclHeadId:     aclHeadId,
-	}, s.app)
+	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
 	if err != nil {
 		return nil, err
 	}
@@ -161,10 +158,12 @@ func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp 
 	if err != nil {
 		return
 	}
-	if err := s.techSpace.SpaceViewCreate(ctx, id, true, spaceinfo.SpacePersistentInfo{AccountStatus: spaceinfo.AccountStatusUnknown}); err != nil {
+	info := spaceinfo.NewSpacePersistentInfo(id)
+	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info); err != nil {
 		return nil, err
 	}
-	ctrl, err := shareablespace.NewSpaceController(id, spaceinfo.SpacePersistentInfo{SpaceID: id, AccountStatus: spaceinfo.AccountStatusUnknown}, s.app)
+	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
 	if err != nil {
 		return nil, err
 	}

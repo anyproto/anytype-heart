@@ -32,7 +32,7 @@ type Params struct {
 func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
 	params.Status.Lock()
-	joinHeadId := params.Status.LatestAclHeadId()
+	joinHeadId := params.Status.GetLatestAclHeadId()
 	params.Status.Unlock()
 	child.Register(params.Status).
 		Register(newStatusChanger()).
@@ -43,11 +43,10 @@ func New(app *app.App, params Params) Joiner {
 			func(acl list.AclList) error {
 				params.Status.Lock()
 				defer params.Status.Unlock()
-				err := params.Status.SetPersistentInfo(context.Background(), spaceinfo.SpacePersistentInfo{
-					SpaceID:       params.SpaceId,
-					AccountStatus: spaceinfo.AccountStatusActive,
-					AclHeadId:     acl.Head().Id,
-				})
+				info := spaceinfo.NewSpacePersistentInfo(params.SpaceId)
+				info.SetAccountStatus(spaceinfo.AccountStatusActive).
+					SetAclHeadId(acl.Head().Id)
+				err := params.Status.SetPersistentInfo(info)
 				if err != nil {
 					params.Log.Error("failed to set persistent status", zap.Error(err))
 				}
@@ -57,11 +56,10 @@ func New(app *app.App, params Params) Joiner {
 			func(acl list.AclList) error {
 				params.Status.Lock()
 				defer params.Status.Unlock()
-				err := params.Status.SetPersistentInfo(context.Background(), spaceinfo.SpacePersistentInfo{
-					SpaceID:       params.SpaceId,
-					AccountStatus: spaceinfo.AccountStatusDeleted,
-					AclHeadId:     acl.Head().Id,
-				})
+				info := spaceinfo.NewSpacePersistentInfo(params.SpaceId)
+				info.SetAccountStatus(spaceinfo.AccountStatusDeleted).
+					SetAclHeadId(acl.Head().Id)
+				err := params.Status.SetPersistentInfo(info)
 				if err != nil {
 					params.Log.Error("failed to set persistent status", zap.Error(err))
 				}

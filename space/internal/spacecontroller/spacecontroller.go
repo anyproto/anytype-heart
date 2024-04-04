@@ -14,7 +14,7 @@ type SpaceController interface {
 	Current() any
 	UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
 	SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
-	UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error
+	SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error
 	Close(ctx context.Context) error
 	GetStatus() spaceinfo.AccountStatus
 }

@@ -41,8 +41,8 @@ func NewSpaceController(
 	a *app.App) (spacecontroller.SpaceController, error) {
 	s := &spaceController{
 		spaceId:           spaceId,
-		status:            spacestatus.New(spaceId, info.AccountStatus, info.AclHeadId),
-		lastUpdatedStatus: info.AccountStatus,
+		status:            spacestatus.New(spaceId),
+		lastUpdatedStatus: info.GetAccountStatus(),
 		app:               a,
 	}
 	// this is done for tests to not complicate them :-)
@@ -93,7 +93,7 @@ func (s *spaceController) Current() any {
 
 func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	s.status.Lock()
-	err := s.status.SetPersistentInfo(ctx, info)
+	err := s.status.SetPersistentInfo(info)
 	if err != nil {
 		s.status.Unlock()
 		return err
@@ -104,20 +104,17 @@ func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersi
 
 func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	s.status.Lock()
-	if s.lastUpdatedStatus == info.AccountStatus {
+	if s.lastUpdatedStatus == info.GetAccountStatus() {
 		s.status.Unlock()
 		return nil
 	}
-	s.lastUpdatedStatus = info.AccountStatus
+	s.lastUpdatedStatus = info.GetAccountStatus()
 	s.status.Unlock()
 	updateStatus := func(mode mode.Mode) error {
-		s.status.Lock()
-		s.status.UpdatePersistentInfo(ctx, info)
-		s.status.Unlock()
 		_, err := s.sm.ChangeMode(mode)
 		return err
 	}
-	switch info.AccountStatus {
+	switch info.GetAccountStatus() {
 	case spaceinfo.AccountStatusDeleted:
 		return updateStatus(mode.ModeOffloading)
 	case spaceinfo.AccountStatusJoining:
@@ -129,10 +126,10 @@ func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePe
 	}
 }
 
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+func (s *spaceController) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
 	s.status.Lock()
 	defer s.status.Unlock()
-	return s.status.SetRemoteStatus(ctx, status)
+	return s.status.SetRemoteStatus(status)
 }
 
 func (s *spaceController) Delete(ctx context.Context) error {

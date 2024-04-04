@@ -257,7 +257,7 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.Space
 	if ctrl == nil {
 		return fmt.Errorf("no such space: %s", status.SpaceId)
 	}
-	err := ctrl.UpdateRemoteStatus(ctx, status)
+	err := ctrl.SetRemoteStatus(ctx, status)
 	if err != nil {
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
@@ -265,10 +265,9 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.Space
 		accountStatus := ctrl.GetStatus()
 		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
 			s.sendNotification(status.SpaceId)
-			return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
-				SpaceID:       status.SpaceId,
-				AccountStatus: spaceinfo.AccountStatusRemoving,
-			})
+			info := spaceinfo.NewSpacePersistentInfo(status.SpaceId)
+			info.SetAccountStatus(spaceinfo.AccountStatusRemoving)
+			return ctrl.SetInfo(ctx, info)
 		}
 	}
 	return nil
