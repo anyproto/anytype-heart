@@ -2912,6 +2912,9 @@ message Rpc {
             string authorName = 4;
             int64 time = 5;
             int64 groupId = 6;
+            repeated string blockIds = 7;
+            repeated string relationKeys = 8;
+            repeated string fileObjectIds = 9;
         }
 
         // returns list of versions (changes)

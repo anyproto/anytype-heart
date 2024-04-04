@@ -10956,6 +10956,9 @@ returns blockShow event for given version
 | authorName | [string](#string) |  |  |
 | time | [int64](#int64) |  |  |
 | groupId | [int64](#int64) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| relationKeys | [string](#string) | repeated |  |
+| fileObjectIds | [string](#string) | repeated |  |
 
 
 

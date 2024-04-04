@@ -130,11 +130,23 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 
 		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
+			var blockId, fileObjectIds, relationKeys []string
+			if changeModel, ok := c.Model.(*pb.Change); ok {
+				for _, content := range changeModel.GetContent() {
+					blockId = h.handleBlockChanges(content, blockId)
+					fileObjectIds = h.handleFileChanges(content, fileObjectIds)
+					relationKeys = h.handleRelationChanges(content, relationKeys)
+				}
+			}
+
 			data = append(data, &pb.RpcHistoryVersion{
-				Id:          c.Id,
-				PreviousIds: c.PreviousIds,
-				AuthorId:    participantId,
-				Time:        c.Timestamp,
+				Id:            c.Id,
+				PreviousIds:   c.PreviousIds,
+				AuthorId:      participantId,
+				Time:          c.Timestamp,
+				BlockIds:      blockId,
+				FileObjectIds: fileObjectIds,
+				RelationKeys:  relationKeys,
 			})
 			return true
 		})
@@ -172,6 +184,152 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	}
 
 	return
+}
+
+func (h *history) handleRelationChanges(content *pb.ChangeContent, relationKeys []string) []string {
+	if c := content.GetDetailsSet(); c != nil {
+		relationKeys = append(relationKeys, c.Key)
+	}
+	if c := content.GetDetailsUnset(); c != nil {
+		relationKeys = append(relationKeys, c.Key)
+	}
+	if c := content.GetRelationAdd(); c != nil {
+		for _, link := range c.RelationLinks {
+			relationKeys = append(relationKeys, link.Key)
+		}
+	}
+	if c := content.GetRelationRemove(); c != nil {
+		relationKeys = append(relationKeys, c.RelationKey...)
+	}
+	return relationKeys
+}
+
+func (h *history) handleFileChanges(content *pb.ChangeContent, fileObjectIds []string) []string {
+	if c := content.GetSetFileInfo(); c != nil {
+		if c.FileInfo != nil {
+			fileObjectIds = append(fileObjectIds, c.FileInfo.FileId)
+		}
+	}
+	return fileObjectIds
+}
+
+func (h *history) handleBlockChanges(content *pb.ChangeContent, blockId []string) []string {
+	if c := content.GetBlockCreate(); c != nil {
+		for _, bl := range c.Blocks {
+			blockId = append(blockId, bl.Id)
+		}
+	}
+	if c := content.GetBlockDuplicate(); c != nil {
+		blockId = append(blockId, c.Ids...)
+	}
+	if c := content.GetBlockMove(); c != nil {
+		blockId = append(blockId, c.Ids...)
+	}
+	if c := content.GetBlockRemove(); c != nil {
+		blockId = append(blockId, c.Ids...)
+	}
+	if c := content.GetBlockUpdate(); c != nil {
+		for _, event := range c.Events {
+			blockId = h.handleAddAndDeleteEvents(event, blockId)
+			blockId = h.handleBlockSettingsEvents(event, blockId)
+			blockId = h.handleSimpleBlockEvents(event, blockId)
+			blockId = h.handleDataviewEvents(event, blockId)
+		}
+	}
+	return blockId
+}
+
+func (h *history) handleAddAndDeleteEvents(event *pb.EventMessage, blockId []string) []string {
+	if blockAdd := event.GetBlockAdd(); blockAdd != nil {
+		for _, bl := range event.GetBlockAdd().Blocks {
+			blockId = append(blockId, bl.Id)
+		}
+	}
+	if blockDelete := event.GetBlockDelete(); blockDelete != nil {
+		blockId = append(blockId, blockDelete.BlockIds...)
+	}
+	return blockId
+}
+
+func (h *history) handleBlockSettingsEvents(event *pb.EventMessage, blockId []string) []string {
+	if setVerticalAlign := event.GetBlockSetVerticalAlign(); setVerticalAlign != nil {
+		blockId = append(blockId, setVerticalAlign.Id)
+	}
+	if setAlign := event.GetBlockSetAlign(); setAlign != nil {
+		blockId = append(blockId, setAlign.Id)
+	}
+	if setChildrenIds := event.GetBlockSetChildrenIds(); setChildrenIds != nil {
+		blockId = append(blockId, setChildrenIds.Id)
+	}
+	if setBackgroundColor := event.GetBlockSetBackgroundColor(); setBackgroundColor != nil {
+		blockId = append(blockId, setBackgroundColor.Id)
+	}
+	return blockId
+}
+
+func (h *history) handleSimpleBlockEvents(event *pb.EventMessage, blockId []string) []string {
+	if setTableRow := event.GetBlockSetTableRow(); setTableRow != nil {
+		blockId = append(blockId, setTableRow.Id)
+	}
+	if setRelation := event.GetBlockSetRelation(); setRelation != nil {
+		blockId = append(blockId, setRelation.Id)
+	}
+	if setText := event.GetBlockSetText(); setText != nil {
+		blockId = append(blockId, setText.Id)
+	}
+	if setLink := event.GetBlockSetLink(); setLink != nil {
+		blockId = append(blockId, setLink.Id)
+	}
+	if setLatex := event.GetBlockSetLatex(); setLatex != nil {
+		blockId = append(blockId, setLatex.Id)
+	}
+	if setFile := event.GetBlockSetFile(); setFile != nil {
+		blockId = append(blockId, setFile.Id)
+	}
+	if setText := event.GetBlockSetText(); setText != nil {
+		blockId = append(blockId, setText.Id)
+	}
+	if setDiv := event.GetBlockSetDiv(); setDiv != nil {
+		blockId = append(blockId, setDiv.Id)
+	}
+	if setFields := event.GetBlockSetFields(); setFields != nil {
+		blockId = append(blockId, setFields.Id)
+	}
+	if setBookmark := event.GetBlockSetBookmark(); setBookmark != nil {
+		blockId = append(blockId, setBookmark.Id)
+	}
+	return blockId
+}
+
+func (h *history) handleDataviewEvents(event *pb.EventMessage, blockId []string) []string {
+	if dvUpdate := event.GetBlockDataviewViewUpdate(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	if dvUpdate := event.GetBlockDataViewGroupOrderUpdate(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	if dvUpdate := event.GetBlockDataViewObjectOrderUpdate(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	if dvUpdate := event.GetBlockDataviewViewDelete(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	if dvUpdate := event.GetBlockDataviewViewOrder(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	if dvUpdate := event.GetBlockDataviewViewSet(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	if dvUpdate := event.GetBlockDataviewSourceSet(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	if dvUpdate := event.GetBlockDataviewRelationDelete(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	if dvUpdate := event.GetBlockDataviewRelationSet(); dvUpdate != nil {
+		blockId = append(blockId, dvUpdate.Id)
+	}
+	return blockId
 }
 
 func (h *history) SetVersion(id domain.FullID, versionId string) (err error) {
