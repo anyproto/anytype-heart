@@ -13252,6 +13252,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
 | collectionId | [string](#string) |  |  |
+| objectsCount | [int64](#int64) |  |  |
 
 
 
