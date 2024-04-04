@@ -42,7 +42,7 @@ var (
 type Service interface {
 	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct)
 
-	UpdateGlobalNames()
+	UpdateGlobalNames(myIdentityGlobalName string)
 
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
@@ -241,7 +241,9 @@ func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, met
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
 }
 
-func (s *service) UpdateGlobalNames() {
+func (s *service) UpdateGlobalNames(myIdentityGlobalName string) {
+	// we update globalName of local identity directly because Naming Node is not registering new name immediately
+	s.updateMyIdentityGlobalName(myIdentityGlobalName)
 	select {
 	case s.globalNamesForceUpdate <- struct{}{}:
 	default:
@@ -554,16 +556,20 @@ func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error 
 	for i, anyID := range identities {
 		s.identityGlobalNames[anyID] = response.Results[i]
 		if anyID == s.myIdentity && response.Results[i].Found {
-			s.currentProfileDetailsLock.RLock()
-			details := pbtypes.CopyStruct(s.currentProfileDetails, true)
-			s.currentProfileDetailsLock.RUnlock()
-			details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(response.Results[i].Name)
-			if err = s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
-				return err
-			}
+			s.updateMyIdentityGlobalName(response.Results[i].Name)
 		}
 	}
 	return nil
+}
+
+func (s *service) updateMyIdentityGlobalName(name string) {
+	s.currentProfileDetailsLock.RLock()
+	details := pbtypes.CopyStruct(s.currentProfileDetails, true)
+	s.currentProfileDetailsLock.RUnlock()
+	details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(name)
+	if err := s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
+		log.Error("failed to update global name of my identity in store", zap.Error(err))
+	}
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {

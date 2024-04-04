@@ -13,10 +13,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime"
-	"runtime/pprof"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -27,14 +24,11 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/opentracing/opentracing-go"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/process"
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
 
 	"github.com/anyproto/anytype-heart/core"
-	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -51,11 +45,6 @@ const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
 
 var log = logging.Logger("anytype-grpc-server")
 var commonOSSignals = []os.Signal{os.Interrupt, syscall.SIGTERM, syscall.SIGINT}
-
-var (
-	PromUser     string
-	PromPassword string
-)
 
 func main() {
 	var addr string
@@ -296,186 +285,4 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 		},
 	}
 	return resp
-}
-
-func startReportMemory() {
-	if env := os.Getenv("ANYTYPE_REPORT_MEMORY"); env != "" {
-		go func() {
-			var maxAlloc uint64
-			var meanCPU float64
-			var maxHeapObjects uint64
-			var maxRSS uint64
-			var maxNative uint64
-			var memStats runtime.MemStats
-			var curProc *process.Process
-			times := 60 * 3
-			rev := getRev()
-			pid := os.Getpid()
-
-			curProc, err := process.NewProcess(int32(pid))
-			if err != nil {
-				fmt.Printf("Can't get current process: %s\n", err)
-				return
-			}
-
-			_ = writeCpuProfile(rev, func() {
-				for i := 0; i < times; i++ {
-
-					memInfo, err := curProc.MemoryInfo()
-					if err != nil {
-						fmt.Printf("Can't get rss: %s\n", err)
-					}
-
-					runtime.ReadMemStats(&memStats)
-					percent, err := cpu.Percent(time.Second, false)
-					if err != nil {
-						fmt.Printf("Can't get cpu percent: %s\n", err)
-					}
-
-					if maxRSS < memInfo.RSS {
-						maxRSS = memInfo.RSS
-					}
-					if maxAlloc < memStats.Alloc {
-						maxAlloc = memStats.Alloc
-					}
-					if maxHeapObjects < memStats.HeapObjects {
-						maxHeapObjects = memStats.HeapObjects
-					}
-					if maxNative < memInfo.RSS-memStats.Alloc && memInfo.RSS > memStats.Alloc {
-						maxNative = memInfo.RSS - memStats.Alloc
-					}
-					meanCPU += percent[0]
-					time.Sleep(time.Second)
-				}
-
-				err := sendMetrics(
-					map[string]uint64{
-						"MaxAlloc":    uint64(float64(maxAlloc) / 1024 / 1024),
-						"TotalAlloc":  uint64(float64(memStats.TotalAlloc) / 1024 / 1024),
-						"MaxNative":   uint64(float64(maxNative) / 1024 / 1024),
-						"MaxRSS":      uint64(float64(maxRSS) / 1024 / 1024),
-						"Mallocs":     memStats.Mallocs,
-						"Frees":       memStats.Frees,
-						"MeanCpu":     uint64(meanCPU / float64(times)),
-						"HeapObjects": maxHeapObjects,
-					},
-				)
-				if err != nil {
-					os.Exit(-1)
-				}
-			})
-			_ = writeHeapProfile(rev)
-			os.Exit(0)
-		}()
-	}
-}
-
-func getRev() string {
-	return vcs.GetVCSInfo().Revision[:8]
-}
-
-func writeCpuProfile(rev string, toProfile func()) error {
-	file, err := os.Create(fmt.Sprintf("cpu_profile_%s_%d.pprof", rev, time.Now().UnixMilli()))
-	if err != nil {
-		fmt.Println("Error creating profile file:", err)
-		return err
-	}
-	defer file.Close()
-
-	if err := pprof.StartCPUProfile(file); err != nil {
-		fmt.Println("Error writing cpu profile:", err)
-		return err
-	}
-
-	toProfile()
-
-	pprof.StopCPUProfile()
-	return nil
-}
-
-func writeHeapProfile(rev string) error {
-	file, err := os.Create(fmt.Sprintf("heap_profile_%s_%d.pprof", rev, time.Now().UnixMilli()))
-	if err != nil {
-		fmt.Println("Error creating profile file:", err)
-		return err
-	}
-	defer file.Close()
-
-	if err := pprof.WriteHeapProfile(file); err != nil {
-		fmt.Println("Error writing heap profile:", err)
-		return err
-	}
-	return nil
-}
-
-func sendMetrics(metrics map[string]uint64) error {
-	url := "https://pushgateway.anytype.io/metrics/job/heart_tech"
-
-	var sb strings.Builder
-	for key, value := range metrics {
-		data := fmt.Sprintf("r_%s_%s %d\n", key, getRev(), value)
-		fmt.Println(data)
-		sb.WriteString(data)
-	}
-
-	client := &http.Client{
-		Timeout: 1 * time.Minute,
-	}
-	err := makeMetricsRequest(client, url, sb.String())
-	if err != nil {
-		return err
-	}
-
-	time.Sleep(1 * time.Minute)
-	err = makeDeleteRequest(client, url)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("metric has sent")
-	return nil
-}
-
-func makeDeleteRequest(client *http.Client, url string) error {
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		fmt.Println("metric delete err:", err)
-		return err
-	}
-
-	req.SetBasicAuth(PromUser, PromPassword)
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("metric delete err:", err)
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
-func makeMetricsRequest(client *http.Client, url string, content string) error {
-	req, err := http.NewRequest("POST", url, strings.NewReader(content))
-	if err != nil {
-		fmt.Println("metric send err:", err)
-		return err
-	}
-
-	req.SetBasicAuth(PromUser, PromPassword)
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("metric send err:", err)
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
-func init() {
-	if PromUser == "" {
-		PromUser = loadenv.Get("PROM_KEY")
-	}
-
-	if PromPassword == "" {
-		PromPassword = loadenv.Get("PROM_PASSWORD")
-	}
 }
