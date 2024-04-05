@@ -1184,8 +1184,13 @@ message Membership {
     }
 
     enum EmailVerificationStatus {
+        // user NEVER comleted the verification of the email
         StatusNotVerified = 0;
+        // user has asked for new code, but did not enter it yet
+        // (even if email was verified before, you can ask to UPDATE your e-mail)
+        // please wait, you can not ask for more codes yet
         StatusCodeSent = 1;
+        // the e-mail is finally verified
         StatusVerified = 2;
     }
 
