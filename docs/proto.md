@@ -3871,6 +3871,7 @@ common simple block command
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
