@@ -1160,28 +1160,33 @@ message ManifestInfo {
 message Membership {    
     enum Status {
         StatusUnknown = 0;
-        // please wait a bit more
+        // please wait a bit more, we are still processing your request
+        // the payment is confirmed, but we need more time to do some side-effects:
+        // - increase limits
+        // - send emails
+        // - allocate names
         StatusPending = 1;
+        // the membership is active, ready to use!
         StatusActive = 2;
         // in some cases we need to finalize the process:
         // - if user has bought membership directly without first calling
         // the BuySubscription method
-        // 
         // in this case please call Finalize to finish the process
         StatusPendingRequiresFinalization = 3;
     }
     
     enum PaymentMethod {
-        MethodCard = 0;
-        MethodCrypto = 1;
-        MethodInappApple = 2;
-        MethodInappGoogle = 3;
+        MethodNone = 0;
+        MethodCard = 1;
+        MethodCrypto = 2;
+        MethodInappApple = 3;
+        MethodInappGoogle = 4;
     }
 
     enum EmailVerificationStatus {
-        NotVerified = 0;
-        CodeSent = 1;
-        Verified = 2;
+        StatusNotVerified = 0;
+        StatusCodeSent = 1;
+        StatusVerified = 2;
     }
 
     // it was Tier before, changed to int32 to allow dynamic values
