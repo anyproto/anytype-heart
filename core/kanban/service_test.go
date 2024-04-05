@@ -94,25 +94,21 @@ func Test_GrouperTags(t *testing.T) {
 	require.NoError(t, objectStore.UpdateObjectDetails(id1, &types.Struct{
 		Fields: map[string]*types.Value{"name": pbtypes.String("one")},
 	}))
-	require.NoError(t, objectStore.UpdateObjectSnippet(id1, "s1"))
 
 	require.NoError(t, objectStore.UpdateObjectDetails(id2, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("two"),
 		"tag":  pbtypes.StringList([]string{idTag1}),
 	}}))
-	require.NoError(t, objectStore.UpdateObjectSnippet(id1, "s2"))
 
 	require.NoError(t, objectStore.UpdateObjectDetails(id3, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("three"),
 		"tag":  pbtypes.StringList([]string{idTag1, idTag2, idTag3}),
 	}}))
-	require.NoError(t, objectStore.UpdateObjectSnippet(id1, "s3"))
 
 	require.NoError(t, objectStore.UpdateObjectDetails(id4, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("four"),
 		"tag":  pbtypes.StringList([]string{idTag1, idTag3}),
 	}}))
-	require.NoError(t, objectStore.UpdateObjectSnippet(id1, "s4"))
 
 	grouper, err := kanbanSrv.Grouper("", "tag")
 	require.NoError(t, err)

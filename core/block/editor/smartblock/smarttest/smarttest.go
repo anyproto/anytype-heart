@@ -34,6 +34,7 @@ func New(id string) *SmartTest {
 		Doc:       state.NewDoc(id, nil),
 		hist:      undo.NewHistory(0),
 		hooksOnce: map[string]struct{}{},
+		sbType:    coresb.SmartBlockTypePage,
 	}
 }
 
@@ -53,9 +54,14 @@ type SmartTest struct {
 	// Rudimentary hooks
 	hooks     []smartblock.HookCallback
 	hooksOnce map[string]struct{}
+	sbType    coresb.SmartBlockType
+	spaceId   string
 }
 
-func (st *SmartTest) SpaceID() string { return "" }
+func (st *SmartTest) SpaceID() string { return st.spaceId }
+func (st *SmartTest) SetSpaceId(spaceId string) {
+	st.spaceId = spaceId
+}
 
 type stubSpace struct {
 }
@@ -252,7 +258,11 @@ func (st *SmartTest) Id() string {
 }
 
 func (st *SmartTest) Type() coresb.SmartBlockType {
-	return coresb.SmartBlockTypePage
+	return st.sbType
+}
+
+func (st *SmartTest) SetType(sbType coresb.SmartBlockType) {
+	st.sbType = sbType
 }
 
 func (st *SmartTest) Show() (obj *model.ObjectView, err error) {
