@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "d9166ff25c421f94e3fd6b640fa6ad8652b0d4a676e9963ffddb447d9a20e2ae"
+const RelationChecksum = "d56fa782bf2d25bfc0e8e83717c349d63e49d1c3e96c6e83a342b1383942ffbf"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -859,7 +859,7 @@ var (
 		},
 		RelationKeyGlobalName: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Name of profile that the user could be mentioned by",
 			Format:           model.RelationFormat_shorttext,
 			Id:               "_brglobalName",

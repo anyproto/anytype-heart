@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
@@ -624,7 +625,14 @@ func (s *Service) ModifyDetails(objectId string, modifier func(current *types.St
 			return err
 		}
 
-		return b.Apply(b.NewState().SetDetails(dets))
+		rels, err := s.objectStore.FetchRelationByKeys(b.SpaceID(), maps.Keys(dets.Fields)...)
+		if err != nil {
+			return err
+		}
+
+		st := b.NewState().SetDetails(dets)
+		st.AddRelationLinks(rels.RelationLinks()...)
+		return b.Apply(st)
 	})
 }
 
