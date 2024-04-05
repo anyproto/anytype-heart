@@ -51,6 +51,15 @@ func TestStorageService_DeleteSpaceStorage(t *testing.T) {
 
 }
 
+func TestStringReverseIsWorking(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	var reversed string
+	fx.readDb.QueryRow("SELECT REVERSE_STRING(\"абырвалг\")").Scan(&reversed)
+	assert.Equal(t, "главрыба", reversed)
+}
+
 type fixture struct {
 	*storageService
 	a      *app.App

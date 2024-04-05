@@ -90,6 +90,12 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 	connectionUrlParams.Add("_cache_size", "10000000")
 	connectionUrlParams.Add("_foreign_keys", "true")
 	connectionUri := s.dbPath + "?" + connectionUrlParams.Encode()
+	sql.Register("sqlite3_with_extensions",
+		&sqlite3.SQLiteDriver{
+			Extensions: []string{
+				"sqlite3_mod_regexp",
+			},
+		})
 	if s.writeDb, err = sql.Open("sqlite3", connectionUri); err != nil {
 		return
 	}
