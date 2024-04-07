@@ -37,16 +37,25 @@ type spaceController struct {
 	sm *mode.StateMachine
 }
 
+var makeStatusApp = func(a *app.App, spaceId string) *app.App {
+	newApp := a.ChildApp()
+	newApp.Register(spacestatus.New(spaceId))
+	_ = newApp.Start(context.Background())
+	return newApp
+}
+
 func NewSpaceController(
 	spaceId string,
 	info spaceinfo.SpacePersistentInfo,
 	a *app.App) (spacecontroller.SpaceController, error) {
+	newApp := makeStatusApp(a, spaceId)
 	s := &spaceController{
 		spaceId:           spaceId,
-		status:            spacestatus.New(spaceId),
+		status:            newApp.MustComponent(spacestatus.CName).(spacestatus.SpaceStatus),
 		lastUpdatedStatus: info.GetAccountStatus(),
-		app:               a,
+		app:               newApp,
 	}
+
 	// this is done for tests to not complicate them :-)
 	if updater, ok := a.Component(deletioncontroller.CName).(statusUpdater); ok {
 		s.updater = updater
@@ -146,16 +155,12 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 	case mode.ModeLoading:
 		return loader.New(s.app, loader.Params{
 			SpaceId: s.spaceId,
-			Status:  s.status,
 		})
 	case mode.ModeOffloading:
-		return offloader.New(s.app, offloader.Params{
-			Status: s.status,
-		})
+		return offloader.New(s.app)
 	case mode.ModeRemoving:
 		return remover.New(s.app, remover.Params{
 			SpaceId: s.spaceId,
-			Status:  s.status,
 		})
 	case mode.ModeJoining:
 		return joiner.New(s.app, joiner.Params{

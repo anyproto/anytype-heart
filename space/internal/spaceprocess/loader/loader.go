@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
-	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
 
@@ -30,15 +29,13 @@ type Loader interface {
 
 type Params struct {
 	SpaceId       string
-	Status        spacestatus.SpaceStatus
 	IsPersonal    bool
 	OwnerMetadata []byte
 }
 
 func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
-	child.Register(params.Status).
-		Register(builder.New()).
+	child.Register(builder.New()).
 		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclobjectmanager.New(params.OwnerMetadata)).

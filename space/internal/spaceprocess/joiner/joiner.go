@@ -32,8 +32,7 @@ type Params struct {
 func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
 	joinHeadId := params.Status.GetLatestAclHeadId()
-	child.Register(params.Status).
-		Register(newStatusChanger()).
+	child.Register(newStatusChanger()).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclwaiter.New(params.SpaceId,
 			joinHeadId,

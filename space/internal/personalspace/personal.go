@@ -28,6 +28,13 @@ func NewSpaceController(spaceId string, metadata []byte, a *app.App) spacecontro
 	}
 }
 
+var makeStatusApp = func(a *app.App, spaceId string) *app.App {
+	newApp := a.ChildApp()
+	newApp.Register(spacestatus.New(spaceId))
+	_ = newApp.Start(context.Background())
+	return newApp
+}
+
 type spaceController struct {
 	app      *app.App
 	spaceId  string
@@ -85,9 +92,8 @@ func (s *spaceController) SpaceId() string {
 }
 
 func (s *spaceController) newLoader() loader.Loader {
-	return loader.New(s.app, loader.Params{
+	return loader.New(makeStatusApp(s.app, s.spaceId), loader.Params{
 		SpaceId:       s.spaceId,
-		Status:        spacestatus.New(s.spaceId),
 		IsPersonal:    true,
 		OwnerMetadata: s.metadata,
 	})
