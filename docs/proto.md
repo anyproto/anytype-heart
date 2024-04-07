@@ -1683,6 +1683,7 @@
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
     - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
+    - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
     - [Block.Content.Dataview.View.Type](#anytype-model-Block-Content-Dataview-View-Type)
@@ -13259,6 +13260,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
 | collectionId | [string](#string) |  |  |
+| objectsCount | [int64](#int64) |  |  |
 
 
 
@@ -25319,12 +25321,13 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
 | RelationKey | [string](#string) |  |  |
 | type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
 | customOrder | [google.protobuf.Value](#google-protobuf-Value) | repeated |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
 | includeTime | [bool](#bool) |  |  |
+| id | [string](#string) |  |  |
+| emptyPlacement | [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType) |  |  |
 
 
 
@@ -26653,6 +26656,19 @@ stored |
 | ---- | ------ | ----------- |
 | Format12 | 0 |  |
 | Format24 | 1 |  |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Sort-EmptyType"></a>
+
+### Block.Content.Dataview.Sort.EmptyType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NotSpecified | 0 |  |
+| Start | 1 |  |
+| End | 2 |  |
 
 
 

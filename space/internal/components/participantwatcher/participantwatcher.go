@@ -99,7 +99,7 @@ func (p *participantWatcher) Close(ctx context.Context) (err error) {
 func (p *participantWatcher) RegisterOwnerIdentity(ctx context.Context, space clientspace.Space) error {
 	p.mx.Lock()
 	defer p.mx.Unlock()
-	myIdentity, metadataKey, profileDetails := p.identityService.GetMyProfileDetails()
+	myIdentity, metadataKey, profileDetails := p.identityService.GetMyProfileDetails(ctx)
 	id := domain.NewParticipantId(space.Id(), myIdentity)
 	err := space.Do(id, func(sb smartblock.SmartBlock) error {
 		return sb.(participant).ModifyOwnerDetails(profileDetails, spaceinfo.ParticipantAclInfo{

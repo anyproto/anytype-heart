@@ -301,7 +301,7 @@ func (b *builtinObjects) importArchive(
 	isNewSpace bool,
 ) (err error) {
 	origin := objectorigin.Usecase()
-	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	res := b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  model.Import_Pb,
@@ -318,7 +318,7 @@ func (b *builtinObjects) importArchive(
 		IsNewSpace: isNewSpace,
 	}, origin, progress)
 
-	return err
+	return res.Err
 }
 
 func (b *builtinObjects) handleHomePage(path, spaceId string, removeFunc func(), isMigration bool) {

@@ -79,5 +79,6 @@
   "participantPermissions",
   "participantStatus",
   "latestAclHeadId",
-  "identity"
+  "identity",
+  "globalName"
 ]
