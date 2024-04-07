@@ -1157,6 +1157,12 @@ message ManifestInfo {
     string language = 12;
 }
 
+enum NameserviceNameType {
+    // .any suffix
+    AnyName = 0;
+}
+
+
 message Membership {    
     enum Status {
         StatusUnknown = 0;
@@ -1219,6 +1225,7 @@ message MembershipTierData {
     }
 
     // this is a unique Payment Node ID of the tier
+    // WARNING: tiers can be sorted differently, not according to their IDs!
     uint32 id = 1;
     // localazied name of the tier
     string name = 2;
@@ -1230,11 +1237,13 @@ message MembershipTierData {
     PeriodType periodType = 5;
     // i.e. "5 days" or "3 years"
     uint32 periodValue = 6;
+    // this one is a price we use ONLY on Stripe platform
+    uint32 priceStripeUsdCents = 7;
     // number of ANY NS names that this tier includes 
     // also in the "features" list (see below)
-    uint32 anyNamesCountIncluded = 7;
+    uint32 anyNamesCountIncluded = 8;
     // somename.any - is of len 8
-    uint32 anyNameMinLength = 8;
+    uint32 anyNameMinLength = 9;
     // localized strings for the features
     repeated string features = 10;
     // green, blue, red, purple, custom
@@ -1243,7 +1252,6 @@ message MembershipTierData {
     // Stripe platform-specific data:
     string stripeProductId = 12;
     string stripeManageUrl = 13;
-    uint32 stripePriceUsdCents = 14;
 
     // iOS platform-specific data:
     string iosProductId = 15;

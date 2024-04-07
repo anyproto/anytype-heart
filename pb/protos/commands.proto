@@ -6437,8 +6437,9 @@ message Rpc {
             message Request {
                 uint32 requestedTier = 1;
 
-                // full name including .any suffix
-                string requestedAnyName = 2;
+                string nsName = 2;
+
+                anytype.model.NameserviceNameType nsNameType = 3;
             }
 
             message Response {
@@ -6481,7 +6482,9 @@ message Rpc {
 
                 // if empty - then no name requested
                 // if non-empty - PP node will register that name on behalf of the user
-                string requestedAnyName = 3;
+                string nsName = 3;
+
+                anytype.model.NameserviceNameType nsNameType = 4;
             }
 
             message Response {
@@ -6553,7 +6556,9 @@ message Rpc {
             message Request {
                 // if empty - then no name requested
                 // if non-empty - PP node will register that name on behalf of the user
-                string requestedAnyName = 1;
+                string nsName = 1;
+
+                anytype.model.NameserviceNameType nsNameType = 2;
             }
 
             message Response {
@@ -6724,8 +6729,9 @@ message Rpc {
     message NameService {
         message ResolveName {
             message Request {
-                // including ".any" suffix
-                string fullName = 1;
+                string nsName = 1;
+
+                anytype.model.NameserviceNameType nsNameType = 2;
             }
 
             message Response {
