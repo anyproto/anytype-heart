@@ -183,7 +183,10 @@ func (i *inviteService) Generate(ctx context.Context, spaceId string, inviteKey 
 	}
 	err = sendInvite()
 	if err != nil {
-		_ = i.RemoveExisting(ctx, spaceId)
+		removeErr := i.RemoveExisting(ctx, spaceId)
+		if removeErr != nil {
+			log.Error("remove existing invite", zap.Error(removeErr))
+		}
 		return InviteInfo{}, fmt.Errorf("failed to send invite: %w", err)
 	}
 	return InviteInfo{
