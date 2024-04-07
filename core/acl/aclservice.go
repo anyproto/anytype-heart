@@ -90,6 +90,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
 	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
+	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	return nil
 }
