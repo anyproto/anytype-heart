@@ -115,3 +115,8 @@ const (
 	AccessTypePersonal = AccessType(model.SpaceAccessType_Personal)
 	AccessTypeShared   = AccessType(model.SpaceAccessType_Shared)
 )
+
+type SpaceDescription struct {
+	Name      string
+	IconImage string
+}

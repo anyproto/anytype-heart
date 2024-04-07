@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
+	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
@@ -40,7 +41,8 @@ func New(app *app.App, params Params) Loader {
 		Register(builder.New()).
 		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).
-		Register(aclobjectmanager.New(params.OwnerMetadata))
+		Register(aclobjectmanager.New(params.OwnerMetadata)).
+		Register(participantwatcher.New())
 	return &loader{
 		app: child,
 	}

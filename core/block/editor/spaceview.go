@@ -103,6 +103,21 @@ func (s *SpaceView) initTemplate(st *state.State) {
 	)
 }
 
+func (s *SpaceView) GetExistingInviteInfo() (fileCid string, fileKey string) {
+	details := s.CombinedDetails()
+	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
+	fileKey = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileKey.String())
+	return
+}
+
+func (s *SpaceView) RemoveExistingInviteInfo() (fileCid string, err error) {
+	details := s.Details()
+	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
+	newState := s.NewState()
+	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
+	return fileCid, s.Apply(newState)
+}
+
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return false, nil
 }
@@ -162,7 +177,7 @@ func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error
 }
 
 func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
-	s.spaceService.OnViewUpdated(s.getStatePersistentInfo(info.State))
+	s.spaceService.OnViewUpdated(s.getSpacePersistentInfo(info.State))
 	return nil
 }
 
@@ -196,7 +211,7 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	return changePayload.Key, nil
 }
 
-func (s *SpaceView) getStatePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
+func (s *SpaceView) getSpacePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
 	details := st.CombinedDetails()
 	spaceInfo := spaceinfo.NewSpacePersistentInfo(pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()))
 	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String()))).
@@ -211,6 +226,13 @@ var workspaceKeysToCopy = []string{
 	bundle.RelationKeySpaceDashboardId.String(),
 	bundle.RelationKeyCreator.String(),
 	bundle.RelationKeyCreatedDate.String(),
+}
+
+func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
+	details := s.CombinedDetails()
+	data.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
+	data.IconImage = pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
+	return
 }
 
 func (s *SpaceView) SetSpaceData(details *types.Struct) error {

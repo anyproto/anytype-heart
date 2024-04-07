@@ -40,6 +40,7 @@ type TechSpace interface {
 	Close(ctx context.Context) (err error)
 
 	TechSpaceId() string
+	DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error)
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
 	GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
@@ -56,11 +57,13 @@ type SpaceView interface {
 	GetLocalInfo() spaceinfo.SpaceLocalInfo
 	SetSpaceData(details *types.Struct) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
+	SetInviteFileInfo(fileCid string, fileKey string) (err error)
 	SetAccessType(acc spaceinfo.AccessType) error
 	SetAclIsEmpty(isEmpty bool) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
-	RemoveExistingInvite() (cid string, err error)
-	ExistingFileInfo() (cid, key string, err error)
+	RemoveExistingInviteInfo() (fileCid string, err error)
+	GetSpaceDescription() (data spaceinfo.SpaceDescription)
+	GetExistingInviteInfo() (fileCid string, fileKey string)
 }
 
 func New() TechSpace {
@@ -123,19 +126,19 @@ func (s *techSpace) TechSpaceId() string {
 }
 
 func (s *techSpace) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
-	return s.doSpaceView(ctx, info.SpaceId, func(spaceView SpaceView) error {
+	return s.DoSpaceView(ctx, info.SpaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceLocalInfo(info)
 	})
 }
 
 func (s *techSpace) SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) (err error) {
-	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
+	return s.DoSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetAccessType(acc)
 	})
 }
 
 func (s *techSpace) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error) {
-	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
+	return s.DoSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
 		return spaceView.SetSpacePersistentInfo(info)
 	})
 }
@@ -184,7 +187,7 @@ func (s *techSpace) GetSpaceView(ctx context.Context, spaceId string) (SpaceView
 }
 
 func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
-	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
+	return s.DoSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceData(details)
 	})
 }
@@ -227,7 +230,7 @@ func (s *techSpace) deriveSpaceViewID(ctx context.Context, spaceID string) (stri
 	return payload.RootRawChange.Id, nil
 }
 
-func (s *techSpace) doSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error) {
+func (s *techSpace) DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error) {
 	viewId, err := s.getViewIdLocked(ctx, spaceID)
 	if err != nil {
 		return

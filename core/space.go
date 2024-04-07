@@ -11,9 +11,11 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/encode"
 )
 
 func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
@@ -37,6 +39,26 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 			Description: getErrorDescription(err),
 		},
 	}
+}
+
+func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceMakeShareableRequest) *pb.RpcSpaceMakeShareableResponse {
+	aclService := getService[acl.AclService](mw)
+	err := aclService.MakeShareable(cctx, req.SpaceId)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceMakeShareableResponseError_SPACE_IS_DELETED),
+			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceMakeShareableResponseError_NO_SUCH_SPACE),
+			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceMakeShareableResponseError_BAD_INPUT),
+			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceMakeShareableResponseError_REQUEST_FAILED),
+		)
+		return &pb.RpcSpaceMakeShareableResponse{
+			Error: &pb.RpcSpaceMakeShareableResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcSpaceMakeShareableResponse{}
 }
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
@@ -64,7 +86,7 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 
 func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpaceInviteGetCurrentRequest) *pb.RpcSpaceInviteGetCurrentResponse {
 	aclService := getService[acl.AclService](mw)
-	inviteInfo, err := aclService.GetCurrentInvite(req.SpaceId)
+	inviteInfo, err := aclService.GetCurrentInvite(cctx, req.SpaceId)
 	if err != nil {
 		code := mapErrorCode(err,
 			errToCode(acl.ErrInviteNotExists, pb.RpcSpaceInviteGetCurrentResponseError_NO_ACTIVE_INVITE),
@@ -120,14 +142,14 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 	}
 }
 
-func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceInviteViewRequest) (*acl.InviteView, error) {
-	inviteFileKey, err := acl.DecodeKeyFromBase58(req.InviteFileKey)
+func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceInviteViewRequest) (inviteservice.InviteView, error) {
+	inviteFileKey, err := encode.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
-		return nil, fmt.Errorf("decode key: %w", err)
+		return inviteservice.InviteView{}, fmt.Errorf("decode key: %w", err)
 	}
 	inviteCid, err := cid.Decode(req.InviteCid)
 	if err != nil {
-		return nil, err
+		return inviteservice.InviteView{}, err
 	}
 	return aclService.ViewInvite(ctx, inviteCid, inviteFileKey)
 }
@@ -281,7 +303,7 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
-	inviteFileKey, err := acl.DecodeKeyFromBase58(req.InviteFileKey)
+	inviteFileKey, err := encode.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
 		return
 	}

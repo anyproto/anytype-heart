@@ -20,11 +20,9 @@ func (s *service) Join(ctx context.Context, id, aclHeadId string) error {
 		ctrl := s.spaceControllers[id]
 		s.mu.Unlock()
 		if ctrl.Mode() != mode.ModeJoining {
-			return ctrl.SetPersistentInfo(ctx, spaceinfo.SpacePersistentInfo{
-				SpaceID:       id,
-				AccountStatus: spaceinfo.AccountStatusJoining,
-				AclHeadId:     aclHeadId,
-			})
+			info := spaceinfo.NewSpacePersistentInfo(id)
+			info.SetAclHeadId(aclHeadId).SetAccountStatus(spaceinfo.AccountStatusJoining)
+			return ctrl.SetPersistentInfo(ctx, info)
 		}
 		return nil
 	}
@@ -52,8 +50,7 @@ func (s *service) Join(ctx context.Context, id, aclHeadId string) error {
 }
 
 func (s *service) CancelLeave(ctx context.Context, id string) error {
-	return s.techSpace.SetPersistentInfo(ctx, spaceinfo.SpacePersistentInfo{
-		SpaceID:       id,
-		AccountStatus: spaceinfo.AccountStatusActive,
-	})
+	info := spaceinfo.NewSpacePersistentInfo(id)
+	info.SetAccountStatus(spaceinfo.AccountStatusActive)
+	return s.techSpace.SetPersistentInfo(ctx, info)
 }

@@ -3,10 +3,13 @@ package editor
 import (
 	"time"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -45,6 +48,53 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
+func (p *participant) ModifyOwnerDetails(profileDetails *types.Struct, aclInfo spaceinfo.ParticipantAclInfo) (err error) {
+	details := buildParticipantDetails(aclInfo.Id, aclInfo.SpaceId, aclInfo.Identity, aclInfo.Permissions, aclInfo.Status)
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()))
+	details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyDescription.String()))
+	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
+	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
+	details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyGlobalName.String()))
+	return p.modifyDetails(details)
+}
+
+func (p *participant) ModifyIdentityDetails(profile *model.IdentityProfile) (err error) {
+	details := &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():        pbtypes.String(profile.Name),
+		bundle.RelationKeyDescription.String(): pbtypes.String(profile.Description),
+		bundle.RelationKeyIconImage.String():   pbtypes.String(profile.IconCid),
+		bundle.RelationKeyGlobalName.String():  pbtypes.String(profile.GlobalName),
+	}}
+	return p.modifyDetails(details)
+}
+
+func (p *participant) ModifyParticipantAclState(accState spaceinfo.ParticipantAclInfo) (err error) {
+	details := buildParticipantDetails(accState.Id, accState.SpaceId, accState.Identity, accState.Permissions, accState.Status)
+	return p.modifyDetails(details)
+}
+
 func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 	return false, nil
+}
+
+func (p *participant) modifyDetails(newDetails *types.Struct) (err error) {
+	return p.Apply(p.NewState().SetDetails(pbtypes.StructMerge(p.CombinedDetails(), newDetails, false)))
+}
+
+func buildParticipantDetails(
+	id string,
+	spaceId string,
+	identity string,
+	permissions model.ParticipantPermissions,
+	status model.ParticipantStatus,
+) *types.Struct {
+	return &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyId.String():                     pbtypes.String(id),
+		bundle.RelationKeyIdentity.String():               pbtypes.String(identity),
+		bundle.RelationKeySpaceId.String():                pbtypes.String(spaceId),
+		bundle.RelationKeyLastModifiedBy.String():         pbtypes.String(id),
+		bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(permissions)),
+		bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(status)),
+		bundle.RelationKeyIsHiddenDiscovery.String():      pbtypes.Bool(status != model.ParticipantStatus_Active),
+	}}
 }

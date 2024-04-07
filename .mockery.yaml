@@ -67,9 +67,10 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore:
     interfaces:
       SpaceCoreService:
-  github.com/anyproto/anytype-heart/space/internal/techspace:
+  github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
+      SpaceView:
   github.com/anyproto/anytype-heart/space/spacefactory:
     interfaces:
       SpaceFactory:
