@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
@@ -46,6 +47,7 @@ type Queue[T Item] struct {
 	factoryFunc  FactoryFunc[T]
 	handler      HandlerFunc[T]
 	options      options
+	handledItems uint32
 
 	lock sync.Mutex
 	// set is used to keep track of queued items. If item has been added to queue and removed without processing
@@ -90,14 +92,14 @@ func New[T Item](
 		opt(&q.options)
 	}
 	q.ctx, q.ctxCancel = context.WithCancel(context.Background())
-	return q
-}
-
-func (q *Queue[T]) Run() {
 	err := q.restore()
 	if err != nil {
 		q.logger.Error("can't restore queue", zap.String("prefix", string(q.badgerPrefix)), zap.Error(err))
 	}
+	return q
+}
+
+func (q *Queue[T]) Run() {
 	go q.loop()
 }
 
@@ -140,6 +142,7 @@ func (q *Queue[T]) handleNext() error {
 	}
 
 	action, err := q.handler(q.ctx, it)
+	atomic.AddUint32(&q.handledItems, 1)
 	switch action {
 	case ActionDone:
 		removeErr := q.Remove(it.Key())
@@ -276,6 +279,10 @@ func (q *Queue[T]) Remove(key string) error {
 	defer q.lock.Unlock()
 	delete(q.set, key)
 	return badgerhelper.DeleteValue(q.db, q.makeKey(key))
+}
+
+func (q *Queue[T]) HandledItems() int {
+	return int(atomic.LoadUint32(&q.handledItems))
 }
 
 func (q *Queue[T]) Len() int {

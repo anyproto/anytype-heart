@@ -55,7 +55,7 @@ func (p *File) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
 
-func (p *File) Init(ctx *smartblock.InitContext) (err error) {
+func (p *File) Init(ctx *smartblock.InitContext) error {
 	if ctx.Source.Type() != coresb.SmartBlockTypeFileObject {
 		return fmt.Errorf("source type should be a file")
 	}
@@ -63,5 +63,22 @@ func (p *File) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.BuildOpts.DisableRemoteLoad {
 		ctx.Ctx = context.WithValue(ctx.Ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
 	}
-	return p.SmartBlock.Init(ctx)
+
+	err := p.SmartBlock.Init(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !ctx.IsNewObject {
+		err = p.fileObjectService.EnsureFileAddedToSyncQueue(ctx.State.Details())
+		if err != nil {
+			log.Errorf("failed to ensure file added to sync queue: %v", err)
+		}
+	}
+	return nil
+}
+
+// TODO Fix it
+func (f *File) OnStateRebuild() error {
+	return f.fileObjectService.EnsureFileAddedToSyncQueue(f.NewState().Details())
 }

@@ -41,7 +41,8 @@ const spaceId = "space1"
 
 func newFixture(t *testing.T) *fixture {
 	fileStore := filestore.New()
-	dataStoreProvider := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 
 	blockStorage := filestorage.NewInMemory()
 
@@ -62,7 +63,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(blockStorage)
 	a.Register(objectStore)
 	a.Register(rpcStoreService)
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
 
 	s := New()

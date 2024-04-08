@@ -253,6 +253,52 @@ func (_c *MockService_DeleteFileData_Call) RunAndReturn(run func(string) error) 
 	return _c
 }
 
+// EnsureFileAddedToSyncQueue provides a mock function with given fields: details
+func (_m *MockService) EnsureFileAddedToSyncQueue(details *types.Struct) error {
+	ret := _m.Called(details)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EnsureFileAddedToSyncQueue")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.Struct) error); ok {
+		r0 = rf(details)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_EnsureFileAddedToSyncQueue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnsureFileAddedToSyncQueue'
+type MockService_EnsureFileAddedToSyncQueue_Call struct {
+	*mock.Call
+}
+
+// EnsureFileAddedToSyncQueue is a helper method to define mock.On call
+//   - details *types.Struct
+func (_e *MockService_Expecter) EnsureFileAddedToSyncQueue(details interface{}) *MockService_EnsureFileAddedToSyncQueue_Call {
+	return &MockService_EnsureFileAddedToSyncQueue_Call{Call: _e.mock.On("EnsureFileAddedToSyncQueue", details)}
+}
+
+func (_c *MockService_EnsureFileAddedToSyncQueue_Call) Run(run func(details *types.Struct)) *MockService_EnsureFileAddedToSyncQueue_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*types.Struct))
+	})
+	return _c
+}
+
+func (_c *MockService_EnsureFileAddedToSyncQueue_Call) Return(_a0 error) *MockService_EnsureFileAddedToSyncQueue_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_EnsureFileAddedToSyncQueue_Call) RunAndReturn(run func(*types.Struct) error) *MockService_EnsureFileAddedToSyncQueue_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FileOffload provides a mock function with given fields: ctx, objectId, includeNotPinned
 func (_m *MockService) FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (uint64, error) {
 	ret := _m.Called(ctx, objectId, includeNotPinned)

@@ -57,7 +57,8 @@ func newFixture(t *testing.T) *fixture {
 	fileStore := filestore.New()
 	objectStore := objectstore.NewStoreFixture(t)
 	objectCreator := &objectCreatorStub{}
-	dataStoreProvider := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 	blockStorage := filestorage.NewInMemory()
 	rpcStore := rpcstore.NewInMemoryStore(1024)
 	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
@@ -86,7 +87,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(svc)
 	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
 
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := a.Close(ctx)
@@ -160,23 +161,6 @@ func TestMigration(t *testing.T) {
 		fx.MigrateBlocks(st, space, nil)
 	})
 
-	t.Run("do not migrate already migrated file: fileId equals to objectId", func(t *testing.T) {
-		fx := newFixture(t)
-
-		objectId := "objectId"
-		st := testutil.BuildStateFromAST(
-			bb.Root(
-				bb.ID(objectId),
-				bb.Children(bb.File("", bb.FileHash(testFileId.String()))),
-			),
-		)
-
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(testFileId.String(), mock.Anything).Return(nil)
-
-		fx.MigrateBlocks(st, space, nil)
-	})
-
 	t.Run("do not create new object for already migrated file: objectId is found by fileId in current space", func(t *testing.T) {
 		fx := newFixture(t)
 
@@ -191,7 +175,6 @@ func TestMigration(t *testing.T) {
 		st.SetDetailAndBundledRelation(bundle.RelationKeyAttachments, pbtypes.StringList([]string{testFileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(testFileId.String(), mock.Anything).Return(ocache.ErrNotExists)
 		space.EXPECT().Id().Return(spaceId)
 
 		fx.objectStore.AddObjects(t, []objectstore.TestObject{

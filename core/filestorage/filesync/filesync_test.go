@@ -170,9 +170,12 @@ func newFixture(t *testing.T, limit int) *fixture {
 	localFileStorage := filestorage.NewInMemory()
 	fx.localFileStorage = localFileStorage
 
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
+
 	fx.a.Register(fx.fileService).
 		Register(localFileStorage).
-		Register(datastore.NewInMemory()).
+		Register(dataStoreProvider).
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.FileSync).
 		Register(fileStore).
