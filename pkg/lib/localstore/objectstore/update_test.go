@@ -326,7 +326,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		// when
 		err := s.ModifyObjectDetails("id", nil)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		got, err := s.GetDetails("id")
 		assert.NoError(t, err)
@@ -344,7 +344,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 			return details, nil
 		})
 
-		//then
+		// then
 		assert.NoError(t, err)
 		want := makeDetails(TestObject{
 			bundle.RelationKeyId:      pbtypes.String("id"),
@@ -366,7 +366,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 			return nil, nil
 		})
 
-		//then
+		// then
 		assert.NoError(t, err)
 		want := makeDetails(TestObject{
 			bundle.RelationKeyId: pbtypes.String("id"),
