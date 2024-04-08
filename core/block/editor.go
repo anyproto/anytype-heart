@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
@@ -616,23 +615,8 @@ func (s *Service) GetRelations(ctx session.Context, objectId string) (relations 
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
 func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
-	if modifier == nil {
-		return fmt.Errorf("modifier is nil")
-	}
-	return Do(s, objectId, func(b smartblock.SmartBlock) error {
-		dets, err := modifier(b.CombinedDetails())
-		if err != nil {
-			return err
-		}
-
-		rels, err := s.objectStore.FetchRelationByKeys(b.SpaceID(), maps.Keys(dets.Fields)...)
-		if err != nil {
-			return err
-		}
-
-		st := b.NewState().SetDetails(dets)
-		st.AddRelationLinks(rels.RelationLinks()...)
-		return b.Apply(st)
+	return Do(s, objectId, func(du basic.DetailsUpdatable) error {
+		return du.UpdateDetails(modifier)
 	})
 }
 

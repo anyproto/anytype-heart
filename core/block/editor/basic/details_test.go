@@ -1,84 +1,67 @@
-package block
+package basic
 
 import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type fixture struct {
-	blockService *Service
-	store        *mock_objectstore.MockObjectStore
-
-	sb  *smarttest.SmartTest
-	spc *mock_clientspace.MockSpace
+type duFixture struct {
+	sb    *smarttest.SmartTest
+	store *objectstore.StoreFixture
+	basic DetailsUpdatable
 }
 
 var (
-	objectId = "id"
-	spaceId  = "spaceId"
+	objectId = "objectId"
+	spaceId  = "space1"
 )
 
-func newFixture(t *testing.T) *fixture {
-	blockService := New()
-
+func newDUFixture(t *testing.T) *duFixture {
 	sb := smarttest.New(objectId)
 	sb.SetDetails(nil, nil, false)
 	sb.SetSpaceId(spaceId)
 
-	spc := mock_clientspace.NewMockSpace(t)
-	spc.EXPECT().GetObject(mock.Anything, objectId).Return(sb, nil).Times(1)
+	store := objectstore.NewStoreFixture(t)
 
-	spaceService := mock_space.NewMockService(t)
-	spaceService.EXPECT().Get(mock.Anything, spaceId).Return(spc, nil).Times(1)
+	b := NewBasic(sb, store, converter.NewLayoutConverter())
 
-	resolver := mock_idresolver.NewMockResolver(t)
-	resolver.EXPECT().ResolveSpaceID(objectId).Return(spaceId, nil).Times(1)
-
-	store := mock_objectstore.NewMockObjectStore(t)
-
-	blockService.spaceService = spaceService
-	blockService.resolver = resolver
-	blockService.objectStore = store
-
-	return &fixture{
-		blockService: blockService,
-		sb:           sb,
-		store:        store,
-		spc:          spc,
+	return &duFixture{
+		sb:    sb,
+		store: store,
+		basic: b,
 	}
 }
 
-func TestService_ModifyDetails(t *testing.T) {
-
+func TestBasic_UpdateDetails(t *testing.T) {
 	t.Run("add new details", func(t *testing.T) {
 		// given
-		f := newFixture(t)
-		f.store.EXPECT().FetchRelationByKeys(spaceId, bundle.RelationKeyAperture.String(), bundle.RelationKeyRelationMaxCount.String()).
-			Return(relationutils.Relations{
-				{&model.Relation{
-					Key:    bundle.RelationKeyAperture.String(),
-					Format: model.RelationFormat_longtext,
-				}}, {&model.Relation{
-					Key:    bundle.RelationKeyRelationMaxCount.String(),
-					Format: model.RelationFormat_number,
-				}}}, nil)
+		f := newDUFixture(t)
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeyId:             pbtypes.String("rel-aperture"),
+			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
+			bundle.RelationKeyRelationKey:    pbtypes.String("aperture"),
+			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-aperture"),
+			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_longtext)),
+		}, {
+			bundle.RelationKeyId:             pbtypes.String("rel-maxCount"),
+			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
+			bundle.RelationKeyRelationKey:    pbtypes.String("relationMaxCount"),
+			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-relationMaxCount"),
+			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_number)),
+		}})
 
 		// when
-		err := f.blockService.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
+		err := f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
 			current.Fields[bundle.RelationKeyAperture.String()] = pbtypes.String("aperture")
 			current.Fields[bundle.RelationKeyRelationMaxCount.String()] = pbtypes.Int64(5)
 			return current, nil
@@ -100,21 +83,22 @@ func TestService_ModifyDetails(t *testing.T) {
 
 	t.Run("modify details", func(t *testing.T) {
 		// given
-		f := newFixture(t)
+		f := newDUFixture(t)
 		err := f.sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
 			Key:   bundle.RelationKeySpaceDashboardId.String(),
 			Value: pbtypes.String("123"),
 		}}, false)
 		assert.NoError(t, err)
-		f.store.EXPECT().FetchRelationByKeys(spaceId, bundle.RelationKeySpaceDashboardId.String()).
-			Return(relationutils.Relations{
-				{&model.Relation{
-					Key:    bundle.RelationKeySpaceDashboardId.String(),
-					Format: model.RelationFormat_object,
-				}}}, nil)
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeyId:             pbtypes.String("rel-spaceDashboardId"),
+			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
+			bundle.RelationKeyRelationKey:    pbtypes.String("spaceDashboardId"),
+			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-spaceDashboardId"),
+			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+		}})
 
 		// when
-		err = f.blockService.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
+		err = f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
 			current.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String("new123")
 			return current, nil
 		})
@@ -130,16 +114,15 @@ func TestService_ModifyDetails(t *testing.T) {
 
 	t.Run("delete details", func(t *testing.T) {
 		// given
-		f := newFixture(t)
+		f := newDUFixture(t)
 		err := f.sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
 			Key:   bundle.RelationKeyTargetObjectType.String(),
-			Value: pbtypes.String("note"),
+			Value: pbtypes.String("ot-note"),
 		}}, false)
 		assert.NoError(t, err)
-		f.store.EXPECT().FetchRelationByKeys(spaceId).Return(nil, nil)
 
 		// when
-		err = f.blockService.ModifyDetails(objectId, func(current *types.Struct) (*types.Struct, error) {
+		err = f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
 			delete(current.Fields, bundle.RelationKeyTargetObjectType.String())
 			return current, nil
 		})
