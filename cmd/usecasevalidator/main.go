@@ -75,7 +75,7 @@ const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
 	errValidationFailed   = fmt.Errorf("validation failed")
-	errSkipObject         = fmt.Errorf("validation failed, but object can be skipped")
+	errSkipObject         = fmt.Errorf("object is invalid, skip it")
 )
 
 func main() {
