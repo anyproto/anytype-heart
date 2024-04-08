@@ -56,7 +56,6 @@ service ClientCommands {
     rpc SpaceInviteView(anytype.Rpc.Space.InviteView.Request) returns (anytype.Rpc.Space.InviteView.Response);
     rpc SpaceJoin (anytype.Rpc.Space.Join.Request) returns (anytype.Rpc.Space.Join.Response);
     rpc SpaceJoinCancel (anytype.Rpc.Space.JoinCancel.Request) returns (anytype.Rpc.Space.JoinCancel.Response);
-    rpc SpaceExit (anytype.Rpc.Space.Exit.Request) returns (anytype.Rpc.Space.Exit.Response);
     rpc SpaceStopSharing (anytype.Rpc.Space.StopSharing.Request) returns (anytype.Rpc.Space.StopSharing.Response);
     rpc SpaceRequestApprove (anytype.Rpc.Space.RequestApprove.Request) returns (anytype.Rpc.Space.RequestApprove.Response);
     rpc SpaceRequestDecline (anytype.Rpc.Space.RequestDecline.Request) returns (anytype.Rpc.Space.RequestDecline.Response);

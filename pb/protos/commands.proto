@@ -445,32 +445,6 @@ message Rpc {
             }
         }
 
-        message Exit {
-            message Request {
-                string spaceId = 1;
-            }
-
-            message Response {
-                Error error = 1;
-                int64 timestamp = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-
-                        NO_SUCH_SPACE = 101;
-                        SPACE_IS_DELETED = 102;
-                        REQUEST_FAILED = 103;
-                    }
-                }
-            }
-        }
-
         message Delete {
             message Request {
                 string spaceId = 1;

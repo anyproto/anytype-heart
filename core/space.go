@@ -202,22 +202,6 @@ func (mw *Middleware) SpaceJoinCancel(cctx context.Context, req *pb.RpcSpaceJoin
 	}
 }
 
-func (mw *Middleware) SpaceExit(cctx context.Context, req *pb.RpcSpaceExitRequest) *pb.RpcSpaceExitResponse {
-	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
-	err := aclService.Leave(cctx, req.SpaceId)
-	code := mapErrorCode(err,
-		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceExitResponseError_SPACE_IS_DELETED),
-		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceExitResponseError_NO_SUCH_SPACE),
-		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceExitResponseError_REQUEST_FAILED),
-	)
-	return &pb.RpcSpaceExitResponse{
-		Error: &pb.RpcSpaceExitResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
-		},
-	}
-}
-
 func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpaceRequestApproveRequest) *pb.RpcSpaceRequestApproveResponse {
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
 	err := accept(cctx, req.SpaceId, req.Identity, req.Permissions, aclService)
