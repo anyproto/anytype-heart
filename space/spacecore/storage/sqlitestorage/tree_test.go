@@ -72,6 +72,29 @@ func TestTreeStorage_Methods(t *testing.T) {
 	})
 }
 
+func TestTreeStorage_AddRawChangesSetHeads(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	spacePayload := spaceTestPayload()
+	ss, err := createSpaceStorage(fx.storageService, spacePayload)
+	require.NoError(t, err)
+	payload := treeTestPayload()
+	store, err := ss.CreateTreeStorage(payload)
+	require.NoError(t, err)
+
+	newChanges := []*treechangeproto.RawTreeChangeWithId{{RawChange: []byte("ab"), Id: "newId"}}
+	newHeads := []string{"a", "b"}
+	require.NoError(t, store.AddRawChangesSetHeads(newChanges, newHeads))
+	heads, err := store.Heads()
+	require.NoError(t, err)
+	require.Equal(t, newHeads, heads)
+
+	hasChange, err := store.HasChange(ctx, newChanges[0].Id)
+	require.NoError(t, err)
+	require.True(t, hasChange)
+}
+
 func TestTreeStorage_Delete(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.finish(t)

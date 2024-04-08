@@ -34,6 +34,8 @@ type spaceStorage struct {
 
 	isDeleted bool
 
+	aclStorage liststorage.ListStorage
+
 	header *spacesyncproto.RawSpaceHeaderWithId
 }
 
@@ -51,11 +53,15 @@ func newSpaceStorage(s *storageService, spaceId string) (spacestorage.SpaceStora
 		&ss.aclId,
 		&ss.hash,
 		&ss.oldHash,
+		&ss.isDeleted,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, spacestorage.ErrSpaceStorageMissing
 		}
+	}
+	if ss.aclStorage, err = newListStorage(ss, ss.aclId); err != nil {
+		return nil, err
 	}
 	return ss, nil
 }
@@ -128,13 +134,20 @@ func createSpaceStorage(s *storageService, payload spacestorage.SpaceStorageCrea
 		return nil, err
 	}
 
-	return &spaceStorage{
+	ss := &spaceStorage{
 		spaceId:         payload.SpaceHeaderWithId.Id,
 		service:         s,
 		spaceSettingsId: payload.SpaceSettingsWithId.Id,
 		header:          payload.SpaceHeaderWithId,
 		aclId:           payload.AclWithId.Id,
-	}, nil
+	}
+
+	if ss.aclStorage, err = newListStorage(ss, ss.aclId); err != nil {
+		_ = tx.Rollback()
+		return nil, err
+	}
+
+	return ss, nil
 }
 
 func (s *spaceStorage) Init(a *app.App) (err error) {
@@ -164,7 +177,7 @@ func (s *spaceStorage) SetSpaceDeleted() error {
 }
 
 func (s *spaceStorage) IsSpaceDeleted() (bool, error) {
-	s.mu.RUnlock()
+	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.isDeleted, nil
 }
@@ -190,7 +203,7 @@ func (s *spaceStorage) SpaceSettingsId() string {
 }
 
 func (s *spaceStorage) AclStorage() (liststorage.ListStorage, error) {
-	return newListStorage(s, s.aclId)
+	return s.aclStorage, nil
 }
 
 func (s *spaceStorage) SpaceHeader() (*spacesyncproto.RawSpaceHeaderWithId, error) {

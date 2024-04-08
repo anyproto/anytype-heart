@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
@@ -49,6 +50,90 @@ func TestStorageService_DeleteSpaceStorage(t *testing.T) {
 	expect0("SELECT COUNT(*) FROM changes WHERE spaceId = ?")
 	expect0("SELECT COUNT(*) FROM binds WHERE spaceId = ?")
 
+}
+
+func TestStorageService_MarkSpaceCreated(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	ss, err := fx.CreateSpaceStorage(payload)
+	require.NoError(t, err)
+	require.NoError(t, ss.Close(ctx))
+
+	assert.False(t, fx.IsSpaceCreated(payload.SpaceHeaderWithId.Id))
+	require.NoError(t, fx.MarkSpaceCreated(payload.SpaceHeaderWithId.Id))
+	assert.True(t, fx.IsSpaceCreated(payload.SpaceHeaderWithId.Id))
+	require.NoError(t, fx.UnmarkSpaceCreated(payload.SpaceHeaderWithId.Id))
+	assert.False(t, fx.IsSpaceCreated(payload.SpaceHeaderWithId.Id))
+}
+
+func TestStorageService_SpaceExists(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+
+	assert.False(t, fx.SpaceExists(payload.SpaceHeaderWithId.Id))
+
+	ss, err := fx.CreateSpaceStorage(payload)
+	require.NoError(t, err)
+	require.NoError(t, ss.Close(ctx))
+
+	assert.True(t, fx.SpaceExists(payload.SpaceHeaderWithId.Id))
+}
+
+func TestStorageService_AllSpaceIds(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	ss, err := fx.CreateSpaceStorage(payload)
+	require.NoError(t, err)
+	require.NoError(t, ss.Close(ctx))
+
+	spaceIds, err := fx.AllSpaceIds()
+	require.NoError(t, err)
+	assert.Equal(t, []string{payload.SpaceHeaderWithId.Id}, spaceIds)
+}
+
+func TestStorageService_WaitSpaceStorage(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	ss, err := fx.CreateSpaceStorage(payload)
+	require.NoError(t, err)
+	require.NoError(t, ss.Close(ctx))
+
+	ss, err = fx.WaitSpaceStorage(ctx, payload.SpaceHeaderWithId.Id)
+	require.NoError(t, err)
+
+	var gotStorage = make(chan struct{})
+	go func() {
+		defer close(gotStorage)
+		ss2, err := fx.WaitSpaceStorage(ctx, payload.SpaceHeaderWithId.Id)
+		require.NoError(t, err)
+		defer func() {
+			_ = ss2.Close(ctx)
+		}()
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	select {
+	case <-gotStorage:
+		require.Fail(t, "second storage is opened")
+	default:
+	}
+
+	require.NoError(t, ss.Close(ctx))
+
+	select {
+	case <-gotStorage:
+	case <-time.After(time.Second):
+		require.Fail(t, "second storage is not opened")
+	}
 }
 
 type fixture struct {

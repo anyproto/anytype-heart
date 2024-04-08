@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS spaces  (
   header text not null,
   settingsId text not null,
   aclId text not null,
-  hash text,
-  oldHash text,
+  hash text not null default '',
+  oldHash text not null default '',
   isCreated boolean not null default false,
   isDeleted boolean not null default false                        
 );
@@ -88,7 +88,7 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.loadTreeHeads, err = s.readDb.Prepare(`SELECT heads FROM trees WHERE id = ?`); err != nil {
 		return
 	}
-	if s.stmt.loadSpace, err = s.readDb.Prepare(`SELECT header, settingsId, aclId, hash, oldHash FROM spaces WHERE id = ?`); err != nil {
+	if s.stmt.loadSpace, err = s.readDb.Prepare(`SELECT header, settingsId, aclId, hash, oldHash, isDeleted FROM spaces WHERE id = ?`); err != nil {
 		return
 	}
 	if s.stmt.spaceIds, err = s.readDb.Prepare(`SELECT id FROM spaces`); err != nil {

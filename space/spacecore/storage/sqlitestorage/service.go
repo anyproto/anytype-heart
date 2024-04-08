@@ -110,10 +110,6 @@ func (s *storageService) Name() (name string) {
 	return spacestorage.CName
 }
 
-func (s *storageService) SpaceStorage(id string) (spacestorage.SpaceStorage, error) {
-	return newSpaceStorage(s, id)
-}
-
 func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store spacestorage.SpaceStorage, err error) {
 	var ls *lockSpace
 	ls, err = s.checkLock(id, func() error {
@@ -232,8 +228,12 @@ func (s *storageService) unlockSpaceStorage(id string) {
 	}
 }
 
-func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
-	return createSpaceStorage(s, payload)
+func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (ss spacestorage.SpaceStorage, err error) {
+	_, err = s.checkLock(payload.SpaceHeaderWithId.Id, func() error {
+		ss, err = createSpaceStorage(s, payload)
+		return err
+	})
+	return
 }
 
 func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error) {

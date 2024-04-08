@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,14 +42,23 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 	testSpace(t, store, payload)
 
 	t.Run("create tree, get tree and mark deleted", func(t *testing.T) {
-		payload := treeTestPayload()
-		treeStore, err := store.CreateTreeStorage(payload)
-		require.NoError(t, err)
-		testTreePayload(t, treeStore, payload)
+		treePayload := treeTestPayload()
 
-		otherStore, err := store.TreeStorage(payload.RootRawChange.Id)
+		ex, err := store.HasTree(treePayload.RootRawChange.Id)
 		require.NoError(t, err)
-		testTreePayload(t, otherStore, payload)
+		assert.False(t, ex)
+
+		treeStore, err := store.CreateTreeStorage(treePayload)
+		require.NoError(t, err)
+		testTreePayload(t, treeStore, treePayload)
+
+		ex, err = store.HasTree(treePayload.RootRawChange.Id)
+		require.NoError(t, err)
+		assert.True(t, ex)
+
+		otherStore, err := store.TreeStorage(treePayload.RootRawChange.Id)
+		require.NoError(t, err)
+		testTreePayload(t, otherStore, treePayload)
 
 		initialStatus := "deleted"
 		err = store.SetTreeDeletedStatus(otherStore.Id(), initialStatus)
@@ -57,7 +67,93 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 		status, err := store.TreeDeletedStatus(otherStore.Id())
 		require.NoError(t, err)
 		require.Equal(t, initialStatus, status)
+
+		treeIds, err := store.StoredIds()
+		require.NoError(t, err)
+		assert.Equal(t, []string{payload.SpaceSettingsWithId.Id, otherStore.Id()}, treeIds)
 	})
+}
+
+func TestSpaceStorage_IsSpaceDeleted(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	ss, err := fx.CreateSpaceStorage(payload)
+	require.NoError(t, err)
+
+	isDeleted, err := ss.IsSpaceDeleted()
+	require.NoError(t, err)
+	assert.False(t, isDeleted)
+
+	require.NoError(t, ss.SetSpaceDeleted())
+
+	isDeleted, err = ss.IsSpaceDeleted()
+	require.NoError(t, err)
+	assert.True(t, isDeleted)
+
+	require.NoError(t, ss.Close(ctx))
+
+	ss, err = fx.WaitSpaceStorage(ctx, payload.SpaceHeaderWithId.Id)
+	require.NoError(t, err)
+	defer func() { _ = ss.Close(ctx) }()
+	isDeleted, err = ss.IsSpaceDeleted()
+	require.NoError(t, err)
+	assert.True(t, isDeleted)
+}
+
+func TestSpaceStorage_SpaceSettingsId(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	ss, err := fx.CreateSpaceStorage(payload)
+	require.NoError(t, err)
+
+	assert.Equal(t, payload.SpaceSettingsWithId.Id, ss.SpaceSettingsId())
+	require.NoError(t, ss.Close(ctx))
+
+	ss, err = fx.WaitSpaceStorage(ctx, payload.SpaceHeaderWithId.Id)
+	require.NoError(t, err)
+	defer func() { _ = ss.Close(ctx) }()
+	assert.Equal(t, payload.SpaceSettingsWithId.Id, ss.SpaceSettingsId())
+}
+
+func TestSpaceStorage_ReadSpaceHash(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	ss, err := fx.CreateSpaceStorage(payload)
+	require.NoError(t, err)
+
+	hash, err := ss.ReadSpaceHash()
+	require.NoError(t, err)
+	assert.Empty(t, hash)
+	oldHash, err := ss.ReadOldSpaceHash()
+	require.NoError(t, err)
+	assert.Empty(t, oldHash)
+
+	require.NoError(t, ss.WriteSpaceHash("hash"))
+	require.NoError(t, ss.WriteOldSpaceHash("oldHash"))
+
+	var checkHashes = func(ss spacestorage.SpaceStorage) {
+		hash, err = ss.ReadSpaceHash()
+		require.NoError(t, err)
+		assert.Equal(t, "hash", hash)
+		oldHash, err = ss.ReadOldSpaceHash()
+		require.NoError(t, err)
+		assert.Equal(t, "oldHash", oldHash)
+	}
+
+	checkHashes(ss)
+
+	require.NoError(t, ss.Close(ctx))
+
+	ss, err = fx.WaitSpaceStorage(ctx, payload.SpaceHeaderWithId.Id)
+	require.NoError(t, err)
+	defer func() { _ = ss.Close(ctx) }()
+	checkHashes(ss)
 }
 
 func spaceTestPayload() spacestorage.SpaceStorageCreatePayload {
