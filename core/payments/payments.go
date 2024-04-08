@@ -16,6 +16,7 @@ import (
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -43,6 +44,31 @@ var (
 
 type globalNamesUpdater interface {
 	UpdateGlobalNames(myIdentityGlobalName string)
+}
+
+var paymentMethodMap = map[proto.PaymentMethod]model.MembershipPaymentMethod{
+	proto.PaymentMethod_MethodCard:        model.Membership_MethodCard,
+	proto.PaymentMethod_MethodCrypto:      model.Membership_MethodCrypto,
+	proto.PaymentMethod_MethodAppleInapp:  model.Membership_MethodInappApple,
+	proto.PaymentMethod_MethodGoogleInapp: model.Membership_MethodInappGoogle,
+}
+
+func PaymentMethodToModel(method proto.PaymentMethod) model.MembershipPaymentMethod {
+	if val, ok := paymentMethodMap[method]; ok {
+		return val
+	}
+	return model.Membership_MethodNone
+}
+
+func PaymentMethodToProto(method model.MembershipPaymentMethod) proto.PaymentMethod {
+	for k, v := range paymentMethodMap {
+		if v == method {
+			return k
+		}
+	}
+
+	// default
+	return proto.PaymentMethod_MethodCard
 }
 
 /*
@@ -217,7 +243,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	out.Data.DateStarted = status.DateStarted
 	out.Data.DateEnds = status.DateEnds
 	out.Data.IsAutoRenew = status.IsAutoRenew
-	out.Data.PaymentMethod = model.MembershipPaymentMethod(status.PaymentMethod)
+	out.Data.PaymentMethod = PaymentMethodToModel(status.PaymentMethod)
 	out.Data.RequestedAnyName = status.RequestedAnyName
 	out.Data.UserEmail = status.UserEmail
 	out.Data.SubscribeToNewsletter = status.SubscribeToNewsletter
@@ -336,7 +362,7 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 		return nil, ErrNoTierFound
 	}
 
-	code = s.validateAnyName(*tier, req.RequestedAnyName)
+	code = s.validateAnyName(*tier, nameservice.NsNameToFullName(req.NsName, req.NsNameType))
 
 	if code == proto.IsNameValidResponse_Valid {
 		// valid
@@ -413,9 +439,9 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPay
 		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
 
 		RequestedTier: req.RequestedTier,
-		PaymentMethod: proto.PaymentMethod(req.PaymentMethod),
+		PaymentMethod: PaymentMethodToProto(req.PaymentMethod),
 
-		RequestedAnyName: req.RequestedAnyName,
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
 	}
 
 	payload, err := bsr.Marshal()
@@ -441,8 +467,10 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPay
 		return nil, err
 	}
 
-	var out pb.RpcMembershipGetPaymentUrlResponse
-	out.PaymentUrl = bsRet.PaymentUrl
+	out := pb.RpcMembershipGetPaymentUrlResponse{
+		PaymentUrl: bsRet.PaymentUrl,
+		BillingId:  bsRet.BillingID,
+	}
 
 	// 2 - disable cache for 30 minutes
 	log.Debug("disabling cache for 30 minutes after payment URL was received")
@@ -588,7 +616,7 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId:       s.wallet.Account().SignKey.GetPublic().Account(),
 		OwnerEthAddress:  s.wallet.GetAccountEthAddress().Hex(),
-		RequestedAnyName: req.RequestedAnyName,
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
 	}
 
 	payload, err := bsr.Marshal()
@@ -642,7 +670,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 		return nil, err
 	}
 	// if your are on 0-tier OR on Explorer -> return full list
-	if status.Data.Tier <= uint32(model.Membership_TierExplorer) {
+	if status.Data.Tier <= uint32(proto.SubscriptionTier_TierExplorer) {
 		return out, nil
 	}
 
@@ -651,7 +679,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 		Tiers: make([]*model.MembershipTierData, 0),
 	}
 	for _, tier := range out.Tiers {
-		if tier.Id != uint32(model.Membership_TierExplorer) {
+		if tier.Id != uint32(proto.SubscriptionTier_TierExplorer) {
 			filtered.Tiers = append(filtered.Tiers, tier)
 		}
 	}
@@ -715,9 +743,9 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 			Id:          tier.Id,
 			Name:        tier.Name,
 			Description: tier.Description,
-			//IsActive:              tier.IsActive,
+			// IsActive:              tier.IsActive,
 			IsTest: tier.IsTest,
-			//IsHiddenTier:          tier.IsHiddenTier,
+			// IsHiddenTier:          tier.IsHiddenTier,
 			PeriodType:          model.MembershipTierDataPeriodType(tier.PeriodType),
 			PeriodValue:         tier.PeriodValue,
 			PriceStripeUsdCents: tier.PriceStripeUsdCents,

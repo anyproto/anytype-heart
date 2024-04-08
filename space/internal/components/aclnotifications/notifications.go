@@ -168,7 +168,7 @@ func (n *aclNotificationSender) handleSpaceMemberNotifications(ctx context.Conte
 	notificationId string,
 ) error {
 	if reqApprove := content.GetRequestAccept(); reqApprove != nil {
-		if err := n.sendParticipantRequestApprove(reqApprove, aclNotificationRecord, notificationId); err != nil {
+		if err := n.sendParticipantRequestApprove(ctx, reqApprove, aclNotificationRecord, notificationId); err != nil {
 			return err
 
 		}
@@ -184,7 +184,7 @@ func (n *aclNotificationSender) handleSpaceMemberNotifications(ctx context.Conte
 		}
 	}
 	if reqPermissionChanges := content.GetPermissionChanges(); reqPermissionChanges != nil {
-		if err := n.sendParticipantPermissionChanges(reqPermissionChanges, aclNotificationRecord, notificationId); err != nil {
+		if err := n.sendParticipantPermissionChanges(ctx, reqPermissionChanges, aclNotificationRecord, notificationId); err != nil {
 			return err
 		}
 	}
@@ -250,11 +250,11 @@ func (n *aclNotificationSender) sendJoinRequest(ctx context.Context,
 	return nil
 }
 
-func (n *aclNotificationSender) sendParticipantRequestApprove(reqApprove *aclrecordproto.AclAccountRequestAccept,
+func (n *aclNotificationSender) sendParticipantRequestApprove(ctx context.Context, reqApprove *aclrecordproto.AclAccountRequestAccept,
 	notificationRecord *aclNotificationRecord,
 	notificationId string,
 ) error {
-	identity, _, _ := n.identityService.GetMyProfileDetails()
+	identity, _, _ := n.identityService.GetMyProfileDetails(ctx)
 	pubKey, err := crypto.UnmarshalEd25519PublicKeyProto(reqApprove.Identity)
 	if err != nil {
 		return err
@@ -316,7 +316,7 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 	notificationId string,
 	identities [][]byte,
 ) error {
-	myProfile, _, _ := n.identityService.GetMyProfileDetails()
+	myProfile, _, _ := n.identityService.GetMyProfileDetails(ctx)
 	found, err := n.isAccountRemoved(identities, myProfile)
 	if err != nil {
 		return err
@@ -367,7 +367,9 @@ func (n *aclNotificationSender) sendParticipantRequestDecline(aclNotificationRec
 	})
 }
 
-func (n *aclNotificationSender) sendParticipantPermissionChanges(reqPermissionChanges *aclrecordproto.AclAccountPermissionChanges,
+func (n *aclNotificationSender) sendParticipantPermissionChanges(
+	ctx context.Context,
+	reqPermissionChanges *aclrecordproto.AclAccountPermissionChanges,
 	aclNotificationRecord *aclNotificationRecord,
 	notificationId string,
 ) error {
@@ -376,7 +378,7 @@ func (n *aclNotificationSender) sendParticipantPermissionChanges(reqPermissionCh
 		err          error
 		permissions  aclrecordproto.AclUserPermissions
 	)
-	myProfile, _, _ := n.identityService.GetMyProfileDetails()
+	myProfile, _, _ := n.identityService.GetMyProfileDetails(ctx)
 	for _, change := range reqPermissionChanges.GetChanges() {
 		accountFound, err = n.findAccount(change.Identity, myProfile)
 		if err != nil {
