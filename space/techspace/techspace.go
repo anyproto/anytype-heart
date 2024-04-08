@@ -45,7 +45,6 @@ type TechSpace interface {
 	GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
-	SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) (err error)
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
 	SpaceViewId(id string) (string, error)
@@ -82,7 +81,7 @@ type techSpace struct {
 
 	ctx        context.Context
 	ctxCancel  context.CancelFunc
-	idsWakedUp chan struct{}
+	idsWokenUp chan struct{}
 	viewIds    map[string]string
 }
 
@@ -97,9 +96,9 @@ func (s *techSpace) Name() (name string) {
 func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
-	s.idsWakedUp = make(chan struct{})
+	s.idsWokenUp = make(chan struct{})
 	go func() {
-		defer close(s.idsWakedUp)
+		defer close(s.idsWokenUp)
 		s.wakeUpViews()
 	}()
 	return
@@ -128,12 +127,6 @@ func (s *techSpace) TechSpaceId() string {
 func (s *techSpace) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
 	return s.DoSpaceView(ctx, info.SpaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceLocalInfo(info)
-	})
-}
-
-func (s *techSpace) SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) (err error) {
-	return s.DoSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
-		return spaceView.SetAccessType(acc)
 	})
 }
 
@@ -264,8 +257,8 @@ func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId
 
 func (s *techSpace) Close(ctx context.Context) (err error) {
 	s.ctxCancel()
-	if s.idsWakedUp != nil {
-		<-s.idsWakedUp
+	if s.idsWokenUp != nil {
+		<-s.idsWokenUp
 	}
 	return nil
 }
