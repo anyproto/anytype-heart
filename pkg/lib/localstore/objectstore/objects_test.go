@@ -87,8 +87,7 @@ func TestList(t *testing.T) {
 	s := NewStoreFixture(t)
 
 	obj1 := makeObjectWithName("id1", "name1")
-	err := s.UpdateObjectSnippet("id1", "snippet1")
-	require.NoError(t, err)
+	obj1[bundle.RelationKeySnippet] = pbtypes.String("snippet1")
 
 	obj2 := makeObjectWithName("id2", "name2")
 
@@ -247,10 +246,7 @@ func TestDeleteObject(t *testing.T) {
 		obj := makeObjectWithName("id1", "name1")
 		s.AddObjects(t, []TestObject{obj})
 
-		err := s.UpdateObjectSnippet("id1", "snippet1")
-		require.NoError(t, err)
-
-		err = s.UpdateObjectLinks("id2", []string{"id1"})
+		err := s.UpdateObjectLinks("id2", []string{"id1"})
 		require.NoError(t, err)
 
 		err = s.SaveLastIndexedHeadsHash("id1", "hash1")

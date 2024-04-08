@@ -1113,21 +1113,28 @@ func (s *State) ObjectTypeKey() domain.TypeKey {
 	return ""
 }
 
-func (s *State) Snippet() (snippet string) {
+func (s *State) Snippet() string {
+	var builder strings.Builder
+	var snippetSize int
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title && text.Style != model.BlockContentText_Description {
+		if text := b.Model().GetText(); text != nil &&
+			text.Style != model.BlockContentText_Title &&
+			text.Style != model.BlockContentText_Description {
 			nextText := strings.TrimSpace(text.Text)
-			if snippet != "" && nextText != "" {
-				snippet += "\n"
-			}
-			snippet += nextText
-			if textutil.UTF16RuneCountString(snippet) >= snippetMinSize {
-				return false
+			if nextText != "" {
+				if snippetSize > 0 {
+					builder.WriteString("\n")
+				}
+				builder.WriteString(nextText)
+				snippetSize += textutil.UTF16RuneCountString(nextText)
+				if snippetSize >= snippetMaxSize {
+					return false
+				}
 			}
 		}
 		return true
 	})
-	return textutil.Truncate(snippet, snippetMaxSize)
+	return textutil.Truncate(builder.String(), snippetMaxSize)
 }
 
 func (s *State) FileRelationKeys() []string {
