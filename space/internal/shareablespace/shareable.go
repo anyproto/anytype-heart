@@ -175,7 +175,8 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 
 func (s *spaceController) Close(ctx context.Context) error {
 	s.sm.Close()
-	return nil
+	// this closes status
+	return s.app.Close(ctx)
 }
 
 func (s *spaceController) GetStatus() spaceinfo.AccountStatus {

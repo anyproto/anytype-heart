@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/anyproto/any-sync/app"
+	"go.uber.org/multierr"
 
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -112,7 +113,9 @@ func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.Space
 }
 
 func (s *spaceController) Close(ctx context.Context) error {
-	return s.loader.Close(ctx)
+	loaderErr := s.loader.Close(ctx)
+	appErr := s.app.Close(ctx)
+	return multierr.Combine(loaderErr, appErr)
 }
 
 func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
