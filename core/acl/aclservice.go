@@ -262,17 +262,21 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return err
 	}
-	var localInfo spaceinfo.SpaceLocalInfo
-	err = a.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+	var (
+		commonSpace = removeSpace.CommonSpace()
+		acl         = commonSpace.Acl()
+		techSpace   = a.spaceService.TechSpace()
+		localInfo   spaceinfo.SpaceLocalInfo
+	)
+	err = techSpace.DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
 		localInfo = spaceView.GetLocalInfo()
 		return nil
 	})
-	acl := removeSpace.CommonSpace().Acl()
 	newPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return err
 	}
-	cl := removeSpace.CommonSpace().AclClient()
+	cl := commonSpace.AclClient()
 	err = cl.StopSharing(ctx, list.ReadKeyChangePayload{
 		MetadataKey: newPrivKey,
 		ReadKey:     crypto.NewAES(),
@@ -303,7 +307,7 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 	}
 	info := spaceinfo.NewSpaceLocalInfo(spaceId)
 	info.SetShareableStatus(spaceinfo.ShareableStatusNotShareable)
-	return a.spaceService.TechSpace().SetLocalInfo(ctx, info)
+	return techSpace.SetLocalInfo(ctx, info)
 }
 
 func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {

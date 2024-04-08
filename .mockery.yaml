@@ -99,6 +99,9 @@ packages:
   github.com/anyproto/anytype-heart/core/files/fileacl:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/inviteservice:
+    interfaces:
+      InviteService:
   github.com/anyproto/anytype-heart/core/payments/cache:
     interfaces:
       CacheService:
