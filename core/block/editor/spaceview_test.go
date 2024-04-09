@@ -71,6 +71,47 @@ func TestSpaceView_AccessType(t *testing.T) {
 	})
 }
 
+func TestSpaceView_Info(t *testing.T) {
+	t.Run("local", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish()
+		firstLocalInfo := fx.GetLocalInfo()
+		require.Equal(t, spaceinfo.LocalStatusUnknown, firstLocalInfo.GetLocalStatus())
+		require.Equal(t, spaceinfo.RemoteStatusUnknown, firstLocalInfo.GetRemoteStatus())
+		info := spaceinfo.NewSpaceLocalInfo("spaceId")
+		info.SetLocalStatus(spaceinfo.LocalStatusOk).
+			SetRemoteStatus(spaceinfo.RemoteStatusOk).
+			SetReadLimit(10).
+			SetWriteLimit(10).
+			SetShareableStatus(spaceinfo.ShareableStatusShareable)
+		err := fx.SetSpaceLocalInfo(info)
+		require.NoError(t, err)
+		curInfo := fx.GetLocalInfo()
+		require.Equal(t, spaceinfo.LocalStatusOk, curInfo.GetLocalStatus())
+		require.Equal(t, spaceinfo.RemoteStatusOk, curInfo.GetRemoteStatus())
+		require.Equal(t, uint32(10), curInfo.GetReadLimit())
+		require.Equal(t, uint32(10), curInfo.GetWriteLimit())
+		require.Equal(t, spaceinfo.ShareableStatusShareable, curInfo.GetShareableStatus())
+	})
+	t.Run("persistent", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish()
+		info := spaceinfo.NewSpacePersistentInfo("spaceId")
+		info.SetAccountStatus(spaceinfo.AccountStatusActive)
+		err := fx.SetSpacePersistentInfo(info)
+		require.NoError(t, err)
+		curInfo := fx.GetPersistentInfo()
+		require.Equal(t, spaceinfo.AccountStatusActive, curInfo.GetAccountStatus())
+		info = spaceinfo.NewSpacePersistentInfo("spaceId")
+		info.SetAclHeadId("aclHeadId")
+		err = fx.SetSpacePersistentInfo(info)
+		require.NoError(t, err)
+		curInfo = fx.GetPersistentInfo()
+		require.Equal(t, "aclHeadId", curInfo.GetAclHeadId())
+		require.Equal(t, spaceinfo.AccountStatusActive, curInfo.GetAccountStatus())
+	})
+}
+
 type spaceServiceStub struct {
 }
 

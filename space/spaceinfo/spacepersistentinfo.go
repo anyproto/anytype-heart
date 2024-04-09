@@ -26,12 +26,11 @@ func NewSpacePersistentInfoFromState(st state.Doc) SpacePersistentInfo {
 }
 
 func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInfo {
-	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(s.SpaceID))
 	if s.AccountStatus != nil {
-		st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(*s.AccountStatus)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccountStatus, pbtypes.Int64(int64(*s.AccountStatus)))
 	}
 	if s.AclHeadId != "" {
-		st.SetDetail(bundle.RelationKeyLatestAclHeadId.String(), pbtypes.String(s.AclHeadId))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, pbtypes.String(s.AclHeadId))
 	}
 	return s
 }

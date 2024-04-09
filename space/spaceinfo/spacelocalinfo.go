@@ -52,6 +52,20 @@ func (s *SpaceLocalInfo) GetShareableStatus() ShareableStatus {
 	return *s.shareableStatus
 }
 
+func (s *SpaceLocalInfo) GetWriteLimit() uint32 {
+	if s.writeLimit == nil {
+		return 0
+	}
+	return *s.writeLimit
+}
+
+func (s *SpaceLocalInfo) GetReadLimit() uint32 {
+	if s.readLimit == nil {
+		return 0
+	}
+	return *s.readLimit
+}
+
 func (s *SpaceLocalInfo) SetLocalStatus(status LocalStatus) *SpaceLocalInfo {
 	s.localStatus = &status
 	return s
@@ -78,21 +92,20 @@ func (s *SpaceLocalInfo) SetReadLimit(limit uint32) *SpaceLocalInfo {
 }
 
 func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
-	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(s.SpaceId))
 	if s.localStatus != nil {
-		st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(*s.localStatus)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceLocalStatus, pbtypes.Int64(int64(*s.localStatus)))
 	}
 	if s.remoteStatus != nil {
-		st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(*s.remoteStatus)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceRemoteStatus, pbtypes.Int64(int64(*s.remoteStatus)))
 	}
 	if s.shareableStatus != nil {
-		st.SetLocalDetail(bundle.RelationKeySpaceShareableStatus.String(), pbtypes.Int64(int64(*s.shareableStatus)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceShareableStatus, pbtypes.Int64(int64(*s.shareableStatus)))
 	}
 	if s.writeLimit != nil {
-		st.SetLocalDetail(bundle.RelationKeyWritersLimit.String(), pbtypes.Int64(int64(*s.writeLimit)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyWritersLimit, pbtypes.Int64(int64(*s.writeLimit)))
 	}
 	if s.readLimit != nil {
-		st.SetLocalDetail(bundle.RelationKeyReadersLimit.String(), pbtypes.Int64(int64(*s.readLimit)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyReadersLimit, pbtypes.Int64(int64(*s.readLimit)))
 	}
 	return s
 }
