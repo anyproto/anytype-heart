@@ -149,6 +149,16 @@ func (mw *Middleware) MembershipGetVerificationEmail(ctx context.Context, req *p
 	return out
 }
 
+func (mw *Middleware) MembershipGetVerificationEmailStatus(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailStatusRequest) *pb.RpcMembershipGetVerificationEmailStatusResponse {
+	// TODO:
+	return &pb.RpcMembershipGetVerificationEmailStatusResponse{
+		Error: &pb.RpcMembershipGetVerificationEmailStatusResponseError{
+			Code:        pb.RpcMembershipGetVerificationEmailStatusResponseError_UNKNOWN_ERROR,
+			Description: "TODO - not implemented yet",
+		},
+	}
+}
+
 func (mw *Middleware) MembershipVerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) *pb.RpcMembershipVerifyEmailCodeResponse {
 	ps := getService[payments.Service](mw)
 	out, err := ps.VerifyEmailCode(ctx, req)

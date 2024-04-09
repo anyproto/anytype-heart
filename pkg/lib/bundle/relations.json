@@ -1717,6 +1717,6 @@
     "maxCount": 1,
     "name": "Global name",
     "readonly": true,
-    "source": "details"
+    "source": "derived"
   }
 ]

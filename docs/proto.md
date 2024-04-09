@@ -650,6 +650,10 @@
     - [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request)
     - [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response)
     - [Rpc.Membership.GetVerificationEmail.Response.Error](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error)
+    - [Rpc.Membership.GetVerificationEmailStatus](#anytype-Rpc-Membership-GetVerificationEmailStatus)
+    - [Rpc.Membership.GetVerificationEmailStatus.Request](#anytype-Rpc-Membership-GetVerificationEmailStatus-Request)
+    - [Rpc.Membership.GetVerificationEmailStatus.Response](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response)
+    - [Rpc.Membership.GetVerificationEmailStatus.Response.Error](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error)
     - [Rpc.Membership.IsNameValid](#anytype-Rpc-Membership-IsNameValid)
     - [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request)
     - [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response)
@@ -1256,6 +1260,7 @@
     - [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code)
     - [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code)
+    - [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code)
     - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
     - [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
@@ -1704,10 +1709,11 @@
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus)
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
-    - [Membership.Tier](#anytype-model-Membership-Tier)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
+    - [NameserviceNameType](#anytype-model-NameserviceNameType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
     - [Notification.Status](#anytype-model-Notification-Status)
@@ -1980,6 +1986,7 @@
 | MembershipIsNameValid | [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request) | [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response) |  |
 | MembershipGetPaymentUrl | [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request) | [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
 | MembershipGetPortalLinkUrl | [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request) | [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
+| MembershipGetVerificationEmailStatus | [Rpc.Membership.GetVerificationEmailStatus.Request](#anytype-Rpc-Membership-GetVerificationEmailStatus-Request) | [Rpc.Membership.GetVerificationEmailStatus.Response](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response) | Check the current status of the verification email |
 | MembershipGetVerificationEmail | [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request) | [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
 | MembershipVerifyEmailCode | [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request) | [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (MembershipGetVerificationEmail) |
 | MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
@@ -11118,7 +11125,8 @@ users can not have N tiers (no combining)
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11177,7 +11185,8 @@ where user can pay for the membership
 | ----- | ---- | ----- | ----------- |
 | requestedTier | [uint32](#uint32) |  |  |
 | paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
-| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11389,6 +11398,59 @@ can be called multiple times but with some timeout (N seconds) between calls
 
 
 
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus
+Get the current status of the e-mail verification.
+Status can change if you call GetVerificationEmail or VerifyEmailCode
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus-Request"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus-Response"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetVerificationEmailStatus.Response.Error](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error) |  |  |
+| status | [model.Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Membership-IsNameValid"></a>
 
 ### Rpc.Membership.IsNameValid
@@ -11409,7 +11471,8 @@ before requesting a payment link and paying
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | requestedTier | [uint32](#uint32) |  |  |
-| requestedAnyName | [string](#string) |  | full name including .any suffix |
+| nsName | [string](#string) |  |  |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11726,7 +11789,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+| nsName | [string](#string) |  |  |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -20030,6 +20094,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
 <a name="anytype-Rpc-Membership-IsNameValid-Response-Error-Code"></a>
 
 ### Rpc.Membership.IsNameValid.Response.Error.Code
@@ -25841,10 +25920,10 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [uint32](#uint32) |  | this is a unique ID of the tier you should hardcode this in your app and provide icon, graphics, etc for each tier (even for old/historical/inactive/hidden tiers) |
+| id | [uint32](#uint32) |  | this is a unique Payment Node ID of the tier WARNING: tiers can be sorted differently, not according to their IDs! |
 | name | [string](#string) |  | localazied name of the tier |
-| description | [string](#string) |  | just a short technical description you don&#39;t have to use it, you can use your own UI-friendly texts |
-| isTest | [bool](#bool) |  | is this tier for debugging only? |
+| description | [string](#string) |  | just a short technical description |
+| isTest | [bool](#bool) |  | is this tier for testing and debugging only? |
 | periodType | [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType) |  | how long is the period of the subscription |
 | periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
 | priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
@@ -25852,6 +25931,12 @@ Used to decode block meta only, without the content itself
 | anyNameMinLength | [uint32](#uint32) |  | somename.any - is of len 8 |
 | features | [string](#string) | repeated | localized strings for the features |
 | colorStr | [string](#string) |  | green, blue, red, purple, custom |
+| stripeProductId | [string](#string) |  | Stripe platform-specific data: |
+| stripeManageUrl | [string](#string) |  |  |
+| iosProductId | [string](#string) |  | iOS platform-specific data: |
+| iosManageUrl | [string](#string) |  |  |
+| androidProductId | [string](#string) |  | Android platform-specific data: |
+| androidManageUrl | [string](#string) |  |  |
 
 
 
@@ -26985,6 +27070,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
+<a name="anytype-model-Membership-EmailVerificationStatus"></a>
+
+### Membership.EmailVerificationStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| StatusNotVerified | 0 | user NEVER comleted the verification of the email |
+| StatusCodeSent | 1 | user has asked for new code, but did not enter it yet (even if email was verified before, you can ask to UPDATE your e-mail) please wait, you can not ask for more codes yet |
+| StatusVerified | 2 | the e-mail is finally verified |
+
+
+
 <a name="anytype-model-Membership-PaymentMethod"></a>
 
 ### Membership.PaymentMethod
@@ -26992,12 +27090,11 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MethodCard | 0 | Stripe |
-| MethodCrypto | 1 |  |
-| MethodApplePay | 2 |  |
-| MethodGooglePay | 3 |  |
-| MethodAppleInapp | 4 |  |
-| MethodGoogleInapp | 5 |  |
+| MethodNone | 0 |  |
+| MethodCard | 1 |  |
+| MethodCrypto | 2 |  |
+| MethodInappApple | 3 |  |
+| MethodInappGoogle | 4 |  |
 
 
 
@@ -27009,27 +27106,9 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | StatusUnknown | 0 |  |
-| StatusPending | 1 | please wait a bit more |
-| StatusActive | 2 |  |
-| StatusPendingRequiresFinalization | 3 | in some cases we need to finalize the process: - if user has bought membership directly without first calling the BuySubscription method
-
-in this case please call Finalize to finish the process |
-
-
-
-<a name="anytype-model-Membership-Tier"></a>
-
-### Membership.Tier
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| TierNewUser | 0 |  |
-| TierExplorer | 1 | &#34;free&#34; tier |
-| TierBuilder1WeekTEST | 2 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
-| TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
-| TierBuilder | 4 |  |
-| TierCoCreator | 5 |  |
+| StatusPending | 1 | please wait a bit more, we are still processing your request the payment is confirmed, but we need more time to do some side-effects: - increase limits - send emails - allocate names |
+| StatusActive | 2 | the membership is active, ready to use! |
+| StatusPendingRequiresFinalization | 3 | in some cases we need to finalize the process: - if user has bought membership directly without first calling the BuySubscription method in this case please call Finalize to finish the process |
 
 
 
@@ -27046,6 +27125,17 @@ in this case please call Finalize to finish the process |
 | PeriodTypeWeeks | 3 |  |
 | PeriodTypeMonths | 4 |  |
 | PeriodTypeYears | 5 |  |
+
+
+
+<a name="anytype-model-NameserviceNameType"></a>
+
+### NameserviceNameType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| AnyName | 0 | .any suffix |
 
 
 
