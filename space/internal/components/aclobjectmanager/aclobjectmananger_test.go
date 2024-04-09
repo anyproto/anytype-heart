@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
@@ -58,7 +59,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive)
 		close(ch)
-		<-fx.aclObjectManager.wait
+		time.Sleep(time.Millisecond * 100)
 		fx.aclObjectManager.mx.Lock()
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
@@ -104,7 +105,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive)
 		close(ch)
-		<-fx.aclObjectManager.wait
+		time.Sleep(time.Millisecond * 100)
 		fx.aclObjectManager.mx.Lock()
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
@@ -146,7 +147,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusActive)
 		close(ch)
-		<-fx.aclObjectManager.wait
+		time.Sleep(time.Millisecond * 100)
 		fx.aclObjectManager.mx.Lock()
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
