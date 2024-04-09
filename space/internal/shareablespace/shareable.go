@@ -40,6 +40,7 @@ type spaceController struct {
 var makeStatusApp = func(a *app.App, spaceId string) *app.App {
 	newApp := a.ChildApp()
 	newApp.Register(spacestatus.New(spaceId))
+	// nolint:errcheck
 	_ = newApp.Start(context.Background())
 	return newApp
 }

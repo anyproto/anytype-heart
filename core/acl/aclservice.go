@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -48,12 +47,6 @@ var (
 type AccountPermissions struct {
 	Account     crypto.PubKey
 	Permissions model.ParticipantPermissions
-}
-
-type aclSpaceView interface {
-	sync.Locker
-	GetLocalInfo() spaceinfo.SpaceLocalInfo
-	RemoveExistingInvite() (cid string, err error)
 }
 
 type AclService interface {
@@ -272,6 +265,9 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 		localInfo = spaceView.GetLocalInfo()
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 	newPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return err
