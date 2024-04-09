@@ -8,6 +8,6 @@ import (
 
 func migrateFilesToObjects(sb smartblock.SmartBlock, fileObjectService fileobject.Service) func(s *state.State) {
 	return func(st *state.State) {
-		fileObjectService.MigrateBlocks(st, sb.Space())
+		fileObjectService.MigrateFileIdsInBlocks(st, sb.Space())
 	}
 }

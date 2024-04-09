@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+// migrationItem is a queue item for file object migration. Should be fully serializable
 type migrationItem struct {
 	FileObjectId  string
 	SpaceId       string
@@ -37,7 +38,7 @@ func makeMigrationItem() *migrationItem {
 	return &migrationItem{}
 }
 
-func (s *service) MigrateBlocks(st *state.State, spc source.Space) {
+func (s *service) MigrateFileIdsInBlocks(st *state.State, spc source.Space) {
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if migrator, ok := b.(simple.FileMigrator); ok {
 			migrator.MigrateFile(func(oldId string) (newId string) {
@@ -48,7 +49,7 @@ func (s *service) MigrateBlocks(st *state.State, spc source.Space) {
 	})
 }
 
-func (s *service) MigrateDetails(st *state.State, spc source.Space) {
+func (s *service) MigrateFileIdsInDetails(st *state.State, spc source.Space) {
 	st.ModifyLinkedFilesInDetails(func(id string) string {
 		return s.migrateFileId(spc.(clientspace.Space), st.RootId(), id)
 	})
@@ -132,6 +133,7 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 		return queue.ActionDone, fmt.Errorf("get space: %w", err)
 	}
 
+	// Wait object to load
 	ctx = peer.CtxWithPeerId(ctx, "*")
 	_, err = space.GetObject(ctx, it.FileObjectId)
 	// Already migrated or it is a link to object

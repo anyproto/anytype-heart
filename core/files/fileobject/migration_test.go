@@ -29,7 +29,7 @@ func TestMigrateIds(t *testing.T) {
 
 		space := mock_clientspace.NewMockSpace(t)
 
-		fx.MigrateBlocks(st, space)
+		fx.MigrateFileIdsInBlocks(st, space)
 	})
 
 	t.Run("do not migrate object itself", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestMigrateIds(t *testing.T) {
 
 		space := mock_clientspace.NewMockSpace(t)
 
-		fx.MigrateBlocks(st, space)
+		fx.MigrateFileIdsInBlocks(st, space)
 	})
 
 	t.Run("do not migrate already migrated file: migrated objectId has different CID format", func(t *testing.T) {
@@ -71,8 +71,8 @@ func TestMigrateIds(t *testing.T) {
 			},
 		})
 
-		fx.MigrateBlocks(st, space)
-		fx.MigrateDetails(st, space)
+		fx.MigrateFileIdsInBlocks(st, space)
+		fx.MigrateFileIdsInDetails(st, space)
 
 		wantState := testutil.BuildStateFromAST(
 			bb.Root(
@@ -108,8 +108,8 @@ func TestMigrateIds(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(expectedFileObjectId, nil)
 
-		fx.MigrateBlocks(st, space)
-		fx.MigrateDetails(st, space)
+		fx.MigrateFileIdsInBlocks(st, space)
+		fx.MigrateFileIdsInDetails(st, space)
 
 		wantState := testutil.BuildStateFromAST(
 			bb.Root(

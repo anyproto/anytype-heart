@@ -57,8 +57,8 @@ type Service interface {
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
-	MigrateDetails(st *state.State, spc source.Space)
-	MigrateBlocks(st *state.State, spc source.Space)
+	MigrateFileIdsInDetails(st *state.State, spc source.Space)
+	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(details *types.Struct) error
 
