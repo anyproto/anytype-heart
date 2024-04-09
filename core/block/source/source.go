@@ -168,7 +168,7 @@ type ObjectTreeProvider interface {
 
 type fileObjectMigrator interface {
 	MigrateFiles(st *state.State, spc Space, keysChanges []*pb.ChangeFileKeys)
-	MigrateDetails(st *state.State, spc Space, keys []*pb.ChangeFileKeys)
+	MigrateDetails(st *state.State, spc Space)
 }
 
 type source struct {
@@ -301,7 +301,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	s.fileObjectMigrator.MigrateFiles(st, s.space, s.GetFileKeysSnapshot())
 	// Details in spaceview comes from Workspace object, so we don't need to migrate them
 	if s.Type() != smartblock.SmartBlockTypeSpaceView {
-		s.fileObjectMigrator.MigrateDetails(st, s.space, s.GetFileKeysSnapshot())
+		s.fileObjectMigrator.MigrateDetails(st, s.space)
 	}
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot

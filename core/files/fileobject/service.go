@@ -2,14 +2,11 @@ package fileobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/anyproto/any-sync/net/peer"
 	"github.com/avast/retry-go/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
@@ -20,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
-	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -61,8 +57,8 @@ type Service interface {
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
-	MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
-	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
+	MigrateDetails(st *state.State, spc source.Space)
+	MigrateBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(details *types.Struct) error
 
@@ -73,21 +69,6 @@ type Service interface {
 
 type objectCreatorService interface {
 	CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *types.Struct, err error)
-}
-
-type migrationItem struct {
-	FileObjectId  string
-	SpaceId       string
-	CreateRequest CreateRequest
-	UniqueKeyRaw  string
-}
-
-func (it *migrationItem) Key() string {
-	return it.SpaceId + "/" + it.CreateRequest.FileId.String()
-}
-
-func makeMigrationItem() *migrationItem {
-	return &migrationItem{}
 }
 
 type service struct {
@@ -149,30 +130,6 @@ func (s *service) Run(_ context.Context) error {
 
 	s.migrationQueue.Run()
 	return nil
-}
-
-func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) (queue.Action, error) {
-	space, err := s.spaceService.Get(ctx, it.SpaceId)
-	if err != nil {
-		return queue.ActionDone, fmt.Errorf("get space: %w", err)
-	}
-
-	ctx = peer.CtxWithPeerId(ctx, "*")
-	_, err = space.GetObject(ctx, it.FileObjectId)
-	// Already migrated or it is a link to object
-	if err == nil {
-		return queue.ActionDone, nil
-	}
-
-	uniqueKey, err := domain.UnmarshalUniqueKey(it.UniqueKeyRaw)
-	if err != nil {
-		return queue.ActionDone, fmt.Errorf("unmarshal unique key: %w", err)
-	}
-	err = s.migrateDeriveObject(context.Background(), space, it.CreateRequest, uniqueKey)
-	if err != nil {
-		log.Errorf("create file object for fileId %s: %v", it.CreateRequest.FileId, err)
-	}
-	return queue.ActionDone, nil
 }
 
 // TODO Comment
@@ -319,37 +276,6 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	}
 
 	return id, object, nil
-}
-
-func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
-	if req.FileId == "" {
-		return fmt.Errorf("file hash is empty")
-	}
-	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
-	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
-
-	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
-	createState.SetDetails(details)
-	createState.SetFileInfo(state.FileInfo{
-		FileId:         req.FileId,
-		EncryptionKeys: req.EncryptionKeys,
-	})
-
-	// Type will be changed after indexing, just use general type File for now
-	id, _, err := s.objectCreator.CreateSmartBlockFromStateInSpaceWithOptions(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState)
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("create object: %w", err)
-	}
-	err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId})
-	if err != nil {
-		// Will be retried in background, so don't return error
-		log.Errorf("add to index queue: %v", err)
-		err = nil
-	}
-	return err
 }
 
 func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin) *types.Struct {
@@ -524,146 +450,6 @@ func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) 
 		retry.LastErrorOnly(true),
 	)
 	return spaceId, err
-}
-
-func (s *service) migrate(space clientspace.Space, objectId string, keys []*pb.ChangeFileKeys, fileId string, origin objectorigin.ObjectOrigin) string {
-	// Don't migrate empty or its own id
-	if fileId == "" || objectId == fileId {
-		return fileId
-	}
-	if !domain.IsFileId(fileId) {
-		return fileId
-	}
-	var fileKeys map[string]string
-	for _, k := range keys {
-		if k.Hash == fileId {
-			fileKeys = k.Keys
-		}
-	}
-
-	fileObjectId, err := s.GetObjectIdByFileId(domain.FullFileId{
-		SpaceId: space.Id(),
-		FileId:  domain.FileId(fileId),
-	})
-	if err == nil {
-		return fileObjectId
-	}
-
-	// If due to some reason fileId is a file object id from another space, we should not migrate it
-	// This is definitely a bug, but we should not break things further.
-	exists, err := s.isFileExistInAnotherSpace(space.Id(), fileId)
-	if err != nil {
-		log.Errorf("checking that file exist in another space: %v", err)
-		return fileId
-	}
-	if exists {
-		log.With("fileObjectId", fileId).Error("found file object in another space")
-		return fileId
-	}
-
-	if len(fileKeys) == 0 {
-		log.Errorf("no encryption keys for fileId %s", fileId)
-		return fileId
-	}
-	// Add fileId as uniqueKey to avoid migration of the same file
-	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeFileObject, fileId)
-	if err != nil {
-		return fileId
-	}
-	fileObjectId, err = space.DeriveObjectIdWithAccountSignature(context.Background(), uniqueKey)
-	if err != nil {
-		log.Errorf("can't derive object id for fileId %s: %v", fileId, err)
-		return fileId
-	}
-	return fileObjectId
-}
-
-func (s *service) isFileExistInAnotherSpace(spaceId string, fileObjectId string) (bool, error) {
-	recs, _, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileObjectId),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
-	if err != nil {
-		return false, fmt.Errorf("query objects by file hash: %w", err)
-	}
-	return len(recs) > 0, nil
-}
-
-// MigrateFiles creates file objects from old files data
-// TODO Elaborate comment
-func (s *service) MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys) {
-	origin := objectorigin.FromDetails(st.Details())
-	for _, keys := range keysChanges {
-		err := s.migrateFile(spc.(clientspace.Space), origin, keys)
-		if err != nil {
-			log.Errorf("migrate file %s: %v", keys.Hash, err)
-		}
-	}
-}
-
-func (s *service) migrateFile(space clientspace.Space, origin objectorigin.ObjectOrigin, fileKeysChange *pb.ChangeFileKeys) error {
-	fileId := domain.FileId(fileKeysChange.Hash)
-	storedOrigin, err := s.fileStore.GetFileOrigin(fileId)
-	if err == nil {
-		origin = storedOrigin
-	}
-
-	// Add fileId as uniqueKey to avoid migration of the same file
-	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeFileObject, fileId.String())
-	if err != nil {
-	}
-	fileObjectId, err := space.DeriveObjectIdWithAccountSignature(context.Background(), uniqueKey)
-	if err != nil {
-		return fmt.Errorf("derive object id for fileId %s: %w", fileId, err)
-	}
-
-	queueIt := &migrationItem{
-		FileObjectId: fileObjectId,
-		SpaceId:      space.Id(),
-		CreateRequest: CreateRequest{
-			FileId:         fileId,
-			EncryptionKeys: fileKeysChange.Keys,
-			ObjectOrigin:   origin,
-		},
-		UniqueKeyRaw: uniqueKey.Marshal(),
-	}
-	err = s.migrationQueue.Add(queueIt)
-	if err != nil {
-		return fmt.Errorf("add to migration queue: %w", err)
-	}
-	return nil
-}
-
-func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
-	origin := objectorigin.FromDetails(st.Details())
-	st.Iterate(func(b simple.Block) (isContinue bool) {
-		if migrator, ok := b.(simple.FileMigrator); ok {
-			migrator.MigrateFile(func(oldHash string) (newHash string) {
-				return s.migrate(spc.(clientspace.Space), st.RootId(), keys, oldHash, origin)
-			})
-		}
-		return true
-	})
-}
-
-func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
-	origin := objectorigin.FromDetails(st.Details())
-	st.ModifyLinkedFilesInDetails(func(id string) string {
-		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id, origin)
-	})
-	st.ModifyLinkedObjectsInDetails(func(id string) string {
-		return s.migrate(spc.(clientspace.Space), st.RootId(), keys, id, origin)
-	})
 }
 
 func (s *service) FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error) {
