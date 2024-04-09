@@ -195,7 +195,15 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	if resultErr != nil {
 		rootCollectionID = ""
 	}
-	return rootCollectionID, int64(len(details)), resultErr
+	return rootCollectionID, i.getObjectCount(details, rootCollectionID), resultErr
+}
+
+func (i *Import) getObjectCount(details map[string]*types.Struct, rootCollectionID string) int64 {
+	objectsCount := int64(len(details))
+	if rootCollectionID != "" && objectsCount > 0 {
+		objectsCount-- // exclude root collection object from counter
+	}
+	return objectsCount
 }
 
 func (i *Import) importFromExternalSource(ctx context.Context,
