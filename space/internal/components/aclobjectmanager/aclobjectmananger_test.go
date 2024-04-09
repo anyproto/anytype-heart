@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
@@ -33,7 +32,6 @@ func TestAclObjectManager(t *testing.T) {
 		cmds := []string{
 			"a.init::a",
 		}
-		ch := make(chan struct{})
 		for _, cmd := range cmds {
 			err := a.Execute(cmd)
 			require.NoError(t, err)
@@ -41,25 +39,22 @@ func TestAclObjectManager(t *testing.T) {
 		acl := &syncAclStub{AclList: a.ActualAccounts()["a"].Acl}
 		fx := newFixture(t)
 		defer fx.finish(t)
-		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).RunAndReturn(func(ctx2 context.Context) (clientspace.Space, error) {
-			<-ch
-			return fx.mockSpace, nil
-		})
-		fx.mockParticipantWatcher.EXPECT().RegisterOwnerIdentity(fx.aclObjectManager.ctx, fx.mockSpace).Return(nil)
+		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+		fx.mockParticipantWatcher.EXPECT().RegisterOwnerIdentity(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
-		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(fx.aclObjectManager.ctx, fx.mockSpace, mock.Anything).
+		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
 			RunAndReturn(func(_ context.Context, space clientspace.Space, state list.AccountState) error {
 				require.True(t, state.PubKey.Equals(acl.AclState().Identity()))
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(fx.aclObjectManager.ctx, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(true).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive)
-		close(ch)
-		time.Sleep(time.Millisecond * 100)
+		fx.run(t)
+		<-fx.aclObjectManager.wait
 		fx.aclObjectManager.mx.Lock()
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
@@ -73,7 +68,6 @@ func TestAclObjectManager(t *testing.T) {
 			"b.join::invId",
 			"a.approve::b,r",
 		}
-		ch := make(chan struct{})
 		for _, cmd := range cmds {
 			err := a.Execute(cmd)
 			require.NoError(t, err)
@@ -81,16 +75,13 @@ func TestAclObjectManager(t *testing.T) {
 		acl := &syncAclStub{AclList: a.ActualAccounts()["b"].Acl}
 		fx := newFixture(t)
 		defer fx.finish(t)
-		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).RunAndReturn(func(ctx2 context.Context) (clientspace.Space, error) {
-			<-ch
-			return fx.mockSpace, nil
-		})
-		fx.mockParticipantWatcher.EXPECT().RegisterOwnerIdentity(fx.aclObjectManager.ctx, fx.mockSpace).Return(nil)
+		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+		fx.mockParticipantWatcher.EXPECT().RegisterOwnerIdentity(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
 		var callCounter atomic.Bool
-		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(fx.aclObjectManager.ctx, fx.mockSpace, mock.Anything).
+		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
 			RunAndReturn(func(_ context.Context, space clientspace.Space, state list.AccountState) error {
 				if !callCounter.Load() {
 					require.True(t, state.PubKey.Equals(a.ActualAccounts()["a"].Keys.SignKey.GetPublic()))
@@ -100,12 +91,12 @@ func TestAclObjectManager(t *testing.T) {
 				}
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(fx.aclObjectManager.ctx, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive)
-		close(ch)
-		time.Sleep(time.Millisecond * 100)
+		fx.run(t)
+		<-fx.aclObjectManager.wait
 		fx.aclObjectManager.mx.Lock()
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
@@ -120,7 +111,6 @@ func TestAclObjectManager(t *testing.T) {
 			"a.approve::b,r",
 			"a.remove::b",
 		}
-		ch := make(chan struct{})
 		for _, cmd := range cmds {
 			err := a.Execute(cmd)
 			require.NoError(t, err)
@@ -128,26 +118,23 @@ func TestAclObjectManager(t *testing.T) {
 		acl := &syncAclStub{AclList: a.ActualAccounts()["b"].Acl}
 		fx := newFixture(t)
 		defer fx.finish(t)
-		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).RunAndReturn(func(ctx2 context.Context) (clientspace.Space, error) {
-			<-ch
-			return fx.mockSpace, nil
-		})
-		fx.mockParticipantWatcher.EXPECT().RegisterOwnerIdentity(fx.aclObjectManager.ctx, fx.mockSpace).Return(nil)
+		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+		fx.mockParticipantWatcher.EXPECT().RegisterOwnerIdentity(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
-		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(fx.aclObjectManager.ctx, fx.mockSpace, mock.Anything).
+		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
 			RunAndReturn(func(_ context.Context, space clientspace.Space, state list.AccountState) error {
 				require.True(t, state.PubKey.Equals(a.ActualAccounts()["a"].Keys.SignKey.GetPublic()))
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(fx.aclObjectManager.ctx, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusActive)
-		close(ch)
-		time.Sleep(time.Millisecond * 100)
+		fx.run(t)
+		<-fx.aclObjectManager.wait
 		fx.aclObjectManager.mx.Lock()
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
@@ -192,9 +179,11 @@ func newFixture(t *testing.T) *fixture {
 		Register(fx)
 	fx.mockStatus.EXPECT().SpaceId().Return("spaceId")
 	fx.mockIndexer.EXPECT().RemoveAclIndexes("spaceId").Return(nil)
-
-	require.NoError(t, fx.a.Start(ctx))
 	return fx
+}
+
+func (fx *fixture) run(t *testing.T) {
+	require.NoError(t, fx.a.Start(ctx))
 }
 
 func (fx *fixture) finish(t *testing.T) {
