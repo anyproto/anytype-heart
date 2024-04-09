@@ -892,6 +892,12 @@ message ObjectView {
         int32 undo = 1;
         int32 redo = 2;
     }
+
+    repeated BlockModifier blocksModifiers = 11;
+    message BlockModifier {
+        string blockId = 1;
+        string participantId = 2;
+    }
 }
 
 enum SpaceStatus {

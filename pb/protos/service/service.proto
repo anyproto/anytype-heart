@@ -143,6 +143,7 @@ service ClientCommands {
     rpc HistoryShowVersion (anytype.Rpc.History.ShowVersion.Request) returns (anytype.Rpc.History.ShowVersion.Response);
     rpc HistoryGetVersions (anytype.Rpc.History.GetVersions.Request) returns (anytype.Rpc.History.GetVersions.Response);
     rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
+    rpc HistoryDiffVersions (anytype.Rpc.History.DiffVersions.Request) returns (anytype.Rpc.History.DiffVersions.Response);
 
     // Files
     // ***
