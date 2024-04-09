@@ -21,7 +21,7 @@ import (
 
 func TestSpaceView_AccessType(t *testing.T) {
 	t.Run("personal", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newSpaceViewFixture(t)
 		defer fx.finish()
 		err := fx.SetAccessType(spaceinfo.AccessTypePersonal)
 		require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
 	})
 	t.Run("private->shareable", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newSpaceViewFixture(t)
 		defer fx.finish()
 		err := fx.SetAccessType(spaceinfo.AccessTypePrivate)
 		require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 
 func TestSpaceView_Info(t *testing.T) {
 	t.Run("local", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newSpaceViewFixture(t)
 		defer fx.finish()
 		firstLocalInfo := fx.GetLocalInfo()
 		require.Equal(t, spaceinfo.LocalStatusUnknown, firstLocalInfo.GetLocalStatus())
@@ -94,7 +94,7 @@ func TestSpaceView_Info(t *testing.T) {
 		require.Equal(t, spaceinfo.ShareableStatusShareable, curInfo.GetShareableStatus())
 	})
 	t.Run("persistent", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newSpaceViewFixture(t)
 		defer fx.finish()
 		info := spaceinfo.NewSpacePersistentInfo("spaceId")
 		info.SetAccountStatus(spaceinfo.AccountStatusActive)
@@ -154,28 +154,28 @@ func NewSpaceViewTest(t *testing.T, ctrl *gomock.Controller, targetSpaceId strin
 	return a, nil
 }
 
-type fixture struct {
+type spaceViewFixture struct {
 	*SpaceView
 	objectTree *mock_objecttree.MockObjectTree
 	ctrl       *gomock.Controller
 }
 
-func newFixture(t *testing.T) *fixture {
+func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 	ctrl := gomock.NewController(t)
 	objectTree := mock_objecttree.NewMockObjectTree(ctrl)
 	a, err := NewSpaceViewTest(t, ctrl, "spaceId", objectTree)
 	require.NoError(t, err)
-	return &fixture{
+	return &spaceViewFixture{
 		SpaceView:  a,
 		objectTree: objectTree,
 		ctrl:       ctrl,
 	}
 }
 
-func (f *fixture) getAccessType() spaceinfo.AccessType {
+func (f *spaceViewFixture) getAccessType() spaceinfo.AccessType {
 	return spaceinfo.AccessType(pbtypes.GetInt64(f.CombinedDetails(), bundle.RelationKeySpaceAccessType.String()))
 }
 
-func (f *fixture) finish() {
+func (f *spaceViewFixture) finish() {
 	f.ctrl.Finish()
 }
