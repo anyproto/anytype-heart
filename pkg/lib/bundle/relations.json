@@ -1561,12 +1561,12 @@
     "source": "derived"
   },
   {
-    "description": "Specify if access control list is empty",
+    "description": "Specify if access control list is shared",
     "format": "checkbox",
     "hidden": true,
-    "key": "isAclEmpty",
+    "key": "isAclShared",
     "maxCount": 1,
-    "name": "Is Acl Empty",
+    "name": "Is Acl Shared",
     "readonly": true,
     "source": "derived"
   },

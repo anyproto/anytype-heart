@@ -131,7 +131,7 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 
 func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclEmpty, pbtypes.Bool(isEmpty))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, pbtypes.Bool(!isEmpty))
 	s.updateAccessType(st)
 	return s.Apply(st)
 }
@@ -141,9 +141,9 @@ func (s *SpaceView) updateAccessType(st *state.State) {
 	if accessType == spaceinfo.AccessTypePersonal {
 		return
 	}
-	isEmpty := pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsAclEmpty.String())
+	isShared := pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsAclShared.String())
 	shareable := spaceinfo.ShareableStatus(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceShareableStatus.String()))
-	if !isEmpty || shareable == spaceinfo.ShareableStatusShareable {
+	if isShared || shareable == spaceinfo.ShareableStatusShareable {
 		stateSetAccessType(st, spaceinfo.AccessTypeShared)
 	} else {
 		stateSetAccessType(st, spaceinfo.AccessTypePrivate)

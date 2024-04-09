@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "cab68193a7e4473c1cbba8eeca8299048ba21dd5c1c6c8d0e124a556d26b68d0"
+const RelationChecksum = "f2eed75aa821a8e470580808469b27c222f4726b8fa336a786bb356b21231954"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -167,7 +167,7 @@ const (
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
 	RelationKeySpaceShareableStatus      domain.RelationKey = "spaceShareableStatus"
-	RelationKeyIsAclEmpty                domain.RelationKey = "isAclEmpty"
+	RelationKeyIsAclShared               domain.RelationKey = "isAclShared"
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
@@ -1088,16 +1088,16 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyIsAclEmpty: {
+		RelationKeyIsAclShared: {
 
 			DataSource:       model.Relation_derived,
-			Description:      "Specify if access control list is empty",
+			Description:      "Specify if access control list is shared",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,
-			Id:               "_brisAclEmpty",
-			Key:              "isAclEmpty",
+			Id:               "_brisAclShared",
+			Key:              "isAclShared",
 			MaxCount:         1,
-			Name:             "Is Acl Empty",
+			Name:             "Is Acl Shared",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
