@@ -3,6 +3,7 @@
 package mock_dependencies
 
 import (
+	app "github.com/anyproto/any-sync/app"
 	clientspace "github.com/anyproto/anytype-heart/space/clientspace"
 
 	mock "github.com/stretchr/testify/mock"
@@ -19,6 +20,97 @@ type MockSpaceIndexer_Expecter struct {
 
 func (_m *MockSpaceIndexer) EXPECT() *MockSpaceIndexer_Expecter {
 	return &MockSpaceIndexer_Expecter{mock: &_m.Mock}
+}
+
+// Init provides a mock function with given fields: a
+func (_m *MockSpaceIndexer) Init(a *app.App) error {
+	ret := _m.Called(a)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Init")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*app.App) error); ok {
+		r0 = rf(a)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceIndexer_Init_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Init'
+type MockSpaceIndexer_Init_Call struct {
+	*mock.Call
+}
+
+// Init is a helper method to define mock.On call
+//   - a *app.App
+func (_e *MockSpaceIndexer_Expecter) Init(a interface{}) *MockSpaceIndexer_Init_Call {
+	return &MockSpaceIndexer_Init_Call{Call: _e.mock.On("Init", a)}
+}
+
+func (_c *MockSpaceIndexer_Init_Call) Run(run func(a *app.App)) *MockSpaceIndexer_Init_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*app.App))
+	})
+	return _c
+}
+
+func (_c *MockSpaceIndexer_Init_Call) Return(err error) *MockSpaceIndexer_Init_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceIndexer_Init_Call) RunAndReturn(run func(*app.App) error) *MockSpaceIndexer_Init_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Name provides a mock function with given fields:
+func (_m *MockSpaceIndexer) Name() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Name")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockSpaceIndexer_Name_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Name'
+type MockSpaceIndexer_Name_Call struct {
+	*mock.Call
+}
+
+// Name is a helper method to define mock.On call
+func (_e *MockSpaceIndexer_Expecter) Name() *MockSpaceIndexer_Name_Call {
+	return &MockSpaceIndexer_Name_Call{Call: _e.mock.On("Name")}
+}
+
+func (_c *MockSpaceIndexer_Name_Call) Run(run func()) *MockSpaceIndexer_Name_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpaceIndexer_Name_Call) Return(name string) *MockSpaceIndexer_Name_Call {
+	_c.Call.Return(name)
+	return _c
+}
+
+func (_c *MockSpaceIndexer_Name_Call) RunAndReturn(run func() string) *MockSpaceIndexer_Name_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ReindexMarketplaceSpace provides a mock function with given fields: space

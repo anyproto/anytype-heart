@@ -2,6 +2,8 @@ package aclobjectmanager
 
 import (
 	"context"
+	"slices"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
@@ -52,6 +54,7 @@ type aclObjectManager struct {
 	ownerMetadata     []byte
 	lastIndexed       string
 	addedParticipants map[string]struct{}
+	mx                sync.Mutex
 }
 
 func (a *aclObjectManager) ProvideStat() any {
@@ -146,9 +149,10 @@ func (a *aclObjectManager) process() {
 	}
 
 	common := a.sp.CommonSpace()
-	common.Acl().SetAclUpdater(a)
-	common.Acl().RLock()
-	defer common.Acl().RUnlock()
+	acl := common.Acl()
+	acl.SetAclUpdater(a)
+	acl.RLock()
+	defer acl.RUnlock()
 	err = a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
@@ -167,10 +171,13 @@ func (a *aclObjectManager) processAcl() (err error) {
 			a.notificationService.AddRecords(acl, permissions, common.Id(), spaceinfo.AccountStatusActive)
 		}
 	}()
+	a.mx.Lock()
 	lastIndexed := a.lastIndexed
 	if lastIndexed == acl.Head().Id {
+		a.mx.Unlock()
 		return
 	}
+	a.mx.Unlock()
 	decrypt := func(key crypto.PubKey) ([]byte, error) {
 		if a.ownerMetadata != nil {
 			return a.ownerMetadata, nil
@@ -178,11 +185,14 @@ func (a *aclObjectManager) processAcl() (err error) {
 		return aclState.GetMetadata(key, true)
 	}
 	states := aclState.CurrentAccounts()
+	// for tests make sure that owner comes first
+	sortStates(states)
 	// decrypt all metadata
 	states, err = decryptAll(states, decrypt)
 	if err != nil {
 		return
 	}
+
 	statusAclHeadId := a.status.GetLatestAclHeadId()
 	upToDate := statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
 	err = a.processStates(states, upToDate, aclState.Identity())
@@ -193,6 +203,8 @@ func (a *aclObjectManager) processAcl() (err error) {
 	if err != nil {
 		return
 	}
+	a.mx.Lock()
+	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
 	return
 }
@@ -224,4 +236,16 @@ func decryptAll(states []list.AccountState, decrypt func(key crypto.PubKey) ([]b
 		decrypted = append(decrypted, state)
 	}
 	return
+}
+
+func sortStates(states []list.AccountState) {
+	slices.SortFunc(states, func(a, b list.AccountState) int {
+		if a.Permissions.IsOwner() && b.Permissions.IsOwner() || (!a.Permissions.IsOwner() && !b.Permissions.IsOwner()) {
+			return 0
+		} else if a.Permissions.IsOwner() {
+			return -1
+		} else {
+			return 1
+		}
+	})
 }
