@@ -1,7 +1,6 @@
 package indexer
 
 import (
-	"context"
 	"strconv"
 	"strings"
 	"sync"
@@ -11,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -43,7 +41,6 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
-	walletService.EXPECT().RepoPath().Return(t.TempDir())
 
 	objectStore := objectstore.NewStoreFixture(t)
 	clientStorage := mock_storage.NewMockClientStorage(t)
@@ -55,13 +52,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	testApp := &app.App{}
 	testApp.Register(walletService)
 
-	fullText := ftsearch.New()
-	testApp.Register(fullText)
-
-	err := fullText.Init(testApp)
-	require.NoError(t, err)
-	err = fullText.Run(context.Background())
-	require.NoError(t, err)
+	testApp.Register(objectStore.FTSearch())
 
 	indxr := &indexer{
 		indexedFiles: &sync.Map{},
@@ -77,14 +68,14 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indxr.source = sourceService
 	indxr.btHash = mock_indexer.NewMockHasher(t)
 	indxr.fileStore = fileStore
-	indxr.ftsearch = fullText
+	indxr.ftsearch = objectStore.FTSearch()
+	indexerFx.ftsearch = indxr.ftsearch
 	indexerFx.pickerFx = mock_block.NewMockObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
 	indxr.fileService = mock_files.NewMockService(t)
 	indxr.quit = make(chan struct{})
 	indxr.forceFt = make(chan struct{})
 
-	require.NoError(t, err)
 	return indexerFx
 }
 
@@ -387,4 +378,30 @@ func TestRunFullTextIndexer(t *testing.T) {
 
 	count, _ := indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(101), count)
+}
+
+func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
+	indexerFx := NewIndexerFixture(t)
+	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId1", SpaceID: "spaceId1", DocId: "objectId1"})
+	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId2", SpaceID: "spaceId1", DocId: "objectId1"})
+
+	count, _ := indexerFx.ftsearch.DocCount()
+	assert.Equal(t, uint64(2), count)
+
+	smartTest := smarttest.New("objectId1")
+	smartTest.SetSpaceId("spaceId1")
+	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+		blockbuilder.ID("root"),
+		blockbuilder.Children(
+			blockbuilder.Text(
+				"to index",
+				blockbuilder.ID("blockId1"),
+			),
+		)))
+	indexerFx.store.AddToIndexQueue("objectId1")
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.runFullTextIndexer()
+
+	count, _ = indexerFx.ftsearch.DocCount()
+	assert.Equal(t, uint64(1), count)
 }

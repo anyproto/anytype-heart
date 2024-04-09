@@ -70,7 +70,6 @@ func TestIndexerChecksums(t *testing.T) {
 			ObjectsForceReindexCounter:       1,
 			FilesForceReindexCounter:         2,
 			IdxRebuildCounter:                3,
-			FulltextRebuild:                  4,
 			BundledTemplates:                 "hash4",
 			BundledObjects:                   5,
 			FilestoreKeysForceReindexCounter: 6,
