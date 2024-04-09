@@ -52,7 +52,7 @@ func TestSpaceController_LoadingDeletingMultipleWaiters(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
-			err = fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusDeleted))
+			err := fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusDeleted))
 			require.NoError(t, err)
 			wg.Done()
 		}()
@@ -111,6 +111,7 @@ type spaceStatusStub struct {
 	remoteStatus      spaceinfo.RemoteStatus
 	accountStatus     spaceinfo.AccountStatus
 	persistentUpdater func(status spaceinfo.AccountStatus)
+	sync.Mutex
 }
 
 func (s *spaceStatusStub) Init(a *app.App) (err error) {
@@ -126,14 +127,20 @@ func (s *spaceStatusStub) SpaceId() string {
 }
 
 func (s *spaceStatusStub) GetLocalStatus() spaceinfo.LocalStatus {
+	s.Lock()
+	defer s.Unlock()
 	return s.localStatus
 }
 
 func (s *spaceStatusStub) GetRemoteStatus() spaceinfo.RemoteStatus {
+	s.Lock()
+	defer s.Unlock()
 	return s.remoteStatus
 }
 
 func (s *spaceStatusStub) GetPersistentStatus() spaceinfo.AccountStatus {
+	s.Lock()
+	defer s.Unlock()
 	return s.accountStatus
 }
 
@@ -146,6 +153,8 @@ func (s *spaceStatusStub) Close(ctx context.Context) (err error) {
 }
 
 func (s *spaceStatusStub) SetPersistentStatus(status spaceinfo.AccountStatus) (err error) {
+	s.Lock()
+	defer s.Unlock()
 	s.accountStatus = status
 	if s.persistentUpdater != nil {
 		s.persistentUpdater(status)
@@ -154,16 +163,22 @@ func (s *spaceStatusStub) SetPersistentStatus(status spaceinfo.AccountStatus) (e
 }
 
 func (s *spaceStatusStub) SetPersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
+	s.Lock()
+	defer s.Unlock()
 	s.accountStatus = info.GetAccountStatus()
 	return
 }
 
 func (s *spaceStatusStub) SetLocalStatus(status spaceinfo.LocalStatus) error {
+	s.Lock()
+	defer s.Unlock()
 	s.localStatus = status
 	return nil
 }
 
 func (s *spaceStatusStub) SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
+	s.Lock()
+	defer s.Unlock()
 	s.localStatus = info.GetLocalStatus()
 	return
 }

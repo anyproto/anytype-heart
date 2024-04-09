@@ -82,7 +82,7 @@ func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 }
 
 func (a *aclObjectManager) Init(ap *app.App) (err error) {
-	a.spaceLoader = ap.MustComponent(spaceloader.CName).(spaceloader.SpaceLoader)
+	a.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](ap)
 	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
 	a.participantWatcher = app.MustComponent[participantwatcher.ParticipantWatcher](ap)

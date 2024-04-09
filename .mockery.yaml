@@ -81,6 +81,18 @@ packages:
     interfaces:
       SpaceController:
       DeleteController:
+  github.com/anyproto/anytype-heart/space/internal/components/spaceloader:
+    interfaces:
+      SpaceLoader:
+  github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
+    interfaces:
+      ParticipantWatcher:
+  github.com/anyproto/anytype-heart/space/internal/components/dependencies:
+    interfaces:
+      SpaceIndexer:
+  github.com/anyproto/anytype-heart/space/internal/components/spacestatus:
+    interfaces:
+      SpaceStatus:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:

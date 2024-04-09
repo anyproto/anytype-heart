@@ -323,54 +323,6 @@ func (_c *MockTechSpace_Run_Call) RunAndReturn(run func(commonspace.Space, objec
 	return _c
 }
 
-// SetAccessType provides a mock function with given fields: ctx, spaceId, acc
-func (_m *MockTechSpace) SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) error {
-	ret := _m.Called(ctx, spaceId, acc)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetAccessType")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.AccessType) error); ok {
-		r0 = rf(ctx, spaceId, acc)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockTechSpace_SetAccessType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAccessType'
-type MockTechSpace_SetAccessType_Call struct {
-	*mock.Call
-}
-
-// SetAccessType is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceId string
-//   - acc spaceinfo.AccessType
-func (_e *MockTechSpace_Expecter) SetAccessType(ctx interface{}, spaceId interface{}, acc interface{}) *MockTechSpace_SetAccessType_Call {
-	return &MockTechSpace_SetAccessType_Call{Call: _e.mock.On("SetAccessType", ctx, spaceId, acc)}
-}
-
-func (_c *MockTechSpace_SetAccessType_Call) Run(run func(ctx context.Context, spaceId string, acc spaceinfo.AccessType)) *MockTechSpace_SetAccessType_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(spaceinfo.AccessType))
-	})
-	return _c
-}
-
-func (_c *MockTechSpace_SetAccessType_Call) Return(err error) *MockTechSpace_SetAccessType_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockTechSpace_SetAccessType_Call) RunAndReturn(run func(context.Context, string, spaceinfo.AccessType) error) *MockTechSpace_SetAccessType_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SetLocalInfo provides a mock function with given fields: ctx, info
 func (_m *MockTechSpace) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
 	ret := _m.Called(ctx, info)
