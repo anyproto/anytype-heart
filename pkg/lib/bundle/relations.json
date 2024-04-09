@@ -1561,6 +1561,16 @@
     "source": "derived"
   },
   {
+    "description": "Specify if access control list is empty",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isAclEmpty",
+    "maxCount": 1,
+    "name": "Is Acl Empty",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Relation that indicates the status of space that the user is set. Possible values: models.SpaceStatus",
     "format": "number",
     "hidden": true,

@@ -124,33 +124,30 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 
 func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
 	st := s.NewState()
-	prevAccessType := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
 	info.UpdateDetails(st).Log(log)
-	if prevAccessType != spaceinfo.AccessTypePersonal {
-		curShareable := spaceinfo.ShareableStatus(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceShareableStatus.String()))
-		switch curShareable {
-		case spaceinfo.ShareableStatusShareable:
-			stateSetAccessType(st, spaceinfo.AccessTypeShared)
-		case spaceinfo.ShareableStatusNotShareable:
-			stateSetAccessType(st, spaceinfo.AccessTypePrivate)
-		}
-	}
+	s.updateAccessType(st)
 	return s.Apply(st)
 }
 
 func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
 	st := s.NewState()
-	prev := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
-	if prev == spaceinfo.AccessTypePersonal {
-		return nil
-	}
-	curShareable := spaceinfo.ShareableStatus(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceShareableStatus.String()))
-	if isEmpty && curShareable != spaceinfo.ShareableStatusShareable {
-		stateSetAccessType(st, spaceinfo.AccessTypePrivate)
-	} else {
-		stateSetAccessType(st, spaceinfo.AccessTypeShared)
-	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclEmpty, pbtypes.Bool(isEmpty))
+	s.updateAccessType(st)
 	return s.Apply(st)
+}
+
+func (s *SpaceView) updateAccessType(st *state.State) {
+	accessType := spaceinfo.AccessType(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceAccessType.String()))
+	if accessType == spaceinfo.AccessTypePersonal {
+		return
+	}
+	isEmpty := pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsAclEmpty.String())
+	shareable := spaceinfo.ShareableStatus(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySpaceShareableStatus.String()))
+	if !isEmpty || shareable == spaceinfo.ShareableStatusShareable {
+		stateSetAccessType(st, spaceinfo.AccessTypeShared)
+	} else {
+		stateSetAccessType(st, spaceinfo.AccessTypePrivate)
+	}
 }
 
 func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "612cc8ba15ddd79743b7ce5b50fbc931514ca585371dd5a9bb9699d5fed31f14"
+const RelationChecksum = "cab68193a7e4473c1cbba8eeca8299048ba21dd5c1c6c8d0e124a556d26b68d0"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -167,6 +167,7 @@ const (
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
 	RelationKeySpaceShareableStatus      domain.RelationKey = "spaceShareableStatus"
+	RelationKeyIsAclEmpty                domain.RelationKey = "isAclEmpty"
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
@@ -1083,6 +1084,20 @@ var (
 			Id:               "_brinternalFlags",
 			Key:              "internalFlags",
 			Name:             "Internal flags",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsAclEmpty: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Specify if access control list is empty",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisAclEmpty",
+			Key:              "isAclEmpty",
+			MaxCount:         1,
+			Name:             "Is Acl Empty",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
