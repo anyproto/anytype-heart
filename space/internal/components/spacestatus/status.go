@@ -80,7 +80,9 @@ func (s *spaceStatus) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceStatus) Close(ctx context.Context) (err error) {
-	s.statService.RemoveProvider(s)
+	if s.statService != nil {
+		s.statService.RemoveProvider(s)
+	}
 	return nil
 }
 

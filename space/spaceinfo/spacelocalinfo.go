@@ -92,6 +92,7 @@ func (s *SpaceLocalInfo) SetReadLimit(limit uint32) *SpaceLocalInfo {
 }
 
 func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
+	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, pbtypes.String(s.SpaceId))
 	if s.localStatus != nil {
 		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceLocalStatus, pbtypes.Int64(int64(*s.localStatus)))
 	}

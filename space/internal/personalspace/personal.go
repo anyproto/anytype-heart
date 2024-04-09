@@ -2,12 +2,10 @@ package personalspace
 
 import (
 	"context"
-	"errors"
 
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/multierr"
 
-	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
@@ -29,12 +27,14 @@ func NewSpaceController(spaceId string, metadata []byte, a *app.App) spacecontro
 	}
 }
 
-var makeStatusApp = func(a *app.App, spaceId string) *app.App {
+func makeStatusApp(a *app.App, spaceId string) (*app.App, error) {
 	newApp := a.ChildApp()
 	newApp.Register(spacestatus.New(spaceId))
-	// nolint:errcheck
-	_ = newApp.Start(context.Background())
-	return newApp
+	err := newApp.Start(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return newApp, nil
 }
 
 type spaceController struct {
@@ -53,32 +53,22 @@ func (s *spaceController) Start(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-
-	s.loader = s.newLoader()
-	err = s.loader.Start(ctx)
+	exists, err := s.techSpace.SpaceViewExists(ctx, s.spaceId)
 	// This could happen for old accounts
-	if errors.Is(err, spaceloader.ErrSpaceNotExists) {
+	if !exists || err != nil {
 		info := spaceinfo.NewSpacePersistentInfo(s.spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 		err = s.techSpace.SpaceViewCreate(ctx, s.spaceId, false, info)
 		if err != nil {
 			return
 		}
-		err = s.loader.Close(ctx)
-		if err != nil {
-			return
-		}
-		s.loader = s.newLoader()
-		err = s.loader.Start(ctx)
-		if err != nil {
-			return
-		}
 	}
+	s.app, err = makeStatusApp(s.app, s.spaceId)
 	if err != nil {
 		return
 	}
-
-	return err
+	s.loader = s.newLoader()
+	return s.loader.Start(ctx)
 }
 
 func (s *spaceController) Mode() mode.Mode {
@@ -94,7 +84,7 @@ func (s *spaceController) SpaceId() string {
 }
 
 func (s *spaceController) newLoader() loader.Loader {
-	return loader.New(makeStatusApp(s.app, s.spaceId), loader.Params{
+	return loader.New(s.app, loader.Params{
 		SpaceId:       s.spaceId,
 		IsPersonal:    true,
 		OwnerMetadata: s.metadata,
@@ -114,6 +104,9 @@ func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.Space
 }
 
 func (s *spaceController) Close(ctx context.Context) error {
+	if s.loader == nil {
+		return nil
+	}
 	loaderErr := s.loader.Close(ctx)
 	appErr := s.app.Close(ctx)
 	return multierr.Combine(loaderErr, appErr)

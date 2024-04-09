@@ -37,19 +37,24 @@ type spaceController struct {
 	sm *mode.StateMachine
 }
 
-var makeStatusApp = func(a *app.App, spaceId string) *app.App {
+func makeStatusApp(a *app.App, spaceId string) (*app.App, error) {
 	newApp := a.ChildApp()
 	newApp.Register(spacestatus.New(spaceId))
-	// nolint:errcheck
-	_ = newApp.Start(context.Background())
-	return newApp
+	err := newApp.Start(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return newApp, nil
 }
 
 func NewSpaceController(
 	spaceId string,
 	info spaceinfo.SpacePersistentInfo,
 	a *app.App) (spacecontroller.SpaceController, error) {
-	newApp := makeStatusApp(a, spaceId)
+	newApp, err := makeStatusApp(a, spaceId)
+	if err != nil {
+		return nil, err
+	}
 	s := &spaceController{
 		spaceId:           spaceId,
 		status:            newApp.MustComponent(spacestatus.CName).(spacestatus.SpaceStatus),
