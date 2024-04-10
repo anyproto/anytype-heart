@@ -51,14 +51,11 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
-func (p *participant) ModifyOwnerDetails(profileDetails *types.Struct, aclInfo spaceinfo.ParticipantAclInfo) (err error) {
-	details := buildParticipantDetails(aclInfo.Id, aclInfo.SpaceId, aclInfo.Identity, aclInfo.Permissions, aclInfo.Status)
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyName.String()))
-	details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyDescription.String()))
-	details.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyIconImage.String()))
-	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
-	details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyGlobalName.String()))
-	return p.modifyDetails(details)
+func (p *participant) ModifyProfileDetails(profileDetails *types.Struct) (err error) {
+	newDetails := pbtypes.CopyStruct(profileDetails, true)
+	newDetails.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(newDetails, bundle.RelationKeyId.String()))
+	delete(newDetails.Fields, bundle.RelationKeyId.String())
+	return p.modifyDetails(newDetails)
 }
 
 func (p *participant) ModifyIdentityDetails(profile *model.IdentityProfile) (err error) {
@@ -81,7 +78,7 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 }
 
 func (p *participant) modifyDetails(newDetails *types.Struct) (err error) {
-	return p.Apply(p.NewState().SetDetails(pbtypes.StructMerge(p.CombinedDetails(), newDetails, false)))
+	return p.Apply(p.NewState().SetDetails(pbtypes.StructMerge(p.CombinedDetails(), newDetails, true)))
 }
 
 func buildParticipantDetails(

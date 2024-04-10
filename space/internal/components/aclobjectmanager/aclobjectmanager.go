@@ -143,7 +143,7 @@ func (a *aclObjectManager) process() {
 		break
 	}
 
-	err := a.participantWatcher.RegisterOwnerIdentity(a.ctx, a.sp)
+	err := a.participantWatcher.RegisterProfile(a.ctx, a.sp)
 	if err != nil {
 		log.Error("init my identity", zap.Error(err))
 	}

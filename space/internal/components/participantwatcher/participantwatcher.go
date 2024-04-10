@@ -29,13 +29,13 @@ var log = logger.NewNamed(CName)
 type ParticipantWatcher interface {
 	app.ComponentRunnable
 	RegisterIdentity(ctx context.Context, space clientspace.Space, accState list.AccountState) error
-	RegisterOwnerIdentity(ctx context.Context, space clientspace.Space) error
+	RegisterProfile(ctx context.Context, space clientspace.Space) error
 	UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error
 }
 
 type participant interface {
 	ModifyIdentityDetails(profile *model.IdentityProfile) (err error)
-	ModifyOwnerDetails(profileDetails *types.Struct, aclInfo spaceinfo.ParticipantAclInfo) (err error)
+	ModifyProfileDetails(profileDetails *types.Struct) (err error)
 	ModifyParticipantAclState(accState spaceinfo.ParticipantAclInfo) (err error)
 }
 
@@ -96,19 +96,13 @@ func (p *participantWatcher) Close(ctx context.Context) (err error) {
 	return
 }
 
-func (p *participantWatcher) RegisterOwnerIdentity(ctx context.Context, space clientspace.Space) error {
+func (p *participantWatcher) RegisterProfile(ctx context.Context, space clientspace.Space) error {
 	p.mx.Lock()
 	defer p.mx.Unlock()
 	myIdentity, metadataKey, profileDetails := p.identityService.GetMyProfileDetails(ctx)
 	id := domain.NewParticipantId(space.Id(), myIdentity)
 	err := space.Do(id, func(sb smartblock.SmartBlock) error {
-		return sb.(participant).ModifyOwnerDetails(profileDetails, spaceinfo.ParticipantAclInfo{
-			Id:          id,
-			SpaceId:     space.Id(),
-			Identity:    myIdentity,
-			Permissions: model.ParticipantPermissions_Owner,
-			Status:      model.ParticipantStatus_Active,
-		})
+		return sb.(participant).ModifyProfileDetails(profileDetails)
 	})
 	if err != nil {
 		return err

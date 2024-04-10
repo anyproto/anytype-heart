@@ -211,12 +211,12 @@ func (_c *MockParticipantWatcher_RegisterIdentity_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// RegisterOwnerIdentity provides a mock function with given fields: ctx, space
-func (_m *MockParticipantWatcher) RegisterOwnerIdentity(ctx context.Context, space clientspace.Space) error {
+// RegisterProfile provides a mock function with given fields: ctx, space
+func (_m *MockParticipantWatcher) RegisterProfile(ctx context.Context, space clientspace.Space) error {
 	ret := _m.Called(ctx, space)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RegisterOwnerIdentity")
+		panic("no return value specified for RegisterProfile")
 	}
 
 	var r0 error
@@ -229,31 +229,31 @@ func (_m *MockParticipantWatcher) RegisterOwnerIdentity(ctx context.Context, spa
 	return r0
 }
 
-// MockParticipantWatcher_RegisterOwnerIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterOwnerIdentity'
-type MockParticipantWatcher_RegisterOwnerIdentity_Call struct {
+// MockParticipantWatcher_RegisterProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterProfile'
+type MockParticipantWatcher_RegisterProfile_Call struct {
 	*mock.Call
 }
 
-// RegisterOwnerIdentity is a helper method to define mock.On call
+// RegisterProfile is a helper method to define mock.On call
 //   - ctx context.Context
 //   - space clientspace.Space
-func (_e *MockParticipantWatcher_Expecter) RegisterOwnerIdentity(ctx interface{}, space interface{}) *MockParticipantWatcher_RegisterOwnerIdentity_Call {
-	return &MockParticipantWatcher_RegisterOwnerIdentity_Call{Call: _e.mock.On("RegisterOwnerIdentity", ctx, space)}
+func (_e *MockParticipantWatcher_Expecter) RegisterProfile(ctx interface{}, space interface{}) *MockParticipantWatcher_RegisterProfile_Call {
+	return &MockParticipantWatcher_RegisterProfile_Call{Call: _e.mock.On("RegisterProfile", ctx, space)}
 }
 
-func (_c *MockParticipantWatcher_RegisterOwnerIdentity_Call) Run(run func(ctx context.Context, space clientspace.Space)) *MockParticipantWatcher_RegisterOwnerIdentity_Call {
+func (_c *MockParticipantWatcher_RegisterProfile_Call) Run(run func(ctx context.Context, space clientspace.Space)) *MockParticipantWatcher_RegisterProfile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(clientspace.Space))
 	})
 	return _c
 }
 
-func (_c *MockParticipantWatcher_RegisterOwnerIdentity_Call) Return(_a0 error) *MockParticipantWatcher_RegisterOwnerIdentity_Call {
+func (_c *MockParticipantWatcher_RegisterProfile_Call) Return(_a0 error) *MockParticipantWatcher_RegisterProfile_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockParticipantWatcher_RegisterOwnerIdentity_Call) RunAndReturn(run func(context.Context, clientspace.Space) error) *MockParticipantWatcher_RegisterOwnerIdentity_Call {
+func (_c *MockParticipantWatcher_RegisterProfile_Call) RunAndReturn(run func(context.Context, clientspace.Space) error) *MockParticipantWatcher_RegisterProfile_Call {
 	_c.Call.Return(run)
 	return _c
 }

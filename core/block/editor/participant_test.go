@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func TestParticipant_ModifyOwnerDetails(t *testing.T) {
+func TestParticipant_ModifyProfileDetails(t *testing.T) {
 	fx := newParticipantFixture(t)
 	defer fx.finish()
 	details := pbtypes.ToStruct(map[string]interface{}{
@@ -24,37 +24,15 @@ func TestParticipant_ModifyOwnerDetails(t *testing.T) {
 		bundle.RelationKeyId.String():          "profile",
 		bundle.RelationKeyGlobalName.String():  "global",
 	})
-	err := fx.ModifyOwnerDetails(details, spaceinfo.ParticipantAclInfo{
-		Id:          "id",
-		SpaceId:     "spaceId",
-		Identity:    "identity",
-		Permissions: model.ParticipantPermissions_Owner,
-		Status:      model.ParticipantStatus_Active,
-	})
+	err := fx.ModifyProfileDetails(details)
 	require.NoError(t, err)
-	details = pbtypes.StructMerge(details, pbtypes.ToStruct(map[string]interface{}{
-		bundle.RelationKeyId.String():                     "id",
-		bundle.RelationKeyIdentity.String():               "identity",
-		bundle.RelationKeySpaceId.String():                "spaceId",
-		bundle.RelationKeyLastModifiedBy.String():         "id",
-		bundle.RelationKeyParticipantPermissions.String(): model.ParticipantPermissions_Owner,
-		bundle.RelationKeyParticipantStatus.String():      model.ParticipantStatus_Active,
-		bundle.RelationKeyIsHiddenDiscovery.String():      false,
-		bundle.RelationKeyIdentityProfileLink.String():    "profile",
-	}), false)
+	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String("profile")
 	equalKeys := []string{
 		bundle.RelationKeyName.String(),
 		bundle.RelationKeyDescription.String(),
 		bundle.RelationKeyIconImage.String(),
 		bundle.RelationKeyIdentityProfileLink.String(),
 		bundle.RelationKeyGlobalName.String(),
-		bundle.RelationKeyId.String(),
-		bundle.RelationKeyIdentity.String(),
-		bundle.RelationKeySpaceId.String(),
-		bundle.RelationKeyLastModifiedBy.String(),
-		bundle.RelationKeyParticipantPermissions.String(),
-		bundle.RelationKeyParticipantStatus.String(),
-		bundle.RelationKeyIsHiddenDiscovery.String(),
 	}
 	fields := details.GetFields()
 	participantFields := fx.CombinedDetails().GetFields()
