@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -33,7 +34,7 @@ type File struct {
 	fileObjectService fileobject.Service
 }
 
-func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
 		Version: 1,
 		Proc: func(s *state.State) {
@@ -46,16 +47,16 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			// - In background metadata indexer, if we use asynchronous metadata indexing mode
 			//
 			// See fileobject.Service
-			p.fileObjectService.InitEmptyFileState(ctx.State)
+			f.fileObjectService.InitEmptyFileState(ctx.State)
 		},
 	}
 }
 
-func (p *File) StateMigrations() migration.Migrations {
+func (f *File) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
 
-func (p *File) Init(ctx *smartblock.InitContext) error {
+func (f *File) Init(ctx *smartblock.InitContext) error {
 	if ctx.Source.Type() != coresb.SmartBlockTypeFileObject {
 		return fmt.Errorf("source type should be a file")
 	}
@@ -64,21 +65,19 @@ func (p *File) Init(ctx *smartblock.InitContext) error {
 		ctx.Ctx = context.WithValue(ctx.Ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
 	}
 
-	err := p.SmartBlock.Init(ctx)
+	err := f.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
 	}
 
 	if !ctx.IsNewObject {
-		err = p.fileObjectService.EnsureFileAddedToSyncQueue(ctx.State.Details())
+		err = f.fileObjectService.EnsureFileAddedToSyncQueue(domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}, ctx.State.Details())
 		if err != nil {
 			log.Errorf("failed to ensure file added to sync queue: %v", err)
 		}
+		f.AddHook(func(applyInfo smartblock.ApplyInfo) error {
+			return f.fileObjectService.EnsureFileAddedToSyncQueue(domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}, applyInfo.State.Details())
+		}, smartblock.HookOnStateRebuild)
 	}
 	return nil
-}
-
-// TODO Fix it
-func (f *File) OnStateRebuild() error {
-	return f.fileObjectService.EnsureFileAddedToSyncQueue(f.NewState().Details())
 }

@@ -32,12 +32,14 @@ var loopTimeout = time.Minute
 
 var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
+type StatusCallback func(fileObjectId string) error
+
 type FileSync interface {
-	AddFile(fileId domain.FullFileId, uploadedByUser, imported bool) (err error)
+	AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error)
 	UploadSynchronously(spaceId string, fileId domain.FileId) error
-	OnUploadStarted(func(fileId domain.FileId) error)
-	OnUploaded(func(fileId domain.FileId) error)
-	OnLimited(func(fileId domain.FileId) error)
+	OnUploadStarted(StatusCallback)
+	OnUploaded(StatusCallback)
+	OnLimited(StatusCallback)
 	RemoveFile(fileId domain.FullFileId) (err error)
 	RemoveSynchronously(spaceId string, fileId domain.FileId) (err error)
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
@@ -73,9 +75,9 @@ type fileSync struct {
 	dagService      ipld.DAGService
 	fileStore       filestore.FileStore
 	eventSender     event.Sender
-	onUploaded      func(fileId domain.FileId) error
-	onUploadStarted func(fileId domain.FileId) error
-	onLimited       func(fileId domain.FileId) error
+	onUploaded      StatusCallback
+	onUploadStarted StatusCallback
+	onLimited       StatusCallback
 
 	uploadingQueue *queue.Queue[*QueueItem]
 	retryingQueue  *queue.Queue[*QueueItem]
@@ -104,15 +106,15 @@ func (f *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
 	return filehelper.NewDAGServiceWithSpaceID(spaceID, f.dagService)
 }
 
-func (f *fileSync) OnUploaded(callback func(fileId domain.FileId) error) {
+func (f *fileSync) OnUploaded(callback StatusCallback) {
 	f.onUploaded = callback
 }
 
-func (f *fileSync) OnUploadStarted(callback func(fileId domain.FileId) error) {
+func (f *fileSync) OnUploadStarted(callback StatusCallback) {
 	f.onUploadStarted = callback
 }
 
-func (f *fileSync) OnLimited(callback func(fileId domain.FileId) error) {
+func (f *fileSync) OnLimited(callback StatusCallback) {
 	f.onLimited = callback
 }
 

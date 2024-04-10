@@ -20,14 +20,19 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (f *fileSync) AddFile(fileId domain.FullFileId, uploadedByUser bool, imported bool) (err error) {
+func (f *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) (err error) {
+	if !fileId.Valid() {
+		return nil
+	}
 	it := &QueueItem{
+		ObjectId:    fileObjectId,
 		SpaceId:     fileId.SpaceId,
 		FileId:      fileId.FileId,
 		AddedByUser: uploadedByUser,
 		Imported:    imported,
 		Timestamp:   time.Now().UnixMilli(),
 	}
+
 	if !f.retryingQueue.Has(it.Key()) && !f.removingQueue.Has(it.Key()) {
 		return f.uploadingQueue.Add(it)
 	}
@@ -50,10 +55,10 @@ func (f *fileSync) ClearImportEvents() {
 
 func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	f.runOnUploadStartedHook(fileId, spaceId)
+	f.runOnUploadStartedHook(it.ObjectId, spaceId)
 	if err := f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
 		if isLimitReachedErr(err) {
-			f.runOnLimitedHook(fileId, spaceId)
+			f.runOnLimitedHook(it.ObjectId, spaceId)
 
 			if it.AddedByUser && !it.Imported {
 				f.sendLimitReachedEvent(spaceId)
@@ -69,7 +74,7 @@ func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.A
 		}
 		return queue.ActionDone, err
 	}
-	f.runOnUploadedHook(fileId, spaceId)
+	f.runOnUploadedHook(it.ObjectId, spaceId)
 
 	f.updateSpaceUsageInformation(spaceId)
 
@@ -88,47 +93,48 @@ func (f *fileSync) removeFromUploadingQueues(item *QueueItem) error {
 	return nil
 }
 
+// UploadSynchronously is used only for invites
 func (f *fileSync) UploadSynchronously(spaceId string, fileId domain.FileId) error {
-	f.runOnUploadStartedHook(fileId, spaceId)
+	// TODO After we migrate to storing invites as file objects in tech space, we should update their sync status
+	//  via OnUploadStarted and OnUploaded callbacks
 	err := f.uploadFile(context.Background(), spaceId, fileId)
 	if err != nil {
 		return err
 	}
-	f.runOnUploadedHook(fileId, spaceId)
 	f.updateSpaceUsageInformation(spaceId)
 	return nil
 }
 
-func (f *fileSync) runOnUploadedHook(fileId domain.FileId, spaceId string) {
+func (f *fileSync) runOnUploadedHook(fileObjectId string, spaceId string) {
 	if f.onUploaded != nil {
-		err := f.onUploaded(fileId)
+		err := f.onUploaded(fileObjectId)
 		if err != nil {
 			log.Warn("on upload callback failed",
-				zap.String("fileId", fileId.String()),
+				zap.String("fileObjectId", fileObjectId),
 				zap.String("spaceID", spaceId),
 				zap.Error(err))
 		}
 	}
 }
 
-func (f *fileSync) runOnUploadStartedHook(fileId domain.FileId, spaceId string) {
+func (f *fileSync) runOnUploadStartedHook(fileObjectId string, spaceId string) {
 	if f.onUploadStarted != nil {
-		err := f.onUploadStarted(fileId)
+		err := f.onUploadStarted(fileObjectId)
 		if err != nil {
 			log.Warn("on upload started callback failed",
-				zap.String("fileId", fileId.String()),
+				zap.String("fileObjectId", fileObjectId),
 				zap.String("spaceID", spaceId),
 				zap.Error(err))
 		}
 	}
 }
 
-func (f *fileSync) runOnLimitedHook(fileId domain.FileId, spaceId string) {
+func (f *fileSync) runOnLimitedHook(fileObjectId string, spaceId string) {
 	if f.onLimited != nil {
-		err := f.onLimited(fileId)
+		err := f.onLimited(fileObjectId)
 		if err != nil {
 			log.Warn("on limited callback failed",
-				zap.String("fileId", fileId.String()),
+				zap.String("fileId", fileObjectId),
 				zap.String("spaceID", spaceId),
 				zap.Error(err))
 		}

@@ -55,7 +55,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		assert.Zero(t, prevUsage.TotalCidsCount)
 
 		// Add file to upload queue
-		err = fx.AddFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false)
+		err = fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false)
 		require.NoError(t, err)
 		fx.waitEmptyQueue(t, time.Second*5)
 
@@ -123,7 +123,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		fileId := domain.FileId(fileNode.Cid().String())
 		spaceId := "space1"
 
-		require.NoError(t, fx.AddFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false))
+		require.NoError(t, fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false))
 		fx.waitLimitReachedEvent(t, time.Second*5)
 		fx.waitEmptyQueue(t, time.Second*5)
 

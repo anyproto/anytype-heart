@@ -60,7 +60,7 @@ type Service interface {
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
-	EnsureFileAddedToSyncQueue(details *types.Struct) error
+	EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error
 
 	FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error)
 	FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error)
@@ -132,7 +132,7 @@ func (s *service) Run(_ context.Context) error {
 	return nil
 }
 
-// TODO Comment
+// After migrating to new sync queue we need to ensure that all not synced files are added to the queue
 func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -153,9 +153,8 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 
 	for _, record := range records {
 		fullId := extractFullFileIdFromDetails(record.Details)
-		err := s.addToSyncQueue(
-			fullId, false, false,
-		)
+		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		err := s.addToSyncQueue(id, fullId, false, false)
 		if err != nil {
 			log.Errorf("add to sync queue: %v", err)
 		}
@@ -171,16 +170,17 @@ func extractFullFileIdFromDetails(details *types.Struct) domain.FullFileId {
 	}
 }
 
-// TODO Comment
-func (s *service) EnsureFileAddedToSyncQueue(details *types.Struct) error {
+// EnsureFileAddedToSyncQueue adds file to sync queue if it is not synced yet, we need to do this
+// after migrating to new sync queue
+func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error {
 	if pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()) == int64(syncstatus.StatusSynced) {
 		return nil
 	}
-	fullId := extractFullFileIdFromDetails(details)
-	log.Warn("LOAD ENSURE add to sync queue", fullId.SpaceId, fullId.FileId.String())
-	err := s.addToSyncQueue(
-		fullId, false, false,
-	)
+	fullId := domain.FullFileId{
+		SpaceId: id.SpaceID,
+		FileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
+	}
+	err := s.addToSyncQueue(id.ObjectID, fullId, false, false)
 	return err
 }
 
@@ -216,7 +216,7 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	if err != nil {
 		return "", nil, fmt.Errorf("create in space: %w", err)
 	}
-	err = s.addToSyncQueue(domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported())
+	err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported())
 	if err != nil {
 		return "", nil, fmt.Errorf("add to sync queue: %w", err)
 	}
@@ -332,8 +332,8 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	return fileObjectId, nil
 }
 
-func (s *service) addToSyncQueue(id domain.FullFileId, uploadedByUser bool, imported bool) error {
-	if err := s.fileSync.AddFile(id, uploadedByUser, imported); err != nil {
+func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) error {
+	if err := s.fileSync.AddFile(objectId, fileId, uploadedByUser, imported); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	return nil

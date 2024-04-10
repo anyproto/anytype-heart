@@ -96,7 +96,7 @@ func (s *service) MigrateFiles(st *state.State, spc source.Space, keysChanges []
 
 func (s *service) migrateFile(space clientspace.Space, origin objectorigin.ObjectOrigin, fileKeysChange *pb.ChangeFileKeys) error {
 	fileId := domain.FileId(fileKeysChange.Hash)
-	if !domain.IsFileId(fileId.String()) {
+	if !fileId.Valid() {
 		return nil
 	}
 	storedOrigin, err := s.fileStore.GetFileOrigin(fileId)

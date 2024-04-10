@@ -12,6 +12,7 @@ var (
 
 type QueueItem struct {
 	SpaceId     string
+	ObjectId    string
 	FileId      domain.FileId
 	Timestamp   int64
 	AddedByUser bool
@@ -19,7 +20,7 @@ type QueueItem struct {
 }
 
 func (it *QueueItem) Key() string {
-	return it.SpaceId + "/" + it.FileId.String()
+	return it.ObjectId
 }
 
 func (it *QueueItem) FullFileId() domain.FullFileId {

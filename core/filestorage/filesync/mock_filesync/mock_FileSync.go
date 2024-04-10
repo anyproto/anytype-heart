@@ -29,17 +29,17 @@ func (_m *MockFileSync) EXPECT() *MockFileSync_Expecter {
 	return &MockFileSync_Expecter{mock: &_m.Mock}
 }
 
-// AddFile provides a mock function with given fields: fileId, uploadedByUser, imported
-func (_m *MockFileSync) AddFile(fileId domain.FullFileId, uploadedByUser bool, imported bool) error {
-	ret := _m.Called(fileId, uploadedByUser, imported)
+// AddFile provides a mock function with given fields: fileObjectId, fileId, uploadedByUser, imported
+func (_m *MockFileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) error {
+	ret := _m.Called(fileObjectId, fileId, uploadedByUser, imported)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddFile")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(domain.FullFileId, bool, bool) error); ok {
-		r0 = rf(fileId, uploadedByUser, imported)
+	if rf, ok := ret.Get(0).(func(string, domain.FullFileId, bool, bool) error); ok {
+		r0 = rf(fileObjectId, fileId, uploadedByUser, imported)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -53,16 +53,17 @@ type MockFileSync_AddFile_Call struct {
 }
 
 // AddFile is a helper method to define mock.On call
+//   - fileObjectId string
 //   - fileId domain.FullFileId
 //   - uploadedByUser bool
 //   - imported bool
-func (_e *MockFileSync_Expecter) AddFile(fileId interface{}, uploadedByUser interface{}, imported interface{}) *MockFileSync_AddFile_Call {
-	return &MockFileSync_AddFile_Call{Call: _e.mock.On("AddFile", fileId, uploadedByUser, imported)}
+func (_e *MockFileSync_Expecter) AddFile(fileObjectId interface{}, fileId interface{}, uploadedByUser interface{}, imported interface{}) *MockFileSync_AddFile_Call {
+	return &MockFileSync_AddFile_Call{Call: _e.mock.On("AddFile", fileObjectId, fileId, uploadedByUser, imported)}
 }
 
-func (_c *MockFileSync_AddFile_Call) Run(run func(fileId domain.FullFileId, uploadedByUser bool, imported bool)) *MockFileSync_AddFile_Call {
+func (_c *MockFileSync_AddFile_Call) Run(run func(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool)) *MockFileSync_AddFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(domain.FullFileId), args[1].(bool), args[2].(bool))
+		run(args[0].(string), args[1].(domain.FullFileId), args[2].(bool), args[3].(bool))
 	})
 	return _c
 }
@@ -72,7 +73,7 @@ func (_c *MockFileSync_AddFile_Call) Return(err error) *MockFileSync_AddFile_Cal
 	return _c
 }
 
-func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(domain.FullFileId, bool, bool) error) *MockFileSync_AddFile_Call {
+func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(string, domain.FullFileId, bool, bool) error) *MockFileSync_AddFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -537,7 +538,7 @@ func (_c *MockFileSync_NodeUsage_Call) RunAndReturn(run func(context.Context) (f
 }
 
 // OnLimited provides a mock function with given fields: _a0
-func (_m *MockFileSync) OnLimited(_a0 func(domain.FileId) error) {
+func (_m *MockFileSync) OnLimited(_a0 filesync.StatusCallback) {
 	_m.Called(_a0)
 }
 
@@ -547,14 +548,14 @@ type MockFileSync_OnLimited_Call struct {
 }
 
 // OnLimited is a helper method to define mock.On call
-//   - _a0 func(domain.FileId) error
+//   - _a0 filesync.StatusCallback
 func (_e *MockFileSync_Expecter) OnLimited(_a0 interface{}) *MockFileSync_OnLimited_Call {
 	return &MockFileSync_OnLimited_Call{Call: _e.mock.On("OnLimited", _a0)}
 }
 
-func (_c *MockFileSync_OnLimited_Call) Run(run func(_a0 func(domain.FileId) error)) *MockFileSync_OnLimited_Call {
+func (_c *MockFileSync_OnLimited_Call) Run(run func(_a0 filesync.StatusCallback)) *MockFileSync_OnLimited_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(func(domain.FileId) error))
+		run(args[0].(filesync.StatusCallback))
 	})
 	return _c
 }
@@ -564,13 +565,13 @@ func (_c *MockFileSync_OnLimited_Call) Return() *MockFileSync_OnLimited_Call {
 	return _c
 }
 
-func (_c *MockFileSync_OnLimited_Call) RunAndReturn(run func(func(domain.FileId) error)) *MockFileSync_OnLimited_Call {
+func (_c *MockFileSync_OnLimited_Call) RunAndReturn(run func(filesync.StatusCallback)) *MockFileSync_OnLimited_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // OnUploadStarted provides a mock function with given fields: _a0
-func (_m *MockFileSync) OnUploadStarted(_a0 func(domain.FileId) error) {
+func (_m *MockFileSync) OnUploadStarted(_a0 filesync.StatusCallback) {
 	_m.Called(_a0)
 }
 
@@ -580,14 +581,14 @@ type MockFileSync_OnUploadStarted_Call struct {
 }
 
 // OnUploadStarted is a helper method to define mock.On call
-//   - _a0 func(domain.FileId) error
+//   - _a0 filesync.StatusCallback
 func (_e *MockFileSync_Expecter) OnUploadStarted(_a0 interface{}) *MockFileSync_OnUploadStarted_Call {
 	return &MockFileSync_OnUploadStarted_Call{Call: _e.mock.On("OnUploadStarted", _a0)}
 }
 
-func (_c *MockFileSync_OnUploadStarted_Call) Run(run func(_a0 func(domain.FileId) error)) *MockFileSync_OnUploadStarted_Call {
+func (_c *MockFileSync_OnUploadStarted_Call) Run(run func(_a0 filesync.StatusCallback)) *MockFileSync_OnUploadStarted_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(func(domain.FileId) error))
+		run(args[0].(filesync.StatusCallback))
 	})
 	return _c
 }
@@ -597,13 +598,13 @@ func (_c *MockFileSync_OnUploadStarted_Call) Return() *MockFileSync_OnUploadStar
 	return _c
 }
 
-func (_c *MockFileSync_OnUploadStarted_Call) RunAndReturn(run func(func(domain.FileId) error)) *MockFileSync_OnUploadStarted_Call {
+func (_c *MockFileSync_OnUploadStarted_Call) RunAndReturn(run func(filesync.StatusCallback)) *MockFileSync_OnUploadStarted_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // OnUploaded provides a mock function with given fields: _a0
-func (_m *MockFileSync) OnUploaded(_a0 func(domain.FileId) error) {
+func (_m *MockFileSync) OnUploaded(_a0 filesync.StatusCallback) {
 	_m.Called(_a0)
 }
 
@@ -613,14 +614,14 @@ type MockFileSync_OnUploaded_Call struct {
 }
 
 // OnUploaded is a helper method to define mock.On call
-//   - _a0 func(domain.FileId) error
+//   - _a0 filesync.StatusCallback
 func (_e *MockFileSync_Expecter) OnUploaded(_a0 interface{}) *MockFileSync_OnUploaded_Call {
 	return &MockFileSync_OnUploaded_Call{Call: _e.mock.On("OnUploaded", _a0)}
 }
 
-func (_c *MockFileSync_OnUploaded_Call) Run(run func(_a0 func(domain.FileId) error)) *MockFileSync_OnUploaded_Call {
+func (_c *MockFileSync_OnUploaded_Call) Run(run func(_a0 filesync.StatusCallback)) *MockFileSync_OnUploaded_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(func(domain.FileId) error))
+		run(args[0].(filesync.StatusCallback))
 	})
 	return _c
 }
@@ -630,7 +631,7 @@ func (_c *MockFileSync_OnUploaded_Call) Return() *MockFileSync_OnUploaded_Call {
 	return _c
 }
 
-func (_c *MockFileSync_OnUploaded_Call) RunAndReturn(run func(func(domain.FileId) error)) *MockFileSync_OnUploaded_Call {
+func (_c *MockFileSync_OnUploaded_Call) RunAndReturn(run func(filesync.StatusCallback)) *MockFileSync_OnUploaded_Call {
 	_c.Call.Return(run)
 	return _c
 }

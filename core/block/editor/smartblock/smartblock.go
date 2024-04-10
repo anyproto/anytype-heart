@@ -79,6 +79,7 @@ const (
 	HookAfterApply       // runs after changes applied from the user or externally via changeListener
 	HookOnClose
 	HookOnBlockClose
+	HookOnStateRebuild
 )
 
 type key int
@@ -1030,7 +1031,12 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.runIndexer(sb.Doc.(*state.State))
-	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
+	applyInfo := ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()}
+	sb.execHooks(HookAfterApply, applyInfo)
+	err = sb.execHooks(HookOnStateRebuild, applyInfo)
+	if err != nil {
+		log.With("objectId", sb.Id(), "error", err).Error("executing hook on state rebuild")
+	}
 	return nil
 }
 

@@ -253,17 +253,17 @@ func (_c *MockService_DeleteFileData_Call) RunAndReturn(run func(string) error) 
 	return _c
 }
 
-// EnsureFileAddedToSyncQueue provides a mock function with given fields: details
-func (_m *MockService) EnsureFileAddedToSyncQueue(details *types.Struct) error {
-	ret := _m.Called(details)
+// EnsureFileAddedToSyncQueue provides a mock function with given fields: id, details
+func (_m *MockService) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error {
+	ret := _m.Called(id, details)
 
 	if len(ret) == 0 {
 		panic("no return value specified for EnsureFileAddedToSyncQueue")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Struct) error); ok {
-		r0 = rf(details)
+	if rf, ok := ret.Get(0).(func(domain.FullID, *types.Struct) error); ok {
+		r0 = rf(id, details)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -277,14 +277,15 @@ type MockService_EnsureFileAddedToSyncQueue_Call struct {
 }
 
 // EnsureFileAddedToSyncQueue is a helper method to define mock.On call
+//   - id domain.FullID
 //   - details *types.Struct
-func (_e *MockService_Expecter) EnsureFileAddedToSyncQueue(details interface{}) *MockService_EnsureFileAddedToSyncQueue_Call {
-	return &MockService_EnsureFileAddedToSyncQueue_Call{Call: _e.mock.On("EnsureFileAddedToSyncQueue", details)}
+func (_e *MockService_Expecter) EnsureFileAddedToSyncQueue(id interface{}, details interface{}) *MockService_EnsureFileAddedToSyncQueue_Call {
+	return &MockService_EnsureFileAddedToSyncQueue_Call{Call: _e.mock.On("EnsureFileAddedToSyncQueue", id, details)}
 }
 
-func (_c *MockService_EnsureFileAddedToSyncQueue_Call) Run(run func(details *types.Struct)) *MockService_EnsureFileAddedToSyncQueue_Call {
+func (_c *MockService_EnsureFileAddedToSyncQueue_Call) Run(run func(id domain.FullID, details *types.Struct)) *MockService_EnsureFileAddedToSyncQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*types.Struct))
+		run(args[0].(domain.FullID), args[1].(*types.Struct))
 	})
 	return _c
 }
@@ -294,7 +295,7 @@ func (_c *MockService_EnsureFileAddedToSyncQueue_Call) Return(_a0 error) *MockSe
 	return _c
 }
 
-func (_c *MockService_EnsureFileAddedToSyncQueue_Call) RunAndReturn(run func(*types.Struct) error) *MockService_EnsureFileAddedToSyncQueue_Call {
+func (_c *MockService_EnsureFileAddedToSyncQueue_Call) RunAndReturn(run func(domain.FullID, *types.Struct) error) *MockService_EnsureFileAddedToSyncQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
