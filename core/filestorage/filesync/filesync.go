@@ -46,7 +46,6 @@ type FileSync interface {
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, hashes []domain.FileId) ([]FileStat, error)
-	SyncStatus() (ss SyncStatus, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
@@ -172,10 +171,4 @@ func (f *fileSync) Close(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {
-	return SyncStatus{
-		QueueLen: f.uploadingQueue.Len(),
-	}, nil
 }

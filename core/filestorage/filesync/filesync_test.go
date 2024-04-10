@@ -1,5 +1,3 @@
-//go:generate mockgen -package filesync -destination filestore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore FileStore
-
 package filesync
 
 import (
@@ -16,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -26,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/queue"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -39,12 +39,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		defer fx.Finish(t)
 
 		// Add file to local DAG
-		buf := make([]byte, 1024*1024)
-		_, err := rand.Read(buf)
-		require.NoError(t, err)
-		fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
-		require.NoError(t, err)
-		fileId := domain.FileId(fileNode.Cid().String())
+		fileId, fileNode := fx.givenFileAddedToDAG(t)
 		spaceId := "space1"
 
 		// Save node usage
@@ -55,34 +50,11 @@ func TestFileSync_AddFile(t *testing.T) {
 		assert.Zero(t, prevUsage.TotalCidsCount)
 
 		// Add file to upload queue
-		err = fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false)
-		require.NoError(t, err)
-		fx.waitEmptyQueue(t, time.Second*5)
+		fx.givenFileUploaded(t, spaceId, fileId)
 
 		// Check that file uploaded to in-memory node
 		wantSize, _ := fileNode.Size()
-		var gotSize int
-		var wantCids []string
-		walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(fileNode, fx.fileService.DAGService()))
-		err = walker.Iterate(func(node ipld.NavigableNode) error {
-			cId := node.GetIPLDNode().Cid()
-			gotBlock, err := fx.rpcStore.Get(ctx, cId)
-			if err != nil {
-				return fmt.Errorf("node: %w", err)
-			}
-			wantCids = append(wantCids, cId.String())
-			gotSize += len(gotBlock.RawData())
-			wantBlock, err := fx.localFileStorage.Get(ctx, cId)
-			if err != nil {
-				return fmt.Errorf("local: %w", err)
-			}
-			require.Equal(t, wantBlock.RawData(), gotBlock.RawData())
-			return nil
-		})
-		if !errors.Is(err, ipld.EndOfDag) {
-			require.NoError(t, err)
-		}
-		assert.Equal(t, int(wantSize), gotSize)
+		wantCids := fx.assertFileUploadedToRemoteNode(t, fileNode, int(wantSize))
 
 		// Check that updated space usage event has been sent
 		fx.waitEvent(t, 1*time.Second, func(msg *pb.EventMessage) bool {
@@ -125,7 +97,7 @@ func TestFileSync_AddFile(t *testing.T) {
 
 		require.NoError(t, fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false))
 		fx.waitLimitReachedEvent(t, time.Second*5)
-		fx.waitEmptyQueue(t, time.Second*5)
+		fx.waitEmptyQueue(t, fx.uploadingQueue, time.Second*5)
 
 		_, err = fx.rpcStore.Get(ctx, fileNode.Cid())
 		assert.Error(t, err)
@@ -136,20 +108,74 @@ func TestFileSync_AddFile(t *testing.T) {
 	})
 }
 
+func (fx *fixture) assertFileUploadedToRemoteNode(t *testing.T, fileNode ipld.Node, wantSize int) []cid.Cid {
+	var gotSize int
+	var wantCids []cid.Cid
+	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(fileNode, fx.fileService.DAGService()))
+	err := walker.Iterate(func(node ipld.NavigableNode) error {
+		cId := node.GetIPLDNode().Cid()
+		gotBlock, err := fx.rpcStore.Get(ctx, cId)
+		if err != nil {
+			return fmt.Errorf("node: %w", err)
+		}
+		wantCids = append(wantCids, cId)
+		gotSize += len(gotBlock.RawData())
+		wantBlock, err := fx.localFileStorage.Get(ctx, cId)
+		if err != nil {
+			return fmt.Errorf("local: %w", err)
+		}
+		require.Equal(t, wantBlock.RawData(), gotBlock.RawData())
+		return nil
+	})
+	if !errors.Is(err, ipld.EndOfDag) {
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int(wantSize), gotSize)
+	return wantCids
+}
+
+func (fx *fixture) givenFileAddedToDAG(t *testing.T) (domain.FileId, ipld.Node) {
+	buf := make([]byte, 1024*1024)
+	_, err := rand.Read(buf)
+	require.NoError(t, err)
+	fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
+	require.NoError(t, err)
+	return domain.FileId(fileNode.Cid().String()), fileNode
+}
+
+func (fx *fixture) givenFileUploaded(t *testing.T, spaceId string, fileId domain.FileId) {
+	// Add file to upload queue
+	err := fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false)
+	require.NoError(t, err)
+
+	fx.waitEmptyQueue(t, fx.uploadingQueue, time.Second*1)
+
+	// Check remote node
+	fileInfos, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileId)
+	require.NoError(t, err)
+	require.Len(t, fileInfos, 1)
+	assert.NotZero(t, fileInfos[0].UsageBytes)
+}
+
 func TestFileSync_RemoveFile(t *testing.T) {
-	t.Skip("https://linear.app/anytype/issue/GO-1229/fix-testfilesync-removefile")
-	return
-	fx := newFixture(t, 1024)
+	fx := newFixture(t, 1024*1024*1024)
 	defer fx.Finish(t)
 	spaceId := "spaceId"
-	fileId := domain.FileId("fileId")
+
+	fileId, _ := fx.givenFileAddedToDAG(t)
+	fx.givenFileUploaded(t, spaceId, fileId)
+
 	require.NoError(t, fx.RemoveFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}))
-	fx.waitEmptyQueue(t, time.Second*5)
+
+	fx.waitEmptyQueue(t, fx.removingQueue, time.Second*1)
+
+	_, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileId)
+	require.Error(t, err)
 }
 
 func newFixture(t *testing.T, limit int) *fixture {
 	fx := &fixture{
-		FileSync:    New(),
+		fileSync:    New().(*fileSync),
 		fileService: fileservice.New(),
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),
@@ -177,7 +203,7 @@ func newFixture(t *testing.T, limit int) *fixture {
 		Register(localFileStorage).
 		Register(dataStoreProvider).
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
-		Register(fx.FileSync).
+		Register(fx.fileSync).
 		Register(fileStore).
 		Register(sender)
 	require.NoError(t, fx.a.Start(ctx))
@@ -185,7 +211,7 @@ func newFixture(t *testing.T, limit int) *fixture {
 }
 
 type fixture struct {
-	FileSync
+	*fileSync
 	fileService      fileservice.FileService
 	localFileStorage fileblockstore.BlockStoreLocal
 	ctrl             *gomock.Controller
@@ -218,11 +244,9 @@ func (f *fixture) waitEvent(t *testing.T, timeout time.Duration, pred func(msg *
 	})
 }
 
-func (f *fixture) waitEmptyQueue(t *testing.T, timeout time.Duration) {
+func (f *fixture) waitEmptyQueue(t *testing.T, queue *queue.Queue[*QueueItem], timeout time.Duration) {
 	f.waitCondition(t, timeout, func() bool {
-		ss, err := f.SyncStatus()
-		require.NoError(t, err)
-		return ss.QueueLen == 0
+		return queue.Len() == 0
 	})
 }
 
