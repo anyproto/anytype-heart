@@ -96,6 +96,9 @@ func (s *service) MigrateFiles(st *state.State, spc source.Space, keysChanges []
 
 func (s *service) migrateFile(space clientspace.Space, origin objectorigin.ObjectOrigin, fileKeysChange *pb.ChangeFileKeys) error {
 	fileId := domain.FileId(fileKeysChange.Hash)
+	if !domain.IsFileId(fileId.String()) {
+		return nil
+	}
 	storedOrigin, err := s.fileStore.GetFileOrigin(fileId)
 	if err == nil {
 		origin = storedOrigin
@@ -138,6 +141,8 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	_, err = space.GetObject(ctx, it.FileObjectId)
 	// Already migrated or it is a link to object
 	if err == nil {
+		// TODO Clean up
+		fmt.Println("MIGRATED!", it.FileObjectId)
 		return queue.ActionDone, nil
 	}
 
@@ -149,6 +154,8 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", it.CreateRequest.FileId, err)
 	}
+	// TODO Clean up
+	fmt.Println("DERIVED!", it.FileObjectId)
 	return queue.ActionDone, nil
 }
 

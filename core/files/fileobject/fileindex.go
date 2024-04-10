@@ -128,6 +128,10 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 			SpaceId: spaceId,
 			FileId:  domain.FileId(pbtypes.GetString(rec.Details, bundle.RelationKeyFileId.String())),
 		}
+		// Additional check if we are accidentally migrated file object
+		if !domain.IsFileId(fileId.FileId.String()) {
+			continue
+		}
 		err = ind.addToQueue(ctx, id, fileId)
 		if err != nil {
 			return fmt.Errorf("add to index queue: %w", err)
