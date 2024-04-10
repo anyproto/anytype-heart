@@ -123,16 +123,13 @@ func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistory
 }
 
 func (mw *Middleware) HistoryDiffVersions(cctx context.Context, req *pb.RpcHistoryDiffVersionsRequest) *pb.RpcHistoryDiffVersionsResponse {
-	response := func(versionDiff *history.VersionDiff, objectView *model.ObjectView, err error) (res *pb.RpcHistoryDiffVersionsResponse) {
+	response := func(historyEvents []*pb.EventMessage, objectView *model.ObjectView, err error) (res *pb.RpcHistoryDiffVersionsResponse) {
 		res = &pb.RpcHistoryDiffVersionsResponse{
 			Error: &pb.RpcHistoryDiffVersionsResponseError{
 				Code: pb.RpcHistoryDiffVersionsResponseError_NULL,
 			},
-			CreatedBlockIds:     versionDiff.CreatedBlockIds,
-			CreatedRelationIds:  versionDiff.CreatedRelationKeys,
-			ModifiedBlockIds:    versionDiff.ModifiedBlockIds,
-			ModifiedRelationIds: versionDiff.ModifiedRelationKeys,
-			ObjectView:          objectView,
+			ObjectView:    objectView,
+			HistoryEvents: historyEvents,
 		}
 		if err != nil {
 			res.Error.Code = pb.RpcHistoryDiffVersionsResponseError_UNKNOWN_ERROR

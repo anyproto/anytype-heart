@@ -10809,10 +10809,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.History.DiffVersions.Response.Error](#anytype-Rpc-History-DiffVersions-Response-Error) |  |  |
-| createdBlockIds | [string](#string) | repeated |  |
-| modifiedBlockIds | [string](#string) | repeated |  |
-| createdRelationIds | [string](#string) | repeated |  |
-| modifiedRelationIds | [string](#string) | repeated |  |
+| historyEvents | [Event.Message](#anytype-Event-Message) | repeated |  |
 | objectView | [model.ObjectView](#anytype-model-ObjectView) |  |  |
 
 

@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	history2 "github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -41,18 +41,11 @@ func New() History {
 	return new(history)
 }
 
-type VersionDiff struct {
-	CreatedBlockIds      []string
-	ModifiedBlockIds     []string
-	CreatedRelationKeys  []string
-	ModifiedRelationKeys []string
-}
-
 type History interface {
 	Show(id domain.FullID, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
 	Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(id domain.FullID, versionId string) (err error)
-	DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) (*VersionDiff, *model.ObjectView, error)
+	DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.EventMessage, *model.ObjectView, error)
 	GetBlocksModifiers(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockModifier, error)
 	app.Component
 }
@@ -190,27 +183,28 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	return
 }
 
-func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) (*VersionDiff, *model.ObjectView, error) {
+func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.EventMessage, *model.ObjectView, error) {
 	id := domain.FullID{
 		ObjectID: req.ObjectId,
 		SpaceID:  req.SpaceId,
-	}
-	currState, sbType, _, err := h.buildState(id, req.CurrentVersion)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get state of versions %s: %s", req.CurrentVersion, err)
 	}
 	previousState, _, _, err := h.buildState(id, req.PreviousVersion)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get state of versions %s: %s", req.PreviousVersion, err)
 	}
 
+	currState, sbType, _, err := h.buildState(id, req.CurrentVersion)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get state of versions %s: %s", req.CurrentVersion, err)
+	}
+
 	currState.SetParent(previousState)
-	_, actions, err := state.ApplyState(currState, false)
+	msg, _, err := state.ApplyState(currState, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get history events for versions %s, %s: %s", req.CurrentVersion, req.PreviousVersion, err)
 	}
-	versionDiff := h.processActions(actions, id.ObjectID)
 
+	historyEvents := getHistoryEvents(msg)
 	spc, err := h.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
@@ -226,7 +220,6 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) (*VersionD
 			Details: m.Details,
 		})
 	}
-
 	objectView := &model.ObjectView{
 		RootId:        id.ObjectID,
 		Type:          model.SmartBlockType(sbType),
@@ -234,63 +227,76 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) (*VersionD
 		Details:       details,
 		RelationLinks: currState.GetRelationLinks(),
 	}
-
-	return versionDiff, objectView, nil
+	return historyEvents, objectView, nil
 }
 
-func (h *history) processActions(actions undo.Action, objectId string) *VersionDiff {
-	var createdBlockIds, modifiedBlockIds, createdRelationKeys, modifiedRelationKeys []string
-	for _, changed := range actions.Change {
-		if changed.Before.Model().GetId() == objectId {
+func getHistoryEvents(msg []simple.EventMessage) []*pb.EventMessage {
+	var response []*pb.EventMessage
+	for _, message := range msg {
+		if message.Virtual {
 			continue
 		}
-		modifiedBlockIds = append(modifiedBlockIds, changed.Before.Model().GetId())
+		if isSuitableChange(message) {
+			response = append(response, message.Msg)
+		}
 	}
-	for _, add := range actions.Add {
-		createdBlockIds = append(createdBlockIds, add.Model().GetId())
-	}
-	if actions.Details != nil {
-		modifiedRelationKeys = h.diffDetails(actions)
-	}
-	if actions.RelationLinks != nil {
-		createdRelationKeys = h.diffRelations(actions)
-	}
-	return &VersionDiff{
-		CreatedBlockIds:      createdBlockIds,
-		ModifiedBlockIds:     modifiedBlockIds,
-		CreatedRelationKeys:  createdRelationKeys,
-		ModifiedRelationKeys: modifiedRelationKeys,
-	}
+	return response
 }
 
-func (h *history) diffDetails(actions undo.Action) []string {
-	var createdRelationKeys []string
-	diff := pbtypes.StructDiff(actions.Details.Before, actions.Details.After)
-	for key := range diff.GetFields() {
-		createdRelationKeys = append(createdRelationKeys, key)
-	}
-	return createdRelationKeys
+func isSuitableChange(message simple.EventMessage) bool {
+	return isDataviewChange(message) ||
+		isDetailsChange(message) ||
+		isRelationsChange(message) ||
+		isBlockPropertiesChange(message) ||
+		isSimpleBlockChange(message) ||
+		isBasicBlockChange(message)
 }
 
-func (h *history) diffRelations(actions undo.Action) []string {
-	before := actions.RelationLinks.Before
-	after := actions.RelationLinks.After
-	relationsBefore := lo.Map(before, func(item *model.RelationLink, index int) *model.Relation {
-		return &model.Relation{
-			Key: item.Key,
-		}
-	})
-	relationsAfter := lo.Map(after, func(item *model.RelationLink, index int) *model.Relation {
-		return &model.Relation{
-			Key: item.Key,
-		}
-	})
-	added, _, _ := pbtypes.RelationsDiff(relationsBefore, relationsAfter)
-	var createdRelationKeys []string
-	for _, relation := range added {
-		createdRelationKeys = append(createdRelationKeys, relation.Key)
-	}
-	return createdRelationKeys
+func isDataviewChange(message simple.EventMessage) bool {
+	return message.Msg.GetBlockDataviewRelationDelete() != nil ||
+		message.Msg.GetBlockDataviewSourceSet() != nil ||
+		message.Msg.GetBlockDataviewRelationSet() != nil ||
+		message.Msg.GetBlockDataviewViewSet() != nil ||
+		message.Msg.GetBlockDataviewViewOrder() != nil ||
+		message.Msg.GetBlockDataviewViewDelete() != nil ||
+		message.Msg.GetBlockDataViewObjectOrderUpdate() != nil ||
+		message.Msg.GetBlockDataViewGroupOrderUpdate() != nil ||
+		message.Msg.GetBlockDataviewViewUpdate() != nil ||
+		message.Msg.GetBlockDataviewTargetObjectIdSet() != nil
+}
+
+func isRelationsChange(message simple.EventMessage) bool {
+	return message.Msg.GetObjectRelationsAmend() != nil ||
+		message.Msg.GetObjectRelationsRemove() != nil
+}
+
+func isDetailsChange(message simple.EventMessage) bool {
+	return message.Msg.GetObjectDetailsAmend() != nil ||
+		message.Msg.GetObjectDetailsSet() != nil ||
+		message.Msg.GetObjectDetailsUnset() != nil
+}
+
+func isBlockPropertiesChange(message simple.EventMessage) bool {
+	return message.Msg.GetBlockSetAlign() != nil ||
+		message.Msg.GetBlockSetChildrenIds() != nil ||
+		message.Msg.GetBlockSetBackgroundColor() != nil ||
+		message.Msg.GetBlockSetFields() != nil
+}
+
+func isSimpleBlockChange(message simple.EventMessage) bool {
+	return message.Msg.GetBlockSetTableRow() != nil ||
+		message.Msg.GetBlockSetRelation() != nil ||
+		message.Msg.GetBlockSetText() != nil ||
+		message.Msg.GetBlockSetLink() != nil ||
+		message.Msg.GetBlockSetLatex() != nil ||
+		message.Msg.GetBlockSetFile() != nil ||
+		message.Msg.GetBlockSetDiv() != nil ||
+		message.Msg.GetBlockSetBookmark() != nil
+}
+
+func isBasicBlockChange(message simple.EventMessage) bool {
+	return message.Msg.GetBlockAdd() != nil ||
+		message.Msg.GetBlockDelete() != nil
 }
 
 func (h *history) GetBlocksModifiers(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockModifier, error) {
@@ -298,24 +304,29 @@ func (h *history) GetBlocksModifiers(id domain.FullID, versionId string, blocks 
 		return nil, nil
 	}
 	existingBlocks := lo.SliceToMap(blocks, func(item *model.Block) (string, struct{}) { return item.GetId(), struct{}{} })
-	tree, _, e := h.treeWithId(id, versionId, true)
-	if e != nil {
-		return nil, e
+	tree, _, err := h.treeWithId(id, versionId, true)
+	if err != nil {
+		return nil, err
 	}
 
 	blocksModifiersMap := make(map[string]string, 0)
-	e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
-		if lo.Contains(c.PreviousIds, id.ObjectID) {
-			return true // skip first change
+	err = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
+		if !c.IsSnapshot {
+			h.processChange(c, id, blocksModifiersMap, existingBlocks)
 		}
-		h.processChange(c, id, blocksModifiersMap, existingBlocks)
 		return true
 	})
-	if e != nil {
-		return nil, e
+	if err != nil {
+		return nil, err
 	}
 
 	blocksModifiers := make([]*model.ObjectViewBlockModifier, 0)
+	for blockId, participantId := range blocksModifiersMap {
+		blocksModifiers = append(blocksModifiers, &model.ObjectViewBlockModifier{
+			BlockId:       blockId,
+			ParticipantId: participantId,
+		})
+	}
 	return blocksModifiers, nil
 }
 
@@ -380,6 +391,9 @@ func (h *history) handleBlockSettingsEvents(event *pb.EventMessage, blockId []st
 	if setBackgroundColor := event.GetBlockSetBackgroundColor(); setBackgroundColor != nil {
 		blockId = append(blockId, setBackgroundColor.Id)
 	}
+	if setFields := event.GetBlockSetFields(); setFields != nil {
+		blockId = append(blockId, setFields.Id)
+	}
 	return blockId
 }
 
@@ -404,9 +418,6 @@ func (h *history) handleSimpleBlockEvents(event *pb.EventMessage, blockId []stri
 	}
 	if setDiv := event.GetBlockSetDiv(); setDiv != nil {
 		blockId = append(blockId, setDiv.Id)
-	}
-	if setFields := event.GetBlockSetFields(); setFields != nil {
-		blockId = append(blockId, setFields.Id)
 	}
 	if setBookmark := event.GetBlockSetBookmark(); setBookmark != nil {
 		blockId = append(blockId, setBookmark.Id)
@@ -454,7 +465,11 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	}
 
 	st, _, _, err = source.BuildState(id.SpaceID, nil, tree)
-	defer st.ResetParentIdsCache()
+	defer func() {
+		if err == nil {
+			st.ResetParentIdsCache()
+		}
+	}()
 	if err != nil {
 		return
 	}
