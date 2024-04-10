@@ -1,6 +1,8 @@
 package objectstore
 
 import (
+	"context"
+
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -16,7 +18,7 @@ func (s *dsObjectStore) removeFromIndexQueue(id string) error {
 	return badgerhelper.DeleteValue(s.db, indexQueueBase.ChildString(id).Bytes())
 }
 
-func (s *dsObjectStore) BatchProcessFullTextQueue(limit int, processIds func(ids []string) error) error {
+func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {
 	return iterateKeysByPrefixBatched(s.db, indexQueueBase.Bytes(), limit, func(keys [][]byte) error {
 		var ids []string
 		for id := range keys {

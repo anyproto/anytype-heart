@@ -153,7 +153,7 @@ type ObjectStore interface {
 	GetRelationByKey(key string) (*model.Relation, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
-	BatchProcessFullTextQueue(limit int, processIds func(processIds []string) error) error
+	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
 }
 
 type IndexerStore interface {

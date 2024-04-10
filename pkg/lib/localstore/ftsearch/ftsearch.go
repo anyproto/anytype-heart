@@ -57,7 +57,7 @@ func New() FTSearch {
 type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
-	BatchIndex(docs []SearchDoc) (err error)
+	BatchIndex(ctx context.Context, docs []SearchDoc) (err error)
 	BatchDelete(ids []string) (err error)
 	Search(spaceID, query string) (results search.DocumentMatchCollection, err error)
 	Has(id string) (exists bool, err error)
@@ -118,7 +118,7 @@ func (f *ftSearch) Index(doc SearchDoc) (err error) {
 	return f.index.Index(doc.Id, doc)
 }
 
-func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
+func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc) (err error) {
 	if len(docs) == 0 {
 		return nil
 	}
@@ -135,6 +135,9 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 		}
 	}()
 	for _, doc := range docs {
+		if ctx.Err() == context.Canceled {
+			return ctx.Err()
+		}
 		doc.TitleNoTerms = doc.Title
 		doc.TextNoTerms = doc.Text
 		if err := batch.Index(doc.Id, doc); err != nil {
