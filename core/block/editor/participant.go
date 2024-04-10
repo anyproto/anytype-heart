@@ -52,10 +52,13 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (p *participant) ModifyProfileDetails(profileDetails *types.Struct) (err error) {
-	newDetails := pbtypes.CopyStruct(profileDetails, true)
-	newDetails.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(newDetails, bundle.RelationKeyId.String()))
-	delete(newDetails.Fields, bundle.RelationKeyId.String())
-	return p.modifyDetails(newDetails)
+	details := pbtypes.CopyStructFields(profileDetails,
+		bundle.RelationKeyName.String(),
+		bundle.RelationKeyDescription.String(),
+		bundle.RelationKeyIconImage.String(),
+		bundle.RelationKeyGlobalName.String())
+	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String(pbtypes.GetString(profileDetails, bundle.RelationKeyId.String()))
+	return p.modifyDetails(details)
 }
 
 func (p *participant) ModifyIdentityDetails(profile *model.IdentityProfile) (err error) {
@@ -78,7 +81,9 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 }
 
 func (p *participant) modifyDetails(newDetails *types.Struct) (err error) {
-	return p.Apply(p.NewState().SetDetails(pbtypes.StructMerge(p.CombinedDetails(), newDetails, true)))
+	newState := p.NewState()
+	newState.SetDetails(pbtypes.StructMerge(p.CombinedDetails(), newDetails, false))
+	return p.Apply(newState)
 }
 
 func buildParticipantDetails(

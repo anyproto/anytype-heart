@@ -143,7 +143,7 @@ func (a *aclObjectManager) process() {
 		break
 	}
 
-	err := a.participantWatcher.RegisterProfile(a.ctx, a.sp)
+	err := a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
 	if err != nil {
 		log.Error("init my identity", zap.Error(err))
 	}
@@ -218,7 +218,7 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 		if err != nil {
 			return err
 		}
-		err = a.participantWatcher.RegisterIdentity(a.ctx, a.sp, state)
+		err = a.participantWatcher.WatchParticipant(a.ctx, a.sp, state)
 		if err != nil {
 			return err
 		}

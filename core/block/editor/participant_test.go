@@ -27,16 +27,10 @@ func TestParticipant_ModifyProfileDetails(t *testing.T) {
 	err := fx.ModifyProfileDetails(details)
 	require.NoError(t, err)
 	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String("profile")
-	equalKeys := []string{
-		bundle.RelationKeyName.String(),
-		bundle.RelationKeyDescription.String(),
-		bundle.RelationKeyIconImage.String(),
-		bundle.RelationKeyIdentityProfileLink.String(),
-		bundle.RelationKeyGlobalName.String(),
-	}
+	delete(details.Fields, bundle.RelationKeyId.String())
 	fields := details.GetFields()
 	participantFields := fx.CombinedDetails().GetFields()
-	for _, key := range equalKeys {
+	for key, _ := range details.Fields {
 		require.Equal(t, fields[key], participantFields[key])
 	}
 }
@@ -61,18 +55,9 @@ func TestParticipant_ModifyParticipantAclState(t *testing.T) {
 		bundle.RelationKeyParticipantStatus.String():      model.ParticipantStatus_Active,
 		bundle.RelationKeyIsHiddenDiscovery.String():      false,
 	})
-	equalKeys := []string{
-		bundle.RelationKeyId.String(),
-		bundle.RelationKeyIdentity.String(),
-		bundle.RelationKeySpaceId.String(),
-		bundle.RelationKeyLastModifiedBy.String(),
-		bundle.RelationKeyParticipantPermissions.String(),
-		bundle.RelationKeyParticipantStatus.String(),
-		bundle.RelationKeyIsHiddenDiscovery.String(),
-	}
 	fields := details.GetFields()
 	participantFields := fx.CombinedDetails().GetFields()
-	for _, key := range equalKeys {
+	for key, _ := range details.Fields {
 		require.Equal(t, fields[key], participantFields[key])
 	}
 }
@@ -94,15 +79,9 @@ func TestParticipant_ModifyIdentityDetails(t *testing.T) {
 		bundle.RelationKeyIconImage.String():   "icon",
 		bundle.RelationKeyGlobalName.String():  "global",
 	})
-	equalKeys := []string{
-		bundle.RelationKeyName.String(),
-		bundle.RelationKeyDescription.String(),
-		bundle.RelationKeyIconImage.String(),
-		bundle.RelationKeyGlobalName.String(),
-	}
 	fields := details.GetFields()
 	participantFields := fx.CombinedDetails().GetFields()
-	for _, key := range equalKeys {
+	for key, _ := range details.Fields {
 		require.Equal(t, fields[key], participantFields[key])
 	}
 }

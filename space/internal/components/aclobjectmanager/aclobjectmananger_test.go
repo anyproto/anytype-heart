@@ -40,7 +40,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockParticipantWatcher.EXPECT().RegisterProfile(mock.Anything, fx.mockSpace).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
@@ -49,7 +49,7 @@ func TestAclObjectManager(t *testing.T) {
 				require.True(t, state.PubKey.Equals(acl.AclState().Identity()))
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(true).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive)
@@ -76,7 +76,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockParticipantWatcher.EXPECT().RegisterProfile(mock.Anything, fx.mockSpace).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
@@ -91,7 +91,7 @@ func TestAclObjectManager(t *testing.T) {
 				}
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive)
@@ -119,7 +119,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockParticipantWatcher.EXPECT().RegisterProfile(mock.Anything, fx.mockSpace).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
@@ -128,7 +128,7 @@ func TestAclObjectManager(t *testing.T) {
 				require.True(t, state.PubKey.Equals(a.ActualAccounts()["a"].Keys.SignKey.GetPublic()))
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().RegisterIdentity(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")

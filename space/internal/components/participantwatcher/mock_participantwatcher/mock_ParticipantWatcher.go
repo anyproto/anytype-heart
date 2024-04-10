@@ -163,101 +163,6 @@ func (_c *MockParticipantWatcher_Name_Call) RunAndReturn(run func() string) *Moc
 	return _c
 }
 
-// RegisterIdentity provides a mock function with given fields: ctx, space, accState
-func (_m *MockParticipantWatcher) RegisterIdentity(ctx context.Context, space clientspace.Space, accState list.AccountState) error {
-	ret := _m.Called(ctx, space, accState)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RegisterIdentity")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, list.AccountState) error); ok {
-		r0 = rf(ctx, space, accState)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockParticipantWatcher_RegisterIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterIdentity'
-type MockParticipantWatcher_RegisterIdentity_Call struct {
-	*mock.Call
-}
-
-// RegisterIdentity is a helper method to define mock.On call
-//   - ctx context.Context
-//   - space clientspace.Space
-//   - accState list.AccountState
-func (_e *MockParticipantWatcher_Expecter) RegisterIdentity(ctx interface{}, space interface{}, accState interface{}) *MockParticipantWatcher_RegisterIdentity_Call {
-	return &MockParticipantWatcher_RegisterIdentity_Call{Call: _e.mock.On("RegisterIdentity", ctx, space, accState)}
-}
-
-func (_c *MockParticipantWatcher_RegisterIdentity_Call) Run(run func(ctx context.Context, space clientspace.Space, accState list.AccountState)) *MockParticipantWatcher_RegisterIdentity_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(list.AccountState))
-	})
-	return _c
-}
-
-func (_c *MockParticipantWatcher_RegisterIdentity_Call) Return(_a0 error) *MockParticipantWatcher_RegisterIdentity_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockParticipantWatcher_RegisterIdentity_Call) RunAndReturn(run func(context.Context, clientspace.Space, list.AccountState) error) *MockParticipantWatcher_RegisterIdentity_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RegisterProfile provides a mock function with given fields: ctx, space
-func (_m *MockParticipantWatcher) RegisterProfile(ctx context.Context, space clientspace.Space) error {
-	ret := _m.Called(ctx, space)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RegisterProfile")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space) error); ok {
-		r0 = rf(ctx, space)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockParticipantWatcher_RegisterProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterProfile'
-type MockParticipantWatcher_RegisterProfile_Call struct {
-	*mock.Call
-}
-
-// RegisterProfile is a helper method to define mock.On call
-//   - ctx context.Context
-//   - space clientspace.Space
-func (_e *MockParticipantWatcher_Expecter) RegisterProfile(ctx interface{}, space interface{}) *MockParticipantWatcher_RegisterProfile_Call {
-	return &MockParticipantWatcher_RegisterProfile_Call{Call: _e.mock.On("RegisterProfile", ctx, space)}
-}
-
-func (_c *MockParticipantWatcher_RegisterProfile_Call) Run(run func(ctx context.Context, space clientspace.Space)) *MockParticipantWatcher_RegisterProfile_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(clientspace.Space))
-	})
-	return _c
-}
-
-func (_c *MockParticipantWatcher_RegisterProfile_Call) Return(_a0 error) *MockParticipantWatcher_RegisterProfile_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockParticipantWatcher_RegisterProfile_Call) RunAndReturn(run func(context.Context, clientspace.Space) error) *MockParticipantWatcher_RegisterProfile_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Run provides a mock function with given fields: ctx
 func (_m *MockParticipantWatcher) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -300,6 +205,53 @@ func (_c *MockParticipantWatcher_Run_Call) Return(err error) *MockParticipantWat
 }
 
 func (_c *MockParticipantWatcher_Run_Call) RunAndReturn(run func(context.Context) error) *MockParticipantWatcher_Run_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateAccountParticipantFromProfile provides a mock function with given fields: ctx, space
+func (_m *MockParticipantWatcher) UpdateAccountParticipantFromProfile(ctx context.Context, space clientspace.Space) error {
+	ret := _m.Called(ctx, space)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateAccountParticipantFromProfile")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space) error); ok {
+		r0 = rf(ctx, space)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateAccountParticipantFromProfile'
+type MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call struct {
+	*mock.Call
+}
+
+// UpdateAccountParticipantFromProfile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - space clientspace.Space
+func (_e *MockParticipantWatcher_Expecter) UpdateAccountParticipantFromProfile(ctx interface{}, space interface{}) *MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call {
+	return &MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call{Call: _e.mock.On("UpdateAccountParticipantFromProfile", ctx, space)}
+}
+
+func (_c *MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call) Run(run func(ctx context.Context, space clientspace.Space)) *MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(clientspace.Space))
+	})
+	return _c
+}
+
+func (_c *MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call) Return(_a0 error) *MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call) RunAndReturn(run func(context.Context, clientspace.Space) error) *MockParticipantWatcher_UpdateAccountParticipantFromProfile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -348,6 +300,54 @@ func (_c *MockParticipantWatcher_UpdateParticipantFromAclState_Call) Return(_a0 
 }
 
 func (_c *MockParticipantWatcher_UpdateParticipantFromAclState_Call) RunAndReturn(run func(context.Context, clientspace.Space, list.AccountState) error) *MockParticipantWatcher_UpdateParticipantFromAclState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WatchParticipant provides a mock function with given fields: ctx, space, accState
+func (_m *MockParticipantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState) error {
+	ret := _m.Called(ctx, space, accState)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WatchParticipant")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, list.AccountState) error); ok {
+		r0 = rf(ctx, space, accState)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockParticipantWatcher_WatchParticipant_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WatchParticipant'
+type MockParticipantWatcher_WatchParticipant_Call struct {
+	*mock.Call
+}
+
+// WatchParticipant is a helper method to define mock.On call
+//   - ctx context.Context
+//   - space clientspace.Space
+//   - accState list.AccountState
+func (_e *MockParticipantWatcher_Expecter) WatchParticipant(ctx interface{}, space interface{}, accState interface{}) *MockParticipantWatcher_WatchParticipant_Call {
+	return &MockParticipantWatcher_WatchParticipant_Call{Call: _e.mock.On("WatchParticipant", ctx, space, accState)}
+}
+
+func (_c *MockParticipantWatcher_WatchParticipant_Call) Run(run func(ctx context.Context, space clientspace.Space, accState list.AccountState)) *MockParticipantWatcher_WatchParticipant_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(list.AccountState))
+	})
+	return _c
+}
+
+func (_c *MockParticipantWatcher_WatchParticipant_Call) Return(_a0 error) *MockParticipantWatcher_WatchParticipant_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockParticipantWatcher_WatchParticipant_Call) RunAndReturn(run func(context.Context, clientspace.Space, list.AccountState) error) *MockParticipantWatcher_WatchParticipant_Call {
 	_c.Call.Return(run)
 	return _c
 }

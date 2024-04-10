@@ -28,8 +28,8 @@ var log = logger.NewNamed(CName)
 
 type ParticipantWatcher interface {
 	app.ComponentRunnable
-	RegisterIdentity(ctx context.Context, space clientspace.Space, accState list.AccountState) error
-	RegisterProfile(ctx context.Context, space clientspace.Space) error
+	WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState) error
+	UpdateAccountParticipantFromProfile(ctx context.Context, space clientspace.Space) error
 	UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error
 }
 
@@ -55,7 +55,7 @@ func New() ParticipantWatcher {
 	}
 }
 
-func (p *participantWatcher) RegisterIdentity(ctx context.Context, space clientspace.Space, state list.AccountState) (err error) {
+func (p *participantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, state list.AccountState) (err error) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
 	key, err := getSymKey(state.RequestMetadata)
@@ -96,28 +96,12 @@ func (p *participantWatcher) Close(ctx context.Context) (err error) {
 	return
 }
 
-func (p *participantWatcher) RegisterProfile(ctx context.Context, space clientspace.Space) error {
-	p.mx.Lock()
-	defer p.mx.Unlock()
-	myIdentity, metadataKey, profileDetails := p.identityService.GetMyProfileDetails(ctx)
+func (p *participantWatcher) UpdateAccountParticipantFromProfile(ctx context.Context, space clientspace.Space) error {
+	myIdentity, _, profileDetails := p.identityService.GetMyProfileDetails(ctx)
 	id := domain.NewParticipantId(space.Id(), myIdentity)
-	err := space.Do(id, func(sb smartblock.SmartBlock) error {
+	return space.Do(id, func(sb smartblock.SmartBlock) error {
 		return sb.(participant).ModifyProfileDetails(profileDetails)
 	})
-	if err != nil {
-		return err
-	}
-	err = p.identityService.RegisterIdentity(space.Id(), myIdentity, metadataKey, func(identity string, profile *model.IdentityProfile) {
-		err := p.updateParticipantFromIdentity(ctx, space, identity, profile)
-		if err != nil {
-			log.Error("error updating participant from identity", zap.Error(err))
-		}
-	})
-	if err != nil {
-		return err
-	}
-	p.addedParticipants[myIdentity] = struct{}{}
-	return nil
 }
 
 func (p *participantWatcher) UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error {
