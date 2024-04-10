@@ -325,6 +325,8 @@ service ClientCommands {
     // b) see payment info, invoices, etc
     // c) cancel the subscription
     rpc MembershipGetPortalLinkUrl (anytype.Rpc.Membership.GetPortalLinkUrl.Request) returns (anytype.Rpc.Membership.GetPortalLinkUrl.Response);
+    // Check the current status of the verification email
+    rpc MembershipGetVerificationEmailStatus( anytype.Rpc.Membership.GetVerificationEmailStatus.Request) returns (anytype.Rpc.Membership.GetVerificationEmailStatus.Response);
     // Send a verification code to the user's email. The user should enter this code to verify his email.
     rpc MembershipGetVerificationEmail (anytype.Rpc.Membership.GetVerificationEmail.Request) returns (anytype.Rpc.Membership.GetVerificationEmail.Response);
     // Verify the user's email with the code received in the previous step (MembershipGetVerificationEmail)

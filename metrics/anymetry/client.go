@@ -1,4 +1,4 @@
-package amplitude
+package anymetry
 
 import (
 	"bytes"
@@ -11,8 +11,6 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/valyala/fastjson"
 )
-
-// Client manages the communication to the Amplitude API
 
 type Service interface {
 	SendEvents(amplEvents []Event, info AppInfoProvider) error

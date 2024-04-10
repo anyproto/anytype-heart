@@ -1,4 +1,4 @@
-package amplitude
+package anymetry
 
 import (
 	"io"

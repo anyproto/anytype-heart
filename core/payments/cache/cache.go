@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 
@@ -28,10 +29,16 @@ var (
 	ErrCacheExpired            = errors.New("cache is empty")
 )
 
-const dbKey = "payments/subscription/v1"
+// once you change the cache format, you need to update this variable
+// it will cause cache to be dropped and recreated
+const LAST_CACHE_VERSION = 2
 
-type StorageStructV1 struct {
-	// to migrate old storage to new format
+var dbKey = "payments/subscription/v" + strconv.Itoa(LAST_CACHE_VERSION)
+
+type StorageStruct struct {
+	// not to migrate old storage to new format, but just to check the validity of the cache
+	// if format changes - usually we just want to drop the cache and create new one
+	// see dbKey above
 	CurrentVersion uint16
 
 	// this variable is just for info
@@ -44,15 +51,14 @@ type StorageStructV1 struct {
 	// if this is 0 - then cache is enabled
 	DisableUntilTime time.Time
 
-	// v1 of the actual data
+	// actual data
 	SubscriptionStatus pb.RpcMembershipGetStatusResponse
-
-	TiersData pb.RpcMembershipTiersGetResponse
+	TiersData          pb.RpcMembershipTiersGetResponse
 }
 
-func newStorageStructV1() *StorageStructV1 {
-	return &StorageStructV1{
-		CurrentVersion:   1,
+func newStorageStruct() *StorageStruct {
+	return &StorageStruct{
+		CurrentVersion:   LAST_CACHE_VERSION,
 		LastUpdated:      time.Now().UTC(),
 		ExpireTime:       time.Time{},
 		DisableUntilTime: time.Time{},
@@ -132,7 +138,7 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 		return nil, nil, ErrCacheDbError
 	}
 
-	if ss.CurrentVersion != 1 {
+	if ss.CurrentVersion != LAST_CACHE_VERSION {
 		// currently we have only one version, but in future we can have more
 		// this error can happen if you "downgrade" the app
 		log.Error("unsupported cache version", zap.Uint16("version", ss.CurrentVersion))
@@ -160,7 +166,7 @@ func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers
 	ss, err := s.get()
 	if err != nil {
 		// if there is no record in the cache, let's create it
-		ss = newStorageStructV1()
+		ss = newStorageStruct()
 	}
 
 	// 2 - update storage
@@ -199,7 +205,7 @@ func (s *cacheservice) CacheEnable() (err error) {
 	ss, err := s.get()
 	if err != nil {
 		// if there is no record in the cache, let's create it
-		ss = newStorageStructV1()
+		ss = newStorageStruct()
 	}
 
 	// 2 - update storage
@@ -220,7 +226,7 @@ func (s *cacheservice) CacheDisableForNextMinutes(minutes int) (err error) {
 	ss, err := s.get()
 	if err != nil {
 		// if there is no record in the cache, let's create it
-		ss = newStorageStructV1()
+		ss = newStorageStruct()
 	}
 
 	// 2 - update storage
@@ -244,7 +250,7 @@ func (s *cacheservice) CacheClear() (err error) {
 	}
 
 	// 2 - update storage
-	ss := newStorageStructV1()
+	ss := newStorageStruct()
 
 	// 3 - save to storage
 	err = s.set(ss)
@@ -254,7 +260,7 @@ func (s *cacheservice) CacheClear() (err error) {
 	return nil
 }
 
-func (s *cacheservice) get() (out *StorageStructV1, err error) {
+func (s *cacheservice) get() (out *StorageStruct, err error) {
 	if s.db == nil {
 		return nil, ErrCacheDbNotInitialized
 	}
@@ -262,7 +268,7 @@ func (s *cacheservice) get() (out *StorageStructV1, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	var ss StorageStructV1
+	var ss StorageStruct
 	err = s.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(dbKey))
 		if err != nil {
@@ -279,7 +285,7 @@ func (s *cacheservice) get() (out *StorageStructV1, err error) {
 	return out, err
 }
 
-func (s *cacheservice) set(in *StorageStructV1) (err error) {
+func (s *cacheservice) set(in *StorageStruct) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 

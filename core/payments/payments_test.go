@@ -129,7 +129,7 @@ func TestGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
-		assert.Equal(t, model.MembershipStatus(psp.SubscriptionStatus_StatusUnknown), resp.Data.Status)
+		assert.Equal(t, model.Membership_StatusUnknown, resp.Data.Status)
 	})
 
 	t.Run("success if NoCache flag is passed", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
-		assert.Equal(t, model.MembershipStatus(psp.SubscriptionStatus_StatusUnknown), resp.Data.Status)
+		assert.Equal(t, model.Membership_StatusUnknown, resp.Data.Status)
 	})
 
 	t.Run("success if cache is expired and GetSubscriptionStatus returns no error", func(t *testing.T) {
@@ -179,7 +179,7 @@ func TestGetStatus(t *testing.T) {
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
@@ -199,11 +199,11 @@ func TestGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
+		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
 		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
 		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
 		assert.Equal(t, true, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.MembershipPaymentMethod(1), resp.Data.PaymentMethod)
+		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
 		assert.Equal(t, "something.any", resp.Data.RequestedAnyName)
 	})
 
@@ -228,7 +228,7 @@ func TestGetStatus(t *testing.T) {
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
@@ -249,11 +249,11 @@ func TestGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
+		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
 		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
 		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
 		assert.Equal(t, true, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.MembershipPaymentMethod(1), resp.Data.PaymentMethod)
+		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
 		assert.Equal(t, "something.any", resp.Data.RequestedAnyName)
 	})
 
@@ -278,7 +278,7 @@ func TestGetStatus(t *testing.T) {
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
@@ -308,11 +308,11 @@ func TestGetStatus(t *testing.T) {
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
 				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-				Status:           model.MembershipStatus(2),
+				Status:           model.Membership_StatusActive,
 				DateStarted:      uint64(timeNow.Unix()),
 				DateEnds:         uint64(subsExpire.Unix()),
 				IsAutoRenew:      true,
-				PaymentMethod:    model.MembershipPaymentMethod(1),
+				PaymentMethod:    model.Membership_MethodCrypto,
 				RequestedAnyName: "something.any",
 			},
 		}
@@ -325,7 +325,7 @@ func TestGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
+		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
 	})
 
 	t.Run("if GetSubscriptionStatus returns 0 tier -> cache it for 10 days", func(t *testing.T) {
@@ -349,7 +349,7 @@ func TestGetStatus(t *testing.T) {
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
@@ -371,11 +371,11 @@ func TestGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
-		assert.Equal(t, model.MembershipStatus(0), resp.Data.Status)
+		assert.Equal(t, model.Membership_StatusUnknown, resp.Data.Status)
 		assert.Equal(t, uint64(0), resp.Data.DateStarted)
 		assert.Equal(t, uint64(0), resp.Data.DateEnds)
 		assert.Equal(t, false, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.MembershipPaymentMethod(0), resp.Data.PaymentMethod)
+		assert.Equal(t, model.Membership_MethodCard, resp.Data.PaymentMethod)
 		assert.Equal(t, "", resp.Data.RequestedAnyName)
 	})
 
@@ -402,7 +402,7 @@ func TestGetStatus(t *testing.T) {
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
@@ -422,7 +422,7 @@ func TestGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
+		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
 	})
 
 	t.Run("if cache was disabled and tier has changed -> save, but enable cache back", func(t *testing.T) {
@@ -445,19 +445,19 @@ func TestGetStatus(t *testing.T) {
 		// this is from DB
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(model.Membership_TierExplorer),
+				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 				Status:           model.MembershipStatus(sr.Status),
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
 
 		// this is the new state
 		var psgsr2 pb.RpcMembershipGetStatusResponse = psgsr
-		psgsr2.Data.Tier = uint32(model.Membership_TierBuilder)
+		psgsr2.Data.Tier = uint32(psp.SubscriptionTier_TierBuilder1Year)
 
 		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
 			return &sr, nil
@@ -477,7 +477,7 @@ func TestGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierBuilder1Year), resp.Data.Tier)
-		assert.Equal(t, model.MembershipStatus(2), resp.Data.Status)
+		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
 	})
 }
 
@@ -497,9 +497,10 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
-			RequestedTier:    uint32(model.Membership_TierBuilder),
-			PaymentMethod:    model.Membership_MethodCrypto,
-			RequestedAnyName: "something.any",
+			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
+			PaymentMethod: model.Membership_MethodCrypto,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 
 		// Call the function being tested
@@ -525,9 +526,10 @@ func TestGetPaymentURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPaymentUrlRequest{
-			RequestedTier:    uint32(model.Membership_TierBuilder),
-			PaymentMethod:    model.Membership_MethodCrypto,
-			RequestedAnyName: "something.any",
+			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
+			PaymentMethod: model.Membership_MethodCrypto,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 
 		// Call the function being tested
@@ -842,7 +844,7 @@ func TestGetTiers(t *testing.T) {
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
@@ -900,7 +902,7 @@ func TestGetTiers(t *testing.T) {
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
@@ -955,7 +957,7 @@ func TestGetTiers(t *testing.T) {
 				DateStarted:      sr.DateStarted,
 				DateEnds:         sr.DateEnds,
 				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    model.MembershipPaymentMethod(sr.PaymentMethod),
+				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
 				RequestedAnyName: sr.RequestedAnyName,
 			},
 		}
@@ -1084,8 +1086,9 @@ func TestIsNameValid(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
 
 		req := pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    0,
-			RequestedAnyName: "something.any",
+			RequestedTier: 0,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err := fx.IsNameValid(ctx, &req)
 		assert.Error(t, err)
@@ -1093,8 +1096,9 @@ func TestIsNameValid(t *testing.T) {
 
 		// 2
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    1,
-			RequestedAnyName: "something.any",
+			RequestedTier: 1,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
@@ -1102,8 +1106,9 @@ func TestIsNameValid(t *testing.T) {
 
 		// 3
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    2,
-			RequestedAnyName: "somet.any",
+			RequestedTier: 2,
+			NsName:        "somet",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
@@ -1111,8 +1116,9 @@ func TestIsNameValid(t *testing.T) {
 
 		// 4
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    3,
-			RequestedAnyName: "somet.any",
+			RequestedTier: 3,
+			NsName:        "somet",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
@@ -1121,16 +1127,18 @@ func TestIsNameValid(t *testing.T) {
 		// 5 - TIER NOT FOUND will return error immediately
 		// not response
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    4,
-			RequestedAnyName: "somet.any",
+			RequestedTier: 4,
+			NsName:        "somet",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		_, err = fx.IsNameValid(ctx, &req)
 		assert.Error(t, err)
 
 		// 6 - space between
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    1,
-			RequestedAnyName: "some thing.any",
+			RequestedTier: 1,
+			NsName:        "some thing",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
@@ -1182,8 +1190,9 @@ func TestIsNameValid(t *testing.T) {
 		})
 
 		req := pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    0,
-			RequestedAnyName: "something.any",
+			RequestedTier: 0,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err := fx.IsNameValid(ctx, &req)
 		assert.Error(t, err)
@@ -1191,8 +1200,9 @@ func TestIsNameValid(t *testing.T) {
 
 		// 2
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    1,
-			RequestedAnyName: "something.any",
+			RequestedTier: 1,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
@@ -1200,8 +1210,9 @@ func TestIsNameValid(t *testing.T) {
 
 		// 3
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    2,
-			RequestedAnyName: "somet.any",
+			RequestedTier: 2,
+			NsName:        "some",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
@@ -1209,8 +1220,9 @@ func TestIsNameValid(t *testing.T) {
 
 		// 4
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    3,
-			RequestedAnyName: "somet.any",
+			RequestedTier: 3,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
@@ -1218,8 +1230,9 @@ func TestIsNameValid(t *testing.T) {
 
 		// 5
 		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier:    4,
-			RequestedAnyName: "somet.any",
+			RequestedTier: 4,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.Error(t, err)

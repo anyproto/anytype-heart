@@ -260,10 +260,20 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	parts := strings.Split(fileIdAndPath, "/")
 	fileId := parts[0]
 
-	id, err := g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, fileId)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+	var id domain.FullFileId
+	// Treat id as fileId to allow download file directly
+	if domain.IsFileId(fileId) {
+		id = domain.FullFileId{
+			FileId: domain.FileId(fileId),
+		}
+	} else {
+		var err error
+		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, fileId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+		}
 	}
+
 	file, err := g.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get file by hash: %w", err)
