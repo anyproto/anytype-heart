@@ -36,26 +36,6 @@ func (i *indexer) ForceFTIndex() {
 // MUST NOT be called more than once
 func (i *indexer) ftLoopRoutine() {
 	ticker := time.NewTicker(ftIndexInterval)
-	i.runFullTextIndexer()
-	defer close(i.ftQueueFinished)
-	var lastForceIndex time.Time
-	for {
-		select {
-		case <-i.quit:
-			return
-		case <-ticker.C:
-			i.runFullTextIndexer()
-		case <-i.forceFt:
-			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer()
-				lastForceIndex = time.Now()
-			}
-		}
-	}
-}
-
-// TODO maybe use two queues? One for objects, one for files
-func (i *indexer) runFullTextIndexer() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -65,6 +45,27 @@ func (i *indexer) runFullTextIndexer() {
 		case <-ctx.Done():
 		}
 	}()
+
+	i.runFullTextIndexer(ctx)
+	defer close(i.ftQueueFinished)
+	var lastForceIndex time.Time
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			i.runFullTextIndexer(ctx)
+		case <-i.forceFt:
+			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
+				i.runFullTextIndexer(ctx)
+				lastForceIndex = time.Now()
+			}
+		}
+	}
+}
+
+// TODO maybe use two queues? One for objects, one for files
+func (i *indexer) runFullTextIndexer(ctx context.Context) {
 	docs := make([]ftsearch.SearchDoc, 0, ftBatchLimit)
 	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(ids []string) error {
 		for _, id := range ids {
