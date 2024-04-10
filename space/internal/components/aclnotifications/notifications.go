@@ -2,6 +2,7 @@ package aclnotifications
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
@@ -33,6 +34,7 @@ type aclNotificationRecord struct {
 type NotificationSender interface {
 	CreateAndSend(notification *model.Notification) error
 	GetLastNotificationId(acl string) string
+	LoadFinish() chan struct{}
 }
 
 type AclNotification interface {
@@ -124,6 +126,14 @@ func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotific
 }
 
 func (n *aclNotificationSender) processRecords() {
+	ticker := time.NewTicker(time.Minute * 5)
+	defer ticker.Stop()
+
+	select {
+	case <-n.notificationService.LoadFinish():
+	case <-ticker.C:
+	}
+
 	for {
 		msgs := n.batcher.Wait()
 		if len(msgs) == 0 {

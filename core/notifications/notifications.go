@@ -46,6 +46,7 @@ type notificationService struct {
 	picker             block.ObjectGetter
 	spaceCore          spacecore.SpaceCoreService
 	mu                 sync.Mutex
+	loadFinish         chan struct{}
 
 	sync.RWMutex
 	lastNotificationIdToAcl map[string]string
@@ -54,6 +55,7 @@ type notificationService struct {
 func New() Notifications {
 	return &notificationService{
 		lastNotificationIdToAcl: make(map[string]string, 0),
+		loadFinish:              make(chan struct{}),
 	}
 }
 
@@ -246,11 +248,16 @@ func (n *notificationService) GetLastNotificationId(acl string) string {
 	return n.lastNotificationIdToAcl[acl]
 }
 
+func (n *notificationService) LoadFinish() chan struct{} {
+	return n.loadFinish
+}
+
 func (n *notificationService) isNotificationRead(notification *model.Notification) bool {
 	return notification.GetStatus() == model.Notification_Read || notification.GetStatus() == model.Notification_Replied
 }
 
 func (n *notificationService) loadNotificationObject(ctx context.Context) {
+	defer close(n.loadFinish)
 	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeNotificationObject, "")
 	if err != nil {
 		log.Errorf("failed to get notification object unique key: %v", err)
