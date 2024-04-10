@@ -2,7 +2,6 @@ package filesync
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -30,8 +29,6 @@ var log = logger.NewNamed(CName)
 
 var loopTimeout = time.Minute
 
-var errReachedLimit = fmt.Errorf("file upload limit has been reached")
-
 type StatusCallback func(fileObjectId string) error
 
 type FileSync interface {
@@ -54,9 +51,9 @@ type FileSync interface {
 }
 
 type QueueInfo struct {
-	UploadingQueue []*QueueItem
-	DiscardedQueue []*QueueItem
-	RemovingQueue  []*QueueItem
+	UploadingQueue []string
+	RetryingQueue  []string
+	RemovingQueue  []string
 }
 
 type SyncStatus struct {
@@ -137,7 +134,7 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 
 	f.uploadingQueue = queue.New(db, log.Logger, uploadKeyPrefix, makeQueueItem, f.uploadingHandler)
 	f.uploadingQueue.Run()
-	f.retryingQueue = queue.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.uploadingHandler, queue.WithHandlerTickPeriod(loopTimeout))
+	f.retryingQueue = queue.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.retryingHandler, queue.WithHandlerTickPeriod(loopTimeout))
 	f.retryingQueue.Run()
 	f.removingQueue = queue.New(db, log.Logger, removeKeyPrefix, makeQueueItem, f.removingHandler)
 	f.removingQueue.Run()

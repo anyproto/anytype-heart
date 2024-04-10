@@ -53,29 +53,64 @@ func (f *fileSync) ClearImportEvents() {
 	f.importEvents = nil
 }
 
+// handleLimitReachedError checks if the error is limit reached error and sends event if needed
+// Returns true if limit reached error occurred
+func (f *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitReached {
+	if err == nil {
+		return nil
+	}
+	var limitReachedErr *errLimitReached
+	if errors.As(err, &limitReachedErr) {
+		f.runOnLimitedHook(it.ObjectId, it.SpaceId)
+
+		if it.AddedByUser && !it.Imported {
+			f.sendLimitReachedEvent(it.SpaceId)
+		}
+		if it.Imported {
+			f.addImportEvent(it.SpaceId)
+		}
+		return limitReachedErr
+	}
+	return nil
+}
+
 func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
 	f.runOnUploadStartedHook(it.ObjectId, spaceId)
 	if err := f.uploadFile(ctx, spaceId, fileId); err != nil {
-		if isLimitReachedErr(err) {
-			f.runOnLimitedHook(it.ObjectId, spaceId)
-
-			if it.AddedByUser && !it.Imported {
-				f.sendLimitReachedEvent(spaceId)
-			}
-			if it.Imported {
-				f.addImportEvent(spaceId)
-			}
+		if limitErr := f.handleLimitReachedError(err, it); limitErr != nil {
+			log.Warn(
+				"upload limit has been reached",
+				zap.String("fileId", fileId.String()),
+				zap.String("objectId", it.ObjectId),
+				zap.Int("fileSize", limitErr.fileSize),
+				zap.Int("accountLimit", limitErr.accountLimit),
+				zap.Int("totalBytesUsage", limitErr.totalBytesUsage),
+			)
 		}
 
 		err = f.retryingQueue.Add(it)
 		if err != nil {
 			log.Error("can't add upload task to retrying queue", zap.String("fileId", fileId.String()), zap.Error(err))
 		}
-		return queue.ActionDone, err
+		return queue.ActionDone, nil
 	}
-	f.runOnUploadedHook(it.ObjectId, spaceId)
 
+	f.runOnUploadedHook(it.ObjectId, spaceId)
+	f.updateSpaceUsageInformation(spaceId)
+
+	return queue.ActionDone, f.removeFromUploadingQueues(it)
+}
+
+func (f *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
+	spaceId, fileId := it.SpaceId, it.FileId
+	f.runOnUploadStartedHook(it.ObjectId, spaceId)
+	if err := f.uploadFile(ctx, spaceId, fileId); err != nil {
+		f.handleLimitReachedError(err, it)
+		return queue.ActionRetry, nil
+	}
+
+	f.runOnUploadedHook(it.ObjectId, spaceId)
 	f.updateSpaceUsageInformation(spaceId)
 
 	return queue.ActionDone, f.removeFromUploadingQueues(it)
@@ -141,11 +176,14 @@ func (f *fileSync) runOnLimitedHook(fileObjectId string, spaceId string) {
 	}
 }
 
-func isLimitReachedErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	return errors.Is(err, errReachedLimit) || strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error())
+type errLimitReached struct {
+	fileSize        int
+	accountLimit    int
+	totalBytesUsage int
+}
+
+func (e *errLimitReached) Error() string {
+	return "file upload limit has been reached"
 }
 
 func (f *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain.FileId) error {
@@ -162,7 +200,11 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 
 	bytesLeft := stat.AccountBytesLimit - stat.TotalBytesUsage
 	if fileSize > bytesLeft {
-		return errReachedLimit
+		return &errLimitReached{
+			fileSize:        fileSize,
+			accountLimit:    stat.AccountBytesLimit,
+			totalBytesUsage: stat.TotalBytesUsage,
+		}
 	}
 
 	var totalBytesUploaded int
@@ -178,10 +220,17 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 		return nil
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error()) {
+			return &errLimitReached{
+				fileSize:        fileSize,
+				accountLimit:    stat.AccountBytesLimit,
+				totalBytesUsage: stat.TotalBytesUsage,
+			}
+		}
 		return fmt.Errorf("walk file blocks: %w", err)
 	}
 
-	log.Warn("done upload", zap.String("fileId", fileId.String()), zap.Int("estimatedSize", fileSize), zap.Int("bytesUploaded", totalBytesUploaded))
+	log.Warn("done upload", zap.String("fileId", fileId.String()), zap.Int("fileSize", fileSize), zap.Int("bytesUploaded", totalBytesUploaded))
 
 	return nil
 }

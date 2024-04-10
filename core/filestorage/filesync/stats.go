@@ -323,22 +323,9 @@ func (f *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId 
 }
 
 func (f *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
-	var (
-		info QueueInfo
-		// err  error
-	)
-
-	// info.UploadingQueue, err = f.store.listItemsByPrefix(uploadKeyPrefix)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("list items from uploading queue: %w", err)
-	// }
-	// info.DiscardedQueue, err = f.store.listItemsByPrefix(discardedKeyPrefix)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("list items from discarded queue: %w", err)
-	// }
-	// info.RemovingQueue, err = f.store.listItemsByPrefix(removeKeyPrefix)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("list items from removing queue: %w", err)
-	// }
+	var info QueueInfo
+	info.UploadingQueue = f.uploadingQueue.ListKeys()
+	info.RetryingQueue = f.retryingQueue.ListKeys()
+	info.RemovingQueue = f.removingQueue.ListKeys()
 	return &info, nil
 }

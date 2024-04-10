@@ -285,6 +285,18 @@ func (q *Queue[T]) HandledItems() int {
 	return int(atomic.LoadUint32(&q.handledItems))
 }
 
+// ListKeys lists queued but not yet handled keys
+func (q *Queue[T]) ListKeys() []string {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	keys := make([]string, 0, len(q.set))
+	for key := range q.set {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 func (q *Queue[T]) Len() int {
 	q.lock.Lock()
 	defer q.lock.Unlock()
