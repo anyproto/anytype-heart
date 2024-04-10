@@ -141,8 +141,6 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	_, err = space.GetObject(ctx, it.FileObjectId)
 	// Already migrated or it is a link to object
 	if err == nil {
-		// TODO Clean up
-		fmt.Println("MIGRATED!", it.FileObjectId)
 		return queue.ActionDone, nil
 	}
 
@@ -154,8 +152,6 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", it.CreateRequest.FileId, err)
 	}
-	// TODO Clean up
-	fmt.Println("DERIVED!", it.FileObjectId)
 	return queue.ActionDone, nil
 }
 

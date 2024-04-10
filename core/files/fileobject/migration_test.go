@@ -1,12 +1,16 @@
 package fileobject
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -14,6 +18,108 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+func TestMigrateFiles(t *testing.T) {
+	t.Run("file not migrated yet", func(t *testing.T) {
+		fx := newFixture(t)
+		const objectId = "objectId"
+		fx.objectCreator.objectId = objectId
+
+		// Just use dummy for state
+		st := testutil.BuildStateFromAST(
+			bb.Root(bb.ID("root")),
+		)
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().Id().Return("spaceId")
+		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(objectId, nil)
+		space.EXPECT().GetObject(mock.Anything, objectId).Return(nil, fmt.Errorf("not found"))
+
+		// Called in metadata indexer
+		space.EXPECT().Do(objectId, mock.Anything).Return(nil)
+
+		fx.spaceService.EXPECT().Get(mock.Anything, "spaceId").Return(space, nil)
+
+		wantKeys := map[string]string{
+			"/0": "encryptionKey2",
+		}
+		filesKeys := []*pb.ChangeFileKeys{
+			{
+				// This should be ignored. We migrate only old files (not objects)
+				Hash: testFileObjectId,
+				Keys: map[string]string{
+					"/0": "encryptionKey1",
+				},
+			},
+			{
+				Hash: testFileId.String(),
+				Keys: wantKeys,
+			},
+		}
+		fx.MigrateFiles(st, space, filesKeys)
+
+		fx.waitFileMigrationHandled(t)
+
+		wantFileInfo := state.FileInfo{
+			FileId:         testFileId,
+			EncryptionKeys: wantKeys,
+		}
+		assert.Equal(t, wantFileInfo, fx.objectCreator.creationState.GetFileInfo())
+	})
+
+	t.Run("file object is already created", func(t *testing.T) {
+		fx := newFixture(t)
+		const objectId = "objectId"
+		fx.objectCreator.objectId = objectId
+
+		// Just use dummy for state
+		st := testutil.BuildStateFromAST(
+			bb.Root(bb.ID("root")),
+		)
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().Id().Return("spaceId")
+		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(objectId, nil)
+
+		// Object already exists in space
+		space.EXPECT().GetObject(mock.Anything, objectId).Return(nil, nil)
+
+		fx.spaceService.EXPECT().Get(mock.Anything, "spaceId").Return(space, nil)
+
+		filesKeys := []*pb.ChangeFileKeys{
+			{
+				// This should be ignored. We migrate only old files (not objects)
+				Hash: testFileObjectId,
+				Keys: map[string]string{
+					"/0": "encryptionKey1",
+				},
+			},
+			{
+				Hash: testFileId.String(),
+				Keys: map[string]string{
+					"/0": "encryptionKey2",
+				},
+			},
+		}
+		fx.MigrateFiles(st, space, filesKeys)
+
+		fx.waitFileMigrationHandled(t)
+
+		assert.Nil(t, fx.objectCreator.creationState)
+	})
+}
+
+func (fx *fixture) waitFileMigrationHandled(t *testing.T) {
+	timeout := time.NewTimer(100 * time.Millisecond)
+	for {
+		select {
+		case <-timeout.C:
+			t.Fatal("timeout")
+		case <-time.After(10 * time.Millisecond):
+			if fx.migrationQueue.HandledItems() > 0 {
+				return
+			}
+		}
+	}
+}
 
 func TestMigrateIds(t *testing.T) {
 	t.Run("do not migrate empty file ids", func(t *testing.T) {
@@ -103,7 +209,11 @@ func TestMigrateIds(t *testing.T) {
 				),
 			),
 		)
+
+		// Relation format: file
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{fileId.String()}))
+		// Relation format: object
+		st.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, pbtypes.StringList([]string{fileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(expectedFileObjectId, nil)
@@ -121,6 +231,7 @@ func TestMigrateIds(t *testing.T) {
 			),
 		)
 		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{expectedFileObjectId}))
+		wantState.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, pbtypes.StringList([]string{expectedFileObjectId}))
 
 		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())
