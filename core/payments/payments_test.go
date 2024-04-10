@@ -1143,6 +1143,16 @@ func TestIsNameValid(t *testing.T) {
 		resp, err = fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
 		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
+
+		// 7 - dot
+		req = pb.RpcMembershipIsNameValidRequest{
+			RequestedTier: 1,
+			NsName:        "some.thing",
+			NsNameType:    model.NameserviceNameType_AnyName,
+		}
+		resp, err = fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
 	})
 
 	t.Run("success if asking directly from node", func(t *testing.T) {
