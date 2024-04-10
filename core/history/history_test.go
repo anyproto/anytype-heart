@@ -1135,6 +1135,14 @@ func TestHistory_DiffVersions(t *testing.T) {
 		treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
 		accountKeys, _ := accountdata.NewRandom()
 
+		blDivCopy := &model.Block{Id: blockDivId, Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}
+		blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
+		blLatexCopy := &model.Block{Id: blockLatexId, Content: &model.BlockContentOfLatex{Latex: &model.BlockContentLatex{}}}
+		blFileCopy := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
+		blBookmarkCopy := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
+		blRelationCopy := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
+		blCopy := &model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}
+
 		treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
 			BeforeId: versionId,
 			Include:  true,
@@ -1174,7 +1182,7 @@ func TestHistory_DiffVersions(t *testing.T) {
 							{
 								Value: &pb.ChangeContentValueOfBlockCreate{
 									BlockCreate: &pb.ChangeBlockCreate{
-										Blocks: []*model.Block{bl},
+										Blocks: []*model.Block{blDivCopy},
 									},
 								},
 							},
@@ -1188,7 +1196,7 @@ func TestHistory_DiffVersions(t *testing.T) {
 							{
 								Value: &pb.ChangeContentValueOfBlockCreate{
 									BlockCreate: &pb.ChangeBlockCreate{
-										Blocks: []*model.Block{blLatex},
+										Blocks: []*model.Block{blLatexCopy},
 									},
 								},
 							},
@@ -1202,7 +1210,7 @@ func TestHistory_DiffVersions(t *testing.T) {
 							{
 								Value: &pb.ChangeContentValueOfBlockCreate{
 									BlockCreate: &pb.ChangeBlockCreate{
-										Blocks: []*model.Block{blLink},
+										Blocks: []*model.Block{blLinkCopy},
 									},
 								},
 							},
@@ -1216,7 +1224,7 @@ func TestHistory_DiffVersions(t *testing.T) {
 							{
 								Value: &pb.ChangeContentValueOfBlockCreate{
 									BlockCreate: &pb.ChangeBlockCreate{
-										Blocks: []*model.Block{blBookmark},
+										Blocks: []*model.Block{blBookmarkCopy},
 									},
 								},
 							},
@@ -1230,7 +1238,7 @@ func TestHistory_DiffVersions(t *testing.T) {
 							{
 								Value: &pb.ChangeContentValueOfBlockCreate{
 									BlockCreate: &pb.ChangeBlockCreate{
-										Blocks: []*model.Block{blRelation},
+										Blocks: []*model.Block{blRelationCopy},
 									},
 								},
 							},
@@ -1244,7 +1252,7 @@ func TestHistory_DiffVersions(t *testing.T) {
 							{
 								Value: &pb.ChangeContentValueOfBlockCreate{
 									BlockCreate: &pb.ChangeBlockCreate{
-										Blocks: []*model.Block{blDiv},
+										Blocks: []*model.Block{blDivCopy},
 									},
 								},
 							},
@@ -1258,7 +1266,21 @@ func TestHistory_DiffVersions(t *testing.T) {
 							{
 								Value: &pb.ChangeContentValueOfBlockCreate{
 									BlockCreate: &pb.ChangeBlockCreate{
-										Blocks: []*model.Block{blFile},
+										Blocks: []*model.Block{blFileCopy},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Identity: accountKeys.SignKey.GetPublic(),
+					Model: &pb.Change{
+						Content: []*pb.ChangeContent{
+							{
+								Value: &pb.ChangeContentValueOfBlockCreate{
+									BlockCreate: &pb.ChangeBlockCreate{
+										Blocks: []*model.Block{blCopy},
 									},
 								},
 							},
@@ -1577,15 +1599,18 @@ func TestHistory_DiffVersions(t *testing.T) {
 		})
 
 		assert.Nil(t, err)
-		assert.Len(t, changes, 7)
-		//
-		// assert.NotNil(t, changes[0].GetBlockSetChildrenIds())
-		// assert.Equal(t, objectId, changes[0].GetBlockSetChildrenIds().Id)
-		// assert.Equal(t, []string{bl.Id}, changes[0].GetBlockSetChildrenIds().ChildrenIds)
-		//
-		// assert.NotNil(t, changes[1].GetBlockAdd())
-		// assert.Len(t, changes[1].GetBlockAdd().Blocks, 1)
-		// assert.Equal(t, bl, changes[1].GetBlockAdd().Blocks[0])
+		assert.Len(t, changes, 8)
+
+		assert.NotNil(t, changes[0].GetBlockSetChildrenIds())
+		assert.Equal(t, objectId, changes[0].GetBlockSetChildrenIds().Id)
+
+		assert.NotNil(t, changes[1].GetBlockSetLatex())
+		assert.NotNil(t, changes[2].GetBlockSetLink())
+		assert.NotNil(t, changes[3].GetBlockSetBookmark())
+		assert.NotNil(t, changes[4].GetBlockSetRelation())
+		assert.NotNil(t, changes[5].GetBlockSetDiv())
+		assert.NotNil(t, changes[6].GetBlockSetFile())
+		assert.NotNil(t, changes[7].GetBlockSetText())
 	})
 
 	t.Run("object diff - block properties changes", func(t *testing.T) {
