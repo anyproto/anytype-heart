@@ -23,7 +23,7 @@ func (f *fileSync) RemoveFile(fileId domain.FullFileId) error {
 
 func (f *fileSync) removingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
 	spaceID, fileId := it.SpaceId, it.FileId
-	err := f.removeFile(f.loopCtx, spaceID, fileId)
+	err := f.removeFile(ctx, spaceID, fileId)
 	if err != nil {
 		return queue.ActionRetry, fmt.Errorf("remove file: %w", err)
 	}

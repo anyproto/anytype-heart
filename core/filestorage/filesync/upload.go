@@ -56,7 +56,7 @@ func (f *fileSync) ClearImportEvents() {
 func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
 	f.runOnUploadStartedHook(it.ObjectId, spaceId)
-	if err := f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
+	if err := f.uploadFile(ctx, spaceId, fileId); err != nil {
 		if isLimitReachedErr(err) {
 			f.runOnLimitedHook(it.ObjectId, spaceId)
 
