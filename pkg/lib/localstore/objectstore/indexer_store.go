@@ -21,6 +21,9 @@ func (s *dsObjectStore) removeFromIndexQueue(id string) error {
 func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {
 	return iterateKeysByPrefixBatched(s.db, indexQueueBase.Bytes(), limit, func(keys [][]byte) error {
 		var ids []string
+		if ctx.Err() == context.Canceled {
+			return ctx.Err()
+		}
 		for id := range keys {
 			ids = append(ids, extractIdFromKey(string(keys[id])))
 		}
