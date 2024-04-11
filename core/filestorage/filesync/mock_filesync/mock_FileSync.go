@@ -272,6 +272,99 @@ func (_c *MockFileSync_DebugQueue_Call) RunAndReturn(run func(*http.Request) (*f
 	return _c
 }
 
+// DeleteFile provides a mock function with given fields: objectId, fileId
+func (_m *MockFileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
+	ret := _m.Called(objectId, fileId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteFile")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, domain.FullFileId) error); ok {
+		r0 = rf(objectId, fileId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileSync_DeleteFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteFile'
+type MockFileSync_DeleteFile_Call struct {
+	*mock.Call
+}
+
+// DeleteFile is a helper method to define mock.On call
+//   - objectId string
+//   - fileId domain.FullFileId
+func (_e *MockFileSync_Expecter) DeleteFile(objectId interface{}, fileId interface{}) *MockFileSync_DeleteFile_Call {
+	return &MockFileSync_DeleteFile_Call{Call: _e.mock.On("DeleteFile", objectId, fileId)}
+}
+
+func (_c *MockFileSync_DeleteFile_Call) Run(run func(objectId string, fileId domain.FullFileId)) *MockFileSync_DeleteFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(domain.FullFileId))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_DeleteFile_Call) Return(err error) *MockFileSync_DeleteFile_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileSync_DeleteFile_Call) RunAndReturn(run func(string, domain.FullFileId) error) *MockFileSync_DeleteFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteFileSynchronously provides a mock function with given fields: fileId
+func (_m *MockFileSync) DeleteFileSynchronously(fileId domain.FullFileId) error {
+	ret := _m.Called(fileId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteFileSynchronously")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(domain.FullFileId) error); ok {
+		r0 = rf(fileId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileSync_DeleteFileSynchronously_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteFileSynchronously'
+type MockFileSync_DeleteFileSynchronously_Call struct {
+	*mock.Call
+}
+
+// DeleteFileSynchronously is a helper method to define mock.On call
+//   - fileId domain.FullFileId
+func (_e *MockFileSync_Expecter) DeleteFileSynchronously(fileId interface{}) *MockFileSync_DeleteFileSynchronously_Call {
+	return &MockFileSync_DeleteFileSynchronously_Call{Call: _e.mock.On("DeleteFileSynchronously", fileId)}
+}
+
+func (_c *MockFileSync_DeleteFileSynchronously_Call) Run(run func(fileId domain.FullFileId)) *MockFileSync_DeleteFileSynchronously_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(domain.FullFileId))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_DeleteFileSynchronously_Call) Return(err error) *MockFileSync_DeleteFileSynchronously_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileSync_DeleteFileSynchronously_Call) RunAndReturn(run func(domain.FullFileId) error) *MockFileSync_DeleteFileSynchronously_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FileListStats provides a mock function with given fields: ctx, spaceId, hashes
 func (_m *MockFileSync) FileListStats(ctx context.Context, spaceId string, hashes []domain.FileId) ([]filesync.FileStat, error) {
 	ret := _m.Called(ctx, spaceId, hashes)
@@ -636,99 +729,6 @@ func (_c *MockFileSync_OnUploaded_Call) RunAndReturn(run func(filesync.StatusCal
 	return _c
 }
 
-// RemoveFile provides a mock function with given fields: fileId
-func (_m *MockFileSync) DeleteFile(fileId domain.FullFileId) error {
-	ret := _m.Called(fileId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for DeleteFile")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(domain.FullFileId) error); ok {
-		r0 = rf(fileId)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockFileSync_RemoveFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteFile'
-type MockFileSync_RemoveFile_Call struct {
-	*mock.Call
-}
-
-// RemoveFile is a helper method to define mock.On call
-//   - fileId domain.FullFileId
-func (_e *MockFileSync_Expecter) RemoveFile(fileId interface{}) *MockFileSync_RemoveFile_Call {
-	return &MockFileSync_RemoveFile_Call{Call: _e.mock.On("DeleteFile", fileId)}
-}
-
-func (_c *MockFileSync_RemoveFile_Call) Run(run func(fileId domain.FullFileId)) *MockFileSync_RemoveFile_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(domain.FullFileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_RemoveFile_Call) Return(err error) *MockFileSync_RemoveFile_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockFileSync_RemoveFile_Call) RunAndReturn(run func(domain.FullFileId) error) *MockFileSync_RemoveFile_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RemoveSynchronously provides a mock function with given fields: spaceId, fileId
-func (_m *MockFileSync) DeleteFileSynchronously(spaceId string, fileId domain.FileId) error {
-	ret := _m.Called(spaceId, fileId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for DeleteFileSynchronously")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, domain.FileId) error); ok {
-		r0 = rf(spaceId, fileId)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockFileSync_RemoveSynchronously_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteFileSynchronously'
-type MockFileSync_RemoveSynchronously_Call struct {
-	*mock.Call
-}
-
-// RemoveSynchronously is a helper method to define mock.On call
-//   - spaceId string
-//   - fileId domain.FileId
-func (_e *MockFileSync_Expecter) RemoveSynchronously(spaceId interface{}, fileId interface{}) *MockFileSync_RemoveSynchronously_Call {
-	return &MockFileSync_RemoveSynchronously_Call{Call: _e.mock.On("DeleteFileSynchronously", spaceId, fileId)}
-}
-
-func (_c *MockFileSync_RemoveSynchronously_Call) Run(run func(spaceId string, fileId domain.FileId)) *MockFileSync_RemoveSynchronously_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.FileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_RemoveSynchronously_Call) Return(err error) *MockFileSync_RemoveSynchronously_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockFileSync_RemoveSynchronously_Call) RunAndReturn(run func(string, domain.FileId) error) *MockFileSync_RemoveSynchronously_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Run provides a mock function with given fields: ctx
 func (_m *MockFileSync) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -860,61 +860,6 @@ func (_c *MockFileSync_SpaceStat_Call) Return(ss filesync.SpaceStat, err error) 
 }
 
 func (_c *MockFileSync_SpaceStat_Call) RunAndReturn(run func(context.Context, string) (filesync.SpaceStat, error)) *MockFileSync_SpaceStat_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SyncStatus provides a mock function with given fields:
-func (_m *MockFileSync) SyncStatus() (filesync.SyncStatus, error) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for SyncStatus")
-	}
-
-	var r0 filesync.SyncStatus
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (filesync.SyncStatus, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() filesync.SyncStatus); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(filesync.SyncStatus)
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockFileSync_SyncStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SyncStatus'
-type MockFileSync_SyncStatus_Call struct {
-	*mock.Call
-}
-
-// SyncStatus is a helper method to define mock.On call
-func (_e *MockFileSync_Expecter) SyncStatus() *MockFileSync_SyncStatus_Call {
-	return &MockFileSync_SyncStatus_Call{Call: _e.mock.On("SyncStatus")}
-}
-
-func (_c *MockFileSync_SyncStatus_Call) Run(run func()) *MockFileSync_SyncStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockFileSync_SyncStatus_Call) Return(ss filesync.SyncStatus, err error) *MockFileSync_SyncStatus_Call {
-	_c.Call.Return(ss, err)
-	return _c
-}
-
-func (_c *MockFileSync_SyncStatus_Call) RunAndReturn(run func() (filesync.SyncStatus, error)) *MockFileSync_SyncStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

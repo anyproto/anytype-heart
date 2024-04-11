@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -21,9 +22,6 @@ import (
 )
 
 func (f *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) (err error) {
-	if !fileId.Valid() {
-		return nil
-	}
 	it := &QueueItem{
 		ObjectId:    fileObjectId,
 		SpaceId:     fileId.SpaceId,
@@ -31,6 +29,10 @@ func (f *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, upload
 		AddedByUser: uploadedByUser,
 		Imported:    imported,
 		Timestamp:   time.Now().UnixMilli(),
+	}
+	err = it.Validate()
+	if err != nil {
+		return fmt.Errorf("validate queue item: %w", err)
 	}
 
 	if !f.retryUploadingQueue.Has(it.Key()) && !f.deletionQueue.Has(it.Key()) {
@@ -76,8 +78,12 @@ func (f *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 
 func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	f.runOnUploadStartedHook(it.ObjectId, spaceId)
-	if err := f.uploadFile(ctx, spaceId, fileId); err != nil {
+	err := f.runOnUploadStartedHook(it.ObjectId, spaceId)
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return queue.ActionDone, f.removeFromUploadingQueues(it)
+	}
+	err = f.uploadFile(ctx, spaceId, fileId)
+	if err != nil {
 		if limitErr := f.handleLimitReachedError(err, it); limitErr != nil {
 			log.Warn("upload limit has been reached",
 				zap.String("fileId", fileId.String()),
@@ -108,8 +114,12 @@ func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.A
 
 func (f *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	f.runOnUploadStartedHook(it.ObjectId, spaceId)
-	if err := f.uploadFile(ctx, spaceId, fileId); err != nil {
+	err := f.runOnUploadStartedHook(it.ObjectId, spaceId)
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return queue.ActionDone, f.removeFromUploadingQueues(it)
+	}
+	err = f.uploadFile(ctx, spaceId, fileId)
+	if err != nil {
 		log.Error("retry uploading file error",
 			zap.String("fileId", fileId.String()), zap.Error(err),
 			zap.String("objectId", it.ObjectId),
@@ -160,7 +170,7 @@ func (f *fileSync) runOnUploadedHook(fileObjectId string, spaceId string) {
 	}
 }
 
-func (f *fileSync) runOnUploadStartedHook(fileObjectId string, spaceId string) {
+func (f *fileSync) runOnUploadStartedHook(fileObjectId string, spaceId string) error {
 	if f.onUploadStarted != nil {
 		err := f.onUploadStarted(fileObjectId)
 		if err != nil {
@@ -169,7 +179,9 @@ func (f *fileSync) runOnUploadStartedHook(fileObjectId string, spaceId string) {
 				zap.String("spaceID", spaceId),
 				zap.Error(err))
 		}
+		return err
 	}
+	return nil
 }
 
 func (f *fileSync) runOnLimitedHook(fileObjectId string, spaceId string) {

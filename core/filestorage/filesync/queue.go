@@ -1,6 +1,8 @@
 package filesync
 
 import (
+	"fmt"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
@@ -18,6 +20,16 @@ type QueueItem struct {
 	Timestamp   int64
 	AddedByUser bool
 	Imported    bool
+}
+
+func (it *QueueItem) Validate() error {
+	if it.ObjectId == "" {
+		return fmt.Errorf("empty object id")
+	}
+	if !it.FileId.Valid() {
+		return fmt.Errorf("invalid file id")
+	}
+	return nil
 }
 
 func (it *QueueItem) Key() string {

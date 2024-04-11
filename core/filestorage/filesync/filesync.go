@@ -37,8 +37,8 @@ type FileSync interface {
 	OnUploadStarted(StatusCallback)
 	OnUploaded(StatusCallback)
 	OnLimited(StatusCallback)
-	DeleteFile(fileId domain.FullFileId) (err error)
-	DeleteFileSynchronously(spaceId string, fileId domain.FileId) (err error)
+	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
+	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)
@@ -145,6 +145,7 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 	f.uploadingQueue.Run()
 	f.retryUploadingQueue.Run()
 	f.deletionQueue.Run()
+	f.retryDeletionQueue.Run()
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.runNodeUsageUpdater()
@@ -171,7 +172,10 @@ func (f *fileSync) Close(ctx context.Context) error {
 		log.Error("can't close retrying queue: %v", zap.Error(err))
 	}
 	if err := f.deletionQueue.Close(); err != nil {
-		log.Error("can't close removing queue: %v", zap.Error(err))
+		log.Error("can't close deletion queue: %v", zap.Error(err))
+	}
+	if err := f.retryDeletionQueue.Close(); err != nil {
+		log.Error("can't close retry deletion queue: %v", zap.Error(err))
 	}
 
 	return nil

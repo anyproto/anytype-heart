@@ -122,12 +122,13 @@ func (s *service) Init(a *app.App) error {
 }
 
 func (s *service) Run(_ context.Context) error {
-	err := s.ensureNotSyncedFilesAddedToQueue()
-	if err != nil {
-		log.Errorf("ensure not synced files added to queue: %v", err)
-	}
+	go func() {
+		err := s.ensureNotSyncedFilesAddedToQueue()
+		if err != nil {
+			log.Errorf("ensure not synced files added to queue: %v", err)
+		}
+	}()
 	s.indexer.run()
-
 	s.migrationQueue.Run()
 	return nil
 }
@@ -586,7 +587,7 @@ func (s *service) DeleteFileData(objectId string) error {
 		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
 			return err
 		}
-		if err := s.fileSync.DeleteFile(fullId); err != nil {
+		if err := s.fileSync.DeleteFile(objectId, fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}
 		_, err = s.FileOffload(context.Background(), objectId, true)
