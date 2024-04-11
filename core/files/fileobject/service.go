@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/avast/retry-go/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
@@ -23,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/queue"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -143,7 +143,7 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 			{
 				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Int64(int64(syncstatus.StatusSynced)),
+				Value:       pbtypes.Int64(int64(filesyncstatus.Synced)),
 			},
 		},
 	})
@@ -173,7 +173,7 @@ func extractFullFileIdFromDetails(details *types.Struct) domain.FullFileId {
 // EnsureFileAddedToSyncQueue adds file to sync queue if it is not synced yet, we need to do this
 // after migrating to new sync queue
 func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error {
-	if pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()) == int64(syncstatus.StatusSynced) {
+	if pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()) == int64(filesyncstatus.Synced) {
 		return nil
 	}
 	fullId := domain.FullFileId{
@@ -465,13 +465,13 @@ func (s *service) fileOffload(ctx context.Context, fileDetails *types.Struct, in
 	if fileId == "" {
 		return 0, ErrEmptyFileId
 	}
-	backupStatus := syncstatus.SyncStatus(pbtypes.GetInt64(fileDetails, bundle.RelationKeyFileBackupStatus.String()))
+	backupStatus := filesyncstatus.Status(pbtypes.GetInt64(fileDetails, bundle.RelationKeyFileBackupStatus.String()))
 	id := domain.FullFileId{
 		SpaceId: pbtypes.GetString(fileDetails, bundle.RelationKeySpaceId.String()),
 		FileId:  domain.FileId(fileId),
 	}
 
-	if !includeNotPinned && backupStatus != syncstatus.StatusSynced {
+	if !includeNotPinned && backupStatus != filesyncstatus.Synced {
 		return 0, nil
 	}
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/net/peer"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // migrationItem is a queue item for file object migration. Should be fully serializable
@@ -160,7 +158,6 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 		return fmt.Errorf("file hash is empty")
 	}
 	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
-	details.Fields[bundle.RelationKeyFileBackupStatus.String()] = pbtypes.Int64(int64(syncstatus.StatusSynced))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(details)

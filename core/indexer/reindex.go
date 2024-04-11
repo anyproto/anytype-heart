@@ -29,8 +29,8 @@ const (
 	// ForceObjectsReindexCounter reindex thread-based objects
 	ForceObjectsReindexCounter int32 = 16
 
-	// ForceFilesReindexCounter reindex ipfs-file-based objects
-	ForceFilesReindexCounter int32 = 11 //
+	// ForceFilesReindexCounter reindex file objects
+	ForceFilesReindexCounter int32 = 12 //
 
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
@@ -170,6 +170,14 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			l.Infof("reindex finished")
 		}
 	} else {
+
+		if flags.fileObjects {
+			err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, smartblock2.SmartBlockTypeFileObject)
+			if err != nil {
+				return fmt.Errorf("reindex file objects: %w", err)
+			}
+		}
+
 		// Index objects that updated, but not indexed yet
 		// we can have objects which actual state is newer than the indexed one
 		// this may happen e.g. if the app got closed in the middle of object updates processing

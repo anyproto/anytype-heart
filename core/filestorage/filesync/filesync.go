@@ -95,6 +95,13 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
+	db, err := f.dbProvider.LocalStorage()
+	if err != nil {
+		return
+	}
+	f.uploadingQueue = queue.New(db, log.Logger, uploadKeyPrefix, makeQueueItem, f.uploadingHandler)
+	f.retryingQueue = queue.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.retryingHandler, queue.WithHandlerTickPeriod(loopTimeout))
+	f.removingQueue = queue.New(db, log.Logger, removeKeyPrefix, makeQueueItem, f.removingHandler)
 	return
 }
 
@@ -123,7 +130,7 @@ func makeQueueItem() *QueueItem {
 }
 
 func (f *fileSync) Run(ctx context.Context) (err error) {
-	db, err := f.dbProvider.SpaceStorage()
+	db, err := f.dbProvider.LocalStorage()
 	if err != nil {
 		return
 	}
@@ -132,11 +139,8 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	f.uploadingQueue = queue.New(db, log.Logger, uploadKeyPrefix, makeQueueItem, f.uploadingHandler)
 	f.uploadingQueue.Run()
-	f.retryingQueue = queue.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.retryingHandler, queue.WithHandlerTickPeriod(loopTimeout))
 	f.retryingQueue.Run()
-	f.removingQueue = queue.New(db, log.Logger, removeKeyPrefix, makeQueueItem, f.removingHandler)
 	f.removingQueue.Run()
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
