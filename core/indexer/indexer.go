@@ -67,7 +67,9 @@ type indexer struct {
 	storageService storage.ClientStorage
 	fileService    files.Service
 
-	quit       chan struct{}
+	quit            chan struct{}
+	ftQueueFinished chan struct{}
+
 	btHash     Hasher
 	newAccount bool
 	forceFt    chan struct{}
@@ -89,6 +91,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.picker = app.MustComponent[block.ObjectGetter](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
+	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
 }
@@ -105,12 +108,14 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
-	go i.ftLoop()
+	go i.ftLoopRoutine()
 	return
 }
 
 func (i *indexer) Close(ctx context.Context) (err error) {
 	close(i.quit)
+	// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
+	<-i.ftQueueFinished
 	return nil
 }
 
