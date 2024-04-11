@@ -586,7 +586,7 @@ func (s *service) DeleteFileData(objectId string) error {
 		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
 			return err
 		}
-		if err := s.fileSync.RemoveFile(fullId); err != nil {
+		if err := s.fileSync.DeleteFile(fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}
 		_, err = s.FileOffload(context.Background(), objectId, true)

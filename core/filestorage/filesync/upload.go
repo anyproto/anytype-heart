@@ -33,7 +33,7 @@ func (f *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, upload
 		Timestamp:   time.Now().UnixMilli(),
 	}
 
-	if !f.retryingQueue.Has(it.Key()) && !f.removingQueue.Has(it.Key()) {
+	if !f.retryUploadingQueue.Has(it.Key()) && !f.deletionQueue.Has(it.Key()) {
 		return f.uploadingQueue.Add(it)
 	}
 	return nil
@@ -79,17 +79,21 @@ func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.A
 	f.runOnUploadStartedHook(it.ObjectId, spaceId)
 	if err := f.uploadFile(ctx, spaceId, fileId); err != nil {
 		if limitErr := f.handleLimitReachedError(err, it); limitErr != nil {
-			log.Warn(
-				"upload limit has been reached",
+			log.Warn("upload limit has been reached",
 				zap.String("fileId", fileId.String()),
 				zap.String("objectId", it.ObjectId),
 				zap.Int("fileSize", limitErr.fileSize),
 				zap.Int("accountLimit", limitErr.accountLimit),
 				zap.Int("totalBytesUsage", limitErr.totalBytesUsage),
 			)
+		} else {
+			log.Error("uploading file error",
+				zap.String("fileId", fileId.String()), zap.Error(err),
+				zap.String("objectId", it.ObjectId),
+			)
 		}
 
-		err = f.retryingQueue.Add(it)
+		err = f.retryUploadingQueue.Add(it)
 		if err != nil {
 			log.Error("can't add upload task to retrying queue", zap.String("fileId", fileId.String()), zap.Error(err))
 		}
@@ -106,6 +110,10 @@ func (f *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (queue.Ac
 	spaceId, fileId := it.SpaceId, it.FileId
 	f.runOnUploadStartedHook(it.ObjectId, spaceId)
 	if err := f.uploadFile(ctx, spaceId, fileId); err != nil {
+		log.Error("retry uploading file error",
+			zap.String("fileId", fileId.String()), zap.Error(err),
+			zap.String("objectId", it.ObjectId),
+		)
 		f.handleLimitReachedError(err, it)
 		return queue.ActionRetry, nil
 	}
@@ -121,7 +129,7 @@ func (f *fileSync) removeFromUploadingQueues(item *QueueItem) error {
 	if err != nil {
 		return fmt.Errorf("remove upload task: %w", err)
 	}
-	err = f.retryingQueue.Remove(item.Key())
+	err = f.retryUploadingQueue.Remove(item.Key())
 	if err != nil {
 		return fmt.Errorf("remove upload task from retrying queue: %w", err)
 	}

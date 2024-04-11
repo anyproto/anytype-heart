@@ -37,8 +37,8 @@ type FileSync interface {
 	OnUploadStarted(StatusCallback)
 	OnUploaded(StatusCallback)
 	OnLimited(StatusCallback)
-	RemoveFile(fileId domain.FullFileId) (err error)
-	RemoveSynchronously(spaceId string, fileId domain.FileId) (err error)
+	DeleteFile(fileId domain.FullFileId) (err error)
+	DeleteFileSynchronously(spaceId string, fileId domain.FileId) (err error)
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)
@@ -51,9 +51,10 @@ type FileSync interface {
 }
 
 type QueueInfo struct {
-	UploadingQueue []string
-	RetryingQueue  []string
-	RemovingQueue  []string
+	UploadingQueue      []string
+	RetryUploadingQueue []string
+	DeletionQueue       []string
+	RetryDeletionQueue  []string
 }
 
 type SyncStatus struct {
@@ -75,9 +76,10 @@ type fileSync struct {
 	onUploadStarted StatusCallback
 	onLimited       StatusCallback
 
-	uploadingQueue *queue.Queue[*QueueItem]
-	retryingQueue  *queue.Queue[*QueueItem]
-	removingQueue  *queue.Queue[*QueueItem]
+	uploadingQueue      *queue.Queue[*QueueItem]
+	retryUploadingQueue *queue.Queue[*QueueItem]
+	deletionQueue       *queue.Queue[*QueueItem]
+	retryDeletionQueue  *queue.Queue[*QueueItem]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -99,9 +101,10 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	f.uploadingQueue = queue.New(db, log.Logger, uploadKeyPrefix, makeQueueItem, f.uploadingHandler)
-	f.retryingQueue = queue.New(db, log.Logger, discardedKeyPrefix, makeQueueItem, f.retryingHandler, queue.WithHandlerTickPeriod(loopTimeout))
-	f.removingQueue = queue.New(db, log.Logger, removeKeyPrefix, makeQueueItem, f.removingHandler)
+	f.uploadingQueue = queue.New(db, log.Logger, uploadingKeyPrefix, makeQueueItem, f.uploadingHandler)
+	f.retryUploadingQueue = queue.New(db, log.Logger, retryUploadingKeyPrefix, makeQueueItem, f.retryingHandler, queue.WithHandlerTickPeriod(loopTimeout))
+	f.deletionQueue = queue.New(db, log.Logger, deletionKeyPrefix, makeQueueItem, f.deletionHandler)
+	f.retryDeletionQueue = queue.New(db, log.Logger, retryDeletionKeyPrefix, makeQueueItem, f.retryDeletionHandler, queue.WithHandlerTickPeriod(loopTimeout))
 	return
 }
 
@@ -140,8 +143,8 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 	}
 
 	f.uploadingQueue.Run()
-	f.retryingQueue.Run()
-	f.removingQueue.Run()
+	f.retryUploadingQueue.Run()
+	f.deletionQueue.Run()
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.runNodeUsageUpdater()
@@ -164,10 +167,10 @@ func (f *fileSync) Close(ctx context.Context) error {
 	if err := f.uploadingQueue.Close(); err != nil {
 		log.Error("can't close uploading queue: %v", zap.Error(err))
 	}
-	if err := f.retryingQueue.Close(); err != nil {
+	if err := f.retryUploadingQueue.Close(); err != nil {
 		log.Error("can't close retrying queue: %v", zap.Error(err))
 	}
-	if err := f.removingQueue.Close(); err != nil {
+	if err := f.deletionQueue.Close(); err != nil {
 		log.Error("can't close removing queue: %v", zap.Error(err))
 	}
 

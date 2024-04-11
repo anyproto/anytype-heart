@@ -637,11 +637,11 @@ func (_c *MockFileSync_OnUploaded_Call) RunAndReturn(run func(filesync.StatusCal
 }
 
 // RemoveFile provides a mock function with given fields: fileId
-func (_m *MockFileSync) RemoveFile(fileId domain.FullFileId) error {
+func (_m *MockFileSync) DeleteFile(fileId domain.FullFileId) error {
 	ret := _m.Called(fileId)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RemoveFile")
+		panic("no return value specified for DeleteFile")
 	}
 
 	var r0 error
@@ -654,7 +654,7 @@ func (_m *MockFileSync) RemoveFile(fileId domain.FullFileId) error {
 	return r0
 }
 
-// MockFileSync_RemoveFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveFile'
+// MockFileSync_RemoveFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteFile'
 type MockFileSync_RemoveFile_Call struct {
 	*mock.Call
 }
@@ -662,7 +662,7 @@ type MockFileSync_RemoveFile_Call struct {
 // RemoveFile is a helper method to define mock.On call
 //   - fileId domain.FullFileId
 func (_e *MockFileSync_Expecter) RemoveFile(fileId interface{}) *MockFileSync_RemoveFile_Call {
-	return &MockFileSync_RemoveFile_Call{Call: _e.mock.On("RemoveFile", fileId)}
+	return &MockFileSync_RemoveFile_Call{Call: _e.mock.On("DeleteFile", fileId)}
 }
 
 func (_c *MockFileSync_RemoveFile_Call) Run(run func(fileId domain.FullFileId)) *MockFileSync_RemoveFile_Call {
@@ -683,11 +683,11 @@ func (_c *MockFileSync_RemoveFile_Call) RunAndReturn(run func(domain.FullFileId)
 }
 
 // RemoveSynchronously provides a mock function with given fields: spaceId, fileId
-func (_m *MockFileSync) RemoveSynchronously(spaceId string, fileId domain.FileId) error {
+func (_m *MockFileSync) DeleteFileSynchronously(spaceId string, fileId domain.FileId) error {
 	ret := _m.Called(spaceId, fileId)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RemoveSynchronously")
+		panic("no return value specified for DeleteFileSynchronously")
 	}
 
 	var r0 error
@@ -700,7 +700,7 @@ func (_m *MockFileSync) RemoveSynchronously(spaceId string, fileId domain.FileId
 	return r0
 }
 
-// MockFileSync_RemoveSynchronously_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveSynchronously'
+// MockFileSync_RemoveSynchronously_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteFileSynchronously'
 type MockFileSync_RemoveSynchronously_Call struct {
 	*mock.Call
 }
@@ -709,7 +709,7 @@ type MockFileSync_RemoveSynchronously_Call struct {
 //   - spaceId string
 //   - fileId domain.FileId
 func (_e *MockFileSync_Expecter) RemoveSynchronously(spaceId interface{}, fileId interface{}) *MockFileSync_RemoveSynchronously_Call {
-	return &MockFileSync_RemoveSynchronously_Call{Call: _e.mock.On("RemoveSynchronously", spaceId, fileId)}
+	return &MockFileSync_RemoveSynchronously_Call{Call: _e.mock.On("DeleteFileSynchronously", spaceId, fileId)}
 }
 
 func (_c *MockFileSync_RemoveSynchronously_Call) Run(run func(spaceId string, fileId domain.FileId)) *MockFileSync_RemoveSynchronously_Call {

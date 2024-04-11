@@ -165,9 +165,9 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	fileId, _ := fx.givenFileAddedToDAG(t)
 	fx.givenFileUploaded(t, spaceId, fileId)
 
-	require.NoError(t, fx.RemoveFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}))
+	require.NoError(t, fx.DeleteFile(domain.FullFileId{SpaceId: spaceId, FileId: fileId}))
 
-	fx.waitEmptyQueue(t, fx.removingQueue, time.Second*1)
+	fx.waitEmptyQueue(t, fx.deletionQueue, time.Second*1)
 
 	_, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileId)
 	require.Error(t, err)

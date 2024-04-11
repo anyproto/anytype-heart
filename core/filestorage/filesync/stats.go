@@ -325,7 +325,8 @@ func (f *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId 
 func (f *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
 	var info QueueInfo
 	info.UploadingQueue = f.uploadingQueue.ListKeys()
-	info.RetryingQueue = f.retryingQueue.ListKeys()
-	info.RemovingQueue = f.removingQueue.ListKeys()
+	info.RetryUploadingQueue = f.retryUploadingQueue.ListKeys()
+	info.DeletionQueue = f.deletionQueue.ListKeys()
+	info.RetryDeletionQueue = f.retryDeletionQueue.ListKeys()
 	return &info, nil
 }
