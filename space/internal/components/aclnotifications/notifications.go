@@ -40,6 +40,7 @@ type NotificationSender interface {
 type AclNotification interface {
 	app.ComponentRunnable
 	AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
+	AddSingleRecord(aclId string, aclRecord *list.AclRecord, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
 }
 
 type aclNotificationSender struct {
@@ -115,6 +116,27 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	}
 }
 
+func (n *aclNotificationSender) AddSingleRecord(aclId string,
+	aclRecord *list.AclRecord,
+	permissions list.AclPermissions,
+	spaceId string,
+	accountStatus spaceinfo.AccountStatus,
+) {
+	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
+	err := n.batcher.Add(&aclNotificationRecord{
+		record:        *aclRecord,
+		permissions:   permissions,
+		spaceId:       spaceId,
+		aclId:         aclId,
+		accountStatus: accountStatus,
+		spaceName:     spaceName,
+	})
+	if err != nil {
+		logger.Errorf("failed to add acl record, %s", err)
+	}
+	return
+}
+
 func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
 	if aclData, ok := aclNotificationRecord.record.Model.(*aclrecordproto.AclData); ok {
 		err := n.iterateAclContent(ctx, aclNotificationRecord, aclData)
@@ -126,7 +148,7 @@ func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotific
 }
 
 func (n *aclNotificationSender) processRecords() {
-	ticker := time.NewTicker(time.Minute * 5)
+	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
 	select {
