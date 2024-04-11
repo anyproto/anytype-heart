@@ -63,10 +63,6 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
 	aclService := getService[acl.AclService](mw)
-	err := aclService.MakeShareable(cctx, req.SpaceId)
-	if err != nil {
-		panic(err)
-	}
 	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId)
 	if err != nil {
 		code := mapErrorCode(err,
