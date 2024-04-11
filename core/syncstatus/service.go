@@ -13,7 +13,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -47,7 +47,7 @@ type service struct {
 	objectWatchers     map[string]syncstatus.StatusWatcher
 
 	objectStore  objectstore.ObjectStore
-	objectGetter cache.ObjectGetter
+	objectGetter getblock.ObjectGetter
 	badger       *badger.DB
 }
 
@@ -74,7 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.badger = db
 
 	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
-	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
+	s.objectGetter = app.MustComponent[getblock.ObjectGetter](a)
 
 	s.fileSyncService.OnUploaded(s.OnFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.OnFileUploadStarted)

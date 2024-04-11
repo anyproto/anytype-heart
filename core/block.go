@@ -8,7 +8,6 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
@@ -288,7 +287,7 @@ func (mw *Middleware) BlockSetCarriage(_ context.Context, req *pb.RpcBlockSetCar
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return cache.Do(bs, req.ContextId, func(sb smartblock.SmartBlock) error {
+		return block.Do(bs, req.ContextId, func(sb smartblock.SmartBlock) error {
 			sb.History().SetCarriageState(undo.CarriageState{
 				BlockID:   req.BlockId,
 				RangeFrom: req.Range.From,

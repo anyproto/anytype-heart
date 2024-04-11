@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/block/getblock/mock_getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	file2 "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -208,7 +208,7 @@ func newFileServiceFixture(t *testing.T) files.Service {
 }
 
 func newFixture(t *testing.T) *uplFixture {
-	picker := mock_cache.NewMockObjectGetter(t)
+	picker := mock_getblock.NewMockObjectGetter(t)
 	fx := &uplFixture{
 		ctrl:   gomock.NewController(t),
 		picker: picker,
@@ -230,7 +230,7 @@ type uplFixture struct {
 	Uploader
 	fileService       files.Service
 	ctrl              *gomock.Controller
-	picker            *mock_cache.MockObjectGetter
+	picker            *mock_getblock.MockObjectGetter
 	fileObjectService *mock_fileobject.MockService
 }
 

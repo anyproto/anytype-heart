@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
-	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 var log = logging.Logger("notifications")
@@ -44,7 +43,7 @@ type notificationService struct {
 	eventSender        event.Sender
 	notificationStore  NotificationStore
 	spaceService       space.Service
-	picker             cache.ObjectGetter
+	picker             block.ObjectGetter
 	spaceCore          spacecore.SpaceCoreService
 	mu                 sync.Mutex
 
@@ -68,7 +67,7 @@ func (n *notificationService) Init(a *app.App) (err error) {
 	n.eventSender = app.MustComponent[event.Sender](a)
 	n.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	n.spaceService = app.MustComponent[space.Service](a)
-	n.picker = app.MustComponent[cache.ObjectGetter](a)
+	n.picker = app.MustComponent[block.ObjectGetter](a)
 	return nil
 }
 
@@ -95,7 +94,7 @@ func (n *notificationService) indexNotifications(ctx context.Context) {
 
 func (n *notificationService) updateNotificationsInLocalStore() {
 	var notifications map[string]*model.Notification
-	err := cache.Do(n.picker, n.notificationId, func(sb smartblock.SmartBlock) error {
+	err := block.Do(n.picker, n.notificationId, func(sb smartblock.SmartBlock) error {
 		s := sb.NewState()
 		notifications = s.ListNotifications()
 		return nil
@@ -131,15 +130,8 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 	if !notification.IsLocal {
 		n.mu.Lock()
 		defer n.mu.Unlock()
-		storeNotification, err := n.notificationStore.GetNotificationById(notification.Id)
-		if err != nil && !badgerhelper.IsNotFound(err) {
-			return err
-		}
-		if storeNotification != nil {
-			return nil
-		}
 		var exist bool
-		err = cache.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
+		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 			stateNotification := s.GetNotificationById(notification.Id)
 			if stateNotification != nil {
 				exist = true
@@ -213,7 +205,7 @@ func (n *notificationService) Reply(notificationIds []string, notificationAction
 		}
 
 		if !notification.IsLocal {
-			err = cache.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
+			err = block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 				s.AddNotification(notification)
 				return nil
 			})
