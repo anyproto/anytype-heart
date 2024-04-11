@@ -55,7 +55,11 @@ func (i *indexer) runFullTextIndexer() {
 	docs := make([]ftsearch.SearchDoc, 0, ftBatchLimit)
 	err := i.store.BatchProcessFullTextQueue(ftBatchLimit, func(ids []string) error {
 		for _, id := range ids {
-			err := i.prepareSearchDocument(id, func(doc ftsearch.SearchDoc) error {
+			err := i.ftsearch.Delete(id)
+			if err != nil {
+				log.With("id", id).Errorf("delete document for full-text indexing: %s", err)
+			}
+			err = i.prepareSearchDocument(id, func(doc ftsearch.SearchDoc) error {
 				docs = append(docs, doc)
 				if len(docs) >= ftBatchLimit {
 					err := i.ftsearch.BatchIndex(docs)
@@ -105,6 +109,7 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 
 			f := ftsearch.SearchDoc{
 				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
+				DocId:   id,
 				SpaceID: sb.SpaceID(),
 				Text:    val,
 			}
@@ -126,6 +131,7 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 				}
 
 				doc := ftsearch.SearchDoc{
+					DocId:   id,
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
 					SpaceID: sb.SpaceID(),
 				}

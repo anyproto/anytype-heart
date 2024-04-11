@@ -27,13 +27,14 @@ import (
 const (
 	CName  = "fts"
 	ftsDir = "fts"
-	ftsVer = "3"
+	ftsVer = "4"
 
 	fieldTitle        = "Title"
 	fieldText         = "Text"
 	fieldTitleNoTerms = "TitleNoTerms"
 	fieldTextNoTerms  = "TextNoTerms"
-	fieldID           = "Id"
+	fieldId           = "Id"
+	fieldDocId        = "DocId"
 )
 
 var log = logging.Logger("ftsearch")
@@ -41,6 +42,7 @@ var log = logging.Logger("ftsearch")
 type SearchDoc struct {
 	//nolint:all
 	Id           string
+	DocId        string
 	SpaceID      string
 	Title        string
 	TitleNoTerms string
@@ -157,8 +159,15 @@ func (f *ftSearch) BatchDelete(ids []string) (err error) {
 			l.Debugf("ft delete done")
 		}
 	}()
+
 	for _, id := range ids {
-		batch.Delete(id)
+		docIds, err := f.getDocIdsForObjectId(id)
+		if err != nil {
+			log.With("id", id).Errorf("failed to get doc ids for object id: %s", err)
+		}
+		for _, docId := range docIds {
+			batch.Delete(docId)
+		}
 	}
 	return f.index.Batch(batch)
 }
@@ -224,8 +233,20 @@ func (f *ftSearch) Has(id string) (exists bool, err error) {
 	return d != nil, nil
 }
 
+func (f *ftSearch) getDocIdsForObjectId(id string) ([]string, error) {
+	docIdQuery := bleve.NewMatchQuery(id)
+	docIdQuery.SetField(fieldDocId)
+	result, err := f.index.Search(bleve.NewSearchRequest(docIdQuery))
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(result.Hits, func(hit *search.DocumentMatch, index int) string {
+		return hit.ID
+	}), nil
+}
+
 func (f *ftSearch) Delete(id string) (err error) {
-	return f.index.Delete(id)
+	return f.BatchDelete([]string{id})
 }
 
 func (f *ftSearch) DocCount() (uint64, error) {
@@ -268,7 +289,8 @@ func addNoTermsMapping(indexMapping *mapping.IndexMappingImpl) {
 	fields := []string{
 		fieldTitleNoTerms,
 		fieldTextNoTerms,
-		fieldID,
+		fieldId,
+		fieldDocId,
 	}
 	addMappings(indexMapping, fields, keywordMapping)
 }
