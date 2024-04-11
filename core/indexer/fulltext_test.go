@@ -1,6 +1,7 @@
 package indexer
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"sync"
@@ -94,7 +95,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, "spaceId1", doc.SpaceID)
 		called = true
@@ -120,7 +121,7 @@ func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, "spaceId1", doc.SpaceID)
 		called = true
@@ -147,7 +148,7 @@ func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		called = true
 		return nil
 	})
@@ -166,7 +167,7 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		called = true
 		return nil
 	})
@@ -190,7 +191,7 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/r/name", doc.Id)
 		assert.Equal(t, "Title Text", doc.Text)
 		assert.Equal(t, "Title Text", doc.Title)
@@ -217,7 +218,7 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/r/name", doc.Id)
 		assert.Equal(t, "Title Text", doc.Text)
 		assert.Equal(t, "Title Text", doc.Title)
@@ -245,7 +246,7 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		called = true
 		return nil
 	})
@@ -270,7 +271,7 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		called = true
 		return nil
 	})
@@ -293,7 +294,7 @@ func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, "Text content less than max size", doc.Text)
 		called = true
@@ -320,7 +321,7 @@ func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, textContent, doc.Text)
 		called = true
@@ -347,7 +348,7 @@ func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	called := false
-	err := indexerFx.prepareSearchDocument("objectId1", func(doc ftsearch.SearchDoc) error {
+	err := indexerFx.prepareSearchDocument(context.Background(), "objectId1", func(doc ftsearch.SearchDoc) error {
 		assert.Equal(t, "objectId1/b/blockId1", doc.Id)
 		assert.Equal(t, maxSize, len(doc.Text))
 		called = true
@@ -374,7 +375,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil)
 	}
 
-	indexerFx.runFullTextIndexer()
+	indexerFx.runFullTextIndexer(context.Background())
 
 	count, _ := indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(101), count)
@@ -400,7 +401,7 @@ func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 		)))
 	indexerFx.store.AddToIndexQueue("objectId1")
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
-	indexerFx.runFullTextIndexer()
+	indexerFx.runFullTextIndexer(context.Background())
 
 	count, _ = indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(1), count)

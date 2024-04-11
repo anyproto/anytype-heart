@@ -73,7 +73,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 			if err != nil {
 				log.With("id", id).Errorf("delete document for full-text indexing: %s", err)
 			}
-			err := i.prepareSearchDocument(ctx, id, func(doc ftsearch.SearchDoc) error {
+			err = i.prepareSearchDocument(ctx, id, func(doc ftsearch.SearchDoc) error {
 				docs = append(docs, doc)
 				if len(docs) >= ftBatchLimit {
 					err := i.ftsearch.BatchIndex(ctx, docs)
