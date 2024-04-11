@@ -2,6 +2,7 @@ package shareablespace
 
 import (
 	"context"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -31,20 +32,36 @@ type spaceController struct {
 	status            spacestatus.SpaceStatus
 	lastUpdatedStatus spaceinfo.AccountStatus
 	updater           statusUpdater
+	mx                sync.Mutex
 
 	sm *mode.StateMachine
+}
+
+func makeStatusApp(a *app.App, spaceId string) (*app.App, error) {
+	newApp := a.ChildApp()
+	newApp.Register(spacestatus.New(spaceId))
+	err := newApp.Start(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return newApp, nil
 }
 
 func NewSpaceController(
 	spaceId string,
 	info spaceinfo.SpacePersistentInfo,
 	a *app.App) (spacecontroller.SpaceController, error) {
+	newApp, err := makeStatusApp(a, spaceId)
+	if err != nil {
+		return nil, err
+	}
 	s := &spaceController{
 		spaceId:           spaceId,
-		status:            spacestatus.New(spaceId, info.AccountStatus, info.AclHeadId),
-		lastUpdatedStatus: info.AccountStatus,
-		app:               a,
+		status:            newApp.MustComponent(spacestatus.CName).(spacestatus.SpaceStatus),
+		lastUpdatedStatus: info.GetAccountStatus(),
+		app:               newApp,
 	}
+
 	// this is done for tests to not complicate them :-)
 	if updater, ok := a.Component(deletioncontroller.CName).(statusUpdater); ok {
 		s.updater = updater
@@ -91,33 +108,32 @@ func (s *spaceController) Current() any {
 	return s.sm.GetProcess()
 }
 
-func (s *spaceController) SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
-	s.status.Lock()
-	err := s.status.SetPersistentInfo(ctx, info)
+func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	err := s.status.SetPersistentInfo(info)
 	if err != nil {
-		s.status.Unlock()
 		return err
 	}
-	s.status.Unlock()
-	return s.UpdateInfo(ctx, info)
+	return s.Update()
 }
 
-func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
-	s.status.Lock()
-	if s.lastUpdatedStatus == info.AccountStatus {
-		s.status.Unlock()
+func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
+	return s.status.SetLocalInfo(info)
+}
+
+func (s *spaceController) Update() error {
+	s.mx.Lock()
+	status := s.status.GetPersistentStatus()
+	if s.lastUpdatedStatus == status {
+		s.mx.Unlock()
 		return nil
 	}
-	s.lastUpdatedStatus = info.AccountStatus
-	s.status.Unlock()
+	s.lastUpdatedStatus = status
+	s.mx.Unlock()
 	updateStatus := func(mode mode.Mode) error {
-		s.status.Lock()
-		s.status.UpdatePersistentInfo(ctx, info)
-		s.status.Unlock()
 		_, err := s.sm.ChangeMode(mode)
 		return err
 	}
-	switch info.AccountStatus {
+	switch status {
 	case spaceinfo.AccountStatusDeleted:
 		return updateStatus(mode.ModeOffloading)
 	case spaceinfo.AccountStatusJoining:
@@ -127,12 +143,6 @@ func (s *spaceController) UpdateInfo(ctx context.Context, info spaceinfo.SpacePe
 	default:
 		return updateStatus(mode.ModeLoading)
 	}
-}
-
-func (s *spaceController) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
-	s.status.Lock()
-	defer s.status.Unlock()
-	return s.status.SetRemoteStatus(ctx, status)
 }
 
 func (s *spaceController) Delete(ctx context.Context) error {
@@ -151,16 +161,12 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 	case mode.ModeLoading:
 		return loader.New(s.app, loader.Params{
 			SpaceId: s.spaceId,
-			Status:  s.status,
 		})
 	case mode.ModeOffloading:
-		return offloader.New(s.app, offloader.Params{
-			Status: s.status,
-		})
+		return offloader.New(s.app)
 	case mode.ModeRemoving:
 		return remover.New(s.app, remover.Params{
 			SpaceId: s.spaceId,
-			Status:  s.status,
 		})
 	case mode.ModeJoining:
 		return joiner.New(s.app, joiner.Params{
@@ -175,11 +181,10 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 
 func (s *spaceController) Close(ctx context.Context) error {
 	s.sm.Close()
-	return nil
+	// this closes status
+	return s.app.Close(ctx)
 }
 
 func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
-	s.status.Lock()
-	defer s.status.Unlock()
 	return s.status.GetPersistentStatus()
 }
