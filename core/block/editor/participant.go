@@ -3,6 +3,7 @@ package editor
 import (
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -12,11 +13,14 @@ import (
 
 type participant struct {
 	smartblock.SmartBlock
+	basic.DetailsUpdatable
 }
 
 func (f *ObjectFactory) newParticipant(sb smartblock.SmartBlock) *participant {
+	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
 	return &participant{
-		SmartBlock: sb,
+		SmartBlock:       sb,
+		DetailsUpdatable: basicComponent,
 	}
 }
 
@@ -39,7 +43,6 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-		template.WithAddedFeaturedRelation(bundle.RelationKeyIdentity),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 	)
 	return nil

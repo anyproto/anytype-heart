@@ -422,10 +422,7 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string
 		return nil, err
 	}
 	details = detailsModel.Details
-	snippet, err := badgerhelper.GetValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
-	if err != nil && !badgerhelper.IsNotFound(err) {
-		return nil, fmt.Errorf("failed to get snippet: %w", err)
-	}
+	snippet := pbtypes.GetString(details, bundle.RelationKeySnippet.String())
 
 	return &model.ObjectInfo{
 		Id:      id,

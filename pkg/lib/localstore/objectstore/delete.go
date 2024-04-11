@@ -24,8 +24,6 @@ func (s *dsObjectStore) DeleteDetails(ids ...string) error {
 
 				for _, key := range []ds.Key{
 					pagesDetailsBase.ChildString(id),
-					pagesSnippetBase.ChildString(id),
-					pagesDetailsBase.ChildString(id),
 					indexedHeadsState.ChildString(id),
 				} {
 					if err := txn.Delete(key.Bytes()); err != nil {
@@ -60,7 +58,6 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 		defer txn.Discard()
 
 		for _, key := range []ds.Key{
-			pagesSnippetBase.ChildString(id),
 			indexQueueBase.ChildString(id),
 			indexedHeadsState.ChildString(id),
 		} {

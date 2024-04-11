@@ -32,7 +32,7 @@ func TestImportFileFromRelation(t *testing.T) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
+	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId: app.personalSpaceId(),
 		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		Type:    model.Import_Pb,
@@ -42,11 +42,11 @@ func TestImportFileFromRelation(t *testing.T) {
 			},
 		},
 	}, objectorigin.Import(model.Import_Pb), nil)
-	require.NoError(t, err)
+	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
 		if v := msg.GetProcessDone(); v != nil {
-			return v.Process.Id == processId
+			return v.Process.Id == res.ProcessId
 		}
 		return false
 	})
@@ -87,7 +87,7 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
+	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId: app.personalSpaceId(),
 		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		Type:    model.Import_Markdown,
@@ -97,11 +97,11 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 			},
 		},
 	}, objectorigin.Import(model.Import_Markdown), nil)
-	require.NoError(t, err)
+	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
 		if v := msg.GetProcessDone(); v != nil {
-			return v.Process.Id == processId
+			return v.Process.Id == res.ProcessId
 		}
 		return false
 	})
@@ -124,7 +124,7 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
+	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId: app.personalSpaceId(),
 		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		Type:    model.Import_Pb,
@@ -134,11 +134,11 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 			},
 		},
 	}, objectorigin.Import(model.Import_Pb), nil)
-	require.NoError(t, err)
+	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
 		if v := msg.GetProcessDone(); v != nil {
-			return v.Process.Id == processId
+			return v.Process.Id == res.ProcessId
 		}
 		return false
 	})

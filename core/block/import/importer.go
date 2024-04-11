@@ -112,9 +112,14 @@ func (i *Import) Import(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	origin objectorigin.ObjectOrigin,
 	progress process.Progress,
-) (string, string, error) {
+) *ImportResponse {
 	if req.SpaceId == "" {
-		return "", "", fmt.Errorf("spaceId is empty")
+		return &ImportResponse{
+			RootCollectionId: "",
+			ProcessId:        "",
+			ObjectsCount:     0,
+			Err:              fmt.Errorf("spaceId is empty"),
+		}
 	}
 	i.Lock()
 	defer i.Unlock()
@@ -136,17 +141,23 @@ func (i *Import) Import(ctx context.Context,
 		i.s.ProcessAdd(progress)
 	}
 	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: req.Type.String()})
-	var rootCollectionId string
+	var (
+		rootCollectionId string
+		objectsCount     int64
+	)
+	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
 	if c, ok := i.converters[req.Type.String()]; ok {
-		rootCollectionId, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
-		return rootCollectionId, progress.Id(), returnedErr
+		rootCollectionId, objectsCount, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
 	}
 	if req.Type == model.Import_External {
-		returnedErr = i.importFromExternalSource(ctx, req, progress)
-		return rootCollectionId, "", returnedErr
+		objectsCount, returnedErr = i.importFromExternalSource(ctx, req, progress)
 	}
-	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
-	return rootCollectionId, progress.Id(), returnedErr
+	return &ImportResponse{
+		RootCollectionId: rootCollectionId,
+		ProcessId:        progress.Id(),
+		ObjectsCount:     objectsCount,
+		Err:              returnedErr,
+	}
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -161,36 +172,44 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	c common.Converter,
 	progress process.Progress,
 	origin objectorigin.ObjectOrigin,
-) (string, error) {
+) (string, int64, error) {
 	allErrors := common.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req) {
-			return "", resultErr
+			return "", 0, resultErr
 		}
 		allErrors.Merge(err)
 	}
 	if res == nil {
-		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+		return "", 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
 	if len(res.Snapshots) == 0 {
-		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+		return "", 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors, origin)
+	details, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors, origin)
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
 	}
-	return rootCollectionID, resultErr
+	return rootCollectionID, i.getObjectCount(details, rootCollectionID), resultErr
+}
+
+func (i *Import) getObjectCount(details map[string]*types.Struct, rootCollectionID string) int64 {
+	objectsCount := int64(len(details))
+	if rootCollectionID != "" && objectsCount > 0 {
+		objectsCount-- // exclude root collection object from counter
+	}
+	return objectsCount
 }
 
 func (i *Import) importFromExternalSource(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	progress process.Progress,
-) error {
+) (int64, error) {
 	allErrors := common.NewError(req.Mode)
 	if req.Snapshots != nil {
 		sn := make([]*common.Snapshot, len(req.Snapshots))
@@ -205,13 +224,13 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		}
 
 		originImport := objectorigin.Import(model.Import_External)
-		i.createObjects(ctx, res, progress, req, allErrors, originImport)
+		details, _ := i.createObjects(ctx, res, progress, req, allErrors, originImport)
 		if !allErrors.IsEmpty() {
-			return allErrors.GetResultError(req.Type)
+			return 0, allErrors.GetResultError(req.Type)
 		}
-		return nil
+		return int64(len(details)), nil
 	}
-	return common.ErrNoObjectsToImport
+	return 0, common.ErrNoObjectsToImport
 }
 
 func (i *Import) finishImportProcess(returnedErr error, progress process.Progress) {
@@ -438,7 +457,7 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(fmt.Errorf("%w: %w", common.ErrCancel, err))
+			allErrors.Add(fmt.Errorf("%w: %s", common.ErrCancel, err.Error()))
 			pool.Stop()
 			return nil
 		}

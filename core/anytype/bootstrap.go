@@ -27,6 +27,9 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -62,8 +65,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/payments"
+	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -95,11 +100,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/unsplash"
 	"github.com/anyproto/anytype-heart/util/vcs"
-
-	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
-	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
-
-	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 )
 
 var (
@@ -278,6 +278,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(templateservice.New()).
 		Register(notifications.New()).
 		Register(paymentserviceclient.New()).
+		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
 		Register(paymentscache.New())

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -52,6 +53,25 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	return nil
 }
 
+func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	if update == nil {
+		return fmt.Errorf("update function is nil")
+	}
+	s := bs.NewState()
+
+	newDetails, err := update(s.CombinedDetails())
+	if err != nil {
+		return
+	}
+	s.SetDetails(newDetails)
+
+	if err = bs.addRelationLinks(s, maps.Keys(newDetails.Fields)...); err != nil {
+		return
+	}
+
+	return bs.Apply(s)
+}
+
 func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s *state.State) []*detailUpdate {
 	updates := make([]*detailUpdate, 0, len(details))
 	for _, detail := range details {
@@ -90,7 +110,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
 			return nil, fmt.Errorf("special case: %w", err)
 		}
-		if err := bs.addRelationLink(detail.Key, st); err != nil {
+		if err := bs.addRelationLink(st, detail.Key); err != nil {
 			return nil, err
 		}
 		if err := bs.validateDetailFormat(bs.SpaceID(), detail.Key, detail.Value); err != nil {
@@ -246,12 +266,24 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 	return nil
 }
 
-func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
+func (bs *basic) addRelationLink(st *state.State, relationKey string) error {
 	relLink, err := bs.objectStore.GetRelationLink(bs.SpaceID(), relationKey)
 	if err != nil || relLink == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
 	st.AddRelationLinks(relLink)
+	return nil
+}
+
+func (bs *basic) addRelationLinks(st *state.State, relationKeys ...string) error {
+	if len(relationKeys) == 0 {
+		return nil
+	}
+	relations, err := bs.objectStore.FetchRelationByKeys(bs.SpaceID(), relationKeys...)
+	if err != nil || relations == nil {
+		return fmt.Errorf("failed to get relations: %w", err)
+	}
+	st.AddRelationLinks(relations.RelationLinks()...)
 	return nil
 }
 
