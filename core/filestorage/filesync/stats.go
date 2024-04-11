@@ -144,6 +144,11 @@ func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
 }
 
 func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error) {
+	prevUsage, prevUsageFound, err := s.getCachedNodeUsage()
+	if err != nil {
+		return NodeUsage{}, fmt.Errorf("get cached node usage: %w", err)
+	}
+
 	info, err := s.rpcStore.AccountInfo(ctx)
 	if err != nil {
 		return NodeUsage{}, fmt.Errorf("get node usage info: %w", err)
@@ -174,6 +179,13 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 	if err != nil {
 		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
 	}
+
+	for _, space := range spaces {
+		if !prevUsageFound || prevUsage.GetSpaceUsage(space.SpaceId).SpaceBytesUsage != space.SpaceBytesUsage {
+			s.sendSpaceUsageEvent(space.SpaceId, uint64(space.SpaceBytesUsage))
+		}
+	}
+
 	return usage, nil
 }
 
@@ -187,25 +199,12 @@ func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (SpaceStat, er
 }
 
 func (s *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error) {
-	prevUsage, prevUsageFound, err := s.getCachedNodeUsage()
-	if err != nil {
-		return SpaceStat{}, fmt.Errorf("get cached node usage: %w", err)
-	}
-
 	curUsage, err := s.getAndUpdateNodeUsage(ctx)
 	if err != nil {
 		return SpaceStat{}, fmt.Errorf("get and update node usage: %w", err)
 	}
 
-	prevStats := prevUsage.GetSpaceUsage(spaceId)
-	newStats := curUsage.GetSpaceUsage(spaceId)
-	if prevStats != newStats {
-		// Do not send event if it is first time we get stats
-		if prevUsageFound {
-			s.sendSpaceUsageEvent(spaceId, uint64(newStats.SpaceBytesUsage))
-		}
-	}
-	return newStats, nil
+	return curUsage.GetSpaceUsage(spaceId), nil
 }
 
 func (f *fileSync) updateSpaceUsageInformation(spaceID string) {
@@ -214,19 +213,23 @@ func (f *fileSync) updateSpaceUsageInformation(spaceID string) {
 	}
 }
 
-func (f *fileSync) sendSpaceUsageEvent(spaceID string, bytesUsage uint64) {
-	f.eventSender.Broadcast(&pb.Event{
+func (f *fileSync) sendSpaceUsageEvent(spaceId string, bytesUsage uint64) {
+	f.eventSender.Broadcast(makeSpaceUsageEvent(spaceId, bytesUsage))
+}
+
+func makeSpaceUsageEvent(spaceId string, bytesUsage uint64) *pb.Event {
+	return &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileSpaceUsage{
 					FileSpaceUsage: &pb.EventFileSpaceUsage{
 						BytesUsage: bytesUsage,
-						SpaceId:    spaceID,
+						SpaceId:    spaceId,
 					},
 				},
 			},
 		},
-	})
+	}
 }
 
 func (f *fileSync) FileListStats(ctx context.Context, spaceID string, hashes []domain.FileId) ([]FileStat, error) {
