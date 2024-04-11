@@ -105,10 +105,6 @@ func (a *aclObjectManager) Name() (name string) {
 }
 
 func (a *aclObjectManager) Run(ctx context.Context) (err error) {
-	err = a.indexer.RemoveAclIndexes(a.status.SpaceId())
-	if err != nil {
-		return
-	}
 	a.started = true
 	a.ctx, a.cancel = context.WithCancel(context.Background())
 	go a.waitSpace()

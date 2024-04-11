@@ -6,11 +6,9 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
-	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
-	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
@@ -32,11 +30,9 @@ type Params struct {
 
 func New(app *app.App, params Params) Remover {
 	child := app.ChildApp()
-	child.Register(builder.New()).
-		Register(spaceloader.New(params.StopIfMandatoryFail, true)).
-		Register(aclnotifications.NewAclNotificationSender()).
-		Register(aclobjectmanager.New(params.OwnerMetadata)).
-		Register(participantwatcher.New())
+	child.Register(aclindexcleaner.New()).
+		Register(builder.New()).
+		Register(spaceloader.New(params.StopIfMandatoryFail, true))
 	return &remover{
 		app: child,
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
 
@@ -35,7 +36,8 @@ type Params struct {
 
 func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
-	child.Register(builder.New()).
+	child.Register(aclindexcleaner.New()).
+		Register(builder.New()).
 		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclobjectmanager.New(params.OwnerMetadata)).

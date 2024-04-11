@@ -177,8 +177,6 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockParticipantWatcher)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAclNotification)).
 		Register(fx)
-	fx.mockStatus.EXPECT().SpaceId().Return("spaceId")
-	fx.mockIndexer.EXPECT().RemoveAclIndexes("spaceId").Return(nil)
 	return fx
 }
 

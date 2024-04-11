@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceoffloader"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
 
@@ -22,7 +23,7 @@ type offloader struct {
 func New(app *app.App) Offloader {
 	child := app.ChildApp()
 	so := spaceoffloader.New()
-	child.Register(so)
+	child.Register(aclindexcleaner.New()).Register(so)
 	return &offloader{
 		app:            child,
 		spaceOffloader: so,

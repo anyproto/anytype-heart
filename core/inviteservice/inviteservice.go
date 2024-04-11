@@ -234,6 +234,7 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, spaceId string, 
 		description = spaceView.GetSpaceDescription()
 		return nil
 	})
+	invitePayload.SpaceName = description.Name
 	if err != nil {
 		return nil, fmt.Errorf("get space description: %w", err)
 	}
