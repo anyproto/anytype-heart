@@ -3,6 +3,7 @@ package block
 import (
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -12,7 +13,7 @@ import (
 )
 
 func (s *Service) SetWidgetBlockTargetId(ctx session.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) error {
-	return Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
 		root := st.Get(req.BlockId)
 		if len(root.Model().ChildrenIds) == 0 {
@@ -28,7 +29,7 @@ func (s *Service) SetWidgetBlockTargetId(ctx session.Context, req *pb.RpcBlockWi
 }
 
 func (s *Service) SetWidgetBlockLayout(ctx session.Context, req *pb.RpcBlockWidgetSetLayoutRequest) error {
-	return Do(s, req.ContextId, func(b basic.Updatable) error {
+	return cache.Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if wc, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
 				wc.Widget.Layout = req.Layout
@@ -39,7 +40,7 @@ func (s *Service) SetWidgetBlockLayout(ctx session.Context, req *pb.RpcBlockWidg
 }
 
 func (s *Service) SetWidgetBlockLimit(ctx session.Context, req *pb.RpcBlockWidgetSetLimitRequest) error {
-	return Do(s, req.ContextId, func(b basic.Updatable) error {
+	return cache.Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if wc, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
 				wc.Widget.Limit = req.Limit
@@ -50,7 +51,7 @@ func (s *Service) SetWidgetBlockLimit(ctx session.Context, req *pb.RpcBlockWidge
 }
 
 func (s *Service) SetWidgetBlockViewId(ctx session.Context, req *pb.RpcBlockWidgetSetViewIdRequest) error {
-	return Do(s, req.ContextId, func(b basic.Updatable) error {
+	return cache.Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if wc, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
 				wc.Widget.ViewId = req.ViewId

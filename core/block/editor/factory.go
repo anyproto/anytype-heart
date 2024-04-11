@@ -7,11 +7,11 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -49,7 +49,7 @@ type ObjectFactory struct {
 	fileStore           filestore.FileStore
 	fileService         files.Service
 	config              *config.Config
-	picker              getblock.ObjectGetter
+	picker              cache.ObjectGetter
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             smartblock.Indexer
@@ -76,7 +76,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.config = app.MustComponent[*config.Config](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-	f.picker = app.MustComponent[getblock.ObjectGetter](a)
+	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
