@@ -786,6 +786,12 @@ func TestGetTiers(t *testing.T) {
 								Description: "storage GBs",
 							},
 						},
+						AndroidProductId: "id_android_sub_explorer",
+						AndroidManageUrl: "android_explorer_tier.url",
+						IosProductId:     "Membership.Tiers.Explorer",
+						IosManageUrl:     "ios_explorer_tier.url",
+						StripeProductId:  "explorer_tier",
+						StripeManageUrl:  "explorer_tier.com",
 					},
 				},
 			}
@@ -821,6 +827,12 @@ func TestGetTiers(t *testing.T) {
 		// should be converted to array
 		assert.Equal(t, 2, len(out.Tiers[0].Features))
 		assert.Equal(t, "special support", out.Tiers[0].Features[0])
+		assert.Equal(t, "id_android_sub_explorer", out.Tiers[0].AndroidProductId)
+		assert.Equal(t, "android_explorer_tier.url", out.Tiers[0].AndroidManageUrl)
+		assert.Equal(t, "Membership.Tiers.Explorer", out.Tiers[0].IosProductId)
+		assert.Equal(t, "ios_explorer_tier.url", out.Tiers[0].IosManageUrl)
+		assert.Equal(t, "explorer_tier", out.Tiers[0].StripeProductId)
+		assert.Equal(t, "explorer_tier.com", out.Tiers[0].StripeManageUrl)
 	})
 
 	t.Run("success if status is in cache", func(t *testing.T) {
