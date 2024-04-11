@@ -9,8 +9,8 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/getblock/mock_getblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -124,7 +124,7 @@ func Test_docsForExport(t *testing.T) {
 		err := storeFixture.UpdateObjectLinks("id", []string{"id1"})
 		assert.Nil(t, err)
 
-		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter := mock_getblock.NewMockObjectGetter(t)
 		smartBlockTest := smarttest.New("id")
 		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
 			Fields: map[string]*types.Value{
@@ -181,7 +181,7 @@ func Test_docsForExport(t *testing.T) {
 		err = storeFixture.UpdateObjectLinks("id", []string{"id1"})
 		assert.Nil(t, err)
 
-		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter := mock_getblock.NewMockObjectGetter(t)
 
 		smartBlockTest := smarttest.New("id")
 		smartBlockRelation := smarttest.New("key")

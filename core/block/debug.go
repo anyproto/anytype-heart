@@ -11,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -107,7 +106,7 @@ func (s *Service) debugTree(req *http.Request) (debugTree, error) {
 	result := debugTree{
 		Id: id,
 	}
-	err := cache.Do(s, id, func(sb smartblock.SmartBlock) error {
+	err := Do(s, id, func(sb smartblock.SmartBlock) error {
 		ot := sb.Tree()
 		return ot.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
 			change.Next = nil
@@ -133,7 +132,7 @@ func (s *Service) debugTree(req *http.Request) (debugTree, error) {
 
 func (s *Service) getDebugObject(id string) (debugObject, error) {
 	var obj debugObject
-	err := cache.Do(s, id, func(sb smartblock.SmartBlock) error {
+	err := Do(s, id, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		root := blockbuilder.BuildAST(st.Blocks())
 		marshaller := jsonpb.Marshaler{}
