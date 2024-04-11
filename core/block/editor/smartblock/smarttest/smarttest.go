@@ -38,18 +38,30 @@ func New(id string) *SmartTest {
 	}
 }
 
+func NewWithTree(id string, tree objecttree.ObjectTree) *SmartTest {
+	return &SmartTest{
+		id:         id,
+		Doc:        state.NewDoc(id, nil),
+		hist:       undo.NewHistory(0),
+		hooksOnce:  map[string]struct{}{},
+		sbType:     coresb.SmartBlockTypePage,
+		objectTree: tree,
+	}
+}
+
 var _ smartblock.SmartBlock = &SmartTest{}
 
 type SmartTest struct {
+	sync.Mutex
+	state.Doc
 	Results          Results
 	id               string
 	hist             undo.History
 	TestRestrictions restriction.Restrictions
 	App              *app.App
-	sync.Mutex
-	state.Doc
-	isDeleted bool
-	os        *testMock.MockObjectStore
+	objectTree       objecttree.ObjectTree
+	isDeleted        bool
+	os               *testMock.MockObjectStore
 
 	// Rudimentary hooks
 	hooks     []smartblock.HookCallback
@@ -149,7 +161,7 @@ func (st *SmartTest) SetLayout(ctx session.Context, layout model.ObjectTypeLayou
 func (st *SmartTest) SetLocker(locker smartblock.Locker) {}
 
 func (st *SmartTest) Tree() objecttree.ObjectTree {
-	return nil
+	return st.objectTree
 }
 
 func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {

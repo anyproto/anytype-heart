@@ -14,6 +14,8 @@ import (
 
 	spaceinfo "github.com/anyproto/anytype-heart/space/spaceinfo"
 
+	techspace "github.com/anyproto/anytype-heart/space/techspace"
+
 	types "github.com/gogo/protobuf/types"
 )
 
@@ -72,6 +74,113 @@ func (_c *MockTechSpace_Close_Call) Return(err error) *MockTechSpace_Close_Call 
 }
 
 func (_c *MockTechSpace_Close_Call) RunAndReturn(run func(context.Context) error) *MockTechSpace_Close_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DoSpaceView provides a mock function with given fields: ctx, spaceID, apply
+func (_m *MockTechSpace) DoSpaceView(ctx context.Context, spaceID string, apply func(techspace.SpaceView) error) error {
+	ret := _m.Called(ctx, spaceID, apply)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DoSpaceView")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, func(techspace.SpaceView) error) error); ok {
+		r0 = rf(ctx, spaceID, apply)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockTechSpace_DoSpaceView_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoSpaceView'
+type MockTechSpace_DoSpaceView_Call struct {
+	*mock.Call
+}
+
+// DoSpaceView is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceID string
+//   - apply func(techspace.SpaceView) error
+func (_e *MockTechSpace_Expecter) DoSpaceView(ctx interface{}, spaceID interface{}, apply interface{}) *MockTechSpace_DoSpaceView_Call {
+	return &MockTechSpace_DoSpaceView_Call{Call: _e.mock.On("DoSpaceView", ctx, spaceID, apply)}
+}
+
+func (_c *MockTechSpace_DoSpaceView_Call) Run(run func(ctx context.Context, spaceID string, apply func(techspace.SpaceView) error)) *MockTechSpace_DoSpaceView_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(func(techspace.SpaceView) error))
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_DoSpaceView_Call) Return(err error) *MockTechSpace_DoSpaceView_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTechSpace_DoSpaceView_Call) RunAndReturn(run func(context.Context, string, func(techspace.SpaceView) error) error) *MockTechSpace_DoSpaceView_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSpaceView provides a mock function with given fields: ctx, spaceId
+func (_m *MockTechSpace) GetSpaceView(ctx context.Context, spaceId string) (techspace.SpaceView, error) {
+	ret := _m.Called(ctx, spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSpaceView")
+	}
+
+	var r0 techspace.SpaceView
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (techspace.SpaceView, error)); ok {
+		return rf(ctx, spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) techspace.SpaceView); ok {
+		r0 = rf(ctx, spaceId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(techspace.SpaceView)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockTechSpace_GetSpaceView_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSpaceView'
+type MockTechSpace_GetSpaceView_Call struct {
+	*mock.Call
+}
+
+// GetSpaceView is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+func (_e *MockTechSpace_Expecter) GetSpaceView(ctx interface{}, spaceId interface{}) *MockTechSpace_GetSpaceView_Call {
+	return &MockTechSpace_GetSpaceView_Call{Call: _e.mock.On("GetSpaceView", ctx, spaceId)}
+}
+
+func (_c *MockTechSpace_GetSpaceView_Call) Run(run func(ctx context.Context, spaceId string)) *MockTechSpace_GetSpaceView_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_GetSpaceView_Call) Return(_a0 techspace.SpaceView, _a1 error) *MockTechSpace_GetSpaceView_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTechSpace_GetSpaceView_Call) RunAndReturn(run func(context.Context, string) (techspace.SpaceView, error)) *MockTechSpace_GetSpaceView_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -210,54 +319,6 @@ func (_c *MockTechSpace_Run_Call) Return(err error) *MockTechSpace_Run_Call {
 }
 
 func (_c *MockTechSpace_Run_Call) RunAndReturn(run func(commonspace.Space, objectcache.Cache) error) *MockTechSpace_Run_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetAccessType provides a mock function with given fields: ctx, spaceId, acc
-func (_m *MockTechSpace) SetAccessType(ctx context.Context, spaceId string, acc spaceinfo.AccessType) error {
-	ret := _m.Called(ctx, spaceId, acc)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetAccessType")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.AccessType) error); ok {
-		r0 = rf(ctx, spaceId, acc)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockTechSpace_SetAccessType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAccessType'
-type MockTechSpace_SetAccessType_Call struct {
-	*mock.Call
-}
-
-// SetAccessType is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceId string
-//   - acc spaceinfo.AccessType
-func (_e *MockTechSpace_Expecter) SetAccessType(ctx interface{}, spaceId interface{}, acc interface{}) *MockTechSpace_SetAccessType_Call {
-	return &MockTechSpace_SetAccessType_Call{Call: _e.mock.On("SetAccessType", ctx, spaceId, acc)}
-}
-
-func (_c *MockTechSpace_SetAccessType_Call) Run(run func(ctx context.Context, spaceId string, acc spaceinfo.AccessType)) *MockTechSpace_SetAccessType_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(spaceinfo.AccessType))
-	})
-	return _c
-}
-
-func (_c *MockTechSpace_SetAccessType_Call) Return(err error) *MockTechSpace_SetAccessType_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockTechSpace_SetAccessType_Call) RunAndReturn(run func(context.Context, string, spaceinfo.AccessType) error) *MockTechSpace_SetAccessType_Call {
 	_c.Call.Return(run)
 	return _c
 }

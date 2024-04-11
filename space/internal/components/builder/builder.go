@@ -11,10 +11,10 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	dependencies2 "github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
-	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.components.builder"
@@ -108,7 +108,7 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 	if space.Id() == b.personalSpaceId {
 		acc = spaceinfo.AccessTypePersonal
 	}
-	err = b.status.SetAccessType(ctx, acc)
+	err = b.status.SetAccessType(acc)
 	if err != nil {
 		return nil, fmt.Errorf("set access type: %w", err)
 	}

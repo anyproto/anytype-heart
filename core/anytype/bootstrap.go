@@ -63,6 +63,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/nameservice"
@@ -242,6 +243,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
+		Register(inviteservice.New()).
 		Register(acl.New()).
 		Register(filesync.New()).
 		Register(builtintemplate.New()).
