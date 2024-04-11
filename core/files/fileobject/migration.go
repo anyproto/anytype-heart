@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/peer"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -137,8 +138,8 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	// Wait object to load
 	ctx = peer.CtxWithPeerId(ctx, "*")
 	_, err = space.GetObject(ctx, it.FileObjectId)
-	// Already migrated or it is a link to object
-	if err == nil {
+	// Already migrated or deleted file object
+	if err == nil || errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 		return queue.ActionDone, nil
 	}
 
