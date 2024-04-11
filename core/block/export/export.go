@@ -21,9 +21,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -69,7 +69,7 @@ type Export interface {
 
 type export struct {
 	blockService        *block.Service
-	picker              getblock.ObjectGetter
+	picker              cache.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
@@ -87,7 +87,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.blockService = a.MustComponent(block.CName).(*block.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
-	e.picker = app.MustComponent[getblock.ObjectGetter](a)
+	e.picker = app.MustComponent[cache.ObjectGetter](a)
 	e.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.spaceService = app.MustComponent[space.Service](a)
@@ -432,7 +432,7 @@ func (e *export) writeMultiDoc(ctx context.Context,
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
-			werr := getblock.Do(e.picker, did, func(b sb.SmartBlock) error {
+			werr := cache.Do(e.picker, did, func(b sb.SmartBlock) error {
 				st := b.NewState().Copy()
 				if includeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
 					fileName, err := e.saveFile(ctx, wr, b, false)
@@ -465,7 +465,7 @@ func (e *export) writeMultiDoc(ctx context.Context,
 }
 
 func (e *export) writeDoc(ctx context.Context, req *pb.RpcObjectListExportRequest, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string) (err error) {
-	return getblock.Do(e.picker, docID, func(b sb.SmartBlock) error {
+	return cache.Do(e.picker, docID, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		if pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
@@ -575,7 +575,7 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	if err != nil {
 		return err
 	}
-	err = getblock.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
+	err = cache.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})
@@ -717,7 +717,7 @@ func (e *export) iterateObjects(objects map[string]*types.Struct) ([]database.Re
 		relations      []string
 	)
 	for id, object := range objects {
-		err := getblock.Do(e.picker, id, func(b sb.SmartBlock) error {
+		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState()
 			relations = e.getObjectRelations(state, relations)
 			details := state.Details()

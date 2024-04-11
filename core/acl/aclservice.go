@@ -17,8 +17,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/invitestore"
@@ -76,7 +76,7 @@ type aclService struct {
 	accountService account.Service
 	inviteStore    invitestore.Service
 	fileAcl        fileacl.Service
-	objectGetter   getblock.ObjectGetter
+	objectGetter   cache.ObjectGetter
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -85,7 +85,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteStore = app.MustComponent[invitestore.Service](ap)
 	a.fileAcl = app.MustComponent[fileacl.Service](ap)
-	a.objectGetter = app.MustComponent[getblock.ObjectGetter](ap)
+	a.objectGetter = app.MustComponent[cache.ObjectGetter](ap)
 	return nil
 }
 
@@ -461,7 +461,7 @@ type spaceViewObject interface {
 }
 
 func (a *aclService) getExistingInviteFileInfo(spaceViewId string) (fileCid string, fileKey string, err error) {
-	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
+	err = cache.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
 		details := sb.Details()
 		fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
 		fileKey = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileKey.String())
@@ -472,7 +472,7 @@ func (a *aclService) getExistingInviteFileInfo(spaceViewId string) (fileCid stri
 
 func (a *aclService) removeExistingInviteFileInfo(ctx context.Context, spaceViewId string) (err error) {
 	var fileCid string
-	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
+	err = cache.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
 		details := sb.Details()
 		fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
 		newState := sb.NewState()
@@ -556,7 +556,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		removeInviteFile()
 		return nil, fmt.Errorf("encode invite file key: %w", err)
 	}
-	err = getblock.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
+	err = cache.Do(a.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
 		view, ok := sb.(spaceViewObject)
 		if !ok {
 			return fmt.Errorf("space view object is not implemented")
