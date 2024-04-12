@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 var log = logging.Logger("notifications")
@@ -132,8 +133,15 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 	if !notification.IsLocal {
 		n.mu.Lock()
 		defer n.mu.Unlock()
+		storeNotification, err := n.notificationStore.GetNotificationById(notification.Id)
+		if err != nil && !badgerhelper.IsNotFound(err) {
+			return err
+		}
+		if storeNotification != nil {
+			return nil
+		}
 		var exist bool
-		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
+		err = block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 			stateNotification := s.GetNotificationById(notification.Id)
 			if stateNotification != nil {
 				exist = true
