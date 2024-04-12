@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -88,7 +89,7 @@ func (s *FileSyncer) migrateFile(objectId string, fileBlockId string, fileId dom
 	if err != nil {
 		return fmt.Errorf("create file object: %w", err)
 	}
-	err = block.Do(s.service, objectId, func(sb smartblock.SmartBlock) error {
+	err = cache.Do(s.service, objectId, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
 		return updater.Update(nil, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetFile().TargetObjectId = fileObjectId

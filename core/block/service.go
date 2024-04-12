@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
@@ -403,7 +404,7 @@ func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, is
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	return Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
+	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -487,7 +488,7 @@ func (s *Service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) e
 }
 
 func (s *Service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
-	return Do(s, collectionId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s, collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unsupported sb block type: %T", b)
@@ -528,7 +529,7 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 }
 
 func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
-	return Do(s, req.ContextId, func(sb smartblock.SmartBlock) error {
+	return cache.Do(s, req.ContextId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewStateCtx(ctx)
 		// nolint:errcheck
 		_ = st.Iterate(func(b simple.Block) (isContinue bool) {
@@ -548,7 +549,7 @@ func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceReques
 }
 
 func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
-	err = Do(s, workspaceId, func(ws *editor.Workspaces) error {
+	err = cache.Do(s, workspaceId, func(ws *editor.Workspaces) error {
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
@@ -569,7 +570,7 @@ func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, obje
 	if !isArchived {
 		return nil
 	}
-	return Do(s, objectId, func(sb smartblock.SmartBlock) error {
+	return cache.Do(s, objectId, func(sb smartblock.SmartBlock) error {
 		return s.restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }
@@ -626,7 +627,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	return Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
+	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -649,7 +650,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) error {
 	for _, id := range optionIds {
 		if checkInObjects {
-			err := Do(s, id, func(b smartblock.SmartBlock) error {
+			err := cache.Do(s, id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
 				relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
 
@@ -717,7 +718,7 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 }
 
 func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
-	return Do(s, pageID, func(sb smartblock.SmartBlock) error {
+	return cache.Do(s, pageID, func(sb smartblock.SmartBlock) error {
 		return history.ResetToVersion(sb, st)
 	})
 }
@@ -861,7 +862,7 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetail
 }
 
 func (s *Service) replaceLink(id, oldId, newId string) error {
-	return Do(s, id, func(b basic.CommonOperations) error {
+	return cache.Do(s, id, func(b basic.CommonOperations) error {
 		return b.ReplaceLink(oldId, newId)
 	})
 }
