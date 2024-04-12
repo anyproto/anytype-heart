@@ -47,6 +47,9 @@ type Queue[T Item] struct {
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
+
+	isStarted bool
+	closedCh  chan struct{}
 }
 
 type options struct {
@@ -68,12 +71,13 @@ func New[T Item](
 	opts ...Option,
 ) *Queue[T] {
 	q := &Queue[T]{
-		storage: storage,
-		logger:  logger,
-		batcher: mb.New[T](0),
-		handler: handler,
-		set:     make(map[string]struct{}),
-		options: options{},
+		storage:  storage,
+		logger:   logger,
+		batcher:  mb.New[T](0),
+		handler:  handler,
+		set:      make(map[string]struct{}),
+		options:  options{},
+		closedCh: make(chan struct{}),
 	}
 	for _, opt := range opts {
 		opt(&q.options)
@@ -87,10 +91,21 @@ func New[T Item](
 }
 
 func (q *Queue[T]) Run() {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	if q.isStarted {
+		return
+	}
+	q.isStarted = true
+
 	go q.loop()
 }
 
 func (q *Queue[T]) loop() {
+	defer func() {
+		close(q.closedCh)
+	}()
+
 	for {
 		select {
 		case <-q.ctx.Done():
@@ -182,7 +197,18 @@ func sortItems[T Item](items []T) {
 
 func (q *Queue[T]) Close() error {
 	q.ctxCancel()
-	return q.batcher.Close()
+	err := q.batcher.Close()
+	if err != nil {
+		q.logger.Error("close batcher", zap.Error(err))
+	}
+	q.lock.Lock()
+	isStarted := q.isStarted
+	q.lock.Unlock()
+
+	if isStarted {
+		<-q.closedCh
+	}
+	return nil
 }
 
 func (q *Queue[T]) Add(item T) error {

@@ -41,7 +41,13 @@ func newInMemoryBadger(t *testing.T) *badger.DB {
 
 func runTestQueue(t *testing.T, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
 	db := newInMemoryBadger(t)
-	return runTestQueueWithDb(t, db, handlerFunc)
+	q := newTestQueueWithDb(db, handlerFunc)
+	q.Run()
+	t.Cleanup(func() {
+		q.Close()
+		db.Close()
+	})
+	return q
 }
 
 func newTestQueueWithDb(db *badger.DB, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
@@ -49,15 +55,6 @@ func newTestQueueWithDb(db *badger.DB, handlerFunc HandlerFunc[*testItem]) *Queu
 
 	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
 	q := New[*testItem](storage, log.Desugar(), handlerFunc)
-	return q
-}
-
-func runTestQueueWithDb(t *testing.T, db *badger.DB, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
-	q := newTestQueueWithDb(db, handlerFunc)
-	q.Run()
-	t.Cleanup(func() {
-		q.Close()
-	})
 	return q
 }
 
@@ -238,10 +235,11 @@ func testAdd(t *testing.T, errFromHandler error) {
 func TestRestore(t *testing.T) {
 	db := newInMemoryBadger(t)
 
-	q := runTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
+	q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
 		time.Sleep(10 * time.Millisecond)
 		return ActionRetry, nil
 	})
+	q.Run()
 
 	err := q.Add(&testItem{Id: "3", Timestamp: 3, Data: "data3"})
 	require.NoError(t, err)
@@ -250,14 +248,16 @@ func TestRestore(t *testing.T) {
 	err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
 	require.NoError(t, err)
 
-	q.Close()
+	err = q.Close()
+	require.NoError(t, err)
 
 	keysQueue := mb.New[string](0)
-	q = runTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
+	q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
 		err := keysQueue.Add(ctx, item.Key())
 		require.NoError(t, err)
 		return ActionDone, nil
 	})
+	q.Run()
 
 	keysQueueCtx, keysQueueCancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer keysQueueCancel()
@@ -267,14 +267,17 @@ func TestRestore(t *testing.T) {
 
 	// Sorted by timestamp
 	assert.ElementsMatch(t, []string{"1", "2", "3"}, gotKeys)
+
+	err = q.Close()
+	require.NoError(t, err)
+	err = db.Close()
+	require.NoError(t, err)
 }
 
 func TestRemove(t *testing.T) {
 	t.Run("removed item should not be handled", func(t *testing.T) {
-		var timesHandled int
 		const timesAdded = 10
 		q := runTestQueue(t, func(ctx context.Context, item *testItem) (Action, error) {
-			timesHandled++
 			time.Sleep(5 * time.Millisecond)
 			return ActionDone, nil
 		})
@@ -297,18 +300,22 @@ func TestRemove(t *testing.T) {
 			return q.Len() == 0
 		})
 
+		q.Close()
+
 		// Some items could be handled but definitely not all
-		assert.True(t, timesHandled < timesAdded)
+		assert.True(t, q.HandledItems() < timesAdded)
 	})
 
 	t.Run("remove long processing item", func(t *testing.T) {
 		db := newInMemoryBadger(t)
-		q := runTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
+		q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
 			select {
 			case <-ctx.Done():
 				return ActionDone, nil
 			}
 		})
+
+		q.Run()
 
 		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 		require.NoError(t, err)
@@ -330,18 +337,23 @@ func TestRemove(t *testing.T) {
 
 		t.Run("restore only one item", func(t *testing.T) {
 			done := make(chan struct{})
-			q = runTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
+			q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
 				assert.Equal(t, &testItem{Id: "2", Timestamp: 2, Data: "data2"}, item)
 				close(done)
 				return ActionDone, nil
 			})
+			q.Run()
 
 			select {
 			case <-done:
 			case <-time.After(50 * time.Millisecond):
 				t.Fatal("handler not called")
 			}
+
+			q.Close()
 		})
+
+		db.Close()
 	})
 }
 
