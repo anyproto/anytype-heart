@@ -15,7 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -62,7 +62,7 @@ type indexer struct {
 	store          objectstore.ObjectStore
 	fileStore      filestore.FileStore
 	source         source.Service
-	picker         block.ObjectGetter
+	picker         cache.ObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 	fileService    files.Service
@@ -88,7 +88,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.picker = app.MustComponent[block.ObjectGetter](a)
+	i.picker = app.MustComponent[cache.ObjectGetter](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.ftQueueFinished = make(chan struct{})

@@ -10,7 +10,6 @@ import (
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -50,7 +49,6 @@ type BookmarkService interface {
 
 type sbookmark struct {
 	smartblock.SmartBlock
-	picker      getblock.ObjectGetter
 	bookmarkSvc BookmarkService
 	objectStore objectstore.ObjectStore
 }
