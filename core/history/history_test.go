@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder/mock_objecttreebuilder"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // todo: reimplement
@@ -372,21 +374,21 @@ func TestHistory_DiffVersions(t *testing.T) {
 	versionId := "versionId"
 	previousVersion := "previousVersion"
 	blockId := "blockId"
-	// blockDivId := "blockDivID"
-	// blockLinkId := "blockLinkId"
-	// blockLatexId := "blockLatexId"
-	// blockFileId := "blockFileId"
-	// blockBookmarkId := "blockBookmarkId"
-	// blockRelationId := "blockRelationId"
+	blockDivId := "blockDivID"
+	blockLinkId := "blockLinkId"
+	blockLatexId := "blockLatexId"
+	blockFileId := "blockFileId"
+	blockBookmarkId := "blockBookmarkId"
+	blockRelationId := "blockRelationId"
 
 	bl := &model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}
 	blSmartBlock := &model.Block{Id: objectId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}
-	// blDiv := &model.Block{Id: blockDivId, Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}
-	// blLink := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
-	// blLatex := &model.Block{Id: blockLatexId, Content: &model.BlockContentOfLatex{Latex: &model.BlockContentLatex{}}}
-	// blFile := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
-	// blBookmark := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
-	// blRelation := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
+	blDiv := &model.Block{Id: blockDivId, Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}
+	blLink := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
+	blLatex := &model.Block{Id: blockLatexId, Content: &model.BlockContentOfLatex{Latex: &model.BlockContentLatex{}}}
+	blFile := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
+	blBookmark := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
+	blRelation := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
 
 	t.Run("object diff - new created block", func(t *testing.T) {
 		// given
@@ -419,1948 +421,347 @@ func TestHistory_DiffVersions(t *testing.T) {
 		assert.Len(t, changes[0].GetBlockAdd().Blocks, 1)
 		assert.Equal(t, bl, changes[0].GetBlockAdd().Blocks[0])
 	})
+	t.Run("object diff - simple block changes", func(t *testing.T) {
+		// given
+		blDivCopy := &model.Block{Id: blockDivId, Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}
+		blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
+		blLatexCopy := &model.Block{Id: blockLatexId, Content: &model.BlockContentOfLatex{Latex: &model.BlockContentLatex{}}}
+		blFileCopy := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
+		blBookmarkCopy := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
+		blRelationCopy := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
+		blCopy := &model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}
 
-	// t.Run("object diff - simple block changes", func(t *testing.T) {
-	// 	spaceService := mock_space.NewMockService(t)
-	// 	space := mock_clientspace.NewMockSpace(t)
-	// 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
-	// 	accountKeys, _ := accountdata.NewRandom()
-	//
-	// 	blDivCopy := &model.Block{Id: blockDivId, Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}
-	// 	blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
-	// 	blLatexCopy := &model.Block{Id: blockLatexId, Content: &model.BlockContentOfLatex{Latex: &model.BlockContentLatex{}}}
-	// 	blFileCopy := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
-	// 	blBookmarkCopy := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
-	// 	blRelationCopy := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
-	// 	blCopy := &model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}
-	//
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: versionId,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blDivCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLatexCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLinkCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blBookmarkCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blRelationCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blDivCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blFileCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetFile{
-	// 												BlockSetFile: &pb.EventBlockSetFile{
-	// 													Id:   blFile.Id,
-	// 													Name: &pb.EventBlockSetFileName{Value: "new file name"},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetRelation{
-	// 												BlockSetRelation: &pb.EventBlockSetRelation{
-	// 													Id:  blRelation.Id,
-	// 													Key: &pb.EventBlockSetRelationKey{Value: "new key"},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetBookmark{
-	// 												BlockSetBookmark: &pb.EventBlockSetBookmark{
-	// 													Id:  blBookmark.Id,
-	// 													Url: &pb.EventBlockSetBookmarkUrl{Value: "new url"},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetLatex{
-	// 												BlockSetLatex: &pb.EventBlockSetLatex{
-	// 													Id:   blLatex.Id,
-	// 													Text: &pb.EventBlockSetLatexText{Value: "new latex text"},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetLink{
-	// 												BlockSetLink: &pb.EventBlockSetLink{
-	// 													Id:       blLink.Id,
-	// 													IconSize: &pb.EventBlockSetLinkIconSize{Value: model.BlockContentLink_SizeSmall},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetText{
-	// 												BlockSetText: &pb.EventBlockSetText{
-	// 													Id: blockId,
-	// 													Text: &pb.EventBlockSetTextText{
-	// 														Value: "new text",
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetDiv{
-	// 												BlockSetDiv: &pb.EventBlockSetDiv{
-	// 													Id:    blockDivId,
-	// 													Style: &pb.EventBlockSetDivStyle{Value: model.BlockContentDiv_Dots},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: previousVersion,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{bl},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLatex},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLink},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blBookmark},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blRelation},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blDiv},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blFile},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	//
-	// 	space.EXPECT().TreeBuilder().Return(treeBuilder)
-	// 	spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
-	// 	history := history{
-	// 		spaceService: spaceService,
-	// 		objectStore:  objectstore.NewStoreFixture(t),
-	// 	}
-	// 	changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
-	// 		ObjectId:        objectId,
-	// 		SpaceId:         spaceID,
-	// 		CurrentVersion:  versionId,
-	// 		PreviousVersion: previousVersion,
-	// 	})
-	//
-	// 	assert.Nil(t, err)
-	// 	assert.Len(t, changes, 8)
-	//
-	// 	assert.NotNil(t, changes[0].GetBlockSetChildrenIds())
-	// 	assert.Equal(t, objectId, changes[0].GetBlockSetChildrenIds().Id)
-	//
-	// 	assert.NotNil(t, changes[1].GetBlockSetLatex())
-	// 	assert.NotNil(t, changes[2].GetBlockSetLink())
-	// 	assert.NotNil(t, changes[3].GetBlockSetBookmark())
-	// 	assert.NotNil(t, changes[4].GetBlockSetRelation())
-	// 	assert.NotNil(t, changes[5].GetBlockSetDiv())
-	// 	assert.NotNil(t, changes[6].GetBlockSetFile())
-	// 	assert.NotNil(t, changes[7].GetBlockSetText())
-	// })
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+		currChange := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blDivCopy, account),
+			provideBlockCreateChange(blLatexCopy, account),
+			provideBlockCreateChange(blLinkCopy, account),
+			provideBlockCreateChange(blBookmarkCopy, account),
+			provideBlockCreateChange(blRelationCopy, account),
+			provideBlockCreateChange(blFileCopy, account),
+			provideBlockCreateChange(blCopy, account),
 
-	// t.Run("object diff - block properties changes", func(t *testing.T) {
-	// 	spaceService := mock_space.NewMockService(t)
-	// 	space := mock_clientspace.NewMockSpace(t)
-	// 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
-	// 	accountKeys, _ := accountdata.NewRandom()
-	//
-	// 	blFileCopy := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
-	// 	blBookmarkCopy := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
-	// 	blRelationCopy := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
-	// 	blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
-	//
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: versionId,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blBookmarkCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blRelationCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blFileCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLinkCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetAlign{
-	// 												BlockSetAlign: &pb.EventBlockSetAlign{
-	// 													Id:    blFile.Id,
-	// 													Align: model.Block_AlignCenter,
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetBackgroundColor{
-	// 												BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
-	// 													Id:              blRelation.Id,
-	// 													BackgroundColor: "gray",
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetFields{
-	// 												BlockSetFields: &pb.EventBlockSetFields{
-	// 													Id: blBookmark.Id,
-	// 													Fields: &types.Struct{
-	// 														Fields: map[string]*types.Value{"key": pbtypes.String("value")},
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetVerticalAlign{
-	// 												BlockSetVerticalAlign: &pb.EventBlockSetVerticalAlign{
-	// 													Id:            blLink.Id,
-	// 													VerticalAlign: model.Block_VerticalAlignBottom,
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: previousVersion,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blBookmark},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blRelation},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blFile},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLink},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	//
-	// 	space.EXPECT().TreeBuilder().Return(treeBuilder)
-	// 	spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
-	// 	history := history{
-	// 		spaceService: spaceService,
-	// 		objectStore:  objectstore.NewStoreFixture(t),
-	// 	}
-	// 	changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
-	// 		ObjectId:        objectId,
-	// 		SpaceId:         spaceID,
-	// 		CurrentVersion:  versionId,
-	// 		PreviousVersion: previousVersion,
-	// 	})
-	//
-	// 	assert.Nil(t, err)
-	// 	assert.Len(t, changes, 4)
-	//
-	// 	assert.NotNil(t, changes[0].GetBlockSetFields())
-	// 	assert.NotNil(t, changes[1].GetBlockSetBackgroundColor())
-	// 	assert.NotNil(t, changes[2].GetBlockSetAlign())
-	// 	assert.NotNil(t, changes[3].GetBlockSetVerticalAlign())
-	// })
+			// set block changes
+			provideBlockSetFileChange(blFileCopy, account),
+			provideBlockSetRelationChange(blRelationCopy, account),
+			provideBlockSetBookmarkChange(blBookmarkCopy, account),
+			provideBlockSetLatexChange(blLatexCopy, account),
+			provideBlockSetLinkChange(blLinkCopy, account),
+			provideBlockSetTextChange(blCopy, account),
+			provideBlockSetDivChange(blDivCopy, account),
+		}
 
-	// t.Run("object diff - block change and timestamp change, return only block change", func(t *testing.T) {
-	// 	spaceService := mock_space.NewMockService(t)
-	// 	space := mock_clientspace.NewMockSpace(t)
-	// 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
-	// 	accountKeys, _ := accountdata.NewRandom()
-	// 	blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
-	//
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: versionId,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLinkCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfOriginalCreatedTimestampSet{
-	// 								OriginalCreatedTimestampSet: &pb.ChangeOriginalCreatedTimestampSet{Ts: 1},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockSetVerticalAlign{
-	// 												BlockSetVerticalAlign: &pb.EventBlockSetVerticalAlign{
-	// 													Id:            blLink.Id,
-	// 													VerticalAlign: model.Block_VerticalAlignBottom,
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: previousVersion,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLink},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	//
-	// 	space.EXPECT().TreeBuilder().Return(treeBuilder)
-	// 	spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
-	// 	history := history{
-	// 		spaceService: spaceService,
-	// 		objectStore:  objectstore.NewStoreFixture(t),
-	// 	}
-	// 	changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
-	// 		ObjectId:        objectId,
-	// 		SpaceId:         spaceID,
-	// 		CurrentVersion:  versionId,
-	// 		PreviousVersion: previousVersion,
-	// 	})
-	//
-	// 	assert.Nil(t, err)
-	// 	assert.Len(t, changes, 1)
-	//
-	// 	assert.NotNil(t, changes[0].GetBlockSetVerticalAlign())
-	// })
-	//
-	// t.Run("object diff - dataview changes", func(t *testing.T) {
-	// 	spaceService := mock_space.NewMockService(t)
-	// 	space := mock_clientspace.NewMockSpace(t)
-	// 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
-	// 	accountKeys, _ := accountdata.NewRandom()
-	// 	blDataviewId := "blDataviewId"
-	// 	blDataview := &model.Block{
-	// 		Id: blDataviewId,
-	// 		Content: &model.BlockContentOfDataview{
-	// 			Dataview: &model.BlockContentDataview{
-	// 				Views: []*model.BlockContentDataviewView{
-	// 					{
-	// 						Id:   "viewId1",
-	// 						Name: "view1",
-	// 						Sorts: []*model.BlockContentDataviewSort{
-	// 							{
-	// 								RelationKey: "key",
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 				RelationLinks: []*model.RelationLink{
-	// 					{
-	// 						Key: "key",
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}
-	//
-	// 	blDataviewCopy := &model.Block{
-	// 		Id: blDataviewId,
-	// 		Content: &model.BlockContentOfDataview{
-	// 			Dataview: &model.BlockContentDataview{
-	// 				Views: []*model.BlockContentDataviewView{
-	// 					{
-	// 						Id:   "viewId1",
-	// 						Name: "view1",
-	// 						Sorts: []*model.BlockContentDataviewSort{
-	// 							{
-	// 								RelationKey: "key",
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 				RelationLinks: []*model.RelationLink{
-	// 					{
-	// 						Key: "key",
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}
-	//
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: versionId,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blDataviewCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewViewSet{
-	// 												BlockDataviewViewSet: &pb.EventBlockDataviewViewSet{
-	// 													Id:     blDataviewId,
-	// 													ViewId: "viewId1",
-	// 													View: &model.BlockContentDataviewView{
-	// 														Id:   "viewId1",
-	// 														Name: "view1",
-	// 														Sorts: []*model.BlockContentDataviewSort{
-	// 															{
-	// 																RelationKey: "key",
-	// 															},
-	// 														},
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewViewSet{
-	// 												BlockDataviewViewSet: &pb.EventBlockDataviewViewSet{
-	// 													Id:     blDataviewId,
-	// 													ViewId: "viewId2",
-	// 													View: &model.BlockContentDataviewView{
-	// 														Id:   "viewId2",
-	// 														Name: "view2",
-	// 														Sorts: []*model.BlockContentDataviewSort{
-	// 															{
-	// 																RelationKey: "key",
-	// 															},
-	// 														},
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewSourceSet{
-	// 												BlockDataviewSourceSet: &pb.EventBlockDataviewSourceSet{
-	// 													Id:     blDataviewId,
-	// 													Source: []string{"source"},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
-	// 												BlockDataviewRelationSet: &pb.EventBlockDataviewRelationSet{
-	// 													Id:            blDataviewId,
-	// 													RelationLinks: []*model.RelationLink{{Key: "key1"}},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewViewSet{
-	// 												BlockDataviewViewSet: &pb.EventBlockDataviewViewSet{
-	// 													Id:     blDataviewId,
-	// 													ViewId: "viewId",
-	// 													View: &model.BlockContentDataviewView{
-	// 														Id:   "viewId",
-	// 														Name: "view",
-	// 														Sorts: []*model.BlockContentDataviewSort{
-	// 															{
-	// 																RelationKey: "key",
-	// 															},
-	// 														},
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewViewOrder{
-	// 												BlockDataviewViewOrder: &pb.EventBlockDataviewViewOrder{
-	// 													Id:      blDataviewId,
-	// 													ViewIds: []string{"viewId", "viewId1"},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewViewDelete{
-	// 												BlockDataviewViewDelete: &pb.EventBlockDataviewViewDelete{
-	// 													Id:     blDataviewId,
-	// 													ViewId: "viewId2",
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
-	// 												BlockDataviewRelationDelete: &pb.EventBlockDataviewRelationDelete{
-	// 													Id:           blDataviewId,
-	// 													RelationKeys: []string{"key"},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
-	// 												BlockDataViewObjectOrderUpdate: &pb.EventBlockDataviewObjectOrderUpdate{
-	// 													Id:     blDataviewId,
-	// 													ViewId: "viewId",
-	// 													SliceChanges: []*pb.EventBlockDataviewSliceChange{
-	// 														{
-	// 															Op:      pb.EventBlockDataview_SliceOperationNone,
-	// 															Ids:     []string{"objectId"},
-	// 															AfterId: "objectId1",
-	// 														},
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataViewGroupOrderUpdate{
-	// 												BlockDataViewGroupOrderUpdate: &pb.EventBlockDataviewGroupOrderUpdate{
-	// 													Id: blDataviewId,
-	// 													GroupOrder: &model.BlockContentDataviewGroupOrder{
-	// 														ViewId: "viewId",
-	// 														ViewGroups: []*model.BlockContentDataviewViewGroup{
-	// 															{
-	// 																GroupId:         "group1",
-	// 																BackgroundColor: "pink",
-	// 															},
-	// 															{
-	// 																GroupId:         "group3",
-	// 																BackgroundColor: "blue",
-	// 															},
-	// 														},
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewViewUpdate{
-	// 												BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
-	// 													Id:     blDataviewId,
-	// 													ViewId: "viewId",
-	// 													Filter: []*pb.EventBlockDataviewViewUpdateFilter{
-	// 														{
-	// 															Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfAdd{
-	// 																Add: &pb.EventBlockDataviewViewUpdateFilterAdd{
-	// 																	AfterId: "",
-	// 																	Items: []*model.BlockContentDataviewFilter{
-	// 																		{
-	// 																			Id:          "filterId",
-	// 																			Operator:    model.BlockContentDataviewFilter_Or,
-	// 																			RelationKey: "key1",
-	// 																			Value:       pbtypes.String("value"),
-	// 																		},
-	// 																	},
-	// 																},
-	// 															},
-	// 														},
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	//
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewTargetObjectIdSet{
-	// 												BlockDataviewTargetObjectIdSet: &pb.EventBlockDataviewTargetObjectIdSet{
-	// 													Id:             blDataviewId,
-	// 													TargetObjectId: "targetObjectId",
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: previousVersion,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blDataview},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockUpdate{
-	// 								BlockUpdate: &pb.ChangeBlockUpdate{
-	// 									Events: []*pb.EventMessage{
-	// 										{
-	// 											Value: &pb.EventMessageValueOfBlockDataviewViewSet{
-	// 												BlockDataviewViewSet: &pb.EventBlockDataviewViewSet{
-	// 													Id:     blDataviewId,
-	// 													ViewId: "viewId2",
-	// 													View: &model.BlockContentDataviewView{
-	// 														Id:   "viewId2",
-	// 														Name: "view2",
-	// 														Sorts: []*model.BlockContentDataviewSort{
-	// 															{
-	// 																RelationKey: "key",
-	// 															},
-	// 														},
-	// 													},
-	// 												},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	//
-	// 	space.EXPECT().TreeBuilder().Return(treeBuilder)
-	// 	spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
-	// 	history := history{
-	// 		spaceService: spaceService,
-	// 		objectStore:  objectstore.NewStoreFixture(t),
-	// 	}
-	// 	changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
-	// 		ObjectId:        objectId,
-	// 		SpaceId:         spaceID,
-	// 		CurrentVersion:  versionId,
-	// 		PreviousVersion: previousVersion,
-	// 	})
-	//
-	// 	assert.Nil(t, err)
-	// 	assert.Len(t, changes, 10)
-	// })
-	// t.Run("object diff - relations and details changes", func(t *testing.T) {
-	// 	spaceService := mock_space.NewMockService(t)
-	// 	space := mock_clientspace.NewMockSpace(t)
-	// 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
-	// 	accountKeys, _ := accountdata.NewRandom()
-	//
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: versionId,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfRelationAdd{
-	// 								RelationAdd: &pb.ChangeRelationAdd{
-	// 									RelationLinks: []*model.RelationLink{
-	// 										{
-	// 											Key:    "key",
-	// 											Format: model.RelationFormat_tag,
-	// 										},
-	// 										{
-	// 											Key:    "key1",
-	// 											Format: model.RelationFormat_longtext,
-	// 										},
-	// 										{
-	// 											Key:    "key2",
-	// 											Format: model.RelationFormat_longtext,
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfDetailsSet{
-	// 								DetailsSet: &pb.ChangeDetailsSet{
-	// 									Key:   "key",
-	// 									Value: pbtypes.String("value"),
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfRelationRemove{
-	// 								RelationRemove: &pb.ChangeRelationRemove{
-	// 									RelationKey: []string{"key1"},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfDetailsUnset{
-	// 								DetailsUnset: &pb.ChangeDetailsUnset{
-	// 									Key: "key2",
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfDetailsSet{
-	// 								DetailsSet: &pb.ChangeDetailsSet{
-	// 									Key:   "key",
-	// 									Value: pbtypes.String("value1"),
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfRelationAdd{
-	// 								RelationAdd: &pb.ChangeRelationAdd{
-	// 									RelationLinks: []*model.RelationLink{
-	// 										{
-	// 											Key:    "key3",
-	// 											Format: model.RelationFormat_tag,
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: previousVersion,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfRelationAdd{
-	// 								RelationAdd: &pb.ChangeRelationAdd{
-	// 									RelationLinks: []*model.RelationLink{
-	// 										{
-	// 											Key:    "key",
-	// 											Format: model.RelationFormat_tag,
-	// 										},
-	// 										{
-	// 											Key:    "key1",
-	// 											Format: model.RelationFormat_longtext,
-	// 										},
-	// 										{
-	// 											Key:    "key2",
-	// 											Format: model.RelationFormat_longtext,
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfDetailsSet{
-	// 								DetailsSet: &pb.ChangeDetailsSet{
-	// 									Key:   "key2",
-	// 									Value: pbtypes.String("value"),
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	//
-	// 	space.EXPECT().TreeBuilder().Return(treeBuilder)
-	// 	spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
-	// 	history := history{
-	// 		spaceService: spaceService,
-	// 		objectStore:  objectstore.NewStoreFixture(t),
-	// 	}
-	// 	changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
-	// 		ObjectId:        objectId,
-	// 		SpaceId:         spaceID,
-	// 		CurrentVersion:  versionId,
-	// 		PreviousVersion: previousVersion,
-	// 	})
-	//
-	// 	assert.Nil(t, err)
-	// 	assert.Len(t, changes, 4)
-	// })
+		prevChanges := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blDiv, account),
+			provideBlockCreateChange(blLatex, account),
+			provideBlockCreateChange(blLink, account),
+			provideBlockCreateChange(blBookmark, account),
+			provideBlockCreateChange(blRelation, account),
+			provideBlockCreateChange(blFile, account),
+			provideBlockCreateChange(bl, account),
+		}
 
-	// t.Run("object diff - no changes", func(t *testing.T) {
-	//
-	// 	accountKeys, _ := accountdata.NewRandom()
-	//
-	// 	blFileCopy := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
-	// 	blBookmarkCopy := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
-	// 	blRelationCopy := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
-	// 	blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
-	//
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: versionId,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blBookmarkCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blRelationCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blFileCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLinkCopy},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	// 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-	// 		BeforeId: previousVersion,
-	// 		Include:  true,
-	// 	}).Return(&historyStub{
-	// 		objectId: objectId,
-	// 		changes: []*objecttree.Change{
-	// 			{
-	// 				Id:       objectId,
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model:    &pb.Change{},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{
-	// 										{
-	// 											Id: objectId,
-	// 											Content: &model.BlockContentOfSmartblock{
-	// 												Smartblock: &model.BlockContentSmartblock{},
-	// 											},
-	// 										},
-	// 									},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blBookmark},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blRelation},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blFile},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 			{
-	// 				Identity: accountKeys.SignKey.GetPublic(),
-	// 				Model: &pb.Change{
-	// 					Content: []*pb.ChangeContent{
-	// 						{
-	// 							Value: &pb.ChangeContentValueOfBlockCreate{
-	// 								BlockCreate: &pb.ChangeBlockCreate{
-	// 									Blocks: []*model.Block{blLink},
-	// 								},
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil)
-	//
-	// 	space.EXPECT().TreeBuilder().Return(treeBuilder)
-	// 	spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
-	// 	history := history{
-	// 		spaceService: spaceService,
-	// 		objectStore:  objectstore.NewStoreFixture(t),
-	// 	}
-	// 	changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
-	// 		ObjectId:        objectId,
-	// 		SpaceId:         spaceID,
-	// 		CurrentVersion:  versionId,
-	// 		PreviousVersion: previousVersion,
-	// 	})
-	//
-	// 	assert.Nil(t, err)
-	// 	assert.Len(t, changes, 4)
-	// })
-}
+		// when
+		history := newFixtureDiffVersions(t, currChange, prevChanges, objectId, spaceID, versionId, previousVersion)
+		changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId:        objectId,
+			SpaceId:         spaceID,
+			CurrentVersion:  versionId,
+			PreviousVersion: previousVersion,
+		})
 
-func provideBlockEmptyChange(objectId string, account crypto.PubKey) *objecttree.Change {
-	return &objecttree.Change{
-		Id:       objectId,
-		Identity: account,
-		Model:    &pb.Change{},
-	}
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, changes, 7)
+
+		assert.NotNil(t, changes[0].GetBlockSetDiv())
+		assert.NotNil(t, changes[1].GetBlockSetLatex())
+		assert.NotNil(t, changes[2].GetBlockSetLink())
+		assert.NotNil(t, changes[3].GetBlockSetBookmark())
+		assert.NotNil(t, changes[4].GetBlockSetRelation())
+		assert.NotNil(t, changes[5].GetBlockSetFile())
+		assert.NotNil(t, changes[6].GetBlockSetText())
+	})
+
+	t.Run("object diff - block properties changes", func(t *testing.T) {
+		// given
+		blFileCopy := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
+		blBookmarkCopy := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
+		blRelationCopy := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
+		blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
+
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+		currChange := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blLinkCopy, account),
+			provideBlockCreateChange(blBookmarkCopy, account),
+			provideBlockCreateChange(blRelationCopy, account),
+			provideBlockCreateChange(blFileCopy, account),
+
+			// block properties changes
+			provideBlockSetVerticalAlignChange(blLinkCopy, account),
+			provideBlockSetAlignChange(blFileCopy, account),
+			provideBlockBackgroundColorChange(blRelationCopy, account),
+			provideBlockFieldChange(blBookmarkCopy, account),
+		}
+
+		prevChanges := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blLink, account),
+			provideBlockCreateChange(blBookmark, account),
+			provideBlockCreateChange(blRelation, account),
+			provideBlockCreateChange(blFile, account),
+		}
+
+		history := newFixtureDiffVersions(t, currChange, prevChanges, objectId, spaceID, versionId, previousVersion)
+
+		// when
+		changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId:        objectId,
+			SpaceId:         spaceID,
+			CurrentVersion:  versionId,
+			PreviousVersion: previousVersion,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, changes, 4)
+
+		assert.NotNil(t, changes[0].GetBlockSetVerticalAlign())
+		assert.NotNil(t, changes[1].GetBlockSetFields())
+		assert.NotNil(t, changes[2].GetBlockSetBackgroundColor())
+		assert.NotNil(t, changes[3].GetBlockSetAlign())
+	})
+
+	t.Run("object diff - block change and timestamp change, return only block change", func(t *testing.T) {
+		// given
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+		blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
+		currChange := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blLinkCopy, account),
+
+			// block properties changes
+			provideBlockSetVerticalAlignChange(blLinkCopy, account),
+
+			// not block change
+			provideNonBlockChange(account),
+		}
+
+		prevChanges := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blLink, account),
+		}
+
+		history := newFixtureDiffVersions(t, currChange, prevChanges, objectId, spaceID, versionId, previousVersion)
+
+		// when
+		changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId:        objectId,
+			SpaceId:         spaceID,
+			CurrentVersion:  versionId,
+			PreviousVersion: previousVersion,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, changes, 1)
+
+		assert.NotNil(t, changes[0].GetBlockSetVerticalAlign())
+	})
+
+	t.Run("object diff - dataview changes", func(t *testing.T) {
+		// given
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+
+		blDataviewId := "blDataviewId"
+		relationKey := "key"
+
+		viewId := "viewId"
+		viewName := "view"
+
+		viewId1 := "viewId1"
+		view1Name := "view1"
+
+		viewId2 := "viewId2"
+		view2Name := "view2"
+
+		blDataview := provideDataviewBlock(viewId1, view1Name, relationKey, blDataviewId)
+		blDataviewCopy := provideDataviewBlock(viewId1, view1Name, relationKey, blDataviewId)
+
+		currChange := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blDataviewCopy, account),
+
+			// dataview  changes
+			provideBlockDataviewViewSetChange(blDataviewId, viewId1, view1Name, relationKey, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId2, view2Name, relationKey, account),
+			provideBlockDataviewSourceSetChange(blDataviewId, account),
+			provideBlockDataviewRelationSetChange(blDataviewId, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId, viewName, relationKey, account),
+			provideBlockDataviewViewOrderChange(blDataviewId, viewId, viewId1, account),
+			provideBlockDataviewViewDeleteChange(blDataviewId, viewId2, account),
+			provideBlockDataviewRelationDeleteChange(blDataviewId, relationKey, account),
+			provideBlockDataviewObjectOrderChange(blDataviewId, viewId, account),
+			provideBlockDataviewGroupOrderChange(blDataviewId, viewId, account),
+			provideBlockDataviewViewUpdateChange(blDataviewId, viewId, account),
+			provideBlockDataviewTargetObjectChange(blDataviewId, account),
+		}
+
+		prevChanges := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blDataview, account),
+
+			provideBlockDataviewViewSetChange(blDataviewId, viewId1, view1Name, relationKey, account),
+			provideBlockDataviewViewSetChange(blDataviewId, viewId2, view2Name, relationKey, account),
+		}
+
+		history := newFixtureDiffVersions(t, currChange, prevChanges, objectId, spaceID, versionId, previousVersion)
+
+		// when
+		changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId:        objectId,
+			SpaceId:         spaceID,
+			CurrentVersion:  versionId,
+			PreviousVersion: previousVersion,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, changes, 10)
+	})
+	t.Run("object diff - relations and details changes", func(t *testing.T) {
+		// given
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+
+		relationKey := "key"
+		relationKey1 := "key1"
+		relationKey2 := "key2"
+
+		currChange := []*objecttree.Change{
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideRelationAddChange(account, &model.RelationLink{
+				Key:    relationKey,
+				Format: model.RelationFormat_tag,
+			},
+				&model.RelationLink{
+					Key:    relationKey1,
+					Format: model.RelationFormat_longtext,
+				},
+				&model.RelationLink{
+					Key:    relationKey2,
+					Format: model.RelationFormat_longtext,
+				}),
+			provideDetailsSetChange(account, relationKey2, pbtypes.String("value2")),
+
+			provideDetailsSetChange(account, relationKey, pbtypes.String("value")),
+			provideRelationRemoveChange(account, relationKey1),
+			provideRelationAddChange(account, &model.RelationLink{
+				Key:    "key3",
+				Format: model.RelationFormat_tag,
+			}),
+			provideDetailsUnsetChange(account, relationKey2),
+		}
+
+		prevChanges := []*objecttree.Change{
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideRelationAddChange(account, &model.RelationLink{
+				Key:    relationKey,
+				Format: model.RelationFormat_tag,
+			},
+				&model.RelationLink{
+					Key:    relationKey1,
+					Format: model.RelationFormat_longtext,
+				},
+				&model.RelationLink{
+					Key:    relationKey2,
+					Format: model.RelationFormat_longtext,
+				}),
+			provideDetailsSetChange(account, relationKey2, pbtypes.String("value2")),
+		}
+		history := newFixtureDiffVersions(t, currChange, prevChanges, objectId, spaceID, versionId, previousVersion)
+
+		// when
+		changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId:        objectId,
+			SpaceId:         spaceID,
+			CurrentVersion:  versionId,
+			PreviousVersion: previousVersion,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, changes, 4)
+	})
+
+	t.Run("object diff - no changes", func(t *testing.T) {
+		// given
+		blFileCopy := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
+		blBookmarkCopy := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
+		blRelationCopy := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
+		blLinkCopy := &model.Block{Id: blockLinkId, Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{}}}
+
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+		currChange := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blLinkCopy, account),
+			provideBlockCreateChange(blBookmarkCopy, account),
+			provideBlockCreateChange(blRelationCopy, account),
+			provideBlockCreateChange(blFileCopy, account),
+		}
+
+		prevChanges := []*objecttree.Change{
+			// create block changes
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideBlockCreateChange(blLink, account),
+			provideBlockCreateChange(blBookmark, account),
+			provideBlockCreateChange(blRelation, account),
+			provideBlockCreateChange(blFile, account),
+		}
+
+		history := newFixtureDiffVersions(t, currChange, prevChanges, objectId, spaceID, versionId, previousVersion)
+
+		// when
+		changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId:        objectId,
+			SpaceId:         spaceID,
+			CurrentVersion:  versionId,
+			PreviousVersion: previousVersion,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, changes, 0)
+	})
 }
 
 type historyFixture struct {
@@ -2376,16 +777,7 @@ func newFixture(t *testing.T, expectedChanges []*objecttree.Change, objectId, sp
 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
 
 	if len(expectedChanges) > 0 {
-		treeBuilder = configureTreeBuilder(treeBuilder, objectId, versionId, spaceID, expectedChanges, space, spaceService)
-		treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
-			BeforeId: versionId,
-			Include:  true,
-		}).Return(&historyStub{
-			objectId: objectId,
-			changes:  expectedChanges,
-		}, nil)
-		space.EXPECT().TreeBuilder().Return(treeBuilder)
-		spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
+		configureTreeBuilder(treeBuilder, objectId, versionId, spaceID, expectedChanges, space, spaceService)
 	}
 	history := &history{
 		objectStore:  objectstore.NewStoreFixture(t),
@@ -2423,7 +815,12 @@ func newFixtureDiffVersions(t *testing.T,
 	}
 }
 
-func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder, objectId, currVersionId, spaceID string, expectedChanges []*objecttree.Change, space *mock_clientspace.MockSpace, spaceService *mock_space.MockService) *mock_objecttreebuilder.MockTreeBuilder {
+func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder,
+	objectId, currVersionId, spaceID string,
+	expectedChanges []*objecttree.Change,
+	space *mock_clientspace.MockSpace,
+	spaceService *mock_space.MockService,
+) {
 	treeBuilder.EXPECT().BuildHistoryTree(context.Background(), objectId, objecttreebuilder.HistoryTreeOpts{
 		BeforeId: currVersionId,
 		Include:  true,
@@ -2433,7 +830,6 @@ func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder, o
 	}, nil)
 	space.EXPECT().TreeBuilder().Return(treeBuilder)
 	spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
-	return treeBuilder
 }
 
 func provideBlockCreateChange(block *model.Block, account crypto.PubKey) *objecttree.Change {
@@ -2466,6 +862,9 @@ func provideBlockSetTextChange(block *model.Block, account crypto.PubKey) *objec
 									Value: &pb.EventMessageValueOfBlockSetText{
 										BlockSetText: &pb.EventBlockSetText{
 											Id: block.Id,
+											Text: &pb.EventBlockSetTextText{
+												Value: "new text",
+											},
 										},
 									},
 								},
@@ -2490,7 +889,8 @@ func provideBlockSetDivChange(block *model.Block, account crypto.PubKey) *object
 								{
 									Value: &pb.EventMessageValueOfBlockSetDiv{
 										BlockSetDiv: &pb.EventBlockSetDiv{
-											Id: block.Id,
+											Id:    block.Id,
+											Style: &pb.EventBlockSetDivStyle{Value: model.BlockContentDiv_Dots},
 										},
 									},
 								},
@@ -2515,7 +915,8 @@ func provideBlockSetLinkChange(block *model.Block, account crypto.PubKey) *objec
 								{
 									Value: &pb.EventMessageValueOfBlockSetLink{
 										BlockSetLink: &pb.EventBlockSetLink{
-											Id: block.Id,
+											Id:       block.Id,
+											IconSize: &pb.EventBlockSetLinkIconSize{Value: model.BlockContentLink_SizeSmall},
 										},
 									},
 								},
@@ -2540,7 +941,8 @@ func provideBlockSetLatexChange(block *model.Block, account crypto.PubKey) *obje
 								{
 									Value: &pb.EventMessageValueOfBlockSetLatex{
 										BlockSetLatex: &pb.EventBlockSetLatex{
-											Id: block.Id,
+											Id:   block.Id,
+											Text: &pb.EventBlockSetLatexText{Value: "new latex text"},
 										},
 									},
 								},
@@ -2565,7 +967,8 @@ func provideBlockSetFileChange(block *model.Block, account crypto.PubKey) *objec
 								{
 									Value: &pb.EventMessageValueOfBlockSetFile{
 										BlockSetFile: &pb.EventBlockSetFile{
-											Id: block.Id,
+											Id:   block.Id,
+											Name: &pb.EventBlockSetFileName{Value: "new name"},
 										},
 									},
 								},
@@ -2590,7 +993,8 @@ func provideBlockSetBookmarkChange(block *model.Block, account crypto.PubKey) *o
 								{
 									Value: &pb.EventMessageValueOfBlockSetBookmark{
 										BlockSetBookmark: &pb.EventBlockSetBookmark{
-											Id: block.Id,
+											Id:  block.Id,
+											Url: &pb.EventBlockSetBookmarkUrl{Value: "new url"},
 										},
 									},
 								},
@@ -2615,7 +1019,8 @@ func provideBlockSetRelationChange(block *model.Block, account crypto.PubKey) *o
 								{
 									Value: &pb.EventMessageValueOfBlockSetRelation{
 										BlockSetRelation: &pb.EventBlockSetRelation{
-											Id: block.Id,
+											Id:  block.Id,
+											Key: &pb.EventBlockSetRelationKey{Value: "new key"},
 										},
 									},
 								},
@@ -2640,7 +1045,8 @@ func provideBlockSetVerticalAlignChange(block *model.Block, account crypto.PubKe
 								{
 									Value: &pb.EventMessageValueOfBlockSetVerticalAlign{
 										BlockSetVerticalAlign: &pb.EventBlockSetVerticalAlign{
-											Id: block.Id,
+											Id:            block.Id,
+											VerticalAlign: model.Block_VerticalAlignBottom,
 										},
 									},
 								},
@@ -2665,7 +1071,8 @@ func provideBlockSetAlignChange(block *model.Block, account crypto.PubKey) *obje
 								{
 									Value: &pb.EventMessageValueOfBlockSetAlign{
 										BlockSetAlign: &pb.EventBlockSetAlign{
-											Id: block.Id,
+											Id:    block.Id,
+											Align: model.Block_AlignCenter,
 										},
 									},
 								},
@@ -2715,7 +1122,8 @@ func provideBlockBackgroundColorChange(block *model.Block, account crypto.PubKey
 								{
 									Value: &pb.EventMessageValueOfBlockSetBackgroundColor{
 										BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
-											Id: block.Id,
+											Id:              block.Id,
+											BackgroundColor: "pink",
 										},
 									},
 								},
@@ -2740,7 +1148,8 @@ func provideBlockFieldChange(block *model.Block, account crypto.PubKey) *objectt
 								{
 									Value: &pb.EventMessageValueOfBlockSetFields{
 										BlockSetFields: &pb.EventBlockSetFields{
-											Id: block.Id,
+											Id:     block.Id,
+											Fields: &types.Struct{Fields: map[string]*types.Value{"key": pbtypes.String("value")}},
 										},
 									},
 								},
@@ -2809,5 +1218,432 @@ func provideBlockAddChange(block *model.Block, account crypto.PubKey) *objecttre
 				},
 			},
 		},
+	}
+}
+
+func provideNonBlockChange(account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfOriginalCreatedTimestampSet{
+						OriginalCreatedTimestampSet: &pb.ChangeOriginalCreatedTimestampSet{Ts: 1},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideDataviewBlock(viewId, viewName, relationKey, blDataviewId string) *model.Block {
+	return &model.Block{
+		Id: blDataviewId,
+		Content: &model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   viewId,
+						Name: viewName,
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: relationKey,
+							},
+						},
+					},
+				},
+				RelationLinks: []*model.RelationLink{
+					{
+						Key: relationKey,
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideDetailsUnsetChange(account crypto.PubKey, relationKey string) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfDetailsUnset{
+						DetailsUnset: &pb.ChangeDetailsUnset{
+							Key: relationKey,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideRelationRemoveChange(account crypto.PubKey, relationKey string) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfRelationRemove{
+						RelationRemove: &pb.ChangeRelationRemove{
+							RelationKey: []string{relationKey},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideDetailsSetChange(account crypto.PubKey, relationKey string, value *types.Value) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfDetailsSet{
+						DetailsSet: &pb.ChangeDetailsSet{
+							Key:   relationKey,
+							Value: value,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideRelationAddChange(account crypto.PubKey, relationLinks ...*model.RelationLink) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfRelationAdd{
+						RelationAdd: &pb.ChangeRelationAdd{
+							RelationLinks: relationLinks,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewTargetObjectChange(blockId string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataviewTargetObjectIdSet{
+										BlockDataviewTargetObjectIdSet: &pb.EventBlockDataviewTargetObjectIdSet{
+											Id:             blockId,
+											TargetObjectId: "targetObjectId",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewViewUpdateChange(blockId string, viewId string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataviewViewUpdate{
+										BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+											Id:     blockId,
+											ViewId: viewId,
+											Filter: provideFilterUpdate(),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideFilterUpdate() []*pb.EventBlockDataviewViewUpdateFilter {
+	return []*pb.EventBlockDataviewViewUpdateFilter{
+		{
+			Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfAdd{
+				Add: &pb.EventBlockDataviewViewUpdateFilterAdd{
+					AfterId: "",
+					Items: []*model.BlockContentDataviewFilter{
+						{
+							Id:          "filterId",
+							Operator:    model.BlockContentDataviewFilter_Or,
+							RelationKey: "key1",
+							Value:       pbtypes.String("value"),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewGroupOrderChange(blockId string, viewId string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataViewGroupOrderUpdate{
+										BlockDataViewGroupOrderUpdate: &pb.EventBlockDataviewGroupOrderUpdate{
+											Id: blockId,
+											GroupOrder: &model.BlockContentDataviewGroupOrder{
+												ViewId: viewId,
+												ViewGroups: []*model.BlockContentDataviewViewGroup{
+													{
+														GroupId:         "group1",
+														BackgroundColor: "pink",
+													},
+													{
+														GroupId:         "group3",
+														BackgroundColor: "blue",
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewObjectOrderChange(blockId string, viewId string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
+										BlockDataViewObjectOrderUpdate: &pb.EventBlockDataviewObjectOrderUpdate{
+											Id:     blockId,
+											ViewId: viewId,
+											SliceChanges: []*pb.EventBlockDataviewSliceChange{
+												{
+													Op:      pb.EventBlockDataview_SliceOperationNone,
+													Ids:     []string{"objectId"},
+													AfterId: "objectId1",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewRelationDeleteChange(blockId string, relationKey string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
+										BlockDataviewRelationDelete: &pb.EventBlockDataviewRelationDelete{
+											Id:           blockId,
+											RelationKeys: []string{relationKey},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewViewDeleteChange(blockId string, viewId2 string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataviewViewDelete{
+										BlockDataviewViewDelete: &pb.EventBlockDataviewViewDelete{
+											Id:     blockId,
+											ViewId: viewId2,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewViewOrderChange(blockId string, viewId string, viewId1 string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataviewViewOrder{
+										BlockDataviewViewOrder: &pb.EventBlockDataviewViewOrder{
+											Id:      blockId,
+											ViewIds: []string{viewId, viewId1},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewRelationSetChange(blockId string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
+										BlockDataviewRelationSet: &pb.EventBlockDataviewRelationSet{
+											Id:            blockId,
+											RelationLinks: []*model.RelationLink{{Key: "key1"}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewSourceSetChange(blockId string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataviewSourceSet{
+										BlockDataviewSourceSet: &pb.EventBlockDataviewSourceSet{
+											Id:     blockId,
+											Source: []string{"source"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockDataviewViewSetChange(blDataviewId, viewId, view1Name, relationKey string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockDataviewViewSet{
+										BlockDataviewViewSet: &pb.EventBlockDataviewViewSet{
+											Id:     blDataviewId,
+											ViewId: viewId,
+											View: &model.BlockContentDataviewView{
+												Id:   viewId,
+												Name: view1Name,
+												Sorts: []*model.BlockContentDataviewSort{
+													{
+														RelationKey: relationKey,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func provideBlockEmptyChange(objectId string, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Id:       objectId,
+		Identity: account,
+		Model:    &pb.Change{},
 	}
 }
