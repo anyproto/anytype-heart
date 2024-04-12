@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -23,7 +24,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		st             *state.State
 		objectTypeKeys []domain.TypeKey
 	)
-	if err = Do(s, id, func(b smartblock.SmartBlock) error {
+	if err = cache.Do(s, id, func(b smartblock.SmartBlock) error {
 		objectTypeKeys = b.ObjectTypeKeys()
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
 			return err
@@ -54,7 +55,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	}
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
-	err = Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
+	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
 			details = append(details, &pb.RpcObjectSetDetailsDetail{
@@ -104,7 +105,7 @@ func (s *Service) CreateLinkToTheNewObject(
 		return
 	}
 
-	err = DoStateCtx(s, sctx, req.ContextId, func(st *state.State, sb basic.Creatable) error {
+	err = cache.DoStateCtx(s, sctx, req.ContextId, func(st *state.State, sb basic.Creatable) error {
 		linkID, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block: &model.Block{
@@ -127,7 +128,7 @@ func (s *Service) CreateLinkToTheNewObject(
 }
 
 func (s *Service) ObjectToSet(id string, source []string) error {
-	return DoState(s, id, func(st *state.State, b basic.CommonOperations) error {
+	return cache.DoState(s, id, func(st *state.State, b basic.CommonOperations) error {
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeySet}, true)
 	})

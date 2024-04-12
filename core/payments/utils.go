@@ -14,6 +14,12 @@ var (
 
 func normalize(input string) (string, error) {
 	// output, err := p.ToUnicode(input)
+	// if name has no .any suffix -> error
+	if len(input) < 4 || input[len(input)-4:] != ".any" {
+		return "", errors.New("name must have .any suffix")
+	}
+	// remove .any suffix
+	input = input[:len(input)-4]
 
 	// somehow "github.com/wealdtech/go-ens/v3" used non-strict version of idna
 	// let's use pStrict instead of p
@@ -21,10 +27,12 @@ func normalize(input string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed to convert to standard unicode")
 	}
-	// If the name started with a period then ToUnicode() removes it, but we want to keep it.
-	if strings.HasPrefix(input, ".") && !strings.HasPrefix(output, ".") {
-		output = "." + output
+	if strings.Contains(input, ".") {
+		return "", errors.New("name cannot contain a period")
 	}
+
+	// add .any suffix
+	output += ".any"
 
 	return output, nil
 }

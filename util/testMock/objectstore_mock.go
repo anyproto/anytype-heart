@@ -63,17 +63,17 @@ func (mr *MockObjectStoreMockRecorder) AddToIndexQueue(arg0 any) *gomock.Call {
 }
 
 // BatchProcessFullTextQueue mocks base method.
-func (m *MockObjectStore) BatchProcessFullTextQueue(arg0 int, arg1 func([]string) error) error {
+func (m *MockObjectStore) BatchProcessFullTextQueue(arg0 context.Context, arg1 int, arg2 func([]string) error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchProcessFullTextQueue", arg0, arg1)
+	ret := m.ctrl.Call(m, "BatchProcessFullTextQueue", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // BatchProcessFullTextQueue indicates an expected call of BatchProcessFullTextQueue.
-func (mr *MockObjectStoreMockRecorder) BatchProcessFullTextQueue(arg0, arg1 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) BatchProcessFullTextQueue(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchProcessFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).BatchProcessFullTextQueue), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchProcessFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).BatchProcessFullTextQueue), arg0, arg1, arg2)
 }
 
 // Close mocks base method.

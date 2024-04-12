@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -20,7 +21,7 @@ func (s *Service) ObjectTypeRelationAdd(ctx context.Context, objectTypeId string
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
 	}
-	return Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
 		for _, relKey := range relationKeys {
@@ -41,7 +42,7 @@ func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
 		return ErrBundledTypeIsReadonly
 	}
-	return Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
 		for _, relKey := range relationKeys {

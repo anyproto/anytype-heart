@@ -23,12 +23,13 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ctx = context.Background()
 
 const (
-	testTechSpaceId = "techSpace.id"
+	testTechSpaceId = "techspaceId"
 )
 
 func TestTechSpace_Init(t *testing.T) {
@@ -39,6 +40,7 @@ func TestTechSpace_Init(t *testing.T) {
 
 type spaceViewStub struct {
 	*smarttest.SmartTest
+	data *types.Struct
 }
 
 var _ SpaceView = (*spaceViewStub)(nil)
@@ -47,7 +49,36 @@ func newSpaceViewStub(id string) *spaceViewStub {
 	return &spaceViewStub{SmartTest: smarttest.New(id)}
 }
 
+func (s *spaceViewStub) GetPersistentInfo() spaceinfo.SpacePersistentInfo {
+	return spaceinfo.NewSpacePersistentInfo("spaceId")
+}
+
+func (s *spaceViewStub) GetLocalInfo() spaceinfo.SpaceLocalInfo {
+	return spaceinfo.NewSpaceLocalInfo("spaceId")
+}
+
+func (s *spaceViewStub) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+	return
+}
+
+func (s *spaceViewStub) SetAclIsEmpty(isEmpty bool) (err error) {
+	return
+}
+
+func (s *spaceViewStub) RemoveExistingInviteInfo() (fileCid string, err error) {
+	return
+}
+
+func (s *spaceViewStub) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
+	return
+}
+
+func (s *spaceViewStub) GetExistingInviteInfo() (fileCid string, fileKey string) {
+	return
+}
+
 func (s *spaceViewStub) SetSpaceData(details *types.Struct) error {
+	s.data = details
 	return nil
 }
 
@@ -65,7 +96,7 @@ func (s *spaceViewStub) SetAccessType(acc spaceinfo.AccessType) (err error) {
 
 func TestTechSpace_SpaceViewCreate(t *testing.T) {
 	var (
-		spaceId = "space.id"
+		spaceId = "spaceId"
 		viewId  = "viewId"
 		view    = newSpaceViewStub(viewId)
 	)
@@ -77,8 +108,10 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		fx.expectDeriveTreePayload(viewId)
 		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(nil, fmt.Errorf("not found"))
 		fx.objectCache.EXPECT().DeriveTreeObject(ctx, mock.Anything).Return(view, nil)
+		info := spaceinfo.NewSpacePersistentInfo(spaceId)
+		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId, false, spaceinfo.SpacePersistentInfo{AccountStatus: spaceinfo.AccountStatusUnknown}))
+		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId, false, info))
 	})
 
 	t.Run("err spaceView exists", func(t *testing.T) {
@@ -87,14 +120,16 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 
 		fx.expectDeriveTreePayload(viewId)
 		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(view, nil)
+		info := spaceinfo.NewSpacePersistentInfo(spaceId)
+		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId, false, spaceinfo.SpacePersistentInfo{AccountStatus: spaceinfo.AccountStatusUnknown}), ErrSpaceViewExists.Error())
+		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId, false, info), ErrSpaceViewExists.Error())
 	})
 }
 
 func TestTechSpace_SpaceViewExists(t *testing.T) {
 	var (
-		spaceId = "space.id"
+		spaceId = "spaceId"
 		viewId  = "viewId"
 		view    = newSpaceViewStub(viewId)
 	)
@@ -128,9 +163,48 @@ func TestTechSpace_SpaceViewExists(t *testing.T) {
 	})
 }
 
+func TestTechSpace_SpaceViewSetData(t *testing.T) {
+	var (
+		spaceId = "spaceId"
+		viewId  = "viewId"
+		view    = newSpaceViewStub(viewId)
+	)
+	t.Run("set data", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+		fx.expectDeriveTreePayload(viewId)
+		fx.objectCache.EXPECT().GetObject(mock.Anything, viewId).Return(view, nil)
+
+		details := pbtypes.ToStruct(map[string]interface{}{
+			"key": "value",
+		})
+		err := fx.SpaceViewSetData(ctx, spaceId, details)
+		require.NoError(t, err)
+		assert.Equal(t, details, view.data)
+	})
+}
+
+func TestTechSpace_GetSpaceView(t *testing.T) {
+	var (
+		spaceId = "spaceId"
+		viewId  = "viewId"
+		view    = newSpaceViewStub(viewId)
+	)
+	t.Run("get view", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+		fx.expectDeriveTreePayload(viewId)
+		fx.objectCache.EXPECT().GetObject(mock.Anything, viewId).Return(view, nil)
+
+		other, err := fx.GetSpaceView(ctx, spaceId)
+		require.NoError(t, err)
+		assert.Equal(t, view, other)
+	})
+}
+
 func TestTechSpace_SetInfo(t *testing.T) {
 	info := spaceinfo.SpaceLocalInfo{
-		SpaceID: "space.id",
+		SpaceId: "spaceId",
 	}
 	viewId := "viewid"
 	spaceView := newSpaceViewStub(viewId)

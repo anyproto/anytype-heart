@@ -12,9 +12,9 @@ type SpaceController interface {
 	Start(ctx context.Context) error
 	Mode() mode.Mode
 	Current() any
-	UpdateInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
-	SetInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
-	UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error
+	Update() error
+	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
+	SetLocalInfo(ctx context.Context, status spaceinfo.SpaceLocalInfo) error
 	Close(ctx context.Context) error
 	GetStatus() spaceinfo.AccountStatus
 }
