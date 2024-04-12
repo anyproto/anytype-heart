@@ -272,7 +272,6 @@ func isRelationsChange(message simple.EventMessage) bool {
 
 func isDetailsChange(message simple.EventMessage) bool {
 	return message.Msg.GetObjectDetailsAmend() != nil ||
-		message.Msg.GetObjectDetailsSet() != nil ||
 		message.Msg.GetObjectDetailsUnset() != nil
 }
 
@@ -280,7 +279,8 @@ func isBlockPropertiesChange(message simple.EventMessage) bool {
 	return message.Msg.GetBlockSetAlign() != nil ||
 		message.Msg.GetBlockSetChildrenIds() != nil ||
 		message.Msg.GetBlockSetBackgroundColor() != nil ||
-		message.Msg.GetBlockSetFields() != nil
+		message.Msg.GetBlockSetFields() != nil ||
+		message.Msg.GetBlockSetVerticalAlign() != nil
 }
 
 func isSimpleBlockChange(message simple.EventMessage) bool {
