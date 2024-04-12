@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -81,14 +82,21 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 		return m
 	}
 
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id := domain.FullID{
-			SpaceID:  req.SpaceId,
-			ObjectID: req.ObjectId,
-		}
 		obj, err = bs.OpenBlock(ctx, id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
+	if obj != nil {
+		blocksModifiers, err := getService[history.History](mw).GetBlocksModifiers(id, "", obj.GetBlocks())
+		if err != nil {
+			return response(pb.RpcObjectOpenResponseError_UNKNOWN_ERROR, err)
+		}
+		obj.BlocksModifiers = blocksModifiers
+	}
 	if err != nil {
 		if err == source.ErrUnknownDataFormat {
 			return response(pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE, err)
@@ -113,14 +121,21 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 		return m
 	}
 
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id := domain.FullID{
-			SpaceID:  req.SpaceId,
-			ObjectID: req.ObjectId,
-		}
 		obj, err = bs.ShowBlock(id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
+	if obj != nil {
+		blocksModifiers, err := getService[history.History](mw).GetBlocksModifiers(id, "", obj.GetBlocks())
+		if err != nil {
+			return response(pb.RpcObjectShowResponseError_UNKNOWN_ERROR, err)
+		}
+		obj.BlocksModifiers = blocksModifiers
+	}
 	if err != nil {
 		if err == source.ErrUnknownDataFormat {
 			return response(pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE, err)
