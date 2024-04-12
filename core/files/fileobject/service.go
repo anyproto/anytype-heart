@@ -117,7 +117,7 @@ func (s *service) Init(a *app.App) error {
 	if err != nil {
 		return fmt.Errorf("get badger: %w", err)
 	}
-	s.migrationQueue = queue.New(db, log.Desugar(), []byte("queue/file_migration/"), makeMigrationItem, s.migrationQueueHandler)
+	s.migrationQueue = queue.New(queue.NewBadgerStorage(db, []byte("queue/file_migration/"), makeMigrationItem), log.Desugar(), s.migrationQueueHandler)
 	return nil
 }
 

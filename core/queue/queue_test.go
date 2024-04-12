@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ func (t *testItem) Key() string {
 	return t.Id
 }
 
-func (t *testItem) Less(other ItemWithOrder) bool {
+func (t *testItem) Less(other OrderedItem) bool {
 	return t.Timestamp < other.(*testItem).Timestamp
 }
 
@@ -32,17 +33,27 @@ func makeTestItem() *testItem {
 	return &testItem{}
 }
 
-func runTestQueue(t *testing.T, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+func newInMemoryBadger(t *testing.T) *badger.DB {
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true).WithLoggingLevel(badger.ERROR))
 	require.NoError(t, err)
+	return db
+}
 
+func runTestQueue(t *testing.T, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
+	db := newInMemoryBadger(t)
 	return runTestQueueWithDb(t, db, handlerFunc)
 }
 
-func runTestQueueWithDb(t *testing.T, db *badger.DB, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
+func newTestQueueWithDb(db *badger.DB, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
 	log := logging.Logger("test")
 
-	q := New[*testItem](db, log.Desugar(), []byte("test_queue/"), makeTestItem, handlerFunc)
+	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+	q := New[*testItem](storage, log.Desugar(), handlerFunc)
+	return q
+}
+
+func runTestQueueWithDb(t *testing.T, db *badger.DB, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
+	q := newTestQueueWithDb(db, handlerFunc)
 	q.Run()
 	t.Cleanup(func() {
 		q.Close()
@@ -68,6 +79,79 @@ func testAdd(t *testing.T, errFromHandler error) {
 
 		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 		require.Error(t, err)
+	})
+
+	t.Run("add to not started queue, then start", func(t *testing.T) {
+		db := newInMemoryBadger(t)
+
+		q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+			return ActionDone, errFromHandler
+		})
+
+		const numItems = 10
+		var wantKeys []string
+		for i := 0; i < numItems; i++ {
+			key := fmt.Sprintf("%d", i)
+			wantKeys = append(wantKeys, key)
+			err := q.Add(&testItem{Id: key, Timestamp: i, Data: "data"})
+			require.NoError(t, err)
+		}
+
+		assert.ElementsMatch(t, wantKeys, q.ListKeys())
+		assert.Equal(t, numItems, q.Len())
+		q.Run()
+
+		assertEventually(t, func(t *testing.T) bool {
+			return q.Len() == 0
+		})
+		assertEventually(t, func(t *testing.T) bool {
+			return q.HandledItems() == numItems
+		})
+		assert.Empty(t, q.ListKeys())
+
+		err := q.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("add to not started queue, close, then create new queue and start", func(t *testing.T) {
+		db := newInMemoryBadger(t)
+
+		const numItems = 10
+
+		t.Run("with the first instance of queue, add to not started queue", func(t *testing.T) {
+			q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+				return ActionDone, errFromHandler
+			})
+
+			for i := 0; i < numItems; i++ {
+				err := q.Add(&testItem{Id: fmt.Sprintf("%d", i), Timestamp: i, Data: "data"})
+				require.NoError(t, err)
+			}
+			assert.Equal(t, numItems, q.Len())
+
+			err := q.Close()
+			require.NoError(t, err)
+		})
+
+		t.Run("with the second instance of queue, run queue and handle previously added items", func(t *testing.T) {
+			var numItemsHandled int64
+			q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+				atomic.AddInt64(&numItemsHandled, 1)
+				return ActionDone, nil
+			})
+
+			q.Run()
+
+			assertEventually(t, func(t *testing.T) bool {
+				return q.Len() == 0
+			})
+			assertEventually(t, func(t *testing.T) bool {
+				return q.HandledItems() == numItems && numItemsHandled == numItems
+			})
+
+			err := q.Close()
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("add and handle item", func(t *testing.T) {
@@ -98,7 +182,7 @@ func testAdd(t *testing.T, errFromHandler error) {
 		done := make(chan struct{})
 		q := runTestQueue(t, func(ctx context.Context, item *testItem) (Action, error) {
 			assert.Equal(t, wantItem, item)
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 			close(done)
 			return ActionDone, errFromHandler
 		})
@@ -152,15 +236,14 @@ func testAdd(t *testing.T, errFromHandler error) {
 }
 
 func TestRestore(t *testing.T) {
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
-	require.NoError(t, err)
+	db := newInMemoryBadger(t)
 
 	q := runTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 		time.Sleep(10 * time.Millisecond)
 		return ActionRetry, nil
 	})
 
-	err = q.Add(&testItem{Id: "3", Timestamp: 3, Data: "data3"})
+	err := q.Add(&testItem{Id: "3", Timestamp: 3, Data: "data3"})
 	require.NoError(t, err)
 	err = q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 	require.NoError(t, err)
@@ -211,8 +294,7 @@ func TestRemove(t *testing.T) {
 		<-wait
 
 		assertEventually(t, func(t *testing.T) bool {
-			// Wait for batcher to be exhausted
-			return q.batcher.Len() == 0
+			return q.Len() == 0
 		})
 
 		// Some items could be handled but definitely not all
@@ -220,9 +302,7 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("remove long processing item", func(t *testing.T) {
-		db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
-		require.NoError(t, err)
-
+		db := newInMemoryBadger(t)
 		q := runTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 			select {
 			case <-ctx.Done():
@@ -230,7 +310,7 @@ func TestRemove(t *testing.T) {
 			}
 		})
 
-		err = q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 		require.NoError(t, err)
 		err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
 		require.NoError(t, err)
@@ -263,6 +343,30 @@ func TestRemove(t *testing.T) {
 			}
 		})
 	})
+}
+
+func TestWithHandlerTickPeriod(t *testing.T) {
+	db := newInMemoryBadger(t)
+	log := logging.Logger("test")
+	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+
+	tickerPeriod := 50 * time.Millisecond
+	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+		return ActionDone, nil
+	}, WithHandlerTickPeriod(tickerPeriod))
+
+	err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+	err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
+	require.NoError(t, err)
+
+	q.Run()
+
+	time.Sleep(tickerPeriod / 2)
+	assert.Equal(t, 1, q.HandledItems())
+
+	time.Sleep(tickerPeriod)
+	assert.Equal(t, 2, q.HandledItems())
 }
 
 func assertEventually(t *testing.T, pred func(t *testing.T) bool) {

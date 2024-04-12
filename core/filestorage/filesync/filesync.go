@@ -101,10 +101,10 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	f.uploadingQueue = queue.New(db, log.Logger, uploadingKeyPrefix, makeQueueItem, f.uploadingHandler)
-	f.retryUploadingQueue = queue.New(db, log.Logger, retryUploadingKeyPrefix, makeQueueItem, f.retryingHandler, queue.WithHandlerTickPeriod(loopTimeout))
-	f.deletionQueue = queue.New(db, log.Logger, deletionKeyPrefix, makeQueueItem, f.deletionHandler)
-	f.retryDeletionQueue = queue.New(db, log.Logger, retryDeletionKeyPrefix, makeQueueItem, f.retryDeletionHandler, queue.WithHandlerTickPeriod(loopTimeout))
+	f.uploadingQueue = queue.New(queue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, f.uploadingHandler)
+	f.retryUploadingQueue = queue.New(queue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, f.retryingHandler, queue.WithHandlerTickPeriod(loopTimeout))
+	f.deletionQueue = queue.New(queue.NewBadgerStorage(db, deletionKeyPrefix, makeQueueItem), log.Logger, f.deletionHandler)
+	f.retryDeletionQueue = queue.New(queue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeQueueItem), log.Logger, f.retryDeletionHandler, queue.WithHandlerTickPeriod(loopTimeout))
 	return
 }
 
