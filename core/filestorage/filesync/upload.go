@@ -17,8 +17,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/queue"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/queue"
 )
 
 func (f *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) (err error) {

@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/queue"
+	"github.com/anyproto/anytype-heart/util/queue"
 )
 
 func (f *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {

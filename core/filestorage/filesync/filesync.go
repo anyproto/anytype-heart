@@ -17,10 +17,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/core/queue"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/util/queue"
 )
 
 const CName = "filesync"
