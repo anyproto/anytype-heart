@@ -83,11 +83,11 @@ func (t *treeImporter) State(fullStateChain bool) (*state.State, error) {
 			return nil, err
 		}
 	}
+	defer st.ResetParentIdsCache()
 
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return nil, err
 	}
-	st.ResetParentIdsCache()
 	return st, nil
 }
 
