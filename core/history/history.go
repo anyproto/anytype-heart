@@ -190,7 +190,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	}
 	previousState, _, _, err := h.buildState(id, req.PreviousVersion)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get state of versions %s: %s", req.PreviousVersion, err)
+		return nil, nil, fmt.Errorf("failed to get state of versions %s: %w", req.PreviousVersion, err)
 	}
 
 	currState, sbType, _, err := h.buildState(id, req.CurrentVersion)
