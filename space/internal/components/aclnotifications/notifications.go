@@ -134,7 +134,6 @@ func (n *aclNotificationSender) AddSingleRecord(aclId string,
 	if err != nil {
 		logger.Errorf("failed to add acl record, %s", err)
 	}
-	return
 }
 
 func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
