@@ -1382,6 +1382,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 
 	if v, ok := s.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 		status := filesyncstatus.Status(v.GetNumberValue())
+		// Clients expect syncstatus constants in this relation
 		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, pbtypes.Int64(int64(status.ToSyncStatus())))
 	}
 

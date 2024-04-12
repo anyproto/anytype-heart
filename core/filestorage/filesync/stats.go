@@ -61,8 +61,8 @@ func (s FileStat) IsPinned() bool {
 	return s.UploadedChunksCount == s.TotalChunksCount
 }
 
-func (f *fileSync) runNodeUsageUpdater() {
-	f.precacheNodeUsage()
+func (s *fileSync) runNodeUsageUpdater() {
+	s.precacheNodeUsage()
 
 	ticker := time.NewTicker(time.Second * 10)
 	slowMode := false
@@ -70,14 +70,14 @@ func (f *fileSync) runNodeUsageUpdater() {
 	for {
 		select {
 		case <-ticker.C:
-			cachedUsage, cachedUsageExists, _ := f.getCachedNodeUsage()
-			ctx, cancel := context.WithCancel(f.loopCtx)
-			_, err := f.getAndUpdateNodeUsage(ctx)
+			cachedUsage, cachedUsageExists, _ := s.getCachedNodeUsage()
+			ctx, cancel := context.WithCancel(s.loopCtx)
+			_, err := s.getAndUpdateNodeUsage(ctx)
 			cancel()
 			if err != nil {
 				log.Warn("updater: can't update node usage", zap.Error(err))
 			} else {
-				updatedUsage, updatedUsageExists, _ := f.getCachedNodeUsage()
+				updatedUsage, updatedUsageExists, _ := s.getCachedNodeUsage()
 				if cachedUsageExists && updatedUsageExists && cachedUsage.BytesLeft == updatedUsage.BytesLeft {
 					// looks like we don't have active uploads we should actively follow
 					// let's slow down the updates
@@ -94,17 +94,17 @@ func (f *fileSync) runNodeUsageUpdater() {
 					}
 				}
 			}
-		case <-f.loopCtx.Done():
+		case <-s.loopCtx.Done():
 			return
 		}
 	}
 }
 
-func (f *fileSync) precacheNodeUsage() {
-	_, ok, err := f.getCachedNodeUsage()
+func (s *fileSync) precacheNodeUsage() {
+	_, ok, err := s.getCachedNodeUsage()
 	// Init cache with default limits
 	if !ok || err != nil {
-		err = f.store.setNodeUsage(NodeUsage{
+		err = s.store.setNodeUsage(NodeUsage{
 			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
 		if err != nil {
@@ -113,9 +113,9 @@ func (f *fileSync) precacheNodeUsage() {
 	}
 
 	// Load actual node usage
-	ctx, cancel := context.WithCancel(f.loopCtx)
+	ctx, cancel := context.WithCancel(s.loopCtx)
 	defer cancel()
-	_, err = f.getAndUpdateNodeUsage(ctx)
+	_, err = s.getAndUpdateNodeUsage(ctx)
 	if err != nil {
 		log.Error("can't init node usage cache", zap.Error(err))
 	}
@@ -190,8 +190,8 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 }
 
 // SpaceStat returns cached space usage information
-func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (SpaceStat, error) {
-	usage, err := f.NodeUsage(ctx)
+func (s *fileSync) SpaceStat(ctx context.Context, spaceId string) (SpaceStat, error) {
+	usage, err := s.NodeUsage(ctx)
 	if err != nil {
 		return SpaceStat{}, err
 	}
@@ -207,14 +207,14 @@ func (s *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceId string) (s
 	return curUsage.GetSpaceUsage(spaceId), nil
 }
 
-func (f *fileSync) updateSpaceUsageInformation(spaceID string) {
-	if _, err := f.getAndUpdateSpaceStat(context.Background(), spaceID); err != nil {
+func (s *fileSync) updateSpaceUsageInformation(spaceID string) {
+	if _, err := s.getAndUpdateSpaceStat(context.Background(), spaceID); err != nil {
 		log.Warn("can't get space usage information", zap.String("spaceID", spaceID), zap.Error(err))
 	}
 }
 
-func (f *fileSync) sendSpaceUsageEvent(spaceId string, bytesUsage uint64) {
-	f.eventSender.Broadcast(makeSpaceUsageEvent(spaceId, bytesUsage))
+func (s *fileSync) sendSpaceUsageEvent(spaceId string, bytesUsage uint64) {
+	s.eventSender.Broadcast(makeSpaceUsageEvent(spaceId, bytesUsage))
 }
 
 func makeSpaceUsageEvent(spaceId string, bytesUsage uint64) *pb.Event {
@@ -232,20 +232,20 @@ func makeSpaceUsageEvent(spaceId string, bytesUsage uint64) *pb.Event {
 	}
 }
 
-func (f *fileSync) FileListStats(ctx context.Context, spaceID string, hashes []domain.FileId) ([]FileStat, error) {
-	filesInfo, err := f.fetchFilesInfo(ctx, spaceID, hashes)
+func (s *fileSync) FileListStats(ctx context.Context, spaceID string, hashes []domain.FileId) ([]FileStat, error) {
+	filesInfo, err := s.fetchFilesInfo(ctx, spaceID, hashes)
 	if err != nil {
 		return nil, err
 	}
 	return conc.MapErr(filesInfo, func(fileInfo *fileproto.FileInfo) (FileStat, error) {
-		return f.fileInfoToStat(ctx, spaceID, fileInfo)
+		return s.fileInfoToStat(ctx, spaceID, fileInfo)
 	})
 }
 
-func (f *fileSync) fetchFilesInfo(ctx context.Context, spaceId string, hashes []domain.FileId) ([]*fileproto.FileInfo, error) {
+func (s *fileSync) fetchFilesInfo(ctx context.Context, spaceId string, hashes []domain.FileId) ([]*fileproto.FileInfo, error) {
 	requests := lo.Chunk(hashes, 50)
 	responses, err := conc.MapErr(requests, func(chunk []domain.FileId) ([]*fileproto.FileInfo, error) {
-		return f.rpcStore.FilesInfo(ctx, spaceId, chunk...)
+		return s.rpcStore.FilesInfo(ctx, spaceId, chunk...)
 	})
 	if err != nil {
 		return nil, err
@@ -253,8 +253,8 @@ func (f *fileSync) fetchFilesInfo(ctx context.Context, spaceId string, hashes []
 	return lo.Flatten(responses), nil
 }
 
-func (f *fileSync) FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error) {
-	fi, err := f.rpcStore.FilesInfo(ctx, spaceId, fileId)
+func (s *fileSync) FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error) {
+	fi, err := s.rpcStore.FilesInfo(ctx, spaceId, fileId)
 	if err != nil {
 		return
 	}
@@ -263,11 +263,11 @@ func (f *fileSync) FileStat(ctx context.Context, spaceId string, fileId domain.F
 	}
 	file := fi[0]
 
-	return f.fileInfoToStat(ctx, spaceId, file)
+	return s.fileInfoToStat(ctx, spaceId, file)
 }
 
-func (f *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fileproto.FileInfo) (FileStat, error) {
-	totalChunks, err := f.countChunks(ctx, spaceId, domain.FileId(file.FileId))
+func (s *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fileproto.FileInfo) (FileStat, error) {
+	totalChunks, err := s.countChunks(ctx, spaceId, domain.FileId(file.FileId))
 	if err != nil {
 		return FileStat{}, fmt.Errorf("count chunks: %w", err)
 	}
@@ -281,28 +281,28 @@ func (f *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fil
 	}, nil
 }
 
-func (f *fileSync) countChunks(ctx context.Context, spaceID string, fileId domain.FileId) (int, error) {
-	chunksCount, err := f.fileStore.GetChunksCount(fileId)
+func (s *fileSync) countChunks(ctx context.Context, spaceID string, fileId domain.FileId) (int, error) {
+	chunksCount, err := s.fileStore.GetChunksCount(fileId)
 	if err == nil {
 		return chunksCount, nil
 	}
 
-	chunksCount, err = f.fetchChunksCount(ctx, spaceID, fileId)
+	chunksCount, err = s.fetchChunksCount(ctx, spaceID, fileId)
 	if err != nil {
 		return -1, fmt.Errorf("count chunks in IPFS: %w", err)
 	}
 
-	err = f.fileStore.SetChunksCount(fileId, chunksCount)
+	err = s.fileStore.SetChunksCount(fileId, chunksCount)
 
 	return chunksCount, err
 }
 
-func (f *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId domain.FileId) (int, error) {
+func (s *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId domain.FileId) (int, error) {
 	fileCid, err := cid.Parse(fileId.String())
 	if err != nil {
 		return -1, err
 	}
-	dagService := f.dagServiceForSpace(spaceID)
+	dagService := s.dagServiceForSpace(spaceID)
 	node, err := dagService.Get(ctx, fileCid)
 	if err != nil {
 		return -1, err
@@ -325,11 +325,11 @@ func (f *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId 
 	return count, err
 }
 
-func (f *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
+func (s *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
 	var info QueueInfo
-	info.UploadingQueue = f.uploadingQueue.ListKeys()
-	info.RetryUploadingQueue = f.retryUploadingQueue.ListKeys()
-	info.DeletionQueue = f.deletionQueue.ListKeys()
-	info.RetryDeletionQueue = f.retryDeletionQueue.ListKeys()
+	info.UploadingQueue = s.uploadingQueue.ListKeys()
+	info.RetryUploadingQueue = s.retryUploadingQueue.ListKeys()
+	info.DeletionQueue = s.deletionQueue.ListKeys()
+	info.RetryDeletionQueue = s.retryDeletionQueue.ListKeys()
 	return &info, nil
 }
