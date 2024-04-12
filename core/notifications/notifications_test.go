@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	"github.com/anyproto/anytype-heart/core/block/mock_block"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -246,7 +246,7 @@ func TestNotificationService_CreateAndSend(t *testing.T) {
 		err := notificationObject.Apply(state)
 		assert.Nil(t, err)
 
-		objectGetter := mock_block.NewMockObjectGetter(t)
+		objectGetter := mock_cache.NewMockObjectGetter(t)
 		objectGetter.EXPECT().GetObject(context.Background(), notificationObjectId).Return(notificationObject, nil)
 
 		sender := mock_event.NewMockSender(t)
@@ -278,7 +278,7 @@ func TestNotificationService_CreateAndSend(t *testing.T) {
 			Payload:    &model.NotificationPayloadOfTest{Test: &model.NotificationTest{}},
 		}
 
-		objectGetter := mock_block.NewMockObjectGetter(t)
+		objectGetter := mock_cache.NewMockObjectGetter(t)
 		objectGetter.EXPECT().GetObject(context.Background(), notificationObjectId).Return(notificationObject, nil)
 
 		sender := mock_event.NewMockSender(t)
