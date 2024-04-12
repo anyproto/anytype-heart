@@ -11,6 +11,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -31,23 +32,18 @@ type Params struct {
 
 func New(app *app.App, params Params) Joiner {
 	child := app.ChildApp()
-	params.Status.Lock()
-	joinHeadId := params.Status.LatestAclHeadId()
-	params.Status.Unlock()
-	child.Register(params.Status).
-		Register(newStatusChanger()).
+	joinHeadId := params.Status.GetLatestAclHeadId()
+	child.Register(newStatusChanger()).
+		Register(aclindexcleaner.New()).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclwaiter.New(params.SpaceId,
 			joinHeadId,
 			// onFinish
 			func(acl list.AclList) error {
-				params.Status.Lock()
-				defer params.Status.Unlock()
-				err := params.Status.SetPersistentInfo(context.Background(), spaceinfo.SpacePersistentInfo{
-					SpaceID:       params.SpaceId,
-					AccountStatus: spaceinfo.AccountStatusActive,
-					AclHeadId:     acl.Head().Id,
-				})
+				info := spaceinfo.NewSpacePersistentInfo(params.SpaceId)
+				info.SetAccountStatus(spaceinfo.AccountStatusActive).
+					SetAclHeadId(acl.Head().Id)
+				err := params.Status.SetPersistentInfo(info)
 				if err != nil {
 					params.Log.Error("failed to set persistent status", zap.Error(err))
 				}
@@ -55,13 +51,10 @@ func New(app *app.App, params Params) Joiner {
 			},
 			// onReject
 			func(acl list.AclList) error {
-				params.Status.Lock()
-				defer params.Status.Unlock()
-				err := params.Status.SetPersistentInfo(context.Background(), spaceinfo.SpacePersistentInfo{
-					SpaceID:       params.SpaceId,
-					AccountStatus: spaceinfo.AccountStatusDeleted,
-					AclHeadId:     acl.Head().Id,
-				})
+				info := spaceinfo.NewSpacePersistentInfo(params.SpaceId)
+				info.SetAccountStatus(spaceinfo.AccountStatusDeleted).
+					SetAclHeadId(acl.Head().Id)
+				err := params.Status.SetPersistentInfo(info)
 				if err != nil {
 					params.Log.Error("failed to set persistent status", zap.Error(err))
 				}

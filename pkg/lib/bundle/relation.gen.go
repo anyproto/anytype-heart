@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "d56fa782bf2d25bfc0e8e83717c349d63e49d1c3e96c6e83a342b1383942ffbf"
+const RelationChecksum = "b2156ed0df86701d5093688d8aa4e0f813aadeed1b5b6dc5ff45aeafe1f5ed88"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -166,6 +166,8 @@ const (
 	RelationKeyOrigin                    domain.RelationKey = "origin"
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
+	RelationKeySpaceShareableStatus      domain.RelationKey = "spaceShareableStatus"
+	RelationKeyIsAclShared               domain.RelationKey = "isAclShared"
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
@@ -1082,6 +1084,20 @@ var (
 			Id:               "_brinternalFlags",
 			Key:              "internalFlags",
 			Name:             "Internal flags",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsAclShared: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Specify if access control list is shared",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisAclShared",
+			Key:              "isAclShared",
+			MaxCount:         1,
+			Name:             "Is Acl Shared",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2150,6 +2166,20 @@ var (
 			Key:              "spaceRemoteStatus",
 			MaxCount:         1,
 			Name:             "Space remote status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceShareableStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Specify if the space is shareable",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceShareableStatus",
+			Key:              "spaceShareableStatus",
+			MaxCount:         1,
+			Name:             "Space shareable status",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

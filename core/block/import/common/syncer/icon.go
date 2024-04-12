@@ -8,7 +8,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -54,7 +53,7 @@ func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 		return nil
 	}
 
-	err = cache.Do(s.service, id.ObjectID, func(sb smartblock.SmartBlock) error {
+	err = block.Do(s.service, id.ObjectID, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
 		upErr := updater.Update(nil, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = newId

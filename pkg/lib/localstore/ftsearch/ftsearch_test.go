@@ -3,6 +3,7 @@ package ftsearch
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
@@ -40,6 +41,10 @@ func TestNewFTSearch(t *testing.T) {
 		name   string
 		tester func(t *testing.T, tmpDir string)
 	}{
+		{
+			name:   "assertProperIds",
+			tester: assertProperIds,
+		},
 		{
 			name:   "assertSearch",
 			tester: assertSearch,
@@ -159,6 +164,39 @@ func assertThaiSubstrFound(t *testing.T, tmpDir string) {
 
 	validateSearch(t, ft, "", "ระเ", 1)
 	validateSearch(t, ft, "", "ระเ ma", 1)
+
+	_ = ft.Close(nil)
+}
+
+func assertProperIds(t *testing.T, tmpDir string) {
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	for i := range 50 {
+		require.NoError(t, ft.Index(SearchDoc{
+			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+100),
+			SpaceID: fmt.Sprintf("randomspaceid%d", i),
+			DocId:   fmt.Sprintf("randomid%d", i),
+		}))
+		require.NoError(t, ft.Index(SearchDoc{
+			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+1000),
+			SpaceID: fmt.Sprintf("randomspaceid%d", i),
+			DocId:   fmt.Sprintf("randomid%d", i),
+		}))
+	}
+
+	ft.Delete(fmt.Sprintf("randomid%d", 49))
+
+	count, _ := ft.DocCount()
+	require.Equal(t, 98, int(count))
+
+	var batchDelete []string
+	for i := range 30 {
+		batchDelete = append(batchDelete, fmt.Sprintf("randomid%d", i))
+	}
+	ft.BatchDelete(batchDelete)
+
+	count, _ = ft.DocCount()
+	require.Equal(t, 38, int(count))
 
 	_ = ft.Close(nil)
 }

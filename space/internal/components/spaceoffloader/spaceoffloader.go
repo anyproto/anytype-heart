@@ -62,18 +62,15 @@ func (o *spaceOffloader) Name() (name string) {
 }
 
 func (o *spaceOffloader) Run(ctx context.Context) (err error) {
-	o.status.Lock()
 	persistentStatus := o.status.GetPersistentStatus()
 	if persistentStatus != spaceinfo.AccountStatusDeleted {
 		persistentStatus = spaceinfo.AccountStatusDeleted
-		err := o.status.SetPersistentStatus(ctx, persistentStatus)
+		err := o.status.SetPersistentStatus(persistentStatus)
 		if err != nil {
-			o.status.Unlock()
 			return err
 		}
 	}
 	localStatus := o.status.GetLocalStatus()
-	o.status.Unlock()
 	o.delController.AddSpaceToDelete(o.status.SpaceId())
 	if localStatus == spaceinfo.LocalStatusMissing {
 		o.offloaded.Store(true)
@@ -85,9 +82,7 @@ func (o *spaceOffloader) Run(ctx context.Context) (err error) {
 
 func (o *spaceOffloader) Close(ctx context.Context) (err error) {
 	o.cancel()
-	o.status.Lock()
 	ol := o.offloading
-	o.status.Unlock()
 	if ol != nil {
 		<-ol.loadCh
 	}
@@ -103,9 +98,7 @@ func (o *spaceOffloader) onOffload(id string, offloadErr error) {
 		log.Warn("offload error", zap.Error(offloadErr), zap.String("spaceId", id))
 		return
 	}
-	o.status.Lock()
-	defer o.status.Unlock()
-	if err := o.status.SetLocalStatus(o.ctx, spaceinfo.LocalStatusMissing); err != nil {
+	if err := o.status.SetLocalStatus(spaceinfo.LocalStatusMissing); err != nil {
 		log.Debug("set status error", zap.Error(err), zap.String("spaceId", id))
 	}
 	o.offloaded.Store(true)

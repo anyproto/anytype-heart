@@ -2,11 +2,12 @@ package indexer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -31,19 +32,32 @@ func (i *indexer) ForceFTIndex() {
 	}
 }
 
-func (i *indexer) ftLoop() {
+// ftLoop runs full-text indexer
+// MUST NOT be called more than once
+func (i *indexer) ftLoopRoutine() {
 	ticker := time.NewTicker(ftIndexInterval)
-	i.runFullTextIndexer()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-i.quit:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	i.runFullTextIndexer(ctx)
+	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
 	for {
 		select {
-		case <-i.quit:
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			i.runFullTextIndexer()
+			i.runFullTextIndexer(ctx)
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer()
+				i.runFullTextIndexer(ctx)
 				lastForceIndex = time.Now()
 			}
 		}
@@ -51,14 +65,18 @@ func (i *indexer) ftLoop() {
 }
 
 // TODO maybe use two queues? One for objects, one for files
-func (i *indexer) runFullTextIndexer() {
+func (i *indexer) runFullTextIndexer(ctx context.Context) {
 	docs := make([]ftsearch.SearchDoc, 0, ftBatchLimit)
-	err := i.store.BatchProcessFullTextQueue(ftBatchLimit, func(ids []string) error {
+	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(ids []string) error {
 		for _, id := range ids {
-			err := i.prepareSearchDocument(id, func(doc ftsearch.SearchDoc) error {
+			err := i.ftsearch.Delete(id)
+			if err != nil {
+				log.With("id", id).Errorf("delete document for full-text indexing: %s", err)
+			}
+			err = i.prepareSearchDocument(ctx, id, func(doc ftsearch.SearchDoc) error {
 				docs = append(docs, doc)
 				if len(docs) >= ftBatchLimit {
-					err := i.ftsearch.BatchIndex(docs)
+					err := i.ftsearch.BatchIndex(ctx, docs)
 					docs = docs[:0]
 					if err != nil {
 						return err
@@ -71,11 +89,14 @@ func (i *indexer) runFullTextIndexer() {
 				// should be fixed with files as objects project
 				// todo: research errors
 				log.With("id", id).Errorf("prepare document for full-text indexing: %s", err)
+				if errors.Is(err, context.Canceled) {
+					return err
+				}
 				continue
 			}
 		}
 		if len(docs) > 0 {
-			return i.ftsearch.BatchIndex(docs)
+			return i.ftsearch.BatchIndex(ctx, docs)
 		}
 		return nil
 	})
@@ -86,9 +107,9 @@ func (i *indexer) runFullTextIndexer() {
 	}
 }
 
-func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.SearchDoc) error) (err error) {
-	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
-	err = cache.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
+func (i *indexer) prepareSearchDocument(ctx context.Context, id string, processor func(doc ftsearch.SearchDoc) error) (err error) {
+	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
+	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		indexDetails, _ := sb.Type().Indexable()
 		if !indexDetails {
 			return nil
@@ -105,6 +126,7 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 
 			f := ftsearch.SearchDoc{
 				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
+				DocId:   id,
 				SpaceID: sb.SpaceID(),
 				Text:    val,
 			}
@@ -119,13 +141,16 @@ func (i *indexer) prepareSearchDocument(id string, processor func(doc ftsearch.S
 		}
 
 		sb.Iterate(func(b simple.Block) (isContinue bool) {
-
+			if ctx.Err() != nil {
+				return false
+			}
 			if tb := b.Model().GetText(); tb != nil {
 				if len(strings.TrimSpace(tb.Text)) == 0 {
 					return true
 				}
 
 				doc := ftsearch.SearchDoc{
+					DocId:   id,
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
 					SpaceID: sb.SpaceID(),
 				}

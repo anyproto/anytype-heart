@@ -139,7 +139,10 @@ func (n *aclNotificationSender) AddSingleRecord(aclId string,
 
 func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
 	if aclData, ok := aclNotificationRecord.record.Model.(*aclrecordproto.AclData); ok {
-		return n.iterateAclContent(ctx, aclNotificationRecord, aclData)
+		err := n.iterateAclContent(ctx, aclNotificationRecord, aclData)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -165,7 +168,7 @@ func (n *aclNotificationSender) processRecords() {
 			}
 			err := n.sendNotification(context.Background(), record)
 			if err != nil {
-				logger.Errorf("failed to send notifications: %s", err)
+				return
 			}
 		}
 	}
@@ -197,16 +200,25 @@ func (n *aclNotificationSender) handleSpaceMemberNotifications(ctx context.Conte
 	notificationId string,
 ) error {
 	if reqApprove := content.GetRequestAccept(); reqApprove != nil {
-		return n.sendParticipantRequestApprove(ctx, reqApprove, aclNotificationRecord, notificationId)
+		if err := n.sendParticipantRequestApprove(ctx, reqApprove, aclNotificationRecord, notificationId); err != nil {
+			return err
+
+		}
 	}
 	if accRemove := content.GetAccountRemove(); accRemove != nil {
-		return n.sendAccountRemove(ctx, aclNotificationRecord, notificationId, accRemove.Identities)
+		if err := n.sendAccountRemove(ctx, aclNotificationRecord, notificationId, accRemove.Identities); err != nil {
+			return err
+		}
 	}
 	if reqDecline := content.GetRequestDecline(); reqDecline != nil {
-		return n.sendParticipantRequestDecline(aclNotificationRecord, notificationId)
+		if err := n.sendParticipantRequestDecline(aclNotificationRecord, notificationId); err != nil {
+			return err
+		}
 	}
 	if reqPermissionChanges := content.GetPermissionChanges(); reqPermissionChanges != nil {
-		return n.sendParticipantPermissionChanges(ctx, reqPermissionChanges, aclNotificationRecord, notificationId)
+		if err := n.sendParticipantPermissionChanges(ctx, reqPermissionChanges, aclNotificationRecord, notificationId); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -224,10 +236,14 @@ func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context,
 	notificationId string,
 ) error {
 	if reqJoin := content.GetRequestJoin(); reqJoin != nil {
-		return n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord, notificationId)
+		if err := n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord, notificationId); err != nil {
+			return err
+		}
 	}
 	if reqLeave := content.GetAccountRequestRemove(); reqLeave != nil {
-		return n.sendAccountRequestRemove(ctx, aclNotificationRecord, notificationId)
+		if err := n.sendAccountRequestRemove(ctx, aclNotificationRecord, notificationId); err != nil {
+			return err
+		}
 	}
 	return nil
 }
