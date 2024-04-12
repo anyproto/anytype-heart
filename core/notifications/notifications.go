@@ -229,6 +229,8 @@ func (n *notificationService) Reply(notificationIds []string, notificationAction
 
 func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Notification, error) {
 	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+
 	select {
 	case <-n.loadFinish:
 	case <-ticker.C:
