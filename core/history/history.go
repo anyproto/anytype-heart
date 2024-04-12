@@ -195,13 +195,13 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 
 	currState, sbType, _, err := h.buildState(id, req.CurrentVersion)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get state of versions %s: %s", req.CurrentVersion, err)
+		return nil, nil, fmt.Errorf("failed to get state of versions %s: %w", req.CurrentVersion, err)
 	}
 
 	currState.SetParent(previousState)
 	msg, _, err := state.ApplyState(currState, false)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get history events for versions %s, %s: %s", req.CurrentVersion, req.PreviousVersion, err)
+		return nil, nil, fmt.Errorf("failed to get history events for versions %s, %s: %w", req.CurrentVersion, req.PreviousVersion, err)
 	}
 
 	historyEvents := getHistoryEvents(msg)
@@ -210,7 +210,11 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
 	dependentObjectIDs := objectlink.DependentObjectIDs(currState, spc, true, true, false, true, false)
-	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
+	metaD, err := h.objectStore.QueryByID(dependentObjectIDs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get dependencies: %w", err)
+	}
+
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
 
 	metaD = append(metaD, database.Record{Details: currState.CombinedDetails()})
