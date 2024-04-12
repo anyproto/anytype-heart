@@ -1,4 +1,4 @@
-package queue
+package persistentqueue
 
 import (
 	"context"
@@ -102,7 +102,7 @@ func testAdd(t *testing.T, errFromHandler error) {
 			return q.Len() == 0
 		})
 		assertEventually(t, func(t *testing.T) bool {
-			return q.HandledItems() == numItems
+			return q.NumProcessedItems() == numItems
 		})
 		assert.Empty(t, q.ListKeys())
 
@@ -143,7 +143,7 @@ func testAdd(t *testing.T, errFromHandler error) {
 				return q.Len() == 0
 			})
 			assertEventually(t, func(t *testing.T) bool {
-				return q.HandledItems() == numItems && numItemsHandled == numItems
+				return q.NumProcessedItems() == numItems && numItemsHandled == numItems
 			})
 
 			err := q.Close()
@@ -303,7 +303,7 @@ func TestRemove(t *testing.T) {
 		q.Close()
 
 		// Some items could be handled but definitely not all
-		assert.True(t, q.HandledItems() < timesAdded)
+		assert.True(t, q.NumProcessedItems() < timesAdded)
 	})
 
 	t.Run("remove long processing item", func(t *testing.T) {
@@ -375,10 +375,10 @@ func TestWithHandlerTickPeriod(t *testing.T) {
 	q.Run()
 
 	time.Sleep(tickerPeriod / 2)
-	assert.Equal(t, 1, q.HandledItems())
+	assert.Equal(t, 1, q.NumProcessedItems())
 
 	time.Sleep(tickerPeriod)
-	assert.Equal(t, 2, q.HandledItems())
+	assert.Equal(t, 2, q.NumProcessedItems())
 }
 
 func assertEventually(t *testing.T, pred func(t *testing.T) bool) {

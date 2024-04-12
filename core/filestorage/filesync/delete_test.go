@@ -41,7 +41,7 @@ func TestDeleteFile(t *testing.T) {
 		fx.waitEmptyQueue(t, fx.deletionQueue, time.Second*1)
 
 		fx.waitCondition(t, 100*time.Millisecond, func() bool {
-			return fx.retryDeletionQueue.Len() == 1 || fx.retryDeletionQueue.HandledItems() > 0
+			return fx.retryDeletionQueue.Len() == 1 || fx.retryDeletionQueue.NumProcessedItems() > 0
 		})
 	})
 }

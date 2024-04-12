@@ -1,7 +1,6 @@
-package queue
+package persistentqueue
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
@@ -11,8 +10,6 @@ import (
 )
 
 type FactoryFunc[T Item] func() T
-
-type HandlerFunc[T Item] func(context.Context, T) (Action, error)
 
 type Storage[T Item] interface {
 	Put(item T) error

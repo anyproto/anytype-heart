@@ -18,7 +18,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/util/queue"
+	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
 func (f *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) (err error) {
@@ -76,11 +76,11 @@ func (f *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 	return nil
 }
 
-func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
+func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
 	err := f.runOnUploadStartedHook(it.ObjectId, spaceId)
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return queue.ActionDone, f.removeFromUploadingQueues(it)
+		return persistentqueue.ActionDone, f.removeFromUploadingQueues(it)
 	}
 	err = f.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
@@ -103,20 +103,20 @@ func (f *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (queue.A
 		if err != nil {
 			log.Error("can't add upload task to retrying queue", zap.String("fileId", fileId.String()), zap.Error(err))
 		}
-		return queue.ActionDone, nil
+		return persistentqueue.ActionDone, nil
 	}
 
 	f.runOnUploadedHook(it.ObjectId, spaceId)
 	f.updateSpaceUsageInformation(spaceId)
 
-	return queue.ActionDone, f.removeFromUploadingQueues(it)
+	return persistentqueue.ActionDone, f.removeFromUploadingQueues(it)
 }
 
-func (f *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
+func (f *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
 	err := f.runOnUploadStartedHook(it.ObjectId, spaceId)
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return queue.ActionDone, f.removeFromUploadingQueues(it)
+		return persistentqueue.ActionDone, f.removeFromUploadingQueues(it)
 	}
 	err = f.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
@@ -125,13 +125,13 @@ func (f *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (queue.Ac
 			zap.String("objectId", it.ObjectId),
 		)
 		f.handleLimitReachedError(err, it)
-		return queue.ActionRetry, nil
+		return persistentqueue.ActionRetry, nil
 	}
 
 	f.runOnUploadedHook(it.ObjectId, spaceId)
 	f.updateSpaceUsageInformation(spaceId)
 
-	return queue.ActionDone, f.removeFromUploadingQueues(it)
+	return persistentqueue.ActionDone, f.removeFromUploadingQueues(it)
 }
 
 func (f *fileSync) removeFromUploadingQueues(item *QueueItem) error {

@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/util/queue"
+	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
 func (f *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
@@ -27,7 +27,7 @@ func (f *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
 	return f.deletionQueue.Add(it)
 }
 
-func (f *fileSync) deletionHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
+func (f *fileSync) deletionHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	fileId := domain.FullFileId{
 		SpaceId: it.SpaceId,
 		FileId:  it.FileId,
@@ -37,33 +37,33 @@ func (f *fileSync) deletionHandler(ctx context.Context, it *QueueItem) (queue.Ac
 		log.Error("remove file error", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
 		addErr := f.retryDeletionQueue.Add(it)
 		if addErr != nil {
-			return queue.ActionRetry, fmt.Errorf("add to removing retry queue: %w", addErr)
+			return persistentqueue.ActionRetry, fmt.Errorf("add to removing retry queue: %w", addErr)
 		}
-		return queue.ActionDone, fmt.Errorf("remove file: %w", err)
+		return persistentqueue.ActionDone, fmt.Errorf("remove file: %w", err)
 	}
 	f.updateSpaceUsageInformation(fileId.SpaceId)
 	err = f.removeFromDeletionQueues(it)
 	if err != nil {
 		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
-	return queue.ActionDone, nil
+	return persistentqueue.ActionDone, nil
 }
 
-func (f *fileSync) retryDeletionHandler(ctx context.Context, it *QueueItem) (queue.Action, error) {
+func (f *fileSync) retryDeletionHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	fileId := domain.FullFileId{
 		SpaceId: it.SpaceId,
 		FileId:  it.FileId,
 	}
 	err := f.deleteFile(ctx, fileId)
 	if err != nil {
-		return queue.ActionRetry, fmt.Errorf("remove file: %w", err)
+		return persistentqueue.ActionRetry, fmt.Errorf("remove file: %w", err)
 	}
 	f.updateSpaceUsageInformation(fileId.SpaceId)
 	err = f.removeFromDeletionQueues(it)
 	if err != nil {
 		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
-	return queue.ActionDone, nil
+	return persistentqueue.ActionDone, nil
 }
 
 func (f *fileSync) DeleteFileSynchronously(fileId domain.FullFileId) (err error) {

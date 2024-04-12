@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/util/queue"
+	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
 const CName = "filesync"
@@ -76,10 +76,10 @@ type fileSync struct {
 	onUploadStarted StatusCallback
 	onLimited       StatusCallback
 
-	uploadingQueue      *queue.Queue[*QueueItem]
-	retryUploadingQueue *queue.Queue[*QueueItem]
-	deletionQueue       *queue.Queue[*QueueItem]
-	retryDeletionQueue  *queue.Queue[*QueueItem]
+	uploadingQueue      *persistentqueue.Queue[*QueueItem]
+	retryUploadingQueue *persistentqueue.Queue[*QueueItem]
+	deletionQueue       *persistentqueue.Queue[*QueueItem]
+	retryDeletionQueue  *persistentqueue.Queue[*QueueItem]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -101,10 +101,10 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	f.uploadingQueue = queue.New(queue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, f.uploadingHandler)
-	f.retryUploadingQueue = queue.New(queue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, f.retryingHandler, queue.WithHandlerTickPeriod(loopTimeout))
-	f.deletionQueue = queue.New(queue.NewBadgerStorage(db, deletionKeyPrefix, makeQueueItem), log.Logger, f.deletionHandler)
-	f.retryDeletionQueue = queue.New(queue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeQueueItem), log.Logger, f.retryDeletionHandler, queue.WithHandlerTickPeriod(loopTimeout))
+	f.uploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, f.uploadingHandler)
+	f.retryUploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, f.retryingHandler, persistentqueue.WithHandlerTickPeriod(loopTimeout))
+	f.deletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, deletionKeyPrefix, makeQueueItem), log.Logger, f.deletionHandler)
+	f.retryDeletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeQueueItem), log.Logger, f.retryDeletionHandler, persistentqueue.WithHandlerTickPeriod(loopTimeout))
 	return
 }
 

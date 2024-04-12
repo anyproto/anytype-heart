@@ -34,7 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/queue"
+	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
 // TODO UNsugar
@@ -79,7 +79,7 @@ type service struct {
 	fileStore       filestore.FileStore
 	objectStore     objectstore.ObjectStore
 	spaceIdResolver idresolver.Resolver
-	migrationQueue  *queue.Queue[*migrationItem]
+	migrationQueue  *persistentqueue.Queue[*migrationItem]
 
 	indexer *indexer
 
@@ -117,7 +117,7 @@ func (s *service) Init(a *app.App) error {
 	if err != nil {
 		return fmt.Errorf("get badger: %w", err)
 	}
-	s.migrationQueue = queue.New(queue.NewBadgerStorage(db, []byte("queue/file_migration/"), makeMigrationItem), log.Desugar(), s.migrationQueueHandler)
+	s.migrationQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, []byte("queue/file_migration/"), makeMigrationItem), log.Desugar(), s.migrationQueueHandler)
 	return nil
 }
 

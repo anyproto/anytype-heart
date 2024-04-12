@@ -87,7 +87,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		assert.Zero(t, usage.TotalBytesUsage)
 
 		fx.waitCondition(t, 100*time.Millisecond, func() bool {
-			return fx.retryUploadingQueue.Len() == 1 || fx.retryUploadingQueue.HandledItems() > 0
+			return fx.retryUploadingQueue.Len() == 1 || fx.retryUploadingQueue.NumProcessedItems() > 0
 		})
 	})
 
@@ -105,9 +105,9 @@ func TestFileSync_AddFile(t *testing.T) {
 		require.NoError(t, fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false))
 
 		fx.waitEmptyQueue(t, fx.uploadingQueue, 100*time.Millisecond)
-		assert.Equal(t, 1, fx.uploadingQueue.HandledItems())
+		assert.Equal(t, 1, fx.uploadingQueue.NumProcessedItems())
 		fx.waitEmptyQueue(t, fx.retryUploadingQueue, 100*time.Millisecond)
-		assert.Equal(t, 0, fx.retryUploadingQueue.HandledItems())
+		assert.Equal(t, 0, fx.retryUploadingQueue.NumProcessedItems())
 	})
 }
 

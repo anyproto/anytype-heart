@@ -114,7 +114,7 @@ func (fx *fixture) waitFileMigrationHandled(t *testing.T) {
 		case <-timeout.C:
 			t.Fatal("timeout")
 		case <-time.After(10 * time.Millisecond):
-			if fx.migrationQueue.HandledItems() > 0 {
+			if fx.migrationQueue.NumProcessedItems() > 0 {
 				return
 			}
 		}

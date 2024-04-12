@@ -1,4 +1,4 @@
-package queue
+package persistentqueue
 
 import (
 	"context"
@@ -24,6 +24,12 @@ type OrderedItem interface {
 	Less(other OrderedItem) bool
 }
 
+// HandlerFunc is a function that processes an item from the queue.
+// Input context will be canceled if queue is closed.
+// Action result specifies if queue needs to retry item processing or mark it as done.
+// Error is just logged.
+type HandlerFunc[T Item] func(context.Context, T) (Action, error)
+
 type Action int
 
 const (
@@ -31,6 +37,7 @@ const (
 	ActionDone
 )
 
+// Queue represents a queue with persistent on-disk storage. Items handled one-by-one with one worker
 type Queue[T Item] struct {
 	storage Storage[T]
 	logger  *zap.Logger
@@ -58,6 +65,7 @@ type options struct {
 
 type Option func(*options)
 
+// WithHandlerTickPeriod adds delay between handling items
 func WithHandlerTickPeriod(period time.Duration) Option {
 	return func(o *options) {
 		o.handlerTickPeriod = period
@@ -90,6 +98,7 @@ func New[T Item](
 	return q
 }
 
+// Run starts queue processing. It will start only once
 func (q *Queue[T]) Run() {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -195,6 +204,7 @@ func sortItems[T Item](items []T) {
 	}
 }
 
+// Close stops queue processing and waits for the last in-process item to be processed
 func (q *Queue[T]) Close() error {
 	q.ctxCancel()
 	err := q.batcher.Close()
@@ -211,6 +221,7 @@ func (q *Queue[T]) Close() error {
 	return nil
 }
 
+// Add item to If item with the same key already in queue, input item will be ignored
 func (q *Queue[T]) Add(item T) error {
 	err := q.checkClosed()
 	if err != nil {
@@ -232,6 +243,7 @@ func (q *Queue[T]) Add(item T) error {
 	return q.storage.Put(item)
 }
 
+// Has returns true if item with specific key is in queue
 func (q *Queue[T]) Has(key string) bool {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -239,6 +251,8 @@ func (q *Queue[T]) Has(key string) bool {
 	return ok
 }
 
+// Remove item with specified key from If this item is already in process, it will be processed.
+// If you need to stop processing removable item, you should use own cancellation mechanism
 func (q *Queue[T]) Remove(key string) error {
 	err := q.checkClosed()
 	if err != nil {
@@ -250,11 +264,12 @@ func (q *Queue[T]) Remove(key string) error {
 	return q.storage.Delete(key)
 }
 
-func (q *Queue[T]) HandledItems() int {
+// NumProcessedItems returns number of items processed by handler
+func (q *Queue[T]) NumProcessedItems() int {
 	return int(atomic.LoadUint32(&q.handledItems))
 }
 
-// ListKeys lists queued but not yet handled keys
+// ListKeys lists queued but not yet processed keys
 func (q *Queue[T]) ListKeys() []string {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -266,6 +281,7 @@ func (q *Queue[T]) ListKeys() []string {
 	return keys
 }
 
+// Len returns number of unprocessed items in queue
 func (q *Queue[T]) Len() int {
 	q.lock.Lock()
 	defer q.lock.Unlock()

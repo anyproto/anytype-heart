@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/queue"
+	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
 // migrationItem is a queue item for file object migration. Should be fully serializable
@@ -129,10 +129,10 @@ func (s *service) migrateFile(space clientspace.Space, origin objectorigin.Objec
 	return nil
 }
 
-func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) (queue.Action, error) {
+func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) (persistentqueue.Action, error) {
 	space, err := s.spaceService.Get(ctx, it.SpaceId)
 	if err != nil {
-		return queue.ActionDone, fmt.Errorf("get space: %w", err)
+		return persistentqueue.ActionDone, fmt.Errorf("get space: %w", err)
 	}
 
 	// Wait object to load
@@ -140,18 +140,18 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	_, err = space.GetObject(ctx, it.FileObjectId)
 	// Already migrated or deleted file object
 	if err == nil || errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return queue.ActionDone, nil
+		return persistentqueue.ActionDone, nil
 	}
 
 	uniqueKey, err := domain.UnmarshalUniqueKey(it.UniqueKeyRaw)
 	if err != nil {
-		return queue.ActionDone, fmt.Errorf("unmarshal unique key: %w", err)
+		return persistentqueue.ActionDone, fmt.Errorf("unmarshal unique key: %w", err)
 	}
 	err = s.migrateDeriveObject(context.Background(), space, it.CreateRequest, uniqueKey)
 	if err != nil {
 		log.Errorf("create file object for fileId %s: %v", it.CreateRequest.FileId, err)
 	}
-	return queue.ActionDone, nil
+	return persistentqueue.ActionDone, nil
 }
 
 func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {

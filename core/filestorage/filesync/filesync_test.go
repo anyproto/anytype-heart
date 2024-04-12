@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/util/queue"
+	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
 var ctx = context.Background()
@@ -96,7 +96,7 @@ func (f *fixture) waitEvent(t *testing.T, timeout time.Duration, pred func(msg *
 	})
 }
 
-func (f *fixture) waitEmptyQueue(t *testing.T, queue *queue.Queue[*QueueItem], timeout time.Duration) {
+func (f *fixture) waitEmptyQueue(t *testing.T, queue *persistentqueue.Queue[*QueueItem], timeout time.Duration) {
 	f.waitCondition(t, timeout, func() bool {
 		return queue.Len() == 0
 	})
