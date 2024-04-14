@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   prometheus:
-    image: prom/prometheus:v2.1.0
+    image: prom/prometheus:v2.35.0
     volumes:
       - ./prometheus/:/etc/prometheus/
     command:
@@ -24,4 +24,10 @@ services:
       - ./grafana/provisioning/:/etc/grafana/provisioning/
     env_file:
       - ./grafana/config.monitoring
+    restart: unless-stopped
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:v1.7.0
+    container_name: node_exporter
+    ports:
+      - 9100:9100
     restart: unless-stopped

@@ -7,9 +7,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/metric"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
 	"github.com/blevesearch/bleve/v2/analysis/lang/en"
@@ -19,7 +22,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/analyzers"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -66,10 +68,16 @@ type FTSearch interface {
 }
 
 type ftSearch struct {
-	rootPath       string
-	ftsPath        string
-	index          bleve.Index
+	rootPath string
+	ftsPath  string
+	index    bleve.Index
+
 	enStopWordsMap map[string]bool
+
+	ftUpdatedCounter  atomic.Uint32
+	bleveMetricsCache map[string]interface{}
+	bleveMetricsMutex sync.RWMutex
+	closedCh          chan struct{}
 }
 
 func (f *ftSearch) Init(a *app.App) (err error) {
@@ -77,6 +85,8 @@ func (f *ftSearch) Init(a *app.App) (err error) {
 	f.rootPath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir, ftsVer)
 	f.enStopWordsMap, err = en.TokenMapConstructor(nil, nil)
+	metrics, _ := a.Component(metric.CName).(metric.Metric)
+	f.initMetrics(metrics)
 	return err
 }
 
@@ -112,7 +122,7 @@ func (f *ftSearch) cleanUpOldIndexes() {
 }
 
 func (f *ftSearch) Index(doc SearchDoc) (err error) {
-	metrics.ObjectFTUpdatedCounter.Inc()
+	f.ftUpdatedCounter.Add(1)
 	doc.TitleNoTerms = doc.Title
 	doc.TextNoTerms = doc.Text
 	return f.index.Index(doc.Id, doc)
@@ -122,7 +132,7 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc) (err error)
 	if len(docs) == 0 {
 		return nil
 	}
-	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
+	f.ftUpdatedCounter.Add(uint32(len(docs)))
 	batch := f.index.NewBatch()
 	start := time.Now()
 	defer func() {
@@ -230,6 +240,7 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results sear
 
 func (f *ftSearch) Has(id string) (exists bool, err error) {
 	d, err := f.index.Document(id)
+
 	if err != nil {
 		return false, err
 	}
@@ -253,12 +264,18 @@ func (f *ftSearch) Delete(id string) (err error) {
 }
 
 func (f *ftSearch) DocCount() (uint64, error) {
+	if f.index == nil {
+		return 0, fmt.Errorf("index is not initialized")
+	}
 	return f.index.DocCount()
 }
 
 func (f *ftSearch) Close(ctx context.Context) error {
 	if f.index != nil {
 		return f.index.Close()
+	}
+	if f.closedCh != nil {
+		close(f.closedCh)
 	}
 	return nil
 }
