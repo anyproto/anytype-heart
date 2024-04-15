@@ -59,6 +59,9 @@ func CopyStructFields(src *types.Struct, fields ...string) *types.Struct {
 	newStruct := &types.Struct{
 		Fields: make(map[string]*types.Value, len(fields)),
 	}
+	if src.GetFields() == nil {
+		return newStruct
+	}
 	for _, field := range fields {
 		if _, ok := src.Fields[field]; ok {
 			newStruct.Fields[field] = CopyVal(src.Fields[field])
