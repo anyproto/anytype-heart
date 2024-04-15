@@ -26,11 +26,10 @@ const (
 )
 
 type Image interface {
-	Exif(ctx context.Context) (*mill.ImageExifSchema, error)
 	FileId() domain.FileId
 	Details(ctx context.Context) (*types.Struct, error)
-	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
-	GetOriginalFile(ctx context.Context) (File, error)
+	GetFileForWidth(wantWidth int) (File, error)
+	GetOriginalFile() (File, error)
 }
 
 var _ Image = (*image)(nil)
@@ -103,7 +102,7 @@ func getVariantWidth(variantInfo *storage.FileInfo) int {
 	return int(pbtypes.GetInt64(variantInfo.Meta, "width"))
 }
 
-func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
+func (i *image) GetFileForWidth(wantWidth int) (File, error) {
 	variant, err := i.getVariantForWidth(wantWidth)
 	if err != nil {
 		return nil, fmt.Errorf("get variant for width: %w", err)
@@ -117,7 +116,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 }
 
 // GetOriginalFile doesn't contains Meta
-func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
+func (i *image) GetOriginalFile() (File, error) {
 	variant, err := i.getLargestVariant()
 	if err != nil {
 		return nil, fmt.Errorf("get largest variant: %w", err)
@@ -134,7 +133,7 @@ func (i *image) FileId() domain.FileId {
 	return i.fileId
 }
 
-func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
+func (i *image) getExif(ctx context.Context) (*mill.ImageExifSchema, error) {
 	variants, err := i.service.fileStore.ListFileVariants(i.fileId)
 	if err != nil {
 		return nil, fmt.Errorf("get variants: %w", err)
@@ -172,7 +171,7 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 }
 
 func (i *image) Details(ctx context.Context) (*types.Struct, error) {
-	imageExif, err := i.Exif(ctx)
+	imageExif, err := i.getExif(ctx)
 	if err != nil {
 		log.Errorf("failed to get exif for image: %s", err)
 		imageExif = &mill.ImageExifSchema{}

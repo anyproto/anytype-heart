@@ -541,7 +541,7 @@ func (e *export) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlo
 		if err != nil {
 			return "", err
 		}
-		file, err = image.GetOriginalFile(context.TODO())
+		file, err = image.GetOriginalFile()
 		if err != nil {
 			return "", err
 		}
