@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 )
 
@@ -120,7 +122,14 @@ func (f *fileSync) Name() (name string) {
 func (f *fileSync) Run(ctx context.Context) (err error) {
 	db, err := f.dbProvider.SpaceStorage()
 	if err != nil {
-		return
+		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
+			db, err = f.dbProvider.LocalStorage()
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 	f.queue, err = newFileSyncStore(db)
 	if err != nil {

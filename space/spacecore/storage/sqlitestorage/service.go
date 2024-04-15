@@ -55,23 +55,12 @@ type storageService struct {
 }
 
 type lockSpace struct {
-	ch  chan struct{}
+	ch chan struct{}
+
 	err error
 }
 
-type ClientStorage interface {
-	spacestorage.SpaceStorageProvider
-	app.ComponentRunnable
-	AllSpaceIds() (ids []string, err error)
-	GetSpaceID(objectID string) (spaceID string, err error)
-	BindSpaceID(spaceID, objectID string) (err error)
-	DeleteSpaceStorage(ctx context.Context, spaceId string) error
-	MarkSpaceCreated(id string) (err error)
-	UnmarkSpaceCreated(id string) (err error)
-	IsSpaceCreated(id string) (created bool)
-}
-
-func New() ClientStorage {
+func New() *storageService {
 	return &storageService{}
 }
 

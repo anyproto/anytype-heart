@@ -54,9 +54,12 @@ func newDbSyncer(db *badger.DB) *dbSyncer {
 }
 
 func (r *clientds) syncer() error {
-	var syncers = []*dbSyncer{
-		newDbSyncer(r.spaceDS),
-		newDbSyncer(r.localstoreDS),
+	var syncers []*dbSyncer
+	if r.spaceDS != nil {
+		syncers = append(syncers, newDbSyncer(r.spaceDS))
+	}
+	if r.localstoreDS != nil {
+		syncers = append(syncers, newDbSyncer(r.localstoreDS))
 	}
 
 	for {
