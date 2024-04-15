@@ -245,7 +245,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	}
 	if flags.bundledObjects {
 		// hardcoded for now
-		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
+		ids := []string{addr.AnytypeProfileId}
 		err := i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, ids)
 		if err != nil {
 			return fmt.Errorf("reindex profile and missing object: %w", err)
@@ -275,6 +275,10 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTemplates, smartblock2.SmartBlockTypeBundledTemplate)
 		if err != nil {
 			return fmt.Errorf("reindex bundled templates: %w", err)
+		}
+		err = i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, []string{addr.MissingObject})
+		if err != nil {
+			return fmt.Errorf("reindex missing object: %w", err)
 		}
 	}
 
