@@ -81,9 +81,9 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 }
 
 func (p *participant) modifyDetails(newDetails *types.Struct) (err error) {
-	newState := p.NewState()
-	newState.SetDetails(pbtypes.StructMerge(p.CombinedDetails(), newDetails, false))
-	return p.Apply(newState)
+	return p.DetailsUpdatable.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
+		return pbtypes.StructMerge(p.CombinedDetails(), newDetails, false), nil
+	})
 }
 
 func buildParticipantDetails(
