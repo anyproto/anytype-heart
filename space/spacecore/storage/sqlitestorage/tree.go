@@ -67,10 +67,9 @@ func createTreeStorage(ss *spaceStorage, payload treestorage.TreeStorageCreatePa
 		if chErr != nil {
 			if isUniqueConstraint(chErr) {
 				continue
-			} else {
-				_ = tx.Rollback()
-				return nil, chErr
 			}
+			_ = tx.Rollback()
+			return nil, chErr
 		}
 	}
 
