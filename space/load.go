@@ -2,7 +2,11 @@ package space
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
@@ -88,7 +92,11 @@ func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersisten
 
 func (s *service) waitLoad(ctx context.Context, ctrl spacecontroller.SpaceController) (sp clientspace.Space, err error) {
 	if ld, ok := ctrl.Current().(loader.LoadWaiter); ok {
-		return ld.WaitLoad(ctx)
+		sp, err = ld.WaitLoad(ctx)
+		if err != nil {
+			err = convertSpaceError(err)
+		}
+		return
 	}
 	return nil, fmt.Errorf("failed to load space, mode is %d: %w", ctrl.Mode(), ErrFailedToLoad)
 }
@@ -113,4 +121,15 @@ func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
 	close(wait)
 	s.spaceControllers[s.personalSpaceId] = ctrl
 	return
+}
+
+func convertSpaceError(err error) error {
+	switch {
+	case errors.Is(err, spacesyncproto.ErrSpaceIsDeleted):
+		return ErrSpaceDeleted
+	case errors.Is(err, spacestorage.ErrSpaceStorageMissing):
+		return ErrSpaceStorageMissig
+	default:
+		return err
+	}
 }

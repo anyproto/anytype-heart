@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -266,4 +268,29 @@ func TestService_ApproveLeave(t *testing.T) {
 		err := fx.ApproveLeave(ctx, spaceId, []crypto.PubKey{identityB, identityC})
 		require.Error(t, err)
 	})
+}
+
+func TestService_Join(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	cid, err := cidutil.NewCidFromBytes([]byte("spaceId"))
+	require.NoError(t, err)
+	key, err := crypto.NewRandomAES()
+	require.NoError(t, err)
+	inviteKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+	require.NoError(t, err)
+	protoKey, err := inviteKey.Marshall()
+	require.NoError(t, err)
+	fx.mockInviteService.EXPECT().GetPayload(ctx, cid, key).Return(&model.InvitePayload{
+		InviteKey: protoKey,
+	}, nil)
+	metadataPayload := []byte("metadata")
+	fx.mockJoiningClient.EXPECT().RequestJoin(ctx, "spaceId", list.RequestJoinPayload{
+		InviteKey: inviteKey,
+		Metadata:  metadataPayload,
+	}).Return("aclHeadId", nil)
+	fx.mockSpaceService.EXPECT().Join(ctx, "spaceId", "aclHeadId").Return(nil)
+	fx.mockSpaceService.EXPECT().TechSpace().Return(&clientspace.TechSpace{TechSpace: fx.mockTechSpace})
+	fx.mockTechSpace.EXPECT().SpaceViewSetData(ctx, "spaceId", mock.Anything).Return(nil)
+	fx.Join(ctx, "space", cid, key)
 }
