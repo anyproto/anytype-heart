@@ -9,9 +9,6 @@ import (
 )
 
 func (s *Service) AccountRecover() error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	if s.mnemonic == "" {
 		return ErrNoMnemonicProvided
 	}
