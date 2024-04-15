@@ -35,8 +35,9 @@ import (
 
 type IndexerFixture struct {
 	*indexer
-	pickerFx    *mock_cache.MockObjectGetter
-	objectStore *objectstore.StoreFixture
+	pickerFx         *mock_cache.MockObjectGetter
+	storageServiceFx *mock_storage.MockClientStorage
+	objectStore      *objectstore.StoreFixture
 }
 
 func NewIndexerFixture(t *testing.T) *IndexerFixture {
@@ -67,7 +68,8 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	indxr.newAccount = config.New().NewAccount
 	indxr.store = objectStore
-	indxr.storageService = clientStorage
+	indexerFx.storageService = clientStorage
+	indexerFx.storageServiceFx = clientStorage
 	indxr.source = sourceService
 
 	hasher := mock_indexer.NewMockHasher(t)
