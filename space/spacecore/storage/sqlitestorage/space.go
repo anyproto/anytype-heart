@@ -59,6 +59,7 @@ func newSpaceStorage(s *storageService, spaceId string) (spacestorage.SpaceStora
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, spacestorage.ErrSpaceStorageMissing
 		}
+		return nil, err
 	}
 	if ss.aclStorage, err = newListStorage(ss, ss.aclId); err != nil {
 		return nil, err
@@ -143,7 +144,6 @@ func createSpaceStorage(s *storageService, payload spacestorage.SpaceStorageCrea
 	}
 
 	if ss.aclStorage, err = newListStorage(ss, ss.aclId); err != nil {
-		_ = tx.Rollback()
 		return nil, err
 	}
 
@@ -219,7 +219,7 @@ func (s *spaceStorage) StoredIds() (result []string, err error) {
 		return nil, err
 	}
 	defer func() {
-		err = rows.Close()
+		err = errors.Join(err, rows.Close())
 	}()
 	for rows.Next() {
 		var id string

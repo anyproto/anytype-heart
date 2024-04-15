@@ -241,7 +241,7 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 		return nil, err
 	}
 	defer func() {
-		err = rows.Close()
+		err = errors.Join(rows.Close())
 	}()
 	for rows.Next() {
 		var id string
@@ -265,10 +265,8 @@ func (s *storageService) Close(ctx context.Context) (err error) {
 
 func isUniqueConstraint(err error) bool {
 	var sqliteErr sqlite3.Error
-	if errors.As(err, &sqliteErr) {
-		if errors.Is(sqliteErr.Code, sqlite3.ErrConstraint) {
-			return true
-		}
+	if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.Code, sqlite3.ErrConstraint) {
+		return true
 	}
 	return false
 }

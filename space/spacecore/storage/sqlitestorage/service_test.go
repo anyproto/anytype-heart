@@ -146,7 +146,7 @@ func newFixture(t require.TestingT) *fixture {
 	tmpDir, e := os.MkdirTemp("", "")
 	require.NoError(t, e)
 	fx := &fixture{
-		storageService: New().(*storageService),
+		storageService: New(),
 		a:              new(app.App),
 		tmpDir:         tmpDir,
 	}
