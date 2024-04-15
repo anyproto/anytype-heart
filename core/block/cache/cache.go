@@ -1,14 +1,21 @@
-package block
+package cache
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 )
+
+type ObjectGetterComponent interface {
+	app.Component
+	ObjectGetter
+}
 
 type ObjectGetter interface {
 	GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)

@@ -442,6 +442,9 @@ func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate 
 }
 
 func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
+	if len(identities) == 0 {
+		return nil, nil
+	}
 	res, err := s.identityRepoClient.IdentityRepoGet(ctx, identities, []string{identityRepoDataKind})
 	if err == nil {
 		return res, nil

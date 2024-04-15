@@ -798,6 +798,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		// then
 		assert.Nil(t, res.Err)
 		assert.Equal(t, expectedRootCollectionID, res.RootCollectionId)
+		assert.Equal(t, int64(0), res.ObjectsCount) // doesn't count root collection
 	})
 
 	t.Run("return empty root collection id in case of error", func(t *testing.T) {

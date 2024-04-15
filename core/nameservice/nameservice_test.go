@@ -16,5 +16,8 @@ func TestNsNameToFullName(t *testing.T) {
 		// in this case other NS methods should check the validity and return an error
 		out = NsNameToFullName("tony", 1)
 		require.Equal(t, "tony", out)
+
+		out = NsNameToFullName("", model.NameserviceNameType_AnyName)
+		require.Equal(t, "", out)
 	})
 }

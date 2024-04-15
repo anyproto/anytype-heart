@@ -43,6 +43,24 @@ func TestStructIterate(t *testing.T) {
 	assert.Contains(t, paths, []string{"two"})
 }
 
+func TestCopyStructFields(t *testing.T) {
+	src := &types.Struct{
+		Fields: map[string]*types.Value{
+			"one": String("one"),
+			"two": Int64(2),
+			"three": Struct(&types.Struct{
+				Fields: map[string]*types.Value{
+					"child": String("childVal"),
+				},
+			}),
+		},
+	}
+	newStruct := CopyStructFields(src, "one", "three")
+	assert.Len(t, newStruct.Fields, 2)
+	assert.Equal(t, newStruct.Fields["one"], src.Fields["one"])
+	assert.Equal(t, newStruct.Fields["three"], src.Fields["three"])
+}
+
 func TestStructEqualKeys(t *testing.T) {
 	st1 := &types.Struct{Fields: map[string]*types.Value{
 		"k1": String("1"),

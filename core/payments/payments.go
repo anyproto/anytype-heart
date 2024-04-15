@@ -753,6 +753,13 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 			AnyNamesCountIncluded: tier.AnyNamesCountIncluded,
 			AnyNameMinLength:      tier.AnyNameMinLength,
 			ColorStr:              tier.ColorStr,
+			// platform-specific fields:
+			StripeProductId:  tier.StripeProductId,
+			StripeManageUrl:  tier.StripeManageUrl,
+			IosProductId:     tier.IosProductId,
+			IosManageUrl:     tier.IosManageUrl,
+			AndroidProductId: tier.AndroidProductId,
+			AndroidManageUrl: tier.AndroidManageUrl,
 		}
 
 		// copy all features

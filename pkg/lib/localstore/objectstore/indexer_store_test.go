@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,7 @@ func TextIndexerBatch(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue("three"))
 
 		var batches [][]string
-		err := s.BatchProcessFullTextQueue(2, func(ids []string) error {
+		err := s.BatchProcessFullTextQueue(context.Background(), 2, func(ids []string) error {
 			batches = append(batches, ids)
 			return nil
 		})
@@ -70,7 +71,6 @@ func TestIndexerChecksums(t *testing.T) {
 			ObjectsForceReindexCounter:       1,
 			FilesForceReindexCounter:         2,
 			IdxRebuildCounter:                3,
-			FulltextRebuild:                  4,
 			BundledTemplates:                 "hash4",
 			BundledObjects:                   5,
 			FilestoreKeysForceReindexCounter: 6,

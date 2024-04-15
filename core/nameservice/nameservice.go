@@ -16,6 +16,11 @@ import (
 const CName = "nameservice"
 
 func NsNameToFullName(nsName string, nsNameType model.NameserviceNameType) string {
+	// if no name - return empty string
+	if nsName == "" {
+		return ""
+	}
+
 	if nsNameType == model.NameserviceNameType_AnyName {
 		return nsName + ".any"
 	}
