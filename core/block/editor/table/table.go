@@ -831,11 +831,11 @@ func pickColumn(s *state.State, id string) (simple.Block, error) {
 }
 
 func MakeCellID(rowID, colID string) string {
-	return fmt.Sprintf("%s-%s", rowID, colID)
+	return fmt.Sprintf("%s%s%s", rowID, table.TableCellSeparator, colID)
 }
 
 func ParseCellID(id string) (rowID string, colID string, err error) {
-	toks := strings.SplitN(id, "-", 2)
+	toks := strings.SplitN(id, table.TableCellSeparator, 2)
 	if len(toks) != 2 {
 		return "", "", fmt.Errorf("invalid id: must contains rowID and colID")
 	}
