@@ -136,10 +136,9 @@ func (t *treeStorage) AddRawChangesSetHeads(changes []*treechangeproto.RawTreeCh
 		if chErr != nil {
 			if isUniqueConstraint(chErr) {
 				continue
-			} else {
-				_ = tx.Rollback()
-				return chErr
 			}
+			_ = tx.Rollback()
+			return chErr
 		}
 	}
 
