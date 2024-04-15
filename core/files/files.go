@@ -425,7 +425,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if variant, _ := s.fileStore.GetFileVariantBySource(mill.ID(), conf.checksum, opts); variant != nil && variant.MetaHash != "" {
+	if variant, err := s.fileStore.GetFileVariantBySource(mill.ID(), conf.checksum, opts); err == nil {
 		return newExistingFileResult(variant)
 	}
 
@@ -441,7 +441,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if variant, _ := s.fileStore.GetFileVariantByChecksum(mill.ID(), variantChecksum); variant != nil && variant.MetaHash != "" {
+	if variant, err := s.fileStore.GetFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
 		return newExistingFileResult(variant)
 	}
 
