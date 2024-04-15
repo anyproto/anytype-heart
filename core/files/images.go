@@ -51,26 +51,25 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 	addLock := s.lockAddOperation(opts.checksum)
 
-	dirEntries, err := s.addImageNodes(ctx, spaceId, opts)
-	var errExists *errFileExists
-	if errors.As(err, &errExists) {
-		res, err := s.newExistingFileResult(addLock, errExists.fileId)
+	addNodesResult, err := s.addImageNodes(ctx, spaceId, opts)
+	if err != nil {
+		addLock.Unlock()
+		return nil, err
+	}
+	if addNodesResult.isExisting {
+		res, err := s.newExistingFileResult(addLock, addNodesResult.fileId)
 		if err != nil {
 			addLock.Unlock()
 			return nil, err
 		}
 		return res, nil
 	}
-	if err != nil {
-		addLock.Unlock()
-		return nil, err
-	}
-	if len(dirEntries) == 0 {
+	if len(addNodesResult.dirEntries) == 0 {
 		addLock.Unlock()
 		return nil, errors.New("no image variants")
 	}
 
-	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, dirEntries)
+	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, addNodesResult.dirEntries)
 	if err != nil {
 		addLock.Unlock()
 		return nil, err
@@ -86,6 +85,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
+	dirEntries := addNodesResult.dirEntries
 	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
 	successfullyAdded := make([]domain.FileContentId, 0, len(dirEntries))
 	for _, variant := range dirEntries {
@@ -119,7 +119,26 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}, nil
 }
 
-func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts AddOptions) ([]dirEntry, error) {
+type addImageNodesResult struct {
+	isExisting bool
+	fileId     domain.FileId
+	dirEntries []dirEntry
+}
+
+func newExistingImageResult(fileId domain.FileId) *addImageNodesResult {
+	return &addImageNodesResult{
+		isExisting: true,
+		fileId:     fileId,
+	}
+}
+
+func newImageNodesResult(dirEntries []dirEntry) *addImageNodesResult {
+	return &addImageNodesResult{
+		dirEntries: dirEntries,
+	}
+}
+
+func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts AddOptions) (*addImageNodesResult, error) {
 	sch := schema.ImageResizeSchema
 	if len(sch.Links) == 0 {
 		return nil, schema.ErrEmptySchema
@@ -141,18 +160,21 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts Add
 		if err != nil {
 			return nil, err
 		}
-		added, fileNode, err := s.addFileNode(ctx, spaceID, stepMill, *opts, link.Name)
+		addNodeResult, err := s.addFileNode(ctx, spaceID, stepMill, *opts, link.Name)
 		if err != nil {
 			return nil, err
 		}
+		if addNodeResult.isExisting {
+			return newExistingImageResult(addNodeResult.fileId), nil
+		}
 		dirEntries = append(dirEntries, dirEntry{
 			name:     link.Name,
-			fileInfo: added,
-			fileNode: fileNode,
+			fileInfo: addNodeResult.variant,
+			fileNode: addNodeResult.filePairNode,
 		})
 		addOpts.Reader.Seek(0, 0)
 	}
-	return dirEntries, nil
+	return newImageNodesResult(dirEntries), nil
 }
 
 // addImageRootNode has structure:
@@ -178,7 +200,6 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 	inner.SetCidBuilder(cidBuilder)
 
 	for _, entry := range dirEntries {
-
 		err := helpers.AddLinkToDirectory(ctx, dagService, inner, entry.name, entry.fileNode.Cid().String())
 		if err != nil {
 			return nil, nil, err
