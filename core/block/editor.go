@@ -669,7 +669,7 @@ func (s *Service) ListConvertToObjects(
 	ctx session.Context, req pb.RpcBlockListConvertToObjectsRequest,
 ) (linkIds []string, err error) {
 	err = Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		linkIds, err = b.ExtractBlocksToObjects(ctx, s.objectCreator, req)
+		linkIds, err = b.ExtractBlocksToObjects(ctx, s.objectCreator, s.templateService, req)
 		return err
 	})
 	return

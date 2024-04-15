@@ -113,6 +113,7 @@ type Service struct {
 	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
 	objectCreator        objectcreator.Service
+	templateService      templateService
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	commonAccount        accountservice.Service
@@ -134,6 +135,10 @@ type builtinObjects interface {
 	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
+type templateService interface {
+	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
+}
+
 type openedObjects struct {
 	objects map[string]bool
 	lock    *sync.Mutex
@@ -153,6 +158,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
+	s.templateService = app.MustComponent[templateService](a).(templateService)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)

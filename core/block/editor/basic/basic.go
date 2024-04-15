@@ -52,7 +52,7 @@ type CommonOperations interface {
 
 	PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error)
 	ReplaceLink(oldId, newId string) error
-	ExtractBlocksToObjects(ctx session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc TemplateStateCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
 	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
 	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
