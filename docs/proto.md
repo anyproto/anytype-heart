@@ -21198,6 +21198,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
+| NOT_SHAREABLE | 105 |  |
 
 
 
@@ -21215,6 +21216,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
+| NOT_SHAREABLE | 105 |  |
 
 
 
@@ -21246,6 +21248,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | LIMIT_REACHED | 103 |  |
 | REQUEST_FAILED | 104 |  |
+| NOT_SHAREABLE | 105 |  |
 
 
 
@@ -21280,6 +21283,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INVITE_BAD_CONTENT | 104 |  |
 | REQUEST_FAILED | 105 |  |
 | LIMIT_REACHED | 106 |  |
+| NOT_SHAREABLE | 107 |  |
 
 
 
@@ -21298,6 +21302,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NO_SUCH_REQUEST | 105 |  |
+| NOT_SHAREABLE | 106 |  |
 
 
 
@@ -21316,6 +21321,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NO_APPROVE_REQUESTS | 105 |  |
+| NOT_SHAREABLE | 106 |  |
 
 
 
@@ -21352,6 +21358,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | LIMIT_REACHED | 104 |  |
 | PARTICIPANT_NOT_FOUND | 105 |  |
 | INCORRECT_PERMISSIONS | 106 |  |
+| NOT_SHAREABLE | 107 |  |
 
 
 
@@ -21370,6 +21377,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PARTICIPANT_NOT_FOUND | 103 |  |
 | REQUEST_FAILED | 104 |  |
 | LIMIT_REACHED | 105 |  |
+| NOT_SHAREABLE | 106 |  |
 
 
 
@@ -21389,6 +21397,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INCORRECT_PERMISSIONS | 104 |  |
 | REQUEST_FAILED | 105 |  |
 | LIMIT_REACHED | 106 |  |
+| NOT_SHAREABLE | 107 |  |
 
 
 
@@ -21407,6 +21416,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NO_SUCH_REQUEST | 105 |  |
+| NOT_SHAREABLE | 106 |  |
 
 
 

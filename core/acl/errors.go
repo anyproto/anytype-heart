@@ -17,6 +17,7 @@ var (
 	ErrIncorrectPermissions = errors.New("incorrect permissions")
 	ErrNoSuchAccount        = errors.New("no such user")
 	ErrAclRequestFailed     = errors.New("acl request failed")
+	ErrNotShareable         = errors.New("space is not shareable")
 	ErrLimitReached         = errors.New("limit reached")
 	ErrInternal             = errors.New("internal error")
 )
@@ -46,6 +47,8 @@ func convertErrorOrReturn(err, otherErr error) error {
 		return space.ErrSpaceDeleted
 	case errors.Is(err, coordinatorproto.ErrSpaceLimitReached):
 		return ErrLimitReached
+	case errors.Is(err, coordinatorproto.ErrSpaceNotShareable):
+		return ErrNotShareable
 	case errors.Is(err, list.ErrNoSuchRecord):
 		return ErrRequestNotExists
 	case errors.Is(err, list.ErrNoSuchAccount):

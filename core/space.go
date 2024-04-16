@@ -27,6 +27,7 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceDeleteResponseError_NO_SUCH_SPACE),
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceDeleteResponseError_REQUEST_FAILED),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceDeleteResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceDeleteResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceDeleteResponse{
 		Error: &pb.RpcSpaceDeleteResponseError{
@@ -67,6 +68,7 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteGenerateResponseError_BAD_INPUT),
 			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteGenerateResponseError_REQUEST_FAILED),
 			errToCode(acl.ErrLimitReached, pb.RpcSpaceInviteGenerateResponseError_LIMIT_REACHED),
+			errToCode(acl.ErrNotShareable, pb.RpcSpaceInviteGenerateResponseError_NOT_SHAREABLE),
 		)
 		return &pb.RpcSpaceInviteGenerateResponse{
 			Error: &pb.RpcSpaceInviteGenerateResponseError{
@@ -110,6 +112,7 @@ func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceIn
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteRevokeResponseError_NO_SUCH_SPACE),
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteRevokeResponseError_REQUEST_FAILED),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceInviteRevokeResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceInviteRevokeResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceInviteRevokeResponse{
 		Error: &pb.RpcSpaceInviteRevokeResponseError{
@@ -166,6 +169,7 @@ func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinReques
 		errToCode(inviteservice.ErrInviteNotExists, pb.RpcSpaceJoinResponseError_INVITE_NOT_FOUND),
 		errToCode(inviteservice.ErrInviteGet, pb.RpcSpaceJoinResponseError_INVITE_NOT_FOUND),
 		errToCode(inviteservice.ErrInviteBadContent, pb.RpcSpaceJoinResponseError_INVITE_BAD_CONTENT),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceJoinResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceJoinResponse{
 		Error: &pb.RpcSpaceJoinResponseError{
@@ -201,6 +205,7 @@ func (mw *Middleware) SpaceJoinCancel(cctx context.Context, req *pb.RpcSpaceJoin
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceJoinCancelResponseError_REQUEST_FAILED),
 		errToCode(acl.ErrRequestNotExists, pb.RpcSpaceJoinCancelResponseError_NO_SUCH_REQUEST),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceJoinCancelResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceJoinCancelResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceJoinCancelResponse{
 		Error: &pb.RpcSpaceJoinCancelResponseError{
@@ -220,6 +225,7 @@ func (mw *Middleware) SpaceRequestApprove(cctx context.Context, req *pb.RpcSpace
 		errToCode(acl.ErrIncorrectPermissions, pb.RpcSpaceRequestApproveResponseError_INCORRECT_PERMISSIONS),
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceRequestApproveResponseError_REQUEST_FAILED),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceRequestApproveResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceRequestApproveResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceRequestApproveResponse{
 		Error: &pb.RpcSpaceRequestApproveResponseError{
@@ -238,6 +244,7 @@ func (mw *Middleware) SpaceRequestDecline(cctx context.Context, req *pb.RpcSpace
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceRequestDeclineResponseError_REQUEST_FAILED),
 		errToCode(acl.ErrRequestNotExists, pb.RpcSpaceRequestDeclineResponseError_NO_SUCH_REQUEST),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceRequestDeclineResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceRequestDeclineResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceRequestDeclineResponse{
 		Error: &pb.RpcSpaceRequestDeclineResponseError{
@@ -256,6 +263,7 @@ func (mw *Middleware) SpaceParticipantRemove(cctx context.Context, req *pb.RpcSp
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceParticipantRemoveResponseError_REQUEST_FAILED),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceParticipantRemoveResponseError_LIMIT_REACHED),
 		errToCode(acl.ErrNoSuchAccount, pb.RpcSpaceParticipantRemoveResponseError_PARTICIPANT_NOT_FOUND),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceParticipantRemoveResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceParticipantRemoveResponse{
 		Error: &pb.RpcSpaceParticipantRemoveResponseError{
@@ -275,6 +283,7 @@ func (mw *Middleware) SpaceParticipantPermissionsChange(cctx context.Context, re
 		errToCode(acl.ErrNoSuchAccount, pb.RpcSpaceParticipantPermissionsChangeResponseError_PARTICIPANT_NOT_FOUND),
 		errToCode(acl.ErrIncorrectPermissions, pb.RpcSpaceParticipantPermissionsChangeResponseError_INCORRECT_PERMISSIONS),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceParticipantPermissionsChangeResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceParticipantPermissionsChangeResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceParticipantPermissionsChangeResponse{
 		Error: &pb.RpcSpaceParticipantPermissionsChangeResponseError{
@@ -293,6 +302,7 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceLeaveApproveResponseError_REQUEST_FAILED),
 		errToCode(acl.ErrRequestNotExists, pb.RpcSpaceLeaveApproveResponseError_NO_APPROVE_REQUESTS),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceLeaveApproveResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceLeaveApproveResponseError_NOT_SHAREABLE),
 	)
 	return &pb.RpcSpaceLeaveApproveResponse{
 		Error: &pb.RpcSpaceLeaveApproveResponseError{

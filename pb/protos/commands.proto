@@ -116,6 +116,7 @@ message Rpc {
                         REQUEST_FAILED = 103;
                         LIMIT_REACHED = 104;
                         NO_APPROVE_REQUESTS = 105;
+                        NOT_SHAREABLE = 106;
                     }
                 }
             }
@@ -170,6 +171,7 @@ message Rpc {
                         SPACE_IS_DELETED = 102;
                         REQUEST_FAILED = 103;
                         LIMIT_REACHED = 104;
+                        NOT_SHAREABLE = 105;
                     }
                 }
             }
@@ -247,6 +249,7 @@ message Rpc {
                         SPACE_IS_DELETED = 102;
                         LIMIT_REACHED = 103;
                         REQUEST_FAILED = 104;
+                        NOT_SHAREABLE = 105;
                     }
                 }
             }
@@ -307,6 +310,7 @@ message Rpc {
                         INVITE_BAD_CONTENT = 104;
                         REQUEST_FAILED = 105;
                         LIMIT_REACHED = 106;
+                        NOT_SHAREABLE = 107;
                     }
                 }
             }
@@ -334,6 +338,7 @@ message Rpc {
                         REQUEST_FAILED = 103;
                         LIMIT_REACHED = 104;
                         NO_SUCH_REQUEST = 105;
+                        NOT_SHAREABLE = 106;
                     }
                 }
             }
@@ -364,6 +369,7 @@ message Rpc {
                         INCORRECT_PERMISSIONS = 104;
                         REQUEST_FAILED = 105;
                         LIMIT_REACHED = 106;
+                        NOT_SHAREABLE = 107;
                     }
                 }
             }
@@ -392,6 +398,7 @@ message Rpc {
                         REQUEST_FAILED = 103;
                         LIMIT_REACHED = 104;
                         NO_SUCH_REQUEST = 105;
+                        NOT_SHAREABLE = 106;
                     }
                 }
             }
@@ -420,6 +427,7 @@ message Rpc {
                         PARTICIPANT_NOT_FOUND = 103;
                         REQUEST_FAILED = 104;
                         LIMIT_REACHED = 105;
+                        NOT_SHAREABLE = 106;
                     }
                 }
             }
@@ -449,6 +457,7 @@ message Rpc {
                         LIMIT_REACHED = 104;
                         PARTICIPANT_NOT_FOUND = 105;
                         INCORRECT_PERMISSIONS = 106;
+                        NOT_SHAREABLE = 107;
                     }
                 }
             }
@@ -476,6 +485,7 @@ message Rpc {
                         SPACE_IS_DELETED = 102;
                         REQUEST_FAILED = 103;
                         LIMIT_REACHED = 104;
+                        NOT_SHAREABLE = 105;
                     }
                 }
             }
