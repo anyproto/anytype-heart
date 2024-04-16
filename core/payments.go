@@ -241,3 +241,7 @@ func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembers
 
 	return out
 }
+
+func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) *pb.RpcMembershipVerifyAppStoreReceiptResponse {
+	return nil
+}

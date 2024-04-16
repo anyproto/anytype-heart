@@ -663,6 +663,10 @@
     - [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request)
     - [Rpc.Membership.Tiers.Get.Response](#anytype-Rpc-Membership-Tiers-Get-Response)
     - [Rpc.Membership.Tiers.Get.Response.Error](#anytype-Rpc-Membership-Tiers-Get-Response-Error)
+    - [Rpc.Membership.VerifyAppStoreReceipt](#anytype-Rpc-Membership-VerifyAppStoreReceipt)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error)
     - [Rpc.Membership.VerifyEmailCode](#anytype-Rpc-Membership-VerifyEmailCode)
     - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
@@ -1263,6 +1267,7 @@
     - [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code)
     - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
     - [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
@@ -1991,6 +1996,7 @@
 | MembershipVerifyEmailCode | [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request) | [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (MembershipGetVerificationEmail) |
 | MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
 | MembershipGetTiers | [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request) | [Rpc.Membership.Tiers.Get.Response](#anytype-Rpc-Membership-Tiers-Get-Response) |  |
+| MembershipVerifyAppStoreReceipt | [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request) | [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -11579,6 +11585,66 @@ you can call this method to get the latest tiers
 
 
 
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Request"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedTier | [uint32](#uint32) |  |  |
+| receipt | [string](#string) |  | receipt is a JWT-encoded string including info about subscription purchase |
+| nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error) |  |  |
+| data | [model.Membership](#anytype-model-Membership) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Membership-VerifyEmailCode"></a>
 
 ### Rpc.Membership.VerifyEmailCode
@@ -20143,6 +20209,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

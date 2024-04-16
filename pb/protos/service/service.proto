@@ -335,6 +335,7 @@ service ClientCommands {
     rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
 
     rpc MembershipGetTiers (anytype.Rpc.Membership.Tiers.Get.Request) returns (anytype.Rpc.Membership.Tiers.Get.Response);
+    rpc MembershipVerifyAppStoreReceipt (anytype.Rpc.Membership.VerifyAppStoreReceipt.Request) returns (anytype.Rpc.Membership.VerifyAppStoreReceipt.Response);
 
     // Name Service:
     // ***
