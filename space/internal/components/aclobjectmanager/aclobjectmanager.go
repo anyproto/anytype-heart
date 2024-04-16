@@ -157,18 +157,15 @@ func (a *aclObjectManager) process() {
 
 func (a *aclObjectManager) processAcl() (err error) {
 	var (
-		common         = a.sp.CommonSpace()
-		acl            = common.Acl()
-		aclState       = acl.AclState()
-		accountRemoved bool
+		common   = a.sp.CommonSpace()
+		acl      = common.Acl()
+		aclState = acl.AclState()
+		upToDate bool
 	)
 	defer func() {
 		if err == nil {
 			permissions := aclState.Permissions(aclState.AccountKey().GetPublic())
-			accountStatus := spaceinfo.AccountStatusActive
-			if accountRemoved {
-				accountStatus = spaceinfo.AccountStatusDeleted
-			}
+			accountStatus := getAccountStatus(aclState, upToDate)
 			a.notificationService.AddRecords(acl, permissions, common.Id(), accountStatus)
 		}
 	}()
@@ -195,8 +192,8 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
-	upToDate := statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
-	err, accountRemoved = a.processStates(states, upToDate, aclState.Identity())
+	upToDate = statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
+	err = a.processStates(states, upToDate, aclState.Identity())
 	if err != nil {
 		return
 	}
@@ -210,22 +207,21 @@ func (a *aclObjectManager) processAcl() (err error) {
 	return
 }
 
-func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error, removed bool) {
+func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	for _, state := range states {
 		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
-			removed = true
-			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving), removed
+			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
 		}
 		err := a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
 		if err != nil {
-			return err, removed
+			return err
 		}
 		err = a.participantWatcher.WatchParticipant(a.ctx, a.sp, state)
 		if err != nil {
-			return err, removed
+			return err
 		}
 	}
-	return nil, removed
+	return nil
 }
 
 func decryptAll(states []list.AccountState, decrypt func(key crypto.PubKey) ([]byte, error)) (decrypted []list.AccountState, err error) {
@@ -250,4 +246,11 @@ func sortStates(states []list.AccountState) {
 			return 1
 		}
 	})
+}
+
+func getAccountStatus(aclState *list.AclState, upToDate bool) spaceinfo.AccountStatus {
+	if aclState.Permissions(aclState.Identity()).NoPermissions() && upToDate {
+		return spaceinfo.AccountStatusDeleted
+	}
+	return spaceinfo.AccountStatusActive
 }
