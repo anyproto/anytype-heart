@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/file/mock_file"
+	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -245,7 +245,7 @@ func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*m
 }
 
 func newFixture(t *testing.T, sb smartblock.SmartBlock) Clipboard {
-	file := mock_file.NewMockFile(t)
+	file := file.NewMockFile(t)
 	file.EXPECT().UploadState(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	return NewClipboard(sb, file, nil, nil, nil, nil)
 }
