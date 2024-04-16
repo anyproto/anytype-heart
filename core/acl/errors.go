@@ -42,17 +42,17 @@ func convertErrorOrReturn(err, otherErr error) error {
 	}
 	switch {
 	case errors.Is(err, coordinatorproto.ErrSpaceNotExists):
-		return space.ErrSpaceNotExists
+		return wrapError("space not exists", err, space.ErrSpaceNotExists)
 	case errors.Is(err, coordinatorproto.ErrSpaceIsDeleted):
-		return space.ErrSpaceDeleted
+		return wrapError("space is deleted", err, space.ErrSpaceDeleted)
 	case errors.Is(err, coordinatorproto.ErrSpaceLimitReached):
-		return ErrLimitReached
+		return wrapError("space limit reached", err, ErrLimitReached)
 	case errors.Is(err, coordinatorproto.ErrSpaceNotShareable):
-		return ErrNotShareable
+		return wrapError("space is not shareable", err, ErrNotShareable)
 	case errors.Is(err, list.ErrNoSuchRecord):
-		return ErrRequestNotExists
+		return wrapError("request doesn't exist", err, ErrRequestNotExists)
 	case errors.Is(err, list.ErrNoSuchAccount):
-		return ErrNoSuchAccount
+		return wrapError("no such account", err, ErrNoSuchAccount)
 	default:
 		return otherErr
 	}

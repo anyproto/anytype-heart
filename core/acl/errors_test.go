@@ -39,27 +39,27 @@ func TestConvertError(t *testing.T) {
 	t.Run("specific error", func(t *testing.T) {
 		err := coordinatorproto.ErrSpaceIsDeleted
 		err = convertErrorOrReturn(err, ErrInternal)
-		require.Equal(t, space.ErrSpaceDeleted, err)
+		require.True(t, errors.Is(err, space.ErrSpaceDeleted))
 
 		err = coordinatorproto.ErrSpaceNotExists
 		err = convertErrorOrReturn(err, ErrInternal)
-		require.Equal(t, space.ErrSpaceNotExists, err)
+		require.True(t, errors.Is(err, space.ErrSpaceNotExists))
 
 		err = coordinatorproto.ErrSpaceNotShareable
 		err = convertErrorOrReturn(err, ErrInternal)
-		require.Equal(t, ErrNotShareable, err)
+		require.True(t, errors.Is(err, ErrNotShareable))
 
 		err = coordinatorproto.ErrSpaceLimitReached
 		err = convertErrorOrReturn(err, ErrInternal)
-		require.Equal(t, ErrLimitReached, err)
+		require.True(t, errors.Is(err, ErrLimitReached))
 
 		err = list.ErrNoSuchRecord
 		err = convertErrorOrReturn(err, ErrInternal)
-		require.Equal(t, ErrRequestNotExists, err)
+		require.True(t, errors.Is(err, ErrRequestNotExists))
 
 		err = list.ErrNoSuchAccount
 		err = convertErrorOrReturn(err, ErrInternal)
-		require.Equal(t, ErrNoSuchAccount, err)
+		require.True(t, errors.Is(err, ErrNoSuchAccount))
 	})
 	t.Run("other error for converted", func(t *testing.T) {
 		err := fmt.Errorf("test")
