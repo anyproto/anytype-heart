@@ -59,7 +59,7 @@ func New(app *app.App, params Params) Joiner {
 					params.Log.Error("failed to set persistent status", zap.Error(err))
 				}
 				aclNotificationSender := child.MustComponent(aclnotifications.CName).(aclnotifications.AclNotification)
-				aclNotificationSender.AddRecords(acl, 0, params.SpaceId, spaceinfo.AccountStatusDeleted)
+				aclNotificationSender.AddSingleRecord(acl.Id(), acl.Head(), 0, params.SpaceId, spaceinfo.AccountStatusDeleted)
 				return err
 			}))
 	return &joiner{
