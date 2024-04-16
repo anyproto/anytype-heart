@@ -126,7 +126,7 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
@@ -150,7 +150,7 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
@@ -200,7 +200,7 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 		// fx.cache.EXPECT().CacheEnable().Return(nil)
@@ -250,7 +250,7 @@ func TestGetStatus(t *testing.T) {
 
 		// here: cache is disabled
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, cache.ErrCacheDisabled)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 		// fx.cache.EXPECT().CacheEnable().Return(nil)
@@ -299,7 +299,7 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return errors.New("can not write to cache!")
 		})
 
@@ -373,7 +373,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
 		// here time.Now() will be passed which can be a bit different from the the cacheExpireTime
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDisabled)
-		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 
@@ -388,7 +388,7 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, uint64(0), resp.Data.DateStarted)
 		assert.Equal(t, uint64(0), resp.Data.DateEnds)
 		assert.Equal(t, false, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.Membership_MethodCard, resp.Data.PaymentMethod)
+		assert.Equal(t, model.Membership_MethodStripe, resp.Data.PaymentMethod)
 		assert.Equal(t, "", resp.Data.RequestedAnyName)
 	})
 
@@ -425,7 +425,7 @@ func TestGetStatus(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
@@ -480,7 +480,7 @@ func TestGetStatus(t *testing.T) {
 
 		// return real struct and error
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDisabled)
-		fx.cache.EXPECT().CacheSet(&psgsr2, mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(&psgsr2, mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), cacheExpireTime).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 
@@ -737,7 +737,7 @@ func TestGetTiers(t *testing.T) {
 
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
 
-		req := pb.RpcMembershipTiersGetRequest{
+		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
 			Locale:  "en_US",
 		}
@@ -750,7 +750,7 @@ func TestGetTiers(t *testing.T) {
 		defer fx.finish(t)
 
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 
@@ -774,7 +774,7 @@ func TestGetTiers(t *testing.T) {
 
 		fx.expectLimitsUpdated()
 
-		req := pb.RpcMembershipTiersGetRequest{
+		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: true,
 			Locale:  "en_US",
 		}
@@ -787,7 +787,7 @@ func TestGetTiers(t *testing.T) {
 		defer fx.finish(t)
 
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 
@@ -839,7 +839,7 @@ func TestGetTiers(t *testing.T) {
 
 		fx.expectLimitsUpdated()
 
-		req := pb.RpcMembershipTiersGetRequest{
+		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
 			Locale:  "en_US",
 		}
@@ -887,7 +887,7 @@ func TestGetTiers(t *testing.T) {
 			},
 		}
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 
@@ -906,7 +906,7 @@ func TestGetTiers(t *testing.T) {
 			}, nil
 		}).MinTimes(1)
 
-		req := pb.RpcMembershipTiersGetRequest{
+		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
 			Locale:  "en_US",
 		}
@@ -945,7 +945,7 @@ func TestGetTiers(t *testing.T) {
 			},
 		}
 
-		tgr := pb.RpcMembershipTiersGetResponse{
+		tgr := pb.RpcMembershipGetTiersResponse{
 			Tiers: []*model.MembershipTierData{
 				{
 					Id:          1,
@@ -956,7 +956,7 @@ func TestGetTiers(t *testing.T) {
 		}
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
-		req := pb.RpcMembershipTiersGetRequest{
+		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
 			Locale:  "en_US",
 		}
@@ -1000,7 +1000,7 @@ func TestGetTiers(t *testing.T) {
 			},
 		}
 
-		tgr := pb.RpcMembershipTiersGetResponse{
+		tgr := pb.RpcMembershipGetTiersResponse{
 			Tiers: []*model.MembershipTierData{
 				{
 					Id:          1,
@@ -1021,7 +1021,7 @@ func TestGetTiers(t *testing.T) {
 		}
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
 
-		req := pb.RpcMembershipTiersGetRequest{
+		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
 			Locale:  "en_US",
 		}
@@ -1051,7 +1051,7 @@ func TestGetTiers(t *testing.T) {
 			return &sr, nil
 		}).MinTimes(1)
 
-		tgr := pb.RpcMembershipTiersGetResponse{
+		tgr := pb.RpcMembershipGetTiersResponse{
 			Tiers: []*model.MembershipTierData{
 				{
 					Id:          1,
@@ -1072,14 +1072,14 @@ func TestGetTiers(t *testing.T) {
 		}
 		fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
 		// should call it to save status
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
-		req := pb.RpcMembershipTiersGetRequest{
+		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
 			Locale:  "en_US",
 		}
@@ -1098,7 +1098,7 @@ func TestIsNameValid(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		tgr := pb.RpcMembershipTiersGetResponse{
+		tgr := pb.RpcMembershipGetTiersResponse{
 			Tiers: []*model.MembershipTierData{
 				{
 					Id:                    1,
@@ -1235,7 +1235,7 @@ func TestIsNameValid(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipTiersGetResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expire time.Time) (err error) {
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
 

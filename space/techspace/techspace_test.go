@@ -49,6 +49,14 @@ func newSpaceViewStub(id string) *spaceViewStub {
 	return &spaceViewStub{SmartTest: smarttest.New(id)}
 }
 
+func (s *spaceViewStub) SetSharedSpacesLimit(limits int) (err error) {
+	return
+}
+
+func (s *spaceViewStub) GetSharedSpacesLimit() (limits int) {
+	return
+}
+
 func (s *spaceViewStub) GetPersistentInfo() spaceinfo.SpacePersistentInfo {
 	return spaceinfo.NewSpacePersistentInfo("spaceId")
 }

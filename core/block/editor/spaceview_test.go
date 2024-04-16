@@ -112,6 +112,14 @@ func TestSpaceView_Info(t *testing.T) {
 	})
 }
 
+func TestSpaceView_SharedSpacesLimit(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	err := fx.SetSharedSpacesLimit(10)
+	require.NoError(t, err)
+	require.Equal(t, 10, fx.GetSharedSpacesLimit())
+}
+
 type spaceServiceStub struct {
 }
 

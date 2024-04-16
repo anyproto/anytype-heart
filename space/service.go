@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.space"
@@ -33,11 +34,12 @@ const CName = "client.space"
 var log = logger.NewNamed(CName)
 
 var (
-	ErrIncorrectSpaceID = errors.New("incorrect space id")
-	ErrSpaceNotExists   = errors.New("space not exists")
-	ErrSpaceDeleted     = errors.New("space is deleted")
-	ErrSpaceIsClosing   = errors.New("space is closing")
-	ErrFailedToLoad     = errors.New("failed to load space")
+	ErrIncorrectSpaceID   = errors.New("incorrect space id")
+	ErrSpaceNotExists     = errors.New("space not exists")
+	ErrSpaceStorageMissig = errors.New("space storage missing")
+	ErrSpaceDeleted       = errors.New("space is deleted")
+	ErrSpaceIsClosing     = errors.New("space is closing")
+	ErrFailedToLoad       = errors.New("failed to load space")
 )
 
 func New() Service {
@@ -205,6 +207,12 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 		return nil, err
 	}
 	return s.waitLoad(ctx, ctrl)
+}
+
+func (s *service) UpdateSharedLimits(ctx context.Context, limits int) error {
+	return s.techSpace.DoSpaceView(ctx, s.personalSpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.SetSharedSpacesLimit(limits)
+	})
 }
 
 func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, err error) {

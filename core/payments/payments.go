@@ -49,7 +49,7 @@ type globalNamesUpdater interface {
 }
 
 var paymentMethodMap = map[proto.PaymentMethod]model.MembershipPaymentMethod{
-	proto.PaymentMethod_MethodCard:        model.Membership_MethodCard,
+	proto.PaymentMethod_MethodCard:        model.Membership_MethodStripe,
 	proto.PaymentMethod_MethodCrypto:      model.Membership_MethodCrypto,
 	proto.PaymentMethod_MethodAppleInapp:  model.Membership_MethodInappApple,
 	proto.PaymentMethod_MethodGoogleInapp: model.Membership_MethodInappGoogle,
@@ -111,7 +111,7 @@ type Service interface {
 	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
 	FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error)
-	GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error)
+	GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error)
 
 	app.ComponentRunnable
 }
@@ -354,7 +354,7 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	// 1 - get all tiers from cache or PP node
 	// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
 	// and first is much simpler/faster
-	tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipTiersGetRequest{
+	tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipGetTiersRequest{
 		NoCache: false,
 		// TODO: warning! no locale and payment method are passed here!
 		// Locale:        "",
@@ -673,7 +673,7 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 	return &out, nil
 }
 
-func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
+func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error) {
 	// 1 - get all tiers (including Explorer)
 	out, err := s.getAllTiers(ctx, req)
 	if err != nil {
@@ -692,7 +692,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 	}
 
 	// If the current tier is higher than Explorer, show the list without Explorer (downgrading is not allowed)
-	filtered := &pb.RpcMembershipTiersGetResponse{
+	filtered := &pb.RpcMembershipGetTiersResponse{
 		Tiers: make([]*model.MembershipTierData, 0),
 	}
 	for _, tier := range out.Tiers {
@@ -703,7 +703,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 	return filtered, nil
 }
 
-func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
+func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error) {
 	// 1 - check in cache
 	// status var. is unused here
 	cachedStatus, cachedTiers, err := s.cache.CacheGet()
@@ -752,7 +752,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 	}
 
 	// 3 - return out
-	var out pb.RpcMembershipTiersGetResponse
+	var out pb.RpcMembershipGetTiersResponse
 
 	out.Tiers = make([]*model.MembershipTierData, len(tiers.Tiers))
 	for i, tier := range tiers.Tiers {

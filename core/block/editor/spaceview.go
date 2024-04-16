@@ -166,6 +166,16 @@ func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, pbtypes.Int64(int64(limit)))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
+	return int(pbtypes.GetInt64(s.CombinedDetails(), bundle.RelationKeySharedSpacesLimit.String()))
+}
+
 func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := s.NewState()
 	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
