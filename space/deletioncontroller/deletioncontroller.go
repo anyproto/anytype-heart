@@ -119,9 +119,11 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []str
 			return spaceinfo.RemoteStatusDeleted
 		}
 	}
-	err = d.spaceManager.UpdateSharedLimits(ctx, int(limits.SharedSpacesLimit))
-	if err != nil {
-		log.Warn("shared limits update error", zap.Error(err))
+	if limits != nil {
+		err := d.spaceManager.UpdateSharedLimits(ctx, int(limits.SharedSpacesLimit))
+		if err != nil {
+			log.Warn("shared limits update error", zap.Error(err))
+		}
 	}
 	for idx, nodeStatus := range remoteStatuses {
 		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusNotExists {

@@ -71,6 +71,14 @@ func TestDeletionController_Loop(t *testing.T) {
 		require.NoError(t, err)
 		require.NotContains(t, fx.toDelete, "spaceId1")
 	})
+	t.Run("nil limits", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.mockSpaceManager.EXPECT().AllSpaceIds().Return([]string{})
+		fx.mockClient.EXPECT().StatusCheckMany(ctx, []string{}).Return(nil, nil, nil)
+		err := fx.loopIterate(ctx)
+		require.NoError(t, err)
+	})
 }
 
 type fixture struct {
