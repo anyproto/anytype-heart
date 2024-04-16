@@ -20,6 +20,9 @@ packages:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/block/editor/file:
+    interfaces:
+      File:
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:

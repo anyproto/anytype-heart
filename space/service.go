@@ -33,11 +33,12 @@ const CName = "client.space"
 var log = logger.NewNamed(CName)
 
 var (
-	ErrIncorrectSpaceID = errors.New("incorrect space id")
-	ErrSpaceNotExists   = errors.New("space not exists")
-	ErrSpaceDeleted     = errors.New("space is deleted")
-	ErrSpaceIsClosing   = errors.New("space is closing")
-	ErrFailedToLoad     = errors.New("failed to load space")
+	ErrIncorrectSpaceID   = errors.New("incorrect space id")
+	ErrSpaceNotExists     = errors.New("space not exists")
+	ErrSpaceStorageMissig = errors.New("space storage missing")
+	ErrSpaceDeleted       = errors.New("space is deleted")
+	ErrSpaceIsClosing     = errors.New("space is closing")
+	ErrFailedToLoad       = errors.New("failed to load space")
 )
 
 func New() Service {

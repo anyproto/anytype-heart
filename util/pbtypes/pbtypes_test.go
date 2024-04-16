@@ -44,21 +44,29 @@ func TestStructIterate(t *testing.T) {
 }
 
 func TestCopyStructFields(t *testing.T) {
-	src := &types.Struct{
-		Fields: map[string]*types.Value{
-			"one": String("one"),
-			"two": Int64(2),
-			"three": Struct(&types.Struct{
-				Fields: map[string]*types.Value{
-					"child": String("childVal"),
-				},
-			}),
-		},
-	}
-	newStruct := CopyStructFields(src, "one", "three")
-	assert.Len(t, newStruct.Fields, 2)
-	assert.Equal(t, newStruct.Fields["one"], src.Fields["one"])
-	assert.Equal(t, newStruct.Fields["three"], src.Fields["three"])
+	t.Run("not nil struct", func(t *testing.T) {
+		src := &types.Struct{
+			Fields: map[string]*types.Value{
+				"one": String("one"),
+				"two": Int64(2),
+				"three": Struct(&types.Struct{
+					Fields: map[string]*types.Value{
+						"child": String("childVal"),
+					},
+				}),
+			},
+		}
+		newStruct := CopyStructFields(src, "one", "three")
+		assert.Len(t, newStruct.Fields, 2)
+		assert.Equal(t, newStruct.Fields["one"], src.Fields["one"])
+		assert.Equal(t, newStruct.Fields["three"], src.Fields["three"])
+	})
+	t.Run("nil struct", func(t *testing.T) {
+		newStruct := CopyStructFields(nil, "one", "three")
+		assert.NotNil(t, newStruct.Fields)
+		newStruct = CopyStructFields(&types.Struct{}, "one", "three")
+		assert.NotNil(t, newStruct.Fields)
+	})
 }
 
 func TestStructEqualKeys(t *testing.T) {
