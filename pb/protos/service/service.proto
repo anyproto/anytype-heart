@@ -333,8 +333,7 @@ service ClientCommands {
     // If your subscription is in PendingRequiresFinalization:
     // please call MembershipFinalize to finish the process
     rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
-
-    rpc MembershipGetTiers (anytype.Rpc.Membership.Tiers.Get.Request) returns (anytype.Rpc.Membership.Tiers.Get.Response);
+    rpc MembershipGetTiers (anytype.Rpc.Membership.GetTiers.Request) returns (anytype.Rpc.Membership.GetTiers.Response);
 
     // Name Service:
     // ***

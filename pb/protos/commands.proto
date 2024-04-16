@@ -6694,33 +6694,31 @@ message Rpc {
         * Tiers can change on the backend so if you want to show users the latest data
         * you can call this method to get the latest tiers
         */
-        message Tiers {
-            message Get {
-                message Request {
-                    // pass true to force the cache update
-                    // by default this is false
-                    bool noCache = 1;
+        message GetTiers {
+            message Request {
+                // pass true to force the cache update
+                // by default this is false
+                bool noCache = 1;
 
-                    string locale = 2;
-                }
-    
-                message Response {
-                    Error error = 1;
-                    repeated anytype.model.MembershipTierData tiers = 2;
+                string locale = 2;
+            }
 
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
+            message Response {
+                Error error = 1;
+                repeated anytype.model.MembershipTierData tiers = 2;
 
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
 
-                            NOT_LOGGED_IN = 3;
-                            PAYMENT_NODE_ERROR = 4;
-                            CACHE_ERROR = 5;
-                        }
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
                     }
                 }
             }
