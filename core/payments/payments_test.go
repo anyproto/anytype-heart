@@ -20,11 +20,13 @@ import (
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/deletioncontroller/mock_deletioncontroller"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -49,15 +51,16 @@ func (u *mockGlobalNamesUpdater) Name() string {
 }
 
 type fixture struct {
-	a                 *app.App
-	ctrl              *gomock.Controller
-	cache             *mock_cache.MockCacheService
-	ppclient          *mock_ppclient.MockAnyPpClientService
-	wallet            *mock_wallet.MockWallet
-	eventSender       *mock_event.MockSender
-	periodicGetStatus *mock_periodicsync.MockPeriodicSync
-	identitiesUpdater *mockGlobalNamesUpdater
-
+	a                        *app.App
+	ctrl                     *gomock.Controller
+	cache                    *mock_cache.MockCacheService
+	ppclient                 *mock_ppclient.MockAnyPpClientService
+	wallet                   *mock_wallet.MockWallet
+	eventSender              *mock_event.MockSender
+	periodicGetStatus        *mock_periodicsync.MockPeriodicSync
+	identitiesUpdater        *mockGlobalNamesUpdater
+	multiplayerLimitsUpdater *mock_deletioncontroller.MockDeletionController
+	fileLimitsUpdater        *mock_filesync.MockFileSync
 	*service
 }
 
@@ -72,6 +75,8 @@ func newFixture(t *testing.T) *fixture {
 	fx.ppclient = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
 	fx.wallet = mock_wallet.NewMockWallet(t)
 	fx.eventSender = mock_event.NewMockSender(t)
+	fx.multiplayerLimitsUpdater = mock_deletioncontroller.NewMockDeletionController(t)
+	fx.fileLimitsUpdater = mock_filesync.NewMockFileSync(t)
 
 	// init w mock
 	SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
@@ -99,7 +104,9 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender)).
-		Register(fx.identitiesUpdater)
+		Register(fx.identitiesUpdater).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.multiplayerLimitsUpdater)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.fileLimitsUpdater))
 
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -124,6 +131,8 @@ func TestGetStatus(t *testing.T) {
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
+		fx.expectLimitsUpdated()
+
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
@@ -145,6 +154,8 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		fx.expectLimitsUpdated()
 
 		// Call the function being tested
 		req := pb.RpcMembershipGetStatusRequest{
@@ -366,6 +377,8 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		})
 
+		fx.expectLimitsUpdated()
+
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
@@ -416,6 +429,8 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		fx.expectLimitsUpdated()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -472,6 +487,8 @@ func TestGetStatus(t *testing.T) {
 		// this should be called
 		fx.cache.EXPECT().CacheEnable().Return(nil).Maybe()
 
+		fx.expectLimitsUpdated()
+
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
@@ -479,6 +496,11 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierBuilder1Year), resp.Data.Tier)
 		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
 	})
+}
+
+func (fx *fixture) expectLimitsUpdated() {
+	fx.multiplayerLimitsUpdater.EXPECT().UpdateCoordinatorStatus().Return()
+	fx.fileLimitsUpdater.EXPECT().UpdateNodeUsage(mock.Anything).Return(nil)
 }
 
 func TestGetPaymentURL(t *testing.T) {
@@ -750,6 +772,8 @@ func TestGetTiers(t *testing.T) {
 
 		fx.cache.EXPECT().CacheEnable().Return(nil)
 
+		fx.expectLimitsUpdated()
+
 		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: true,
 			Locale:  "en_US",
@@ -812,6 +836,8 @@ func TestGetTiers(t *testing.T) {
 		}).MinTimes(1)
 
 		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		fx.expectLimitsUpdated()
 
 		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
@@ -1050,6 +1076,8 @@ func TestGetTiers(t *testing.T) {
 			return nil
 		})
 		fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		fx.expectLimitsUpdated()
 
 		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
