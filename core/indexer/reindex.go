@@ -276,10 +276,11 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 		if err != nil {
 			return fmt.Errorf("reindex bundled templates: %w", err)
 		}
-		err = i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, []string{addr.MissingObject})
-		if err != nil {
-			return fmt.Errorf("reindex missing object: %w", err)
-		}
+	}
+
+	err = i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, []string{addr.MissingObject})
+	if err != nil {
+		return fmt.Errorf("reindex missing object: %w", err)
 	}
 
 	return i.saveLatestChecksums(space.Id())
