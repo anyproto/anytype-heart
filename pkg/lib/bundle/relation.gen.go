@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b2156ed0df86701d5093688d8aa4e0f813aadeed1b5b6dc5ff45aeafe1f5ed88"
+const RelationChecksum = "b549826bf25e72ff31a5bad9159fdd67388a5c4d2492eba3fab64f81477fbb31"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -28,6 +28,7 @@ const (
 	RelationKeyRestrictions              domain.RelationKey = "restrictions"
 	RelationKeyReadersLimit              domain.RelationKey = "readersLimit"
 	RelationKeyWritersLimit              domain.RelationKey = "writersLimit"
+	RelationKeySharedSpacesLimit         domain.RelationKey = "sharedSpacesLimit"
 	RelationKeyIsHighlighted             domain.RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage            domain.RelationKey = "thumbnailImage"
 	RelationKeyAttachments               domain.RelationKey = "attachments"
@@ -1933,6 +1934,20 @@ var (
 			Key:              "setOf",
 			Name:             "Set of",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySharedSpacesLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Shared spaces limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brsharedSpacesLimit",
+			Key:              "sharedSpacesLimit",
+			MaxCount:         1,
+			Name:             "Shared spaces limit",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

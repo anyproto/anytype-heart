@@ -167,6 +167,51 @@ func (_c *MockSpaceView_GetPersistentInfo_Call) RunAndReturn(run func() spaceinf
 	return _c
 }
 
+// GetSharedSpacesLimit provides a mock function with given fields:
+func (_m *MockSpaceView) GetSharedSpacesLimit() int {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSharedSpacesLimit")
+	}
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func() int); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+// MockSpaceView_GetSharedSpacesLimit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSharedSpacesLimit'
+type MockSpaceView_GetSharedSpacesLimit_Call struct {
+	*mock.Call
+}
+
+// GetSharedSpacesLimit is a helper method to define mock.On call
+func (_e *MockSpaceView_Expecter) GetSharedSpacesLimit() *MockSpaceView_GetSharedSpacesLimit_Call {
+	return &MockSpaceView_GetSharedSpacesLimit_Call{Call: _e.mock.On("GetSharedSpacesLimit")}
+}
+
+func (_c *MockSpaceView_GetSharedSpacesLimit_Call) Run(run func()) *MockSpaceView_GetSharedSpacesLimit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_GetSharedSpacesLimit_Call) Return(limits int) *MockSpaceView_GetSharedSpacesLimit_Call {
+	_c.Call.Return(limits)
+	return _c
+}
+
+func (_c *MockSpaceView_GetSharedSpacesLimit_Call) RunAndReturn(run func() int) *MockSpaceView_GetSharedSpacesLimit_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSpaceDescription provides a mock function with given fields:
 func (_m *MockSpaceView) GetSpaceDescription() spaceinfo.SpaceDescription {
 	ret := _m.Called()
@@ -434,6 +479,52 @@ func (_c *MockSpaceView_SetInviteFileInfo_Call) Return(err error) *MockSpaceView
 }
 
 func (_c *MockSpaceView_SetInviteFileInfo_Call) RunAndReturn(run func(string, string) error) *MockSpaceView_SetInviteFileInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetSharedSpacesLimit provides a mock function with given fields: limits
+func (_m *MockSpaceView) SetSharedSpacesLimit(limits int) error {
+	ret := _m.Called(limits)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetSharedSpacesLimit")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int) error); ok {
+		r0 = rf(limits)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_SetSharedSpacesLimit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetSharedSpacesLimit'
+type MockSpaceView_SetSharedSpacesLimit_Call struct {
+	*mock.Call
+}
+
+// SetSharedSpacesLimit is a helper method to define mock.On call
+//   - limits int
+func (_e *MockSpaceView_Expecter) SetSharedSpacesLimit(limits interface{}) *MockSpaceView_SetSharedSpacesLimit_Call {
+	return &MockSpaceView_SetSharedSpacesLimit_Call{Call: _e.mock.On("SetSharedSpacesLimit", limits)}
+}
+
+func (_c *MockSpaceView_SetSharedSpacesLimit_Call) Run(run func(limits int)) *MockSpaceView_SetSharedSpacesLimit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_SetSharedSpacesLimit_Call) Return(err error) *MockSpaceView_SetSharedSpacesLimit_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceView_SetSharedSpacesLimit_Call) RunAndReturn(run func(int) error) *MockSpaceView_SetSharedSpacesLimit_Call {
 	_c.Call.Return(run)
 	return _c
 }

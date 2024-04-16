@@ -44,8 +44,9 @@ func TestDeletionController_Loop(t *testing.T) {
 				Status: coordinatorproto.SpaceStatus_SpaceStatusNotExists,
 			},
 		}
+		limits := &coordinatorproto.AccountLimits{SharedSpacesLimit: 10}
 		fx.mockSpaceManager.EXPECT().AllSpaceIds().Return([]string{"spaceId1", "spaceId2", "spaceId3"})
-		fx.mockClient.EXPECT().StatusCheckMany(ctx, []string{"spaceId1", "spaceId2", "spaceId3"}).Return(payloads, nil)
+		fx.mockClient.EXPECT().StatusCheckMany(ctx, []string{"spaceId1", "spaceId2", "spaceId3"}).Return(payloads, limits, nil)
 		firstStatus := spaceinfo.NewSpaceLocalInfo("spaceId1")
 		firstStatus.
 			SetRemoteStatus(spaceinfo.RemoteStatusOk).
@@ -56,6 +57,7 @@ func TestDeletionController_Loop(t *testing.T) {
 		secondStatus.
 			SetRemoteStatus(spaceinfo.RemoteStatusOk).
 			SetShareableStatus(spaceinfo.ShareableStatusNotShareable)
+		fx.mockSpaceManager.EXPECT().UpdateSharedLimits(ctx, 10).Return(nil)
 		fx.mockSpaceManager.EXPECT().UpdateRemoteStatus(ctx, spaceinfo.SpaceRemoteStatusInfo{
 			IsOwned:   true,
 			LocalInfo: firstStatus,
