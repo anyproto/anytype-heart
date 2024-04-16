@@ -157,14 +157,19 @@ func (a *aclObjectManager) process() {
 
 func (a *aclObjectManager) processAcl() (err error) {
 	var (
-		common   = a.sp.CommonSpace()
-		acl      = common.Acl()
-		aclState = acl.AclState()
+		common         = a.sp.CommonSpace()
+		acl            = common.Acl()
+		aclState       = acl.AclState()
+		accountRemoved bool
 	)
 	defer func() {
 		if err == nil {
 			permissions := aclState.Permissions(aclState.AccountKey().GetPublic())
-			a.notificationService.AddRecords(acl, permissions, common.Id(), spaceinfo.AccountStatusActive)
+			accountStatus := spaceinfo.AccountStatusActive
+			if accountRemoved {
+				accountStatus = spaceinfo.AccountStatusDeleted
+			}
+			a.notificationService.AddRecords(acl, permissions, common.Id(), accountStatus)
 		}
 	}()
 	a.mx.Lock()
@@ -191,7 +196,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
 	upToDate := statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
-	err = a.processStates(states, upToDate, aclState.Identity())
+	err, accountRemoved = a.processStates(states, upToDate, aclState.Identity())
 	if err != nil {
 		return
 	}
@@ -205,21 +210,22 @@ func (a *aclObjectManager) processAcl() (err error) {
 	return
 }
 
-func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
+func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error, removed bool) {
 	for _, state := range states {
 		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
-			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
+			removed = true
+			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving), removed
 		}
 		err := a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
 		if err != nil {
-			return err
+			return err, removed
 		}
 		err = a.participantWatcher.WatchParticipant(a.ctx, a.sp, state)
 		if err != nil {
-			return err
+			return err, removed
 		}
 	}
-	return nil
+	return nil, removed
 }
 
 func decryptAll(states []list.AccountState, decrypt func(key crypto.PubKey) ([]byte, error)) (decrypted []list.AccountState, err error) {

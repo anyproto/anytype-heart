@@ -2,6 +2,7 @@ package aclnotifications
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -11,6 +12,7 @@ import (
 	"github.com/cheggaaa/mb"
 	"golang.org/x/net/context"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -48,6 +50,8 @@ type aclNotificationSender struct {
 	notificationService NotificationSender
 	batcher             *mb.MB
 	spaceNameGetter     objectstore.SpaceNameGetter
+
+	mx sync.Mutex
 }
 
 func NewAclNotificationSender() AclNotification {
@@ -71,9 +75,13 @@ func (n *aclNotificationSender) Run(ctx context.Context) (err error) {
 }
 
 func (n *aclNotificationSender) Close(ctx context.Context) (err error) {
-	if err := n.batcher.Close(); err != nil {
-		logger.Errorf("failed to close batcher, %s", err)
-	}
+	go func() {
+		n.mx.Lock()
+		defer n.mx.Unlock()
+		if err := n.batcher.Close(); err != nil {
+			logger.Errorf("failed to close batcher, %s", err)
+		}
+	}()
 	return
 }
 
@@ -82,6 +90,8 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	spaceId string,
 	accountStatus spaceinfo.AccountStatus,
 ) {
+	n.mx.Lock()
+	defer n.mx.Unlock()
 	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
 	if lastNotificationId != "" {
@@ -331,7 +341,7 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 	notificationId string,
 	identities [][]byte,
 ) error {
-	myProfile, _, _ := n.identityService.GetMyProfileDetails(ctx)
+	myProfile, _, details := n.identityService.GetMyProfileDetails(ctx)
 	found, err := n.isAccountRemoved(identities, myProfile)
 	if err != nil {
 		return err
@@ -340,17 +350,16 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 		return nil
 	}
 	var name, iconCid string
-	profile := n.identityService.WaitProfile(ctx, aclNotificationRecord.record.Identity.Account())
-	if profile != nil {
-		name = profile.Name
-		iconCid = profile.IconCid
+	if details != nil && details.GetFields() != nil {
+		iconCid = details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue()
+		name = details.GetFields()[bundle.RelationKeyName.String()].GetStringValue()
 	}
 	err = n.notificationService.CreateAndSend(&model.Notification{
 		Id:      notificationId,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfParticipantRemove{ParticipantRemove: &model.NotificationParticipantRemove{
 			SpaceId:      aclNotificationRecord.spaceId,
-			Identity:     aclNotificationRecord.record.Identity.Account(),
+			Identity:     myProfile,
 			IdentityName: name,
 			IdentityIcon: iconCid,
 			SpaceName:    aclNotificationRecord.spaceName,

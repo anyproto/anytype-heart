@@ -132,7 +132,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
-		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusActive)
+		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted)
 		fx.run(t)
 		<-fx.aclObjectManager.wait
 		fx.aclObjectManager.mx.Lock()
