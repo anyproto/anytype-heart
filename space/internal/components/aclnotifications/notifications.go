@@ -75,13 +75,11 @@ func (n *aclNotificationSender) Run(ctx context.Context) (err error) {
 }
 
 func (n *aclNotificationSender) Close(ctx context.Context) (err error) {
-	go func() {
-		n.mx.Lock()
-		defer n.mx.Unlock()
-		if err := n.batcher.Close(); err != nil {
-			logger.Errorf("failed to close batcher, %s", err)
-		}
-	}()
+	n.mx.Lock()
+	defer n.mx.Unlock()
+	if err := n.batcher.Close(); err != nil {
+		logger.Errorf("failed to close batcher, %s", err)
+	}
 	return
 }
 
