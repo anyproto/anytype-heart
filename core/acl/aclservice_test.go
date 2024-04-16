@@ -2,6 +2,8 @@ package acl
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -23,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -271,26 +275,164 @@ func TestService_ApproveLeave(t *testing.T) {
 }
 
 func TestService_Join(t *testing.T) {
-	fx := newFixture(t)
-	defer fx.finish(t)
-	cid, err := cidutil.NewCidFromBytes([]byte("spaceId"))
-	require.NoError(t, err)
-	key, err := crypto.NewRandomAES()
-	require.NoError(t, err)
-	inviteKey, _, err := crypto.GenerateRandomEd25519KeyPair()
-	require.NoError(t, err)
-	protoKey, err := inviteKey.Marshall()
-	require.NoError(t, err)
-	fx.mockInviteService.EXPECT().GetPayload(ctx, cid, key).Return(&model.InvitePayload{
-		InviteKey: protoKey,
-	}, nil)
-	metadataPayload := []byte("metadata")
-	fx.mockJoiningClient.EXPECT().RequestJoin(ctx, "spaceId", list.RequestJoinPayload{
-		InviteKey: inviteKey,
-		Metadata:  metadataPayload,
-	}).Return("aclHeadId", nil)
-	fx.mockSpaceService.EXPECT().Join(ctx, "spaceId", "aclHeadId").Return(nil)
-	fx.mockSpaceService.EXPECT().TechSpace().Return(&clientspace.TechSpace{TechSpace: fx.mockTechSpace})
-	fx.mockTechSpace.EXPECT().SpaceViewSetData(ctx, "spaceId", mock.Anything).Return(nil)
-	fx.Join(ctx, "space", cid, key)
+	t.Run("join success", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		cidString, err := cidutil.NewCidFromBytes([]byte("spaceId"))
+		require.NoError(t, err)
+		realCid, err := cid.Decode(cidString)
+		require.NoError(t, err)
+		key, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		inviteKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+		require.NoError(t, err)
+		protoKey, err := inviteKey.Marshall()
+		require.NoError(t, err)
+		fx.mockInviteService.EXPECT().GetPayload(ctx, realCid, key).Return(&model.InvitePayload{
+			InviteKey: protoKey,
+		}, nil)
+		metadataPayload := []byte("metadata")
+		fx.mockSpaceService.EXPECT().AccountMetadataPayload().Return(metadataPayload)
+		fx.mockJoiningClient.EXPECT().RequestJoin(ctx, "spaceId", list.RequestJoinPayload{
+			InviteKey: inviteKey,
+			Metadata:  metadataPayload,
+		}).Return("aclHeadId", nil)
+		fx.mockSpaceService.EXPECT().Join(ctx, "spaceId", "aclHeadId").Return(nil)
+		fx.mockSpaceService.EXPECT().TechSpace().Return(&clientspace.TechSpace{TechSpace: fx.mockTechSpace})
+		fx.mockTechSpace.EXPECT().SpaceViewSetData(ctx, "spaceId", mock.Anything).Return(nil)
+		err = fx.Join(ctx, "spaceId", realCid, key)
+		require.NoError(t, err)
+	})
+	t.Run("join fail, space is deleted", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		cidString, err := cidutil.NewCidFromBytes([]byte("spaceId"))
+		require.NoError(t, err)
+		realCid, err := cid.Decode(cidString)
+		require.NoError(t, err)
+		key, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		inviteKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+		require.NoError(t, err)
+		protoKey, err := inviteKey.Marshall()
+		require.NoError(t, err)
+		fx.mockInviteService.EXPECT().GetPayload(ctx, realCid, key).Return(&model.InvitePayload{
+			InviteKey: protoKey,
+		}, nil)
+		metadataPayload := []byte("metadata")
+		fx.mockSpaceService.EXPECT().AccountMetadataPayload().Return(metadataPayload)
+		fx.mockJoiningClient.EXPECT().RequestJoin(ctx, "spaceId", list.RequestJoinPayload{
+			InviteKey: inviteKey,
+			Metadata:  metadataPayload,
+		}).Return("", coordinatorproto.ErrSpaceIsDeleted)
+		err = fx.Join(ctx, "spaceId", realCid, key)
+		require.Equal(t, space.ErrSpaceDeleted, err)
+	})
+	t.Run("join success, already member", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		cidString, err := cidutil.NewCidFromBytes([]byte("spaceId"))
+		require.NoError(t, err)
+		realCid, err := cid.Decode(cidString)
+		require.NoError(t, err)
+		key, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		inviteKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+		require.NoError(t, err)
+		protoKey, err := inviteKey.Marshall()
+		require.NoError(t, err)
+		fx.mockInviteService.EXPECT().GetPayload(ctx, realCid, key).Return(&model.InvitePayload{
+			InviteKey: protoKey,
+		}, nil)
+		metadataPayload := []byte("metadata")
+		fx.mockSpaceService.EXPECT().AccountMetadataPayload().Return(metadataPayload)
+		fx.mockJoiningClient.EXPECT().RequestJoin(ctx, "spaceId", list.RequestJoinPayload{
+			InviteKey: inviteKey,
+			Metadata:  metadataPayload,
+		}).Return("", list.ErrInsufficientPermissions)
+		fx.mockJoiningClient.EXPECT().CancelRemoveSelf(ctx, "spaceId").Return(nil)
+		fx.mockSpaceService.EXPECT().CancelLeave(ctx, "spaceId").Return(nil)
+		err = fx.Join(ctx, "spaceId", realCid, key)
+		require.NoError(t, err)
+	})
+}
+
+func TestService_Leave(t *testing.T) {
+	t.Run("leave success", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(nil)
+		err := fx.Leave(ctx, spaceId)
+		require.NoError(t, err)
+	})
+	t.Run("leave success if space service error is known", func(t *testing.T) {
+		errs := []error{
+			space.ErrSpaceStorageMissig,
+			space.ErrSpaceDeleted,
+		}
+		for _, err := range errs {
+			t.Run("known error "+err.Error(), func(t *testing.T) {
+				fx := newFixture(t)
+				defer fx.finish(t)
+				spaceId := "spaceId"
+				fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(nil, err)
+				err = fx.Leave(ctx, spaceId)
+				require.NoError(t, err)
+			})
+		}
+	})
+	t.Run("leave fail if space service error is unknown", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(nil, fmt.Errorf("error"))
+		err := fx.Leave(ctx, spaceId)
+		require.True(t, errors.Is(err, ErrInternal))
+	})
+	t.Run("leave success if acl client error is known", func(t *testing.T) {
+		errs := []error{
+			list.ErrPendingRequest,
+			list.ErrIsOwner,
+			list.ErrNoSuchAccount,
+			coordinatorproto.ErrSpaceIsDeleted,
+			coordinatorproto.ErrSpaceNotExists,
+		}
+		for _, err := range errs {
+			t.Run("known error "+err.Error(), func(t *testing.T) {
+				fx := newFixture(t)
+				defer fx.finish(t)
+				spaceId := "spaceId"
+				mockSpace := mock_clientspace.NewMockSpace(t)
+				mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+				mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+				fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+				mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+				mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+				mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(err)
+				err = fx.Leave(ctx, spaceId)
+				require.NoError(t, err)
+			})
+		}
+	})
+	t.Run("leave fail if acl client error is unknown", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(fmt.Errorf("error"))
+		err := fx.Leave(ctx, spaceId)
+		require.True(t, errors.Is(err, ErrAclRequestFailed))
+	})
 }
