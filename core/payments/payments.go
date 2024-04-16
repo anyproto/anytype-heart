@@ -16,12 +16,14 @@ import (
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 )
 
 const CName = "payments"
@@ -126,6 +128,9 @@ type service struct {
 	periodicGetStatus periodicsync.PeriodicSync
 	eventSender       event.Sender
 	profileUpdater    globalNamesUpdater
+
+	multiplayerLimitsUpdater deletioncontroller.DeletionController
+	fileLimitsUpdater        filesync.FileSync
 }
 
 func (s *service) Name() (name string) {
@@ -139,6 +144,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
+	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
+	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
@@ -295,6 +302,11 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 			log.Error("can not enable cache", zap.Error(err))
 			return nil, ErrCacheProblem
 		}
+
+		err = s.updateLimits(ctx)
+		if err != nil {
+			log.Error("update limits", zap.Error(err))
+		}
 	}
 
 	// 5 - if requested any name has changed, then we need to update details of local identity
@@ -303,6 +315,11 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	}
 
 	return &out, nil
+}
+
+func (s *service) updateLimits(ctx context.Context) error {
+	s.multiplayerLimitsUpdater.UpdateCoordinatorStatus()
+	return s.fileLimitsUpdater.UpdateNodeUsage(ctx)
 }
 
 func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {

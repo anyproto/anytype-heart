@@ -120,6 +120,7 @@ packages:
   github.com/anyproto/anytype-heart/space/deletioncontroller:
     interfaces:
       SpaceManager:
+      DeletionController:
   github.com/anyproto/anytype-heart/core/inviteservice:
     interfaces:
       InviteService:
