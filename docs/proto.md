@@ -27080,7 +27080,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | MethodNone | 0 |  |
-| MethodCard | 1 |  |
+| MethodStripe | 1 |  |
 | MethodCrypto | 2 |  |
 | MethodInappApple | 3 |  |
 | MethodInappGoogle | 4 |  |

@@ -47,7 +47,7 @@ type globalNamesUpdater interface {
 }
 
 var paymentMethodMap = map[proto.PaymentMethod]model.MembershipPaymentMethod{
-	proto.PaymentMethod_MethodCard:        model.Membership_MethodCard,
+	proto.PaymentMethod_MethodCard:        model.Membership_MethodStripe,
 	proto.PaymentMethod_MethodCrypto:      model.Membership_MethodCrypto,
 	proto.PaymentMethod_MethodAppleInapp:  model.Membership_MethodInappApple,
 	proto.PaymentMethod_MethodGoogleInapp: model.Membership_MethodInappGoogle,

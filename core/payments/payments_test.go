@@ -375,7 +375,7 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, uint64(0), resp.Data.DateStarted)
 		assert.Equal(t, uint64(0), resp.Data.DateEnds)
 		assert.Equal(t, false, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.Membership_MethodCard, resp.Data.PaymentMethod)
+		assert.Equal(t, model.Membership_MethodStripe, resp.Data.PaymentMethod)
 		assert.Equal(t, "", resp.Data.RequestedAnyName)
 	})
 
