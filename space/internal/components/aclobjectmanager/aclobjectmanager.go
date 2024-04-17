@@ -118,6 +118,9 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	}
 	a.cancel()
 	<-a.wait
+	if a.sp != nil {
+		a.sp.CommonSpace().Acl().SetAclUpdater(nil)
+	}
 	a.statService.RemoveProvider(a)
 	return
 }

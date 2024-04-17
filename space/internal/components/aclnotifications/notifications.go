@@ -2,14 +2,13 @@ package aclnotifications
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"golang.org/x/net/context"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -48,14 +47,16 @@ type AclNotification interface {
 type aclNotificationSender struct {
 	identityService     dependencies.IdentityService
 	notificationService NotificationSender
-	batcher             *mb.MB
+	batcher             *mb.MB[aclNotificationRecord]
 	spaceNameGetter     objectstore.SpaceNameGetter
 
-	mx sync.Mutex
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+	done      chan struct{}
 }
 
 func NewAclNotificationSender() AclNotification {
-	return &aclNotificationSender{batcher: mb.New(0)}
+	return &aclNotificationSender{batcher: mb.New[aclNotificationRecord](0), done: make(chan struct{})}
 }
 
 func (n *aclNotificationSender) Init(a *app.App) (err error) {
@@ -70,16 +71,19 @@ func (n *aclNotificationSender) Name() (name string) {
 }
 
 func (n *aclNotificationSender) Run(ctx context.Context) (err error) {
+	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	go n.processRecords()
 	return
 }
 
 func (n *aclNotificationSender) Close(ctx context.Context) (err error) {
-	n.mx.Lock()
-	defer n.mx.Unlock()
+	if n.ctxCancel != nil {
+		n.ctxCancel()
+	}
 	if err := n.batcher.Close(); err != nil {
 		logger.Errorf("failed to close batcher, %s", err)
 	}
+	<-n.done
 	return
 }
 
@@ -88,13 +92,11 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	spaceId string,
 	accountStatus spaceinfo.AccountStatus,
 ) {
-	n.mx.Lock()
-	defer n.mx.Unlock()
 	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
 	if lastNotificationId != "" {
 		acl.IterateFrom(lastNotificationId, func(record *list.AclRecord) (IsContinue bool) {
-			err := n.batcher.Add(&aclNotificationRecord{
+			err := n.batcher.Add(n.ctx, aclNotificationRecord{
 				record:        *record,
 				permissions:   permissions,
 				spaceId:       spaceId,
@@ -110,7 +112,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 		return
 	}
 	for _, record := range acl.Records() {
-		err := n.batcher.Add(&aclNotificationRecord{
+		err := n.batcher.Add(n.ctx, aclNotificationRecord{
 			record:        *record,
 			permissions:   permissions,
 			spaceId:       spaceId,
@@ -131,7 +133,7 @@ func (n *aclNotificationSender) AddSingleRecord(aclId string,
 	accountStatus spaceinfo.AccountStatus,
 ) {
 	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
-	err := n.batcher.Add(&aclNotificationRecord{
+	err := n.batcher.Add(n.ctx, aclNotificationRecord{
 		record:        *aclRecord,
 		permissions:   permissions,
 		spaceId:       spaceId,
@@ -152,6 +154,7 @@ func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotific
 }
 
 func (n *aclNotificationSender) processRecords() {
+	defer close(n.done)
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
@@ -160,20 +163,35 @@ func (n *aclNotificationSender) processRecords() {
 	case <-ticker.C:
 	}
 
-	for {
-		msgs := n.batcher.Wait()
-		if len(msgs) == 0 {
+	var err error
+	defer func() {
+		if err == nil {
 			return
 		}
-		for _, msg := range msgs {
-			record, ok := msg.(*aclNotificationRecord)
-			if !ok {
-				continue
-			}
-			err := n.sendNotification(context.Background(), record)
+		msgs := n.batcher.GetAll()
+		for _, record := range msgs {
+			err := n.sendNotification(context.Background(), &record)
 			if err != nil {
 				logger.Errorf("failed to send notifications: %s", err)
 			}
+		}
+	}()
+
+	for {
+		select {
+		case <-n.ctx.Done():
+			err = n.ctx.Err()
+			return
+		default:
+		}
+		var msg aclNotificationRecord
+		msg, err = n.batcher.WaitOne(n.ctx)
+		if err != nil {
+			return
+		}
+		err = n.sendNotification(n.ctx, &msg)
+		if err != nil {
+			logger.Errorf("failed to send notifications: %s", err)
 		}
 	}
 }
