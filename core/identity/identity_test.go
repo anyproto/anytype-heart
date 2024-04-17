@@ -113,6 +113,7 @@ func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.Sym
 type inMemoryIdentityRepo struct {
 	lock           sync.Mutex
 	isUnavailable  bool
+	getCallback    func(identities []string, kinds []string, res []*identityrepoproto.DataWithIdentity, resErr error)
 	identitiesData map[string]*identityrepoproto.DataWithIdentity
 }
 
@@ -152,7 +153,11 @@ func (d *inMemoryIdentityRepo) IdentityRepoGet(ctx context.Context, identities [
 	defer d.lock.Unlock()
 
 	if d.isUnavailable {
-		return nil, fmt.Errorf("network problem")
+		err := fmt.Errorf("network problem")
+		if d.getCallback != nil {
+			d.getCallback(identities, kinds, nil, err)
+		}
+		return nil, err
 	}
 
 	res = make([]*identityrepoproto.DataWithIdentity, 0, len(identities))
@@ -160,6 +165,9 @@ func (d *inMemoryIdentityRepo) IdentityRepoGet(ctx context.Context, identities [
 		if data, ok := d.identitiesData[identity]; ok {
 			res = append(res, data)
 		}
+	}
+	if d.getCallback != nil {
+		d.getCallback(identities, kinds, res, err)
 	}
 	return
 }
@@ -273,6 +281,17 @@ func TestObservers(t *testing.T) {
 		})
 		require.NoError(t, err)
 		wg.Wait()
+	})
+
+	t.Run("empty identities", func(t *testing.T) {
+		called := false
+		fx.coordinatorClient.getCallback = func(_ []string, _ []string, _ []*identityrepoproto.DataWithIdentity, _ error) {
+			called = true
+		}
+		list, err := fx.getIdentitiesDataFromRepo(context.Background(), nil)
+		require.NoError(t, err)
+		require.Empty(t, list)
+		require.False(t, called)
 	})
 }
 

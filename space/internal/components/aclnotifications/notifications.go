@@ -2,6 +2,7 @@ package aclnotifications
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
@@ -33,11 +34,13 @@ type aclNotificationRecord struct {
 type NotificationSender interface {
 	CreateAndSend(notification *model.Notification) error
 	GetLastNotificationId(acl string) string
+	LoadFinish() chan struct{}
 }
 
 type AclNotification interface {
 	app.ComponentRunnable
 	AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
+	AddSingleRecord(aclId string, aclRecord *list.AclRecord, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
 }
 
 type aclNotificationSender struct {
@@ -113,17 +116,42 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	}
 }
 
+func (n *aclNotificationSender) AddSingleRecord(aclId string,
+	aclRecord *list.AclRecord,
+	permissions list.AclPermissions,
+	spaceId string,
+	accountStatus spaceinfo.AccountStatus,
+) {
+	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
+	err := n.batcher.Add(&aclNotificationRecord{
+		record:        *aclRecord,
+		permissions:   permissions,
+		spaceId:       spaceId,
+		aclId:         aclId,
+		accountStatus: accountStatus,
+		spaceName:     spaceName,
+	})
+	if err != nil {
+		logger.Errorf("failed to add acl record, %s", err)
+	}
+}
+
 func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
 	if aclData, ok := aclNotificationRecord.record.Model.(*aclrecordproto.AclData); ok {
-		err := n.iterateAclContent(ctx, aclNotificationRecord, aclData)
-		if err != nil {
-			return err
-		}
+		return n.iterateAclContent(ctx, aclNotificationRecord, aclData)
 	}
 	return nil
 }
 
 func (n *aclNotificationSender) processRecords() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	select {
+	case <-n.notificationService.LoadFinish():
+	case <-ticker.C:
+	}
+
 	for {
 		msgs := n.batcher.Wait()
 		if len(msgs) == 0 {
@@ -136,7 +164,7 @@ func (n *aclNotificationSender) processRecords() {
 			}
 			err := n.sendNotification(context.Background(), record)
 			if err != nil {
-				return
+				logger.Errorf("failed to send notifications: %s", err)
 			}
 		}
 	}
@@ -168,25 +196,16 @@ func (n *aclNotificationSender) handleSpaceMemberNotifications(ctx context.Conte
 	notificationId string,
 ) error {
 	if reqApprove := content.GetRequestAccept(); reqApprove != nil {
-		if err := n.sendParticipantRequestApprove(ctx, reqApprove, aclNotificationRecord, notificationId); err != nil {
-			return err
-
-		}
+		return n.sendParticipantRequestApprove(ctx, reqApprove, aclNotificationRecord, notificationId)
 	}
 	if accRemove := content.GetAccountRemove(); accRemove != nil {
-		if err := n.sendAccountRemove(ctx, aclNotificationRecord, notificationId, accRemove.Identities); err != nil {
-			return err
-		}
+		return n.sendAccountRemove(ctx, aclNotificationRecord, notificationId, accRemove.Identities)
 	}
 	if reqDecline := content.GetRequestDecline(); reqDecline != nil {
-		if err := n.sendParticipantRequestDecline(aclNotificationRecord, notificationId); err != nil {
-			return err
-		}
+		return n.sendParticipantRequestDecline(aclNotificationRecord, notificationId)
 	}
 	if reqPermissionChanges := content.GetPermissionChanges(); reqPermissionChanges != nil {
-		if err := n.sendParticipantPermissionChanges(ctx, reqPermissionChanges, aclNotificationRecord, notificationId); err != nil {
-			return err
-		}
+		return n.sendParticipantPermissionChanges(ctx, reqPermissionChanges, aclNotificationRecord, notificationId)
 	}
 	return nil
 }
@@ -204,14 +223,10 @@ func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context,
 	notificationId string,
 ) error {
 	if reqJoin := content.GetRequestJoin(); reqJoin != nil {
-		if err := n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord, notificationId); err != nil {
-			return err
-		}
+		return n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord, notificationId)
 	}
 	if reqLeave := content.GetAccountRequestRemove(); reqLeave != nil {
-		if err := n.sendAccountRequestRemove(ctx, aclNotificationRecord, notificationId); err != nil {
-			return err
-		}
+		return n.sendAccountRequestRemove(ctx, aclNotificationRecord, notificationId)
 	}
 	return nil
 }

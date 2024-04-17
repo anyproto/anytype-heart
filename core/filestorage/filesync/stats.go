@@ -132,6 +132,11 @@ func (s *fileSync) NodeUsage(ctx context.Context) (NodeUsage, error) {
 	return usage, err
 }
 
+func (s *fileSync) UpdateNodeUsage(ctx context.Context) error {
+	_, err := s.getAndUpdateNodeUsage(ctx)
+	return err
+}
+
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
 	usage, err := s.store.getNodeUsage()
 	if errors.Is(err, badger.ErrKeyNotFound) {

@@ -31,7 +31,7 @@ var (
 
 // once you change the cache format, you need to update this variable
 // it will cause cache to be dropped and recreated
-const LAST_CACHE_VERSION = 2
+const LAST_CACHE_VERSION = 3
 
 var dbKey = "payments/subscription/v" + strconv.Itoa(LAST_CACHE_VERSION)
 
@@ -53,7 +53,7 @@ type StorageStruct struct {
 
 	// actual data
 	SubscriptionStatus pb.RpcMembershipGetStatusResponse
-	TiersData          pb.RpcMembershipTiersGetResponse
+	TiersData          pb.RpcMembershipGetTiersResponse
 }
 
 func newStorageStruct() *StorageStruct {
@@ -65,7 +65,7 @@ func newStorageStruct() *StorageStruct {
 		SubscriptionStatus: pb.RpcMembershipGetStatusResponse{
 			Data: nil,
 		},
-		TiersData: pb.RpcMembershipTiersGetResponse{
+		TiersData: pb.RpcMembershipGetTiersResponse{
 			Tiers: nil,
 		},
 	}
@@ -74,12 +74,12 @@ func newStorageStruct() *StorageStruct {
 type CacheService interface {
 	// if cache is disabled -> will return objects and ErrCacheDisabled
 	// if cache is expired -> will return objects and ErrCacheExpired
-	CacheGet() (status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, err error)
+	CacheGet() (status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, err error)
 
 	// if cache is disabled -> will return no error
 	// if cache is expired -> will return no error
 	// status or tiers can be nil depending on what you want to update
-	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, ExpireTime time.Time) (err error)
+	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, ExpireTime time.Time) (err error)
 
 	IsCacheEnabled() (enabled bool)
 
@@ -130,7 +130,7 @@ func (s *cacheservice) Close(_ context.Context) (err error) {
 	return s.db.Close()
 }
 
-func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, err error) {
+func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, err error) {
 	// 1 - check in storage
 	ss, err := s.get()
 	if err != nil {
@@ -161,7 +161,7 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	return &ss.SubscriptionStatus, &ss.TiersData, nil
 }
 
-func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipTiersGetResponse, expireTime time.Time) (err error) {
+func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expireTime time.Time) (err error) {
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {

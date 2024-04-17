@@ -39,6 +39,7 @@ type FileSync interface {
 	OnLimited(StatusCallback)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
+	UpdateNodeUsage(ctx context.Context) error
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)

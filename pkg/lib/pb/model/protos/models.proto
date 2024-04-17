@@ -1149,6 +1149,12 @@ enum FileIndexingStatus {
     NotFound = 2;
 }
 
+enum SpaceShareableStatus {
+    StatusUnknown = 0;
+    StatusShareable = 1;
+    StatusNotShareable = 2;
+}
+
 message ManifestInfo {
     string schema = 1;
     string id = 2;
@@ -1190,7 +1196,7 @@ message Membership {
     
     enum PaymentMethod {
         MethodNone = 0;
-        MethodCard = 1;
+        MethodStripe = 1;
         MethodCrypto = 2;
         MethodInappApple = 3;
         MethodInappGoogle = 4;

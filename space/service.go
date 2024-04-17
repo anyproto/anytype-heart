@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.space"
@@ -33,11 +34,12 @@ const CName = "client.space"
 var log = logger.NewNamed(CName)
 
 var (
-	ErrIncorrectSpaceID = errors.New("incorrect space id")
-	ErrSpaceNotExists   = errors.New("space not exists")
-	ErrSpaceDeleted     = errors.New("space is deleted")
-	ErrSpaceIsClosing   = errors.New("space is closing")
-	ErrFailedToLoad     = errors.New("failed to load space")
+	ErrIncorrectSpaceID   = errors.New("incorrect space id")
+	ErrSpaceNotExists     = errors.New("space not exists")
+	ErrSpaceStorageMissig = errors.New("space storage missing")
+	ErrSpaceDeleted       = errors.New("space is deleted")
+	ErrSpaceIsClosing     = errors.New("space is closing")
+	ErrFailedToLoad       = errors.New("failed to load space")
 )
 
 func New() Service {
@@ -207,6 +209,12 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 	return s.waitLoad(ctx, ctrl)
 }
 
+func (s *service) UpdateSharedLimits(ctx context.Context, limits int) error {
+	return s.techSpace.DoSpaceView(ctx, s.personalSpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.SetSharedSpacesLimit(limits)
+	})
+}
+
 func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, err error) {
 	return s.Get(ctx, s.personalSpaceId)
 }
@@ -226,7 +234,7 @@ func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 			log.Warn("OnViewUpdated.startStatus error", zap.Error(err))
 			return
 		}
-		err = ctrl.UpdateInfo(s.ctx, info)
+		err = ctrl.Update()
 		if err != nil {
 			log.Warn("OnViewCreated.UpdateStatus error", zap.Error(err))
 			return
@@ -251,24 +259,24 @@ func (s *service) AccountMetadataPayload() []byte {
 }
 
 func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+	spaceId := status.LocalInfo.SpaceId
 	s.mu.Lock()
-	ctrl := s.spaceControllers[status.SpaceId]
+	ctrl := s.spaceControllers[spaceId]
 	s.mu.Unlock()
 	if ctrl == nil {
-		return fmt.Errorf("no such space: %s", status.SpaceId)
+		return fmt.Errorf("no such space: %s", spaceId)
 	}
-	err := ctrl.UpdateRemoteStatus(ctx, status)
+	err := ctrl.SetLocalInfo(ctx, status.LocalInfo)
 	if err != nil {
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
-	if !status.IsOwned && status.RemoteStatus == spaceinfo.RemoteStatusDeleted {
+	if !status.IsOwned && status.LocalInfo.GetRemoteStatus() == spaceinfo.RemoteStatusDeleted {
 		accountStatus := ctrl.GetStatus()
 		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
-			s.sendNotification(status.SpaceId)
-			return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
-				SpaceID:       status.SpaceId,
-				AccountStatus: spaceinfo.AccountStatusRemoving,
-			})
+			s.sendNotification(spaceId)
+			info := spaceinfo.NewSpacePersistentInfo(spaceId)
+			info.SetAccountStatus(spaceinfo.AccountStatusRemoving)
+			return ctrl.SetPersistentInfo(ctx, info)
 		}
 	}
 	return nil

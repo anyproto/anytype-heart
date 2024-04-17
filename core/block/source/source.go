@@ -208,6 +208,9 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
 		st, changes, sinceSnapshot, err := BuildStateFull(s.spaceID, d.(*state.State), ot, "")
+		if err != nil {
+			return
+		}
 		defer st.ResetParentIdsCache()
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
@@ -272,10 +275,10 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 
 func (s *source) buildState() (doc state.Doc, err error) {
 	st, _, changesAppliedSinceSnapshot, err := BuildState(s.spaceID, nil, s.ObjectTree)
-	defer st.ResetParentIdsCache()
 	if err != nil {
 		return
 	}
+	defer st.ResetParentIdsCache()
 
 	validationErr := st.Validate()
 	if validationErr != nil {
@@ -495,10 +498,7 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(domain.FullFileId{
-			SpaceId: s.spaceID,
-			FileId:  domain.FileId(h),
-		})
+		fk, err := s.fileService.FileGetKeys(domain.FileId(h))
 		if err != nil {
 			// New file
 			log.Debugf("can't get file key for hash: %v: %v", h, err)

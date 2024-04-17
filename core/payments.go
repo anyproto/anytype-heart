@@ -218,21 +218,21 @@ func (mw *Middleware) MembershipFinalize(ctx context.Context, req *pb.RpcMembers
 	return out
 }
 
-func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) *pb.RpcMembershipTiersGetResponse {
+func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) *pb.RpcMembershipGetTiersResponse {
 	ps := getService[payments.Service](mw)
 	out, err := ps.GetTiers(ctx, req)
 
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipTiersGetResponseError_NOT_LOGGED_IN),
-			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipTiersGetResponseError_NOT_LOGGED_IN),
-			errToCode(payments.ErrNoConnection, pb.RpcMembershipTiersGetResponseError_PAYMENT_NODE_ERROR),
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipTiersGetResponseError_PAYMENT_NODE_ERROR),
-			errToCode(payments.ErrCacheProblem, pb.RpcMembershipTiersGetResponseError_CACHE_ERROR),
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipGetTiersResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipGetTiersResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipGetTiersResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipGetTiersResponseError_PAYMENT_NODE_ERROR),
+			errToCode(payments.ErrCacheProblem, pb.RpcMembershipGetTiersResponseError_CACHE_ERROR),
 		)
 
-		return &pb.RpcMembershipTiersGetResponse{
-			Error: &pb.RpcMembershipTiersGetResponseError{
+		return &pb.RpcMembershipGetTiersResponse{
+			Error: &pb.RpcMembershipGetTiersResponseError{
 				Code:        code,
 				Description: err.Error(),
 			},

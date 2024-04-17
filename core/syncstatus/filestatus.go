@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -26,7 +26,7 @@ func (s *service) OnFileLimited(objectId string) error {
 }
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
-	err := getblock.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
+	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
 		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
 		newStatus := int64(status)
 		if prevStatus == newStatus {

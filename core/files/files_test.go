@@ -37,7 +37,11 @@ type fixture struct {
 	fileStore         filestore.FileStore
 }
 
-const spaceId = "space1"
+const (
+	spaceId         = "space1"
+	testFileName    = "myFile"
+	testFileContent = "it's my favorite file"
+)
 
 func newFixture(t *testing.T) *fixture {
 	fileStore := filestore.New()
@@ -89,14 +93,12 @@ func TestFileAdd(t *testing.T) {
 		return nil
 	})
 
-	fileName := "myFile"
 	lastModifiedDate := time.Now()
-	fileContent := "it's my favorite file"
-	buf := strings.NewReader(fileContent)
+	buf := strings.NewReader(testFileContent)
 	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	opts := []AddOption{
-		WithName(fileName),
+		WithName(testFileName),
 		WithLastModifiedDate(lastModifiedDate.Unix()),
 		WithReader(buf),
 	}
@@ -109,12 +111,14 @@ func TestFileAdd(t *testing.T) {
 		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
 		require.NoError(t, err)
 
+		assertFileMeta(t, got, file)
+
 		reader, err := file.Reader(ctx)
 		require.NoError(t, err)
 
 		gotContent, err := io.ReadAll(reader)
 		require.NoError(t, err)
-		assert.Equal(t, fileContent, string(gotContent))
+		assert.Equal(t, testFileContent, string(gotContent))
 
 	})
 
@@ -127,7 +131,7 @@ func TestFileAdd(t *testing.T) {
 		require.NoError(t, err)
 		gotEncryptedContent, err := io.ReadAll(encryptedContent)
 		require.NoError(t, err)
-		assert.NotEqual(t, fileContent, string(gotEncryptedContent))
+		assert.NotEqual(t, testFileContent, string(gotEncryptedContent))
 	})
 
 	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
@@ -143,6 +147,51 @@ func TestFileAdd(t *testing.T) {
 	})
 }
 
+func TestIndexFile(t *testing.T) {
+	t.Run("with encryption keys available", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fileResult := testAddFile(t, fx)
+
+		// Delete from index
+		err := fx.fileStore.DeleteFile(fileResult.FileId)
+		require.NoError(t, err)
+
+		err = fx.fileStore.AddFileKeys(*fileResult.EncryptionKeys)
+		require.NoError(t, err)
+
+		// Index
+		file, err := fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
+		require.NoError(t, err)
+
+		assertFileMeta(t, fileResult, file)
+	})
+
+	t.Run("with encryption keys not available", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fileResult := testAddFile(t, fx)
+
+		// Delete from index
+		err := fx.fileStore.DeleteFile(fileResult.FileId)
+		require.NoError(t, err)
+
+		_, err = fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
+		require.Error(t, err)
+	})
+}
+
+func assertFileMeta(t *testing.T, fileResult *AddResult, file File) {
+	assert.Equal(t, fileResult.FileId, file.FileId())
+	assert.Equal(t, fileResult.MIME, file.Meta().Media)
+	assert.Equal(t, testFileName, file.Meta().Name)
+	assert.Equal(t, int64(len(testFileContent)), file.Meta().Size)
+
+	now := time.Now()
+	assert.True(t, now.Sub(time.Unix(file.Meta().LastModifiedDate, 0)) < time.Second)
+	assert.True(t, now.Sub(file.Meta().Added) < time.Second)
+}
+
 func TestFileAddWithCustomKeys(t *testing.T) {
 	t.Run("with valid keys expect use them", func(t *testing.T) {
 		fx := newFixture(t)
@@ -154,10 +203,8 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 			return nil
 		})
 
-		fileName := "myFile"
 		lastModifiedDate := time.Now()
-		fileContent := "it's my favorite file"
-		buf := strings.NewReader(fileContent)
+		buf := strings.NewReader(testFileContent)
 		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 		customKeys := map[string]string{
@@ -165,7 +212,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 		}
 
 		opts := []AddOption{
-			WithName(fileName),
+			WithName(testFileName),
 			WithLastModifiedDate(lastModifiedDate.Unix()),
 			WithReader(buf),
 			WithCustomEncryptionKeys(customKeys),
@@ -194,14 +241,12 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 					return nil
 				})
 
-				fileName := "myFile"
 				lastModifiedDate := time.Now()
-				fileContent := "it's my favorite file"
-				buf := strings.NewReader(fileContent)
+				buf := strings.NewReader(testFileContent)
 				fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 				opts := []AddOption{
-					WithName(fileName),
+					WithName(testFileName),
 					WithLastModifiedDate(lastModifiedDate.Unix()),
 					WithReader(buf),
 					WithCustomEncryptionKeys(customKeys),
@@ -258,12 +303,10 @@ func testAddConcurrently(t *testing.T, addFunc func(t *testing.T, fx *fixture) *
 }
 
 func testAddFile(t *testing.T, fx *fixture) *AddResult {
-	fileName := "myFile"
 	lastModifiedDate := time.Now()
-	fileContent := "it's my favorite file"
-	buf := strings.NewReader(fileContent)
+	buf := strings.NewReader(testFileContent)
 	opts := []AddOption{
-		WithName(fileName),
+		WithName(testFileName),
 		WithLastModifiedDate(lastModifiedDate.Unix()),
 		WithReader(buf),
 	}
@@ -271,14 +314,4 @@ func testAddFile(t *testing.T, fx *fixture) *AddResult {
 	require.NoError(t, err)
 	got.Commit()
 	return got
-}
-
-func givenCustomEncryptionKeys() map[string]string {
-	return map[string]string{
-		encryptionKeyPath(schema.LinkImageOriginal):  "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
-		encryptionKeyPath(schema.LinkImageLarge):     "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
-		encryptionKeyPath(schema.LinkImageSmall):     "bear36qgxpvnsqis2omwqi33zcrjo6arxhokpqr3bnh2oqphxkiba",
-		encryptionKeyPath(schema.LinkImageThumbnail): "bcewq7zoa6cbbev6nxkykrrclvidriuglgags67zbdda53wfnn6eq",
-		encryptionKeyPath(schema.LinkImageExif):      "bdoiogvdd5bayrezafzf2lvgh3xxjk7ru4yq2frpxhjgmx26ih6sq",
-	}
 }
