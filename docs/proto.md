@@ -20132,6 +20132,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 8 |  |
 | PAYMENT_NODE_ERROR | 9 |  |
 | CACHE_ERROR | 10 |  |
+| IN_BLACKLIST | 11 | for some probable future use (if needed) |
 
 
 

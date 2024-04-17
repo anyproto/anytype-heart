@@ -401,6 +401,8 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS
 	case proto.IsNameValidResponse_TierFeatureNoName:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME
+	case proto.IsNameValidResponse_InBlacklist:
+		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_IN_BLACKLIST
 	default:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_UNKNOWN_ERROR
 	}
