@@ -52,7 +52,8 @@ func newFixture(t *testing.T) *fixture {
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
 	fileAclService := mock_fileacl.NewMockService(t)
-	dataStore := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
 	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{identity, ""}}).AnyTimes().
@@ -64,12 +65,12 @@ func newFixture(t *testing.T) *fixture {
 			Name:  "",
 		},
 		}}, nil)
-	err := dataStore.Run(ctx)
+	err = dataStoreProvider.Run(ctx)
 	require.NoError(t, err)
 
 	a := new(app.App)
 	a.Register(&spaceIdDeriverStub{})
-	a.Register(dataStore)
+	a.Register(dataStoreProvider)
 	a.Register(objectStore)
 	a.Register(identityRepoClient)
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
@@ -86,7 +87,7 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	svcRef := svc.(*service)
-	db, err := dataStore.LocalStorage()
+	db, err := dataStoreProvider.LocalStorage()
 	require.NoError(t, err)
 	svcRef.db = db
 	svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
