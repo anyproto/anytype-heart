@@ -20,6 +20,13 @@ packages:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/block/editor/file:
+    interfaces:
+      File:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
@@ -117,6 +124,7 @@ packages:
   github.com/anyproto/anytype-heart/space/deletioncontroller:
     interfaces:
       SpaceManager:
+      DeletionController:
   github.com/anyproto/anytype-heart/core/inviteservice:
     interfaces:
       InviteService:

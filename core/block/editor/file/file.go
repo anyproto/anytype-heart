@@ -57,7 +57,7 @@ type File interface {
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
-	dropFilesHandler
+	dropFilesHandler // do not remove, used in downcasts
 }
 
 type FileSource struct {

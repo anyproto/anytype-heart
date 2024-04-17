@@ -210,6 +210,53 @@ func (_c *MockSpaceManager_UpdateRemoteStatus_Call) RunAndReturn(run func(contex
 	return _c
 }
 
+// UpdateSharedLimits provides a mock function with given fields: ctx, limits
+func (_m *MockSpaceManager) UpdateSharedLimits(ctx context.Context, limits int) error {
+	ret := _m.Called(ctx, limits)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateSharedLimits")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) error); ok {
+		r0 = rf(ctx, limits)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceManager_UpdateSharedLimits_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateSharedLimits'
+type MockSpaceManager_UpdateSharedLimits_Call struct {
+	*mock.Call
+}
+
+// UpdateSharedLimits is a helper method to define mock.On call
+//   - ctx context.Context
+//   - limits int
+func (_e *MockSpaceManager_Expecter) UpdateSharedLimits(ctx interface{}, limits interface{}) *MockSpaceManager_UpdateSharedLimits_Call {
+	return &MockSpaceManager_UpdateSharedLimits_Call{Call: _e.mock.On("UpdateSharedLimits", ctx, limits)}
+}
+
+func (_c *MockSpaceManager_UpdateSharedLimits_Call) Run(run func(ctx context.Context, limits int)) *MockSpaceManager_UpdateSharedLimits_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockSpaceManager_UpdateSharedLimits_Call) Return(_a0 error) *MockSpaceManager_UpdateSharedLimits_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceManager_UpdateSharedLimits_Call) RunAndReturn(run func(context.Context, int) error) *MockSpaceManager_UpdateSharedLimits_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockSpaceManager creates a new instance of MockSpaceManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockSpaceManager(t interface {

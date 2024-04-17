@@ -167,7 +167,8 @@ type ObjectTreeProvider interface {
 }
 
 type fileObjectMigrator interface {
-	MigrateDetails(st *state.State, spc Space, keys []*pb.ChangeFileKeys)
+	MigrateFiles(st *state.State, spc Space, keysChanges []*pb.ChangeFileKeys)
+	MigrateFileIdsInDetails(st *state.State, spc Space)
 }
 
 type source struct {
@@ -299,9 +300,11 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
 	}
+
+	s.fileObjectMigrator.MigrateFiles(st, s.space, s.GetFileKeysSnapshot())
 	// Details in spaceview comes from Workspace object, so we don't need to migrate them
 	if s.Type() != smartblock.SmartBlockTypeSpaceView {
-		s.fileObjectMigrator.MigrateDetails(st, s.space, s.GetFileKeysSnapshot())
+		s.fileObjectMigrator.MigrateFileIdsInDetails(st, s.space)
 	}
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
@@ -495,10 +498,7 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(domain.FullFileId{
-			SpaceId: s.spaceID,
-			FileId:  domain.FileId(h),
-		})
+		fk, err := s.fileService.FileGetKeys(domain.FileId(h))
 		if err != nil {
 			// New file
 			log.Debugf("can't get file key for hash: %v: %v", h, err)

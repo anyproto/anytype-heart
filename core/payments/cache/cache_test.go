@@ -148,7 +148,7 @@ func TestPayments_ClearCache(t *testing.T) {
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours,
@@ -186,7 +186,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -204,7 +204,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 				Status: model.Membership_StatusUnknown,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -238,7 +238,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -273,7 +273,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -301,7 +301,7 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -329,7 +329,7 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -352,7 +352,7 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -374,7 +374,7 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timeNull)

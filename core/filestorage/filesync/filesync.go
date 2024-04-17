@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
 const CName = "filesync"
@@ -31,23 +32,21 @@ var log = logger.NewNamed(CName)
 
 var loopTimeout = time.Minute
 
-var errReachedLimit = fmt.Errorf("file upload limit has been reached")
+type StatusCallback func(fileObjectId string) error
 
 type FileSync interface {
-	AddFile(spaceId string, fileId domain.FileId, uploadedByUser, imported bool) (err error)
+	AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error)
 	UploadSynchronously(spaceId string, fileId domain.FileId) error
-	OnUploadStarted(func(fileId domain.FileId) error)
-	OnUploaded(func(fileId domain.FileId) error)
-	OnLimited(func(fileId domain.FileId) error)
-	RemoveFile(spaceId string, fileId domain.FileId) (err error)
-	RemoveSynchronously(spaceId string, fileId domain.FileId) (err error)
+	OnUploadStarted(StatusCallback)
+	OnUploaded(StatusCallback)
+	OnLimited(StatusCallback)
+	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
+	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
+	UpdateNodeUsage(ctx context.Context) error
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, hashes []domain.FileId) ([]FileStat, error)
-	SyncStatus() (ss SyncStatus, err error)
-	HasUpload(spaceId string, fileId domain.FileId) (ok bool, err error)
-	IsFileUploadLimited(spaceId string, fileId domain.FileId) (ok bool, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
@@ -56,9 +55,10 @@ type FileSync interface {
 }
 
 type QueueInfo struct {
-	UploadingQueue []*QueueItem
-	DiscardedQueue []*QueueItem
-	RemovingQueue  []*QueueItem
+	UploadingQueue      []string
+	RetryUploadingQueue []string
+	DeletionQueue       []string
+	RetryDeletionQueue  []string
 }
 
 type SyncStatus struct {
@@ -66,9 +66,9 @@ type SyncStatus struct {
 }
 
 type fileSync struct {
+	store           *fileSyncStore
 	dbProvider      datastore.Datastore
 	rpcStore        rpcstore.RpcStore
-	queue           *fileSyncStore
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
 	uploadPingCh    chan struct{}
@@ -76,9 +76,14 @@ type fileSync struct {
 	dagService      ipld.DAGService
 	fileStore       filestore.FileStore
 	eventSender     event.Sender
-	onUploaded      func(fileId domain.FileId) error
-	onUploadStarted func(fileId domain.FileId) error
-	onLimited       func(fileId domain.FileId) error
+	onUploaded      StatusCallback
+	onUploadStarted StatusCallback
+	onLimited       StatusCallback
+
+	uploadingQueue      *persistentqueue.Queue[*QueueItem]
+	retryUploadingQueue *persistentqueue.Queue[*QueueItem]
+	deletionQueue       *persistentqueue.Queue[*QueueItem]
+	retryDeletionQueue  *persistentqueue.Queue[*QueueItem]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -88,39 +93,51 @@ func New() FileSync {
 	return &fileSync{}
 }
 
-func (f *fileSync) Init(a *app.App) (err error) {
-	f.dbProvider = app.MustComponent[datastore.Datastore](a)
-	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
-	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
-	f.fileStore = app.MustComponent[filestore.FileStore](a)
-	f.eventSender = app.MustComponent[event.Sender](a)
-	f.removePingCh = make(chan struct{})
-	f.uploadPingCh = make(chan struct{})
+func (s *fileSync) Init(a *app.App) (err error) {
+	s.dbProvider = app.MustComponent[datastore.Datastore](a)
+	s.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
+	s.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
+	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.eventSender = app.MustComponent[event.Sender](a)
+	s.removePingCh = make(chan struct{})
+	s.uploadPingCh = make(chan struct{})
+	db, err := s.dbProvider.LocalStorage()
+	if err != nil {
+		return
+	}
+	s.uploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, s.uploadingHandler)
+	s.retryUploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, s.retryingHandler, persistentqueue.WithHandlerTickPeriod(loopTimeout))
+	s.deletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, deletionKeyPrefix, makeQueueItem), log.Logger, s.deletionHandler)
+	s.retryDeletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeQueueItem), log.Logger, s.retryDeletionHandler, persistentqueue.WithHandlerTickPeriod(loopTimeout))
 	return
 }
 
-func (f *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
-	return filehelper.NewDAGServiceWithSpaceID(spaceID, f.dagService)
+func (s *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
+	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
 }
 
-func (f *fileSync) OnUploaded(callback func(fileId domain.FileId) error) {
-	f.onUploaded = callback
+func (s *fileSync) OnUploaded(callback StatusCallback) {
+	s.onUploaded = callback
 }
 
-func (f *fileSync) OnUploadStarted(callback func(fileId domain.FileId) error) {
-	f.onUploadStarted = callback
+func (s *fileSync) OnUploadStarted(callback StatusCallback) {
+	s.onUploadStarted = callback
 }
 
-func (f *fileSync) OnLimited(callback func(fileId domain.FileId) error) {
-	f.onLimited = callback
+func (s *fileSync) OnLimited(callback StatusCallback) {
+	s.onLimited = callback
 }
 
-func (f *fileSync) Name() (name string) {
+func (s *fileSync) Name() (name string) {
 	return CName
 }
 
-func (f *fileSync) Run(ctx context.Context) (err error) {
-	db, err := f.dbProvider.SpaceStorage()
+func makeQueueItem() *QueueItem {
+	return &QueueItem{}
+}
+
+func (s *fileSync) Run(ctx context.Context) (err error) {
+	db, err := s.dbProvider.LocalStorage()
 	if err != nil {
 		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
 			db, err = f.dbProvider.LocalStorage()
@@ -131,40 +148,54 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 			return err
 		}
 	}
-	f.queue, err = newFileSyncStore(db)
+	s.store, err = newFileSyncStore(db)
 	if err != nil {
 		return
 	}
 
-	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
-	go f.runNodeUsageUpdater()
-	go f.addLoop()
-	go f.removeLoop()
+	s.uploadingQueue.Run()
+	s.retryUploadingQueue.Run()
+	s.deletionQueue.Run()
+	s.retryDeletionQueue.Run()
+
+	s.loopCtx, s.loopCancel = context.WithCancel(context.Background())
+	go s.runNodeUsageUpdater()
 	return
 }
 
-func (f *fileSync) Close(ctx context.Context) error {
-	if f.loopCancel != nil {
-		f.loopCancel()
+func (s *fileSync) Close(ctx context.Context) error {
+	if s.loopCancel != nil {
+		s.loopCancel()
 	}
 	// Don't wait
 	go func() {
-		if closer, ok := f.rpcStore.(io.Closer); ok {
+		if closer, ok := s.rpcStore.(io.Closer); ok {
 			if err := closer.Close(); err != nil {
 				log.Error("can't close rpc store", zap.Error(err))
 			}
 		}
 	}()
 
-	return nil
-}
-
-func (f *fileSync) SyncStatus() (ss SyncStatus, err error) {
-	ql, err := f.queue.QueueLen()
-	if err != nil {
-		return
+	if s.uploadingQueue != nil {
+		if err := s.uploadingQueue.Close(); err != nil {
+			log.Error("can't close uploading queue: %v", zap.Error(err))
+		}
 	}
-	return SyncStatus{
-		QueueLen: ql,
-	}, nil
+	if s.retryUploadingQueue != nil {
+		if err := s.retryUploadingQueue.Close(); err != nil {
+			log.Error("can't close retrying queue: %v", zap.Error(err))
+		}
+	}
+	if s.deletionQueue != nil {
+		if err := s.deletionQueue.Close(); err != nil {
+			log.Error("can't close deletion queue: %v", zap.Error(err))
+		}
+	}
+	if s.retryDeletionQueue != nil {
+		if err := s.retryDeletionQueue.Close(); err != nil {
+			log.Error("can't close retry deletion queue: %v", zap.Error(err))
+		}
+	}
+
+	return nil
 }

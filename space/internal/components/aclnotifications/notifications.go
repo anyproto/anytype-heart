@@ -2,6 +2,7 @@ package aclnotifications
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
@@ -33,11 +34,13 @@ type aclNotificationRecord struct {
 type NotificationSender interface {
 	CreateAndSend(notification *model.Notification) error
 	GetLastNotificationId(acl string) string
+	LoadFinish() chan struct{}
 }
 
 type AclNotification interface {
 	app.ComponentRunnable
 	AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
+	AddSingleRecord(aclId string, aclRecord *list.AclRecord, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
 }
 
 type aclNotificationSender struct {
@@ -113,6 +116,26 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	}
 }
 
+func (n *aclNotificationSender) AddSingleRecord(aclId string,
+	aclRecord *list.AclRecord,
+	permissions list.AclPermissions,
+	spaceId string,
+	accountStatus spaceinfo.AccountStatus,
+) {
+	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
+	err := n.batcher.Add(&aclNotificationRecord{
+		record:        *aclRecord,
+		permissions:   permissions,
+		spaceId:       spaceId,
+		aclId:         aclId,
+		accountStatus: accountStatus,
+		spaceName:     spaceName,
+	})
+	if err != nil {
+		logger.Errorf("failed to add acl record, %s", err)
+	}
+}
+
 func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotificationRecord *aclNotificationRecord) error {
 	if aclData, ok := aclNotificationRecord.record.Model.(*aclrecordproto.AclData); ok {
 		return n.iterateAclContent(ctx, aclNotificationRecord, aclData)
@@ -121,6 +144,14 @@ func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotific
 }
 
 func (n *aclNotificationSender) processRecords() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	select {
+	case <-n.notificationService.LoadFinish():
+	case <-ticker.C:
+	}
+
 	for {
 		msgs := n.batcher.Wait()
 		if len(msgs) == 0 {
