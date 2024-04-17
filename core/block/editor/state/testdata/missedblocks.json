@@ -1,0 +1,338 @@
+{
+ "data": {
+  "blocks": [
+   {
+    "id": "bafyreih5c53wc7ahtivo5ig4wtgyw5hyvhj5yf7doa7lccapgt7pv5kk6e",
+    "childrenIds": [
+     "header",
+     "r-2487a77b2b4321b3bee3cf34bd849ba1",
+     "r-994c271a2ca8c81f351fe58e47783705",
+     "r-a3236c46fba147c5d8ca19b42dfa0559"
+    ],
+    "smartblock": {
+
+    }
+   },
+   {
+    "id": "header",
+    "restrictions": {
+     "edit": true,
+     "remove": true,
+     "drag": true,
+     "dropOn": true
+    },
+    "childrenIds": [
+     "title",
+     "featuredRelations"
+    ],
+    "layout": {
+     "style": "Header"
+    }
+   },
+   {
+    "id": "r-2487a77b2b4321b3bee3cf34bd849ba1",
+    "childrenIds": [
+     "ct-2487a77b2b4321b3bee3cf34bd849ba1",
+     "cd-2487a77b2b4321b3bee3cf34bd849ba1"
+    ],
+    "layout": {
+
+    }
+   },
+   {
+    "id": "r-994c271a2ca8c81f351fe58e47783705",
+    "childrenIds": [
+     "ct-994c271a2ca8c81f351fe58e47783705",
+     "cd-994c271a2ca8c81f351fe58e47783705"
+    ],
+    "layout": {
+
+    }
+   },
+   {
+    "id": "r-a3236c46fba147c5d8ca19b42dfa0559",
+    "childrenIds": [
+     "ct-a3236c46fba147c5d8ca19b42dfa0559",
+     "cd-a3236c46fba147c5d8ca19b42dfa0559"
+    ],
+    "layout": {
+
+    }
+   },
+   {
+    "id": "title",
+    "fields": {
+      "_detailsKey": [
+         "name",
+         "done"
+        ]
+     },
+    "restrictions": {
+     "remove": true,
+     "drag": true,
+     "dropOn": true
+    },
+    "text": {
+     "style": "Title",
+     "marks": {
+
+     }
+    }
+   },
+   {
+    "id": "featuredRelations",
+    "restrictions": {
+     "remove": true,
+     "drag": true,
+     "dropOn": true
+    },
+    "featuredRelations": {
+
+    }
+   },
+   {
+    "id": "ct-2487a77b2b4321b3bee3cf34bd849ba1",
+    "childrenIds": [
+     "6617bd56c1bdc5e9383e64e1"
+    ],
+    "layout": {
+     "style": "Column"
+    }
+   },
+   {
+    "id": "cd-2487a77b2b4321b3bee3cf34bd849ba1",
+    "childrenIds": [
+     "6617bd9dc1bdc5e9383e64e2"
+    ],
+    "layout": {
+     "style": "Column"
+    }
+   },
+   {
+    "id": "ct-994c271a2ca8c81f351fe58e47783705",
+    "childrenIds": [
+     "6617ab49c1bdc5e9383e64bd"
+    ],
+    "layout": {
+     "style": "Column"
+    }
+   },
+   {
+    "id": "cd-994c271a2ca8c81f351fe58e47783705",
+    "childrenIds": [
+     "6617ab82c1bdc5e9383e64c0"
+    ],
+    "layout": {
+     "style": "Column"
+    }
+   },
+   {
+    "id": "ct-a3236c46fba147c5d8ca19b42dfa0559",
+    "childrenIds": [
+     "6617abddc1bdc5e9383e64c7"
+    ],
+    "layout": {
+     "style": "Column"
+    }
+   },
+   {
+    "id": "cd-a3236c46fba147c5d8ca19b42dfa0559",
+    "childrenIds": [
+     "6617adddc1bdc5e9383e64cc"
+    ],
+    "layout": {
+     "style": "Column"
+    }
+   },
+   {
+    "id": "6617bd56c1bdc5e9383e64e1",
+    "bookmark": {
+     "url": "https://www.youtube.com/watch?v=6Hyr881Xi8A",
+     "title": "Reimagining Digital Freedoms | Exploring...",
+     "description": "A decade ago, Zhanna Sharipova, co-founder and CEO of Anytype, participated in the protest movements in Russia, which led her to a stark realization about th...",
+     "imageHash": "bafyreicmredswy47j3dstp5ab2vhs2efx7rahduru622m5yl67c54lcrp4",
+     "faviconHash": "bafyreifnraisy52el2hlmlqjycl7ldx7lc652nnmygdkfwagtos7xoxyu4",
+     "type": "Page",
+     "targetObjectId": "bafyreihln45ytraycgctriuqchwjh4leocer56ffkuyvd33k5k62f7rhva",
+     "state": "Done"
+    }
+   },
+   {
+    "id": "6617bd9dc1bdc5e9383e64e2",
+    "text": {
+     "marks": {
+
+     }
+    }
+   },
+   {
+    "id": "6617ab49c1bdc5e9383e64bd",
+    "bookmark": {
+     "url": "https://anytype.io/who/inspiration",
+     "title": "Where our inspiration comes from | Anytype",
+     "description": "TV series, books, groundbreaking software and historical manuscripts, all converge to drive us to imagine and realize a new web.",
+     "imageHash": "bafyreie3carsbmoybfgbiya7avidfahop42lmtvj3urjchww5loruve72a",
+     "type": "Page",
+     "targetObjectId": "bafyreih5rvhqjkbcshodzve5nobfxdpeamxkjywfz4p7qfxesmdv3qc5g4",
+     "state": "Done"
+    }
+   },
+   {
+    "id": "6617ab82c1bdc5e9383e64c0",
+    "bookmark": {
+     "url": "https://anytype.io/why",
+     "title": "Building software that puts data ownership first | Anytype",
+     "description": "We believe in and are building a world that rests on trust and digital autonomy, starting with local first software.",
+     "imageHash": "bafyreie3carsbmoybfgbiya7avidfahop42lmtvj3urjchww5loruve72a",
+     "type": "Page",
+     "targetObjectId": "bafyreiarmn2qtndtpubhmun4mfrgso5grpu4da7g5nwf4su5fv2zhcpgmu",
+     "state": "Done"
+    }
+   },
+   {
+    "id": "6617abddc1bdc5e9383e64c7",
+    "bookmark": {
+     "url": "https://blog.anytype.io/why-we-dont-pay-for-user-acquisition/",
+     "title": "Why we don't pay for user acquisition",
+     "description": "Most startups raise VC money and use it to acquire customers through advertisements that target Internet users based on their interests, past searches, and community memberships.",
+     "imageHash": "bafyreia5e5q5plm3wwynjsyutx5cr7epi5xrulh2twx44w7l3soduvsaci",
+     "faviconHash": "bafyreibvi55mcgtoym7ej5fco4pgpfejzzevxl3gmwxm5l2jgchakqi55u",
+     "type": "Page",
+     "targetObjectId": "bafyreihlpm6ryg2a6qpzkmnrnaht3rsvkcpqcaqs7lgeutpwe4zb3f5yea",
+     "state": "Done"
+    }
+   },
+   {
+    "id": "6617adddc1bdc5e9383e64cc",
+    "bookmark": {
+     "url": "https://blog.anytype.io/our-memberships-philosophy/",
+     "title": "Our Membership Philosophy",
+     "description": "Each space and profile in the Anytype network is digitally independent. As a co-creator of this network you’ll be participating in the governance together with us.",
+     "imageHash": "bafyreiadajaqbi6m7hawplkjqadxy36fpgqhvk3ym5pnpxuyug3yxszr7u",
+     "faviconHash": "bafyreibvi55mcgtoym7ej5fco4pgpfejzzevxl3gmwxm5l2jgchakqi55u",
+     "type": "Page",
+     "targetObjectId": "bafyreib4a234i4ti4dy3ymav5cttazwala7f2l4misrhb2yjlahwud5cbm",
+     "state": "Done"
+    }
+   }
+  ],
+  "details": {
+    "featuredRelations": [
+       "type",
+       "backlinks"
+      ],
+    "layout": 0,
+    "name": "From the Thought Factory"
+   },
+  "objectTypes": [
+   "ot-page"
+  ],
+  "relationLinks": [
+   {
+    "key": "id",
+    "format": "object"
+   },
+   {
+    "key": "name",
+    "format": "shorttext"
+   },
+   {
+    "key": "description"
+   },
+   {
+    "key": "snippet"
+   },
+   {
+    "key": "iconEmoji",
+    "format": "emoji"
+   },
+   {
+    "key": "iconImage",
+    "format": "file"
+   },
+   {
+    "key": "type",
+    "format": "object"
+   },
+   {
+    "key": "layout",
+    "format": "number"
+   },
+   {
+    "key": "layoutAlign",
+    "format": "number"
+   },
+   {
+    "key": "coverId"
+   },
+   {
+    "key": "coverScale",
+    "format": "number"
+   },
+   {
+    "key": "coverType",
+    "format": "number"
+   },
+   {
+    "key": "coverX",
+    "format": "number"
+   },
+   {
+    "key": "coverY",
+    "format": "number"
+   },
+   {
+    "key": "createdDate",
+    "format": "date"
+   },
+   {
+    "key": "creator",
+    "format": "object"
+   },
+   {
+    "key": "lastModifiedDate",
+    "format": "date"
+   },
+   {
+    "key": "lastModifiedBy",
+    "format": "object"
+   },
+   {
+    "key": "lastOpenedDate",
+    "format": "date"
+   },
+   {
+    "key": "featuredRelations",
+    "format": "object"
+   },
+   {
+    "key": "isFavorite",
+    "format": "checkbox"
+   },
+   {
+    "key": "workspaceId",
+    "format": "object"
+   },
+   {
+    "key": "spaceId",
+    "format": "object"
+   },
+   {
+    "key": "links",
+    "format": "object"
+   },
+   {
+    "key": "internalFlags",
+    "format": "number"
+   },
+   {
+    "key": "restrictions",
+    "format": "number"
+   },
+   {
+    "key": "backlinks",
+    "format": "object"
+   }
+  ]
+ }
+}

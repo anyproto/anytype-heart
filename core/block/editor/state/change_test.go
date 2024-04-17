@@ -2,11 +2,15 @@ package state
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
@@ -806,4 +810,68 @@ func Test_migrateObjectTypeIDToKey(t *testing.T) {
 			assert.Equalf(t, tt.wantNew, gotNew, "migrateObjectTypeIDToKey(%v)", tt.args.old)
 		})
 	}
+}
+
+func Test_missiedBlocks(t *testing.T) {
+
+	snapshot := &pb.ChangeSnapshot{}
+
+	dir, _ := os.Getwd()
+	fmt.Println(dir)
+	b, err := ioutil.ReadFile("./testdata/missedblocks.json")
+	require.NoError(t, err)
+	err = jsonpb.UnmarshalString(string(b), snapshot)
+	require.NoError(t, err)
+
+	st := NewDocFromSnapshot("bafyreih5c53wc7ahtivo5ig4wtgyw5hyvhj5yf7doa7lccapgt7pv5kk6e", snapshot).(*State)
+
+	st.EnableParentIdsCache()
+	err = st.ApplyChange(
+		&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfBlockMove{
+				BlockMove: &pb.ChangeBlockMove{
+					TargetId: "r-2487a77b2b4321b3bee3cf34bd849ba1",
+					Position: model.Block_Bottom,
+					Ids:      []string{"6617ab49c1bdc5e9383e64bd"},
+				},
+			},
+		},
+		&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfBlockMove{
+				BlockMove: &pb.ChangeBlockMove{
+					TargetId: "6617bd9dc1bdc5e9383e64e2",
+					Position: model.Block_Top,
+					Ids:      []string{"6617ab82c1bdc5e9383e64c0"},
+				},
+			},
+		},
+		&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfBlockRemove{
+				BlockRemove: &pb.ChangeBlockRemove{
+					Ids: []string{"ct-994c271a2ca8c81f351fe58e47783705",
+						"cd-994c271a2ca8c81f351fe58e47783705",
+						"r-994c271a2ca8c81f351fe58e47783705"},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+
+	_, _, err = ApplyStateFastOne(st)
+	require.NoError(t, err)
+
+	found := false
+	childrenFound := false
+
+	for _, block := range st.BlocksToSave() {
+		if block.Id == "6617ab49c1bdc5e9383e64bd" {
+			found = true
+		}
+		if slices.Contains(block.ChildrenIds, "6617ab49c1bdc5e9383e64bd") {
+			childrenFound = true
+		}
+	}
+	require.True(t, found)
+	require.True(t, childrenFound)
+
 }

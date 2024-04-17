@@ -18,6 +18,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/debug/treearchive"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -51,7 +53,7 @@ func main() {
 
 	importer := treearchive.NewTreeImporter(archive.ListStorage(), archive.TreeStorage())
 	st = time.Now()
-	err = importer.Import(*fromRoot, "")
+	err = importer.Import(*fromRoot, "bafyreia4nehugszlxqfmfafjvvkcduxywk2cvc3fpohexup5ol6isbvcfm")
 	if err != nil {
 		log.Fatal("can't import the tree", err)
 	}
@@ -104,6 +106,7 @@ func main() {
 		if err != nil {
 			log.Fatal("can't build state:", err)
 		}
+		fmt.Printf("changeId: %s", s.ChangeId())
 		dur := time.Since(stt)
 		fmt.Println(s.StringDebug())
 
@@ -120,6 +123,27 @@ func main() {
 				fmt.Printf("\t%s: %d\n", fk.Hash, len(fk.Keys))
 			}
 		}
+		snapshot := &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks:                   s.BlocksToSave(),
+				Details:                  s.Details(),
+				ObjectTypes:              domain.MarshalTypeKeys(s.ObjectTypeKeys()),
+				Collections:              s.Store(),
+				RelationLinks:            s.PickRelationLinks(),
+				Key:                      s.UniqueKeyInternal(),
+				OriginalCreatedTimestamp: s.OriginalCreatedTimestamp(),
+				FileInfo:                 s.GetFileInfo().ToModel(),
+			},
+		}
+		tf, err := ioutil.TempFile("", fmt.Sprintf("state_%s_%d_*.json", s.RootId(), *changeIdx))
+		if err != nil {
+			log.Fatal("can't create temp file:", err)
+		}
+
+		tf.WriteString(pbtypes.Sprint(snapshot))
+		fmt.Println(tf.Name())
+		tf.Close()
+
 		fmt.Println("state building time:", dur)
 	}
 

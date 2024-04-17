@@ -589,6 +589,9 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			}
 			appliedContent = append(appliedContent, model.Content...)
 			st.SetChangeId(change.Id)
+			if change.Id == "bafyreia4nehugszlxqfmfafjvvkcduxywk2cvc3fpohexup5ol6isbvcfm" {
+				fmt.Println()
+			}
 			st.ApplyChangeIgnoreErr(model.Content...)
 			st.AddFileKeys(model.FileKeys...)
 
