@@ -3,8 +3,10 @@
 package mock_account
 
 import (
-	app "github.com/anyproto/any-sync/app"
+	accountdata "github.com/anyproto/any-sync/commonspace/object/accountdata"
 	account "github.com/anyproto/anytype-heart/core/anytype/account"
+
+	app "github.com/anyproto/any-sync/app"
 
 	context "context"
 
@@ -228,6 +230,53 @@ func (_c *MockService_Init_Call) Return(err error) *MockService_Init_Call {
 }
 
 func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockService_Init_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Keys provides a mock function with given fields:
+func (_m *MockService) Keys() *accountdata.AccountKeys {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Keys")
+	}
+
+	var r0 *accountdata.AccountKeys
+	if rf, ok := ret.Get(0).(func() *accountdata.AccountKeys); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*accountdata.AccountKeys)
+		}
+	}
+
+	return r0
+}
+
+// MockService_Keys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Keys'
+type MockService_Keys_Call struct {
+	*mock.Call
+}
+
+// Keys is a helper method to define mock.On call
+func (_e *MockService_Expecter) Keys() *MockService_Keys_Call {
+	return &MockService_Keys_Call{Call: _e.mock.On("Keys")}
+}
+
+func (_c *MockService_Keys_Call) Run(run func()) *MockService_Keys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_Keys_Call) Return(_a0 *accountdata.AccountKeys) *MockService_Keys_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_Keys_Call) RunAndReturn(run func() *accountdata.AccountKeys) *MockService_Keys_Call {
 	_c.Call.Return(run)
 	return _c
 }
