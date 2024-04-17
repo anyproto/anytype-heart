@@ -3,9 +3,8 @@
 package file
 
 import (
-	mock "github.com/stretchr/testify/mock"
-
 	fileuploader "github.com/anyproto/anytype-heart/core/files/fileuploader"
+	mock "github.com/stretchr/testify/mock"
 
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
