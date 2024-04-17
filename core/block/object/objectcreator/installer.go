@@ -102,7 +102,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 			return "", nil, fmt.Errorf("sync tree check: %w", err)
 		}
 		if inQueue {
-			log.Info("skip install object: queued to sync", zap.String("objectId", objectId))
+			log.Desugar().Warn("skip install object: queued to sync", zap.String("objectId", objectId))
 			return "", nil, nil
 		}
 	}
