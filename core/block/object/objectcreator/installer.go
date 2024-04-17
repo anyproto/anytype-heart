@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -69,6 +71,10 @@ func (s *service) InstallBundledObjects(
 	return
 }
 
+type missingChecker interface {
+	IsWasInMissing(ctx context.Context, treeId string) (ok bool, err error)
+}
+
 func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *types.Struct) (id string, newDetails *types.Struct, err error) {
 	uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(installingDetails, bundle.RelationKeyUniqueKey.String()))
 	if err != nil {
@@ -81,6 +87,24 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 		objectTypeKey = bundle.TypeKeyObjectType
 	} else {
 		return "", nil, fmt.Errorf("unsupported object type: %s", uk.SmartblockType())
+	}
+
+	// before creating a new derived object we try to check if it exists in the queue to sync
+	objectId, err := space.DeriveObjectID(ctx, uk)
+	if err != nil {
+		return "", nil, fmt.Errorf("derive object id: %w", err)
+	}
+	if mChecker, ok := space.CommonSpace().TreeSyncer().(missingChecker); ok {
+		mCtx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+		inQueue, err := mChecker.IsWasInMissing(mCtx, objectId)
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			return "", nil, fmt.Errorf("sync tree check: %w", err)
+		}
+		if inQueue {
+			log.Info("skip install object: queued to sync", zap.String("objectId", objectId))
+			return "", nil, nil
+		}
 	}
 
 	id, newDetails, err = s.createObjectInSpace(ctx, space, CreateObjectRequest{
