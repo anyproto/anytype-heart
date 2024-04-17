@@ -161,7 +161,7 @@ func TestFileSync_RemoveFile(t *testing.T) {
 
 func newFixture(t *testing.T, limit int) *fixture {
 	fx := &fixture{
-		FileSync:    New(),
+		fileSync:    New().(*fileSync),
 		fileService: fileservice.New(),
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),
@@ -191,7 +191,7 @@ func newFixture(t *testing.T, limit int) *fixture {
 		Register(localFileStorage).
 		Register(datastore.NewInMemory()).
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
-		Register(fx.FileSync).
+		Register(fx.fileSync).
 		Register(fileStoreMock).
 		Register(sender)
 	require.NoError(t, fx.a.Start(ctx))
@@ -199,7 +199,7 @@ func newFixture(t *testing.T, limit int) *fixture {
 }
 
 type fixture struct {
-	FileSync
+	*fileSync
 	fileService      fileservice.FileService
 	fileStoreMock    *MockFileStore
 	localFileStorage fileblockstore.BlockStoreLocal

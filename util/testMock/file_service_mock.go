@@ -83,7 +83,7 @@ func (mr *MockFileServiceMockRecorder) FileByHash(arg0, arg1 any) *gomock.Call {
 }
 
 // FileGetKeys mocks base method.
-func (m *MockFileService) FileGetKeys(arg0 domain.FullFileId) (*domain.FileEncryptionKeys, error) {
+func (m *MockFileService) FileGetKeys(arg0 domain.FileId) (*domain.FileEncryptionKeys, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FileGetKeys", arg0)
 	ret0, _ := ret[0].(*domain.FileEncryptionKeys)
@@ -270,21 +270,6 @@ func (m *MockImage) FileId() domain.FileId {
 func (mr *MockImageMockRecorder) FileId() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileId", reflect.TypeOf((*MockImage)(nil).FileId))
-}
-
-// GetFileForLargestWidth mocks base method.
-func (m *MockImage) GetFileForLargestWidth(arg0 context.Context) (files.File, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFileForLargestWidth", arg0)
-	ret0, _ := ret[0].(files.File)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetFileForLargestWidth indicates an expected call of GetFileForLargestWidth.
-func (mr *MockImageMockRecorder) GetFileForLargestWidth(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileForLargestWidth", reflect.TypeOf((*MockImage)(nil).GetFileForLargestWidth), arg0)
 }
 
 // GetFileForWidth mocks base method.

@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.space"
@@ -206,6 +207,12 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 		return nil, err
 	}
 	return s.waitLoad(ctx, ctrl)
+}
+
+func (s *service) UpdateSharedLimits(ctx context.Context, limits int) error {
+	return s.techSpace.DoSpaceView(ctx, s.personalSpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.SetSharedSpacesLimit(limits)
+	})
 }
 
 func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, err error) {
