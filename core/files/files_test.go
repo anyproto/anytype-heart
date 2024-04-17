@@ -45,7 +45,8 @@ const (
 
 func newFixture(t *testing.T) *fixture {
 	fileStore := filestore.New()
-	dataStoreProvider := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 
 	blockStorage := filestorage.NewInMemory()
 
@@ -66,7 +67,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(blockStorage)
 	a.Register(objectStore)
 	a.Register(rpcStoreService)
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
 
 	s := New()
@@ -87,7 +88,7 @@ func TestFileAdd(t *testing.T) {
 	ctx := context.Background()
 
 	uploaded := make(chan struct{})
-	fx.fileSyncService.OnUploaded(func(fileId domain.FileId) error {
+	fx.fileSyncService.OnUploaded(func(objectId string) error {
 		close(uploaded)
 		return nil
 	})
@@ -134,7 +135,7 @@ func TestFileAdd(t *testing.T) {
 	})
 
 	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
-		err = fx.fileSyncService.AddFile(spaceId, got.FileId, true, false)
+		err = fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
 		require.NoError(t, err)
 		<-uploaded
 		infos, err := fx.rpcStore.FilesInfo(ctx, spaceId, got.FileId)
@@ -197,7 +198,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 		ctx := context.Background()
 
 		uploaded := make(chan struct{})
-		fx.fileSyncService.OnUploaded(func(fileId domain.FileId) error {
+		fx.fileSyncService.OnUploaded(func(objectId string) error {
 			close(uploaded)
 			return nil
 		})
@@ -235,7 +236,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 				ctx := context.Background()
 
 				uploaded := make(chan struct{})
-				fx.fileSyncService.OnUploaded(func(fileId domain.FileId) error {
+				fx.fileSyncService.OnUploaded(func(objectId string) error {
 					close(uploaded)
 					return nil
 				})

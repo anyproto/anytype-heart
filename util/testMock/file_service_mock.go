@@ -18,7 +18,6 @@ import (
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	files "github.com/anyproto/anytype-heart/core/files"
 	pb "github.com/anyproto/anytype-heart/pb"
-	mill "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	types "github.com/gogo/protobuf/types"
 	gomock "go.uber.org/mock/gomock"
@@ -243,21 +242,6 @@ func (mr *MockImageMockRecorder) Details(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Details", reflect.TypeOf((*MockImage)(nil).Details), arg0)
 }
 
-// Exif mocks base method.
-func (m *MockImage) Exif(arg0 context.Context) (*mill.ImageExifSchema, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Exif", arg0)
-	ret0, _ := ret[0].(*mill.ImageExifSchema)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Exif indicates an expected call of Exif.
-func (mr *MockImageMockRecorder) Exif(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exif", reflect.TypeOf((*MockImage)(nil).Exif), arg0)
-}
-
 // FileId mocks base method.
 func (m *MockImage) FileId() domain.FileId {
 	m.ctrl.T.Helper()
@@ -273,33 +257,33 @@ func (mr *MockImageMockRecorder) FileId() *gomock.Call {
 }
 
 // GetFileForWidth mocks base method.
-func (m *MockImage) GetFileForWidth(arg0 context.Context, arg1 int) (files.File, error) {
+func (m *MockImage) GetFileForWidth(arg0 int) (files.File, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFileForWidth", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetFileForWidth", arg0)
 	ret0, _ := ret[0].(files.File)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetFileForWidth indicates an expected call of GetFileForWidth.
-func (mr *MockImageMockRecorder) GetFileForWidth(arg0, arg1 any) *gomock.Call {
+func (mr *MockImageMockRecorder) GetFileForWidth(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileForWidth", reflect.TypeOf((*MockImage)(nil).GetFileForWidth), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileForWidth", reflect.TypeOf((*MockImage)(nil).GetFileForWidth), arg0)
 }
 
 // GetOriginalFile mocks base method.
-func (m *MockImage) GetOriginalFile(arg0 context.Context) (files.File, error) {
+func (m *MockImage) GetOriginalFile() (files.File, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOriginalFile", arg0)
+	ret := m.ctrl.Call(m, "GetOriginalFile")
 	ret0, _ := ret[0].(files.File)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetOriginalFile indicates an expected call of GetOriginalFile.
-func (mr *MockImageMockRecorder) GetOriginalFile(arg0 any) *gomock.Call {
+func (mr *MockImageMockRecorder) GetOriginalFile() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOriginalFile", reflect.TypeOf((*MockImage)(nil).GetOriginalFile), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOriginalFile", reflect.TypeOf((*MockImage)(nil).GetOriginalFile))
 }
 
 // MockFile is a mock of File interface.

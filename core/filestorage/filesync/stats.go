@@ -104,7 +104,7 @@ func (s *fileSync) precacheNodeUsage() {
 	_, ok, err := s.getCachedNodeUsage()
 	// Init cache with default limits
 	if !ok || err != nil {
-		err = s.queue.setNodeUsage(NodeUsage{
+		err = s.store.setNodeUsage(NodeUsage{
 			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
 		if err != nil {
@@ -138,7 +138,7 @@ func (s *fileSync) UpdateNodeUsage(ctx context.Context) error {
 }
 
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
-	usage, err := s.queue.getNodeUsage()
+	usage, err := s.store.getNodeUsage()
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return NodeUsage{}, false, nil
 	}
@@ -180,7 +180,7 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 		BytesLeft:         left,
 		Spaces:            spaces,
 	}
-	err = s.queue.setNodeUsage(usage)
+	err = s.store.setNodeUsage(usage)
 	if err != nil {
 		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
 	}
@@ -189,6 +189,9 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 		if !prevUsageFound || prevUsage.GetSpaceUsage(space.SpaceId).SpaceBytesUsage != space.SpaceBytesUsage {
 			s.sendSpaceUsageEvent(space.SpaceId, uint64(space.SpaceBytesUsage))
 		}
+	}
+	if !prevUsageFound || prevUsage.AccountBytesLimit != usage.AccountBytesLimit {
+		s.sendLimitUpdatedEvent(uint64(usage.AccountBytesLimit))
 	}
 
 	return usage, nil
@@ -230,6 +233,24 @@ func makeSpaceUsageEvent(spaceId string, bytesUsage uint64) *pb.Event {
 					FileSpaceUsage: &pb.EventFileSpaceUsage{
 						BytesUsage: bytesUsage,
 						SpaceId:    spaceId,
+					},
+				},
+			},
+		},
+	}
+}
+
+func (s *fileSync) sendLimitUpdatedEvent(limit uint64) {
+	s.eventSender.Broadcast(makeLimitUpdatedEvent(limit))
+}
+
+func makeLimitUpdatedEvent(limit uint64) *pb.Event {
+	return &pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfFileLimitUpdated{
+					FileLimitUpdated: &pb.EventFileLimitUpdated{
+						BytesLimit: limit,
 					},
 				},
 			},
@@ -330,23 +351,11 @@ func (s *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileId 
 	return count, err
 }
 
-func (f *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
-	var (
-		info QueueInfo
-		err  error
-	)
-
-	info.UploadingQueue, err = f.queue.listItemsByPrefix(uploadKeyPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("list items from uploading queue: %w", err)
-	}
-	info.DiscardedQueue, err = f.queue.listItemsByPrefix(discardedKeyPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("list items from discarded queue: %w", err)
-	}
-	info.RemovingQueue, err = f.queue.listItemsByPrefix(removeKeyPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("list items from removing queue: %w", err)
-	}
+func (s *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
+	var info QueueInfo
+	info.UploadingQueue = s.uploadingQueue.ListKeys()
+	info.RetryUploadingQueue = s.retryUploadingQueue.ListKeys()
+	info.DeletionQueue = s.deletionQueue.ListKeys()
+	info.RetryDeletionQueue = s.retryDeletionQueue.ListKeys()
 	return &info, nil
 }
