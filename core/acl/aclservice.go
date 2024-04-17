@@ -380,6 +380,9 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
 	}
+	if len(recs) == 0 {
+		return inviteservice.InviteView{}, fmt.Errorf("no acl records found for space: %s, %w", res.SpaceId, ErrAclRequestFailed)
+	}
 	store, err := liststorage.NewInMemoryAclListStorage(recs[0].Id, recs)
 	if err != nil {
 		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
