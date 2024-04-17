@@ -35,10 +35,13 @@ func newFixture(t *testing.T) *fixture {
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
+
 	ctx := context.Background()
 	a := new(app.App)
 	a.Register(objectstore.NewStoreFixture(t))
-	a.Register(datastore.NewInMemory())
+	a.Register(dataStoreProvider)
 	a.Register(filestore.New())
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
@@ -47,7 +50,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(fileservice.New())
 	a.Register(filesync.New())
 	a.Register(files.New())
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
 
 	s := New()

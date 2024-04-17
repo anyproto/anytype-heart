@@ -38,6 +38,7 @@ func New() DeletionController {
 type SpaceManager interface {
 	app.Component
 	UpdateRemoteStatus(ctx context.Context, spaceStatusInfo spaceinfo.SpaceRemoteStatusInfo) error
+	UpdateSharedLimits(ctx context.Context, limits int) error
 	AllSpaceIds() (ids []string)
 }
 
@@ -103,7 +104,7 @@ func (d *deletionController) loopIterate(ctx context.Context) error {
 
 func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []string) {
 	ids := d.spaceManager.AllSpaceIds()
-	remoteStatuses, _, err := d.client.StatusCheckMany(ctx, ids)
+	remoteStatuses, limits, err := d.client.StatusCheckMany(ctx, ids)
 	if err != nil {
 		log.Warn("remote status check error", zap.Error(err))
 		return
@@ -116,6 +117,12 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []str
 			return spaceinfo.RemoteStatusWaitingDeletion
 		default:
 			return spaceinfo.RemoteStatusDeleted
+		}
+	}
+	if limits != nil {
+		err := d.spaceManager.UpdateSharedLimits(ctx, int(limits.SharedSpacesLimit))
+		if err != nil {
+			log.Warn("shared limits update error", zap.Error(err))
 		}
 	}
 	for idx, nodeStatus := range remoteStatuses {
