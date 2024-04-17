@@ -2,6 +2,7 @@ package treesyncer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -55,28 +56,33 @@ func (e *executor) close() {
 
 type treeSyncer struct {
 	sync.Mutex
-	mainCtx      context.Context
-	cancel       context.CancelFunc
-	requests     int
-	spaceId      string
-	timeout      time.Duration
-	requestPools map[string]*executor
-	headPools    map[string]*executor
-	treeManager  treemanager.TreeManager
-	isRunning    bool
-	isSyncing    bool
+	mainCtx           context.Context
+	cancel            context.CancelFunc
+	requests          int
+	spaceId           string
+	timeout           time.Duration
+	requestPools      map[string]*executor
+	headPools         map[string]*executor
+	treeManager       treemanager.TreeManager
+	isRunning         bool
+	isSyncing         bool
+	missingIds        map[string]struct{}
+	missingReceivedCh chan struct{}
+	missingReceived   bool
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 	mainCtx, cancel := context.WithCancel(context.Background())
 	return &treeSyncer{
-		mainCtx:      mainCtx,
-		cancel:       cancel,
-		requests:     10,
-		spaceId:      spaceId,
-		timeout:      time.Second * 30,
-		requestPools: map[string]*executor{},
-		headPools:    map[string]*executor{},
+		mainCtx:           mainCtx,
+		cancel:            cancel,
+		requests:          10,
+		spaceId:           spaceId,
+		timeout:           time.Second * 30,
+		requestPools:      map[string]*executor{},
+		headPools:         map[string]*executor{},
+		missingIds:        map[string]struct{}{},
+		missingReceivedCh: make(chan struct{}),
 	}
 }
 
@@ -163,6 +169,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 		}
 	}
 	for _, id := range missing {
+		t.missingIds[id] = struct{}{}
 		idCopy := id
 		err := reqExec.tryAdd(idCopy, func() {
 			t.requestTree(peerId, idCopy)
@@ -171,7 +178,25 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 			log.Error("failed to add to request queue", zap.Error(err))
 		}
 	}
+	if len(missing) > 0 && !t.missingReceived {
+		t.missingReceived = true
+		close(t.missingReceivedCh)
+	}
 	return nil
+}
+
+func (t *treeSyncer) IsWasInMissing(ctx context.Context, treeId string) (ok bool, err error) {
+	select {
+	case <-t.missingReceivedCh:
+	case <-t.mainCtx.Done():
+		return false, fmt.Errorf("main ctx: %w", t.mainCtx.Err())
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
+	t.Lock()
+	defer t.Unlock()
+	_, ok = t.missingIds[treeId]
+	return
 }
 
 func (t *treeSyncer) requestTree(peerId, id string) {

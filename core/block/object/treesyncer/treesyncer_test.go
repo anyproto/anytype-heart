@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -152,5 +153,30 @@ func TestTreeSyncer(t *testing.T) {
 		mutex.Lock()
 		require.Equal(t, []string{"before close", "after done"}, events)
 		mutex.Unlock()
+	})
+}
+
+func TestTreeSyncer_IsWasInMissing(t *testing.T) {
+	t.Run("wait", func(t *testing.T) {
+		fx := newFixture(t, "1")
+		defer func() {
+			_ = fx.Close(context.Background())
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		var resCh = make(chan bool)
+		go func() {
+			ok, err := fx.IsWasInMissing(ctx, "tree")
+			require.NoError(t, err)
+			resCh <- ok
+		}()
+		select {
+		case <-resCh:
+			t.Fatal("should not have been wait")
+		default:
+		}
+		require.NoError(t, fx.SyncAll(context.Background(), "1", nil, []string{"tree"}))
+		ok := <-resCh
+		assert.True(t, ok)
 	})
 }
