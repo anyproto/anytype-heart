@@ -73,16 +73,17 @@ func (t *treeImporter) State(fullStateChain bool) (*state.State, error) {
 	)
 
 	if fullStateChain {
-		st, _, _, err = source.BuildStateFull(nil, t.objectTree, "")
+		st, _, _, err = source.BuildStateFull("", nil, t.objectTree, "")
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		st, _, _, err = source.BuildState(nil, t.objectTree)
+		st, _, _, err = source.BuildState("", nil, t.objectTree)
 		if err != nil {
 			return nil, err
 		}
 	}
+	defer st.ResetParentIdsCache()
 
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return nil, err

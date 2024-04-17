@@ -15,19 +15,21 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -60,12 +62,14 @@ type indexer struct {
 	store          objectstore.ObjectStore
 	fileStore      filestore.FileStore
 	source         source.Service
-	picker         block.ObjectGetter
+	picker         cache.ObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 	fileService    files.Service
 
-	quit       chan struct{}
+	quit            chan struct{}
+	ftQueueFinished chan struct{}
+
 	btHash     Hasher
 	newAccount bool
 	forceFt    chan struct{}
@@ -84,9 +88,10 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.picker = app.MustComponent[block.ObjectGetter](a)
+	i.picker = app.MustComponent[cache.ObjectGetter](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
+	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
 }
@@ -103,13 +108,36 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
-	go i.ftLoop()
+	go i.ftLoopRoutine()
 	return
 }
 
 func (i *indexer) Close(ctx context.Context) (err error) {
 	close(i.quit)
+	// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
+	<-i.ftQueueFinished
 	return nil
+}
+
+func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
+	ids, _, err := i.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+			},
+		},
+	})
+	if err != nil {
+		return
+	}
+	return i.store.DeleteDetails(ids...)
 }
 
 func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
@@ -200,8 +228,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 			}
 		}
-
-		i.indexLinkedFiles(ctx, info.Space, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -224,40 +250,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 	})
 
 	return nil
-}
-
-func (i *indexer) indexLinkedFiles(ctx context.Context, space smartblock.Space, fileHashes []string) {
-	if len(fileHashes) == 0 {
-		return
-	}
-	existingIDs, err := i.store.HasIDs(fileHashes...)
-	if err != nil {
-		log.Errorf("failed to get existing file ids : %s", err)
-	}
-	newIDs := slice.Difference(fileHashes, existingIDs)
-	for _, id := range newIDs {
-		go func(id string) {
-			// Deduplicate
-			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
-			if ok {
-				return
-			}
-			bindErr := i.storageService.BindSpaceID(space.Id(), id)
-			if bindErr != nil {
-				log.Error("failed to bind space id", zap.Error(bindErr), zap.String("id", id))
-				return
-			}
-			// file's hash is id
-			idxErr := i.reindexDoc(ctx, space, id)
-			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
-				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
-			}
-			idxErr = i.store.AddToIndexQueue(id)
-			if idxErr != nil {
-				log.With("id", id).Error(idxErr)
-			}
-		}(id)
-	}
 }
 
 func headsHash(heads []string) string {

@@ -108,6 +108,7 @@ type ObjectStore interface {
 	IndexerStore
 	AccountStore
 	VirtualSpacesStore
+	SpaceNameGetter
 
 	SubscribeForAll(callback func(rec database.Record))
 
@@ -152,7 +153,7 @@ type ObjectStore interface {
 	GetRelationByKey(key string) (*model.Relation, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
-	BatchProcessFullTextQueue(limit int, processIds func(processIds []string) error) error
+	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
 }
 
 type IndexerStore interface {
@@ -274,12 +275,13 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 }
 
 func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error) {
-	filters := []*model.BlockContentDataviewFilter{
-		{
+	var filters []*model.BlockContentDataviewFilter
+	if spaceID != "" {
+		filters = append(filters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String(spaceID),
-		},
+		})
 	}
 	if includeArchived {
 		filters = append(filters, &model.BlockContentDataviewFilter{
@@ -420,10 +422,7 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string
 		return nil, err
 	}
 	details = detailsModel.Details
-	snippet, err := badgerhelper.GetValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
-	if err != nil && !badgerhelper.IsNotFound(err) {
-		return nil, fmt.Errorf("failed to get snippet: %w", err)
-	}
+	snippet := pbtypes.GetString(details, bundle.RelationKeySnippet.String())
 
 	return &model.ObjectInfo{
 		Id:      id,

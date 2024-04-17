@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -49,6 +50,9 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	if req.DisableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
+	if req.PreferYamuxTransport {
+		cfg.PeferYamuxTransport = true
+	}
 	if req.NetworkMode > 0 {
 		cfg.NetworkMode = req.NetworkMode
 		cfg.NetworkCustomConfigFilePath = req.NetworkCustomConfigFilePath
@@ -61,7 +65,17 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	newAcc := &model.Account{Id: accountID}
 
+	// in case accountCreate got canceled by other request we loose nothing
+	s.appAccountStartInProcessCancelMutex.Lock()
+	ctx, s.appAccountStartInProcessCancel = context.WithCancel(ctx)
+	s.appAccountStartInProcessCancelMutex.Unlock()
 	s.app, err = anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
+	s.appAccountStartInProcessCancelMutex.Lock()
+	s.appAccountStartInProcessCancel = nil
+	s.appAccountStartInProcessCancelMutex.Unlock()
+	if errors.Is(ctx.Err(), context.Canceled) {
+		// todo: remove local data in case of account create cancelation
+	}
 	if err != nil {
 		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
@@ -114,12 +128,13 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
-		hash, err := bs.UploadFile(context.Background(), personalSpaceId, block.FileUploadRequest{
+		hash, _, err := bs.UploadFile(context.Background(), personalSpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
 				Type:      model.BlockContentFile_Image,
 			},
-		}, nil)
+			ObjectOrigin: objectorigin.None(),
+		})
 		if err != nil {
 			log.Warnf("can't add avatar: %v", err)
 		} else {

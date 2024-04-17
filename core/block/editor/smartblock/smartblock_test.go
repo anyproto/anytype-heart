@@ -457,11 +457,9 @@ func newFixture(id string, t *testing.T) *fixture {
 	restrictionService := mock_restriction.NewMockService(t)
 	restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{}).Maybe()
 
-	fileService := testMock.NewMockFileService(ctrl)
-
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(nil, "", fileService, restrictionService, objectStore, indexer, sender).(*smartBlock)
+	sb := New(nil, "", nil, restrictionService, objectStore, indexer, sender).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",

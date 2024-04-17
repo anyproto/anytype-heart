@@ -1,0 +1,79 @@
+package acl
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+
+	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/space"
+)
+
+var (
+	ErrRequestNotExists     = errors.New("request doesn't exist")
+	ErrPersonalSpace        = errors.New("sharing of personal space is forbidden")
+	ErrIncorrectPermissions = errors.New("incorrect permissions")
+	ErrNoSuchAccount        = errors.New("no such user")
+	ErrAclRequestFailed     = errors.New("acl request failed")
+	ErrNotShareable         = errors.New("space is not shareable")
+	ErrLimitReached         = errors.New("limit reached")
+	ErrInternal             = errors.New("internal error")
+)
+
+var passthroughErrors = []error{
+	space.ErrSpaceStorageMissig,
+	space.ErrSpaceDeleted,
+	inviteservice.ErrInviteGet,
+	inviteservice.ErrInviteGenerate,
+	inviteservice.ErrInviteRemove,
+	inviteservice.ErrInviteBadContent,
+}
+
+func convertErrorOrReturn(err, otherErr error) error {
+	if err == nil {
+		return nil
+	}
+	for _, passthroughErr := range passthroughErrors {
+		if errors.Is(err, passthroughErr) {
+			return err
+		}
+	}
+	switch {
+	case errors.Is(err, coordinatorproto.ErrSpaceNotExists):
+		return wrapError("space not exists", err, space.ErrSpaceNotExists)
+	case errors.Is(err, coordinatorproto.ErrSpaceIsDeleted):
+		return wrapError("space is deleted", err, space.ErrSpaceDeleted)
+	case errors.Is(err, coordinatorproto.ErrSpaceLimitReached):
+		return wrapError("space limit reached", err, ErrLimitReached)
+	case errors.Is(err, coordinatorproto.ErrSpaceNotShareable):
+		return wrapError("space is not shareable", err, ErrNotShareable)
+	case errors.Is(err, list.ErrNoSuchRecord):
+		return wrapError("request doesn't exist", err, ErrRequestNotExists)
+	case errors.Is(err, list.ErrNoSuchAccount):
+		return wrapError("no such account", err, ErrNoSuchAccount)
+	default:
+		return otherErr
+	}
+}
+
+func wrapError(msg string, err, typedErr error) error {
+	return fmt.Errorf("%s: %w, %w", msg, err, typedErr)
+}
+
+func wrapAclErr(err error) error {
+	return fmt.Errorf("%w: %w", ErrAclRequestFailed, err)
+}
+
+func convertedOrSpaceErr(err error) error {
+	return convertedOrInternalError("failed to get space", err)
+}
+
+func convertedOrInternalError(msg string, err error) error {
+	return convertErrorOrReturn(err, wrapError(msg, err, ErrInternal))
+}
+
+func convertedOrAclRequestError(err error) error {
+	return convertErrorOrReturn(err, wrapAclErr(err))
+}

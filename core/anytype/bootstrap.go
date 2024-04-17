@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
-	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
@@ -20,11 +21,16 @@ import (
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/anyproto/any-sync/node/nodeclient"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+
+	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -48,16 +54,23 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/payments"
+	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -70,6 +83,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/coordinatorclient"
+	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
@@ -183,9 +198,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	a.
 		// Data storages
 		Register(clientds.New()).
+		Register(debugstat.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
+		Register(filestore.New()).
 		// Services
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
@@ -204,26 +221,34 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientserver.New()).
 		Register(streampool.New()).
 		Register(coordinatorclient.New()).
+		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
-		Register(rpcstore.New()).
-		Register(filestore.New()).
-		Register(fileservice.New()).
-		Register(filestorage.New()).
-		Register(filesync.New()).
+		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
+		Register(fileuploader.New()).
+		Register(rpcstore.New()).
+		Register(fileservice.New()).
+		Register(filestorage.New()).
+		Register(files.New()).
+		Register(fileacl.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
+		Register(deletioncontroller.New()).
+		Register(invitestore.New()).
+		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
+		Register(inviteservice.New()).
+		Register(acl.New()).
+		Register(filesync.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
-		Register(files.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(core.New()).
@@ -243,7 +268,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
-		Register(session.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
@@ -252,9 +276,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
 		Register(profiler.New()).
-		Register(identity.New()).
+		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
-		Register(notifications.New())
+		Register(notifications.New()).
+		Register(paymentserviceclient.New()).
+		Register(nameservice.New()).
+		Register(nameserviceclient.New()).
+		Register(payments.New()).
+		Register(paymentscache.New())
 }
 
 func MiddlewareVersion() string {

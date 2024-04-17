@@ -19,6 +19,7 @@ import (
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -62,15 +63,16 @@ func Test_ImportSuccess(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.Nil(t, err)
+	assert.Nil(t, res.Err)
+	assert.Equal(t, int64(1), res.ObjectsCount)
 }
 
 func Test_ImportErrorFromConverter(t *testing.T) {
@@ -91,16 +93,17 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "converter error")
+	assert.NotNil(t, res.Err)
+	assert.Contains(t, res.Err.Error(), "converter error")
+	assert.Equal(t, int64(0), res.ObjectsCount)
 }
 
 func Test_ImportErrorFromObjectCreator(t *testing.T) {
@@ -138,16 +141,17 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	// assert.Contains(t, res.Error(), "creator error")
+	assert.NotNil(t, res.Err)
+	assert.Equal(t, int64(0), res.ObjectsCount)
+	// assert.Contains(t, res.Err.Error(), "creator error")
 }
 
 func Test_ImportIgnoreErrorMode(t *testing.T) {
@@ -185,16 +189,17 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	assert.Contains(t, res.Error(), "converter error")
+	assert.NotNil(t, res.Err)
+	assert.Equal(t, int64(1), res.ObjectsCount)
+	assert.Contains(t, res.Err.Error(), "converter error")
 }
 
 func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
@@ -234,17 +239,16 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	assert.Contains(t, res.Error(), "converter error")
-	assert.Contains(t, res.Error(), "converter error", "creator error")
+	assert.NotNil(t, res.Err)
+	assert.Contains(t, res.Err.Error(), "converter error")
 }
 
 func Test_ImportExternalPlugin(t *testing.T) {
@@ -285,15 +289,16 @@ func Test_ImportExternalPlugin(t *testing.T) {
 			Collections:    nil,
 		},
 	})
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                nil,
 		Snapshots:             snapshots,
 		UpdateExistingObjects: false,
 		Type:                  model.Import_External,
 		Mode:                  2,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
-	assert.Nil(t, res)
+	}, objectorigin.Import(model.Import_Notion), nil)
+	assert.Nil(t, res.Err)
+	assert.Equal(t, int64(1), res.ObjectsCount)
 }
 
 func Test_ImportExternalPluginError(t *testing.T) {
@@ -310,16 +315,17 @@ func Test_ImportExternalPluginError(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                nil,
 		Snapshots:             nil,
 		UpdateExistingObjects: false,
 		Type:                  model.Import_External,
 		Mode:                  2,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
-	assert.NotNil(t, res)
-	assert.Contains(t, res.Error(), common.ErrNoObjectsToImport.Error())
+	}, objectorigin.Import(model.Import_Notion), nil)
+	assert.NotNil(t, res.Err)
+	assert.Contains(t, res.Err.Error(), common.ErrNoObjectsToImport.Error())
+	assert.Equal(t, int64(0), res.ObjectsCount)
 }
 
 func Test_ListImports(t *testing.T) {
@@ -477,16 +483,16 @@ func Test_ImportCancelError(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrCancel))
+	assert.NotNil(t, res.Err)
+	assert.True(t, errors.Is(res.Err, common.ErrCancel))
 }
 
 func Test_ImportNoObjectToImportError(t *testing.T) {
@@ -501,16 +507,16 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
+	assert.NotNil(t, res.Err)
+	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
 }
 
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
@@ -540,16 +546,16 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
+	assert.NotNil(t, res.Err)
+	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
 }
 
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
@@ -587,16 +593,16 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
+	assert.NotNil(t, res.Err)
+	assert.True(t, errors.Is(res.Err, common.ErrNoObjectsToImport))
 }
 
 func Test_ImportErrLimitExceeded(t *testing.T) {
@@ -627,16 +633,16 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrLimitExceeded))
+	assert.NotNil(t, res.Err)
+	assert.True(t, errors.Is(res.Err, common.ErrLimitExceeded))
 }
 
 func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
@@ -667,16 +673,16 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 	i.fileSync = fileSync
 
-	_, _, res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import, nil)
+	}, objectorigin.Import(model.Import_Notion), nil)
 
-	assert.NotNil(t, res)
-	assert.True(t, errors.Is(res, common.ErrLimitExceeded))
+	assert.NotNil(t, res.Err)
+	assert.True(t, errors.Is(res.Err, common.ErrLimitExceeded))
 }
 
 func TestImport_replaceRelationKeyWithNew(t *testing.T) {
@@ -781,17 +787,18 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.fileSync = fileSync
 
 		// when
-		rootCollectionId, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+		res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 			UpdateExistingObjects: false,
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import, nil)
+		}, objectorigin.Import(model.Import_Notion), nil)
 
 		// then
-		assert.Nil(t, err)
-		assert.Equal(t, expectedRootCollectionID, rootCollectionId)
+		assert.Nil(t, res.Err)
+		assert.Equal(t, expectedRootCollectionID, res.RootCollectionId)
+		assert.Equal(t, int64(0), res.ObjectsCount) // doesn't count root collection
 	})
 
 	t.Run("return empty root collection id in case of error", func(t *testing.T) {
@@ -827,17 +834,17 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.fileSync = fileSync
 
 		// when
-		rootCollectionId, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+		res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 			UpdateExistingObjects: false,
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import, nil)
+		}, objectorigin.Import(model.Import_Notion), nil)
 
 		// then
-		assert.NotNil(t, err)
-		assert.Equal(t, expectedRootCollectionId, rootCollectionId)
+		assert.NotNil(t, res.Err)
+		assert.Equal(t, expectedRootCollectionId, res.RootCollectionId)
 	})
 
 	t.Run("return empty root collection id in case of error from import converter", func(t *testing.T) {
@@ -865,17 +872,17 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.fileSync = fileSync
 
 		// when
-		rootCollectionId, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+		res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 			UpdateExistingObjects: false,
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import, nil)
+		}, objectorigin.Import(model.Import_Notion), nil)
 
 		// then
-		assert.NotNil(t, err)
-		assert.Equal(t, expectedRootCollectionId, rootCollectionId)
+		assert.NotNil(t, res.Err)
+		assert.Equal(t, expectedRootCollectionId, res.RootCollectionId)
 	})
 
 	t.Run("return empty root collection id in case of error with Ignore_Error mode", func(t *testing.T) {
@@ -911,16 +918,16 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.fileSync = fileSync
 
 		// when
-		rootCollectionId, _, err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
+		res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 			UpdateExistingObjects: false,
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import, nil)
+		}, objectorigin.Import(model.Import_Notion), nil)
 
 		// then
-		assert.NotNil(t, err)
-		assert.Equal(t, expectedRootCollectionId, rootCollectionId)
+		assert.NotNil(t, res.Err)
+		assert.Equal(t, expectedRootCollectionId, res.RootCollectionId)
 	})
 }

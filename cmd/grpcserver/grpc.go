@@ -75,11 +75,12 @@ func main() {
 	}
 
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
+		fmt.Printf("Running GO debug HTTP server at: %s\n", debug)
 		go func() {
 			http.ListenAndServe(debug, nil)
 		}()
 	}
-	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
+	metrics.Service.InitWithKeys(metrics.DefaultInHouseKey)
 
 	var signalChan = make(chan os.Signal, 2)
 	signal.Notify(signalChan, signals...)
@@ -219,6 +220,8 @@ func main() {
 			log.Fatalf("proxy error: %v", err)
 		}
 	}()
+
+	startReportMemory()
 
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)

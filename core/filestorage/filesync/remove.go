@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func (f *fileSync) RemoveFile(spaceId, fileId string) (err error) {
-	log.Info("add file to removing queue", zap.String("fileID", fileId))
+func (f *fileSync) RemoveFile(spaceId string, fileId domain.FileId) (err error) {
+	log.Info("add file to removing queue", zap.String("fileId", fileId.String()))
 	defer func() {
 		if err == nil {
 			select {
@@ -37,19 +39,19 @@ func (f *fileSync) removeLoop() {
 
 func (f *fileSync) removeOperation() {
 	for {
-		fileID, err := f.tryToRemove()
+		fileId, err := f.tryToRemove()
 		if err == errQueueIsEmpty {
 			return
 		}
 		if err != nil {
-			log.Warn("can't remove file", zap.String("fileID", fileID), zap.Error(err))
+			log.Warn("can't remove file", zap.String("fileId", fileId.String()), zap.Error(err))
 			return
 		}
-		log.Warn("file removed", zap.String("fileID", fileID))
+		log.Warn("file removed", zap.String("fileId", fileId.String()))
 	}
 }
 
-func (f *fileSync) tryToRemove() (string, error) {
+func (f *fileSync) tryToRemove() (domain.FileId, error) {
 	it, err := f.queue.GetRemove()
 	if err == errQueueIsEmpty {
 		return "", errQueueIsEmpty
@@ -57,19 +59,28 @@ func (f *fileSync) tryToRemove() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("get remove task from queue: %w", err)
 	}
-	spaceID, fileID := it.SpaceID, it.FileID
-	if err = f.removeFile(f.loopCtx, spaceID, fileID); err != nil {
-		return fileID, fmt.Errorf("remove file: %w", err)
+	spaceID, fileId := it.SpaceId, it.FileId
+	if err = f.removeFile(f.loopCtx, spaceID, fileId); err != nil {
+		return fileId, fmt.Errorf("remove file: %w", err)
 	}
-	if err = f.queue.DoneRemove(spaceID, fileID); err != nil {
-		return fileID, fmt.Errorf("mark remove task as done: %w", err)
+	if err = f.queue.DoneRemove(spaceID, fileId); err != nil {
+		return fileId, fmt.Errorf("mark remove task as done: %w", err)
 	}
 	f.updateSpaceUsageInformation(spaceID)
 
-	return fileID, nil
+	return fileId, nil
 }
 
-func (f *fileSync) removeFile(ctx context.Context, spaceId, fileId string) (err error) {
-	log.Info("removing file", zap.String("fileID", fileId))
+func (f *fileSync) RemoveSynchronously(spaceId string, fileId domain.FileId) (err error) {
+	err = f.removeFile(context.Background(), spaceId, fileId)
+	if err != nil {
+		return fmt.Errorf("remove file: %w", err)
+	}
+	f.updateSpaceUsageInformation(spaceId)
+	return
+}
+
+func (f *fileSync) removeFile(ctx context.Context, spaceId string, fileId domain.FileId) (err error) {
+	log.Info("removing file", zap.String("fileId", fileId.String()))
 	return f.rpcStore.DeleteFiles(ctx, spaceId, fileId)
 }

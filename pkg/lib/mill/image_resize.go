@@ -28,14 +28,14 @@ import (
 type Format string
 
 func init() {
-	image.RegisterFormat("ico", string([]byte{0x00, 0x00, 0x01, 0x00}), ico.Decode, ico.DecodeConfig)
+	image.RegisterFormat("vnd.microsoft.icon", string([]byte{0x00, 0x00, 0x01, 0x00}), ico.Decode, ico.DecodeConfig)
 }
 
 const (
 	JPEG Format = "jpeg"
 	PNG  Format = "png"
 	GIF  Format = "gif"
-	ICO  Format = "ico"
+	ICO  Format = "vnd.microsoft.icon"
 	WEBP Format = "webp"
 	HEIC Format = "heic"
 )
@@ -76,10 +76,6 @@ type ImageResize struct {
 
 func (m *ImageResize) ID() string {
 	return "/image/resize"
-}
-
-func (m *ImageResize) Encrypt() bool {
-	return true
 }
 
 func (m *ImageResize) Pin() bool {

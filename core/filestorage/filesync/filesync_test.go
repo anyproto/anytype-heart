@@ -16,13 +16,13 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -45,7 +45,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		require.NoError(t, err)
 		fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
 		require.NoError(t, err)
-		fileId := fileNode.Cid().String()
+		fileId := domain.FileId(fileNode.Cid().String())
 		spaceId := "space1"
 
 		// Save node usage
@@ -55,10 +55,9 @@ func TestFileSync_AddFile(t *testing.T) {
 		assert.Zero(t, prevUsage.TotalBytesUsage)
 		assert.Zero(t, prevUsage.TotalCidsCount)
 
-		fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
 		fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
 		fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
-		fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
+		fx.fileStoreMock.EXPECT().ListFileVariants(fileId).Return([]*storage.FileInfo{
 			{}, // We can use just empty struct here, because we don't use any fields
 		}, nil).AnyTimes()
 
@@ -128,13 +127,12 @@ func TestFileSync_AddFile(t *testing.T) {
 		require.NoError(t, err)
 		fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
 		require.NoError(t, err)
-		fileId := fileNode.Cid().String()
+		fileId := domain.FileId(fileNode.Cid().String())
 		spaceId := "space1"
 
-		fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
 		fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
 		fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
-		fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
+		fx.fileStoreMock.EXPECT().ListFileVariants(fileId).Return([]*storage.FileInfo{
 			{}, // We can use just empty struct here, because we don't use any fields
 		}, nil).AnyTimes()
 		require.NoError(t, fx.AddFile(spaceId, fileId, true, false))
@@ -156,19 +154,9 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	fx := newFixture(t, 1024)
 	defer fx.Finish(t)
 	spaceId := "spaceId"
-	fileId := "fileId"
+	fileId := domain.FileId("fileId")
 	require.NoError(t, fx.RemoveFile(spaceId, fileId))
 	fx.waitEmptyQueue(t, time.Second*5)
-}
-
-type personalSpaceIdStub struct {
-	personalSpaceId string
-}
-
-func (s *personalSpaceIdStub) Name() string          { return "personalSpaceIdStub" }
-func (s *personalSpaceIdStub) Init(a *app.App) error { return nil }
-func (s *personalSpaceIdStub) PersonalSpaceID() string {
-	return s.personalSpaceId
 }
 
 func newFixture(t *testing.T, limit int) *fixture {
@@ -185,8 +173,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 	fileStoreMock.EXPECT().Run(gomock.Any()).AnyTimes()
 	fileStoreMock.EXPECT().Close(gomock.Any()).AnyTimes()
 	fx.fileStoreMock = fileStoreMock
-
-	personalSpaceIdGetter := &personalSpaceIdStub{personalSpaceId: "space1"}
 
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Name().Return("event")
@@ -207,7 +193,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
-		Register(personalSpaceIdGetter).
 		Register(sender)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx

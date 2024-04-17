@@ -4,9 +4,11 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/net"
+	"google.golang.org/grpc/peer"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/application"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -21,6 +23,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO),
 		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG),
 		errToCode(application.ErrSetDetails, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME),
+		errToCode(context.Canceled, pb.RpcAccountCreateResponseError_ACCOUNT_CREATION_IS_CANCELED),
 	)
 	return &pb.RpcAccountCreateResponse{
 		Config:  nil,
@@ -57,6 +60,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO),
 		errToCode(application.ErrFailedToFindAccountInfo, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO),
+		errToCode(context.Canceled, pb.RpcAccountSelectResponseError_ACCOUNT_LOAD_IS_CANCELED),
 		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 		errToCode(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
@@ -191,5 +195,55 @@ func (mw *Middleware) AccountEnableLocalNetworkSync(_ context.Context, req *pb.R
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
+	info := getClientInfo(ctx)
+
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(&info)
+	code := mapErrorCode(err,
+		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+
+	return &pb.RpcAccountLocalLinkNewChallengeResponse{
+		ChallengeId: challengeId,
+		Error: &pb.RpcAccountLocalLinkNewChallengeResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
+	token, appKey, err := mw.applicationService.LinkLocalSolveChallenge(req)
+	code := mapErrorCode(err,
+		errToCode(session.ErrChallengeTriesExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
+		errToCode(session.ErrChallengeSolutionWrong, pb.RpcAccountLocalLinkSolveChallengeResponseError_INCORRECT_ANSWER),
+		errToCode(session.ErrChallengeIdNotFound, pb.RpcAccountLocalLinkSolveChallengeResponseError_INVALID_CHALLENGE_ID),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkSolveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountLocalLinkSolveChallengeResponse{
+		SessionToken: token,
+		AppKey:       appKey,
+		Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func getClientInfo(ctx context.Context) pb.EventAccountLinkChallengeClientInfo {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return pb.EventAccountLinkChallengeClientInfo{}
+	}
+
+	// todo: get process info
+	return pb.EventAccountLinkChallengeClientInfo{
+		ProcessName:       p.Addr.String(),
+		ProcessPath:       "",
+		SignatureVerified: false,
 	}
 }

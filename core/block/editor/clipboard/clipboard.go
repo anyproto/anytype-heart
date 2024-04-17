@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -18,7 +19,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -43,22 +46,24 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
-func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service) Clipboard {
+func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service, fileObjectService fileobject.Service) Clipboard {
 	return &clipboard{
-		SmartBlock:      sb,
-		file:            file,
-		tempDirProvider: tempDirProvider,
-		objectStore:     objectStore,
-		fileService:     fileService,
+		SmartBlock:        sb,
+		file:              file,
+		tempDirProvider:   tempDirProvider,
+		objectStore:       objectStore,
+		fileService:       fileService,
+		fileObjectService: fileObjectService,
 	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
-	file            file.File
-	tempDirProvider core.TempDirProvider
-	objectStore     objectstore.ObjectStore
-	fileService     files.Service
+	file              file.File
+	tempDirProvider   core.TempDirProvider
+	objectStore       objectstore.ObjectStore
+	fileService       files.Service
+	fileObjectService fileobject.Service
 }
 
 func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
@@ -126,14 +131,14 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
+		htmlSlot = cb.newHTMLConverter(s).Convert()
 		textSlot = cutBlock.GetText().Text
 		anySlot = cb.stateToBlocks(s)
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
-	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
+	htmlSlot = cb.newHTMLConverter(s).Convert()
 	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
 }
@@ -197,7 +202,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
 		cbs.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, cbs).Convert()
+		htmlSlot = cb.newHTMLConverter(cbs).Convert()
 
 		return textSlot, htmlSlot, anySlot, cb.Apply(s)
 	}
@@ -210,7 +215,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	}
 	textSlot = renderText(state, len(req.Blocks) == 1)
 
-	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, state).Convert()
+	htmlSlot = cb.newHTMLConverter(state).Convert()
 	anySlot = req.Blocks
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
@@ -221,7 +226,8 @@ func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang
 	return firstTextBlock != nil &&
 		lastTextBlock == nil &&
 		rang != nil &&
-		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
+		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text)) &&
+		rang.To > 0
 }
 
 func unlinkAndClearBlocks(
@@ -267,7 +273,7 @@ func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map
 
 func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	s := cb.blocksToState(req.Blocks)
-	htmlData := html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Export()
+	htmlData := cb.newHTMLConverter(s).Export()
 
 	dir := cb.tempDirProvider.TempDir()
 	fileName := "export-" + cb.Id() + ".html"
@@ -282,7 +288,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 }
 
 func (cb *clipboard) pasteHtml(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
-	blocks, _, err := anymark.HTMLToBlocks([]byte(req.HtmlSlot))
+	blocks, _, err := anymark.HTMLToBlocks([]byte(req.HtmlSlot), req.Url)
 
 	if err != nil {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
@@ -311,8 +317,6 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, nil
 	}
 
-	textArr := strings.Split(req.TextSlot, "\n")
-
 	if len(req.FocusedBlockId) > 0 {
 		block := cb.Pick(req.FocusedBlockId)
 		if block != nil {
@@ -323,10 +327,12 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 	}
 
 	mdText := whitespace.WhitespaceNormalizeString(req.TextSlot)
-
 	blocks, _, err := anymark.MarkdownToBlocks([]byte(mdText), "", []string{})
 	if err != nil {
-		return cb.pasteRawText(ctx, req, textArr, groupId)
+		// in case we've failed to parse the text as a valid markdown,
+		// split it into text paragraphs with the same logic like in anymark and paste it as a plain text
+		paragraphs := splitStringIntoParagraphs(req.TextSlot, anymark.TextBlockLengthSoftLimit)
+		return cb.pasteRawText(ctx, req, paragraphs, groupId)
 	}
 	req.AnySlot = append(req.AnySlot, blocks...)
 
@@ -448,6 +454,7 @@ func (cb *clipboard) pasteAny(
 	}
 	caretPosition = ctrl.caretPos
 	uploadArr = ctrl.uploadArr
+	blockIds = ctrl.blockIds
 
 	if len(missingRelationKeys) > 0 {
 		if err = cb.AddRelationLinksToState(s, missingRelationKeys...); err != nil {
@@ -492,6 +499,9 @@ func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
 }
 
 func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+	if req.FocusedBlockId == template.TitleBlockId || req.FocusedBlockId == template.DescriptionBlockId {
+		req.FocusedBlockId = ""
+	}
 	s := cb.NewStateCtx(ctx)
 	for _, fs := range req.FileSlot {
 		b := simple.New(&model.Block{
@@ -507,7 +517,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes:  fs.Data,
 			Path:   fs.LocalPath,
 			Name:   fs.Name,
-			Origin: model.ObjectOrigin_clipboard,
+			Origin: objectorigin.Clipboard(),
 		}, false); err != nil {
 			return
 		}
@@ -562,6 +572,10 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 
 	d.RelationLinks = links
 	return
+}
+
+func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
+	return html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s, cb.fileObjectService)
 }
 
 func renderText(s *state.State, ignoreStyle bool) string {
@@ -630,4 +644,46 @@ func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, 
 		}
 	}
 	return texts, numberedCount
+}
+
+// splitStringIntoParagraphs splits text into pararagraphs
+// - when text has a double line break, it is considered as a paragraph separator
+// - when text has a single line break, it is considered as a soft line break, not a paragraph separator
+// - when text has a single line break and the current block is longer than the soft limit, it is considered as a paragraph separator
+// - func consider line with whitespaces as a paragraph separator (e.g. "\n   \n")
+func splitStringIntoParagraphs(s string, lineBreakSoftLimit int) []string {
+	var blocks []string
+	var currentBlock strings.Builder
+
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.TrimSpace(line) == "" { // This is a simple proxy for a double line break.
+			if currentBlock.Len() > 0 {
+				blocks = append(blocks, currentBlock.String())
+				currentBlock.Reset()
+			}
+			continue
+		}
+
+		// Add line to current block with space handling for the soft limit.
+		if lineBreakSoftLimit > 0 && currentBlock.Len()+len(line) > lineBreakSoftLimit && currentBlock.Len() > 0 {
+			// Append the current block and start a new one
+			blocks = append(blocks, currentBlock.String())
+			currentBlock.Reset()
+		}
+
+		if currentBlock.Len() > 0 {
+			currentBlock.WriteString("\n")
+		}
+		currentBlock.WriteString(line)
+	}
+
+	// Don't forget to add the last block if it exists.
+	if currentBlock.Len() > 0 {
+		blocks = append(blocks, currentBlock.String())
+	}
+
+	return blocks
 }

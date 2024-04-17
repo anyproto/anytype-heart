@@ -20,6 +20,7 @@ message Event {
             Account.Details accountDetails = 201;
             Account.Config.Update accountConfigUpdate = 202;
             Account.Update accountUpdate = 203;
+            Account.LinkChallenge accountLinkChallenge = 204;
 
             Object.Details.Set objectDetailsSet = 16;
             Object.Details.Amend objectDetailsAmend = 50;
@@ -97,6 +98,10 @@ message Event {
 
             Notification.Send notificationSend = 114;
             Notification.Update notificationUpdate = 115;
+
+            Payload.Broadcast payloadBroadcast = 116;
+
+            Membership.Update membershipUpdate = 117;
         }
     }
 
@@ -124,6 +129,16 @@ message Event {
         message Update {
             anytype.model.Account.Config config = 1;
             anytype.model.Account.Status status = 2;
+        }
+
+        message LinkChallenge {
+            message ClientInfo {
+                string processName = 1;
+                string processPath = 2;
+                bool signatureVerified = 3;
+            }
+            string challenge = 1;
+            ClientInfo clientInfo = 2;
         }
     }
 
@@ -370,6 +385,7 @@ message Event {
                 Name name = 6;
                 Size size = 7;
                 Style style = 8;
+                TargetObjectId targetObjectId = 9;
 
                 message Name {
                     string value = 1;
@@ -403,6 +419,9 @@ message Event {
                     int64 value = 1;
                 }
 
+                message TargetObjectId {
+                    string value = 1;
+                }
             }
 
 
@@ -1017,12 +1036,24 @@ message Event {
         }
     }
 
+    message Membership {
+        message Update {
+            anytype.model.Membership data = 1;
+        }
+    }
+
     message Notification {
         message Send {
            anytype.model.Notification notification = 1;
         }
         message Update {
             anytype.model.Notification notification = 1;
+        }
+    }
+
+    message Payload {
+        message Broadcast {
+            string payload = 1;
         }
     }
 }

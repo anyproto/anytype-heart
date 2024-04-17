@@ -16,12 +16,14 @@ const (
 	SmartBlockTypeProfilePage       = SmartBlockType(model.SmartBlockType_ProfilePage)
 	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)
 	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive)
-	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File)
+	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File) // Deprecated
+	SmartBlockTypeFileObject        = SmartBlockType(model.SmartBlockType_FileObject)
 	SmartBlockTypeTemplate          = SmartBlockType(model.SmartBlockType_Template)
 	SmartBlockTypeBundledTemplate   = SmartBlockType(model.SmartBlockType_BundledTemplate)
 	SmartBlockTypeBundledRelation   = SmartBlockType(model.SmartBlockType_BundledRelation)
 	SmartBlockTypeSubObject         = SmartBlockType(model.SmartBlockType_SubObject)
 	SmartBlockTypeBundledObjectType = SmartBlockType(model.SmartBlockType_BundledObjectType)
+	SmartBlockTypeParticipant       = SmartBlockType(model.SmartBlockType_Participant)
 	SmartBlockTypeAnytypeProfile    = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeIdentity          = SmartBlockType(model.SmartBlockType_Identity)
@@ -33,7 +35,8 @@ const (
 	SmartBlockTypeSpaceView      = SmartBlockType(model.SmartBlockType_SpaceView)
 	SmartBlockTypeRelationOption = SmartBlockType(model.SmartBlockType_STRelationOption)
 
-	SmartBlockTypeMissingObject = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeMissingObject      = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeNotificationObject = SmartBlockType(model.SmartBlockType_NotificationObject)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")

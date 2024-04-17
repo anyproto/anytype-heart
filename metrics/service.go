@@ -8,7 +8,7 @@ import (
 
 	"github.com/cheggaaa/mb/v3"
 
-	"github.com/anyproto/anytype-heart/metrics/amplitude"
+	"github.com/anyproto/anytype-heart/metrics/anymetry"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -23,43 +23,42 @@ var (
 // First constants must repeat syncstatus.SyncStatus constants for
 // avoiding inconsistency with data stored in filestore
 const (
-	ampl amplitude.MetricsBackend = iota
-	inhouse
+	inhouse anymetry.MetricsBackend = iota
 )
 
-const amplEndpoint = "https://amplitude.anytype.io/2/httpapi"
 const inHouseEndpoint = "https://telemetry.anytype.io/2/httpapi"
 
 type SamplableEvent interface {
-	amplitude.Event
+	anymetry.Event
 
 	Key() string
 	Aggregate(other SamplableEvent) SamplableEvent
 }
 
 type MetricsService interface {
-	InitWithKeys(amplKey string, inHouseKey string)
+	InitWithKeys(inHouseKey string)
 	SetAppVersion(v string)
 	SetStartVersion(v string)
 	SetDeviceId(t string)
 	SetPlatform(p string)
 	SetUserId(id string)
-	Send(ev amplitude.Event)
+	Send(ev anymetry.Event)
 	SendSampled(ev SamplableEvent)
 
 	Run()
 	Close()
-	amplitude.AppInfoProvider
+	anymetry.AppInfoProvider
 }
 
 type service struct {
-	lock         sync.RWMutex
-	appVersion   string
-	startVersion string
-	userId       string
-	deviceId     string
-	platform     string
-	clients      [2]*client
+	lock           sync.RWMutex
+	appVersion     string
+	startVersion   string
+	userId         string
+	deviceId       string
+	platform       string
+	clients        [1]*client
+	alreadyRunning bool
 }
 
 func (s *service) SendSampled(ev SamplableEvent) {
@@ -73,13 +72,7 @@ func NewService() MetricsService {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	return &service{
-		clients: [2]*client{
-			ampl: {
-				aggregatableMap:  make(map[string]SamplableEvent),
-				aggregatableChan: make(chan SamplableEvent, bufferSize),
-				ctx:              ctx,
-				cancel:           cancel,
-			},
+		clients: [1]*client{
 			inhouse: {
 				aggregatableMap:  make(map[string]SamplableEvent),
 				aggregatableChan: make(chan SamplableEvent, bufferSize),
@@ -90,11 +83,10 @@ func NewService() MetricsService {
 	}
 }
 
-func (s *service) InitWithKeys(amplKey string, inHouseKey string) {
+func (s *service) InitWithKeys(inHouseKey string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.clients[ampl].telemetry = amplitude.New(amplEndpoint, amplKey, false)
-	s.clients[inhouse].telemetry = amplitude.New(inHouseEndpoint, inHouseKey, true)
+	s.clients[inhouse].telemetry = anymetry.New(inHouseEndpoint, inHouseKey, true)
 }
 
 func (s *service) SetDeviceId(t string) {
@@ -161,9 +153,14 @@ func (s *service) GetStartVersion() string {
 func (s *service) Run() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if s.alreadyRunning {
+		return
+	}
+	s.alreadyRunning = true
+
 	for _, c := range s.clients {
 		c.ctx, c.cancel = context.WithCancel(context.Background())
-		c.batcher = mb.New[amplitude.Event](0)
+		c.setBatcher(mb.New[anymetry.Event](0))
 		go c.startAggregating()
 		go c.startSendingBatchMessages(s)
 	}
@@ -171,27 +168,25 @@ func (s *service) Run() {
 
 func (s *service) Close() {
 	s.lock.Lock()
+	defer s.lock.Unlock()
 	for _, c := range s.clients {
 		c.Close()
 	}
-	defer s.lock.Unlock()
+	s.alreadyRunning = false
 }
 
-func (s *service) Send(ev amplitude.Event) {
+func (s *service) Send(ev anymetry.Event) {
 	if ev == nil {
 		return
 	}
 	s.getBackend(ev.GetBackend()).send(ev)
 }
 
-func (s *service) getBackend(backend amplitude.MetricsBackend) *client {
+func (s *service) getBackend(backend anymetry.MetricsBackend) *client {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	switch backend {
-	case ampl:
-		amplClient := s.clients[ampl]
-		return amplClient
 	case inhouse:
 		return s.clients[inhouse]
 	}

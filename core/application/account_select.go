@@ -39,6 +39,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, ErrEmptyAccountID
 	}
 
+	s.cancelStartIfInProcess()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -67,10 +68,10 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, errors.Join(ErrFailedToStopApplication, err)
 	}
 
-	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.NetworkMode, req.NetworkCustomConfigFilePath)
+	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
 }
 
-func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
+func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
 	if rootPath != "" {
 		s.rootPath = rootPath
 	}
@@ -93,6 +94,9 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
+	if preferYamux {
+		cfg.PeferYamuxTransport = true
+	}
 	if networkMode > 0 {
 		cfg.NetworkMode = networkMode
 		cfg.NetworkCustomConfigFilePath = networkConfigFilePath
@@ -109,11 +113,20 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 		request = request + "_recover"
 	}
 
+	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, request))
+	// save the cancel function to be able to stop the app in case of account stop or other select/create operation is called
+	s.appAccountStartInProcessCancelMutex.Lock()
+	s.appAccountStartInProcessCancel = cancel
+	s.appAccountStartInProcessCancelMutex.Unlock()
 	s.app, err = anytype.StartNewApp(
-		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, request),
+		ctx,
 		s.clientWithVersion,
 		comps...,
 	)
+	s.appAccountStartInProcessCancelMutex.Lock()
+	s.appAccountStartInProcessCancel = nil
+	s.appAccountStartInProcessCancelMutex.Unlock()
+
 	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceIsDeleted) {
 			return nil, errors.Join(ErrAccountIsDeleted, err)

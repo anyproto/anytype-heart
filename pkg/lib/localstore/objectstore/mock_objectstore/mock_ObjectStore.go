@@ -85,17 +85,17 @@ func (_c *MockObjectStore_AddToIndexQueue_Call) RunAndReturn(run func(string) er
 	return _c
 }
 
-// BatchProcessFullTextQueue provides a mock function with given fields: limit, processIds
-func (_m *MockObjectStore) BatchProcessFullTextQueue(limit int, processIds func([]string) error) error {
-	ret := _m.Called(limit, processIds)
+// BatchProcessFullTextQueue provides a mock function with given fields: ctx, limit, processIds
+func (_m *MockObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func([]string) error) error {
+	ret := _m.Called(ctx, limit, processIds)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BatchProcessFullTextQueue")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int, func([]string) error) error); ok {
-		r0 = rf(limit, processIds)
+	if rf, ok := ret.Get(0).(func(context.Context, int, func([]string) error) error); ok {
+		r0 = rf(ctx, limit, processIds)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -109,15 +109,16 @@ type MockObjectStore_BatchProcessFullTextQueue_Call struct {
 }
 
 // BatchProcessFullTextQueue is a helper method to define mock.On call
+//   - ctx context.Context
 //   - limit int
 //   - processIds func([]string) error
-func (_e *MockObjectStore_Expecter) BatchProcessFullTextQueue(limit interface{}, processIds interface{}) *MockObjectStore_BatchProcessFullTextQueue_Call {
-	return &MockObjectStore_BatchProcessFullTextQueue_Call{Call: _e.mock.On("BatchProcessFullTextQueue", limit, processIds)}
+func (_e *MockObjectStore_Expecter) BatchProcessFullTextQueue(ctx interface{}, limit interface{}, processIds interface{}) *MockObjectStore_BatchProcessFullTextQueue_Call {
+	return &MockObjectStore_BatchProcessFullTextQueue_Call{Call: _e.mock.On("BatchProcessFullTextQueue", ctx, limit, processIds)}
 }
 
-func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Run(run func(limit int, processIds func([]string) error)) *MockObjectStore_BatchProcessFullTextQueue_Call {
+func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Run(run func(ctx context.Context, limit int, processIds func([]string) error)) *MockObjectStore_BatchProcessFullTextQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int), args[1].(func([]string) error))
+		run(args[0].(context.Context), args[1].(int), args[2].(func([]string) error))
 	})
 	return _c
 }
@@ -127,7 +128,7 @@ func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Return(_a0 error) *Moc
 	return _c
 }
 
-func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) RunAndReturn(run func(int, func([]string) error) error) *MockObjectStore_BatchProcessFullTextQueue_Call {
+func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) RunAndReturn(run func(context.Context, int, func([]string) error) error) *MockObjectStore_BatchProcessFullTextQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1375,6 +1376,52 @@ func (_c *MockObjectStore_GetRelationLink_Call) Return(_a0 *model.RelationLink, 
 }
 
 func (_c *MockObjectStore_GetRelationLink_Call) RunAndReturn(run func(string, string) (*model.RelationLink, error)) *MockObjectStore_GetRelationLink_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSpaceName provides a mock function with given fields: spaceId
+func (_m *MockObjectStore) GetSpaceName(spaceId string) string {
+	ret := _m.Called(spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSpaceName")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(spaceId)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockObjectStore_GetSpaceName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSpaceName'
+type MockObjectStore_GetSpaceName_Call struct {
+	*mock.Call
+}
+
+// GetSpaceName is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockObjectStore_Expecter) GetSpaceName(spaceId interface{}) *MockObjectStore_GetSpaceName_Call {
+	return &MockObjectStore_GetSpaceName_Call{Call: _e.mock.On("GetSpaceName", spaceId)}
+}
+
+func (_c *MockObjectStore_GetSpaceName_Call) Run(run func(spaceId string)) *MockObjectStore_GetSpaceName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetSpaceName_Call) Return(_a0 string) *MockObjectStore_GetSpaceName_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_GetSpaceName_Call) RunAndReturn(run func(string) string) *MockObjectStore_GetSpaceName_Call {
 	_c.Call.Return(run)
 	return _c
 }

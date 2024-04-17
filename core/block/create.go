@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -21,7 +24,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		st             *state.State
 		objectTypeKeys []domain.TypeKey
 	)
-	if err = Do(s, id, func(b smartblock.SmartBlock) error {
+	if err = cache.Do(s, id, func(b smartblock.SmartBlock) error {
 		objectTypeKeys = b.ObjectTypeKeys()
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
 			return err
@@ -52,7 +55,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	}
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
-	err = Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
+	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
 			details = append(details, &pb.RpcObjectSetDetailsDetail{
@@ -77,7 +80,7 @@ func (s *Service) CreateLinkToTheNewObject(
 	ctx context.Context,
 	sctx session.Context,
 	req *pb.RpcBlockLinkCreateWithObjectRequest,
-) (linkID string, objectID string, err error) {
+) (linkID string, objectID string, objectDetails *types.Struct, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
@@ -85,7 +88,7 @@ func (s *Service) CreateLinkToTheNewObject(
 
 	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
 	if err != nil {
-		return "", "", fmt.Errorf("get type key from raw unique key: %w", err)
+		return "", "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
 
 	createReq := objectcreator.CreateObjectRequest{
@@ -94,7 +97,7 @@ func (s *Service) CreateLinkToTheNewObject(
 		ObjectTypeKey: objectTypeKey,
 		TemplateId:    req.TemplateId,
 	}
-	objectID, _, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
+	objectID, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
 		return
 	}
@@ -102,7 +105,7 @@ func (s *Service) CreateLinkToTheNewObject(
 		return
 	}
 
-	err = DoStateCtx(s, sctx, req.ContextId, func(st *state.State, sb basic.Creatable) error {
+	err = cache.DoStateCtx(s, sctx, req.ContextId, func(st *state.State, sb basic.Creatable) error {
 		linkID, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block: &model.Block{
@@ -125,7 +128,7 @@ func (s *Service) CreateLinkToTheNewObject(
 }
 
 func (s *Service) ObjectToSet(id string, source []string) error {
-	return DoState(s, id, func(st *state.State, b basic.CommonOperations) error {
+	return cache.DoState(s, id, func(st *state.State, b basic.CommonOperations) error {
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeySet}, true)
 	})

@@ -10,12 +10,12 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/export"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -63,7 +63,7 @@ type Service interface {
 }
 
 type service struct {
-	picker       getblock.ObjectGetter
+	picker       cache.ObjectGetter
 	store        objectstore.ObjectStore
 	spaceService space.Service
 	creator      objectcreator.Service
@@ -81,7 +81,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.picker = app.MustComponent[getblock.ObjectGetter](a)
+	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.creator = app.MustComponent[objectcreator.Service](a)
@@ -114,7 +114,7 @@ func (s *service) CreateTemplateStateWithDetails(
 }
 
 func extractTargetDetails(originDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
-	targetDetails := pbtypes.CopyStruct(originDetails)
+	targetDetails := pbtypes.CopyStruct(originDetails, true)
 	if templateDetails == nil {
 		return targetDetails
 	}
@@ -137,7 +137,7 @@ func extractTargetDetails(originDetails *types.Struct, templateDetails *types.St
 }
 
 func (s *service) createCustomTemplateState(templateId string) (targetState *state.State, err error) {
-	err = getblock.Do(s.picker, templateId, func(sb smartblock.SmartBlock) (innerErr error) {
+	err = cache.Do(s.picker, templateId, func(sb smartblock.SmartBlock) (innerErr error) {
 		if !lo.Contains(sb.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
 			return fmt.Errorf("object '%s' is not a template", templateId)
 		}
@@ -152,7 +152,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 			return
 		}
 
-		targetState.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
+		targetState.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String(), bundle.RelationKeyOrigin.String())
 		targetState.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
 		targetState.SetLocalDetails(nil)
 		return
@@ -164,7 +164,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 }
 
 func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
-	return getblock.Do(s.picker, contextId, func(b smartblock.SmartBlock) error {
+	return cache.Do(s.picker, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
 		ts, err := s.CreateTemplateStateWithDetails(templateId, orig.Details())
 		if err != nil {
@@ -192,7 +192,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		objectTypeKeys []domain.TypeKey
 	)
 
-	if err = getblock.Do(s.picker, id, func(b smartblock.SmartBlock) error {
+	if err = cache.Do(s.picker, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != coresb.SmartBlockTypePage {
 			return fmt.Errorf("can't make template from this obect type")
 		}

@@ -6,7 +6,7 @@ package bundle
 
 import domain "github.com/anyproto/anytype-heart/core/domain"
 
-const SystemRelationsChecksum = "643c929fdd09f81982d11d271dc8c7a0f5a3018a0ce27514d7c014aa38308c4a"
+const SystemRelationsChecksum = "f4864134e7c10c3359b2962bfb8234655181439ae4def6f315b622ffad0547ea"
 
 // SystemRelations contains relations that have some special biz logic depends on them in some objects
 // in case EVERY object depend on the relation please add it to RequiredInternalRelations
@@ -25,10 +25,12 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyIsReadonly,
 	RelationKeyIsDeleted,
 	RelationKeyIsHidden,
+	RelationKeySpaceShareableStatus,
+	RelationKeyIsAclShared,
+	RelationKeyIsHiddenDiscovery,
 	RelationKeyDone,
 	RelationKeyIsArchived,
 	RelationKeyTemplateIsBundled,
-	RelationKeyTag,
 	RelationKeySmartblockTypes,
 	RelationKeyTargetObjectType,
 	RelationKeyRecommendedLayout,
@@ -39,7 +41,6 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeySpaceDashboardId,
 	RelationKeyRecommendedRelations,
 	RelationKeyIconOption,
-	RelationKeySpaceAccessibility,
 	RelationKeyWidthInPixels,
 	RelationKeyHeightInPixels,
 	RelationKeyFileExt,
@@ -50,6 +51,21 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyUniqueKey,
 	RelationKeyBacklinks,
 	RelationKeyProfileOwnerIdentity,
+	RelationKeyFileBackupStatus,
+	RelationKeyFileId,
+	RelationKeyFileIndexingStatus,
 	RelationKeyOrigin,
 	RelationKeyRevision,
+	RelationKeyImageKind,
+	RelationKeyImportType,
+	RelationKeySpaceAccessType,
+	RelationKeySpaceInviteFileCid,
+	RelationKeySpaceInviteFileKey,
+	RelationKeyReadersLimit,
+	RelationKeyWritersLimit,
+	RelationKeyParticipantPermissions,
+	RelationKeyParticipantStatus,
+	RelationKeyLatestAclHeadId,
+	RelationKeyIdentity,
+	RelationKeyGlobalName,
 }...)

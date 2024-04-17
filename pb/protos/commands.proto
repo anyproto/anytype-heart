@@ -26,6 +26,7 @@ message Rpc {
     message App {
         message GetVersion {
             message Request {
+                option (no_auth) = true;
             }
             message Response {
                 Error error = 1;
@@ -92,6 +93,376 @@ message Rpc {
     }
 
     message Space {
+        message LeaveApprove {
+            message Request {
+                string spaceId = 1;
+                repeated string identities = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                        NO_APPROVE_REQUESTS = 105;
+                        NOT_SHAREABLE = 106;
+                    }
+                }
+            }
+        }
+
+        message MakeShareable {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                    }
+                }
+            }
+        }
+
+        message InviteGenerate {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                string inviteCid = 2;
+                string inviteFileKey = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                        NOT_SHAREABLE = 105;
+                    }
+                }
+            }
+        }
+
+        message StopSharing {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                    }
+                }
+            }
+        }
+
+        message InviteGetCurrent {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                string inviteCid = 2;
+                string inviteFileKey = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_ACTIVE_INVITE = 101;
+                    }
+                }
+            }
+        }
+
+        message InviteRevoke {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        LIMIT_REACHED = 103;
+                        REQUEST_FAILED = 104;
+                        NOT_SHAREABLE = 105;
+                    }
+                }
+            }
+        }
+
+        message InviteView {
+            message Request {
+                string inviteCid = 1;
+                string inviteFileKey = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                string spaceId = 2;
+                string spaceName = 3;
+                string spaceIconCid = 4;
+                string creatorName = 5;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        INVITE_NOT_FOUND = 101;
+                        INVITE_BAD_CONTENT = 102;
+                    }
+                }
+            }
+        }
+
+        message Join {
+            message Request {
+                string networkId = 1; // not-empty only for self-hosting
+                string spaceId = 2;
+                string inviteCid = 3;
+                string inviteFileKey = 4;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        INVITE_NOT_FOUND = 103;
+                        INVITE_BAD_CONTENT = 104;
+                        REQUEST_FAILED = 105;
+                        LIMIT_REACHED = 106;
+                        NOT_SHAREABLE = 107;
+                    }
+                }
+            }
+        }
+
+        message JoinCancel {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                        NO_SUCH_REQUEST = 105;
+                        NOT_SHAREABLE = 106;
+                    }
+                }
+            }
+        }
+
+        message RequestApprove {
+            message Request {
+                string spaceId = 1;
+                string identity = 2;
+                model.ParticipantPermissions permissions = 3;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        NO_SUCH_REQUEST = 103;
+                        INCORRECT_PERMISSIONS = 104;
+                        REQUEST_FAILED = 105;
+                        LIMIT_REACHED = 106;
+                        NOT_SHAREABLE = 107;
+                    }
+                }
+            }
+        }
+
+        message RequestDecline {
+            message Request {
+                string spaceId = 1;
+                string identity = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                        NO_SUCH_REQUEST = 105;
+                        NOT_SHAREABLE = 106;
+                    }
+                }
+            }
+        }
+
+        message ParticipantRemove {
+            message Request {
+                string spaceId = 1;
+                repeated string identities = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        PARTICIPANT_NOT_FOUND = 103;
+                        REQUEST_FAILED = 104;
+                        LIMIT_REACHED = 105;
+                        NOT_SHAREABLE = 106;
+                    }
+                }
+            }
+        }
+
+        message ParticipantPermissionsChange {
+            message Request {
+                string spaceId = 1;
+                repeated model.ParticipantPermissionChange changes = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                        PARTICIPANT_NOT_FOUND = 105;
+                        INCORRECT_PERMISSIONS = 106;
+                        NOT_SHAREABLE = 107;
+                    }
+                }
+            }
+        }
+
         message Delete {
             message Request {
                 string spaceId = 1;
@@ -106,12 +477,15 @@ message Rpc {
                     string description = 2;
 
                     enum Code {
-                        NULL = 0; // No error; mnemonic should be non-empty
-                        UNKNOWN_ERROR = 1; // Any other errors
-                        BAD_INPUT = 2; // Root path is wrong
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
 
                         NO_SUCH_SPACE = 101;
                         SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                        NOT_SHAREABLE = 105;
                     }
                 }
             }
@@ -210,12 +584,18 @@ message Rpc {
         message CreateSession {
             message Request {
                 option (no_auth) = true;
-                string mnemonic = 1;
+                oneof auth {
+                    string mnemonic = 1; // cold auth
+                    string appKey = 2; // persistent app key, that can be used to restore session
+                }
             }
 
             message Response {
                 Error error = 1;
                 string token = 2;
+                string appToken = 3; // in case of mnemonic auth, need to be persisted by client
+                string accountId = 4; // temp, should be replaced with AccountInfo message
+
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -225,6 +605,7 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
 
+                        APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT = 101; // means the client logged into another account or the account directory has been cleaned
                     }
                 }
             }
@@ -249,7 +630,6 @@ message Rpc {
                 }
             }
         }
-
 
     }
 
@@ -279,6 +659,7 @@ message Rpc {
                 bool disableLocalNetworkSync = 5; // Disable local network discovery
                 NetworkMode networkMode = 6; // optional, default is DefaultConfig
                 string networkCustomConfigFilePath = 7; // config path for the custom network mode            }
+                bool preferYamuxTransport = 8; // optional, default is false, recommended in case of problems with QUIC transport
             }
             /**
             * Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
@@ -301,6 +682,7 @@ message Rpc {
                         FAILED_TO_STOP_RUNNING_NODE = 104;
                         FAILED_TO_WRITE_CONFIG = 105;
                         FAILED_TO_CREATE_LOCAL_REPO = 106;
+                        ACCOUNT_CREATION_IS_CANCELED = 107;
 
                         CONFIG_FILE_NOT_FOUND = 200;
                         CONFIG_FILE_INVALID = 201;
@@ -398,6 +780,7 @@ message Rpc {
                 bool disableLocalNetworkSync = 3; // Disable local network discovery
                 NetworkMode networkMode = 4; // optional, default is DefaultConfig
                 string networkCustomConfigFilePath = 5; // config path for the custom network mode
+                bool preferYamuxTransport = 6; // optional, default is false, recommended in case of problems with QUIC transport
             }
 
             /**
@@ -425,6 +808,7 @@ message Rpc {
                         ANOTHER_ANYTYPE_PROCESS_IS_RUNNING = 108;
                         FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION = 110;
                         ACCOUNT_IS_DELETED = 111;
+                        ACCOUNT_LOAD_IS_CANCELED = 112;
 
                         CONFIG_FILE_NOT_FOUND = 200;
                         CONFIG_FILE_INVALID = 201;
@@ -640,8 +1024,63 @@ message Rpc {
             LocalOnly = 1;  // disable any-sync network and use only local p2p nodes
             CustomConfig = 2; // use config provided in networkConfigFilePath
         }
-    }
 
+        message LocalLink {
+            message NewChallenge {
+                message Request {
+                    option (no_auth) = true;
+                    string appName = 1; // just for info, not secure to rely on
+                }
+
+                message Response {
+                    Error error = 1;
+                    string challengeId = 2;
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            ACCOUNT_IS_NOT_RUNNING = 101;
+                            TOO_MANY_REQUESTS = 102; // protection from overuse
+                        }
+                    }
+                }
+            }
+            message SolveChallenge {
+                message Request {
+                    option (no_auth) = true;
+                    string challengeId = 1;
+                    string answer = 2;
+                }
+
+                message Response {
+                    Error error = 1;
+                    string sessionToken = 2; // ephemeral token for the session
+                    string appKey = 3;  // persistent key, that can be used to restore session via CreateSession
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            ACCOUNT_IS_NOT_RUNNING = 101;
+                            INVALID_CHALLENGE_ID = 102;
+                            CHALLENGE_ATTEMPTS_EXCEEDED = 103;
+                            INCORRECT_ANSWER = 104;
+                        }
+                    }
+                }
+            }
+        }
+    }
     message Workspace {
         message GetCurrent {
             message Request {
@@ -1105,6 +1544,34 @@ message Rpc {
                 Error error = 1;
                 google.protobuf.Struct details = 2;
                 string objectId = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message CreateFromUrl {
+            message Request {
+                string spaceId = 1;
+                string objectTypeUniqueKey = 2;
+                string url = 3;
+                google.protobuf.Struct details = 4;
+                bool addPageContent = 5;
+            }
+
+            message Response {
+                Error error = 1;
+                string objectId = 2;
+                google.protobuf.Struct details = 3;
 
                 message Error {
                     Code code = 1;
@@ -2035,6 +2502,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string collectionId = 2;
+                int64 objectsCount = 3;
 
                 message Error {
                     Code code = 1;
@@ -2049,6 +2517,7 @@ message Rpc {
                         IMPORT_IS_CANCELED = 6;
                         LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
                         FILE_LOAD_ERROR = 8;
+                        INSUFFICIENT_PERMISSIONS = 9;
                     }
                 }
             }
@@ -2166,12 +2635,12 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+                        INSUFFICIENT_PERMISSION = 3;
                     }
                 }
             }
         }
     }
-
 
     message ObjectCollection {
         message Add {
@@ -2572,6 +3041,32 @@ message Rpc {
                 }
             }
         }
+
+        message SpaceOffload {
+            message Request {
+                string spaceId = 1;
+            }
+            message Response {
+                Error error = 1;
+                int32 filesOffloaded = 2;
+                uint64 bytesOffloaded = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                        NODE_NOT_STARTED = 103;
+
+                    }
+                }
+            }
+        }
+
         message ListOffload {
             message Request {
                 repeated string onlyIds = 1; // empty means all
@@ -2605,12 +3100,14 @@ message Rpc {
                 anytype.model.Block.Content.File.Type type = 3;
                 bool disableEncryption = 4; // deprecated, has no affect, GO-1926
                 anytype.model.Block.Content.File.Style style = 5;
-
+                google.protobuf.Struct details = 7; // additional details for file object
+                anytype.model.ObjectOrigin origin = 8;
             }
 
             message Response {
                 Error error = 1;
-                string hash = 2;
+                string objectId = 2;
+                google.protobuf.Struct details = 3;
 
                 message Error {
                     Code code = 1;
@@ -2626,7 +3123,7 @@ message Rpc {
         }
         message Download {
             message Request {
-                string hash = 1;
+                string objectId = 1;
                 string path = 2; // path to save file. Temp directory is used if empty
             }
 
@@ -2942,7 +3439,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string hash = 2;
+                string objectId = 2;
 
                 message Error {
                     Code code = 1;
@@ -2961,39 +3458,56 @@ message Rpc {
         }
     }
 
-    message DownloadManifest {
-        message Request {
-            string url = 1;
-        }
-
-        message Response {
-            Error error = 1;
-            ManifestInfo info = 2;
-
-            message Error {
-                Code code = 1;
-                string description = 2;
-
-                enum Code {
-                    NULL = 0;
-                    UNKNOWN_ERROR = 1;
-                    BAD_INPUT = 2;
-                }
+    message Gallery {
+        message DownloadManifest {
+            message Request {
+                string url = 1;
             }
 
-            message ManifestInfo {
-                string schema = 1;
-                string id = 2;
-                string name = 3;
-                string author = 4;
-                string license = 5;
-                string title = 6;
-                string description = 7;
-                repeated string screenshots = 8;
-                string downloadLink = 9;
-                int32 fileSize = 10;
-                repeated string categories = 11;
-                string language = 12;
+            message Response {
+                Error error = 1;
+                anytype.model.ManifestInfo info = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message DownloadIndex {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                repeated Category categories = 2;
+                repeated anytype.model.ManifestInfo experiences = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNMARSHALLING_ERROR = 3;
+                        DOWNLOAD_ERROR = 4;
+                    }
+                }
+
+                message Category {
+                    string id = 1;
+                    repeated string experiences = 2;
+                    string icon = 3;
+                }
             }
         }
     }
@@ -3129,6 +3643,7 @@ message Rpc {
                 string htmlSlot = 7;
                 repeated anytype.model.Block anySlot = 8;
                 repeated File fileSlot = 9;
+                string url = 10;
 
                 message File {
                     string name = 1;
@@ -3657,6 +4172,28 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        message Preview {
+            message Request {
+                string html = 1;
+                string url = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated anytype.model.Block blocks = 2;
 
                 message Error {
                     Code code = 1;
@@ -4558,6 +5095,7 @@ message Rpc {
                 string blockId = 2;
                 string targetId = 3;
                 ResponseEvent event = 4;
+                google.protobuf.Struct details = 5;
 
                 message Error {
                     Code code = 1;
@@ -5262,7 +5800,7 @@ message Rpc {
                 }
             }
 
-            message Sort {
+            message SSort {
                 message Request {
                     string contextId = 1;
                     string blockId = 2; // id of dataview block to update
@@ -5495,6 +6033,28 @@ message Rpc {
         message TreeInfo {
             string treeId = 1;
             repeated string headIds = 2;
+        }
+
+        message Stat {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                string jsonStat = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
         }
 
         message TreeHeads {
@@ -5826,8 +6386,529 @@ message Rpc {
                 }
             }
         }
+
+        message Test {
+            message Request {}
+            message Response {
+                Error error = 1;
+                anytype.model.Notification notification = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        INTERNAL_ERROR = 3;
+                    }
+                }
+            }
+        }
+    }
+
+    /** 
+    * A Membership is a bundle of several "Features"
+    * every user should have one and only one tier 
+    * users can not have N tiers (no combining)
+    */
+    message Membership {
+        /**
+        * Get the current status of the membership
+        * including the tier, status, dates, etc
+        * WARNING: this can be cached by Anytype heart
+        */
+        message GetStatus {
+            message Request {
+                // pass true to force the cache update
+                // by default this is false
+                bool noCache = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.Membership data = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        MEMBERSHIP_NOT_FOUND = 6;
+                        MEMBERSHIP_WRONG_STATE = 7;
+                    }
+                }
+            }
+        }
+
+        /**
+        * Check if the requested name is valid for the requested tier
+        * before requesting a payment link and paying
+        */
+        message IsNameValid {
+            message Request {
+                uint32 requestedTier = 1;
+
+                string nsName = 2;
+
+                anytype.model.NameserviceNameType nsNameType = 3;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        TOO_SHORT = 3;
+                        TOO_LONG = 4;
+                        HAS_INVALID_CHARS = 5;
+                        TIER_FEATURES_NO_NAME = 6;
+                        // if everything is fine - "name is already taken" check should be done in the NS
+                        // see IsNameAvailable()
+                        TIER_NOT_FOUND = 7;
+
+                        NOT_LOGGED_IN = 8;
+                        PAYMENT_NODE_ERROR = 9;
+                        CACHE_ERROR = 10;
+                    }
+                }
+            }
+        }
+
+        /**
+        * Generate a link to the payment provider
+        * where user can pay for the membership
+        */
+        message GetPaymentUrl {
+            message Request {
+                uint32 requestedTier = 1;
+                
+                anytype.model.Membership.PaymentMethod paymentMethod = 2;
+
+                // if empty - then no name requested
+                // if non-empty - PP node will register that name on behalf of the user
+                string nsName = 3;
+
+                anytype.model.NameserviceNameType nsNameType = 4;
+            }
+
+            message Response {
+                Error error = 1;
+
+                // will feature current billing ID
+                // stripe.com/?client_reference_id=1234
+                string paymentUrl = 2;
+                // billingID is only needed for mobile clients
+                string billingId = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+                        
+                        TIER_NOT_FOUND = 6;
+                        TIER_INVALID = 7;
+                        PAYMENT_METHOD_INVALID = 8;
+                        BAD_ANYNAME = 9;
+                        MEMBERSHIP_ALREADY_EXISTS = 10;
+                    }
+                }
+            }
+        }
+
+        /** 
+        * Generate a link to the portal where user can:
+        * a) change his billing details
+        * b) see payment info, invoices, etc
+        * c) cancel membership
+        */
+        message GetPortalLinkUrl {
+            message Request {
+                
+            }
+
+            message Response {
+                Error error = 1;
+
+                string portalUrl = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+                    }
+                }
+            }
+        }
+
+        message Finalize {
+            message Request {
+                // if empty - then no name requested
+                // if non-empty - PP node will register that name on behalf of the user
+                string nsName = 1;
+
+                anytype.model.NameserviceNameType nsNameType = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        MEMBERSHIP_NOT_FOUND = 6;
+                        MEMBERSHIP_WRONG_STATE = 7;
+
+                        BAD_ANYNAME = 8;
+                    }
+                }
+            }
+        }
+
+        /**
+        * Get the current status of the e-mail verification.
+        * Status can change if you call GetVerificationEmail or VerifyEmailCode
+        */
+        message GetVerificationEmailStatus {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.Membership.EmailVerificationStatus status = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                    }
+                }
+            }
+        }
+
+        /**
+        * Send an e-mail with verification code to the user
+        * can be called multiple times but with some timeout (N seconds) between calls
+        */ 
+        message GetVerificationEmail {
+            message Request {
+                string email = 1;
+
+                bool subscribeToNewsletter = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        EMAIL_WRONG_FORMAT = 6;
+                        EMAIL_ALREADY_VERIFIED = 7;
+                        EMAIL_ALREDY_SENT = 8;
+                        EMAIL_FAILED_TO_SEND = 9;
+                        
+                        MEMBERSHIP_ALREADY_EXISTS = 10;                        
+                    }
+                }
+            }
+        }
+
+        /**
+        * Verify the e-mail address of the user 
+        * need a correct code that was sent to the user when calling GetVerificationEmail
+        */
+        message VerifyEmailCode {
+            message Request {
+                string code = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        EMAIL_ALREADY_VERIFIED = 6;
+                        CODE_EXPIRED = 7;
+                        CODE_WRONG = 8;
+
+                        MEMBERSHIP_NOT_FOUND = 9;
+                        MEMBERSHIP_ALREADY_ACTIVE = 10;
+                    }
+                }
+            }
+        }
+
+        /**
+        * Tiers can change on the backend so if you want to show users the latest data
+        * you can call this method to get the latest tiers
+        */
+        message Tiers {
+            message Get {
+                message Request {
+                    // pass true to force the cache update
+                    // by default this is false
+                    bool noCache = 1;
+
+                    string locale = 2;
+                }
+    
+                message Response {
+                    Error error = 1;
+                    repeated anytype.model.MembershipTierData tiers = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                            CACHE_ERROR = 5;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    message NameService {
+        message ResolveName {
+            message Request {
+                string nsName = 1;
+
+                anytype.model.NameserviceNameType nsNameType = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                bool available = 2;
+  
+                // EOA -> SCW -> name
+                // This field is non-empty only if name is "already registered"
+                string ownerScwEthAddress = 3;
+                
+                // This field is non-empty only if name is "already registered"
+                string ownerEthAddress = 4;
+
+                // A content hash attached to this name
+                // This field is non-empty only if name is "already registered"
+                string ownerAnyAddress = 5;
+
+                // A SpaceId attached to this name
+                // This field is non-empty only if name is "already registered"
+                string spaceId = 6;
+
+                // A timestamp when this name expires
+                int64 nameExpires = 7;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message ResolveAnyId {
+            message Request {
+                string anyId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                bool found = 2;
+                
+                // including ".any" suffix
+                string fullName = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        
+        message ResolveSpaceId {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                bool found = 2;
+                
+                // including ".any" suffix
+                string fullName = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message UserAccount {
+            message Get {
+                message Request {
+                    
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    // this will use ReverseResolve to get current name
+                    // user can buy many names, but
+                    // only 1 name can be set as "current": ETH address <-> name
+                    string anyNameAttached = 2;
+
+                    // Number of names that the user can reserve
+                    uint64 namesCountLeft = 3;
+
+                    // Number of operations: update name, add new data, etc
+                    uint64 operationsCountLeft = 4;
+
+                    // TODO: all operations list
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_LOGGED_IN = 3;
+                            BAD_NAME_RESOLVE = 4;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    message Broadcast {
+        message PayloadEvent {
+            message Request {
+                string payload = 1;
+            }
+            message Response {
+                ResponseEvent event = 1;
+                Error error = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        INTERNAL_ERROR = 3;
+                    }
+                }
+            }
+        }
     }
 }
+
+
 
 message Empty {
 

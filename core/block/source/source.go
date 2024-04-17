@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -159,11 +158,16 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		sbtProvider:        s.sbtProvider,
 		fileService:        s.fileService,
 		objectStore:        s.objectStore,
+		fileObjectMigrator: s.fileObjectMigrator,
 	}, nil
 }
 
 type ObjectTreeProvider interface {
 	Tree() objecttree.ObjectTree
+}
+
+type fileObjectMigrator interface {
+	MigrateDetails(st *state.State, spc Space, keys []*pb.ChangeFileKeys)
 }
 
 type source struct {
@@ -187,6 +191,7 @@ type source struct {
 	spaceService       spacecore.SpaceCoreService
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	objectStore        objectstore.ObjectStore
+	fileObjectMigrator fileObjectMigrator
 }
 
 var _ updatelistener.UpdateListener = (*source)(nil)
@@ -201,7 +206,11 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	prevSnapshot := s.lastSnapshotId
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		st, changes, sinceSnapshot, err := BuildStateFull(d.(*state.State), ot, "")
+		st, changes, sinceSnapshot, err := BuildStateFull(s.spaceID, d.(*state.State), ot, "")
+		if err != nil {
+			return
+		}
+		defer st.ResetParentIdsCache()
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {
@@ -225,7 +234,8 @@ func (s *source) Rebuild(ot objecttree.ObjectTree) {
 		log.With(zap.Error(err)).Debug("failed to build state")
 		return
 	}
-	err = s.receiver.StateRebuild(doc.(*state.State))
+	st := doc.(*state.State)
+	err = s.receiver.StateRebuild(st)
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to send the state to receiver")
 	}
@@ -263,10 +273,11 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(s.spaceID, nil, s.ObjectTree)
 	if err != nil {
 		return
 	}
+	defer st.ResetParentIdsCache()
 
 	validationErr := st.Validate()
 	if validationErr != nil {
@@ -281,12 +292,16 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.IdentityObjectId(), s.accountService.PersonalSpaceID(), s.objectStore)
+	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.accountService.PersonalSpaceID(), s.objectStore)
 	migration.Migrate(st)
 
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+	}
+	// Details in spaceview comes from Workspace object, so we don't need to migrate them
+	if s.Type() != smartblock.SmartBlockTypeSpaceView {
+		s.fileObjectMigrator.MigrateDetails(st, s.space, s.GetFileKeysSnapshot())
 	}
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
@@ -311,7 +326,7 @@ func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, e
 		createdDate = header.Timestamp
 	}
 	if root != nil && root.Identity != nil {
-		creatorObjectId = addr.AccountIdToIdentityObjectId(root.Identity.Account())
+		creatorObjectId = domain.NewParticipantId(s.spaceID, root.Identity.Account())
 	}
 	return
 }
@@ -330,10 +345,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	change := s.buildChange(params)
 
-	// TODO: GO-2151 Need to enable snappy compression when all clients will be able to decode snappy
-	// data, dataType, err := MarshalChange(change)
-	dataType := ""
-	data, err := change.Marshal()
+	data, dataType, err := MarshalChange(change)
 
 	if err != nil {
 		return
@@ -383,6 +395,7 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 				RelationLinks:            params.State.PickRelationLinks(),
 				Key:                      params.State.UniqueKeyInternal(),
 				OriginalCreatedTimestamp: params.State.OriginalCreatedTimestamp(),
+				FileInfo:                 params.State.GetFileInfo().ToModel(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}
@@ -482,17 +495,19 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(domain.FullID{
-			SpaceID:  s.spaceID,
-			ObjectID: h,
+		fk, err := s.fileService.FileGetKeys(domain.FullFileId{
+			SpaceId: s.spaceID,
+			FileId:  domain.FileId(h),
 		})
 		if err != nil {
-			log.Warnf("can't get file key for hash: %v: %v", h, err)
+			// New file
+			log.Debugf("can't get file key for hash: %v: %v", h, err)
 			continue
 		}
+		// Migrated file
 		fileKeys = append(fileKeys, &pb.ChangeFileKeys{
-			Hash: fk.Hash,
-			Keys: fk.Keys,
+			Hash: fk.FileId.String(),
+			Keys: fk.EncryptionKeys,
 		})
 	}
 	return fileKeys
@@ -516,7 +531,7 @@ func (s *source) Close() (err error) {
 	return s.ObjectTree.Close()
 }
 
-func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
+func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -527,6 +542,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *s
 		startId = ot.Root().Id
 	} else {
 		st = initState
+		st.EnableParentIdsCache()
 		startId = st.ChangeId()
 	}
 
@@ -548,6 +564,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *s
 					st = state.NewDoc(ot.Id(), nil).(*state.State)
 				}
 				st.SetChangeId(change.Id)
+				st.EnableParentIdsCache()
 				return true
 			}
 
@@ -559,10 +576,10 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *s
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
 					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey)).(*state.State)
-					return true
 				} else {
 					st = st.NewState()
 				}
+				st.EnableParentIdsCache()
 				return true
 			}
 			if model.Snapshot != nil {
@@ -586,15 +603,13 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *s
 	}
 
 	if lastChange != nil && !st.IsTheHeaderChange() {
-		// todo: why do we don't need to set last modified for the header change?
-		st.SetLastModified(lastChange.Timestamp, addr.AccountIdToIdentityObjectId(lastChange.Identity.Account()))
+		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return
 }
 
-// BuildStateFull is deprecated, used in tests only, use BuildState instead
-func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
+func BuildStateFull(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -606,6 +621,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 	} else {
 		st = initState
 		startId = st.ChangeId()
+		st.EnableParentIdsCache()
 	}
 
 	var lastMigrationVersion uint32
@@ -616,6 +632,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 		if change.Id == ot.Id() {
 			st = state.NewDoc(ot.Id(), nil).(*state.State)
 			st.SetChangeId(change.Id)
+			st.EnableParentIdsCache()
 			return true
 		}
 
@@ -631,6 +648,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 			} else {
 				st = st.NewState()
 			}
+			st.EnableParentIdsCache()
 			return true
 		}
 		if model.Snapshot != nil {
@@ -651,7 +669,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 	}
 	if lastChange != nil && !st.IsTheHeaderChange() {
 		// todo: why do we don't need to set last modified for the header change?
-		st.SetLastModified(lastChange.Timestamp, addr.AccountIdToIdentityObjectId(lastChange.Identity.Account()))
+		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return
