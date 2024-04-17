@@ -166,17 +166,25 @@ func (s *fileSync) Close(ctx context.Context) error {
 		}
 	}()
 
-	if err := s.uploadingQueue.Close(); err != nil {
-		log.Error("can't close uploading queue: %v", zap.Error(err))
+	if s.uploadingQueue != nil {
+		if err := s.uploadingQueue.Close(); err != nil {
+			log.Error("can't close uploading queue: %v", zap.Error(err))
+		}
 	}
-	if err := s.retryUploadingQueue.Close(); err != nil {
-		log.Error("can't close retrying queue: %v", zap.Error(err))
+	if s.retryUploadingQueue != nil {
+		if err := s.retryUploadingQueue.Close(); err != nil {
+			log.Error("can't close retrying queue: %v", zap.Error(err))
+		}
 	}
-	if err := s.deletionQueue.Close(); err != nil {
-		log.Error("can't close deletion queue: %v", zap.Error(err))
+	if s.deletionQueue != nil {
+		if err := s.deletionQueue.Close(); err != nil {
+			log.Error("can't close deletion queue: %v", zap.Error(err))
+		}
 	}
-	if err := s.retryDeletionQueue.Close(); err != nil {
-		log.Error("can't close retry deletion queue: %v", zap.Error(err))
+	if s.retryDeletionQueue != nil {
+		if err := s.retryDeletionQueue.Close(); err != nil {
+			log.Error("can't close retry deletion queue: %v", zap.Error(err))
+		}
 	}
 
 	return nil
