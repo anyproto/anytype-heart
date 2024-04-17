@@ -3,7 +3,6 @@ package filesync
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -140,7 +139,7 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 	db, err := s.dbProvider.LocalStorage()
 	if err != nil {
 		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
-			db, err = f.dbProvider.LocalStorage()
+			db, err = s.dbProvider.LocalStorage()
 			if err != nil {
 				return err
 			}

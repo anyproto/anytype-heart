@@ -51,13 +51,9 @@ func (s *storageService) Init(a *app.App) (err error) {
 	mode := a.MustComponent("config").(configGetter).GetSpaceStorageMode()
 	if mode == SpaceStorageModeBadger {
 		// for already existing account repos
-		b := badgerstorage.New()
-		fmt.Println(b.Name())
 		s.ClientStorage = badgerstorage.New()
 	} else if mode == SpaceStorageModeSqlite {
 		// sqlite used for new account repos
-		b := sqlitestorage.New()
-		fmt.Println(b.Name())
 		s.ClientStorage = sqlitestorage.New()
 	} else {
 		return fmt.Errorf("unknown storage mode %d", mode)
