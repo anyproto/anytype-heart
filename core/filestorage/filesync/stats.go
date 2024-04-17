@@ -185,13 +185,14 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
 	}
 
+	if !prevUsageFound || prevUsage.AccountBytesLimit != usage.AccountBytesLimit {
+		s.sendLimitUpdatedEvent(uint64(usage.AccountBytesLimit))
+	}
+
 	for _, space := range spaces {
 		if !prevUsageFound || prevUsage.GetSpaceUsage(space.SpaceId).SpaceBytesUsage != space.SpaceBytesUsage {
 			s.sendSpaceUsageEvent(space.SpaceId, uint64(space.SpaceBytesUsage))
 		}
-	}
-	if !prevUsageFound || prevUsage.AccountBytesLimit != usage.AccountBytesLimit {
-		s.sendLimitUpdatedEvent(uint64(usage.AccountBytesLimit))
 	}
 
 	return usage, nil
