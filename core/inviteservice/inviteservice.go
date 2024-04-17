@@ -36,6 +36,7 @@ type InviteView struct {
 	SpaceName    string
 	SpaceIconCid string
 	CreatorName  string
+	InviteKey    []byte
 }
 
 type InviteService interface {
@@ -90,6 +91,7 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 		SpaceName:    invitePayload.SpaceName,
 		SpaceIconCid: invitePayload.SpaceIconCid,
 		CreatorName:  invitePayload.CreatorName,
+		InviteKey:    invitePayload.InviteKey,
 	}, nil
 }
 
