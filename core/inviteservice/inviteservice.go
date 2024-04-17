@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/invitestore"
@@ -37,6 +38,12 @@ type InviteView struct {
 	SpaceIconCid string
 	CreatorName  string
 	InviteKey    []byte
+}
+
+type inviteObject interface {
+	SetInviteFileInfo(fileCid string, fileKey string) (err error)
+	GetExistingInviteInfo() (fileCid string, fileKey string)
+	RemoveExistingInviteInfo() (fileCid string, err error)
 }
 
 type InviteService interface {
@@ -99,8 +106,29 @@ func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info In
 	var (
 		fileCid, fileKey string
 	)
-	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		fileCid, fileKey = spaceView.GetExistingInviteInfo()
+	// this is for migration purposes
+	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(obj techspace.SpaceView) error {
+		fileCid, fileKey = obj.GetExistingInviteInfo()
+		if fileCid != "" {
+			info.InviteFileCid = fileCid
+			info.InviteFileKey = fileKey
+		} else {
+			return nil
+		}
+		_, err := obj.RemoveExistingInviteInfo()
+		if err != nil {
+			log.Warn("remove existing invite info", zap.Error(err))
+		}
+		return nil
+	})
+	if err != nil {
+		return InviteInfo{}, getInviteError("get existing invite info from space view", err)
+	}
+	err = i.doInviteObject(ctx, spaceId, func(obj inviteObject) error {
+		if info.InviteFileCid != "" {
+			return obj.SetInviteFileInfo(info.InviteFileCid, info.InviteFileKey)
+		}
+		fileCid, fileKey = obj.GetExistingInviteInfo()
 		return nil
 	})
 	if err != nil {
@@ -118,8 +146,8 @@ func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info In
 
 func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (err error) {
 	var fileCid string
-	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		fileCid, err = spaceView.RemoveExistingInviteInfo()
+	err = i.doInviteObject(ctx, spaceId, func(obj inviteObject) error {
+		fileCid, err = obj.RemoveExistingInviteInfo()
 		return err
 	})
 	if err != nil {
@@ -139,13 +167,27 @@ func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (err
 	return
 }
 
+func (i *inviteService) doInviteObject(ctx context.Context, spaceId string, f func(inviteObject) error) error {
+	sp, err := i.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	return sp.Do(sp.DerivedIDs().Workspace, func(sb smartblock.SmartBlock) error {
+		invObject, ok := sb.(inviteObject)
+		if !ok {
+			return fmt.Errorf("space is not invite object")
+		}
+		return f(invObject)
+	})
+}
+
 func (i *inviteService) Generate(ctx context.Context, spaceId string, inviteKey crypto.PrivKey, sendInvite func() error) (result InviteInfo, err error) {
 	if spaceId == i.accountService.PersonalSpaceID() {
 		return InviteInfo{}, ErrPersonalSpace
 	}
 	var fileCid, fileKey string
-	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		fileCid, fileKey = spaceView.GetExistingInviteInfo()
+	err = i.doInviteObject(ctx, spaceId, func(obj inviteObject) error {
+		fileCid, fileKey = obj.GetExistingInviteInfo()
 		return nil
 	})
 	if err != nil {
@@ -176,8 +218,8 @@ func (i *inviteService) Generate(ctx context.Context, spaceId string, inviteKey 
 		removeInviteFile()
 		return InviteInfo{}, generateInviteError("encode invite file key", err)
 	}
-	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		return spaceView.SetInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
+	err = i.doInviteObject(ctx, spaceId, func(obj inviteObject) error {
+		return obj.SetInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
 	})
 	if err != nil {
 		removeInviteFile()

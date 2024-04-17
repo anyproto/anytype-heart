@@ -94,6 +94,28 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 	}
 }
 
+func (w *Workspaces) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+	st := w.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
+	return w.Apply(st)
+}
+
+func (w *Workspaces) GetExistingInviteInfo() (fileCid string, fileKey string) {
+	details := w.CombinedDetails()
+	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
+	fileKey = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileKey.String())
+	return
+}
+
+func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
+	details := w.Details()
+	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
+	newState := w.NewState()
+	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
+	return fileCid, w.Apply(newState)
+}
+
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
