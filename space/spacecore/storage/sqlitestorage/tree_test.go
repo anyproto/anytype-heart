@@ -153,7 +153,7 @@ func treeTestPayload() treestorage.TreeStorageCreatePayload {
 	return treestorage.TreeStorageCreatePayload{
 		RootRawChange: rootRawChange,
 		Changes:       changes,
-		Heads:         []string{rootRawChange.Id},
+		Heads:         []string{otherChange.Id},
 	}
 }
 

@@ -32,7 +32,7 @@ func createTreeStorage(ss *spaceStorage, payload treestorage.TreeStorageCreatePa
 		treeId:       payload.RootRawChange.Id,
 		spaceStorage: ss,
 		service:      ss.service,
-		heads:        []string{payload.RootRawChange.Id},
+		heads:        payload.Heads,
 	}
 
 	tx, err := ss.service.writeDb.Begin()
