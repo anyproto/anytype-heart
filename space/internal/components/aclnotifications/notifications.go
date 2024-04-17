@@ -47,7 +47,7 @@ type AclNotification interface {
 type aclNotificationSender struct {
 	identityService     dependencies.IdentityService
 	notificationService NotificationSender
-	batcher             *mb.MB[aclNotificationRecord]
+	batcher             *mb.MB[*aclNotificationRecord]
 	spaceNameGetter     objectstore.SpaceNameGetter
 
 	ctx       context.Context
@@ -56,7 +56,7 @@ type aclNotificationSender struct {
 }
 
 func NewAclNotificationSender() AclNotification {
-	return &aclNotificationSender{batcher: mb.New[aclNotificationRecord](0), done: make(chan struct{})}
+	return &aclNotificationSender{batcher: mb.New[*aclNotificationRecord](0), done: make(chan struct{})}
 }
 
 func (n *aclNotificationSender) Init(a *app.App) (err error) {
@@ -96,7 +96,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
 	if lastNotificationId != "" {
 		acl.IterateFrom(lastNotificationId, func(record *list.AclRecord) (IsContinue bool) {
-			err := n.batcher.Add(n.ctx, aclNotificationRecord{
+			err := n.batcher.Add(n.ctx, &aclNotificationRecord{
 				record:        *record,
 				permissions:   permissions,
 				spaceId:       spaceId,
@@ -112,7 +112,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 		return
 	}
 	for _, record := range acl.Records() {
-		err := n.batcher.Add(n.ctx, aclNotificationRecord{
+		err := n.batcher.Add(n.ctx, &aclNotificationRecord{
 			record:        *record,
 			permissions:   permissions,
 			spaceId:       spaceId,
@@ -133,7 +133,7 @@ func (n *aclNotificationSender) AddSingleRecord(aclId string,
 	accountStatus spaceinfo.AccountStatus,
 ) {
 	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
-	err := n.batcher.Add(n.ctx, aclNotificationRecord{
+	err := n.batcher.Add(n.ctx, &aclNotificationRecord{
 		record:        *aclRecord,
 		permissions:   permissions,
 		spaceId:       spaceId,
@@ -170,7 +170,7 @@ func (n *aclNotificationSender) processRecords() {
 		}
 		msgs := n.batcher.GetAll()
 		for _, record := range msgs {
-			err := n.sendNotification(context.Background(), &record)
+			err := n.sendNotification(context.Background(), record)
 			if err != nil {
 				logger.Errorf("failed to send notifications: %s", err)
 			}
@@ -184,12 +184,12 @@ func (n *aclNotificationSender) processRecords() {
 			return
 		default:
 		}
-		var msg aclNotificationRecord
+		var msg *aclNotificationRecord
 		msg, err = n.batcher.WaitOne(n.ctx)
 		if err != nil {
 			return
 		}
-		err = n.sendNotification(n.ctx, &msg)
+		err = n.sendNotification(n.ctx, msg)
 		if err != nil {
 			logger.Errorf("failed to send notifications: %s", err)
 		}
