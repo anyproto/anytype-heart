@@ -190,6 +190,9 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 			s.sendSpaceUsageEvent(space.SpaceId, uint64(space.SpaceBytesUsage))
 		}
 	}
+	if !prevUsageFound || prevUsage.AccountBytesLimit != usage.AccountBytesLimit {
+		s.sendLimitUpdatedEvent(uint64(usage.AccountBytesLimit))
+	}
 
 	return usage, nil
 }
@@ -230,6 +233,24 @@ func makeSpaceUsageEvent(spaceId string, bytesUsage uint64) *pb.Event {
 					FileSpaceUsage: &pb.EventFileSpaceUsage{
 						BytesUsage: bytesUsage,
 						SpaceId:    spaceId,
+					},
+				},
+			},
+		},
+	}
+}
+
+func (s *fileSync) sendLimitUpdatedEvent(limit uint64) {
+	s.eventSender.Broadcast(makeLimitUpdatedEvent(limit))
+}
+
+func makeLimitUpdatedEvent(limit uint64) *pb.Event {
+	return &pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfFileLimitUpdated{
+					FileLimitUpdated: &pb.EventFileLimitUpdated{
+						BytesLimit: limit,
 					},
 				},
 			},
