@@ -163,6 +163,8 @@ func (c *Config) Init(a *app.App) (err error) {
 		c.SpaceStorageMode = storage.SpaceStorageModeBadger
 	} else {
 		// new account repos
+		// todo: remove temporary log
+		log.Warn("using sqlite storage")
 		c.SpaceStorageMode = storage.SpaceStorageModeSqlite
 	}
 	return

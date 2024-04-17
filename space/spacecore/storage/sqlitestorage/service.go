@@ -112,19 +112,23 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 	connectionUrlParams.Add("_foreign_keys", "true")
 	connectionUri := s.dbPath + "?" + connectionUrlParams.Encode()
 	if s.writeDb, err = sql.Open(driverName, connectionUri); err != nil {
+		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "write"), zap.Error(err)).Error("failed to open db")
 		return
 	}
 	s.writeDb.SetMaxOpenConns(1)
 	if _, err = s.writeDb.Exec(sqlCreateTables); err != nil {
+		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "createtable"), zap.Error(err)).Error("failed to open db")
 		return
 	}
 
 	if s.readDb, err = sql.Open(driverName, connectionUri); err != nil {
+		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "read"), zap.Error(err)).Error("failed to open db")
 		return
 	}
 	s.readDb.SetMaxOpenConns(10)
 
 	if err = initStmts(s); err != nil {
+		log.With(zap.String("db", "spacestore_sqlite"), zap.String("type", "init"), zap.Error(err)).Error("failed to open db")
 		return
 	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
