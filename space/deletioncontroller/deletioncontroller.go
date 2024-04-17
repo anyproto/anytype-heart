@@ -103,7 +103,7 @@ func (d *deletionController) loopIterate(ctx context.Context) error {
 
 func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []string) {
 	ids := d.spaceManager.AllSpaceIds()
-	remoteStatuses, err := d.client.StatusCheckMany(ctx, ids)
+	remoteStatuses, _, err := d.client.StatusCheckMany(ctx, ids)
 	if err != nil {
 		log.Warn("remote status check error", zap.Error(err))
 		return
