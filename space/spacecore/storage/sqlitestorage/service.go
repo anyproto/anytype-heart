@@ -6,13 +6,20 @@ import (
 	"errors"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/globalsign/mgo/bson"
 	"github.com/mattn/go-sqlite3"
+	"go.uber.org/atomic"
+	"go.uber.org/zap"
 )
 
 var ErrLocked = errors.New("space storage locked")
+
+var log = logger.NewNamed("sqlitestore")
 
 type configGetter interface {
 	GetSpaceStorePath() string
@@ -51,7 +58,15 @@ type storageService struct {
 	}
 	dbPath       string
 	lockedSpaces map[string]*lockSpace
-	mu           sync.Mutex
+
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+
+	checkpointAfterWrite time.Duration
+	checkpointForce      time.Duration
+	lastWrite            atomic.Time
+	lastCheckpoint       atomic.Time
+	mu                   sync.Mutex
 }
 
 type lockSpace struct {
@@ -67,10 +82,27 @@ func New() *storageService {
 func (s *storageService) Init(a *app.App) (err error) {
 	s.dbPath = a.MustComponent("config").(configGetter).GetSpaceStorePath()
 	s.lockedSpaces = map[string]*lockSpace{}
+	if s.checkpointAfterWrite == 0 {
+		s.checkpointAfterWrite = time.Second
+	}
+	if s.checkpointForce == 0 {
+		s.checkpointForce = time.Minute
+	}
 	return
 }
 
 func (s *storageService) Run(ctx context.Context) (err error) {
+	driverName := bson.NewObjectId().Hex()
+	sql.Register(driverName,
+		&sqlite3.SQLiteDriver{
+			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+				conn.RegisterUpdateHook(func(op int, db string, table string, rowid int64) {
+					s.lastWrite.Store(time.Now())
+				})
+				return nil
+			},
+		})
+
 	connectionUrlParams := make(url.Values)
 	connectionUrlParams.Add("_txlock", "immediate")
 	connectionUrlParams.Add("_journal_mode", "WAL")
@@ -79,7 +111,7 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 	connectionUrlParams.Add("_cache_size", "10000000")
 	connectionUrlParams.Add("_foreign_keys", "true")
 	connectionUri := s.dbPath + "?" + connectionUrlParams.Encode()
-	if s.writeDb, err = sql.Open("sqlite3", connectionUri); err != nil {
+	if s.writeDb, err = sql.Open(driverName, connectionUri); err != nil {
 		return
 	}
 	s.writeDb.SetMaxOpenConns(1)
@@ -87,12 +119,17 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	if s.readDb, err = sql.Open("sqlite3", connectionUri); err != nil {
+	if s.readDb, err = sql.Open(driverName, connectionUri); err != nil {
 		return
 	}
 	s.readDb.SetMaxOpenConns(10)
 
-	return initStmts(s)
+	if err = initStmts(s); err != nil {
+		return
+	}
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	go s.checkpointLoop()
+	return
 }
 
 func (s *storageService) Name() (name string) {
@@ -253,7 +290,48 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 	return
 }
 
+func (s *storageService) checkpointLoop() {
+	for {
+		select {
+		case <-time.After(s.checkpointAfterWrite):
+		case <-s.ctx.Done():
+			return
+		}
+		if s.needCheckpoint() {
+			st := time.Now()
+			if err := s.checkpoint(); err != nil {
+				log.Warn("checkpoint error", zap.Error(err))
+			}
+			log.Debug("checkpoint", zap.Duration("dur", time.Since(st)))
+		}
+	}
+}
+
+func (s *storageService) needCheckpoint() bool {
+	now := time.Now()
+	lastWrite := s.lastWrite.Load()
+	lastCheckpoint := s.lastCheckpoint.Load()
+
+	if lastCheckpoint.Before(lastWrite) && now.Sub(lastWrite) > s.checkpointAfterWrite {
+		return true
+	}
+
+	if now.Sub(lastCheckpoint) > s.checkpointForce {
+		return true
+	}
+	return false
+}
+
+func (s *storageService) checkpoint() (err error) {
+	_, err = s.writeDb.ExecContext(s.ctx, `PRAGMA wal_checkpoint(PASSIVE)`)
+	s.lastCheckpoint.Store(time.Now())
+	return err
+}
+
 func (s *storageService) Close(ctx context.Context) (err error) {
+	if s.ctxCancel != nil {
+		s.ctxCancel()
+	}
 	if s.writeDb != nil {
 		err = errors.Join(err, s.writeDb.Close())
 	}

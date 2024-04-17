@@ -136,13 +136,32 @@ func TestStorageService_WaitSpaceStorage(t *testing.T) {
 	}
 }
 
+func TestCheckpoint(t *testing.T) {
+	fx := newFixture(t, func(fx *fixture) {
+		fx.storageService.checkpointAfterWrite = time.Second / 3
+		fx.storageService.checkpointForce = time.Second
+	})
+	defer fx.finish(t)
+
+	assert.Empty(t, fx.lastCheckpoint.Load())
+	assert.Empty(t, fx.lastWrite.Load())
+	require.NoError(t, fx.BindSpaceID("1", "2"))
+	assert.NotEmpty(t, fx.lastWrite.Load())
+	time.Sleep((time.Second / 3) * 2)
+	firstCheckpoint := fx.lastCheckpoint.Load()
+	assert.NotEmpty(t, firstCheckpoint)
+	time.Sleep(time.Second * 2)
+	secondCheckpoint := fx.lastCheckpoint.Load()
+	assert.NotEqual(t, firstCheckpoint, secondCheckpoint)
+}
+
 type fixture struct {
 	*storageService
 	a      *app.App
 	tmpDir string
 }
 
-func newFixture(t require.TestingT) *fixture {
+func newFixture(t require.TestingT, beforeStart ...func(fx *fixture)) *fixture {
 	tmpDir, e := os.MkdirTemp("", "")
 	require.NoError(t, e)
 	fx := &fixture{
@@ -151,6 +170,9 @@ func newFixture(t require.TestingT) *fixture {
 		tmpDir:         tmpDir,
 	}
 	fx.a.Register(&testConfig{tmpDir: tmpDir}).Register(fx.storageService)
+	for _, b := range beforeStart {
+		b(fx)
+	}
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }
