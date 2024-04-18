@@ -327,7 +327,8 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		if parentId, ok := s.getParentIdsCache()[id]; ok {
 			return s.Pick(parentId)
 		}
-		return
+		// restore this code after checking if cache is working correctly
+		// return
 	}
 
 	s.Iterate(func(b simple.Block) bool {
@@ -337,6 +338,12 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		}
 		return true
 	})
+
+	// remove this code after checking if cache is working correctly
+	if s.isParentIdsCacheEnabled && res != nil {
+		log.With("id", id).Warn("parent not found in cache")
+	}
+
 	return
 }
 

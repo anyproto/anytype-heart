@@ -171,7 +171,9 @@ func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block
 	if pos == -1 {
 		return nil, fmt.Errorf("creating row: can't find child[%s] in given parent[%s]", b.Model().Id, parent.Model().Id)
 	}
-	parent.Model().ChildrenIds[pos] = row.Model().Id
+	childrenIds := slice.Copy(parent.Model().ChildrenIds)
+	childrenIds[pos] = row.Model().Id
+	s.setChildrenIds(parent.Model(), childrenIds)
 	return
 }
 
