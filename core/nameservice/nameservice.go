@@ -88,6 +88,21 @@ func (s *service) NameServiceResolveName(ctx context.Context, req *pb.RpcNameSer
 	return &out, nil
 }
 
+func FullNameToNsName(fullName string) (nsName string, nsNameType model.NameserviceNameType) {
+	// if no name - return empty string
+	if fullName == "" {
+		return "", model.NameserviceNameType_AnyName
+	}
+
+	// remove .any from the name
+	if fullName[len(fullName)-4:] == ".any" {
+		return fullName[:len(fullName)-4], model.NameserviceNameType_AnyName
+	}
+
+	// by default return it
+	return fullName, model.NameserviceNameType_AnyName
+}
+
 func (s *service) NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNameServiceResolveAnyIdRequest) (*pb.RpcNameServiceResolveAnyIdResponse, error) {
 	var in proto.NameByAnyIdRequest
 	in.AnyAddress = req.AnyId
@@ -100,7 +115,7 @@ func (s *service) NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNameSe
 	// Return the response
 	var out pb.RpcNameServiceResolveAnyIdResponse
 	out.Found = nar.Found
-	out.FullName = nar.Name
+	out.NsName, out.NsNameType = FullNameToNsName(nar.Name)
 
 	return &out, nil
 }
@@ -136,7 +151,7 @@ func (s *service) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcName
 	out.NamesCountLeft = ua.NamesCountLeft
 	out.OperationsCountLeft = ua.OperationsCountLeft
 	// not checking nar.Found here, no need
-	out.AnyNameAttached = nar.Name
+	out.NsNameAttached, out.NsNameType = FullNameToNsName(nar.Name)
 
 	return &out, nil
 }
