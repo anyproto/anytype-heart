@@ -251,14 +251,6 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
 	}
-	if flags.bundledObjects {
-		// hardcoded for now
-		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
-		err := i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, ids)
-		if err != nil {
-			return fmt.Errorf("reindex profile and missing object: %w", err)
-		}
-	}
 
 	if flags.bundledTemplates {
 		existing, _, err := i.store.QueryObjectIDs(database.Query{
@@ -285,7 +277,10 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 			return fmt.Errorf("reindex bundled templates: %w", err)
 		}
 	}
-
+	err = i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, []string{addr.AnytypeProfileId, addr.MissingObject})
+	if err != nil {
+		return fmt.Errorf("reindex profile and missing object: %w", err)
+	}
 	return i.saveLatestChecksums(space.Id())
 }
 
