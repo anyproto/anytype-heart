@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
@@ -136,7 +138,14 @@ func makeQueueItem() *QueueItem {
 func (s *fileSync) Run(ctx context.Context) (err error) {
 	db, err := s.dbProvider.LocalStorage()
 	if err != nil {
-		return
+		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
+			db, err = s.dbProvider.LocalStorage()
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 	s.store, err = newFileSyncStore(db)
 	if err != nil {
