@@ -27,6 +27,13 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+  github.com/anyproto/anytype-heart/core/block/editor/smartblock:
+    interfaces:
+      Indexer:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
