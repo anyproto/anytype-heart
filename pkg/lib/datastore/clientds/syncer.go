@@ -54,6 +54,7 @@ func newDbSyncer(db *badger.DB) *dbSyncer {
 }
 
 func (r *clientds) syncer() error {
+	defer close(r.syncerFinished)
 	var syncers []*dbSyncer
 	if r.spaceDS != nil {
 		syncers = append(syncers, newDbSyncer(r.spaceDS))
@@ -64,10 +65,16 @@ func (r *clientds) syncer() error {
 
 	for {
 		select {
-		case <-r.closed:
+		case <-r.closing:
 			return nil
 		case <-time.After(SyncDbAfterInactivity):
 			for _, syncer := range syncers {
+				select {
+				case <-r.closing:
+					// exit fast in case Close() is already called
+					return nil
+				default:
+				}
 				maxVersion := syncer.db.MaxVersion()
 				if syncer.LastMaxVersionSynced == maxVersion {
 					continue
