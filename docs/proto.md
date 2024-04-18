@@ -11738,7 +11738,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.ResolveAnyId.Response.Error](#anytype-Rpc-NameService-ResolveAnyId-Response-Error) |  |  |
 | found | [bool](#bool) |  |  |
-| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+| nsName | [string](#string) |  | not including suffix |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11859,7 +11860,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.ResolveSpaceId.Response.Error](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error) |  |  |
 | found | [bool](#bool) |  |  |
-| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+| nsName | [string](#string) |  | not including suffix |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11921,7 +11923,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.UserAccount.Get.Response.Error](#anytype-Rpc-NameService-UserAccount-Get-Response-Error) |  |  |
-| anyNameAttached | [string](#string) |  | this will use ReverseResolve to get current name user can buy many names, but only 1 name can be set as &#34;current&#34;: ETH address &lt;-&gt; name |
+| nsNameAttached | [string](#string) |  | this will use ReverseResolve to get current name user can buy many names, but only 1 name can be set as &#34;current&#34;: ETH address &lt;-&gt; name |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | namesCountLeft | [uint64](#uint64) |  | Number of names that the user can reserve |
 | operationsCountLeft | [uint64](#uint64) |  | Number of operations: update name, add new data, etc |
 
@@ -25931,7 +25934,8 @@ Used to decode block meta only, without the content itself
 | dateEnds | [uint64](#uint64) |  |  |
 | isAutoRenew | [bool](#bool) |  |  |
 | paymentMethod | [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
-| requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
+| nsName | [string](#string) |  | can be empty if user did not ask for any name |
+| nsNameType | [NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
 | subscribeToNewsletter | [bool](#bool) |  |  |
 

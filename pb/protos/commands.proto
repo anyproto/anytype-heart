@@ -6802,8 +6802,10 @@ message Rpc {
 
                 bool found = 2;
                 
-                // including ".any" suffix
-                string fullName = 3;
+                // not including suffix
+                string nsName = 3;
+                
+                anytype.model.NameserviceNameType nsNameType = 4;
 
                 message Error {
                     Code code = 1;
@@ -6828,8 +6830,10 @@ message Rpc {
 
                 bool found = 2;
                 
-                // including ".any" suffix
-                string fullName = 3;
+                // not including suffix
+                string nsName = 3;
+                
+                anytype.model.NameserviceNameType nsNameType = 4;
 
                 message Error {
                     Code code = 1;
@@ -6856,13 +6860,15 @@ message Rpc {
                     // this will use ReverseResolve to get current name
                     // user can buy many names, but
                     // only 1 name can be set as "current": ETH address <-> name
-                    string anyNameAttached = 2;
+                    string nsNameAttached = 2;
+                
+                    anytype.model.NameserviceNameType nsNameType = 3;
 
                     // Number of names that the user can reserve
-                    uint64 namesCountLeft = 3;
+                    uint64 namesCountLeft = 4;
 
                     // Number of operations: update name, add new data, etc
-                    uint64 operationsCountLeft = 4;
+                    uint64 operationsCountLeft = 5;
 
                     // TODO: all operations list
 

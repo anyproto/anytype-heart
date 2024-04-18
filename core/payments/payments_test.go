@@ -185,13 +185,14 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(sr.Tier),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
@@ -215,7 +216,7 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
 		assert.Equal(t, true, resp.Data.IsAutoRenew)
 		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
-		assert.Equal(t, "something.any", resp.Data.RequestedAnyName)
+		assert.Equal(t, "something", resp.Data.NsName)
 	})
 
 	t.Run("success if cache is disabled and GetSubscriptionStatus returns no error", func(t *testing.T) {
@@ -234,13 +235,14 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(sr.Tier),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
@@ -265,7 +267,7 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
 		assert.Equal(t, true, resp.Data.IsAutoRenew)
 		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
-		assert.Equal(t, "something.any", resp.Data.RequestedAnyName)
+		assert.Equal(t, "something", resp.Data.NsName)
 	})
 
 	t.Run("fail if no cache, GetSubscriptionStatus returns no error, but can not save to cache", func(t *testing.T) {
@@ -284,13 +286,14 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(sr.Tier),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
@@ -318,13 +321,14 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-				Status:           model.Membership_StatusActive,
-				DateStarted:      uint64(timeNow.Unix()),
-				DateEnds:         uint64(subsExpire.Unix()),
-				IsAutoRenew:      true,
-				PaymentMethod:    model.Membership_MethodCrypto,
-				RequestedAnyName: "something.any",
+				Tier:          uint32(psp.SubscriptionTier_TierExplorer),
+				Status:        model.Membership_StatusActive,
+				DateStarted:   uint64(timeNow.Unix()),
+				DateEnds:      uint64(subsExpire.Unix()),
+				IsAutoRenew:   true,
+				PaymentMethod: model.Membership_MethodCrypto,
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
@@ -355,13 +359,14 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(sr.Tier),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
@@ -389,7 +394,7 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, uint64(0), resp.Data.DateEnds)
 		assert.Equal(t, false, resp.Data.IsAutoRenew)
 		assert.Equal(t, model.Membership_MethodStripe, resp.Data.PaymentMethod)
-		assert.Equal(t, "", resp.Data.RequestedAnyName)
+		assert.Equal(t, "", resp.Data.NsName)
 	})
 
 	t.Run("if GetSubscriptionStatus returns active tier and it expires in 5 days -> cache it for 5 days", func(t *testing.T) {
@@ -410,13 +415,14 @@ func TestGetStatus(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(sr.Tier),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
@@ -460,13 +466,14 @@ func TestGetStatus(t *testing.T) {
 		// this is from DB
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(psp.SubscriptionTier_TierExplorer),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
@@ -877,13 +884,14 @@ func TestGetTiers(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(sr.Tier),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
@@ -935,13 +943,14 @@ func TestGetTiers(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(sr.Tier),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
@@ -990,13 +999,14 @@ func TestGetTiers(t *testing.T) {
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:             uint32(sr.Tier),
-				Status:           model.MembershipStatus(sr.Status),
-				DateStarted:      sr.DateStarted,
-				DateEnds:         sr.DateEnds,
-				IsAutoRenew:      sr.IsAutoRenew,
-				PaymentMethod:    PaymentMethodToModel(sr.PaymentMethod),
-				RequestedAnyName: sr.RequestedAnyName,
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
 
