@@ -132,7 +132,7 @@ type ObjectStore interface {
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 
-	DeleteObject(id string) error
+	DeleteObject(id domain.FullID) error
 	DeleteDetails(id ...string) error
 	DeleteLinks(id ...string) error
 

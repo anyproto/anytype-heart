@@ -274,7 +274,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 			return fmt.Errorf("query bundled templates: %w", err)
 		}
 		for _, id := range existing {
-			err = i.store.DeleteObject(id)
+			err = i.store.DeleteObject(domain.FullID{SpaceID: space.Id(), ObjectID: id})
 			if err != nil {
 				log.Errorf("delete old bundled template %s: %s", id, err)
 			}
