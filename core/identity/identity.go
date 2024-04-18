@@ -570,8 +570,11 @@ func (s *service) updateMyIdentityGlobalName(name string) {
 	details := pbtypes.CopyStruct(s.currentProfileDetails, true)
 	s.currentProfileDetailsLock.RUnlock()
 	details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(name)
-	if err := s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
-		log.Error("failed to update global name of my identity in store", zap.Error(err))
+	// if err := s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
+	// 	log.Error("failed to update global name of my identity in store", zap.Error(err))
+	// }
+	if err := s.updateIdentityObject(details); err != nil {
+		log.Error("failed to update global name of my identity", zap.Error(err))
 	}
 }
 
