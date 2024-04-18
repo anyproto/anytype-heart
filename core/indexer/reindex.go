@@ -33,7 +33,7 @@ const (
 	ForceFilesReindexCounter int32 = 12 //
 
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
-	ForceBundledObjectsReindexCounter int32 = 6 // reindex objects like anytypeProfile
+	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
@@ -65,6 +65,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 				// per space
 				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 				// global
+				BundledObjects:     ForceBundledObjectsReindexCounter,
 				AreOldFilesRemoved: true,
 			}
 		}
@@ -250,14 +251,6 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
 	}
-	if flags.bundledObjects {
-		// hardcoded for now
-		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
-		err := i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, ids)
-		if err != nil {
-			return fmt.Errorf("reindex profile and missing object: %w", err)
-		}
-	}
 
 	if flags.bundledTemplates {
 		existing, _, err := i.store.QueryObjectIDs(database.Query{
@@ -283,6 +276,10 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 		if err != nil {
 			return fmt.Errorf("reindex bundled templates: %w", err)
 		}
+	}
+	err = i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, []string{addr.AnytypeProfileId, addr.MissingObject})
+	if err != nil {
+		return fmt.Errorf("reindex profile and missing object: %w", err)
 	}
 	return i.saveLatestChecksums(space.Id())
 }
