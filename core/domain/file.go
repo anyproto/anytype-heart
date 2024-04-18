@@ -8,13 +8,21 @@ import (
 // FileId is a CID of the root of file's DAG
 type FileId string
 
-func (h FileId) String() string {
-	return string(h)
+func (id FileId) String() string {
+	return string(id)
+}
+
+func (id FileId) Valid() bool {
+	return IsFileId(string(id))
 }
 
 type FullFileId struct {
 	SpaceId string
 	FileId  FileId
+}
+
+func (id FullFileId) Valid() bool {
+	return id.FileId.Valid()
 }
 
 type FileEncryptionKeys struct {

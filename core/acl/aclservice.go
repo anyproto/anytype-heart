@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -366,8 +367,36 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 	return nil
 }
 
-func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (inviteservice.InviteView, error) {
-	return a.inviteService.View(ctx, inviteCid, inviteFileKey)
+func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (view inviteservice.InviteView, err error) {
+	res, err := a.inviteService.View(ctx, inviteCid, inviteFileKey)
+	if err != nil {
+		return inviteservice.InviteView{}, convertedOrInternalError("view invite", err)
+	}
+	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.InviteKey)
+	if err != nil {
+		return inviteservice.InviteView{}, convertedOrInternalError("unmarshal invite key", err)
+	}
+	recs, err := a.joiningClient.AclGetRecords(ctx, res.SpaceId, "")
+	if err != nil {
+		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
+	}
+	if len(recs) == 0 {
+		return inviteservice.InviteView{}, fmt.Errorf("no acl records found for space: %s, %w", res.SpaceId, ErrAclRequestFailed)
+	}
+	store, err := liststorage.NewInMemoryAclListStorage(recs[0].Id, recs)
+	if err != nil {
+		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
+	}
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, list.NoOpAcceptorVerifier{})
+	if err != nil {
+		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
+	}
+	for _, inv := range lst.AclState().Invites() {
+		if inviteKey.GetPublic().Equals(inv) {
+			return res, nil
+		}
+	}
+	return inviteservice.InviteView{}, inviteservice.ErrInviteNotExists
 }
 
 func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error {

@@ -34,6 +34,8 @@ type ImageExifSchema struct {
 
 type ImageExif struct{}
 
+const ImageExifId = "/image/exif"
+
 func (m *ImageExif) ID() string {
 	return "/image/exif"
 }

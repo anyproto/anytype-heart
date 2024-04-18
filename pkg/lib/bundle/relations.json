@@ -167,6 +167,16 @@
     "source": "derived"
   },
   {
+    "description": "Shared spaces limit",
+    "format": "number",
+    "hidden": true,
+    "key": "sharedSpacesLimit",
+    "maxCount": 1,
+    "name": "Shared spaces limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Adds the object to the highlighted dataview in space",
     "format": "checkbox",
     "hidden": true,

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient/mock_aclclient"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list/mock_list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl/headupdater"
@@ -24,6 +25,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
+	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -271,6 +273,77 @@ func TestService_ApproveLeave(t *testing.T) {
 		mockCommonSpace.EXPECT().Acl().Return(acl)
 		err := fx.ApproveLeave(ctx, spaceId, []crypto.PubKey{identityB, identityC})
 		require.Error(t, err)
+	})
+}
+
+func TestService_ViewInvite(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().Keys().Return(keys)
+		aclList, err := list.NewTestDerivedAcl("spaceId", keys)
+		require.NoError(t, err)
+		inv, err := aclList.RecordBuilder().BuildInvite()
+		require.NoError(t, err)
+		err = aclList.AddRawRecord(list.WrapAclRecord(inv.InviteRec))
+		require.NoError(t, err)
+		recs, err := aclList.RecordsAfter(ctx, "")
+		require.NoError(t, err)
+		cidString, err := cidutil.NewCidFromBytes([]byte("spaceId"))
+		require.NoError(t, err)
+		realCid, err := cid.Decode(cidString)
+		require.NoError(t, err)
+		protoKey, err := inv.InviteKey.Marshall()
+		require.NoError(t, err)
+		symKey, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		fx.mockInviteService.EXPECT().View(ctx, realCid, symKey).Return(inviteservice.InviteView{
+			InviteKey: protoKey,
+			SpaceId:   "spaceId",
+		}, nil)
+		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, "spaceId", "").Return(recs, nil)
+		invite, err := fx.ViewInvite(ctx, realCid, symKey)
+		require.NoError(t, err)
+		require.Equal(t, "spaceId", invite.SpaceId)
+	})
+	t.Run("fail", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().Keys().Return(keys)
+		aclList, err := list.NewTestDerivedAcl("spaceId", keys)
+		require.NoError(t, err)
+		inv, err := aclList.RecordBuilder().BuildInvite()
+		require.NoError(t, err)
+		err = aclList.AddRawRecord(list.WrapAclRecord(inv.InviteRec))
+		require.NoError(t, err)
+		invRecIds := aclList.AclState().InviteIds()
+		removeInv, err := aclList.RecordBuilder().BuildBatchRequest(list.BatchRequestPayload{
+			InviteRevokes: invRecIds,
+		})
+		require.NoError(t, err)
+		err = aclList.AddRawRecord(list.WrapAclRecord(removeInv))
+		require.NoError(t, err)
+		recs, err := aclList.RecordsAfter(ctx, "")
+		require.NoError(t, err)
+		cidString, err := cidutil.NewCidFromBytes([]byte("spaceId"))
+		require.NoError(t, err)
+		realCid, err := cid.Decode(cidString)
+		require.NoError(t, err)
+		protoKey, err := inv.InviteKey.Marshall()
+		require.NoError(t, err)
+		symKey, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		fx.mockInviteService.EXPECT().View(ctx, realCid, symKey).Return(inviteservice.InviteView{
+			InviteKey: protoKey,
+			SpaceId:   "spaceId",
+		}, nil)
+		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, "spaceId", "").Return(recs, nil)
+		_, err = fx.ViewInvite(ctx, realCid, symKey)
+		require.Equal(t, inviteservice.ErrInviteNotExists, err)
 	})
 }
 

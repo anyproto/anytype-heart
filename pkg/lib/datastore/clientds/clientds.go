@@ -39,7 +39,8 @@ type clientds struct {
 	repoPath                                   string
 	spaceStoreWasMissing, localStoreWasMissing bool
 	spentOnInit                                time.Duration
-	closed                                     chan struct{}
+	closing                                    chan struct{}
+	syncerFinished                             chan struct{}
 }
 
 type Config struct {
@@ -107,7 +108,8 @@ func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
 
 func (r *clientds) Init(a *app.App) (err error) {
 	// TODO: looks like we do a lot of stuff on Init here. We should consider moving it to the Run
-	r.closed = make(chan struct{})
+	r.closing = make(chan struct{})
+	r.syncerFinished = make(chan struct{})
 	start := time.Now()
 	wl := a.Component(wallet.CName)
 	if wl == nil {
@@ -198,7 +200,9 @@ func (r *clientds) Name() (name string) {
 }
 
 func (r *clientds) Close(ctx context.Context) (err error) {
-	close(r.closed)
+	close(r.closing)
+	// wait syncer goroutine to finish to make sure we don't have in-progress requests, because it may cause panics
+	<-r.syncerFinished
 	if r.localstoreDS != nil {
 		err2 := r.localstoreDS.Close()
 		if err2 != nil {
