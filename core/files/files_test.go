@@ -56,6 +56,7 @@ func newFixture(t *testing.T) *fixture {
 	fileSyncService := filesync.New()
 	objectStore := objectstore.NewStoreFixture(t)
 	eventSender := mock_event.NewMockSender(t)
+	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	ctx := context.Background()
 	a := new(app.App)

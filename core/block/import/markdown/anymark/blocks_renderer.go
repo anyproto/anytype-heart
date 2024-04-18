@@ -10,7 +10,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/text"
@@ -125,7 +124,7 @@ func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle, fie
 		r.curStyledBlock = style
 	}
 
-	id := uuid.New().String()
+	id := bson.NewObjectId().Hex()
 
 	newBlock := model.Block{
 		Id:     id,
@@ -277,7 +276,7 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	var closingBlock *textBlock
 	var parentBlock *textBlock
 
-	id := uuid.New().String()
+	id := bson.NewObjectId().Hex()
 
 	if len(r.openedTextBlocks) > 0 {
 		closingBlock = r.openedTextBlocks[len(r.openedTextBlocks)-1]

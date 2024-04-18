@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -206,10 +207,10 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 }
 
 func TestDeleteObject(t *testing.T) {
-	t.Run("object is not found", func(t *testing.T) {
+	t.Run("on deleting object: details of deleted object are updated, but object is still in store", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.DeleteObject("id1")
+		err := s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
 		require.NoError(t, err)
 
 		got, err := s.GetDetails("id1")
@@ -217,6 +218,7 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -224,10 +226,10 @@ func TestDeleteObject(t *testing.T) {
 
 	t.Run("object is already deleted", func(t *testing.T) {
 		s := NewStoreFixture(t)
-		err := s.DeleteObject("id1")
+		err := s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
 		require.NoError(t, err)
 
-		err = s.DeleteObject("id1")
+		err = s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
 		require.NoError(t, err)
 
 		got, err := s.GetDetails("id1")
@@ -235,6 +237,7 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)
@@ -256,7 +259,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 
 		// Act
-		err = s.DeleteObject("id1")
+		err = s.DeleteObject(domain.FullID{SpaceID: "space1", ObjectID: "id1"})
 		require.NoError(t, err)
 
 		// Assert
@@ -265,6 +268,7 @@ func TestDeleteObject(t *testing.T) {
 		assert.Equal(t, &model.ObjectDetails{
 			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
+				bundle.RelationKeySpaceId:   pbtypes.String("space1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
 		}, got)

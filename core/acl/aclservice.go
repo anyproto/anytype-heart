@@ -18,6 +18,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -41,10 +42,10 @@ type AccountPermissions struct {
 
 type AclService interface {
 	app.Component
-	GenerateInvite(ctx context.Context, spaceId string) (inviteservice.InviteInfo, error)
+	GenerateInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	RevokeInvite(ctx context.Context, spaceId string) error
-	GetCurrentInvite(ctx context.Context, spaceId string) (inviteservice.InviteInfo, error)
-	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (inviteservice.InviteView, error)
+	GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
+	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error)
 	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error
 	MakeShareable(ctx context.Context, spaceId string) error
@@ -367,36 +368,36 @@ func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid
 	return nil
 }
 
-func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (view inviteservice.InviteView, err error) {
+func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (view domain.InviteView, err error) {
 	res, err := a.inviteService.View(ctx, inviteCid, inviteFileKey)
 	if err != nil {
-		return inviteservice.InviteView{}, convertedOrInternalError("view invite", err)
+		return domain.InviteView{}, convertedOrInternalError("view invite", err)
 	}
 	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.InviteKey)
 	if err != nil {
-		return inviteservice.InviteView{}, convertedOrInternalError("unmarshal invite key", err)
+		return domain.InviteView{}, convertedOrInternalError("unmarshal invite key", err)
 	}
 	recs, err := a.joiningClient.AclGetRecords(ctx, res.SpaceId, "")
 	if err != nil {
-		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
+		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
 	if len(recs) == 0 {
-		return inviteservice.InviteView{}, fmt.Errorf("no acl records found for space: %s, %w", res.SpaceId, ErrAclRequestFailed)
+		return domain.InviteView{}, fmt.Errorf("no acl records found for space: %s, %w", res.SpaceId, ErrAclRequestFailed)
 	}
 	store, err := liststorage.NewInMemoryAclListStorage(recs[0].Id, recs)
 	if err != nil {
-		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
+		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
-	lst, err := list.BuildAclList(store, list.NoOpAcceptorVerifier{})
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, list.NoOpAcceptorVerifier{})
 	if err != nil {
-		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
+		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
 	for _, inv := range lst.AclState().Invites() {
 		if inviteKey.GetPublic().Equals(inv) {
 			return res, nil
 		}
 	}
-	return inviteservice.InviteView{}, inviteservice.ErrInviteNotExists
+	return domain.InviteView{}, inviteservice.ErrInviteNotExists
 }
 
 func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error {
@@ -444,11 +445,11 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	return nil
 }
 
-func (a *aclService) GetCurrentInvite(ctx context.Context, spaceId string) (inviteservice.InviteInfo, error) {
+func (a *aclService) GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
 	return a.inviteService.GetCurrent(ctx, spaceId)
 }
 
-func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result inviteservice.InviteInfo, err error) {
+func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result domain.InviteInfo, err error) {
 	if spaceId == a.accountService.PersonalSpaceID() {
 		err = ErrPersonalSpace
 		return

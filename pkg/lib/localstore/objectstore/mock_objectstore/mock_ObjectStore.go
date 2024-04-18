@@ -298,7 +298,7 @@ func (_c *MockObjectStore_DeleteLinks_Call) RunAndReturn(run func(...string) err
 }
 
 // DeleteObject provides a mock function with given fields: id
-func (_m *MockObjectStore) DeleteObject(id string) error {
+func (_m *MockObjectStore) DeleteObject(id domain.FullID) error {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
@@ -306,7 +306,7 @@ func (_m *MockObjectStore) DeleteObject(id string) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullID) error); ok {
 		r0 = rf(id)
 	} else {
 		r0 = ret.Error(0)
@@ -321,14 +321,14 @@ type MockObjectStore_DeleteObject_Call struct {
 }
 
 // DeleteObject is a helper method to define mock.On call
-//   - id string
+//   - id domain.FullID
 func (_e *MockObjectStore_Expecter) DeleteObject(id interface{}) *MockObjectStore_DeleteObject_Call {
 	return &MockObjectStore_DeleteObject_Call{Call: _e.mock.On("DeleteObject", id)}
 }
 
-func (_c *MockObjectStore_DeleteObject_Call) Run(run func(id string)) *MockObjectStore_DeleteObject_Call {
+func (_c *MockObjectStore_DeleteObject_Call) Run(run func(id domain.FullID)) *MockObjectStore_DeleteObject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(domain.FullID))
 	})
 	return _c
 }
@@ -338,7 +338,7 @@ func (_c *MockObjectStore_DeleteObject_Call) Return(_a0 error) *MockObjectStore_
 	return _c
 }
 
-func (_c *MockObjectStore_DeleteObject_Call) RunAndReturn(run func(string) error) *MockObjectStore_DeleteObject_Call {
+func (_c *MockObjectStore_DeleteObject_Call) RunAndReturn(run func(domain.FullID) error) *MockObjectStore_DeleteObject_Call {
 	_c.Call.Return(run)
 	return _c
 }

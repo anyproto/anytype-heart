@@ -12959,13 +12959,15 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
 
 DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated |  |
+| spaceId | [string](#string) |  |  |
+| collectionId | [string](#string) |  |  |
+| setSource | [string](#string) | repeated |  |
 
 
 
@@ -20726,6 +20728,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 3 |  |
 | ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
+| OBJECT_DELETED | 4 | ... |
 
 
 
@@ -20923,6 +20926,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 3 |  |
+| OBJECT_DELETED | 4 |  |
 | ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
 
 
@@ -25010,6 +25014,7 @@ Precondition: user A and user B opened the same block
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
 | areOldFilesRemoved | [bool](#bool) |  |  |
+| areDeletedObjectsReindexed | [bool](#bool) |  |  |
 
 
 

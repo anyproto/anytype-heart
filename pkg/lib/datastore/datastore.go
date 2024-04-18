@@ -11,7 +11,7 @@ const CName = "datastore"
 
 type Datastore interface {
 	app.ComponentRunnable
-	SpaceStorage() (*badger.DB, error)
+	SpaceStorage() (*badger.DB, error) // deprecated, should be moved to either LocalStorage or sqlite db
 	LocalStorage() (*badger.DB, error)
 }
 

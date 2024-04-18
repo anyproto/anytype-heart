@@ -853,10 +853,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
-	localDetailsFromState := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
-	if pbtypes.StructEqualIgnore(localDetailsFromState, localDetailsFromStore, nil) {
-		return nil
-	}
 
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {

@@ -82,7 +82,7 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 
 func (p *participant) modifyDetails(newDetails *types.Struct) (err error) {
 	return p.DetailsUpdatable.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-		return pbtypes.StructMerge(p.CombinedDetails(), newDetails, false), nil
+		return pbtypes.StructMerge(current, newDetails, false), nil
 	})
 }
 
