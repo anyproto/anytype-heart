@@ -24,14 +24,14 @@ type Workspaces struct {
 	dataview.Dataview
 	stext.Text
 
-	spaceService   spaceService
-	objectStore    objectstore.ObjectStore
-	config         *config.Config
-	accountService accountService
+	spaceService spaceService
+	objectStore  objectstore.ObjectStore
+	config       *config.Config
+	migrator     subObjectsMigrator
 }
 
 func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
-	return &Workspaces{
+	w := &Workspaces{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
 		IHistory:      basic.NewHistory(sb),
@@ -40,12 +40,15 @@ func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
 			f.objectStore,
 			f.eventSender,
 		),
-		Dataview:       dataview.NewDataview(sb, f.objectStore),
-		objectStore:    f.objectStore,
-		spaceService:   f.spaceService,
-		config:         f.config,
-		accountService: f.accountService,
+		Dataview:     dataview.NewDataview(sb, f.objectStore),
+		objectStore:  f.objectStore,
+		spaceService: f.spaceService,
+		config:       f.config,
 	}
+	w.migrator = &subObjectsMigration{
+		workspace: w,
+	}
+	return w
 }
 
 func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
@@ -54,11 +57,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		return err
 	}
 	w.initTemplate(ctx)
-
-	subObjectMigration := subObjectsMigration{
-		workspace: w,
-	}
-	subObjectMigration.migrateSubObjects(ctx.State)
+	w.migrator.migrateSubObjects(ctx.State)
 	w.onWorkspaceChanged(ctx.State)
 	w.AddHook(w.onApply, smartblock.HookAfterApply)
 	return nil
