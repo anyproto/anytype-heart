@@ -94,6 +94,9 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
     interfaces:
       ParticipantWatcher:
+  github.com/anyproto/anytype-heart/space/internal/components/invitemigrator:
+    interfaces:
+      InviteMigrator:
   github.com/anyproto/anytype-heart/space/internal/components/aclnotifications:
     interfaces:
       AclNotification:
@@ -125,10 +128,9 @@ packages:
     interfaces:
       SpaceManager:
       DeletionController:
-  github.com/anyproto/anytype-heart/core/inviteservice:
+  github.com/anyproto/anytype-heart/core/domain:
     interfaces:
-      InviteService:
-      inviteObject:
+      InviteObject:
   github.com/anyproto/anytype-heart/core/payments/cache:
     interfaces:
       CacheService:
@@ -138,7 +140,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/source:
     interfaces:
       Service:
-
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:

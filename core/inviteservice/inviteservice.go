@@ -27,12 +27,6 @@ const CName = "common.core.inviteservice"
 
 var log = logger.NewNamed(CName)
 
-type inviteObject interface {
-	SetInviteFileInfo(fileCid string, fileKey string) (err error)
-	GetExistingInviteInfo() (fileCid string, fileKey string)
-	RemoveExistingInviteInfo() (fileCid string, err error)
-}
-
 type InviteService interface {
 	app.ComponentRunnable
 	GetPayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*model.InvitePayload, error)
@@ -111,7 +105,7 @@ func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info do
 	if err != nil {
 		return domain.InviteInfo{}, getInviteError("get existing invite info from space view", err)
 	}
-	err = i.doInviteObject(ctx, spaceId, func(obj inviteObject) error {
+	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
 		if info.InviteFileCid != "" {
 			return obj.SetInviteFileInfo(info.InviteFileCid, info.InviteFileKey)
 		}
@@ -133,7 +127,7 @@ func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info do
 
 func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (err error) {
 	var fileCid string
-	err = i.doInviteObject(ctx, spaceId, func(obj inviteObject) error {
+	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
 		fileCid, err = obj.RemoveExistingInviteInfo()
 		return err
 	})
@@ -154,13 +148,13 @@ func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (err
 	return
 }
 
-func (i *inviteService) doInviteObject(ctx context.Context, spaceId string, f func(inviteObject) error) error {
+func (i *inviteService) doInviteObject(ctx context.Context, spaceId string, f func(object domain.InviteObject) error) error {
 	sp, err := i.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
 	}
 	return sp.Do(sp.DerivedIDs().Workspace, func(sb smartblock.SmartBlock) error {
-		invObject, ok := sb.(inviteObject)
+		invObject, ok := sb.(domain.InviteObject)
 		if !ok {
 			return fmt.Errorf("space is not invite object")
 		}
@@ -173,7 +167,7 @@ func (i *inviteService) Generate(ctx context.Context, spaceId string, inviteKey 
 		return domain.InviteInfo{}, ErrPersonalSpace
 	}
 	var fileCid, fileKey string
-	err = i.doInviteObject(ctx, spaceId, func(obj inviteObject) error {
+	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
 		fileCid, fileKey = obj.GetExistingInviteInfo()
 		return nil
 	})
@@ -205,7 +199,7 @@ func (i *inviteService) Generate(ctx context.Context, spaceId string, inviteKey 
 		removeInviteFile()
 		return domain.InviteInfo{}, generateInviteError("encode invite file key", err)
 	}
-	err = i.doInviteObject(ctx, spaceId, func(obj inviteObject) error {
+	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
 		return obj.SetInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
 	})
 	if err != nil {

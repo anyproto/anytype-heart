@@ -12,8 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/domain/mock_domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
-	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore/mock_invitestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -26,7 +26,7 @@ import (
 
 type mockInviteObject struct {
 	smartblock.SmartBlock
-	*mock_inviteservice.MockinviteObject
+	*mock_domain.MockInviteObject
 }
 
 func TestInviteService_GetCurrent(t *testing.T) {
@@ -45,7 +45,7 @@ func TestInviteService_GetCurrent(t *testing.T) {
 			Workspace: "workspaceId",
 		})
 		fx.mockSpace.EXPECT().Do("workspaceId", mock.Anything).RunAndReturn(func(s string, f func(smartblock.SmartBlock) error) error {
-			return f(mockInviteObject{SmartBlock: smarttest.New("root"), MockinviteObject: fx.mockInviteObject})
+			return f(mockInviteObject{SmartBlock: smarttest.New("root"), MockInviteObject: fx.mockInviteObject})
 		})
 		fx.mockInviteObject.EXPECT().SetInviteFileInfo("fileId", "fileKey").Return(nil)
 		info, err := fx.GetCurrent(ctx, "spaceId")
@@ -67,7 +67,7 @@ func TestInviteService_GetCurrent(t *testing.T) {
 			Workspace: "workspaceId",
 		})
 		fx.mockSpace.EXPECT().Do("workspaceId", mock.Anything).RunAndReturn(func(s string, f func(smartblock.SmartBlock) error) error {
-			return f(mockInviteObject{SmartBlock: smarttest.New("root"), MockinviteObject: fx.mockInviteObject})
+			return f(mockInviteObject{SmartBlock: smarttest.New("root"), MockInviteObject: fx.mockInviteObject})
 		})
 		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return("fileId", "fileKey")
 		info, err := fx.GetCurrent(ctx, "spaceId")
@@ -90,7 +90,7 @@ type fixture struct {
 	mockTechSpace      *mock_techspace.MockTechSpace
 	mockSpaceView      *mock_techspace.MockSpaceView
 	mockSpace          *mock_clientspace.MockSpace
-	mockInviteObject   *mock_inviteservice.MockinviteObject
+	mockInviteObject   *mock_domain.MockInviteObject
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -102,7 +102,7 @@ func newFixture(t *testing.T) *fixture {
 	mockTechSpace := mock_techspace.NewMockTechSpace(t)
 	mockSpaceView := mock_techspace.NewMockSpaceView(t)
 	mockSpace := mock_clientspace.NewMockSpace(t)
-	mockInviteObject := mock_inviteservice.NewMockinviteObject(t)
+	mockInviteObject := mock_domain.NewMockInviteObject(t)
 	fx := &fixture{
 		inviteService:      New().(*inviteService),
 		a:                  new(app.App),
