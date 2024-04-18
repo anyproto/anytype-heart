@@ -95,6 +95,10 @@ func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, er
 	return
 }
 
+func UnmarshalChangeWithDataType(dataType string, decrypted []byte) (res any, err error) {
+	return UnmarshalChange(&objecttree.Change{DataType: dataType}, decrypted)
+}
+
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
 	StateRebuild(d state.Doc) (err error)
