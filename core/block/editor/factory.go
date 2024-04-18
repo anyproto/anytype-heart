@@ -35,6 +35,7 @@ type ObjectDeleter interface {
 }
 
 type accountService interface {
+	AccountID() string
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
 }
@@ -169,7 +170,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeWorkspace:
 		return f.newWorkspace(sb), nil
 	case coresb.SmartBlockTypeSpaceView:
-		return f.newSpaceView(sb), nil
+		return f.newSpaceView(sb, f.accountService.AccountID()), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:

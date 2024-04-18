@@ -37,15 +37,17 @@ type SpaceView struct {
 	spaceService      spaceService
 	fileObjectService fileobject.Service
 	log               *logging.Sugared
+	myIdentity        string
 }
 
 // newSpaceView creates a new SpaceView with given deps
-func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
+func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock, myIdentity string) *SpaceView {
 	return &SpaceView{
 		SmartBlock:        sb,
 		spaceService:      f.spaceService,
 		log:               spaceViewLog,
 		fileObjectService: f.fileObjectService,
+		myIdentity:        myIdentity,
 	}
 }
 
@@ -54,19 +56,21 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	if err = s.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	spaceId, err := s.targetSpaceID()
+	targetSpaceId, err := s.getTargetSpaceId()
 	if err != nil {
 		return
 	}
-	s.log = s.log.With("spaceId", spaceId)
+	s.log = s.log.With("spaceId", targetSpaceId)
+
+	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(domain.NewParticipantId(targetSpaceId, s.myIdentity)))
 
 	s.DisableLayouts()
 	info := spaceinfo.NewSpacePersistentInfoFromState(ctx.State)
-	newInfo := spaceinfo.NewSpacePersistentInfo(spaceId)
+	newInfo := spaceinfo.NewSpacePersistentInfo(targetSpaceId)
 	newInfo.SetAccountStatus(info.GetAccountStatus()).
 		SetAclHeadId(info.GetAclHeadId())
 	s.setSpacePersistentInfo(ctx.State, newInfo)
-	localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
+	localInfo := spaceinfo.NewSpaceLocalInfo(targetSpaceId)
 	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
 		SetRemoteStatus(spaceinfo.RemoteStatusUnknown).
 		UpdateDetails(ctx.State).
@@ -201,8 +205,8 @@ func (s *SpaceView) setSpacePersistentInfo(st *state.State, info spaceinfo.Space
 	info.Log(s.log)
 }
 
-// targetSpaceID returns space id from the root of space object's tree
-func (s *SpaceView) targetSpaceID() (id string, err error) {
+// getTargetSpaceId returns space id from the root of space object's tree
+func (s *SpaceView) getTargetSpaceId() (id string, err error) {
 	changeInfo := s.Tree().ChangeInfo()
 	if changeInfo == nil {
 		return "", ErrIncorrectSpaceInfo

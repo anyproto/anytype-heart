@@ -6,18 +6,35 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
+
+const (
+	testAccountId = "testAccountId"
+	testSpaceId   = "spaceId"
+)
+
+func TestSpaceView_Creator(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+
+	st := fx.NewState()
+
+	participantFromTargetSpace := domain.NewParticipantId(testSpaceId, testAccountId)
+	assert.Equal(t, participantFromTargetSpace, pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyCreator.String()))
+}
 
 func TestSpaceView_AccessType(t *testing.T) {
 	t.Run("personal", func(t *testing.T) {
@@ -35,7 +52,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetAclIsEmpty(false)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
-		info := spaceinfo.NewSpaceLocalInfo("spaceId")
+		info := spaceinfo.NewSpaceLocalInfo(testSpaceId)
 		info.SetShareableStatus(spaceinfo.ShareableStatusShareable)
 		err = fx.SetSpaceLocalInfo(info)
 		require.NoError(t, err)
@@ -56,7 +73,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetAclIsEmpty(false)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
-		info := spaceinfo.NewSpaceLocalInfo("spaceId")
+		info := spaceinfo.NewSpaceLocalInfo(testSpaceId)
 		info.SetShareableStatus(spaceinfo.ShareableStatusNotShareable)
 		err = fx.SetSpaceLocalInfo(info)
 		require.NoError(t, err)
@@ -78,7 +95,7 @@ func TestSpaceView_Info(t *testing.T) {
 		firstLocalInfo := fx.GetLocalInfo()
 		require.Equal(t, spaceinfo.LocalStatusUnknown, firstLocalInfo.GetLocalStatus())
 		require.Equal(t, spaceinfo.RemoteStatusUnknown, firstLocalInfo.GetRemoteStatus())
-		info := spaceinfo.NewSpaceLocalInfo("spaceId")
+		info := spaceinfo.NewSpaceLocalInfo(testSpaceId)
 		info.SetLocalStatus(spaceinfo.LocalStatusOk).
 			SetRemoteStatus(spaceinfo.RemoteStatusOk).
 			SetReadLimit(10).
@@ -96,13 +113,13 @@ func TestSpaceView_Info(t *testing.T) {
 	t.Run("persistent", func(t *testing.T) {
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
-		info := spaceinfo.NewSpacePersistentInfo("spaceId")
+		info := spaceinfo.NewSpacePersistentInfo(testSpaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusActive)
 		err := fx.SetSpacePersistentInfo(info)
 		require.NoError(t, err)
 		curInfo := fx.GetPersistentInfo()
 		require.Equal(t, spaceinfo.AccountStatusActive, curInfo.GetAccountStatus())
-		info = spaceinfo.NewSpacePersistentInfo("spaceId")
+		info = spaceinfo.NewSpacePersistentInfo(testSpaceId)
 		info.SetAclHeadId("aclHeadId")
 		err = fx.SetSpacePersistentInfo(info)
 		require.NoError(t, err)
@@ -138,6 +155,7 @@ func NewSpaceViewTest(t *testing.T, ctrl *gomock.Controller, targetSpaceId strin
 		SmartBlock:   sb,
 		spaceService: &spaceServiceStub{},
 		log:          log,
+		myIdentity:   testAccountId,
 	}
 
 	initCtx := &smartblock.InitContext{
@@ -171,7 +189,7 @@ type spaceViewFixture struct {
 func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 	ctrl := gomock.NewController(t)
 	objectTree := mock_objecttree.NewMockObjectTree(ctrl)
-	a, err := NewSpaceViewTest(t, ctrl, "spaceId", objectTree)
+	a, err := NewSpaceViewTest(t, ctrl, testSpaceId, objectTree)
 	require.NoError(t, err)
 	return &spaceViewFixture{
 		SpaceView:  a,
