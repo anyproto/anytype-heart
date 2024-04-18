@@ -163,11 +163,7 @@ func (n *aclNotificationSender) processRecords() {
 	case <-ticker.C:
 	}
 
-	var err error
 	defer func() {
-		if err == nil {
-			return
-		}
 		msgs := n.batcher.GetAll()
 		for _, record := range msgs {
 			err := n.sendNotification(context.Background(), record)
@@ -180,12 +176,10 @@ func (n *aclNotificationSender) processRecords() {
 	for {
 		select {
 		case <-n.ctx.Done():
-			err = n.ctx.Err()
 			return
 		default:
 		}
-		var msg *aclNotificationRecord
-		msg, err = n.batcher.WaitOne(n.ctx)
+		msg, err := n.batcher.WaitOne(n.ctx)
 		if err != nil {
 			return
 		}
