@@ -20007,6 +20007,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
 | BAD_ANYNAME | 8 |  |
+| CAN_NOT_CONNECT | 9 |  |
 
 
 
@@ -20028,6 +20029,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_METHOD_INVALID | 8 |  |
 | BAD_ANYNAME | 9 |  |
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
 
 
 
@@ -20044,6 +20046,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
 
 
 
@@ -20062,6 +20065,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CACHE_ERROR | 5 |  |
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
+| CAN_NOT_CONNECT | 8 |  |
 
 
 
@@ -20078,6 +20082,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
 
 
 
@@ -20099,6 +20104,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | EMAIL_ALREDY_SENT | 8 |  |
 | EMAIL_FAILED_TO_SEND | 9 |  |
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
 
 
 
@@ -20114,6 +20120,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CAN_NOT_CONNECT | 12 |  |
 
 
 
@@ -20136,6 +20143,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_NODE_ERROR | 9 |  |
 | CACHE_ERROR | 10 |  |
 | IN_BLACKLIST | 11 | for some probable future use (if needed) |
+| CAN_NOT_CONNECT | 12 |  |
 
 
 
@@ -20157,6 +20165,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CODE_WRONG | 8 |  |
 | MEMBERSHIP_NOT_FOUND | 9 |  |
 | MEMBERSHIP_ALREADY_ACTIVE | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
 
 
 
@@ -20183,6 +20192,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20196,6 +20206,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20209,6 +20220,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20224,6 +20236,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | BAD_NAME_RESOLVE | 4 |  |
+| CAN_NOT_CONNECT | 5 |  |
 
 
 
