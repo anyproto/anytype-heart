@@ -65,8 +65,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 				// per space
 				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 				// global
-				BundledObjects:     ForceBundledObjectsReindexCounter,
-				AreOldFilesRemoved: true,
+				BundledObjects:             ForceBundledObjectsReindexCounter,
+				AreOldFilesRemoved:         true,
+				AreDeletedObjectsReindexed: true,
 			}
 		}
 	}
@@ -98,6 +99,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if !checksums.AreOldFilesRemoved {
 		flags.removeOldFiles = true
+	}
+	if !checksums.AreDeletedObjectsReindexed {
+		flags.deletedObjects = true
 	}
 	return flags, nil
 }
@@ -184,7 +188,48 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}()
 	}
 
+	if flags.deletedObjects {
+		err = i.reindexDeletedObjects(space)
+		if err != nil {
+			log.Error("reindex deleted objects", zap.Error(err))
+		}
+	}
+
 	return i.saveLatestChecksums(space.Id())
+}
+
+func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
+	recs, _, err := i.store.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Empty,
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("query deleted objects: %w", err)
+	}
+	for _, rec := range recs {
+		objectId := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		status, err := space.Storage().TreeDeletedStatus(objectId)
+		if err != nil {
+			log.With("spaceId", space.Id(), "objectId", objectId).Warnf("failed to get tree deleted status: %s", err)
+			continue
+		}
+		if status != "" {
+			err = i.store.DeleteObject(domain.FullID{SpaceID: space.Id(), ObjectID: objectId})
+			if err != nil {
+				log.With("spaceId", space.Id(), "objectId", objectId).Errorf("failed to reindex deleted object: %s", err)
+			}
+		}
+	}
+	return nil
 }
 
 func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
@@ -266,7 +311,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 			return fmt.Errorf("query bundled templates: %w", err)
 		}
 		for _, id := range existing {
-			err = i.store.DeleteObject(id)
+			err = i.store.DeleteObject(domain.FullID{SpaceID: space.Id(), ObjectID: id})
 			if err != nil {
 				log.Errorf("delete old bundled template %s: %s", id, err)
 			}
@@ -421,8 +466,8 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Spac
 	return
 }
 
-func (i *indexer) saveLatestChecksums(spaceID string) error {
-	checksums := model.ObjectStoreChecksums{
+func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
+	return model.ObjectStoreChecksums{
 		BundledObjectTypes:               bundle.TypeChecksum,
 		BundledRelations:                 bundle.RelationChecksum,
 		BundledTemplates:                 i.btHash.Hash(),
@@ -432,7 +477,12 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 		BundledObjects:                   ForceBundledObjectsReindexCounter,
 		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 		AreOldFilesRemoved:               true,
+		AreDeletedObjectsReindexed:       true,
 	}
+}
+
+func (i *indexer) saveLatestChecksums(spaceID string) error {
+	checksums := i.getLatestChecksums()
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 

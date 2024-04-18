@@ -25,6 +25,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -299,7 +300,7 @@ func TestService_ViewInvite(t *testing.T) {
 		require.NoError(t, err)
 		symKey, err := crypto.NewRandomAES()
 		require.NoError(t, err)
-		fx.mockInviteService.EXPECT().View(ctx, realCid, symKey).Return(inviteservice.InviteView{
+		fx.mockInviteService.EXPECT().View(ctx, realCid, symKey).Return(domain.InviteView{
 			InviteKey: protoKey,
 			SpaceId:   "spaceId",
 		}, nil)
@@ -337,7 +338,7 @@ func TestService_ViewInvite(t *testing.T) {
 		require.NoError(t, err)
 		symKey, err := crypto.NewRandomAES()
 		require.NoError(t, err)
-		fx.mockInviteService.EXPECT().View(ctx, realCid, symKey).Return(inviteservice.InviteView{
+		fx.mockInviteService.EXPECT().View(ctx, realCid, symKey).Return(domain.InviteView{
 			InviteKey: protoKey,
 			SpaceId:   "spaceId",
 		}, nil)

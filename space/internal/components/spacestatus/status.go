@@ -24,6 +24,7 @@ type SpaceStatus interface {
 	SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(status spaceinfo.AccessType) (err error)
 	SetAclIsEmpty(isEmpty bool) (err error)
+	GetSpaceView() techspace.SpaceView
 }
 
 type spaceStatus struct {
@@ -92,6 +93,10 @@ func (s *spaceStatus) Name() (name string) {
 
 func (s *spaceStatus) SpaceId() string {
 	return s.spaceId
+}
+
+func (s *spaceStatus) GetSpaceView() techspace.SpaceView {
+	return s.spaceView
 }
 
 func (s *spaceStatus) GetLocalStatus() spaceinfo.LocalStatus {

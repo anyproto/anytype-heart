@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -146,14 +147,14 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 	}
 }
 
-func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceInviteViewRequest) (inviteservice.InviteView, error) {
+func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceInviteViewRequest) (domain.InviteView, error) {
 	inviteFileKey, err := encode.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
-		return inviteservice.InviteView{}, fmt.Errorf("decode key: %w, %w", err, inviteservice.ErrInviteBadContent)
+		return domain.InviteView{}, fmt.Errorf("decode key: %w, %w", err, inviteservice.ErrInviteBadContent)
 	}
 	inviteCid, err := cid.Decode(req.InviteCid)
 	if err != nil {
-		return inviteservice.InviteView{}, fmt.Errorf("decode key: %w, %w", err, inviteservice.ErrInviteBadContent)
+		return domain.InviteView{}, fmt.Errorf("decode key: %w, %w", err, inviteservice.ErrInviteBadContent)
 	}
 	return aclService.ViewInvite(ctx, inviteCid, inviteFileKey)
 }

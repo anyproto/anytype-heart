@@ -1767,12 +1767,14 @@ message Rpc {
 
         message Graph {
             message Request {
-                string spaceId = 5;
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
                 int32 limit = 2;
                 // additional filter by objectTypes
                 repeated string objectTypeFilter = 3; // DEPRECATED, GO-1926
                 repeated string keys = 4;
+                string spaceId = 5;
+                string collectionId = 6;
+                repeated string setSource = 7;
             }
 
             message Edge {
