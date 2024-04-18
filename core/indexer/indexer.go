@@ -179,9 +179,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 			log.With("objectID", info.Id).Errorf("heads hash is empty")
 		} else if lastIndexedHash == headHashToIndex {
 			log.With("objectID", info.Id).Debugf("heads not changed, skipping indexing")
-
-			// todo: the optimization temporarily disabled to see the metrics
-			// return nil
+			return nil
 		}
 	}
 
@@ -222,8 +220,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 			}
 		}
 
-		// todo: the optimization temporarily disabled to see the metrics
-		if true || !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
+		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			if err := i.store.AddToIndexQueue(info.Id); err != nil {
 				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 			}

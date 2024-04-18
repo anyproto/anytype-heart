@@ -179,8 +179,9 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 func (st *SmartTest) GetDocInfo() smartblock.DocInfo {
 	return smartblock.DocInfo{
 		Id:             st.Id(),
-		Space:          st.space,
+		Space:          st.Space(),
 		SmartblockType: st.sbType,
+		Heads:          []string{st.Id()},
 	}
 }
 
