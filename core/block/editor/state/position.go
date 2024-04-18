@@ -35,7 +35,7 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 			return fmt.Errorf("target block not found")
 		}
 		if reqPos != model.Block_Inner && reqPos != model.Block_InnerFirst {
-			if pv := s.GetParentOf(targetId); pv != nil {
+			if pv := s.getParentFallback(targetId); pv != nil {
 				targetParentM = pv.Model()
 			} else {
 				return fmt.Errorf("target without parent")
@@ -77,6 +77,19 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 		return fmt.Errorf("unexpected position")
 	}
 	return
+}
+
+func (s *State) getParentFallback(targetId string) simple.Block {
+	res := s.GetParentOf(targetId)
+	if s.isParentIdsCacheEnabled && res == nil {
+		s.isParentIdsCacheEnabled = false
+		res = s.GetParentOf(targetId)
+		s.isParentIdsCacheEnabled = true
+		if res != nil {
+			log.With("targetId", targetId).Warn("parent not found in cache")
+		}
+	}
+	return res
 }
 
 func makeOpId(target simple.Block, pos model.BlockPosition, ids ...string) string {
