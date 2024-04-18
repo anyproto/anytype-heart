@@ -127,7 +127,7 @@ func (mr *MockObjectStoreMockRecorder) DeleteLinks(arg0 ...any) *gomock.Call {
 }
 
 // DeleteObject mocks base method.
-func (m *MockObjectStore) DeleteObject(arg0 string) error {
+func (m *MockObjectStore) DeleteObject(arg0 domain.FullID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteObject", arg0)
 	ret0, _ := ret[0].(error)
