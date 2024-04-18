@@ -387,7 +387,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
 	}
-	lst, err := list.BuildAclList(store, list.NoOpAcceptorVerifier{})
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, list.NoOpAcceptorVerifier{})
 	if err != nil {
 		return inviteservice.InviteView{}, convertedOrAclRequestError(err)
 	}
