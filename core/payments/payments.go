@@ -330,58 +330,60 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 
 	out := pb.RpcMembershipIsNameValidResponse{}
 
-	/*
-		// 1 - send request to PP node and ask her please
-		invr := proto.IsNameValidRequest{
-			// payment node will check if signature matches with this OwnerAnyID
-			RequestedTier:    req.RequestedTier,
-			RequestedAnyName: req.RequestedAnyName,
-		}
+	// 1 - send request to PP node and ask her please
+	invr := proto.IsNameValidRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		RequestedTier:    req.RequestedTier,
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+	}
 
-		resp, err := s.ppclient.IsNameValid(ctx, &invr)
-		if err != nil {
-			return nil, err
-		}
-
-		if resp.Code == proto.IsNameValidResponse_Valid {
-			// no error
-			return &out, nil
-		}
-
-		out.Error = &pb.RpcMembershipIsNameValidResponseError{}
-		code = resp.Code
-		desc = resp.Description
-	*/
-
-	// 1 - get all tiers from cache or PP node
-	// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
-	// and first is much simpler/faster
-	tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipGetTiersRequest{
-		NoCache: false,
-		// TODO: warning! no locale and payment method are passed here!
-		// Locale:        "",
-		// PaymentMethod: pb.RpcMembershipPaymentMethod_PAYMENT_METHOD_UNKNOWN,
-	})
+	resp, err := s.ppclient.IsNameValid(ctx, &invr)
 	if err != nil {
 		return nil, err
 	}
-	if tiers.Tiers == nil {
-		return nil, ErrNoTiers
+
+	if resp.Code == proto.IsNameValidResponse_Valid {
+		// no error
+		return &out, nil
 	}
 
-	// find req.RequestedTier
-	var tier *model.MembershipTierData
-	for _, t := range tiers.Tiers {
-		if t.Id == req.RequestedTier {
-			tier = t
-			break
+	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
+	code = resp.Code
+	desc = resp.Description
+
+	// this LOCAL code is switched off because we need more info on the PP node side
+	// so instead we call it (see above ^)
+	/*
+		// 1 - get all tiers from cache or PP node
+		// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
+		// and first is much simpler/faster
+		tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipGetTiersRequest{
+			NoCache: false,
+			// TODO: warning! no locale and payment method are passed here!
+			// Locale:        "",
+			// PaymentMethod: pb.RpcMembershipPaymentMethod_PAYMENT_METHOD_UNKNOWN,
+		})
+		if err != nil {
+			return nil, err
 		}
-	}
-	if tier == nil {
-		return nil, ErrNoTierFound
-	}
+		if tiers.Tiers == nil {
+			return nil, ErrNoTiers
+		}
 
-	code = s.validateAnyName(*tier, nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+		// find req.RequestedTier
+		var tier *model.MembershipTierData
+		for _, t := range tiers.Tiers {
+			if t.Id == req.RequestedTier {
+				tier = t
+				break
+			}
+		}
+		if tier == nil {
+			return nil, ErrNoTierFound
+		}
+
+		code = s.validateAnyName(*tier, nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+	*/
 
 	if code == proto.IsNameValidResponse_Valid {
 		// valid
