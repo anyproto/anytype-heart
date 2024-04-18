@@ -1,0 +1,38 @@
+{
+ "content": [
+  {
+   "blockUpdate": {
+    "events": [
+     {
+      "blockSetBookmark": {
+       "id": "6617adddc1bdc5e9383e64cc",
+       "title": {
+        "value": "Our Membership Philosophy"
+       },
+       "description": {
+        "value": "Each space and profile in the Anytype network is digitally independent. As a co-creator of this network you’ll be participating in the governance together with us."
+       },
+       "imageHash": {
+        "value": "bafyreiadajaqbi6m7hawplkjqadxy36fpgqhvk3ym5pnpxuyug3yxszr7u"
+       },
+       "faviconHash": {
+        "value": "bafyreibvi55mcgtoym7ej5fco4pgpfejzzevxl3gmwxm5l2jgchakqi55u"
+       },
+       "type": {
+        "value": "Page"
+       },
+       "targetObjectId": {
+        "value": "bafyreib4a234i4ti4dy3ymav5cttazwala7f2l4misrhb2yjlahwud5cbm"
+       },
+       "state": {
+        "value": "Done"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712827886",
+ "version": 2
+}

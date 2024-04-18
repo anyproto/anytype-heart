@@ -1,0 +1,38 @@
+{
+ "content": [
+  {
+   "blockUpdate": {
+    "events": [
+     {
+      "blockSetBookmark": {
+       "id": "6617bd56c1bdc5e9383e64e1",
+       "title": {
+        "value": "Reimagining Digital Freedoms | Exploring..."
+       },
+       "description": {
+        "value": "A decade ago, Zhanna Sharipova, co-founder and CEO of Anytype, participated in the protest movements in Russia, which led her to a stark realization about th..."
+       },
+       "imageHash": {
+        "value": "bafyreicmredswy47j3dstp5ab2vhs2efx7rahduru622m5yl67c54lcrp4"
+       },
+       "faviconHash": {
+        "value": "bafyreifnraisy52el2hlmlqjycl7ldx7lc652nnmygdkfwagtos7xoxyu4"
+       },
+       "type": {
+        "value": "Page"
+       },
+       "targetObjectId": {
+        "value": "bafyreihln45ytraycgctriuqchwjh4leocer56ffkuyvd33k5k62f7rhva"
+       },
+       "state": {
+        "value": "Done"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712831832",
+ "version": 2
+}

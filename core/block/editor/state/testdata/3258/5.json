@@ -1,0 +1,28 @@
+{
+ "content": [
+  {
+   "blockCreate": {
+    "targetId": "6617ab49c1bdc5e9383e64bd",
+    "position": "Bottom",
+    "blocks": [
+     {
+      "id": "6617ab82c1bdc5e9383e64c0",
+      "bookmark": {
+       "url": "https://anytype.io/why",
+       "state": "Fetching"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "blockRemove": {
+    "ids": [
+     "6617ab77c1bdc5e9383e64be"
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712827266",
+ "version": 2
+}

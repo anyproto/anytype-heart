@@ -1,0 +1,15 @@
+{
+ "content": [
+  {
+   "blockMove": {
+    "targetId": "6617abddc1bdc5e9383e64c7",
+    "position": "Right",
+    "ids": [
+     "6617adddc1bdc5e9383e64cc"
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712831888",
+ "version": 2
+}

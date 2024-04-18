@@ -1,0 +1,35 @@
+{
+ "content": [
+  {
+   "blockUpdate": {
+    "events": [
+     {
+      "blockSetBookmark": {
+       "id": "6617ab82c1bdc5e9383e64c0",
+       "title": {
+        "value": "Building software that puts data ownership first | Anytype"
+       },
+       "description": {
+        "value": "We believe in and are building a world that rests on trust and digital autonomy, starting with local first software."
+       },
+       "imageHash": {
+        "value": "bafyreie3carsbmoybfgbiya7avidfahop42lmtvj3urjchww5loruve72a"
+       },
+       "type": {
+        "value": "Page"
+       },
+       "targetObjectId": {
+        "value": "bafyreiarmn2qtndtpubhmun4mfrgso5grpu4da7g5nwf4su5fv2zhcpgmu"
+       },
+       "state": {
+        "value": "Done"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712827267",
+ "version": 2
+}

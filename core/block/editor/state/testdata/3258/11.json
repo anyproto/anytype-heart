@@ -1,0 +1,28 @@
+{
+ "content": [
+  {
+   "blockCreate": {
+    "targetId": "6617abddc1bdc5e9383e64c7",
+    "position": "Bottom",
+    "blocks": [
+     {
+      "id": "6617adddc1bdc5e9383e64cc",
+      "bookmark": {
+       "url": "https://blog.anytype.io/our-memberships-philosophy/",
+       "state": "Fetching"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "blockRemove": {
+    "ids": [
+     "6617abefc1bdc5e9383e64c9"
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712827869",
+ "version": 2
+}

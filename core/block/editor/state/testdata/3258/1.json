@@ -1,0 +1,27 @@
+{
+ "content": [
+  {
+   "blockCreate": {
+    "targetId": "header",
+    "position": "Bottom",
+    "blocks": [
+     {
+      "id": "6617ab47c1bdc5e9383e64bb",
+      "text": {
+       "marks": {
+
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "detailsUnset": {
+    "key": "internalFlags"
+   }
+  }
+ ],
+ "timestamp": "1712827207",
+ "version": 2
+}

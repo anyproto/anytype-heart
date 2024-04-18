@@ -1,0 +1,38 @@
+{
+ "content": [
+  {
+   "blockUpdate": {
+    "events": [
+     {
+      "blockSetBookmark": {
+       "id": "6617abddc1bdc5e9383e64c7",
+       "title": {
+        "value": "Why we don't pay for user acquisition"
+       },
+       "description": {
+        "value": "Most startups raise VC money and use it to acquire customers through advertisements that target Internet users based on their interests, past searches, and community memberships."
+       },
+       "imageHash": {
+        "value": "bafyreia5e5q5plm3wwynjsyutx5cr7epi5xrulh2twx44w7l3soduvsaci"
+       },
+       "faviconHash": {
+        "value": "bafyreibvi55mcgtoym7ej5fco4pgpfejzzevxl3gmwxm5l2jgchakqi55u"
+       },
+       "type": {
+        "value": "Page"
+       },
+       "targetObjectId": {
+        "value": "bafyreihlpm6ryg2a6qpzkmnrnaht3rsvkcpqcaqs7lgeutpwe4zb3f5yea"
+       },
+       "state": {
+        "value": "Done"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712827358",
+ "version": 2
+}

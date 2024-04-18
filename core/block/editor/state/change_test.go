@@ -812,6 +812,19 @@ func Test_migrateObjectTypeIDToKey(t *testing.T) {
 	}
 }
 
+func getChange(testName string, index int) (*pb.Change, error) {
+	b, err := ioutil.ReadFile(fmt.Sprintf("./testdata/%s/%d.json", testName, index))
+	if err != nil {
+		return nil, err
+	}
+	ch := &pb.Change{}
+	err = jsonpb.UnmarshalString(string(b), ch)
+	if err != nil {
+		return nil, err
+	}
+	return ch, nil
+}
+
 func Test_missiedBlocks(t *testing.T) {
 
 	snapshot := &pb.ChangeSnapshot{}
@@ -823,39 +836,19 @@ func Test_missiedBlocks(t *testing.T) {
 	err = jsonpb.UnmarshalString(string(b), snapshot)
 	require.NoError(t, err)
 
-	st := NewDocFromSnapshot("bafyreih5c53wc7ahtivo5ig4wtgyw5hyvhj5yf7doa7lccapgt7pv5kk6e", snapshot).(*State)
-
-	st.EnableParentIdsCache()
-	err = st.ApplyChange(
-		&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfBlockMove{
-				BlockMove: &pb.ChangeBlockMove{
-					TargetId: "r-2487a77b2b4321b3bee3cf34bd849ba1",
-					Position: model.Block_Bottom,
-					Ids:      []string{"6617ab49c1bdc5e9383e64bd"},
-				},
-			},
-		},
-		&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfBlockMove{
-				BlockMove: &pb.ChangeBlockMove{
-					TargetId: "6617bd9dc1bdc5e9383e64e2",
-					Position: model.Block_Top,
-					Ids:      []string{"6617ab82c1bdc5e9383e64c0"},
-				},
-			},
-		},
-		&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfBlockRemove{
-				BlockRemove: &pb.ChangeBlockRemove{
-					Ids: []string{"ct-994c271a2ca8c81f351fe58e47783705",
-						"cd-994c271a2ca8c81f351fe58e47783705",
-						"r-994c271a2ca8c81f351fe58e47783705"},
-				},
-			},
-		},
-	)
+	root, err := getChange("3258", 0)
 	require.NoError(t, err)
+	missingBlockId := "6617ab49c1bdc5e9383e64bd"
+
+	st := NewDocFromSnapshot("bafyreih5c53wc7ahtivo5ig4wtgyw5hyvhj5yf7doa7lccapgt7pv5kk6e", root.Snapshot).(*State)
+	st.EnableParentIdsCache()
+
+	for i := 1; i <= 46; i++ {
+		ch, err := getChange("3258", i)
+		require.NoError(t, err)
+		err = st.ApplyChange(ch.Content...)
+		require.NoError(t, err, "change %d", i)
+	}
 
 	_, _, err = ApplyStateFastOne(st)
 	require.NoError(t, err)
@@ -864,14 +857,14 @@ func Test_missiedBlocks(t *testing.T) {
 	childrenFound := false
 
 	for _, block := range st.BlocksToSave() {
-		if block.Id == "6617ab49c1bdc5e9383e64bd" {
+		if block.Id == missingBlockId {
 			found = true
 		}
-		if slices.Contains(block.ChildrenIds, "6617ab49c1bdc5e9383e64bd") {
+		if slices.Contains(block.ChildrenIds, missingBlockId) {
 			childrenFound = true
+			t.Logf("children found in %s", block.Id)
 		}
 	}
 	require.True(t, found)
 	require.True(t, childrenFound)
-
 }

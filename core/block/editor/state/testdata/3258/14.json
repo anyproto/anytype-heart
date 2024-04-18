@@ -1,0 +1,28 @@
+{
+ "content": [
+  {
+   "blockCreate": {
+    "targetId": "6617adddc1bdc5e9383e64cc",
+    "position": "Bottom",
+    "blocks": [
+     {
+      "id": "6617bd56c1bdc5e9383e64e1",
+      "bookmark": {
+       "url": "https://www.youtube.com/watch?v=6Hyr881Xi8A",
+       "state": "Fetching"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "blockRemove": {
+    "ids": [
+     "6617ae19c1bdc5e9383e64cd"
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712831830",
+ "version": 2
+}

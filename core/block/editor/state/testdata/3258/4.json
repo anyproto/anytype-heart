@@ -1,0 +1,22 @@
+{
+ "content": [
+  {
+   "blockCreate": {
+    "targetId": "6617ab49c1bdc5e9383e64bd",
+    "position": "Bottom",
+    "blocks": [
+     {
+      "id": "6617ab77c1bdc5e9383e64be",
+      "text": {
+       "marks": {
+
+       }
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712827255",
+ "version": 2
+}

@@ -1,0 +1,35 @@
+{
+ "content": [
+  {
+   "blockUpdate": {
+    "events": [
+     {
+      "blockSetBookmark": {
+       "id": "6617ab49c1bdc5e9383e64bd",
+       "title": {
+        "value": "Where our inspiration comes from | Anytype"
+       },
+       "description": {
+        "value": "TV series, books, groundbreaking software and historical manuscripts, all converge to drive us to imagine and realize a new web."
+       },
+       "imageHash": {
+        "value": "bafyreie3carsbmoybfgbiya7avidfahop42lmtvj3urjchww5loruve72a"
+       },
+       "type": {
+        "value": "Page"
+       },
+       "targetObjectId": {
+        "value": "bafyreih5rvhqjkbcshodzve5nobfxdpeamxkjywfz4p7qfxesmdv3qc5g4"
+       },
+       "state": {
+        "value": "Done"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712827210",
+ "version": 2
+}

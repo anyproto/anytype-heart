@@ -1,0 +1,28 @@
+{
+ "content": [
+  {
+   "blockCreate": {
+    "targetId": "6617ab82c1bdc5e9383e64c0",
+    "position": "Bottom",
+    "blocks": [
+     {
+      "id": "6617abddc1bdc5e9383e64c7",
+      "bookmark": {
+       "url": "https://blog.anytype.io/why-we-dont-pay-for-user-acquisition/",
+       "state": "Fetching"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "blockRemove": {
+    "ids": [
+     "6617abdbc1bdc5e9383e64c5"
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712827357",
+ "version": 2
+}

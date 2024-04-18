@@ -1,0 +1,33 @@
+{
+ "content": [
+  {
+   "blockMove": {
+    "targetId": "r-2487a77b2b4321b3bee3cf34bd849ba1",
+    "position": "Bottom",
+    "ids": [
+     "6617ab49c1bdc5e9383e64bd"
+    ]
+   }
+  },
+  {
+   "blockMove": {
+    "targetId": "6617bd9dc1bdc5e9383e64e2",
+    "position": "Top",
+    "ids": [
+     "6617ab82c1bdc5e9383e64c0"
+    ]
+   }
+  },
+  {
+   "blockRemove": {
+    "ids": [
+     "ct-994c271a2ca8c81f351fe58e47783705",
+     "cd-994c271a2ca8c81f351fe58e47783705",
+     "r-994c271a2ca8c81f351fe58e47783705"
+    ]
+   }
+  }
+ ],
+ "timestamp": "1712831909",
+ "version": 2
+}
