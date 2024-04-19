@@ -38,7 +38,7 @@ type fixture struct {
 const (
 	testObserverPeriod = 1 * time.Millisecond
 	globalName         = "anytypeuser.any"
-	identity           = "identity1"
+	testIdentity       = "identity1"
 )
 
 func newFixture(t *testing.T) *fixture {
@@ -54,7 +54,7 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
-	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{identity, ""}}).AnyTimes().
+	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{testIdentity, ""}}).AnyTimes().
 		Return(&nameserviceproto.BatchNameByAddressResponse{Results: []*nameserviceproto.NameByAddressResponse{{
 			Found: true,
 			Name:  globalName,
@@ -67,7 +67,6 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	a := new(app.App)
-	a.Register(&spaceIdDeriverStub{})
 	a.Register(dataStoreProvider)
 	a.Register(objectStore)
 	a.Register(identityRepoClient)
@@ -292,14 +291,4 @@ func TestObservers(t *testing.T) {
 		require.Empty(t, list)
 		require.False(t, called)
 	})
-}
-
-type spaceIdDeriverStub struct{}
-
-func (s spaceIdDeriverStub) Init(a *app.App) (err error) { return nil }
-
-func (s spaceIdDeriverStub) Name() (name string) { return "spaceIdDeriverStub" }
-
-func (s spaceIdDeriverStub) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
-	return fmt.Sprintf("spaceId-%s", spaceType), nil
 }

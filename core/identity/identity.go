@@ -354,10 +354,13 @@ func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProf
 }
 
 func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
+	return extractProfile(identityData, s.identityEncryptionKeys[identityData.Identity])
+}
+
+func extractProfile(identityData *identityrepoproto.DataWithIdentity, symKey crypto.SymKey) (profile *model.IdentityProfile, rawData []byte, err error) {
 	for _, data := range identityData.Data {
 		if data.Kind == identityRepoDataKind {
-			rawProfile = data.Data
-			symKey := s.identityEncryptionKeys[identityData.Identity]
+			rawData = data.Data
 			rawProfile, err := symKey.Decrypt(data.Data)
 			if err != nil {
 				return nil, nil, fmt.Errorf("decrypt identity profile: %w", err)
@@ -372,7 +375,7 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	if profile == nil {
 		return nil, nil, fmt.Errorf("no profile data found")
 	}
-	return profile, rawProfile, nil
+	return profile, rawData, nil
 }
 
 func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error {
