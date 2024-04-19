@@ -180,7 +180,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 		bundle.RelationKeyIconImage,
 	} {
 		if _, ok := profileDetails.Fields[key.String()]; ok {
-			s.details.Fields[key.String()] = profileDetails.Fields[key.String()]
+			s.details.Fields[key.String()] = pbtypes.CopyVal(profileDetails.Fields[key.String()])
 		}
 	}
 	identityProfile := s.prepareIdentityProfile()
