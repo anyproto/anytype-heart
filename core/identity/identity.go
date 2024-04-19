@@ -48,10 +48,6 @@ type Service interface {
 	app.ComponentRunnable
 }
 
-type spaceIdDeriver interface {
-	DeriveID(ctx context.Context, spaceType string) (id string, err error)
-}
-
 type observer struct {
 	callback    func(identity string, profile *model.IdentityProfile)
 	initialized bool
@@ -214,22 +210,17 @@ func (s *service) observeIdentitiesLoop() {
 
 const identityRepoDataKind = "profile"
 
-// TODO Maybe we need to use backoff in case of error from coordinator
 func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate bool) error {
 	identities := s.listRegisteredIdentities()
 
-	// TODO Run async
 	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
 	if err != nil {
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
-	// TODO Run async
 	if err = s.fetchGlobalNames(append(identities, s.myIdentity), globalNamesForceUpdate); err != nil {
 		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
 	}
-
-	// TODO Wait from async
 
 	for _, identityData := range identitiesData {
 		err := s.broadcastIdentityProfile(identityData)
@@ -379,10 +370,13 @@ func extractProfile(identityData *identityrepoproto.DataWithIdentity, symKey cry
 }
 
 func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error {
-	// TODO Lock
+	s.lock.Lock()
 	if len(s.identityGlobalNames) == len(identities) && !forceUpdate {
+		s.lock.Unlock()
 		return nil
 	}
+	s.lock.Unlock()
+
 	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
 	if err != nil {
 		return err
@@ -391,7 +385,9 @@ func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error 
 		return nil
 	}
 	for i, anyID := range identities {
+		s.lock.Lock()
 		s.identityGlobalNames[anyID] = response.Results[i]
+		s.lock.Unlock()
 		if anyID == s.myIdentity && response.Results[i].Found {
 			s.updateMyIdentityGlobalName(response.Results[i].Name)
 		}
