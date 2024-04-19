@@ -3,6 +3,7 @@ package clientspace
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app/logger"
@@ -263,6 +264,13 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 }
 
 func (s *space) TryLoadBundledObjects(ctx context.Context) error {
+	st := time.Now()
+	defer func() {
+		if dur := time.Since(st); dur > time.Millisecond*200 {
+			log.Warn("load bundled objects", zap.Duration("duration", dur))
+		}
+	}()
+
 	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
 	for _, ot := range bundle.SystemTypes {
 		ids = append(ids, ot.BundledURL())
