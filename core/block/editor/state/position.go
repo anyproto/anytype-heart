@@ -171,14 +171,18 @@ func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block
 	if pos == -1 {
 		return nil, fmt.Errorf("creating row: can't find child[%s] in given parent[%s]", b.Model().Id, parent.Model().Id)
 	}
-	childrenIds := slice.Copy(parent.Model().ChildrenIds)
-	childrenIds[pos] = row.Model().Id
-	s.setChildrenIds(parent.Model(), childrenIds)
+	s.removeFromCache(parent.Model().ChildrenIds[pos])
+	parent.Model().ChildrenIds[pos] = row.Model().Id
+	s.addCacheIds(parent.Model(), row.Model().Id)
 	return
 }
 
 func (s *State) setChildrenIds(parent *model.Block, childrenIds []string) {
 	parent.ChildrenIds = childrenIds
+	s.addCacheIds(parent, childrenIds...)
+}
+
+func (s *State) addCacheIds(parent *model.Block, childrenIds ...string) {
 	if s.isParentIdsCacheEnabled {
 		cache := s.getParentIdsCache()
 		for _, childId := range childrenIds {

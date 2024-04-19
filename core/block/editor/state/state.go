@@ -353,9 +353,6 @@ func (s *State) ResetParentIdsCache() {
 }
 
 func (s *State) EnableParentIdsCache() bool {
-	// temporary disable the cache
-	// todo: enable after we cover everything with tests
-	return true
 	if s.isParentIdsCacheEnabled {
 		return true
 	}
