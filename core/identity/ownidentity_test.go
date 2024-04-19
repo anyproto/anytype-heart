@@ -361,6 +361,7 @@ func TestWaitForDetails(t *testing.T) {
 
 		wantDetails := &types.Struct{
 			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeyName.String():        pbtypes.String("John Doe"),
 				bundle.RelationKeyDescription.String(): pbtypes.String("Description"),
 				bundle.RelationKeyGlobalName.String():  pbtypes.String(globalName),

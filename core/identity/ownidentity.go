@@ -174,6 +174,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 		}
 	}
 	for _, key := range []domain.RelationKey{
+		bundle.RelationKeyId,
 		bundle.RelationKeyName,
 		bundle.RelationKeyDescription,
 		bundle.RelationKeyIconImage,
@@ -275,8 +276,6 @@ func (s *ownProfileSubscription) prepareIconImageInfo(iconImageObjectId string) 
 	return s.fileAclService.GetInfoForFileSharing(iconImageObjectId)
 }
 
-// TODO Return IdentityProfile instead of details!!!
-// TODO remove symkey from return
 func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct) {
 	select {
 	case <-s.gotDetailsCh:
