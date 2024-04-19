@@ -89,12 +89,8 @@ github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxB
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/andybalholm/cascadia v1.3.2 h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=
 github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6lUvCFb+h7KvU=
-github.com/anyproto/any-sync v0.4.5 h1:E+FATSRxMpaBt1GgmHfi3VkNKSC5SftpwgLa883Wy3M=
-github.com/anyproto/any-sync v0.4.5/go.mod h1:C/byc9JTwLSqhaHd0wCf1+ncU4iDQCMaXuZj4yOKDYw=
-github.com/anyproto/any-sync v0.4.6-0.20240419092938-1599c2514f84 h1:T9ubPdtaPvNw0uic0f9SgW8pdO/2K9VDWvA7MmDYasQ=
-github.com/anyproto/any-sync v0.4.6-0.20240419092938-1599c2514f84/go.mod h1:C/byc9JTwLSqhaHd0wCf1+ncU4iDQCMaXuZj4yOKDYw=
-github.com/anyproto/any-sync v0.4.6 h1:9PE1To9FcRGNHy9Ppmo1iHWwKTVWAl6Lmv06sVNnuKg=
-github.com/anyproto/any-sync v0.4.6/go.mod h1:C/byc9JTwLSqhaHd0wCf1+ncU4iDQCMaXuZj4yOKDYw=
+github.com/anyproto/any-sync v0.4.7 h1:vMi3L82/fBHMGC15LWpLk3YjMp9ahTQ6KaY/v6UU2yQ=
+github.com/anyproto/any-sync v0.4.7/go.mod h1:C/byc9JTwLSqhaHd0wCf1+ncU4iDQCMaXuZj4yOKDYw=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580/go.mod h1:T/uWAYxrXdaXw64ihI++9RMbKTCpKd/yE9+saARew7k=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=
