@@ -273,7 +273,9 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.Space
 	if !status.IsOwned && status.LocalInfo.GetRemoteStatus() == spaceinfo.RemoteStatusDeleted {
 		accountStatus := ctrl.GetStatus()
 		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
-			s.sendNotification(spaceId)
+			if ctrl.GetLocalStatus() == spaceinfo.LocalStatusOk {
+				s.sendNotification(spaceId)
+			}
 			info := spaceinfo.NewSpacePersistentInfo(spaceId)
 			info.SetAccountStatus(spaceinfo.AccountStatusRemoving)
 			return ctrl.SetPersistentInfo(ctx, info)

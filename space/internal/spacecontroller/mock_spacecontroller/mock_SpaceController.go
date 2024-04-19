@@ -117,6 +117,51 @@ func (_c *MockSpaceController_Current_Call) RunAndReturn(run func() interface{})
 	return _c
 }
 
+// GetLocalStatus provides a mock function with given fields:
+func (_m *MockSpaceController) GetLocalStatus() spaceinfo.LocalStatus {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLocalStatus")
+	}
+
+	var r0 spaceinfo.LocalStatus
+	if rf, ok := ret.Get(0).(func() spaceinfo.LocalStatus); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(spaceinfo.LocalStatus)
+	}
+
+	return r0
+}
+
+// MockSpaceController_GetLocalStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLocalStatus'
+type MockSpaceController_GetLocalStatus_Call struct {
+	*mock.Call
+}
+
+// GetLocalStatus is a helper method to define mock.On call
+func (_e *MockSpaceController_Expecter) GetLocalStatus() *MockSpaceController_GetLocalStatus_Call {
+	return &MockSpaceController_GetLocalStatus_Call{Call: _e.mock.On("GetLocalStatus")}
+}
+
+func (_c *MockSpaceController_GetLocalStatus_Call) Run(run func()) *MockSpaceController_GetLocalStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpaceController_GetLocalStatus_Call) Return(_a0 spaceinfo.LocalStatus) *MockSpaceController_GetLocalStatus_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceController_GetLocalStatus_Call) RunAndReturn(run func() spaceinfo.LocalStatus) *MockSpaceController_GetLocalStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetStatus provides a mock function with given fields:
 func (_m *MockSpaceController) GetStatus() spaceinfo.AccountStatus {
 	ret := _m.Called()
