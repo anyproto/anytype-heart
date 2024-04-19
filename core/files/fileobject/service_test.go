@@ -60,6 +60,7 @@ func newFixture(t *testing.T) *fixture {
 	commonFileService := fileservice.New()
 	fileSyncService := filesync.New()
 	eventSender := mock_event.NewMockSender(t)
+	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 	fileService := files.New()
 	spaceService := mock_space.NewMockService(t)
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)

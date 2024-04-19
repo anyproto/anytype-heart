@@ -10,7 +10,7 @@ import (
 
 	crypto "github.com/anyproto/any-sync/util/crypto"
 
-	inviteservice "github.com/anyproto/anytype-heart/core/inviteservice"
+	domain "github.com/anyproto/anytype-heart/core/domain"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -77,22 +77,22 @@ func (_c *MockInviteService_Close_Call) RunAndReturn(run func(context.Context) e
 }
 
 // Generate provides a mock function with given fields: ctx, spaceId, inviteKey, sendInvite
-func (_m *MockInviteService) Generate(ctx context.Context, spaceId string, inviteKey crypto.PrivKey, sendInvite func() error) (inviteservice.InviteInfo, error) {
+func (_m *MockInviteService) Generate(ctx context.Context, spaceId string, inviteKey crypto.PrivKey, sendInvite func() error) (domain.InviteInfo, error) {
 	ret := _m.Called(ctx, spaceId, inviteKey, sendInvite)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Generate")
 	}
 
-	var r0 inviteservice.InviteInfo
+	var r0 domain.InviteInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey, func() error) (inviteservice.InviteInfo, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey, func() error) (domain.InviteInfo, error)); ok {
 		return rf(ctx, spaceId, inviteKey, sendInvite)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey, func() error) inviteservice.InviteInfo); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey, func() error) domain.InviteInfo); ok {
 		r0 = rf(ctx, spaceId, inviteKey, sendInvite)
 	} else {
-		r0 = ret.Get(0).(inviteservice.InviteInfo)
+		r0 = ret.Get(0).(domain.InviteInfo)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string, crypto.PrivKey, func() error) error); ok {
@@ -125,33 +125,33 @@ func (_c *MockInviteService_Generate_Call) Run(run func(ctx context.Context, spa
 	return _c
 }
 
-func (_c *MockInviteService_Generate_Call) Return(_a0 inviteservice.InviteInfo, _a1 error) *MockInviteService_Generate_Call {
+func (_c *MockInviteService_Generate_Call) Return(_a0 domain.InviteInfo, _a1 error) *MockInviteService_Generate_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockInviteService_Generate_Call) RunAndReturn(run func(context.Context, string, crypto.PrivKey, func() error) (inviteservice.InviteInfo, error)) *MockInviteService_Generate_Call {
+func (_c *MockInviteService_Generate_Call) RunAndReturn(run func(context.Context, string, crypto.PrivKey, func() error) (domain.InviteInfo, error)) *MockInviteService_Generate_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetCurrent provides a mock function with given fields: ctx, spaceId
-func (_m *MockInviteService) GetCurrent(ctx context.Context, spaceId string) (inviteservice.InviteInfo, error) {
+func (_m *MockInviteService) GetCurrent(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
 	ret := _m.Called(ctx, spaceId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetCurrent")
 	}
 
-	var r0 inviteservice.InviteInfo
+	var r0 domain.InviteInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (inviteservice.InviteInfo, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (domain.InviteInfo, error)); ok {
 		return rf(ctx, spaceId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) inviteservice.InviteInfo); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) domain.InviteInfo); ok {
 		r0 = rf(ctx, spaceId)
 	} else {
-		r0 = ret.Get(0).(inviteservice.InviteInfo)
+		r0 = ret.Get(0).(domain.InviteInfo)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
@@ -182,12 +182,12 @@ func (_c *MockInviteService_GetCurrent_Call) Run(run func(ctx context.Context, s
 	return _c
 }
 
-func (_c *MockInviteService_GetCurrent_Call) Return(_a0 inviteservice.InviteInfo, _a1 error) *MockInviteService_GetCurrent_Call {
+func (_c *MockInviteService_GetCurrent_Call) Return(_a0 domain.InviteInfo, _a1 error) *MockInviteService_GetCurrent_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockInviteService_GetCurrent_Call) RunAndReturn(run func(context.Context, string) (inviteservice.InviteInfo, error)) *MockInviteService_GetCurrent_Call {
+func (_c *MockInviteService_GetCurrent_Call) RunAndReturn(run func(context.Context, string) (domain.InviteInfo, error)) *MockInviteService_GetCurrent_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -437,22 +437,22 @@ func (_c *MockInviteService_Run_Call) RunAndReturn(run func(context.Context) err
 }
 
 // View provides a mock function with given fields: ctx, inviteCid, inviteFileKey
-func (_m *MockInviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (inviteservice.InviteView, error) {
+func (_m *MockInviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error) {
 	ret := _m.Called(ctx, inviteCid, inviteFileKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for View")
 	}
 
-	var r0 inviteservice.InviteView
+	var r0 domain.InviteView
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, cid.Cid, crypto.SymKey) (inviteservice.InviteView, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cid.Cid, crypto.SymKey) (domain.InviteView, error)); ok {
 		return rf(ctx, inviteCid, inviteFileKey)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, cid.Cid, crypto.SymKey) inviteservice.InviteView); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cid.Cid, crypto.SymKey) domain.InviteView); ok {
 		r0 = rf(ctx, inviteCid, inviteFileKey)
 	} else {
-		r0 = ret.Get(0).(inviteservice.InviteView)
+		r0 = ret.Get(0).(domain.InviteView)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, cid.Cid, crypto.SymKey) error); ok {
@@ -484,12 +484,12 @@ func (_c *MockInviteService_View_Call) Run(run func(ctx context.Context, inviteC
 	return _c
 }
 
-func (_c *MockInviteService_View_Call) Return(_a0 inviteservice.InviteView, _a1 error) *MockInviteService_View_Call {
+func (_c *MockInviteService_View_Call) Return(_a0 domain.InviteView, _a1 error) *MockInviteService_View_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockInviteService_View_Call) RunAndReturn(run func(context.Context, cid.Cid, crypto.SymKey) (inviteservice.InviteView, error)) *MockInviteService_View_Call {
+func (_c *MockInviteService_View_Call) RunAndReturn(run func(context.Context, cid.Cid, crypto.SymKey) (domain.InviteView, error)) *MockInviteService_View_Call {
 	_c.Call.Return(run)
 	return _c
 }

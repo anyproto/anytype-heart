@@ -124,7 +124,7 @@ func ReplaceRelationsInDataView(st *state.State, rel *model.RelationLink) error 
 				err := dv.ReplaceViewRelation(view.Id, rel.Key, &model.BlockContentDataviewRelation{
 					Key:       rel.Key,
 					IsVisible: true,
-					Width:     192,
+					Width:     simpleDataview.DefaultViewRelationWidth,
 				})
 				if err != nil {
 					return true

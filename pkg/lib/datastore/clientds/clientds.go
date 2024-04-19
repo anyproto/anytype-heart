@@ -12,12 +12,12 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/badger/v4/options"
 	"github.com/hashicorp/go-multierror"
-	ds "github.com/ipfs/go-datastore"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
@@ -30,16 +30,20 @@ const (
 
 var log = logging.Logger("anytype-clientds")
 
+var ErrSpaceStoreNotAvailable = fmt.Errorf("space store badger db is not available")
+
 type clientds struct {
 	running bool
 
+	spaceStorageMode                           storage.SpaceStorageMode
 	spaceDS                                    *badger.DB
 	localstoreDS                               *badger.DB
 	cfg                                        Config
 	repoPath                                   string
 	spaceStoreWasMissing, localStoreWasMissing bool
 	spentOnInit                                time.Duration
-	closed                                     chan struct{}
+	closing                                    chan struct{}
+	syncerFinished                             chan struct{}
 }
 
 type Config struct {
@@ -54,11 +58,7 @@ var DefaultConfig = Config{
 
 type DSConfigGetter interface {
 	DSConfig() Config
-}
-
-type migration struct {
-	migrationFunc func() error
-	migrationKey  ds.Key
+	GetSpaceStorageMode() storage.SpaceStorageMode
 }
 
 type loggerWrapper struct {
@@ -107,7 +107,8 @@ func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
 
 func (r *clientds) Init(a *app.App) (err error) {
 	// TODO: looks like we do a lot of stuff on Init here. We should consider moving it to the Run
-	r.closed = make(chan struct{})
+	r.closing = make(chan struct{})
+	r.syncerFinished = make(chan struct{})
 	start := time.Now()
 	wl := a.Component(wallet.CName)
 	if wl == nil {
@@ -117,8 +118,10 @@ func (r *clientds) Init(a *app.App) (err error) {
 
 	if cfgGetter, ok := a.Component("config").(DSConfigGetter); ok {
 		r.cfg = cfgGetter.DSConfig()
+		r.spaceStorageMode = cfgGetter.GetSpaceStorageMode()
 	} else {
-		return fmt.Errorf("ds config is missing")
+		return fmt.Errorf("" +
+			"ds config is missing")
 	}
 
 	if _, err := os.Stat(filepath.Join(r.getRepoPath(oldLitestoreDir))); !os.IsNotExist(err) {
@@ -158,16 +161,18 @@ func (r *clientds) Init(a *app.App) (err error) {
 		log.With("db", "localstore").With("reset", false).With("err", err.Error()).Errorf("failed to open db")
 		return err
 	}
-	opts = r.cfg.Spacestore
-	opts.Dir = r.getRepoPath(SpaceDSDir)
-	opts.ValueDir = opts.Dir
-	r.spaceDS, err = openBadgerWithRecover(opts)
-	if err != nil {
-		err = oserror.TransformError(err)
-		log.With("db", "spacestore").With("reset", false).With("err", err.Error()).Errorf("failed to open db")
-		return err
-	}
 
+	if r.spaceStorageMode == storage.SpaceStorageModeBadger {
+		opts = r.cfg.Spacestore
+		opts.Dir = r.getRepoPath(SpaceDSDir)
+		opts.ValueDir = opts.Dir
+		r.spaceDS, err = openBadgerWithRecover(opts)
+		if err != nil {
+			err = oserror.TransformError(err)
+			log.With("db", "spacestore").With("reset", false).With("err", err.Error()).Errorf("failed to open db")
+			return err
+		}
+	}
 	r.running = true
 	r.spentOnInit = time.Since(start)
 	return nil
@@ -182,6 +187,9 @@ func (r *clientds) SpaceStorage() (*badger.DB, error) {
 	// TODO: [MR] Change after testing
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	if r.spaceDS == nil {
+		return nil, ErrSpaceStoreNotAvailable
 	}
 	return r.spaceDS, nil
 }
@@ -198,7 +206,9 @@ func (r *clientds) Name() (name string) {
 }
 
 func (r *clientds) Close(ctx context.Context) (err error) {
-	close(r.closed)
+	close(r.closing)
+	// wait syncer goroutine to finish to make sure we don't have in-progress requests, because it may cause panics
+	<-r.syncerFinished
 	if r.localstoreDS != nil {
 		err2 := r.localstoreDS.Close()
 		if err2 != nil {
@@ -227,6 +237,7 @@ func (r *clientds) getRepoPath(dir string) string {
 func (r *clientds) GetLogFields() []zap.Field {
 	return []zap.Field{
 		zap.Bool("spaceStoreWasMissing", r.spaceStoreWasMissing),
+		zap.Int("spaceStoreMode", int(r.spaceStorageMode)),
 		zap.Bool("localStoreWasMissing", r.localStoreWasMissing),
 		zap.Int64("spentOnInit", r.spentOnInit.Milliseconds()),
 	}

@@ -11738,7 +11738,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.ResolveAnyId.Response.Error](#anytype-Rpc-NameService-ResolveAnyId-Response-Error) |  |  |
 | found | [bool](#bool) |  |  |
-| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+| nsName | [string](#string) |  | not including suffix |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11859,7 +11860,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.ResolveSpaceId.Response.Error](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error) |  |  |
 | found | [bool](#bool) |  |  |
-| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+| nsName | [string](#string) |  | not including suffix |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11921,7 +11923,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.UserAccount.Get.Response.Error](#anytype-Rpc-NameService-UserAccount-Get-Response-Error) |  |  |
-| anyNameAttached | [string](#string) |  | this will use ReverseResolve to get current name user can buy many names, but only 1 name can be set as &#34;current&#34;: ETH address &lt;-&gt; name |
+| nsNameAttached | [string](#string) |  | this will use ReverseResolve to get current name user can buy many names, but only 1 name can be set as &#34;current&#34;: ETH address &lt;-&gt; name |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | namesCountLeft | [uint64](#uint64) |  | Number of names that the user can reserve |
 | operationsCountLeft | [uint64](#uint64) |  | Number of operations: update name, add new data, etc |
 
@@ -12956,13 +12959,15 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
 
 DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated |  |
+| spaceId | [string](#string) |  |  |
+| collectionId | [string](#string) |  |  |
+| setSource | [string](#string) | repeated |  |
 
 
 
@@ -20005,6 +20010,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
 | BAD_ANYNAME | 8 |  |
+| CAN_NOT_CONNECT | 9 |  |
 
 
 
@@ -20026,6 +20032,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_METHOD_INVALID | 8 |  |
 | BAD_ANYNAME | 9 |  |
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
 
 
 
@@ -20042,6 +20049,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
 
 
 
@@ -20060,6 +20068,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CACHE_ERROR | 5 |  |
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
+| CAN_NOT_CONNECT | 8 |  |
 
 
 
@@ -20076,6 +20085,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
 
 
 
@@ -20097,6 +20107,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | EMAIL_ALREDY_SENT | 8 |  |
 | EMAIL_FAILED_TO_SEND | 9 |  |
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
 
 
 
@@ -20112,6 +20123,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
+| CAN_NOT_CONNECT | 12 |  |
 
 
 
@@ -20134,6 +20146,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_NODE_ERROR | 9 |  |
 | CACHE_ERROR | 10 |  |
 | IN_BLACKLIST | 11 | for some probable future use (if needed) |
+| CAN_NOT_CONNECT | 12 |  |
 
 
 
@@ -20155,6 +20168,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CODE_WRONG | 8 |  |
 | MEMBERSHIP_NOT_FOUND | 9 |  |
 | MEMBERSHIP_ALREADY_ACTIVE | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
 
 
 
@@ -20181,6 +20195,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20194,6 +20209,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20207,6 +20223,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20222,6 +20239,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | BAD_NAME_RESOLVE | 4 |  |
+| CAN_NOT_CONNECT | 5 |  |
 
 
 
@@ -20723,6 +20741,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 3 |  |
 | ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
+| OBJECT_DELETED | 4 | ... |
 
 
 
@@ -20920,6 +20939,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 3 |  |
+| OBJECT_DELETED | 4 |  |
 | ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
 
 
@@ -25007,6 +25027,7 @@ Precondition: user A and user B opened the same block
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
 | areOldFilesRemoved | [bool](#bool) |  |  |
+| areDeletedObjectsReindexed | [bool](#bool) |  |  |
 
 
 
@@ -25931,7 +25952,8 @@ Used to decode block meta only, without the content itself
 | dateEnds | [uint64](#uint64) |  |  |
 | isAutoRenew | [bool](#bool) |  |  |
 | paymentMethod | [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
-| requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
+| nsName | [string](#string) |  | can be empty if user did not ask for any name |
+| nsNameType | [NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
 | subscribeToNewsletter | [bool](#bool) |  |  |
 

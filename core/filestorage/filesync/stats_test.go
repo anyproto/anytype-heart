@@ -9,6 +9,10 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+type limitSetter interface {
+	SetLimit(limit int)
+}
+
 func TestSpaceUsageUpdate(t *testing.T) {
 	const limit = 1024 * 1024 * 1024
 	fx := newFixture(t, limit)
@@ -71,13 +75,27 @@ func TestSpaceUsageUpdate(t *testing.T) {
 		assert.Equal(t, fileSize2, uint64(spaceUsage.SpaceBytesUsage))
 	})
 
+	t.Run("update limit", func(t *testing.T) {
+		setter, ok := fx.rpcStore.(limitSetter)
+		require.True(t, ok)
+
+		setter.SetLimit(limit * 10)
+
+		err = fx.UpdateNodeUsage(ctx)
+		require.NoError(t, err)
+
+		// Event is expected to be sent
+	})
+
 	t.Run("events sent", func(t *testing.T) {
 		fx.eventsLock.Lock()
 		defer fx.eventsLock.Unlock()
 
 		wantEvents := []*pb.Event{
+			makeLimitUpdatedEvent(limit),
 			makeSpaceUsageEvent("space1", fileSize1),
 			makeSpaceUsageEvent("space2", fileSize2),
+			makeLimitUpdatedEvent(limit * 10),
 		}
 
 		assert.Equal(t, wantEvents, fx.events)
