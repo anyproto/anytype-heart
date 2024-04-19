@@ -1,7 +1,6 @@
 package fileacl
 
 import (
-	"context"
 	"fmt"
 	"sort"
 
@@ -19,7 +18,7 @@ const CName = "fileacl"
 type Service interface {
 	app.Component
 
-	GetInfoForFileSharing(ctx context.Context, fileObjectId string) (cid string, encryptionKeys []*model.FileEncryptionKey, err error)
+	GetInfoForFileSharing(fileObjectId string) (cid string, encryptionKeys []*model.FileEncryptionKey, err error)
 	StoreFileKeys(fileId domain.FileId, fileKeys []*model.FileEncryptionKey) error
 }
 
@@ -44,7 +43,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) GetInfoForFileSharing(ctx context.Context, fileObjectId string) (cid string, encryptionKeys []*model.FileEncryptionKey, err error) {
+func (s *service) GetInfoForFileSharing(fileObjectId string) (cid string, encryptionKeys []*model.FileEncryptionKey, err error) {
 	fileId, err := s.fileObjectService.GetFileIdFromObject(fileObjectId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get file id from object: %w", err)
