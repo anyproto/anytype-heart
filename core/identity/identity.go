@@ -294,31 +294,18 @@ func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 }
 
 func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataWithIdentity) error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	profile, rawProfile, err := s.findProfile(identityData)
 	if err != nil {
 		return fmt.Errorf("find profile: %w", err)
 	}
 
+	s.lock.Lock()
 	if globalName, found := s.identityGlobalNames[identityData.Identity]; found && globalName.Found {
 		profile.GlobalName = globalName.Name
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
 	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
-
-	if hasUpdates {
-		err := s.indexIconImage(profile)
-		if err != nil {
-			return fmt.Errorf("index icon image: %w", err)
-		}
-		err = s.cacheIdentityProfile(rawProfile, profile)
-		if err != nil {
-			return fmt.Errorf("put identity profile: %w", err)
-		}
-	}
 
 	observers := s.identityObservers[identityData.Identity]
 	for _, obs := range observers {
@@ -330,6 +317,18 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 			obs.callback(identityData.Identity, profile)
 		}
 	}
+	s.identityProfileCache[profile.Identity] = profile
+	s.lock.Unlock()
+
+	if hasUpdates {
+		err := s.indexIconImage(profile)
+		if err != nil {
+			return fmt.Errorf("index icon image: %w", err)
+		}
+
+		return badgerhelper.SetValue(s.db, makeIdentityProfileKey(profile.Identity), rawProfile)
+	}
+
 	return nil
 }
 
@@ -345,7 +344,10 @@ func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProf
 }
 
 func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
-	return extractProfile(identityData, s.identityEncryptionKeys[identityData.Identity])
+	s.lock.Lock()
+	key := s.identityEncryptionKeys[identityData.Identity]
+	s.lock.Unlock()
+	return extractProfile(identityData, key)
 }
 
 func extractProfile(identityData *identityrepoproto.DataWithIdentity, symKey crypto.SymKey) (profile *model.IdentityProfile, rawData []byte, err error) {
@@ -397,11 +399,6 @@ func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error 
 
 func (s *service) updateMyIdentityGlobalName(name string) {
 	s.ownProfileSubscription.updateGlobalName(name)
-}
-
-func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {
-	s.identityProfileCache[profile.Identity] = profile
-	return badgerhelper.SetValue(s.db, makeIdentityProfileKey(profile.Identity), rawProfile)
 }
 
 func makeIdentityProfileKey(identity string) []byte {

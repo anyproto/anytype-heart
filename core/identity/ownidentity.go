@@ -40,7 +40,7 @@ type ownProfileSubscription struct {
 	globalNameUpdatedCh chan string
 	gotDetailsCh        chan struct{}
 
-	detailsLock sync.RWMutex
+	detailsLock sync.Mutex
 	gotDetails  bool
 	details     *types.Struct // save details to batch update operation
 
@@ -251,8 +251,8 @@ func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Conte
 }
 
 func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityProfile, error) {
-	s.detailsLock.RLock()
-	defer s.detailsLock.RUnlock()
+	s.detailsLock.Lock()
+	defer s.detailsLock.Unlock()
 
 	iconImageObjectId := pbtypes.GetString(s.details, bundle.RelationKeyIconImage.String())
 	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(iconImageObjectId)
@@ -287,8 +287,8 @@ func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity strin
 	case <-s.componentCtx.Done():
 		return "", nil, nil
 	}
-	s.detailsLock.RLock()
-	defer s.detailsLock.RUnlock()
+	s.detailsLock.Lock()
+	defer s.detailsLock.Unlock()
 
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.details
 }
