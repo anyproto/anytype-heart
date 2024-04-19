@@ -3,10 +3,7 @@
 package mock_fileacl
 
 import (
-	context "context"
-
 	app "github.com/anyproto/any-sync/app"
-
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
 	mock "github.com/stretchr/testify/mock"
@@ -27,9 +24,9 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// GetInfoForFileSharing provides a mock function with given fields: ctx, fileObjectId
-func (_m *MockService) GetInfoForFileSharing(ctx context.Context, fileObjectId string) (string, []*model.FileEncryptionKey, error) {
-	ret := _m.Called(ctx, fileObjectId)
+// GetInfoForFileSharing provides a mock function with given fields: fileObjectId
+func (_m *MockService) GetInfoForFileSharing(fileObjectId string) (string, []*model.FileEncryptionKey, error) {
+	ret := _m.Called(fileObjectId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetInfoForFileSharing")
@@ -38,25 +35,25 @@ func (_m *MockService) GetInfoForFileSharing(ctx context.Context, fileObjectId s
 	var r0 string
 	var r1 []*model.FileEncryptionKey
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (string, []*model.FileEncryptionKey, error)); ok {
-		return rf(ctx, fileObjectId)
+	if rf, ok := ret.Get(0).(func(string) (string, []*model.FileEncryptionKey, error)); ok {
+		return rf(fileObjectId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
-		r0 = rf(ctx, fileObjectId)
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(fileObjectId)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) []*model.FileEncryptionKey); ok {
-		r1 = rf(ctx, fileObjectId)
+	if rf, ok := ret.Get(1).(func(string) []*model.FileEncryptionKey); ok {
+		r1 = rf(fileObjectId)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).([]*model.FileEncryptionKey)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string) error); ok {
-		r2 = rf(ctx, fileObjectId)
+	if rf, ok := ret.Get(2).(func(string) error); ok {
+		r2 = rf(fileObjectId)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -70,15 +67,14 @@ type MockService_GetInfoForFileSharing_Call struct {
 }
 
 // GetInfoForFileSharing is a helper method to define mock.On call
-//   - ctx context.Context
 //   - fileObjectId string
-func (_e *MockService_Expecter) GetInfoForFileSharing(ctx interface{}, fileObjectId interface{}) *MockService_GetInfoForFileSharing_Call {
-	return &MockService_GetInfoForFileSharing_Call{Call: _e.mock.On("GetInfoForFileSharing", ctx, fileObjectId)}
+func (_e *MockService_Expecter) GetInfoForFileSharing(fileObjectId interface{}) *MockService_GetInfoForFileSharing_Call {
+	return &MockService_GetInfoForFileSharing_Call{Call: _e.mock.On("GetInfoForFileSharing", fileObjectId)}
 }
 
-func (_c *MockService_GetInfoForFileSharing_Call) Run(run func(ctx context.Context, fileObjectId string)) *MockService_GetInfoForFileSharing_Call {
+func (_c *MockService_GetInfoForFileSharing_Call) Run(run func(fileObjectId string)) *MockService_GetInfoForFileSharing_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -88,7 +84,7 @@ func (_c *MockService_GetInfoForFileSharing_Call) Return(cid string, encryptionK
 	return _c
 }
 
-func (_c *MockService_GetInfoForFileSharing_Call) RunAndReturn(run func(context.Context, string) (string, []*model.FileEncryptionKey, error)) *MockService_GetInfoForFileSharing_Call {
+func (_c *MockService_GetInfoForFileSharing_Call) RunAndReturn(run func(string) (string, []*model.FileEncryptionKey, error)) *MockService_GetInfoForFileSharing_Call {
 	_c.Call.Return(run)
 	return _c
 }

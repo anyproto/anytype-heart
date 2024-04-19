@@ -19,18 +19,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
-	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "identity"
@@ -70,32 +64,24 @@ type identityRepoClient interface {
 }
 
 type service struct {
-	dbProvider          datastore.Datastore
-	db                  *badger.DB
-	spaceService        space.Service
-	objectStore         objectstore.ObjectStore
-	accountService      account.Service
-	spaceIdDeriver      spaceIdDeriver
-	identityRepoClient  identityRepoClient
-	fileAclService      fileacl.Service
-	wallet              wallet.Wallet
-	namingService       nameserviceclient.AnyNsClientService
-	componentCtx        context.Context
-	componentCtxCancel  context.CancelFunc
-	gotMyProfileDetails chan struct{}
-	techSpaceId         string
-	personalSpaceId     string
+	ownProfileSubscription *ownProfileSubscription
+	dbProvider             datastore.Datastore
+	db                     *badger.DB
+	accountService         account.Service
+	identityRepoClient     identityRepoClient
+	fileAclService         fileacl.Service
+	namingService          nameserviceclient.AnyNsClientService
 
-	myIdentity                string
-	currentProfileDetailsLock sync.RWMutex
-	currentProfileDetails     *types.Struct // save details to batch update operation
-	pushIdentityTimer         *time.Timer   // timer for batching
-	pushIdentityBatchTimeout  time.Duration
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 
-	identityObservePeriod  time.Duration
-	identityForceUpdate    chan struct{}
-	globalNamesForceUpdate chan struct{}
-	lock                   sync.RWMutex
+	myIdentity               string
+	pushIdentityBatchTimeout time.Duration
+	identityObservePeriod    time.Duration
+	identityForceUpdate      chan struct{}
+	globalNamesForceUpdate   chan struct{}
+
+	lock sync.Mutex
 	// identity => spaceId => observer
 	identityObservers      map[string]map[string]*observer
 	identityEncryptionKeys map[string]crypto.SymKey
@@ -108,7 +94,6 @@ func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Dura
 	return &service{
 		componentCtx:             ctx,
 		componentCtxCancel:       cancel,
-		gotMyProfileDetails:      make(chan struct{}),
 		identityForceUpdate:      make(chan struct{}),
 		globalNamesForceUpdate:   make(chan struct{}),
 		identityObservePeriod:    identityObservePeriod,
@@ -121,15 +106,16 @@ func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Dura
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.accountService = app.MustComponent[account.Service](a)
-	s.spaceIdDeriver = app.MustComponent[spaceIdDeriver](a)
-	s.spaceService = app.MustComponent[space.Service](a)
 	s.identityRepoClient = app.MustComponent[identityRepoClient](a)
 	s.fileAclService = app.MustComponent[fileacl.Service](a)
 	s.dbProvider = app.MustComponent[datastore.Datastore](a)
-	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.namingService = app.MustComponent[nameserviceclient.AnyNsClientService](a)
+
+	objectStore := app.MustComponent[objectstore.ObjectStore](a)
+	spaceService := app.MustComponent[space.Service](a)
+
+	s.ownProfileSubscription = newOwnProfileSubscription(spaceService, objectStore, s.accountService, s.identityRepoClient, s.fileAclService, s, s.pushIdentityBatchTimeout)
 	return
 }
 
@@ -142,19 +128,10 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	s.techSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.TechSpaceType)
-	if err != nil {
-		return err
-	}
-
-	s.personalSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.SpaceType)
-	if err != nil {
-		return err
-	}
 
 	s.myIdentity = s.accountService.AccountID()
 
-	err = s.runLocalProfileSubscriptions(ctx)
+	err = s.ownProfileSubscription.run(ctx)
 	if err != nil {
 		return err
 	}
@@ -166,79 +143,8 @@ func (s *service) Run(ctx context.Context) (err error) {
 
 func (s *service) Close(ctx context.Context) (err error) {
 	s.componentCtxCancel()
+	s.ownProfileSubscription.close()
 	return nil
-}
-
-func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) {
-	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeProfilePage, "")
-	if err != nil {
-		return err
-	}
-	personalSpace, err := s.spaceService.GetPersonalSpace(ctx)
-	if err != nil {
-		return fmt.Errorf("get space: %w", err)
-	}
-	profileObjectId, err := personalSpace.DeriveObjectID(ctx, uniqueKey)
-	if err != nil {
-		return err
-	}
-
-	recordsCh := make(chan *types.Struct)
-	sub := database.NewSubscription(nil, recordsCh)
-
-	var (
-		records  []database.Record
-		closeSub func()
-	)
-
-	records, closeSub, err = s.objectStore.QueryByIDAndSubscribeForChanges([]string{profileObjectId}, sub)
-	if err != nil {
-		return err
-	}
-	go func() {
-		select {
-		case <-s.componentCtx.Done():
-			closeSub()
-			return
-		}
-	}()
-
-	if len(records) > 0 {
-		err := s.updateIdentityObject(records[0].Details)
-		if err != nil {
-			log.Error("error updating identity object", zap.Error(err))
-		}
-	}
-
-	go func() {
-		for {
-			rec, ok := <-recordsCh
-			if !ok {
-				return
-			}
-			err := s.updateIdentityObject(rec)
-			if err != nil {
-				log.Error("error updating identity object", zap.Error(err))
-			}
-		}
-	}()
-
-	return nil
-}
-
-func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct) {
-	select {
-	case <-s.gotMyProfileDetails:
-
-	case <-ctx.Done():
-		return "", nil, nil
-	case <-s.componentCtx.Done():
-		return "", nil, nil
-	}
-	s.currentProfileDetailsLock.RLock()
-	defer s.currentProfileDetailsLock.RUnlock()
-
-	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.currentProfileDetails
 }
 
 func (s *service) UpdateGlobalNames(myIdentityGlobalName string) {
@@ -273,110 +179,10 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 }
 
 func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {
-	s.lock.RLock()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	if profile, ok := s.identityProfileCache[identity]; ok {
-		s.lock.RUnlock()
 		return profile
-	}
-	s.lock.RUnlock()
-	return nil
-}
-
-func (s *service) updateIdentityObject(profileDetails *types.Struct) error {
-	s.cacheProfileDetails(profileDetails)
-	if s.pushIdentityTimer == nil {
-		s.pushIdentityTimer = time.AfterFunc(0, func() {
-			pushErr := s.pushProfileToIdentityRegistry(context.Background())
-			if pushErr != nil {
-				log.Error("push profile to identity registry", zap.Error(pushErr))
-			}
-		})
-	} else {
-		s.pushIdentityTimer.Reset(s.pushIdentityBatchTimeout)
-	}
-
-	return nil
-}
-
-func (s *service) cacheProfileDetails(details *types.Struct) {
-	if details == nil {
-		return
-	}
-	s.currentProfileDetailsLock.Lock()
-	if s.currentProfileDetails == nil {
-		close(s.gotMyProfileDetails)
-	}
-	s.currentProfileDetails = details
-	s.currentProfileDetailsLock.Unlock()
-
-	identityProfile := &model.IdentityProfile{
-		Identity:    s.myIdentity,
-		Name:        pbtypes.GetString(details, bundle.RelationKeyName.String()),
-		Description: pbtypes.GetString(details, bundle.RelationKeyDescription.String()),
-		IconCid:     pbtypes.GetString(details, bundle.RelationKeyIconImage.String()),
-		GlobalName:  pbtypes.GetString(details, bundle.RelationKeyGlobalName.String()),
-	}
-
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	observers, ok := s.identityObservers[s.myIdentity]
-	if ok {
-		for _, obs := range observers {
-			obs.callback(s.myIdentity, identityProfile)
-		}
-	}
-}
-
-func (s *service) prepareIconImageInfo(ctx context.Context, iconImageObjectId string) (iconCid string, iconEncryptionKeys []*model.FileEncryptionKey, err error) {
-	if iconImageObjectId == "" {
-		return "", nil, nil
-	}
-	return s.fileAclService.GetInfoForFileSharing(ctx, iconImageObjectId)
-}
-
-func (s *service) pushProfileToIdentityRegistry(ctx context.Context) error {
-	s.currentProfileDetailsLock.RLock()
-	defer s.currentProfileDetailsLock.RUnlock()
-
-	iconImageObjectId := pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyIconImage.String())
-	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(ctx, iconImageObjectId)
-	if err != nil {
-		return fmt.Errorf("prepare icon image info: %w", err)
-	}
-
-	identity := s.accountService.AccountID()
-	identityProfile := &model.IdentityProfile{
-		Identity:           identity,
-		Name:               pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyName.String()),
-		Description:        pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyDescription.String()),
-		IconCid:            iconCid,
-		IconEncryptionKeys: iconEncryptionKeys,
-		GlobalName:         pbtypes.GetString(s.currentProfileDetails, bundle.RelationKeyGlobalName.String()),
-	}
-	data, err := proto.Marshal(identityProfile)
-	if err != nil {
-		return fmt.Errorf("marshal identity profile: %w", err)
-	}
-
-	symKey := s.spaceService.AccountMetadataSymKey()
-	data, err = symKey.Encrypt(data)
-	if err != nil {
-		return fmt.Errorf("encrypt data: %w", err)
-	}
-
-	signature, err := s.accountService.SignData(data)
-	if err != nil {
-		return fmt.Errorf("failed to sign profile data: %w", err)
-	}
-	err = s.identityRepoClient.IdentityRepoPut(ctx, identity, []*identityrepoproto.Data{
-		{
-			Kind:      "profile",
-			Data:      data,
-			Signature: signature,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to push identity: %w", err)
 	}
 	return nil
 }
@@ -410,8 +216,33 @@ const identityRepoDataKind = "profile"
 
 // TODO Maybe we need to use backoff in case of error from coordinator
 func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate bool) error {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+	identities := s.listRegisteredIdentities()
+
+	// TODO Run async
+	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
+	if err != nil {
+		return fmt.Errorf("failed to pull identity: %w", err)
+	}
+
+	// TODO Run async
+	if err = s.fetchGlobalNames(append(identities, s.myIdentity), globalNamesForceUpdate); err != nil {
+		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
+	}
+
+	// TODO Wait from async
+
+	for _, identityData := range identitiesData {
+		err := s.broadcastIdentityProfile(identityData)
+		if err != nil {
+			log.Error("error handling identity data", zap.Error(err))
+		}
+	}
+	return nil
+}
+
+func (s *service) listRegisteredIdentities() []string {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	if len(s.identityObservers) == 0 {
 		return nil
@@ -423,22 +254,7 @@ func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate 
 		}
 		identities = append(identities, identity)
 	}
-	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
-	if err != nil {
-		return fmt.Errorf("failed to pull identity: %w", err)
-	}
-
-	if err = s.fetchGlobalNames(append(identities, s.myIdentity), globalNamesForceUpdate); err != nil {
-		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
-	}
-
-	for _, identityData := range identitiesData {
-		err := s.broadcastIdentityProfile(identityData)
-		if err != nil {
-			log.Error("error handling identity data", zap.Error(err))
-		}
-	}
-	return nil
+	return identities
 }
 
 func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []string) ([]*identityrepoproto.DataWithIdentity, error) {
@@ -487,6 +303,9 @@ func (s *service) indexIconImage(profile *model.IdentityProfile) error {
 }
 
 func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataWithIdentity) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	profile, rawProfile, err := s.findProfile(identityData)
 	if err != nil {
 		return fmt.Errorf("find profile: %w", err)
@@ -523,6 +342,17 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	return nil
 }
 
+func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	observers, ok := s.identityObservers[s.myIdentity]
+	if ok {
+		for _, obs := range observers {
+			obs.callback(s.myIdentity, identityProfile)
+		}
+	}
+}
+
 func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
 	for _, data := range identityData.Data {
 		if data.Kind == identityRepoDataKind {
@@ -546,6 +376,7 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 }
 
 func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error {
+	// TODO Lock
 	if len(s.identityGlobalNames) == len(identities) && !forceUpdate {
 		return nil
 	}
@@ -566,13 +397,7 @@ func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error 
 }
 
 func (s *service) updateMyIdentityGlobalName(name string) {
-	s.currentProfileDetailsLock.RLock()
-	details := pbtypes.CopyStruct(s.currentProfileDetails, true)
-	s.currentProfileDetailsLock.RUnlock()
-	details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(name)
-	if err := s.objectStore.UpdateObjectDetails(pbtypes.GetString(details, bundle.RelationKeyId.String()), details); err != nil {
-		log.Error("failed to update global name of my identity in store", zap.Error(err))
-	}
+	s.ownProfileSubscription.updateGlobalName(name)
 }
 
 func (s *service) cacheIdentityProfile(rawProfile []byte, profile *model.IdentityProfile) error {
@@ -635,4 +460,8 @@ func (s *service) UnregisterIdentitiesInSpace(spaceId string) {
 	for _, observers := range s.identityObservers {
 		delete(observers, spaceId)
 	}
+}
+
+func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct) {
+	return s.ownProfileSubscription.getDetails(ctx)
 }
