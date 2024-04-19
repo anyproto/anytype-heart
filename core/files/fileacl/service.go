@@ -50,7 +50,7 @@ func (s *service) GetInfoForFileSharing(ctx context.Context, fileObjectId string
 		return "", nil, fmt.Errorf("get file id from object: %w", err)
 	}
 	cid = fileId.FileId.String()
-	keys, err := s.fileService.FileGetKeys(fileId)
+	keys, err := s.fileService.FileGetKeys(fileId.FileId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get file keys: %w", err)
 	}

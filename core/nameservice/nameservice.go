@@ -2,18 +2,26 @@ package nameservice
 
 import (
 	"context"
+	"errors"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	proto "github.com/anyproto/any-sync/nameservice/nameserviceproto"
 )
 
 const CName = "nameservice"
+
+var log = logging.Logger(CName).Desugar()
+
+var (
+	ErrBadResolve = errors.New("can not resolve anyname")
+)
 
 func NsNameToFullName(nsName string, nsNameType model.NameserviceNameType) string {
 	// if no name - return empty string
@@ -30,9 +38,9 @@ func NsNameToFullName(nsName string, nsNameType model.NameserviceNameType) strin
 }
 
 type Service interface {
-	NameServiceResolveName(ctx context.Context, req *pb.RpcNameServiceResolveNameRequest) *pb.RpcNameServiceResolveNameResponse
-	NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNameServiceResolveAnyIdRequest) *pb.RpcNameServiceResolveAnyIdResponse
-	NameServiceUserAccountGet(ctx context.Context, req *pb.RpcNameServiceUserAccountGetRequest) *pb.RpcNameServiceUserAccountGetResponse
+	NameServiceResolveName(ctx context.Context, req *pb.RpcNameServiceResolveNameRequest) (*pb.RpcNameServiceResolveNameResponse, error)
+	NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNameServiceResolveAnyIdRequest) (*pb.RpcNameServiceResolveAnyIdResponse, error)
+	NameServiceUserAccountGet(ctx context.Context, req *pb.RpcNameServiceUserAccountGetRequest) (*pb.RpcNameServiceUserAccountGetResponse, error)
 
 	app.Component
 }
@@ -58,19 +66,13 @@ func (s *service) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s *service) NameServiceResolveName(ctx context.Context, req *pb.RpcNameServiceResolveNameRequest) *pb.RpcNameServiceResolveNameResponse {
+func (s *service) NameServiceResolveName(ctx context.Context, req *pb.RpcNameServiceResolveNameRequest) (*pb.RpcNameServiceResolveNameResponse, error) {
 	var in proto.NameAvailableRequest
 	in.FullName = NsNameToFullName(req.NsName, req.NsNameType)
 
 	nar, err := s.nsclient.IsNameAvailable(ctx, &in)
 	if err != nil {
-		return &pb.RpcNameServiceResolveNameResponse{
-			Error: &pb.RpcNameServiceResolveNameResponseError{
-				// we don't map error codes here
-				Code:        pb.RpcNameServiceResolveNameResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
+		return nil, err
 	}
 
 	// Return the response
@@ -83,33 +85,42 @@ func (s *service) NameServiceResolveName(ctx context.Context, req *pb.RpcNameSer
 	out.SpaceId = nar.SpaceId
 	out.NameExpires = nar.NameExpires
 
-	return &out
+	return &out, nil
 }
 
-func (s *service) NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNameServiceResolveAnyIdRequest) *pb.RpcNameServiceResolveAnyIdResponse {
+func FullNameToNsName(fullName string) (nsName string, nsNameType model.NameserviceNameType) {
+	// if no name - return empty string
+	if fullName == "" {
+		return "", model.NameserviceNameType_AnyName
+	}
+
+	// remove .any from the name
+	if fullName[len(fullName)-4:] == ".any" {
+		return fullName[:len(fullName)-4], model.NameserviceNameType_AnyName
+	}
+
+	// by default return it
+	return fullName, model.NameserviceNameType_AnyName
+}
+
+func (s *service) NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNameServiceResolveAnyIdRequest) (*pb.RpcNameServiceResolveAnyIdResponse, error) {
 	var in proto.NameByAnyIdRequest
 	in.AnyAddress = req.AnyId
 
 	nar, err := s.nsclient.GetNameByAnyId(ctx, &in)
 	if err != nil {
-		return &pb.RpcNameServiceResolveAnyIdResponse{
-			Error: &pb.RpcNameServiceResolveAnyIdResponseError{
-				// we don't map error codes here
-				Code:        pb.RpcNameServiceResolveAnyIdResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
+		return nil, err
 	}
 
 	// Return the response
 	var out pb.RpcNameServiceResolveAnyIdResponse
 	out.Found = nar.Found
-	out.FullName = nar.Name
+	out.NsName, out.NsNameType = FullNameToNsName(nar.Name)
 
-	return &out
+	return &out, nil
 }
 
-func (s *service) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcNameServiceUserAccountGetRequest) *pb.RpcNameServiceUserAccountGetResponse {
+func (s *service) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcNameServiceUserAccountGetRequest) (*pb.RpcNameServiceUserAccountGetResponse, error) {
 	// when AccountAbstraction is used to deploy a smart contract wallet
 	// then name is really owned by this SCW, but owner of this SCW is
 	// EOA that was used to sign transaction
@@ -120,12 +131,7 @@ func (s *service) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcName
 
 	ua, err := s.nsclient.GetUserAccount(ctx, &guar)
 	if err != nil {
-		return &pb.RpcNameServiceUserAccountGetResponse{
-			Error: &pb.RpcNameServiceUserAccountGetResponseError{
-				Code:        pb.RpcNameServiceUserAccountGetResponseError_UNKNOWN_ERROR,
-				Description: err.Error(),
-			},
-		}
+		return nil, err
 	}
 
 	// 4 - check if any name is attached to the account (reverse resolve the name)
@@ -137,13 +143,7 @@ func (s *service) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcName
 
 	nar, err := s.nsclient.GetNameByAddress(ctx, &in)
 	if err != nil {
-		return &pb.RpcNameServiceUserAccountGetResponse{
-			Error: &pb.RpcNameServiceUserAccountGetResponseError{
-				// we don't map error codes here
-				Code:        pb.RpcNameServiceUserAccountGetResponseError_BAD_NAME_RESOLVE,
-				Description: err.Error(),
-			},
-		}
+		return nil, ErrBadResolve
 	}
 
 	// Return the response
@@ -151,7 +151,7 @@ func (s *service) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcName
 	out.NamesCountLeft = ua.NamesCountLeft
 	out.OperationsCountLeft = ua.OperationsCountLeft
 	// not checking nar.Found here, no need
-	out.AnyNameAttached = nar.Name
+	out.NsNameAttached, out.NsNameType = FullNameToNsName(nar.Name)
 
-	return &out
+	return &out, nil
 }

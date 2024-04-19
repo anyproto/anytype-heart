@@ -242,10 +242,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(space.New()).
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
+		Register(filesync.New()).
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
 		Register(inviteservice.New()).
 		Register(acl.New()).
-		Register(filesync.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).

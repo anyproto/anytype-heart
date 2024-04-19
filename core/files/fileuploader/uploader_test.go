@@ -176,7 +176,8 @@ func TestUploader_Upload(t *testing.T) {
 }
 
 func newFileServiceFixture(t *testing.T) files.Service {
-	dataStoreProvider := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 
 	blockStorage := filestorage.NewInMemory()
 
@@ -186,6 +187,7 @@ func newFileServiceFixture(t *testing.T) files.Service {
 	fileSyncService := filesync.New()
 	objectStore := objectstore.NewStoreFixture(t)
 	eventSender := mock_event.NewMockSender(t)
+	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	ctx := context.Background()
 	a := new(app.App)
@@ -197,7 +199,7 @@ func newFileServiceFixture(t *testing.T) files.Service {
 	a.Register(blockStorage)
 	a.Register(objectStore)
 	a.Register(rpcStoreService)
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
 
 	s := files.New()

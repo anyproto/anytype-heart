@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 )
 
@@ -40,6 +41,35 @@ func TestImageAdd(t *testing.T) {
 		testAddConcurrently(t, func(t *testing.T, fx *fixture) *AddResult {
 			return testAddImage(t, fx)
 		})
+	})
+}
+
+func TestIndexImage(t *testing.T) {
+	t.Run("with encryption keys available", func(t *testing.T) {
+		fx := newFixture(t)
+		got := testAddImage(t, fx)
+
+		err := fx.fileStore.DeleteFile(got.FileId)
+		require.NoError(t, err)
+
+		err = fx.fileStore.AddFileKeys(*got.EncryptionKeys)
+		require.NoError(t, err)
+
+		image, err := fx.ImageByHash(context.Background(), domain.FullFileId{SpaceId: spaceId, FileId: got.FileId})
+		require.NoError(t, err)
+
+		assert.Equal(t, got.FileId, image.FileId())
+	})
+
+	t.Run("with encryption keys not available", func(t *testing.T) {
+		fx := newFixture(t)
+		got := testAddImage(t, fx)
+
+		err := fx.fileStore.DeleteFile(got.FileId)
+		require.NoError(t, err)
+
+		_, err = fx.ImageByHash(context.Background(), domain.FullFileId{SpaceId: spaceId, FileId: got.FileId})
+		require.Error(t, err)
 	})
 }
 
