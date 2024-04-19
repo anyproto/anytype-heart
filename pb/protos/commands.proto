@@ -6764,8 +6764,6 @@ message Rpc {
             message Response {
                 Error error = 1;
 
-                anytype.model.Membership data = 2;
-
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -6774,6 +6772,15 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        TIER_NOT_FOUND = 6;
+                        TIER_INVALID = 7;
+                        BAD_ANYNAME = 8;
+                        MEMBERSHIP_ALREADY_EXISTS = 9;
                     }
                 }
             }

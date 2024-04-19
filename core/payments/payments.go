@@ -792,5 +792,42 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 }
 
 func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error) {
-	return nil, nil
+	verifyReq := proto.VerifyAppStoreReceiptRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
+
+		// not SCW address, but EOA address
+		// including 0x
+		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
+
+		RequestedTier: req.RequestedTier,
+		Receipt:       req.Receipt,
+
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+	}
+
+	payload, err := verifyReq.Marshal()
+	if err != nil {
+		log.Error("can not marshal VerifyAppStoreReceiptRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Error("can not sign VerifyAppStoreReceiptRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	reqSigned := proto.VerifyAppStoreReceiptRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	_, err = s.ppclient.VerifyAppStoreReceipt(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipVerifyAppStoreReceiptResponse{}, nil
 }

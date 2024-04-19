@@ -243,5 +243,25 @@ func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembers
 }
 
 func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) *pb.RpcMembershipVerifyAppStoreReceiptResponse {
-	return nil
+	ps := getService[payments.Service](mw)
+	out, err := ps.VerifyAppStoreReceipt(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipVerifyAppStoreReceiptResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipVerifyAppStoreReceiptResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
+			errToCode(payments.ErrCacheProblem, pb.RpcMembershipVerifyAppStoreReceiptResponseError_CACHE_ERROR),
+		)
+
+		return &pb.RpcMembershipVerifyAppStoreReceiptResponse{
+			Error: &pb.RpcMembershipVerifyAppStoreReceiptResponseError{
+				Code:        code,
+				Description: err.Error(),
+			},
+		}
+	}
+
+	return out
 }

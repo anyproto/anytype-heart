@@ -11622,7 +11622,6 @@ you can call this method to get the latest tiers
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error) |  |  |
-| data | [model.Membership](#anytype-model-Membership) |  |  |
 
 
 
@@ -20222,6 +20221,13 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| TIER_NOT_FOUND | 6 |  |
+| TIER_INVALID | 7 |  |
+| BAD_ANYNAME | 8 |  |
+| MEMBERSHIP_ALREADY_EXISTS | 9 |  |
 
 
 
