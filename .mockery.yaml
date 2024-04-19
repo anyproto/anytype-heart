@@ -97,9 +97,11 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/aclnotifications:
     interfaces:
       AclNotification:
+      NotificationSender:
   github.com/anyproto/anytype-heart/space/internal/components/dependencies:
     interfaces:
       SpaceIndexer:
+      IdentityService:
   github.com/anyproto/anytype-heart/space/internal/components/spacestatus:
     interfaces:
       SpaceStatus:
