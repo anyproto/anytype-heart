@@ -292,7 +292,7 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, spaceId string, 
 		return nil, fmt.Errorf("get space description: %w", err)
 	}
 	if description.IconImage != "" {
-		iconCid, iconEncryptionKeys, err := i.fileAcl.GetInfoForFileSharing(ctx, description.IconImage)
+		iconCid, iconEncryptionKeys, err := i.fileAcl.GetInfoForFileSharing(description.IconImage)
 		if err == nil {
 			invitePayload.SpaceIconCid = iconCid
 			invitePayload.SpaceIconEncryptionKeys = iconEncryptionKeys
