@@ -542,6 +542,20 @@ func TestAclNotificationSender_AddSingleRecord(t *testing.T) {
 		// when
 		go f.processRecords()
 		go f.Close(context.Background())
+
+		// then
+		<-f.done
+		f.notificationSender.AssertCalled(t, "CreateAndSend", &model.Notification{
+			Id:      "recordId",
+			IsLocal: false,
+			Payload: &model.NotificationPayloadOfParticipantRequestDecline{
+				ParticipantRequestDecline: &model.NotificationParticipantRequestDecline{
+					SpaceId: "spaceId",
+				},
+			},
+			Space:     "spaceId",
+			AclHeadId: "aclId",
+		})
 	})
 	t.Run("join request declined notification not for current user", func(t *testing.T) {
 		// given
