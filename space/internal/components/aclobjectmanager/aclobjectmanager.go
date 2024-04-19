@@ -178,7 +178,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		if err == nil {
 			permissions := aclState.Permissions(aclState.AccountKey().GetPublic())
 			accountStatus := getAccountStatus(aclState, upToDate)
-			a.notificationService.AddRecords(acl, permissions, common.Id(), accountStatus)
+			a.notificationService.AddRecords(acl, permissions, common.Id(), accountStatus, a.status.GetLocalStatus())
 		}
 	}()
 	a.mx.Lock()

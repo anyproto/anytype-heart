@@ -121,6 +121,7 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusDeleted)
 		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
 		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusActive)
+		controller.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		controller.EXPECT().SetPersistentInfo(context.Background(), makePersistentInfo(spaceID, spaceinfo.AccountStatusRemoving)).Return(nil)
 
 		accountKeys, err := accountdata.NewRandom()
@@ -161,6 +162,7 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusDeleted)
 		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
 		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusActive)
+		controller.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		controller.EXPECT().SetPersistentInfo(context.Background(), makePersistentInfo(spaceID, spaceinfo.AccountStatusRemoving)).Return(nil)
 
 		accountKeys, err := accountdata.NewRandom()

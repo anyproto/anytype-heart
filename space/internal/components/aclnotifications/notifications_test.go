@@ -34,7 +34,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive, 0)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -69,7 +69,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, 0)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -134,7 +134,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -149,7 +149,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		<-f.done
 		f.notificationSender.AssertNotCalled(t, "CreateAndSend")
 	})
-	t.Run("remove member notification - current user was removed", func(t *testing.T) {
+	t.Run("remove member notification - current user was removed and space is loaded", func(t *testing.T) {
 		// given
 		f := newFixture(t)
 		_, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
@@ -170,7 +170,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -207,6 +207,40 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			Space: "spaceId",
 		})
 	})
+	t.Run("remove member notification - current user was removed, but space is offloaded", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		_, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
+		assert.Nil(t, err)
+		pubKeyRaw, err := pubKey.Marshall()
+		assert.Nil(t, err)
+
+		aclRecord := &aclrecordproto.AclContentValue{Value: &aclrecordproto.AclContentValue_AccountRemove{
+			AccountRemove: &aclrecordproto.AclAccountRemove{
+				Identities: [][]byte{pubKeyRaw},
+			},
+		}}
+		aclData := &aclrecordproto.AclData{AclContent: []*aclrecordproto.AclContentValue{aclRecord}}
+		acl := &aclListStub{records: []*list.AclRecord{
+			{
+				Id:    "recordId",
+				Model: aclData,
+			},
+		}}
+		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
+		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusUnknown)
+
+		loadChan := make(chan struct{})
+		close(loadChan)
+		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
+		// when
+		go f.processRecords()
+		go f.Close(context.Background())
+
+		// then
+		<-f.done
+		f.notificationSender.AssertNotCalled(t, "CreateAndSend")
+	})
 	t.Run("leave space notification, user not owner", func(t *testing.T) {
 		// given
 		f := newFixture(t)
@@ -221,7 +255,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive, 0)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -251,7 +285,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, 0)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -322,7 +356,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive, 0)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -364,7 +398,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive, 0)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -425,7 +459,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive, 0)
 
 		loadChan := make(chan struct{})
 		close(loadChan)
@@ -486,7 +520,7 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 			},
 		}}
 		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive)
+		f.AddRecords(acl, list.AclPermissionsWriter, "spaceId", spaceinfo.AccountStatusActive, 0)
 
 		loadChan := make(chan struct{})
 		close(loadChan)

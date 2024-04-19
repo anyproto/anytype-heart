@@ -30,6 +30,7 @@ type aclNotificationRecord struct {
 	aclId         string
 	accountStatus spaceinfo.AccountStatus
 	spaceName     string
+	spaceStatus   spaceinfo.LocalStatus
 }
 
 type NotificationSender interface {
@@ -40,7 +41,7 @@ type NotificationSender interface {
 
 type AclNotification interface {
 	app.ComponentRunnable
-	AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
+	AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus, spaceStatus spaceinfo.LocalStatus)
 	AddSingleRecord(aclId string, aclRecord *list.AclRecord, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
 }
 
@@ -85,6 +86,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	permissions list.AclPermissions,
 	spaceId string,
 	accountStatus spaceinfo.AccountStatus,
+	spaceStatus spaceinfo.LocalStatus,
 ) {
 	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
@@ -97,6 +99,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 				aclId:         acl.Id(),
 				accountStatus: accountStatus,
 				spaceName:     spaceName,
+				spaceStatus:   spaceStatus,
 			})
 			if err != nil {
 				logger.Errorf("failed to add acl record, %s", err)
@@ -113,6 +116,7 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 			aclId:         acl.Id(),
 			accountStatus: accountStatus,
 			spaceName:     spaceName,
+			spaceStatus:   spaceStatus,
 		})
 		if err != nil {
 			logger.Errorf("failed to add acl record, %s", err)
@@ -332,6 +336,10 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 	notificationId string,
 	identities [][]byte,
 ) error {
+	if aclNotificationRecord.spaceStatus != spaceinfo.LocalStatusOk &&
+		aclNotificationRecord.accountStatus != spaceinfo.AccountStatusDeleted {
+		return nil
+	}
 	myProfile, _, details := n.identityService.GetMyProfileDetails(ctx)
 	found, err := n.isAccountRemoved(identities, myProfile)
 	if err != nil {

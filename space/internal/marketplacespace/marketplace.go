@@ -95,3 +95,7 @@ func (s *spaceController) Close(ctx context.Context) error {
 func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
 	return spaceinfo.AccountStatusUnknown
 }
+
+func (s *spaceController) GetLocalStatus() spaceinfo.LocalStatus {
+	return spaceinfo.LocalStatusOk
+}
