@@ -86,7 +86,7 @@ func TestImageDetails(t *testing.T) {
 	require.NoError(t, err)
 
 	// From exif data
-	createdDate, err := time.Parse(time.RFC3339, "2008-05-30T15:56:01+02:00")
+	createdDate, err := time.ParseInLocation("2006:01:02 15:04:05", "2008:05:30 15:56:01", time.Local)
 	require.NoError(t, err)
 
 	for _, testCase := range []struct {
