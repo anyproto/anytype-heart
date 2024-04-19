@@ -6494,7 +6494,7 @@ message Rpc {
                         PAYMENT_NODE_ERROR = 9;
                         CACHE_ERROR = 10;
                         // for some probable future use (if needed)
-                        IN_BLACKLIST = 11;
+                        CAN_NOT_RESERVE = 11;
                         CAN_NOT_CONNECT = 12;
                     }
                 }

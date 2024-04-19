@@ -1104,121 +1104,18 @@ func TestGetTiers(t *testing.T) {
 }
 
 func TestIsNameValid(t *testing.T) {
-	t.Run("success if reading from cache", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
 
-		tgr := pb.RpcMembershipGetTiersResponse{
-			Tiers: []*model.MembershipTierData{
-				{
-					Id:                    1,
-					Name:                  "Explorer",
-					Description:           "Explorer tier",
-					AnyNamesCountIncluded: 1,
-					AnyNameMinLength:      5,
-				},
-				{
-					Id:                    2,
-					Name:                  "Suppa",
-					Description:           "Suppa tieren",
-					AnyNamesCountIncluded: 2,
-					AnyNameMinLength:      7,
-				},
-				{
-					Id:                    3,
-					Name:                  "NoNamme",
-					Description:           "Nicht Suppa tieren",
-					AnyNamesCountIncluded: 0,
-					AnyNameMinLength:      0,
-				},
-			},
-		}
-		fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
+	/*
+		t.Run("success if reading from cache", func(t *testing.T) {
+			fx := newFixture(t)
+			defer fx.finish(t)
 
-		req := pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 0,
-			NsName:        "something",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err := fx.IsNameValid(ctx, &req)
-		assert.Error(t, err)
-		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponse)(nil), resp)
-
-		// 2
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 1,
-			NsName:        "something",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
-
-		// 3
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 2,
-			NsName:        "somet",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TOO_SHORT, resp.Error.Code)
-
-		// 4
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 3,
-			NsName:        "somet",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
-
-		// 5 - TIER NOT FOUND will return error immediately
-		// not response
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 4,
-			NsName:        "somet",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		_, err = fx.IsNameValid(ctx, &req)
-		assert.Error(t, err)
-
-		// 6 - space between
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 1,
-			NsName:        "some thing",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
-
-		// 7 - dot
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 1,
-			NsName:        "some.thing",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
-	})
-
-	t.Run("success if asking directly from node", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
-			return &psp.GetTiersResponse{
-
-				Tiers: []*psp.TierData{
+			tgr := pb.RpcMembershipGetTiersResponse{
+				Tiers: []*model.MembershipTierData{
 					{
 						Id:                    1,
 						Name:                  "Explorer",
 						Description:           "Explorer tier",
-						IsActive:              true,
-						IsHiddenTier:          false,
 						AnyNamesCountIncluded: 1,
 						AnyNameMinLength:      5,
 					},
@@ -1226,8 +1123,6 @@ func TestIsNameValid(t *testing.T) {
 						Id:                    2,
 						Name:                  "Suppa",
 						Description:           "Suppa tieren",
-						IsActive:              true,
-						IsHiddenTier:          false,
 						AnyNamesCountIncluded: 2,
 						AnyNameMinLength:      7,
 					},
@@ -1235,66 +1130,212 @@ func TestIsNameValid(t *testing.T) {
 						Id:                    3,
 						Name:                  "NoNamme",
 						Description:           "Nicht Suppa tieren",
-						IsActive:              true,
-						IsHiddenTier:          false,
 						AnyNamesCountIncluded: 0,
 						AnyNameMinLength:      0,
 					},
 				},
+			}
+			fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
+
+			req := pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 0,
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err := fx.IsNameValid(ctx, &req)
+			assert.Error(t, err)
+			assert.Equal(t, (*pb.RpcMembershipIsNameValidResponse)(nil), resp)
+
+			// 2
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 1,
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.NoError(t, err)
+			assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+
+			// 3
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 2,
+				NsName:        "somet",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.NoError(t, err)
+			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TOO_SHORT, resp.Error.Code)
+
+			// 4
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 3,
+				NsName:        "somet",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.NoError(t, err)
+			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
+
+			// 5 - TIER NOT FOUND will return error immediately
+			// not response
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 4,
+				NsName:        "somet",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			_, err = fx.IsNameValid(ctx, &req)
+			assert.Error(t, err)
+
+			// 6 - space between
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 1,
+				NsName:        "some thing",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.NoError(t, err)
+			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
+
+			// 7 - dot
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 1,
+				NsName:        "some.thing",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.NoError(t, err)
+			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
+		})
+
+		t.Run("success if asking directly from node", func(t *testing.T) {
+			fx := newFixture(t)
+			defer fx.finish(t)
+
+			fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
+				return &psp.GetTiersResponse{
+
+					Tiers: []*psp.TierData{
+						{
+							Id:                    1,
+							Name:                  "Explorer",
+							Description:           "Explorer tier",
+							IsActive:              true,
+							IsHiddenTier:          false,
+							AnyNamesCountIncluded: 1,
+							AnyNameMinLength:      5,
+						},
+						{
+							Id:                    2,
+							Name:                  "Suppa",
+							Description:           "Suppa tieren",
+							IsActive:              true,
+							IsHiddenTier:          false,
+							AnyNamesCountIncluded: 2,
+							AnyNameMinLength:      7,
+						},
+						{
+							Id:                    3,
+							Name:                  "NoNamme",
+							Description:           "Nicht Suppa tieren",
+							IsActive:              true,
+							IsHiddenTier:          false,
+							AnyNamesCountIncluded: 0,
+							AnyNameMinLength:      0,
+						},
+					},
+				}, nil
+			}).MinTimes(1)
+
+			fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
+			fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
+				return nil
+			})
+
+			req := pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 0,
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err := fx.IsNameValid(ctx, &req)
+			assert.Error(t, err)
+			assert.Equal(t, (*pb.RpcMembershipIsNameValidResponse)(nil), resp)
+
+			// 2
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 1,
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.NoError(t, err)
+			assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+
+			// 3
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 2,
+				NsName:        "some",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.NoError(t, err)
+			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TOO_SHORT, resp.Error.Code)
+
+			// 4
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 3,
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.NoError(t, err)
+			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
+
+			// 5
+			req = pb.RpcMembershipIsNameValidRequest{
+				RequestedTier: 4,
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			}
+			resp, err = fx.IsNameValid(ctx, &req)
+			assert.Error(t, err)
+		})
+	*/
+
+	t.Run("validation error", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.ppclient.EXPECT().IsNameValid(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.IsNameValidResponse, error) {
+			return &psp.IsNameValidResponse{
+				Code: psp.IsNameValidResponse_HasInvalidChars,
 			}, nil
 		}).MinTimes(1)
 
-		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
-			return nil
-		})
-
 		req := pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 0,
-			NsName:        "something",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err := fx.IsNameValid(ctx, &req)
-		assert.Error(t, err)
-		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponse)(nil), resp)
-
-		// 2
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 1,
-			NsName:        "something",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
-
-		// 3
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 2,
-			NsName:        "some",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TOO_SHORT, resp.Error.Code)
-
-		// 4
-		req = pb.RpcMembershipIsNameValidRequest{
-			RequestedTier: 3,
-			NsName:        "something",
-			NsNameType:    model.NameserviceNameType_AnyName,
-		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
-
-		// 5
-		req = pb.RpcMembershipIsNameValidRequest{
 			RequestedTier: 4,
 			NsName:        "something",
 			NsNameType:    model.NameserviceNameType_AnyName,
 		}
-		resp, err = fx.IsNameValid(ctx, &req)
-		assert.Error(t, err)
+		resp, err := fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.ppclient.EXPECT().IsNameValid(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.IsNameValidResponse, error) {
+			return &psp.IsNameValidResponse{
+				Code: psp.IsNameValidResponse_Valid,
+			}, nil
+		}).MinTimes(1)
+
+		req := pb.RpcMembershipIsNameValidRequest{
+			RequestedTier: 4,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
+		}
+		resp, err := fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
 	})
 }
