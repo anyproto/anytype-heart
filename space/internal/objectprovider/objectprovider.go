@@ -128,34 +128,39 @@ func (o *objectProvider) LoadObjectsIgnoreErrs(ctx context.Context, objIDs []str
 			log.WarnCtx(ctx, "can't load object", zap.Error(err))
 		}
 	}
-	return
 }
 
 func (o *objectProvider) loadObjectsAsync(ctx context.Context, objIDs []string) (results chan error) {
 	results = make(chan error, len(objIDs))
 
-	var limiter = make(chan struct{}, 10)
-
-	for _, id := range objIDs {
-		limiter <- struct{}{}
-		go func(id string) {
-			defer func() {
-				<-limiter
-			}()
-			_, err := o.cache.GetObject(ctx, id)
-			if err != nil {
-				// we had a bug that allowed some users to remove their profile
-				// this workaround is to allow these users to load their accounts without errors and export their anytype data
-				if id == o.derivedObjectIds.Profile {
-					if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, treechangeproto.ErrGetTree) {
-						log.Error("load profile error", zap.Error(err), zap.String("objectID", id), zap.String("spaceId", o.spaceId))
-						err = nil
+	go func() {
+		var limiter = make(chan struct{}, 10)
+		for _, id := range objIDs {
+			select {
+			case <-ctx.Done():
+				results <- ctx.Err()
+				continue
+			case limiter <- struct{}{}:
+			}
+			go func(id string) {
+				defer func() {
+					<-limiter
+				}()
+				_, err := o.cache.GetObject(ctx, id)
+				if err != nil {
+					// we had a bug that allowed some users to remove their profile
+					// this workaround is to allow these users to load their accounts without errors and export their anytype data
+					if id == o.derivedObjectIds.Profile {
+						if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, treechangeproto.ErrGetTree) {
+							log.Error("load profile error", zap.Error(err), zap.String("objectID", id), zap.String("spaceId", o.spaceId))
+							err = nil
+						}
 					}
 				}
-			}
-			results <- err
-		}(id)
-	}
+				results <- err
+			}(id)
+		}
+	}()
 	return results
 }
 
