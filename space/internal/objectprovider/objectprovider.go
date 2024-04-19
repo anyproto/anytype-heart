@@ -128,7 +128,6 @@ func (o *objectProvider) LoadObjectsIgnoreErrs(ctx context.Context, objIDs []str
 			log.WarnCtx(ctx, "can't load object", zap.Error(err))
 		}
 	}
-	return
 }
 
 func (o *objectProvider) loadObjectsAsync(ctx context.Context, objIDs []string) (results chan error) {
