@@ -62,6 +62,7 @@ type spaceIndexer interface {
 
 type bundledObjectsInstaller interface {
 	InstallBundledObjects(ctx context.Context, spc Space, ids []string, isNewSpace bool) ([]string, []*types.Struct, error)
+	BundledObjectsIdsToInstall(ctx context.Context, spc Space, sourceObjectIds []string) (objectIds []string, err error)
 }
 
 var log = logger.NewNamed("client.space")
@@ -122,6 +123,9 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
+		if err = sp.InstallBundledObjects(ctx); err != nil {
+			return nil, fmt.Errorf("install bundled objects: %w", err)
+		}
 	}
 	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
 	return sp, nil
@@ -140,6 +144,9 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	s.loadMandatoryObjectsErr = s.LoadObjects(loadCtx, s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
 		return
+	}
+	if err := s.TryLoadBundledObjects(loadCtx); err != nil {
+		log.Error("failed to load bundled objects", zap.Error(err))
 	}
 	s.loadMandatoryObjectsErr = s.InstallBundledObjects(ctx)
 	if s.loadMandatoryObjectsErr != nil {
@@ -252,6 +259,22 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *space) TryLoadBundledObjects(ctx context.Context) error {
+	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
+	for _, ot := range bundle.SystemTypes {
+		ids = append(ids, ot.BundledURL())
+	}
+	for _, rk := range bundle.SystemRelations {
+		ids = append(ids, rk.BundledURL())
+	}
+	objectIds, err := s.installer.BundledObjectsIdsToInstall(ctx, s, ids)
+	if err != nil {
+		return err
+	}
+	s.LoadObjectsIgnoreErrs(ctx, objectIds)
 	return nil
 }
 
