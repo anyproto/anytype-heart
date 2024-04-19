@@ -180,7 +180,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 		bundle.RelationKeyIconImage,
 	} {
 		if _, ok := profileDetails.Fields[key.String()]; ok {
-			s.details.Fields[key.String()] = profileDetails.Fields[key.String()]
+			s.details.Fields[key.String()] = pbtypes.CopyVal(profileDetails.Fields[key.String()])
 		}
 	}
 	identityProfile := s.prepareIdentityProfile()
@@ -290,5 +290,6 @@ func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity strin
 	s.detailsLock.Lock()
 	defer s.detailsLock.Unlock()
 
-	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), s.details
+	detailsCopy := pbtypes.CopyStruct(s.details, true)
+	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), detailsCopy
 }
