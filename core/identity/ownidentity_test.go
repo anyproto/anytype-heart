@@ -212,13 +212,6 @@ func TestOwnProfileSubscription(t *testing.T) {
 			return privKey.Sign(data)
 		})
 
-		// Push the first profile version and the last
-		fx.fileAclService.EXPECT().GetInfoForFileSharing("fileObjectId").Return("fileCid1", []*model.FileEncryptionKey{
-			{
-				Path: "/0/original",
-				Key:  "key1",
-			},
-		}, nil)
 		fx.fileAclService.EXPECT().GetInfoForFileSharing("fileObjectId2").Return("fileCid2", []*model.FileEncryptionKey{
 			{
 				Path: "/0/original",
@@ -234,7 +227,6 @@ func TestOwnProfileSubscription(t *testing.T) {
 				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
 				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
 				bundle.RelationKeyGlobalName:  pbtypes.String("foobar"),
-				bundle.RelationKeyIconImage:   pbtypes.String("fileObjectId"),
 				bundle.RelationKeyName:        pbtypes.String("John Doe"),
 				bundle.RelationKeyDescription: pbtypes.String("Description"),
 			},
@@ -265,13 +257,11 @@ func TestOwnProfileSubscription(t *testing.T) {
 				Identity:    "identity1",
 				Name:        "John Doe",
 				Description: "Description",
-				IconCid:     "fileObjectId",
 			},
 			{
 				Identity:    "identity1",
 				Name:        "John Doe",
 				Description: "Description",
-				IconCid:     "fileObjectId",
 				GlobalName:  globalName,
 			},
 			{

@@ -179,7 +179,9 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 		bundle.RelationKeyDescription,
 		bundle.RelationKeyIconImage,
 	} {
-		s.details.Fields[key.String()] = profileDetails.Fields[key.String()]
+		if _, ok := profileDetails.Fields[key.String()]; ok {
+			s.details.Fields[key.String()] = profileDetails.Fields[key.String()]
+		}
 	}
 	identityProfile := s.prepareIdentityProfile()
 	s.detailsLock.Unlock()
