@@ -49,6 +49,12 @@ func TestObjectProvider_LoadObjects(t *testing.T) {
 		}
 		assert.Error(t, fx.LoadObjects(ctx, ids))
 	})
+	t.Run("ctx cancel", func(t *testing.T) {
+		fx := newFixture(t)
+		ctxCanceled, cancel := context.WithCancel(ctx)
+		cancel()
+		assert.ErrorIs(t, fx.LoadObjects(ctxCanceled, []string{"1", "2"}), context.Canceled)
+	})
 }
 
 func TestObjectProvider_LoadObjectsIgnoreErrs(t *testing.T) {
