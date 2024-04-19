@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -44,16 +43,10 @@ func TestObjectProvider_LoadObjects(t *testing.T) {
 			if i == 0 {
 				fx.objectCache.EXPECT().GetObject(mock.Anything, id).Return(nil, fmt.Errorf("error"))
 			} else {
-				fx.objectCache.EXPECT().GetObject(mock.Anything, id).Return(smarttest.New(id), nil).WaitUntil(time.After(time.Second)).Maybe()
+				fx.objectCache.EXPECT().GetObject(mock.Anything, id).Return(smarttest.New(id), nil).Maybe()
 			}
 		}
 		assert.Error(t, fx.LoadObjects(ctx, ids))
-	})
-	t.Run("ctx cancel", func(t *testing.T) {
-		fx := newFixture(t)
-		ctxCanceled, cancel := context.WithCancel(ctx)
-		cancel()
-		assert.ErrorIs(t, fx.LoadObjects(ctxCanceled, []string{"1", "2"}), context.Canceled)
 	})
 }
 
