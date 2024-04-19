@@ -251,7 +251,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	out.Data.DateEnds = status.DateEnds
 	out.Data.IsAutoRenew = status.IsAutoRenew
 	out.Data.PaymentMethod = PaymentMethodToModel(status.PaymentMethod)
-	out.Data.RequestedAnyName = status.RequestedAnyName
+	out.Data.NsName, out.Data.NsNameType = nameservice.FullNameToNsName(status.RequestedAnyName)
 	out.Data.UserEmail = status.UserEmail
 	out.Data.SubscribeToNewsletter = status.SubscribeToNewsletter
 
@@ -276,9 +276,11 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		return nil, ErrCacheProblem
 	}
 
+	nsName, _ := nameservice.FullNameToNsName(status.RequestedAnyName)
+
 	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
 	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
-	isDiffRequestedName := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.RequestedAnyName != status.RequestedAnyName)
+	isDiffRequestedName := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.NsName != nsName)
 
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
 

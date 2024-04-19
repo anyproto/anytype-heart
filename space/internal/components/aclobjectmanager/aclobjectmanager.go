@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
+	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -50,6 +51,7 @@ type aclObjectManager struct {
 	started             bool
 	notificationService aclnotifications.AclNotification
 	participantWatcher  participantwatcher.ParticipantWatcher
+	inviteMigrator      invitemigrator.InviteMigrator
 
 	ownerMetadata     []byte
 	lastIndexed       string
@@ -94,6 +96,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	if a.statService == nil {
 		a.statService = debugstat.NewNoOp()
 	}
+	a.inviteMigrator = app.MustComponent[invitemigrator.InviteMigrator](ap)
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
@@ -124,6 +127,12 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 
 func (a *aclObjectManager) waitSpace() {
 	a.sp, a.loadErr = a.spaceLoader.WaitLoad(a.ctx)
+	if a.loadErr == nil {
+		err := a.inviteMigrator.MigrateExistingInvites(a.sp)
+		if err != nil {
+			log.Warn("migrate existing invites", zap.Error(err))
+		}
+	}
 	close(a.waitLoad)
 }
 

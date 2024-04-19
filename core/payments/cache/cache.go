@@ -31,7 +31,7 @@ var (
 
 // once you change the cache format, you need to update this variable
 // it will cause cache to be dropped and recreated
-const LAST_CACHE_VERSION = 3
+const LAST_CACHE_VERSION = 4
 
 var dbKey = "payments/subscription/v" + strconv.Itoa(LAST_CACHE_VERSION)
 
