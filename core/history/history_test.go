@@ -136,6 +136,7 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 	blockFileId := "blockFileId"
 	blockBookmarkId := "blockBookmarkId"
 	blockRelationId := "blockRelationId"
+	blockTableId := "blockTableId"
 
 	t.Run("object without blocks", func(t *testing.T) {
 		// given
@@ -203,6 +204,7 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		blFile := &model.Block{Id: blockFileId, Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}
 		blBookmark := &model.Block{Id: blockBookmarkId, Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{}}}
 		blRelation := &model.Block{Id: blockRelationId, Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}}
+		blTableRow := &model.Block{Id: blockTableId, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}}
 
 		keys, _ := accountdata.NewRandom()
 		account := keys.SignKey.GetPublic()
@@ -214,6 +216,7 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 			provideBlockCreateChange(blLatex, account),
 			provideBlockCreateChange(blFile, account),
 			provideBlockCreateChange(blBookmark, account),
+			provideBlockCreateChange(blTableRow, account),
 			provideBlockSetTextChange(blRelation, account),
 
 			// update block changes
@@ -224,6 +227,7 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 			provideBlockSetFileChange(blFile, account),
 			provideBlockSetBookmarkChange(blBookmark, account),
 			provideBlockSetRelationChange(blRelation, account),
+			provideBlockSetTableRowChange(blTableRow, account),
 		}
 		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
 
@@ -231,11 +235,11 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
-		}, versionId, []*model.Block{bl, blBookmark, blLatex, blDiv, blFile, blLink, blRelation})
+		}, versionId, []*model.Block{bl, blBookmark, blLatex, blDiv, blFile, blLink, blRelation, blTableRow})
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 7)
+		assert.Len(t, blocksModifiers, 8)
 	})
 	t.Run("object with modified blocks changes by 1 participant", func(t *testing.T) {
 		// given
@@ -1645,5 +1649,31 @@ func provideBlockEmptyChange(objectId string, account crypto.PubKey) *objecttree
 		Id:       objectId,
 		Identity: account,
 		Model:    &pb.Change{},
+	}
+}
+
+func provideBlockSetTableRowChange(block *model.Block, account crypto.PubKey) *objecttree.Change {
+	return &objecttree.Change{
+		Identity: account,
+		Model: &pb.Change{
+			Content: []*pb.ChangeContent{
+				{
+					Value: &pb.ChangeContentValueOfBlockUpdate{
+						BlockUpdate: &pb.ChangeBlockUpdate{
+							Events: []*pb.EventMessage{
+								{
+									Value: &pb.EventMessageValueOfBlockSetTableRow{
+										BlockSetTableRow: &pb.EventBlockSetTableRow{
+											Id:       block.Id,
+											IsHeader: &pb.EventBlockSetTableRowIsHeader{Value: true},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }

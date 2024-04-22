@@ -91,13 +91,6 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 		obj, err = bs.OpenBlock(ctx, id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
-	if obj != nil {
-		blocksModifiers, err := getService[history.History](mw).GetBlocksModifiers(id, "", obj.GetBlocks())
-		if err != nil {
-			return response(pb.RpcObjectOpenResponseError_UNKNOWN_ERROR, err)
-		}
-		obj.BlocksModifiers = blocksModifiers
-	}
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectOpenResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE),
