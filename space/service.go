@@ -183,6 +183,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
+	s.techSpace.WakeUpViews()
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
 	if err != nil {
