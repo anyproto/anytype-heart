@@ -452,7 +452,7 @@ func (s *State) addNotification(notification *model.Notification) {
 	if s.notifications == nil {
 		s.notifications = map[string]*model.Notification{}
 	}
-	if _, ok := s.notifications[notification.Id]; ok {
+	if n, ok := s.notifications[notification.Id]; ok && n.Status == model.Notification_Read {
 		return
 	}
 	s.notifications[notification.Id] = notification
@@ -804,18 +804,15 @@ func (s *State) makeOriginalCreatedChanges() (ch []*pb.ChangeContent) {
 
 func (s *State) makeNotificationChanges() []*pb.ChangeContent {
 	var changes []*pb.ChangeContent
-	if s.parent == nil || len(s.parent.ListNotifications()) == 0 {
-		for _, notification := range s.notifications {
+	for id, notification := range s.notifications {
+		if s.parent == nil {
 			changes = append(changes, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfNotificationCreate{
 					NotificationCreate: &pb.ChangeNotificationCreate{Notification: notification},
 				},
 			})
+			continue
 		}
-		return changes
-	}
-
-	for id, notification := range s.notifications {
 		if n := s.parent.GetNotificationById(id); n != nil {
 			if n.Status != notification.Status {
 				changes = append(changes, &pb.ChangeContent{

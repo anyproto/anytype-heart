@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"google.golang.org/grpc/metadata"
@@ -97,16 +98,12 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 		}
 		obj.BlocksModifiers = blocksModifiers
 	}
-	if err != nil {
-		if err == source.ErrUnknownDataFormat {
-			return response(pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE, err)
-		} else if err == source.ErrObjectNotFound {
-			return response(pb.RpcObjectOpenResponseError_NOT_FOUND, err)
-		}
-		return response(pb.RpcObjectOpenResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectOpenResponseError_NULL, nil)
+	code := mapErrorCode(err,
+		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectOpenResponseError_OBJECT_DELETED),
+		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE),
+		errToCode(source.ErrObjectNotFound, pb.RpcObjectOpenResponseError_NOT_FOUND),
+	)
+	return response(code, err)
 }
 
 func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
@@ -136,16 +133,12 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 		}
 		obj.BlocksModifiers = blocksModifiers
 	}
-	if err != nil {
-		if err == source.ErrUnknownDataFormat {
-			return response(pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE, err)
-		} else if err == source.ErrObjectNotFound {
-			return response(pb.RpcObjectShowResponseError_NOT_FOUND, err)
-		}
-		return response(pb.RpcObjectShowResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectShowResponseError_NULL, nil)
+	code := mapErrorCode(err,
+		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectShowResponseError_OBJECT_DELETED),
+		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE),
+		errToCode(source.ErrObjectNotFound, pb.RpcObjectShowResponseError_NOT_FOUND),
+	)
+	return response(code, err)
 }
 
 func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse {

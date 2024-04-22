@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
+	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -50,6 +51,7 @@ type aclObjectManager struct {
 	started             bool
 	notificationService aclnotifications.AclNotification
 	participantWatcher  participantwatcher.ParticipantWatcher
+	inviteMigrator      invitemigrator.InviteMigrator
 
 	ownerMetadata     []byte
 	lastIndexed       string
@@ -94,6 +96,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	if a.statService == nil {
 		a.statService = debugstat.NewNoOp()
 	}
+	a.inviteMigrator = app.MustComponent[invitemigrator.InviteMigrator](ap)
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
@@ -118,12 +121,21 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	}
 	a.cancel()
 	<-a.wait
+	if a.sp != nil {
+		a.sp.CommonSpace().Acl().SetAclUpdater(nil)
+	}
 	a.statService.RemoveProvider(a)
 	return
 }
 
 func (a *aclObjectManager) waitSpace() {
 	a.sp, a.loadErr = a.spaceLoader.WaitLoad(a.ctx)
+	if a.loadErr == nil {
+		err := a.inviteMigrator.MigrateExistingInvites(a.sp)
+		if err != nil {
+			log.Warn("migrate existing invites", zap.Error(err))
+		}
+	}
 	close(a.waitLoad)
 }
 
@@ -160,11 +172,13 @@ func (a *aclObjectManager) processAcl() (err error) {
 		common   = a.sp.CommonSpace()
 		acl      = common.Acl()
 		aclState = acl.AclState()
+		upToDate bool
 	)
 	defer func() {
 		if err == nil {
 			permissions := aclState.Permissions(aclState.AccountKey().GetPublic())
-			a.notificationService.AddRecords(acl, permissions, common.Id(), spaceinfo.AccountStatusActive)
+			accountStatus := getAccountStatus(aclState, upToDate)
+			a.notificationService.AddRecords(acl, permissions, common.Id(), accountStatus, a.status.GetLocalStatus())
 		}
 	}()
 	a.mx.Lock()
@@ -190,7 +204,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
-	upToDate := statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
+	upToDate = statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
 	err = a.processStates(states, upToDate, aclState.Identity())
 	if err != nil {
 		return
@@ -244,4 +258,11 @@ func sortStates(states []list.AccountState) {
 			return 1
 		}
 	})
+}
+
+func getAccountStatus(aclState *list.AclState, upToDate bool) spaceinfo.AccountStatus {
+	if aclState.Permissions(aclState.Identity()).NoPermissions() && upToDate {
+		return spaceinfo.AccountStatusDeleted
+	}
+	return spaceinfo.AccountStatusActive
 }

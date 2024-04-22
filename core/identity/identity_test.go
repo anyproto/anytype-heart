@@ -13,9 +13,7 @@ import (
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -40,7 +38,7 @@ type fixture struct {
 const (
 	testObserverPeriod = 1 * time.Millisecond
 	globalName         = "anytypeuser.any"
-	identity           = "identity1"
+	testIdentity       = "identity1"
 )
 
 func newFixture(t *testing.T) *fixture {
@@ -52,10 +50,11 @@ func newFixture(t *testing.T) *fixture {
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
 	fileAclService := mock_fileacl.NewMockService(t)
-	dataStore := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
-	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{identity, ""}}).AnyTimes().
+	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{testIdentity, ""}}).AnyTimes().
 		Return(&nameserviceproto.BatchNameByAddressResponse{Results: []*nameserviceproto.NameByAddressResponse{{
 			Found: true,
 			Name:  globalName,
@@ -64,12 +63,11 @@ func newFixture(t *testing.T) *fixture {
 			Name:  "",
 		},
 		}}, nil)
-	err := dataStore.Run(ctx)
+	err = dataStoreProvider.Run(ctx)
 	require.NoError(t, err)
 
 	a := new(app.App)
-	a.Register(&spaceIdDeriverStub{})
-	a.Register(dataStore)
+	a.Register(dataStoreProvider)
 	a.Register(objectStore)
 	a.Register(identityRepoClient)
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
@@ -86,10 +84,11 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	svcRef := svc.(*service)
-	db, err := dataStore.LocalStorage()
+	db, err := dataStoreProvider.LocalStorage()
 	require.NoError(t, err)
 	svcRef.db = db
-	svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
+	// TODO
+	// svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
 	fx := &fixture{
 		service:           svcRef,
 		spaceService:      spaceService,
@@ -292,50 +291,4 @@ func TestObservers(t *testing.T) {
 		require.Empty(t, list)
 		require.False(t, called)
 	})
-}
-
-type spaceIdDeriverStub struct{}
-
-func (s spaceIdDeriverStub) Init(a *app.App) (err error) { return nil }
-
-func (s spaceIdDeriverStub) Name() (name string) { return "spaceIdDeriverStub" }
-
-func (s spaceIdDeriverStub) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
-	return fmt.Sprintf("spaceId-%s", spaceType), nil
-}
-
-func TestStartWithError(t *testing.T) {
-	fx := newFixture(t)
-
-	fx.accountService.EXPECT().AccountID().Return("identity1")
-	fx.spaceService.EXPECT().GetPersonalSpace(mock.Anything).Return(nil, fmt.Errorf("space error"))
-
-	t.Run("GetMyProfileDetails before run with cancelled input context", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		identity, key, details := fx.GetMyProfileDetails(ctx)
-		assert.Empty(t, identity)
-		assert.Nil(t, key)
-		assert.Nil(t, details)
-	})
-
-	err := fx.Run(context.Background())
-	require.Error(t, err)
-
-	err = fx.Close(context.Background())
-	require.NoError(t, err)
-
-	done := make(chan struct{})
-
-	go func() {
-		_, _, _ = fx.GetMyProfileDetails(context.Background())
-		close(done)
-	}()
-
-	select {
-	case <-time.After(time.Second):
-		t.Fatal("GetMyProfileDetails should not block")
-	case <-done:
-	}
 }

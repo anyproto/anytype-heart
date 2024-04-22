@@ -63,6 +63,8 @@ type SpaceView interface {
 	RemoveExistingInviteInfo() (fileCid string, err error)
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
 	GetExistingInviteInfo() (fileCid string, fileKey string)
+	SetSharedSpacesLimit(limits int) (err error)
+	GetSharedSpacesLimit() (limits int)
 }
 
 func New() TechSpace {

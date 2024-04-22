@@ -21,3 +21,19 @@ func TestNsNameToFullName(t *testing.T) {
 		require.Equal(t, "", out)
 	})
 }
+
+func TestFullNameToNsName(t *testing.T) {
+	t.Run("should succeed", func(t *testing.T) {
+		out, nt := FullNameToNsName("somename.any")
+		require.Equal(t, "somename", out)
+		require.Equal(t, model.NameserviceNameType_AnyName, nt)
+
+		out, nt = FullNameToNsName("tony")
+		require.Equal(t, "tony", out)
+		require.Equal(t, model.NameserviceNameType_AnyName, nt)
+
+		out, nt = FullNameToNsName("")
+		require.Equal(t, "", out)
+		require.Equal(t, model.NameserviceNameType_AnyName, nt)
+	})
+}

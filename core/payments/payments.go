@@ -16,12 +16,14 @@ import (
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 )
 
 const CName = "payments"
@@ -47,7 +49,7 @@ type globalNamesUpdater interface {
 }
 
 var paymentMethodMap = map[proto.PaymentMethod]model.MembershipPaymentMethod{
-	proto.PaymentMethod_MethodCard:        model.Membership_MethodCard,
+	proto.PaymentMethod_MethodCard:        model.Membership_MethodStripe,
 	proto.PaymentMethod_MethodCrypto:      model.Membership_MethodCrypto,
 	proto.PaymentMethod_MethodAppleInapp:  model.Membership_MethodInappApple,
 	proto.PaymentMethod_MethodGoogleInapp: model.Membership_MethodInappGoogle,
@@ -109,7 +111,7 @@ type Service interface {
 	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
 	FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error)
-	GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error)
+	GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error)
 
 	app.ComponentRunnable
 }
@@ -126,6 +128,9 @@ type service struct {
 	periodicGetStatus periodicsync.PeriodicSync
 	eventSender       event.Sender
 	profileUpdater    globalNamesUpdater
+
+	multiplayerLimitsUpdater deletioncontroller.DeletionController
+	fileLimitsUpdater        filesync.FileSync
 }
 
 func (s *service) Name() (name string) {
@@ -139,6 +144,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
+	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
+	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
@@ -244,7 +251,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	out.Data.DateEnds = status.DateEnds
 	out.Data.IsAutoRenew = status.IsAutoRenew
 	out.Data.PaymentMethod = PaymentMethodToModel(status.PaymentMethod)
-	out.Data.RequestedAnyName = status.RequestedAnyName
+	out.Data.NsName, out.Data.NsNameType = nameservice.FullNameToNsName(status.RequestedAnyName)
 	out.Data.UserEmail = status.UserEmail
 	out.Data.SubscribeToNewsletter = status.SubscribeToNewsletter
 
@@ -269,9 +276,11 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		return nil, ErrCacheProblem
 	}
 
+	nsName, _ := nameservice.FullNameToNsName(status.RequestedAnyName)
+
 	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
 	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
-	isDiffRequestedName := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.RequestedAnyName != status.RequestedAnyName)
+	isDiffRequestedName := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.NsName != nsName)
 
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
 
@@ -295,6 +304,11 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 			log.Error("can not enable cache", zap.Error(err))
 			return nil, ErrCacheProblem
 		}
+
+		err = s.updateLimits(ctx)
+		if err != nil {
+			log.Error("update limits", zap.Error(err))
+		}
 	}
 
 	// 5 - if requested any name has changed, then we need to update details of local identity
@@ -305,64 +319,71 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	return &out, nil
 }
 
+func (s *service) updateLimits(ctx context.Context) error {
+	s.multiplayerLimitsUpdater.UpdateCoordinatorStatus()
+	return s.fileLimitsUpdater.UpdateNodeUsage(ctx)
+}
+
 func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
 	var code proto.IsNameValidResponse_Code
 	var desc string
 
 	out := pb.RpcMembershipIsNameValidResponse{}
 
-	/*
-		// 1 - send request to PP node and ask her please
-		invr := proto.IsNameValidRequest{
-			// payment node will check if signature matches with this OwnerAnyID
-			RequestedTier:    req.RequestedTier,
-			RequestedAnyName: req.RequestedAnyName,
-		}
+	// 1 - send request to PP node and ask her please
+	invr := proto.IsNameValidRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		RequestedTier:    req.RequestedTier,
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+	}
 
-		resp, err := s.ppclient.IsNameValid(ctx, &invr)
-		if err != nil {
-			return nil, err
-		}
-
-		if resp.Code == proto.IsNameValidResponse_Valid {
-			// no error
-			return &out, nil
-		}
-
-		out.Error = &pb.RpcMembershipIsNameValidResponseError{}
-		code = resp.Code
-		desc = resp.Description
-	*/
-
-	// 1 - get all tiers from cache or PP node
-	// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
-	// and first is much simpler/faster
-	tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipTiersGetRequest{
-		NoCache: false,
-		// TODO: warning! no locale and payment method are passed here!
-		// Locale:        "",
-		// PaymentMethod: pb.RpcMembershipPaymentMethod_PAYMENT_METHOD_UNKNOWN,
-	})
+	resp, err := s.ppclient.IsNameValid(ctx, &invr)
 	if err != nil {
 		return nil, err
 	}
-	if tiers.Tiers == nil {
-		return nil, ErrNoTiers
+
+	if resp.Code == proto.IsNameValidResponse_Valid {
+		// no error
+		return &out, nil
 	}
 
-	// find req.RequestedTier
-	var tier *model.MembershipTierData
-	for _, t := range tiers.Tiers {
-		if t.Id == req.RequestedTier {
-			tier = t
-			break
+	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
+	code = resp.Code
+	desc = resp.Description
+
+	// this LOCAL code is switched off because we need more info on the PP node side
+	// so instead we call it (see above ^)
+	/*
+		// 1 - get all tiers from cache or PP node
+		// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
+		// and first is much simpler/faster
+		tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipGetTiersRequest{
+			NoCache: false,
+			// TODO: warning! no locale and payment method are passed here!
+			// Locale:        "",
+			// PaymentMethod: pb.RpcMembershipPaymentMethod_PAYMENT_METHOD_UNKNOWN,
+		})
+		if err != nil {
+			return nil, err
 		}
-	}
-	if tier == nil {
-		return nil, ErrNoTierFound
-	}
+		if tiers.Tiers == nil {
+			return nil, ErrNoTiers
+		}
 
-	code = s.validateAnyName(*tier, nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+		// find req.RequestedTier
+		var tier *model.MembershipTierData
+		for _, t := range tiers.Tiers {
+			if t.Id == req.RequestedTier {
+				tier = t
+				break
+			}
+		}
+		if tier == nil {
+			return nil, ErrNoTierFound
+		}
+
+		code = s.validateAnyName(*tier, nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+	*/
 
 	if code == proto.IsNameValidResponse_Valid {
 		// valid
@@ -384,6 +405,8 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS
 	case proto.IsNameValidResponse_TierFeatureNoName:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME
+	case proto.IsNameValidResponse_CanNotReserve:
+		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_CAN_NOT_RESERVE
 	default:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_UNKNOWN_ERROR
 	}
@@ -656,7 +679,7 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 	return &out, nil
 }
 
-func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
+func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error) {
 	// 1 - get all tiers (including Explorer)
 	out, err := s.getAllTiers(ctx, req)
 	if err != nil {
@@ -675,7 +698,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 	}
 
 	// If the current tier is higher than Explorer, show the list without Explorer (downgrading is not allowed)
-	filtered := &pb.RpcMembershipTiersGetResponse{
+	filtered := &pb.RpcMembershipGetTiersResponse{
 		Tiers: make([]*model.MembershipTierData, 0),
 	}
 	for _, tier := range out.Tiers {
@@ -686,7 +709,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipTiersGetReq
 	return filtered, nil
 }
 
-func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGetRequest) (*pb.RpcMembershipTiersGetResponse, error) {
+func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error) {
 	// 1 - check in cache
 	// status var. is unused here
 	cachedStatus, cachedTiers, err := s.cache.CacheGet()
@@ -735,7 +758,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipTiersGet
 	}
 
 	// 3 - return out
-	var out pb.RpcMembershipTiersGetResponse
+	var out pb.RpcMembershipGetTiersResponse
 
 	out.Tiers = make([]*model.MembershipTierData, len(tiers.Tiers))
 	for i, tier := range tiers.Tiers {

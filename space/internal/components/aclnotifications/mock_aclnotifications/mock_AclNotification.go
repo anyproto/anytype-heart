@@ -27,9 +27,9 @@ func (_m *MockAclNotification) EXPECT() *MockAclNotification_Expecter {
 	return &MockAclNotification_Expecter{mock: &_m.Mock}
 }
 
-// AddRecords provides a mock function with given fields: acl, permissions, spaceId, accountStatus
-func (_m *MockAclNotification) AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus) {
-	_m.Called(acl, permissions, spaceId, accountStatus)
+// AddRecords provides a mock function with given fields: acl, permissions, spaceId, accountStatus, spaceStatus
+func (_m *MockAclNotification) AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus, spaceStatus spaceinfo.LocalStatus) {
+	_m.Called(acl, permissions, spaceId, accountStatus, spaceStatus)
 }
 
 // MockAclNotification_AddRecords_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddRecords'
@@ -42,13 +42,14 @@ type MockAclNotification_AddRecords_Call struct {
 //   - permissions list.AclPermissions
 //   - spaceId string
 //   - accountStatus spaceinfo.AccountStatus
-func (_e *MockAclNotification_Expecter) AddRecords(acl interface{}, permissions interface{}, spaceId interface{}, accountStatus interface{}) *MockAclNotification_AddRecords_Call {
-	return &MockAclNotification_AddRecords_Call{Call: _e.mock.On("AddRecords", acl, permissions, spaceId, accountStatus)}
+//   - spaceStatus spaceinfo.LocalStatus
+func (_e *MockAclNotification_Expecter) AddRecords(acl interface{}, permissions interface{}, spaceId interface{}, accountStatus interface{}, spaceStatus interface{}) *MockAclNotification_AddRecords_Call {
+	return &MockAclNotification_AddRecords_Call{Call: _e.mock.On("AddRecords", acl, permissions, spaceId, accountStatus, spaceStatus)}
 }
 
-func (_c *MockAclNotification_AddRecords_Call) Run(run func(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)) *MockAclNotification_AddRecords_Call {
+func (_c *MockAclNotification_AddRecords_Call) Run(run func(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus, spaceStatus spaceinfo.LocalStatus)) *MockAclNotification_AddRecords_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(list.AclList), args[1].(list.AclPermissions), args[2].(string), args[3].(spaceinfo.AccountStatus))
+		run(args[0].(list.AclList), args[1].(list.AclPermissions), args[2].(string), args[3].(spaceinfo.AccountStatus), args[4].(spaceinfo.LocalStatus))
 	})
 	return _c
 }
@@ -58,7 +59,44 @@ func (_c *MockAclNotification_AddRecords_Call) Return() *MockAclNotification_Add
 	return _c
 }
 
-func (_c *MockAclNotification_AddRecords_Call) RunAndReturn(run func(list.AclList, list.AclPermissions, string, spaceinfo.AccountStatus)) *MockAclNotification_AddRecords_Call {
+func (_c *MockAclNotification_AddRecords_Call) RunAndReturn(run func(list.AclList, list.AclPermissions, string, spaceinfo.AccountStatus, spaceinfo.LocalStatus)) *MockAclNotification_AddRecords_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AddSingleRecord provides a mock function with given fields: aclId, aclRecord, permissions, spaceId, accountStatus
+func (_m *MockAclNotification) AddSingleRecord(aclId string, aclRecord *list.AclRecord, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus) {
+	_m.Called(aclId, aclRecord, permissions, spaceId, accountStatus)
+}
+
+// MockAclNotification_AddSingleRecord_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddSingleRecord'
+type MockAclNotification_AddSingleRecord_Call struct {
+	*mock.Call
+}
+
+// AddSingleRecord is a helper method to define mock.On call
+//   - aclId string
+//   - aclRecord *list.AclRecord
+//   - permissions list.AclPermissions
+//   - spaceId string
+//   - accountStatus spaceinfo.AccountStatus
+func (_e *MockAclNotification_Expecter) AddSingleRecord(aclId interface{}, aclRecord interface{}, permissions interface{}, spaceId interface{}, accountStatus interface{}) *MockAclNotification_AddSingleRecord_Call {
+	return &MockAclNotification_AddSingleRecord_Call{Call: _e.mock.On("AddSingleRecord", aclId, aclRecord, permissions, spaceId, accountStatus)}
+}
+
+func (_c *MockAclNotification_AddSingleRecord_Call) Run(run func(aclId string, aclRecord *list.AclRecord, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)) *MockAclNotification_AddSingleRecord_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(*list.AclRecord), args[2].(list.AclPermissions), args[3].(string), args[4].(spaceinfo.AccountStatus))
+	})
+	return _c
+}
+
+func (_c *MockAclNotification_AddSingleRecord_Call) Return() *MockAclNotification_AddSingleRecord_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockAclNotification_AddSingleRecord_Call) RunAndReturn(run func(string, *list.AclRecord, list.AclPermissions, string, spaceinfo.AccountStatus)) *MockAclNotification_AddSingleRecord_Call {
 	_c.Call.Return(run)
 	return _c
 }

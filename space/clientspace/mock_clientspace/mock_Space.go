@@ -1381,6 +1381,40 @@ func (_c *MockSpace_LoadObjects_Call) RunAndReturn(run func(context.Context, []s
 	return _c
 }
 
+// LoadObjectsIgnoreErrs provides a mock function with given fields: ctx, objIDs
+func (_m *MockSpace) LoadObjectsIgnoreErrs(ctx context.Context, objIDs []string) {
+	_m.Called(ctx, objIDs)
+}
+
+// MockSpace_LoadObjectsIgnoreErrs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadObjectsIgnoreErrs'
+type MockSpace_LoadObjectsIgnoreErrs_Call struct {
+	*mock.Call
+}
+
+// LoadObjectsIgnoreErrs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objIDs []string
+func (_e *MockSpace_Expecter) LoadObjectsIgnoreErrs(ctx interface{}, objIDs interface{}) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	return &MockSpace_LoadObjectsIgnoreErrs_Call{Call: _e.mock.On("LoadObjectsIgnoreErrs", ctx, objIDs)}
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Run(run func(ctx context.Context, objIDs []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Return() *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) RunAndReturn(run func(context.Context, []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Remove provides a mock function with given fields: ctx, objectID
 func (_m *MockSpace) Remove(ctx context.Context, objectID string) error {
 	ret := _m.Called(ctx, objectID)

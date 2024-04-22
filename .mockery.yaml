@@ -20,6 +20,20 @@ packages:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/block/editor/file:
+    interfaces:
+      File:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
+  github.com/anyproto/anytype-heart/core/block/editor/smartblock:
+    interfaces:
+      Indexer:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
@@ -87,12 +101,17 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
     interfaces:
       ParticipantWatcher:
+  github.com/anyproto/anytype-heart/space/internal/components/invitemigrator:
+    interfaces:
+      InviteMigrator:
   github.com/anyproto/anytype-heart/space/internal/components/aclnotifications:
     interfaces:
       AclNotification:
+      NotificationSender:
   github.com/anyproto/anytype-heart/space/internal/components/dependencies:
     interfaces:
       SpaceIndexer:
+      IdentityService:
   github.com/anyproto/anytype-heart/space/internal/components/spacestatus:
     interfaces:
       SpaceStatus:
@@ -117,9 +136,10 @@ packages:
   github.com/anyproto/anytype-heart/space/deletioncontroller:
     interfaces:
       SpaceManager:
-  github.com/anyproto/anytype-heart/core/inviteservice:
+      DeletionController:
+  github.com/anyproto/anytype-heart/core/domain:
     interfaces:
-      InviteService:
+      InviteObject:
   github.com/anyproto/anytype-heart/core/payments/cache:
     interfaces:
       CacheService:
@@ -129,7 +149,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/source:
     interfaces:
       Service:
-
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:

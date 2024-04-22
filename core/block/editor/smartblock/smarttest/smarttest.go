@@ -62,6 +62,7 @@ type SmartTest struct {
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
 	os               *testMock.MockObjectStore
+	space            smartblock.Space
 
 	// Rudimentary hooks
 	hooks     []smartblock.HookCallback
@@ -73,6 +74,9 @@ type SmartTest struct {
 func (st *SmartTest) SpaceID() string { return st.spaceId }
 func (st *SmartTest) SetSpaceId(spaceId string) {
 	st.spaceId = spaceId
+}
+func (st *SmartTest) SetSpace(space smartblock.Space) {
+	st.space = space
 }
 
 type stubSpace struct {
@@ -174,7 +178,10 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 
 func (st *SmartTest) GetDocInfo() smartblock.DocInfo {
 	return smartblock.DocInfo{
-		Id: st.Id(),
+		Id:             st.Id(),
+		Space:          st.Space(),
+		SmartblockType: st.sbType,
+		Heads:          []string{st.Id()},
 	}
 }
 

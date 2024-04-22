@@ -499,6 +499,9 @@ func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
 }
 
 func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+	if req.FocusedBlockId == template.TitleBlockId || req.FocusedBlockId == template.DescriptionBlockId {
+		req.FocusedBlockId = ""
+	}
 	s := cb.NewStateCtx(ctx)
 	for _, fs := range req.FileSlot {
 		b := simple.New(&model.Block{

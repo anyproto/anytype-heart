@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory/mock_spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -120,6 +121,7 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusDeleted)
 		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
 		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusActive)
+		controller.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		controller.EXPECT().SetPersistentInfo(context.Background(), makePersistentInfo(spaceID, spaceinfo.AccountStatusRemoving)).Return(nil)
 
 		accountKeys, err := accountdata.NewRandom()
@@ -160,6 +162,7 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusDeleted)
 		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
 		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusActive)
+		controller.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		controller.EXPECT().SetPersistentInfo(context.Background(), makePersistentInfo(spaceID, spaceinfo.AccountStatusRemoving)).Return(nil)
 
 		accountKeys, err := accountdata.NewRandom()
@@ -200,6 +203,29 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
+	})
+}
+
+func TestService_UpdateSharedLimits(t *testing.T) {
+	t.Run("update shared limits", func(t *testing.T) {
+		// given
+		mockTechSpace := mock_techspace.NewMockTechSpace(t)
+		s := service{
+			personalSpaceId: "spaceId",
+			techSpace:       &clientspace.TechSpace{TechSpace: mockTechSpace},
+		}
+		mockSpaceView := mock_techspace.NewMockSpaceView(t)
+		mockTechSpace.EXPECT().DoSpaceView(ctx, "spaceId", mock.Anything).RunAndReturn(
+			func(ctx context.Context, spaceId string, f func(view techspace.SpaceView) error) error {
+				return f(mockSpaceView)
+			})
+		mockSpaceView.EXPECT().SetSharedSpacesLimit(10).Return(nil)
+
+		// when
+		err := s.UpdateSharedLimits(ctx, 10)
+
+		// then
+		require.NoError(t, err)
 	})
 }
 
