@@ -106,7 +106,7 @@ CACHE LOGICS:
 type Service interface {
 	GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error)
 	IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error)
-	GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error)
+	RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) (*pb.RpcMembershipRegisterPaymentRequestResponse, error)
 	GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error)
 	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
@@ -452,7 +452,7 @@ func (s *service) validateAnyName(tier model.MembershipTierData, name string) pr
 	return proto.IsNameValidResponse_Valid
 }
 
-func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
+func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) (*pb.RpcMembershipRegisterPaymentRequestResponse, error) {
 	// 1 - send request
 	bsr := proto.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -491,7 +491,7 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPay
 		return nil, err
 	}
 
-	out := pb.RpcMembershipGetPaymentUrlResponse{
+	out := pb.RpcMembershipRegisterPaymentRequestResponse{
 		PaymentUrl: bsRet.PaymentUrl,
 		BillingId:  bsRet.BillingID,
 	}
@@ -818,15 +818,8 @@ func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembersh
 	verifyReq := proto.VerifyAppStoreReceiptRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
-
-		// not SCW address, but EOA address
-		// including 0x
-		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
-
-		RequestedTier: req.RequestedTier,
-		Receipt:       req.Receipt,
-
-		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+		BillingID:  req.BillingId,
+		Receipt:    req.Receipt,
 	}
 
 	payload, err := verifyReq.Marshal()

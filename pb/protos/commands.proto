@@ -6502,10 +6502,10 @@ message Rpc {
         }
 
         /**
-        * Generate a link to the payment provider
-        * where user can pay for the membership
+        * Generate a unique id for payment request (for mobile clients)
+        * Generate a link to Stripe where user can pay for the membership (for desktop client)
         */
-        message GetPaymentUrl {
+        message RegisterPaymentRequest {
             message Request {
                 uint32 requestedTier = 1;
                 
@@ -6764,16 +6764,11 @@ message Rpc {
 
         message VerifyAppStoreReceipt {
             message Request {
-                uint32 requestedTier = 1;
+                // billingId is used to identify payment request on payment node side
+                string billingId = 1;
 
                 // receipt is a JWT-encoded string including info about subscription purchase
                 string receipt = 2;
-
-                // if empty - then no name requested
-                // if non-empty - PP node will register that name on behalf of the user
-                string nsName = 3;
-
-                anytype.model.NameserviceNameType nsNameType = 4;
             }
 
             message Response {
@@ -6791,11 +6786,6 @@ message Rpc {
                         NOT_LOGGED_IN = 3;
                         PAYMENT_NODE_ERROR = 4;
                         CACHE_ERROR = 5;
-
-                        TIER_NOT_FOUND = 6;
-                        TIER_INVALID = 7;
-                        BAD_ANYNAME = 8;
-                        MEMBERSHIP_ALREADY_EXISTS = 9;
                     }
                 }
             }
