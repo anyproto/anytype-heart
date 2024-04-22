@@ -1,6 +1,8 @@
 package spaceinfo
 
-import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+import (
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
 
 type LocalStatus int
 
@@ -81,23 +83,29 @@ func (a AccountStatus) String() string {
 	return ""
 }
 
-type SpaceLocalInfo struct {
-	SpaceID      string
-	LocalStatus  LocalStatus
-	RemoteStatus RemoteStatus
+type ShareableStatus int
+
+const (
+	ShareableStatusUnknown      = ShareableStatus(model.SpaceShareableStatus_StatusUnknown)
+	ShareableStatusShareable    = ShareableStatus(model.SpaceShareableStatus_StatusShareable)
+	ShareableStatusNotShareable = ShareableStatus(model.SpaceShareableStatus_StatusNotShareable)
+)
+
+func (s ShareableStatus) String() string {
+	switch s {
+	case ShareableStatusUnknown:
+		return "Unknown"
+	case ShareableStatusShareable:
+		return "Shareable"
+	case ShareableStatusNotShareable:
+		return "NotShareable"
+	}
+	return ""
 }
 
-type SpacePersistentInfo struct {
-	SpaceID       string
-	AccountStatus AccountStatus
-	AclHeadId     string
-}
-
-type SpaceInfo struct {
-	SpaceID       string
-	LocalStatus   LocalStatus
-	RemoteStatus  RemoteStatus
-	AccountStatus AccountStatus
+type SpaceRemoteStatusInfo struct {
+	IsOwned   bool
+	LocalInfo SpaceLocalInfo
 }
 
 type AccessType int
@@ -107,3 +115,8 @@ const (
 	AccessTypePersonal = AccessType(model.SpaceAccessType_Personal)
 	AccessTypeShared   = AccessType(model.SpaceAccessType_Shared)
 )
+
+type SpaceDescription struct {
+	Name      string
+	IconImage string
+}

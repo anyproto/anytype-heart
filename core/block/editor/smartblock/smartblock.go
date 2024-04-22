@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -79,6 +80,7 @@ const (
 	HookAfterApply       // runs after changes applied from the user or externally via changeListener
 	HookOnClose
 	HookOnBlockClose
+	HookOnStateRebuild
 )
 
 type key int
@@ -851,10 +853,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
-	localDetailsFromState := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
-	if pbtypes.StructEqualIgnore(localDetailsFromState, localDetailsFromStore, nil) {
-		return nil
-	}
 
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
@@ -874,7 +872,7 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
-	return pbtypes.CopyStruct(storedDetails.GetDetails()), nil
+	return pbtypes.CopyStruct(storedDetails.GetDetails(), true), nil
 }
 
 func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
@@ -1030,7 +1028,12 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.runIndexer(sb.Doc.(*state.State))
-	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
+	applyInfo := ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()}
+	sb.execHooks(HookAfterApply, applyInfo)
+	err = sb.execHooks(HookOnStateRebuild, applyInfo)
+	if err != nil {
+		log.With("objectId", sb.Id(), "error", err).Error("executing hook on state rebuild")
+	}
 	return nil
 }
 
@@ -1374,7 +1377,9 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if v, ok := s.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, v)
+		status := filesyncstatus.Status(v.GetNumberValue())
+		// Clients expect syncstatus constants in this relation
+		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, pbtypes.Int64(int64(status.ToSyncStatus())))
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {

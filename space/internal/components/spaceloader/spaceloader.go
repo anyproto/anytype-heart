@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
-	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.components.spaceloader"
@@ -38,6 +39,7 @@ type spaceLoader struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	space  clientspace.Space
+	mx     sync.Mutex
 }
 
 func New(stopIfMandatoryFail, disableRemoteLoad bool) SpaceLoader {
@@ -64,12 +66,12 @@ func (s *spaceLoader) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) Close(ctx context.Context) (err error) {
-	s.status.Lock()
+	s.mx.Lock()
 	if s.loading == nil {
-		s.status.Unlock()
+		s.mx.Unlock()
 		return nil
 	}
-	s.status.Unlock()
+	s.mx.Unlock()
 	s.cancel()
 	sp, err := s.WaitLoad(ctx)
 	if err != nil {
@@ -79,69 +81,41 @@ func (s *spaceLoader) Close(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
-	s.status.Lock()
-	defer s.status.Unlock()
+	s.mx.Lock()
+	defer s.mx.Unlock()
 
-	exists, err := s.techSpace.SpaceViewExists(ctx, s.status.SpaceId())
-	if err != nil {
-		return
-	}
-	if !exists {
-		return ErrSpaceNotExists
-	}
-	err = s.status.SetLocalStatus(ctx, spaceinfo.LocalStatusUnknown)
-	if err != nil {
-		return
-	}
-	persistentStatus := s.status.GetPersistentStatus()
-	if persistentStatus == spaceinfo.AccountStatusDeleted {
+	if s.status.GetPersistentStatus() == spaceinfo.AccountStatusDeleted {
 		return ErrSpaceDeleted
 	}
-	info := spaceinfo.SpaceLocalInfo{
-		SpaceID:     s.status.SpaceId(),
-		LocalStatus: spaceinfo.LocalStatusLoading,
-	}
-	if err = s.status.SetLocalInfo(ctx, info); err != nil {
+	info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
+	info.SetLocalStatus(spaceinfo.LocalStatusLoading)
+	if err = s.status.SetLocalInfo(info); err != nil {
 		return
 	}
-	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail, s.disableRemoteLoad, s.status.LatestAclHeadId())
+	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail, s.disableRemoteLoad, s.status.GetLatestAclHeadId())
 	return
 }
 
 func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
-	s.status.Lock()
-	defer s.status.Unlock()
+	s.mx.Lock()
+	defer s.mx.Unlock()
 
-	spaceID := s.status.SpaceId()
+	info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
 	switch {
 	case loadErr == nil:
+		s.space = sp
+		info.SetLocalStatus(spaceinfo.LocalStatusOk)
 	case errors.Is(loadErr, spaceservice.ErrSpaceDeletionPending):
-		return s.status.SetLocalInfo(s.ctx, spaceinfo.SpaceLocalInfo{
-			SpaceID:      spaceID,
-			LocalStatus:  spaceinfo.LocalStatusMissing,
-			RemoteStatus: spaceinfo.RemoteStatusWaitingDeletion,
-		})
+		info.SetLocalStatus(spaceinfo.LocalStatusMissing).
+			SetRemoteStatus(spaceinfo.RemoteStatusWaitingDeletion)
 	case errors.Is(loadErr, spaceservice.ErrSpaceIsDeleted):
-		return s.status.SetLocalInfo(s.ctx, spaceinfo.SpaceLocalInfo{
-			SpaceID:      spaceID,
-			LocalStatus:  spaceinfo.LocalStatusMissing,
-			RemoteStatus: spaceinfo.RemoteStatusDeleted,
-		})
+		info.SetLocalStatus(spaceinfo.LocalStatusMissing).
+			SetRemoteStatus(spaceinfo.RemoteStatusDeleted)
 	default:
-		return s.status.SetLocalInfo(s.ctx, spaceinfo.SpaceLocalInfo{
-			SpaceID:      spaceID,
-			LocalStatus:  spaceinfo.LocalStatusMissing,
-			RemoteStatus: spaceinfo.RemoteStatusError,
-		})
+		info.SetLocalStatus(spaceinfo.LocalStatusMissing)
 	}
 
-	s.space = sp
-	// TODO: check remote state
-	return s.status.SetLocalInfo(s.ctx, spaceinfo.SpaceLocalInfo{
-		SpaceID:      spaceID,
-		LocalStatus:  spaceinfo.LocalStatusOk,
-		RemoteStatus: spaceinfo.RemoteStatusUnknown,
-	})
+	return s.status.SetLocalInfo(info)
 }
 
 func (s *spaceLoader) open(ctx context.Context) (clientspace.Space, error) {
@@ -149,7 +123,7 @@ func (s *spaceLoader) open(ctx context.Context) (clientspace.Space, error) {
 }
 
 func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
-	s.status.Lock()
+	s.mx.Lock()
 	status := s.status.GetLocalStatus()
 
 	switch status {
@@ -159,7 +133,7 @@ func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err e
 		// loading in progress, wait channel and retry
 		waitCh := s.loading.loadCh
 		loadErr := s.loading.loadErr
-		s.status.Unlock()
+		s.mx.Unlock()
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -177,6 +151,6 @@ func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err e
 	default:
 		err = fmt.Errorf("undefined space state: %v", status)
 	}
-	s.status.Unlock()
+	s.mx.Unlock()
 	return
 }

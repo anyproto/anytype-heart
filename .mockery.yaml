@@ -13,12 +13,27 @@ packages:
   github.com/anyproto/anytype-heart/core/event:
     interfaces:
       Sender:
-  github.com/anyproto/anytype-heart/core/block/getblock:
+  github.com/anyproto/anytype-heart/core/block/cache:
     interfaces:
       ObjectGetter:
+      ObjectGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/block/editor/file:
+    interfaces:
+      File:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
+  github.com/anyproto/anytype-heart/core/block/editor/smartblock:
+    interfaces:
+      Indexer:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
@@ -54,7 +69,10 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:
-  github.com/anyproto/anytype-heart/metrics/amplitude:
+  github.com/anyproto/anytype-heart/metrics/anymetry:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/invitestore:
     interfaces:
       Service:
   github.com/anyproto/anytype-heart/core/indexer:
@@ -63,9 +81,13 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore:
     interfaces:
       SpaceCoreService:
-  github.com/anyproto/anytype-heart/space/internal/techspace:
+  github.com/anyproto/anytype-heart/space/spacecore/storage:
+    interfaces:
+      ClientStorage:
+  github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
+      SpaceView:
   github.com/anyproto/anytype-heart/space/spacefactory:
     interfaces:
       SpaceFactory:
@@ -73,6 +95,26 @@ packages:
     interfaces:
       SpaceController:
       DeleteController:
+  github.com/anyproto/anytype-heart/space/internal/components/spaceloader:
+    interfaces:
+      SpaceLoader:
+  github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
+    interfaces:
+      ParticipantWatcher:
+  github.com/anyproto/anytype-heart/space/internal/components/invitemigrator:
+    interfaces:
+      InviteMigrator:
+  github.com/anyproto/anytype-heart/space/internal/components/aclnotifications:
+    interfaces:
+      AclNotification:
+      NotificationSender:
+  github.com/anyproto/anytype-heart/space/internal/components/dependencies:
+    interfaces:
+      SpaceIndexer:
+      IdentityService:
+  github.com/anyproto/anytype-heart/space/internal/components/spacestatus:
+    interfaces:
+      SpaceStatus:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
@@ -88,6 +130,27 @@ packages:
   github.com/anyproto/anytype-heart/core/files:
     interfaces:
       Service:
+      File:
+      Image:
   github.com/anyproto/anytype-heart/core/files/fileacl:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/space/deletioncontroller:
+    interfaces:
+      SpaceManager:
+      DeletionController:
+  github.com/anyproto/anytype-heart/core/domain:
+    interfaces:
+      InviteObject:
+  github.com/anyproto/anytype-heart/core/payments/cache:
+    interfaces:
+      CacheService:
+  github.com/anyproto/anytype-heart/core/block:
+    interfaces:
+      ObjectGetter:
+  github.com/anyproto/anytype-heart/core/block/source:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/block/object/idresolver:
+    interfaces:
+      Resolver:

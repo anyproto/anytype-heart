@@ -340,9 +340,20 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 	return
 }
 
-func (s *State) resetParentIdsCache() {
+func (s *State) ResetParentIdsCache() {
 	s.parentIdsCache = nil
 	s.isParentIdsCacheEnabled = false
+}
+
+func (s *State) EnableParentIdsCache() bool {
+	// temporary disable the cache
+	// todo: enable after we cover everything with tests
+	return true
+	if s.isParentIdsCacheEnabled {
+		return true
+	}
+	s.isParentIdsCacheEnabled = true
+	return false
 }
 
 func (s *State) getParentIdsCache() map[string]string {
@@ -462,7 +473,12 @@ func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action
 }
 
 func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
-	defer s.resetParentIdsCache()
+	alreadyEnabled := s.EnableParentIdsCache()
+	defer func() {
+		if !alreadyEnabled {
+			s.ResetParentIdsCache()
+		}
+	}()
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -661,7 +677,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
-			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
+			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev, false), After: pbtypes.CopyStruct(s.details, false)}
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
@@ -905,7 +921,7 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 				return
 			}
 		}
-		s.localDetails = pbtypes.CopyStruct(s.parent.LocalDetails())
+		s.localDetails = pbtypes.CopyStruct(s.parent.LocalDetails(), false)
 	}
 	if s.localDetails == nil || s.localDetails.Fields == nil {
 		s.localDetails = &types.Struct{Fields: map[string]*types.Value{}}
@@ -956,7 +972,7 @@ func (s *State) SetDetail(key string, value *types.Value) {
 				return
 			}
 		}
-		s.details = pbtypes.CopyStruct(d)
+		s.details = pbtypes.CopyStruct(d, false)
 	}
 	if s.details == nil || s.details.Fields == nil {
 		s.details = &types.Struct{Fields: map[string]*types.Value{}}
@@ -1100,21 +1116,28 @@ func (s *State) ObjectTypeKey() domain.TypeKey {
 	return ""
 }
 
-func (s *State) Snippet() (snippet string) {
+func (s *State) Snippet() string {
+	var builder strings.Builder
+	var snippetSize int
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title && text.Style != model.BlockContentText_Description {
+		if text := b.Model().GetText(); text != nil &&
+			text.Style != model.BlockContentText_Title &&
+			text.Style != model.BlockContentText_Description {
 			nextText := strings.TrimSpace(text.Text)
-			if snippet != "" && nextText != "" {
-				snippet += "\n"
-			}
-			snippet += nextText
-			if textutil.UTF16RuneCountString(snippet) >= snippetMinSize {
-				return false
+			if nextText != "" {
+				if snippetSize > 0 {
+					builder.WriteString("\n")
+				}
+				builder.WriteString(nextText)
+				snippetSize += textutil.UTF16RuneCountString(nextText)
+				if snippetSize >= snippetMaxSize {
+					return false
+				}
 			}
 		}
 		return true
 	})
-	return textutil.Truncate(snippet, snippetMaxSize)
+	return textutil.Truncate(builder.String(), snippetMaxSize)
 }
 
 func (s *State) FileRelationKeys() []string {
@@ -1340,13 +1363,13 @@ func (s *State) Copy() *State {
 		ctx:                      s.ctx,
 		blocks:                   blocks,
 		rootId:                   s.rootId,
-		details:                  pbtypes.CopyStruct(s.Details()),
-		localDetails:             pbtypes.CopyStruct(s.LocalDetails()),
+		details:                  pbtypes.CopyStruct(s.Details(), false),
+		localDetails:             pbtypes.CopyStruct(s.LocalDetails(), false),
 		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
 		objectTypeKeys:           objTypes,
 		noObjectType:             s.noObjectType,
 		migrationVersion:         s.migrationVersion,
-		store:                    pbtypes.CopyStruct(s.Store()),
+		store:                    pbtypes.CopyStruct(s.Store(), false),
 		storeLastChangeIdByPath:  s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
 		storeKeyRemoved:          storeKeyRemovedCopy,
 		uniqueKeyInternal:        s.uniqueKeyInternal,
@@ -1403,7 +1426,7 @@ func (s *State) IsTheHeaderChange() bool {
 }
 
 func (s *State) RemoveDetail(keys ...string) (ok bool) {
-	det := pbtypes.CopyStruct(s.Details())
+	det := pbtypes.CopyStruct(s.Details(), false)
 	if det != nil && det.Fields != nil {
 		for _, key := range keys {
 			if _, ex := det.Fields[key]; ex {
@@ -1419,7 +1442,7 @@ func (s *State) RemoveDetail(keys ...string) (ok bool) {
 }
 
 func (s *State) RemoveLocalDetail(keys ...string) (ok bool) {
-	det := pbtypes.CopyStruct(s.LocalDetails())
+	det := pbtypes.CopyStruct(s.LocalDetails(), false)
 	if det != nil && det.Fields != nil {
 		for _, key := range keys {
 			if _, ex := det.Fields[key]; ex {
@@ -1441,7 +1464,7 @@ func (s *State) createOrCopyStoreFromParent() {
 	if s.store != nil {
 		return
 	}
-	s.store = pbtypes.CopyStruct(s.Store())
+	s.store = pbtypes.CopyStruct(s.Store(), true)
 	// copy map[string]struct{} to map[string]struct{}
 	m := s.StoreKeysRemoved()
 	s.storeKeyRemoved = make(map[string]struct{}, len(m))

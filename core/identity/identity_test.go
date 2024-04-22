@@ -9,13 +9,17 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
+	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -27,30 +31,50 @@ import (
 type fixture struct {
 	*service
 	coordinatorClient *inMemoryIdentityRepo
+	spaceService      *mock_space.MockService
+	accountService    *mock_account.MockService
 }
 
-const testObserverPeriod = 1 * time.Millisecond
+const (
+	testObserverPeriod = 1 * time.Millisecond
+	globalName         = "anytypeuser.any"
+	testIdentity       = "identity1"
+)
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
+	ctrl := gomock.NewController(t)
 
 	identityRepoClient := newInMemoryIdentityRepo()
 	objectStore := objectstore.NewStoreFixture(t)
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
 	fileAclService := mock_fileacl.NewMockService(t)
-	dataStore := datastore.NewInMemory()
-	err := dataStore.Run(ctx)
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
+	wallet := mock_wallet.NewMockWallet(t)
+	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
+	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{testIdentity, ""}}).AnyTimes().
+		Return(&nameserviceproto.BatchNameByAddressResponse{Results: []*nameserviceproto.NameByAddressResponse{{
+			Found: true,
+			Name:  globalName,
+		}, {
+			Found: false,
+			Name:  "",
+		},
+		}}, nil)
+	err = dataStoreProvider.Run(ctx)
 	require.NoError(t, err)
 
 	a := new(app.App)
-	a.Register(&spaceIdDeriverStub{})
-	a.Register(dataStore)
+	a.Register(dataStoreProvider)
 	a.Register(objectStore)
 	a.Register(identityRepoClient)
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(testutil.PrepareMock(ctx, a, fileAclService))
+	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(testutil.PrepareMock(ctx, a, nsClient))
 
 	svc := New(testObserverPeriod, 1*time.Microsecond)
 	err = svc.Init(a)
@@ -60,11 +84,15 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	svcRef := svc.(*service)
-	db, err := dataStore.LocalStorage()
+	db, err := dataStoreProvider.LocalStorage()
 	require.NoError(t, err)
 	svcRef.db = db
+	// TODO
+	// svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
 	fx := &fixture{
 		service:           svcRef,
+		spaceService:      spaceService,
+		accountService:    accountService,
 		coordinatorClient: identityRepoClient,
 	}
 	go fx.observeIdentitiesLoop()
@@ -83,6 +111,7 @@ func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.Sym
 type inMemoryIdentityRepo struct {
 	lock           sync.Mutex
 	isUnavailable  bool
+	getCallback    func(identities []string, kinds []string, res []*identityrepoproto.DataWithIdentity, resErr error)
 	identitiesData map[string]*identityrepoproto.DataWithIdentity
 }
 
@@ -122,7 +151,11 @@ func (d *inMemoryIdentityRepo) IdentityRepoGet(ctx context.Context, identities [
 	defer d.lock.Unlock()
 
 	if d.isUnavailable {
-		return nil, fmt.Errorf("network problem")
+		err := fmt.Errorf("network problem")
+		if d.getCallback != nil {
+			d.getCallback(identities, kinds, nil, err)
+		}
+		return nil, err
 	}
 
 	res = make([]*identityrepoproto.DataWithIdentity, 0, len(identities))
@@ -130,6 +163,9 @@ func (d *inMemoryIdentityRepo) IdentityRepoGet(ctx context.Context, identities [
 		if data, ok := d.identitiesData[identity]; ok {
 			res = append(res, data)
 		}
+	}
+	if d.getCallback != nil {
+		d.getCallback(identities, kinds, res, err)
 	}
 	return
 }
@@ -145,8 +181,9 @@ func TestIdentityProfileCache(t *testing.T) {
 	profileSymKey, err := crypto.NewRandomAES()
 	require.NoError(t, err)
 	wantProfile := &model.IdentityProfile{
-		Identity: identity,
-		Name:     "name1",
+		Identity:   identity,
+		Name:       "name1",
+		GlobalName: globalName,
 	}
 	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
@@ -174,8 +211,9 @@ func TestObservers(t *testing.T) {
 	profileSymKey, err := crypto.NewRandomAES()
 	require.NoError(t, err)
 	wantProfile := &model.IdentityProfile{
-		Identity: identity,
-		Name:     "name1",
+		Identity:   identity,
+		Name:       "name1",
+		GlobalName: globalName,
 	}
 	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
@@ -203,6 +241,7 @@ func TestObservers(t *testing.T) {
 			Identity:    identity,
 			Name:        "name1 edited",
 			Description: "my description",
+			GlobalName:  globalName,
 		}
 		wantData2 := marshalProfile(t, wantProfile2, profileSymKey)
 
@@ -220,13 +259,15 @@ func TestObservers(t *testing.T) {
 
 	wantCalls := []*model.IdentityProfile{
 		{
-			Identity: identity,
-			Name:     "name1",
+			Identity:   identity,
+			Name:       "name1",
+			GlobalName: globalName,
 		},
 		{
 			Identity:    identity,
 			Name:        "name1 edited",
 			Description: "my description",
+			GlobalName:  globalName,
 		},
 	}
 	assert.Equal(t, wantCalls, callbackCalls)
@@ -239,15 +280,15 @@ func TestObservers(t *testing.T) {
 		require.NoError(t, err)
 		wg.Wait()
 	})
-}
 
-type spaceIdDeriverStub struct{}
-
-func (s spaceIdDeriverStub) Init(a *app.App) (err error) { return nil }
-
-func (s spaceIdDeriverStub) Name() (name string) { return "spaceIdDeriverStub" }
-
-func (s spaceIdDeriverStub) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
-	// TODO implement me
-	panic("implement me")
+	t.Run("empty identities", func(t *testing.T) {
+		called := false
+		fx.coordinatorClient.getCallback = func(_ []string, _ []string, _ []*identityrepoproto.DataWithIdentity, _ error) {
+			called = true
+		}
+		list, err := fx.getIdentitiesDataFromRepo(context.Background(), nil)
+		require.NoError(t, err)
+		require.Empty(t, list)
+		require.False(t, called)
+	})
 }

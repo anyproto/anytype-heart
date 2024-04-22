@@ -56,10 +56,11 @@ service ClientCommands {
     rpc SpaceInviteView(anytype.Rpc.Space.InviteView.Request) returns (anytype.Rpc.Space.InviteView.Response);
     rpc SpaceJoin (anytype.Rpc.Space.Join.Request) returns (anytype.Rpc.Space.Join.Response);
     rpc SpaceJoinCancel (anytype.Rpc.Space.JoinCancel.Request) returns (anytype.Rpc.Space.JoinCancel.Response);
-    rpc SpaceExit (anytype.Rpc.Space.Exit.Request) returns (anytype.Rpc.Space.Exit.Response);
     rpc SpaceStopSharing (anytype.Rpc.Space.StopSharing.Request) returns (anytype.Rpc.Space.StopSharing.Response);
     rpc SpaceRequestApprove (anytype.Rpc.Space.RequestApprove.Request) returns (anytype.Rpc.Space.RequestApprove.Response);
     rpc SpaceRequestDecline (anytype.Rpc.Space.RequestDecline.Request) returns (anytype.Rpc.Space.RequestDecline.Response);
+    rpc SpaceLeaveApprove (anytype.Rpc.Space.LeaveApprove.Request) returns (anytype.Rpc.Space.LeaveApprove.Response);
+    rpc SpaceMakeShareable (anytype.Rpc.Space.MakeShareable.Request) returns (anytype.Rpc.Space.MakeShareable.Response);
     rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
     rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
 
@@ -243,7 +244,7 @@ service ClientCommands {
     rpc BlockDataviewSortAdd (anytype.Rpc.BlockDataview.Sort.Add.Request) returns (anytype.Rpc.BlockDataview.Sort.Add.Response);
     rpc BlockDataviewSortRemove (anytype.Rpc.BlockDataview.Sort.Remove.Request) returns (anytype.Rpc.BlockDataview.Sort.Remove.Response);
     rpc BlockDataviewSortReplace (anytype.Rpc.BlockDataview.Sort.Replace.Request) returns (anytype.Rpc.BlockDataview.Sort.Replace.Response);
-    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.Sort.Request) returns (anytype.Rpc.BlockDataview.Sort.Sort.Response);
+    rpc BlockDataviewSortSort (anytype.Rpc.BlockDataview.Sort.SSort.Request) returns (anytype.Rpc.BlockDataview.Sort.SSort.Response);
 
     rpc BlockDataviewViewRelationAdd (anytype.Rpc.BlockDataview.ViewRelation.Add.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Add.Response);
     rpc BlockDataviewViewRelationRemove (anytype.Rpc.BlockDataview.ViewRelation.Remove.Request) returns (anytype.Rpc.BlockDataview.ViewRelation.Remove.Response);
@@ -310,6 +311,38 @@ service ClientCommands {
     rpc NotificationReply (anytype.Rpc.Notification.Reply.Request) returns (anytype.Rpc.Notification.Reply.Response);
     rpc NotificationTest (anytype.Rpc.Notification.Test.Request) returns (anytype.Rpc.Notification.Test.Response);
 
+    // Membership
+    // ***
+    // Get current subscription status (tier, expiration date, etc.)
+    // WARNING: can be cached by Anytype Heart
+    rpc MembershipGetStatus (anytype.Rpc.Membership.GetStatus.Request) returns (anytype.Rpc.Membership.GetStatus.Response);
+    rpc MembershipIsNameValid( anytype.Rpc.Membership.IsNameValid.Request) returns (anytype.Rpc.Membership.IsNameValid.Response);
+    // Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
+    rpc MembershipGetPaymentUrl (anytype.Rpc.Membership.GetPaymentUrl.Request) returns (anytype.Rpc.Membership.GetPaymentUrl.Response);
+    // Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
+    // a) change his billing details
+    // b) see payment info, invoices, etc
+    // c) cancel the subscription
+    rpc MembershipGetPortalLinkUrl (anytype.Rpc.Membership.GetPortalLinkUrl.Request) returns (anytype.Rpc.Membership.GetPortalLinkUrl.Response);
+    // Check the current status of the verification email
+    rpc MembershipGetVerificationEmailStatus( anytype.Rpc.Membership.GetVerificationEmailStatus.Request) returns (anytype.Rpc.Membership.GetVerificationEmailStatus.Response);
+    // Send a verification code to the user's email. The user should enter this code to verify his email.
+    rpc MembershipGetVerificationEmail (anytype.Rpc.Membership.GetVerificationEmail.Request) returns (anytype.Rpc.Membership.GetVerificationEmail.Response);
+    // Verify the user's email with the code received in the previous step (MembershipGetVerificationEmail)
+    rpc MembershipVerifyEmailCode (anytype.Rpc.Membership.VerifyEmailCode.Request) returns (anytype.Rpc.Membership.VerifyEmailCode.Response);
+    // If your subscription is in PendingRequiresFinalization:
+    // please call MembershipFinalize to finish the process
+    rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
+    rpc MembershipGetTiers (anytype.Rpc.Membership.GetTiers.Request) returns (anytype.Rpc.Membership.GetTiers.Response);
+
+    // Name Service:
+    // ***
+    // hello.any -> data
+    rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
+    rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
+    // 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -> hello.any
+    rpc NameServiceResolveAnyId( anytype.Rpc.NameService.ResolveAnyId.Request ) returns (anytype.Rpc.NameService.ResolveAnyId.Response);
+    
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
 
     rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);

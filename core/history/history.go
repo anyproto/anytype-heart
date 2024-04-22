@@ -11,7 +11,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	history2 "github.com/anyproto/anytype-heart/core/block/history"
@@ -48,13 +48,13 @@ type History interface {
 
 type history struct {
 	accountService account.Service
-	picker         block.ObjectGetter
+	picker         cache.ObjectGetter
 	objectStore    objectstore.ObjectStore
 	spaceService   space.Service
 }
 
 func (h *history) Init(a *app.App) (err error) {
-	h.picker = app.MustComponent[block.ObjectGetter](a)
+	h.picker = app.MustComponent[cache.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.spaceService = app.MustComponent[space.Service](a)
 	h.accountService = app.MustComponent[account.Service](a)
@@ -179,7 +179,7 @@ func (h *history) SetVersion(id domain.FullID, versionId string) (err error) {
 	if err != nil {
 		return
 	}
-	return block.Do(h.picker, id.ObjectID, func(sb smartblock2.SmartBlock) error {
+	return cache.Do(h.picker, id.ObjectID, func(sb smartblock2.SmartBlock) error {
 		return history2.ResetToVersion(sb, s)
 	})
 }
@@ -217,6 +217,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	if err != nil {
 		return
 	}
+	defer st.ResetParentIdsCache()
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}

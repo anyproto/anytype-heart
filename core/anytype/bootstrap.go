@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
-	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
@@ -22,10 +21,14 @@ import (
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/anyproto/any-sync/node/nodeclient"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -61,9 +64,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/payments"
+	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -77,6 +84,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/coordinatorclient"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
@@ -214,6 +222,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientserver.New()).
 		Register(streampool.New()).
 		Register(coordinatorclient.New()).
+		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(aclclient.NewAclJoiningClient()).
@@ -234,9 +243,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(space.New()).
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
-		Register(fileobject.New()).
-		Register(acl.New()).
 		Register(filesync.New()).
+		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
+		Register(inviteservice.New()).
+		Register(acl.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
@@ -270,6 +280,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
 		Register(notifications.New()).
+		Register(paymentserviceclient.New()).
+		Register(nameservice.New()).
+		Register(nameserviceclient.New()).
+		Register(payments.New()).
+		Register(paymentscache.New()).
 		Register(device.New())
 }
 

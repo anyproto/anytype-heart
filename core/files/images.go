@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
@@ -26,26 +26,15 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 		// index image files info from ipfs
 		files, err = s.fileIndexInfo(ctx, id, true)
 		if err != nil {
-			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err)
-			return nil, domain.ErrFileNotFound
+			return nil, err
 		}
 	}
 
-	var variantsByWidth = make(map[int]*storage.FileInfo, len(files))
-	for _, f := range files {
-		if f.Mill != "/image/resize" {
-			continue
-		}
-
-		if v, exists := f.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = f
-		}
-	}
 	return &image{
-		spaceID:         id.SpaceId,
-		fileId:          id.FileId,
-		variantsByWidth: variantsByWidth,
-		service:         s,
+		spaceID:            id.SpaceId,
+		fileId:             id.FileId,
+		onlyResizeVariants: selectAndSortResizeVariants(files),
+		service:            s,
 	}, nil
 }
 
@@ -61,25 +50,25 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 	addLock := s.lockAddOperation(opts.checksum)
 
-	dirEntries, err := s.addImageNodes(ctx, spaceId, opts)
-	if errors.Is(err, errFileExists) {
-		res, err := s.newExisingImageResult(addLock, dirEntries)
+	addNodesResult, err := s.addImageNodes(ctx, spaceId, opts)
+	if err != nil {
+		addLock.Unlock()
+		return nil, err
+	}
+	if addNodesResult.isExisting {
+		res, err := s.newExistingFileResult(addLock, addNodesResult.fileId)
 		if err != nil {
 			addLock.Unlock()
 			return nil, err
 		}
 		return res, nil
 	}
-	if err != nil {
-		addLock.Unlock()
-		return nil, err
-	}
-	if len(dirEntries) == 0 {
+	if len(addNodesResult.dirEntries) == 0 {
 		addLock.Unlock()
 		return nil, errors.New("no image variants")
 	}
 
-	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, dirEntries)
+	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, addNodesResult.dirEntries)
 	if err != nil {
 		addLock.Unlock()
 		return nil, err
@@ -95,13 +84,22 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
+	dirEntries := addNodesResult.dirEntries
 	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
+	successfullyAdded := make([]domain.FileContentId, 0, len(dirEntries))
 	for _, variant := range dirEntries {
-		err = s.fileStore.LinkFileVariantToFile(id.FileId, domain.FileContentId(variant.fileInfo.Hash))
-		if err != nil {
+		variant.fileInfo.Targets = []string{id.FileId.String()}
+		err = s.fileStore.AddFileVariant(variant.fileInfo)
+		if err != nil && !errors.Is(err, localstore.ErrDuplicateKey) {
+			// Cleanup
+			deleteErr := s.fileStore.DeleteFileVariants(successfullyAdded)
+			if deleteErr != nil {
+				log.Errorf("cleanup: failed to delete file variants %s", deleteErr)
+			}
 			addLock.Unlock()
-			return nil, fmt.Errorf("failed to link file variant to file: %w", err)
+			return nil, fmt.Errorf("failed to store file variant: %w", err)
 		}
+		successfullyAdded = append(successfullyAdded, domain.FileContentId(variant.fileInfo.Hash))
 	}
 
 	err = s.storeFileSize(spaceId, fileId)
@@ -120,7 +118,26 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}, nil
 }
 
-func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts AddOptions) ([]dirEntry, error) {
+type addImageNodesResult struct {
+	isExisting bool
+	fileId     domain.FileId
+	dirEntries []dirEntry
+}
+
+func newExistingImageResult(fileId domain.FileId) *addImageNodesResult {
+	return &addImageNodesResult{
+		isExisting: true,
+		fileId:     fileId,
+	}
+}
+
+func newImageNodesResult(dirEntries []dirEntry) *addImageNodesResult {
+	return &addImageNodesResult{
+		dirEntries: dirEntries,
+	}
+}
+
+func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts AddOptions) (*addImageNodesResult, error) {
 	sch := schema.ImageResizeSchema
 	if len(sch.Links) == 0 {
 		return nil, schema.ErrEmptySchema
@@ -142,42 +159,21 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts Add
 		if err != nil {
 			return nil, err
 		}
-		added, fileNode, err := s.addFileNode(ctx, spaceID, stepMill, *opts, link.Name)
-		if errors.Is(err, errFileExists) {
-			// If we found out that original variant is already exists, so we are trying to add the same file.
-			if link.Name == "original" {
-				return []dirEntry{
-					{
-						name:     link.Name,
-						fileInfo: added,
-					},
-				}, errFileExists
-			} else {
-				// If we have multiple variants with the same hash, for example "original" and "large",
-				// we need to find the previously added file node
-				var found bool
-				for _, entry := range dirEntries {
-					if entry.fileInfo.Hash == added.Hash {
-						fileNode = entry.fileNode
-						found = true
-						break
-					}
-				}
-				if !found {
-					return nil, fmt.Errorf("handling existing variant: failed to find file node for %s", link.Name)
-				}
-			}
-		} else if err != nil {
+		addNodeResult, err := s.addFileNode(ctx, spaceID, stepMill, *opts, link.Name)
+		if err != nil {
 			return nil, err
+		}
+		if addNodeResult.isExisting {
+			return newExistingImageResult(addNodeResult.fileId), nil
 		}
 		dirEntries = append(dirEntries, dirEntry{
 			name:     link.Name,
-			fileInfo: added,
-			fileNode: fileNode,
+			fileInfo: addNodeResult.variant,
+			fileNode: addNodeResult.filePairNode,
 		})
 		addOpts.Reader.Seek(0, 0)
 	}
-	return dirEntries, nil
+	return newImageNodesResult(dirEntries), nil
 }
 
 // addImageRootNode has structure:
@@ -234,47 +230,4 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 		return nil, nil, err
 	}
 	return outerNode, keys, nil
-}
-
-func (s *service) newExisingImageResult(lock *sync.Mutex, dirEntries []dirEntry) (*AddResult, error) {
-	if len(dirEntries) == 0 {
-		return nil, errors.New("no image variants")
-	}
-	entry := dirEntries[0]
-	fileId, keys, err := s.getFileIdAndEncryptionKeysFromInfo(entry.fileInfo)
-	if err != nil {
-		return nil, err
-	}
-	return &AddResult{
-		IsExisting:     true,
-		FileId:         fileId,
-		MIME:           entry.fileInfo.Media,
-		Size:           entry.fileInfo.Size_,
-		EncryptionKeys: keys,
-		lock:           lock,
-	}, nil
-
-}
-
-func newVariantsByWidth(dirEntries []dirEntry) map[int]*storage.FileInfo {
-	variantsByWidth := make(map[int]*storage.FileInfo, len(dirEntries))
-	for _, entry := range dirEntries {
-		if entry.fileInfo.Mill != "/image/resize" {
-			continue
-		}
-		if v, exists := entry.fileInfo.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = entry.fileInfo
-		}
-	}
-	return variantsByWidth
-}
-
-func (s *service) newImage(spaceId string, fileId domain.FileId, dirEntries []dirEntry) Image {
-	variantsByWidth := newVariantsByWidth(dirEntries)
-	return &image{
-		spaceID:         spaceId,
-		fileId:          fileId,
-		variantsByWidth: variantsByWidth,
-		service:         s,
-	}
 }

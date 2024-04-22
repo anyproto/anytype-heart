@@ -49,31 +49,32 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		fx := newIndexerFixture(t)
 		ctx := context.Background()
 
+		//  Use same testFileId everywhere to pass domain.IsFileId check. It doesn't matter that files are same here
 		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                 pbtypes.String("id1"),
-				bundle.RelationKeyFileId:             pbtypes.String("file1"),
+				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
 				bundle.RelationKeySpaceId:            pbtypes.String("space1"),
 				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
 				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_file)),
 			},
 			{
 				bundle.RelationKeyId:                 pbtypes.String("id2"),
-				bundle.RelationKeyFileId:             pbtypes.String("file2"),
+				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
 				bundle.RelationKeySpaceId:            pbtypes.String("space2"),
 				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)),
 				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_image)),
 			},
 			{
 				bundle.RelationKeyId:                 pbtypes.String("id3"),
-				bundle.RelationKeyFileId:             pbtypes.String("file3"),
+				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
 				bundle.RelationKeySpaceId:            pbtypes.String("space3"),
-				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
+				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)),
 				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_video)),
 			},
 			{
 				bundle.RelationKeyId:      pbtypes.String("id4"),
-				bundle.RelationKeyFileId:  pbtypes.String("file4"),
+				bundle.RelationKeyFileId:  pbtypes.String(testFileId.String()),
 				bundle.RelationKeySpaceId: pbtypes.String("space4"),
 				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_audio)),
 			},
@@ -90,9 +91,9 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		got := fx.indexQueue.GetAll()
 
 		want := []indexRequest{
-			{id: domain.FullID{SpaceID: "space1", ObjectID: "id1"}, fileId: domain.FullFileId{SpaceId: "space1", FileId: "file1"}},
-			{id: domain.FullID{SpaceID: "space3", ObjectID: "id3"}, fileId: domain.FullFileId{SpaceId: "space3", FileId: "file3"}},
-			{id: domain.FullID{SpaceID: "space4", ObjectID: "id4"}, fileId: domain.FullFileId{SpaceId: "space4", FileId: "file4"}},
+			{id: domain.FullID{SpaceID: "space1", ObjectID: "id1"}, fileId: domain.FullFileId{SpaceId: "space1", FileId: testFileId}},
+			{id: domain.FullID{SpaceID: "space3", ObjectID: "id3"}, fileId: domain.FullFileId{SpaceId: "space3", FileId: testFileId}},
+			{id: domain.FullID{SpaceID: "space4", ObjectID: "id4"}, fileId: domain.FullFileId{SpaceId: "space4", FileId: testFileId}},
 		}
 
 		assert.ElementsMatch(t, want, got)
@@ -105,7 +106,7 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:                 pbtypes.String("id1"),
-				bundle.RelationKeyFileId:             pbtypes.String("file1"),
+				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
 				bundle.RelationKeySpaceId:            pbtypes.String("space1"),
 				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_audio)),
 				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
@@ -120,7 +121,7 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		got := fx.indexQueue.GetAll()
 
 		want := []indexRequest{
-			{id: domain.FullID{SpaceID: "space1", ObjectID: "id1"}, fileId: domain.FullFileId{SpaceId: "space1", FileId: "file1"}},
+			{id: domain.FullID{SpaceID: "space1", ObjectID: "id1"}, fileId: domain.FullFileId{SpaceId: "space1", FileId: testFileId}},
 		}
 
 		assert.ElementsMatch(t, want, got)

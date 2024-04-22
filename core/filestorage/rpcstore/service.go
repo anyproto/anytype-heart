@@ -2,8 +2,6 @@
 package rpcstore
 
 import (
-	"sync"
-
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/net/pool"
@@ -29,7 +27,6 @@ type service struct {
 	pool         pool.Pool
 	nodeconf     nodeconf.Service
 	peerStore    peerstore.PeerStore
-	mx           sync.Mutex
 	peerUpdateCh chan struct{}
 }
 
@@ -51,16 +48,6 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) NewStore() RpcStore {
-	cm := newClientManager(s, s.peerUpdateCh)
+	cm := newClientManager(s.pool, s.peerStore, s.peerUpdateCh)
 	return newStore(s, cm)
-}
-
-func (s *service) fileNodePeers() []string {
-	return s.peerStore.ResponsibleFilePeers()
-}
-
-func (s *service) allLocalPeers() []string {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	return s.peerStore.AllLocalPeers()
 }

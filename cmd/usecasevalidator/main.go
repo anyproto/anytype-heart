@@ -39,8 +39,9 @@ type (
 	}
 
 	customInfo struct {
-		isUsed bool
-		id     string
+		isUsed         bool
+		id             string
+		relationFormat model.RelationFormat
 	}
 
 	useCaseInfo struct {
@@ -49,6 +50,7 @@ type (
 		types     map[string]domain.TypeKey
 		templates map[string]string
 		options   map[string]domain.RelationKey
+		files     []string
 
 		customTypesAndRelations map[string]customInfo
 
@@ -73,6 +75,7 @@ const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
 	errValidationFailed   = fmt.Errorf("validation failed")
+	errSkipObject         = fmt.Errorf("object is invalid, skip it")
 )
 
 func main() {
@@ -194,6 +197,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 		types:                   make(map[string]domain.TypeKey, len(files)-1),
 		templates:               make(map[string]string),
 		options:                 make(map[string]domain.RelationKey),
+		files:                   make([]string, 0),
 		customTypesAndRelations: make(map[string]customInfo),
 		profileFileFound:        false,
 	}
@@ -231,8 +235,9 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
+			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
 			if !bundle.HasRelation(key) {
-				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
+				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 			}
 		case model.SmartBlockType_STType:
 			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
@@ -251,14 +256,17 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
 				key := strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
 				info.relations[id] = domain.RelationKey(key)
+				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
 				if !bundle.HasRelation(key) {
-					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
+					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 				}
 			}
 		case model.SmartBlockType_Template:
 			info.templates[id] = pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyTargetObjectType.String())
 		case model.SmartBlockType_STRelationOption:
 			info.options[id] = domain.RelationKey(pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+		case model.SmartBlockType_FileObject:
+			info.files = append(info.files, id)
 		}
 	}
 	return
@@ -292,7 +300,6 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 		if err != nil {
 			if !(flags.exclude && errors.Is(err, errValidationFailed)) {
 				// just do not include object that failed validation
-				fmt.Println(f.Name)
 				incorrectFileFound = true
 			}
 			continue
@@ -352,6 +359,10 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 
 	if flags.validate {
 		if err = validate(snapshot, info); err != nil {
+			if errors.Is(err, errSkipObject) {
+				// some validators register errors mentioning that object can be excluded
+				return nil, nil
+			}
 			fmt.Println(err)
 			return nil, errValidationFailed
 		}
@@ -410,12 +421,16 @@ func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, v := range validators {
 		if e := v(snapshot, info); e != nil {
+			if errors.Is(e, errSkipObject) {
+				return errSkipObject
+			}
 			isValid = false
 			err = multierror.Append(err, e)
 		}
 	}
 	if !isValid {
-		return fmt.Errorf("object '%s' is invalid: %w", id, err)
+		return fmt.Errorf("object '%s' (name: '%s') is invalid: %w",
+			id[len(id)-4:], pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()), err)
 	}
 	return nil
 }
@@ -445,7 +460,8 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeySourceFilePath.String(),
 			bundle.RelationKeyLinks.String(),
 			bundle.RelationKeyBacklinks.String(),
-			bundle.RelationKeyWorkspaceId.String():
+			bundle.RelationKeyWorkspaceId.String(),
+			bundle.RelationKeyIdentityProfileLink.String():
 
 			delete(s.Data.Details.Fields, key)
 		}
@@ -527,5 +543,12 @@ func listObjects(info *useCaseInfo) {
 	for id, key := range info.options {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%32s - %s\n", id[len(id)-4:], obj.Name, key)
+	}
+
+	fmt.Println("\n- File Objects:")
+	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "Name")
+	for _, id := range info.files {
+		obj := info.objects[id]
+		fmt.Printf("%s:\t%32s\n", id[len(id)-4:], obj.Name)
 	}
 }

@@ -34,28 +34,50 @@ func New(id string) *SmartTest {
 		Doc:       state.NewDoc(id, nil),
 		hist:      undo.NewHistory(0),
 		hooksOnce: map[string]struct{}{},
+		sbType:    coresb.SmartBlockTypePage,
+	}
+}
+
+func NewWithTree(id string, tree objecttree.ObjectTree) *SmartTest {
+	return &SmartTest{
+		id:         id,
+		Doc:        state.NewDoc(id, nil),
+		hist:       undo.NewHistory(0),
+		hooksOnce:  map[string]struct{}{},
+		sbType:     coresb.SmartBlockTypePage,
+		objectTree: tree,
 	}
 }
 
 var _ smartblock.SmartBlock = &SmartTest{}
 
 type SmartTest struct {
+	sync.Mutex
+	state.Doc
 	Results          Results
 	id               string
 	hist             undo.History
 	TestRestrictions restriction.Restrictions
 	App              *app.App
-	sync.Mutex
-	state.Doc
-	isDeleted bool
-	os        *testMock.MockObjectStore
+	objectTree       objecttree.ObjectTree
+	isDeleted        bool
+	os               *testMock.MockObjectStore
+	space            smartblock.Space
 
 	// Rudimentary hooks
 	hooks     []smartblock.HookCallback
 	hooksOnce map[string]struct{}
+	sbType    coresb.SmartBlockType
+	spaceId   string
 }
 
-func (st *SmartTest) SpaceID() string { return "" }
+func (st *SmartTest) SpaceID() string { return st.spaceId }
+func (st *SmartTest) SetSpaceId(spaceId string) {
+	st.spaceId = spaceId
+}
+func (st *SmartTest) SetSpace(space smartblock.Space) {
+	st.space = space
+}
 
 type stubSpace struct {
 }
@@ -143,7 +165,7 @@ func (st *SmartTest) SetLayout(ctx session.Context, layout model.ObjectTypeLayou
 func (st *SmartTest) SetLocker(locker smartblock.Locker) {}
 
 func (st *SmartTest) Tree() objecttree.ObjectTree {
-	return nil
+	return st.objectTree
 }
 
 func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
@@ -156,7 +178,10 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 
 func (st *SmartTest) GetDocInfo() smartblock.DocInfo {
 	return smartblock.DocInfo{
-		Id: st.Id(),
+		Id:             st.Id(),
+		Space:          st.Space(),
+		SmartblockType: st.sbType,
+		Heads:          []string{st.Id()},
 	}
 }
 
@@ -252,7 +277,11 @@ func (st *SmartTest) Id() string {
 }
 
 func (st *SmartTest) Type() coresb.SmartBlockType {
-	return coresb.SmartBlockTypePage
+	return st.sbType
+}
+
+func (st *SmartTest) SetType(sbType coresb.SmartBlockType) {
+	st.sbType = sbType
 }
 
 func (st *SmartTest) Show() (obj *model.ObjectView, err error) {

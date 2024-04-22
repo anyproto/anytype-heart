@@ -13,9 +13,9 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
@@ -36,7 +36,7 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker getblock.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service) File {
+func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service) File {
 	return &sfile{
 		SmartBlock:          sb,
 		blockService:        blockService,
@@ -57,7 +57,7 @@ type File interface {
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
-	dropFilesHandler
+	dropFilesHandler // do not remove, used in downcasts
 }
 
 type FileSource struct {
@@ -73,7 +73,7 @@ type sfile struct {
 	smartblock.SmartBlock
 
 	blockService        BlockService
-	picker              getblock.ObjectGetter
+	picker              cache.ObjectGetter
 	processService      process.Service
 	fileUploaderFactory fileuploader.Service
 }
@@ -306,7 +306,7 @@ type dropFilesProcess struct {
 	id             string
 	spaceID        string
 	processService process.Service
-	picker         getblock.ObjectGetter
+	picker         cache.ObjectGetter
 	root           *dropFileEntry
 	total, done    int64
 	cancel         chan struct{}
@@ -439,7 +439,7 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		if idx >= len(smartBlockIds) {
 			return
 		}
-		err = getblock.Do(dp.picker, smartBlockIds[idx], func(sb File) error {
+		err = cache.Do(dp.picker, smartBlockIds[idx], func(sb File) error {
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
 				isContinue = idx != 0
@@ -547,7 +547,7 @@ func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 			atomic.AddInt64(&dp.done, 1)
 		}
 	}()
-	return getblock.Do(dp.picker, f.pageId, func(sb File) error {
+	return cache.Do(dp.picker, f.pageId, func(sb File) error {
 		sbHandler, ok := sb.(dropFilesHandler)
 		if !ok {
 			return fmt.Errorf("(apply) unexpected smartblock interface %T; want dropFilesHandler", sb)

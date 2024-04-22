@@ -29,9 +29,7 @@ func (s *statusChanger) Name() (name string) {
 }
 
 func (s *statusChanger) Run(ctx context.Context) (err error) {
-	s.status.Lock()
-	defer s.status.Unlock()
-	return s.status.SetLocalStatus(ctx, spaceinfo.LocalStatusUnknown)
+	return s.status.SetLocalStatus(spaceinfo.LocalStatusUnknown)
 }
 
 func (s *statusChanger) Close(ctx context.Context) (err error) {

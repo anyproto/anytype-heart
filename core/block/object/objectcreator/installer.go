@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -21,6 +22,45 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+func (s *service) BundledObjectsIdsToInstall(
+	ctx context.Context,
+	space clientspace.Space,
+	sourceObjectIds []string,
+) (objectIds []string, err error) {
+	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
+	if err != nil {
+		return nil, fmt.Errorf("get marketplace space: %w", err)
+	}
+
+	existingObjectMap, err := s.listInstalledObjects(space, sourceObjectIds)
+	if err != nil {
+		return nil, fmt.Errorf("list installed objects: %w", err)
+	}
+
+	for _, sourceObjectId := range sourceObjectIds {
+		if _, ok := existingObjectMap[sourceObjectId]; ok {
+			continue
+		}
+
+		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
+			uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeyUniqueKey.String()))
+			if err != nil {
+				return err
+			}
+			objectId, err := space.DeriveObjectID(ctx, uk)
+			if err != nil {
+				return err
+			}
+			objectIds = append(objectIds, objectId)
+			return nil
+		})
+		if err != nil {
+			return
+		}
+	}
+	return
+}
 
 func (s *service) InstallBundledObjects(
 	ctx context.Context,
@@ -87,6 +127,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 		Details:       installingDetails,
 		ObjectTypeKey: objectTypeKey,
 	})
+	log.Desugar().Info("install new object", zap.String("id", id))
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		// we don't want to stop adding other objects
 		log.Errorf("error while block create: %v", err)

@@ -123,6 +123,20 @@ func (mr *MockFileStoreMockRecorder) DeleteFile(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFile", reflect.TypeOf((*MockFileStore)(nil).DeleteFile), arg0)
 }
 
+// DeleteFileVariants mocks base method.
+func (m *MockFileStore) DeleteFileVariants(arg0 []domain.FileContentId) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteFileVariants", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteFileVariants indicates an expected call of DeleteFileVariants.
+func (mr *MockFileStoreMockRecorder) DeleteFileVariants(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFileVariants", reflect.TypeOf((*MockFileStore)(nil).DeleteFileVariants), arg0)
+}
+
 // GetChunksCount mocks base method.
 func (m *MockFileStore) GetChunksCount(arg0 domain.FileId) (int, error) {
 	m.ctrl.T.Helper()
@@ -269,20 +283,6 @@ func (m *MockFileStore) IsFileImported(arg0 domain.FileId) (bool, error) {
 func (mr *MockFileStoreMockRecorder) IsFileImported(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsFileImported", reflect.TypeOf((*MockFileStore)(nil).IsFileImported), arg0)
-}
-
-// LinkFileVariantToFile mocks base method.
-func (m *MockFileStore) LinkFileVariantToFile(arg0 domain.FileId, arg1 domain.FileContentId) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LinkFileVariantToFile", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// LinkFileVariantToFile indicates an expected call of LinkFileVariantToFile.
-func (mr *MockFileStoreMockRecorder) LinkFileVariantToFile(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LinkFileVariantToFile", reflect.TypeOf((*MockFileStore)(nil).LinkFileVariantToFile), arg0, arg1)
 }
 
 // ListAllFileVariants mocks base method.

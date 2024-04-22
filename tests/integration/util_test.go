@@ -54,7 +54,7 @@ func createAccountAndStartApp(t *testing.T, defaultUsecase pb.RpcObjectImportUse
 	app.SetClientVersion(platform, version)
 	metrics.Service.SetPlatform(platform)
 	metrics.Service.SetStartVersion(version)
-	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
+	metrics.Service.InitWithKeys(metrics.DefaultInHouseKey)
 
 	mnemonic, err := app.WalletCreate(&pb.RpcWalletCreateRequest{
 		RootPath: repoDir,
