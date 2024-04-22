@@ -28,38 +28,39 @@ type Service interface {
 	app.ComponentRunnable
 	UpdateName(ctx context.Context, id, name string) error
 	ListDevices(ctx context.Context) ([]*model.DeviceInfo, error)
+	SaveDeviceInfo(ctx context.Context, device *model.DeviceInfo) error
 }
 
 func NewDevices() Service {
-	return &Devices{}
+	return &devices{}
 }
 
-type Devices struct {
+type devices struct {
 	deviceObjectId string
 	spaceService   space.Service
 	wallet         wallet.Wallet
 	cancel         context.CancelFunc
 }
 
-func (d *Devices) Init(a *app.App) (err error) {
+func (d *devices) Init(a *app.App) (err error) {
 	d.spaceService = app.MustComponent[space.Service](a)
 	d.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	return nil
 }
 
-func (d *Devices) Name() (name string) {
+func (d *devices) Name() (name string) {
 	return deviceService
 }
 
-func (d *Devices) Run(ctx context.Context) error {
+func (d *devices) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	d.cancel = cancel
 	go d.loadDevices(ctx)
 	return nil
 }
 
-func (d *Devices) loadDevices(ctx context.Context) {
-	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeDeviceObject, "")
+func (d *devices) loadDevices(ctx context.Context) {
+	uk, err := domain.NewUniqueKey(sb.SmartBlockTypePage, "")
 	if err != nil {
 		log.Errorf("failed to get devices object unique key: %v", err)
 		return
@@ -119,14 +120,14 @@ func (d *Devices) loadDevices(ctx context.Context) {
 	}
 }
 
-func (d *Devices) Close(ctx context.Context) error {
+func (d *devices) Close(ctx context.Context) error {
 	if d.cancel != nil {
 		d.cancel()
 	}
 	return nil
 }
 
-func (d *Devices) SaveDeviceInfo(ctx context.Context, device *model.DeviceInfo) error {
+func (d *devices) SaveDeviceInfo(ctx context.Context, device *model.DeviceInfo) error {
 	spc, err := d.spaceService.Get(ctx, d.spaceService.TechSpaceId())
 	if err != nil {
 		return nil
@@ -138,7 +139,7 @@ func (d *Devices) SaveDeviceInfo(ctx context.Context, device *model.DeviceInfo) 
 	})
 }
 
-func (d *Devices) UpdateName(ctx context.Context, id, name string) error {
+func (d *devices) UpdateName(ctx context.Context, id, name string) error {
 	spc, err := d.spaceService.Get(ctx, d.spaceService.TechSpaceId())
 	if err != nil {
 		return err
@@ -150,7 +151,7 @@ func (d *Devices) UpdateName(ctx context.Context, id, name string) error {
 	})
 }
 
-func (d *Devices) ListDevices(ctx context.Context) ([]*model.DeviceInfo, error) {
+func (d *devices) ListDevices(ctx context.Context) ([]*model.DeviceInfo, error) {
 	spc, err := d.spaceService.Get(ctx, d.spaceService.TechSpaceId())
 	if err != nil {
 		return nil, err

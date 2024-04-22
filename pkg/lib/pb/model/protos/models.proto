@@ -50,7 +50,6 @@ enum SmartBlockType {
     FileObject = 0x215;
 
     NotificationObject = 0x217;
-    DeviceObject = 0x218;
 }
 
 message Block {

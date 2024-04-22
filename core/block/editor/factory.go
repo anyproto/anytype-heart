@@ -180,8 +180,6 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:
 		return f.newParticipant(sb), nil
-	case coresb.SmartBlockTypeDeviceObject:
-		return NewDeviceObject(sb), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

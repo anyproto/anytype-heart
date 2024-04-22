@@ -858,7 +858,7 @@ func (s *State) makeNotificationChanges() []*pb.ChangeContent {
 }
 
 func (s *State) makeDeviceInfoChanges() []*pb.ChangeContent {
-	if s.parent == nil || len(s.parent.ListDevices()) == 0 {
+	if s.parent == nil && len(s.parent.ListDevices()) == 0 {
 		return nil
 	}
 	var changes []*pb.ChangeContent

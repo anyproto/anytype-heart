@@ -2605,3 +2605,137 @@ func assertAllDetailsLessThenLimit(details *types.Struct) bool {
 	}
 	return true
 }
+
+func TestState_AddDevice(t *testing.T) {
+	t.Run("add device", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		// then
+		assert.NotNil(t, st.deviceStore["id"])
+	})
+	t.Run("add device - device exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+		newState := st.NewState()
+
+		// when
+		newState.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test1",
+		})
+
+		// then
+		assert.NotNil(t, st.deviceStore["id"])
+		assert.Equal(t, "test", st.deviceStore["id"].Name)
+	})
+}
+
+func TestState_GetDevice(t *testing.T) {
+	t.Run("get device, device not exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		device := st.GetDevice("id")
+
+		// then
+		assert.Nil(t, device)
+	})
+	t.Run("add device - device exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		// when
+		device := st.GetDevice("id")
+
+		// then
+		assert.NotNil(t, device)
+	})
+	t.Run("add device - device with given id not exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		// when
+		device := st.GetDevice("id1")
+
+		// then
+		assert.Nil(t, device)
+	})
+}
+
+func TestState_ListDevices(t *testing.T) {
+	t.Run("list devices, no devices", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		devices := st.ListDevices()
+
+		// then
+		assert.Empty(t, devices)
+	})
+	t.Run("list devices", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		// when
+		devices := st.ListDevices()
+
+		// then
+		assert.Len(t, devices, 1)
+	})
+}
+
+func TestState_SetDeviceName(t *testing.T) {
+	t.Run("set device name, device not exist", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		st.SetDeviceName("id", "test")
+
+		// then
+		assert.NotNil(t, st.deviceStore["id"])
+		assert.Equal(t, st.deviceStore["id"].Name, "test")
+	})
+
+	t.Run("set device name, device exists", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+		st.AddDevice(&model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		})
+
+		newState := st.NewState()
+		// when
+		newState.SetDeviceName("id", "test1")
+
+		// then
+		assert.NotNil(t, newState.deviceStore["id"])
+		assert.Equal(t, newState.deviceStore["id"].Name, "test1")
+	})
+}
