@@ -2,7 +2,6 @@ package fileobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -207,11 +206,6 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 
 func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
-	if errors.Is(err, domain.ErrFileNotFound) {
-		log.With("fileId", fileId.FileId, "objectId", id.ObjectID).Errorf("build details: %v", err)
-		ind.markFileAsNotFound(st)
-		return nil
-	}
 	if err != nil {
 		return fmt.Errorf("build details: %w", err)
 	}
