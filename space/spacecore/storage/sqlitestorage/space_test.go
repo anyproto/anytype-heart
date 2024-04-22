@@ -28,6 +28,25 @@ func TestSpaceStorage_Create(t *testing.T) {
 	})
 }
 
+func TestSpaceStorage_Open(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	_, err := fx.WaitSpaceStorage(ctx, payload.SpaceHeaderWithId.Id)
+	require.ErrorIs(t, err, spacestorage.ErrSpaceStorageMissing)
+
+	store, err := fx.CreateSpaceStorage(payload)
+	require.NoError(t, err)
+	require.NoError(t, store.Close(ctx))
+
+	store, err = fx.WaitSpaceStorage(ctx, payload.SpaceHeaderWithId.Id)
+	require.NoError(t, err)
+
+	testSpace(t, store, payload)
+	require.NoError(t, store.Close(ctx))
+}
+
 func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.finish(t)
