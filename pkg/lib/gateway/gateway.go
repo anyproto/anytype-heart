@@ -359,7 +359,7 @@ type retryReadSeeker struct {
 func newRetryReadSeeker(reader io.ReadSeeker, options ...retry.Option) *retryReadSeeker {
 	// EOF has special meaning, do not retry on it
 	options = append(options, retry.RetryIf(func(err error) bool {
-		return err != io.EOF
+		return !errors.Is(err, io.EOF)
 	}))
 	return &retryReadSeeker{
 		reader:  reader,
