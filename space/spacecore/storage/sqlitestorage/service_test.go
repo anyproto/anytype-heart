@@ -22,6 +22,10 @@ func TestStorageService_BindSpaceID(t *testing.T) {
 	spaceId, err := fx.GetSpaceID("objectId")
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId", spaceId)
+	require.NoError(t, fx.BindSpaceID("spaceId2", "objectId"))
+	spaceId, err = fx.GetSpaceID("objectId")
+	require.NoError(t, err)
+	assert.Equal(t, "spaceId2", spaceId)
 }
 
 func TestStorageService_DeleteSpaceStorage(t *testing.T) {

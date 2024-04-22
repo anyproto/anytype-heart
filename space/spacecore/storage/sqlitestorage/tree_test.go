@@ -84,13 +84,18 @@ func TestTreeStorage_AddRawChangesSetHeads(t *testing.T) {
 	require.NoError(t, err)
 
 	newChanges := []*treechangeproto.RawTreeChangeWithId{{RawChange: []byte("ab"), Id: "newId"}}
+
+	hasChange, err := store.HasChange(ctx, newChanges[0].Id)
+	require.NoError(t, err)
+	require.False(t, hasChange)
+
 	newHeads := []string{"a", "b"}
 	require.NoError(t, store.AddRawChangesSetHeads(newChanges, newHeads))
 	heads, err := store.Heads()
 	require.NoError(t, err)
 	require.Equal(t, newHeads, heads)
 
-	hasChange, err := store.HasChange(ctx, newChanges[0].Id)
+	hasChange, err = store.HasChange(ctx, newChanges[0].Id)
 	require.NoError(t, err)
 	require.True(t, hasChange)
 }

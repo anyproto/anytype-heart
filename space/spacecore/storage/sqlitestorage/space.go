@@ -56,10 +56,7 @@ func newSpaceStorage(s *storageService, spaceId string) (spacestorage.SpaceStora
 		&ss.isDeleted,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, spacestorage.ErrSpaceStorageMissing
-		}
-		return nil, err
+		return nil, replaceNoRowsErr(err, spacestorage.ErrSpaceStorageMissing)
 	}
 	if ss.aclStorage, err = newListStorage(ss, ss.aclId); err != nil {
 		return nil, err
@@ -184,15 +181,13 @@ func (s *spaceStorage) IsSpaceDeleted() (bool, error) {
 
 func (s *spaceStorage) SetTreeDeletedStatus(id, state string) error {
 	_, err := s.service.stmt.updateTreeDelStatus.Exec(state, id)
-	return err
+	return replaceNoRowsErr(err, ErrTreeNotFound)
 }
 
 func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 	var nullString sql.NullString
 	if err = s.service.stmt.treeDelStatus.QueryRow(id).Scan(&nullString); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", nil
-		}
+		err = replaceNoRowsErr(err, nil)
 		return "", err
 	}
 	return nullString.String, nil
@@ -234,7 +229,7 @@ func (s *spaceStorage) StoredIds() (result []string, err error) {
 func (s *spaceStorage) TreeRoot(id string) (*treechangeproto.RawTreeChangeWithId, error) {
 	var data []byte
 	if err := s.service.stmt.change.QueryRow(id, s.spaceId).Scan(&data); err != nil {
-		return nil, err
+		return nil, replaceNoRowsErr(err, ErrTreeNotFound)
 	}
 	return &treechangeproto.RawTreeChangeWithId{
 		RawChange: data,
@@ -249,9 +244,7 @@ func (s *spaceStorage) TreeStorage(id string) (treestorage.TreeStorage, error) {
 func (s *spaceStorage) HasTree(id string) (bool, error) {
 	var res int
 	if err := s.service.stmt.hasTree.QueryRow(id, s.spaceId).Scan(&res); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
+		err = replaceNoRowsErr(err, nil)
 		return false, err
 	}
 	return res > 0, nil
