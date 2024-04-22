@@ -42,17 +42,17 @@ func convertErrorOrReturn(err, otherErr error) error {
 	}
 	switch {
 	case errors.Is(err, coordinatorproto.ErrSpaceNotExists):
-		return wrapError("space not exists", err, space.ErrSpaceNotExists)
+		return wrapError("acl service error", err, space.ErrSpaceNotExists)
 	case errors.Is(err, coordinatorproto.ErrSpaceIsDeleted):
-		return wrapError("space is deleted", err, space.ErrSpaceDeleted)
+		return wrapError("acl service error", err, space.ErrSpaceDeleted)
 	case errors.Is(err, coordinatorproto.ErrSpaceLimitReached):
-		return wrapError("space limit reached", err, ErrLimitReached)
+		return wrapError("acl service error", err, ErrLimitReached)
 	case errors.Is(err, coordinatorproto.ErrSpaceNotShareable):
-		return wrapError("space is not shareable", err, ErrNotShareable)
+		return wrapError("acl service error", err, ErrNotShareable)
 	case errors.Is(err, list.ErrNoSuchRecord):
-		return wrapError("request doesn't exist", err, ErrRequestNotExists)
+		return wrapError("acl service error", err, ErrRequestNotExists)
 	case errors.Is(err, list.ErrNoSuchAccount):
-		return wrapError("no such account", err, ErrNoSuchAccount)
+		return wrapError("acl service error", err, ErrNoSuchAccount)
 	default:
 		return otherErr
 	}
