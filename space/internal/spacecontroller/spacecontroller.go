@@ -17,6 +17,7 @@ type SpaceController interface {
 	SetLocalInfo(ctx context.Context, status spaceinfo.SpaceLocalInfo) error
 	Close(ctx context.Context) error
 	GetStatus() spaceinfo.AccountStatus
+	GetLocalStatus() spaceinfo.LocalStatus
 }
 
 type DeleteController interface {

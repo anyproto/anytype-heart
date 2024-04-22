@@ -121,6 +121,9 @@ func (a *aclObjectManager) Close(ctx context.Context) (err error) {
 	}
 	a.cancel()
 	<-a.wait
+	if a.sp != nil {
+		a.sp.CommonSpace().Acl().SetAclUpdater(nil)
+	}
 	a.statService.RemoveProvider(a)
 	return
 }
@@ -169,11 +172,13 @@ func (a *aclObjectManager) processAcl() (err error) {
 		common   = a.sp.CommonSpace()
 		acl      = common.Acl()
 		aclState = acl.AclState()
+		upToDate bool
 	)
 	defer func() {
 		if err == nil {
 			permissions := aclState.Permissions(aclState.AccountKey().GetPublic())
-			a.notificationService.AddRecords(acl, permissions, common.Id(), spaceinfo.AccountStatusActive)
+			accountStatus := getAccountStatus(aclState, upToDate)
+			a.notificationService.AddRecords(acl, permissions, common.Id(), accountStatus, a.status.GetLocalStatus())
 		}
 	}()
 	a.mx.Lock()
@@ -199,7 +204,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
-	upToDate := statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
+	upToDate = statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
 	err = a.processStates(states, upToDate, aclState.Identity())
 	if err != nil {
 		return
@@ -253,4 +258,11 @@ func sortStates(states []list.AccountState) {
 			return 1
 		}
 	})
+}
+
+func getAccountStatus(aclState *list.AclState, upToDate bool) spaceinfo.AccountStatus {
+	if aclState.Permissions(aclState.Identity()).NoPermissions() && upToDate {
+		return spaceinfo.AccountStatusDeleted
+	}
+	return spaceinfo.AccountStatusActive
 }

@@ -54,7 +54,8 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(true).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
-		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive)
+		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
 		fx.run(t)
 		<-fx.aclObjectManager.wait
 		fx.aclObjectManager.mx.Lock()
@@ -97,7 +98,8 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
-		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive)
+		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
 		fx.run(t)
 		<-fx.aclObjectManager.wait
 		fx.aclObjectManager.mx.Lock()
@@ -136,7 +138,8 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
-		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusActive)
+		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk)
 		fx.run(t)
 		<-fx.aclObjectManager.wait
 		fx.aclObjectManager.mx.Lock()
