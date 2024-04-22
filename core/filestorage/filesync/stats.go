@@ -280,19 +280,6 @@ func (s *fileSync) fetchFilesInfo(ctx context.Context, spaceId string, hashes []
 	return lo.Flatten(responses), nil
 }
 
-func (s *fileSync) FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (fs FileStat, err error) {
-	fi, err := s.rpcStore.FilesInfo(ctx, spaceId, fileId)
-	if err != nil {
-		return
-	}
-	if len(fi) == 0 {
-		return FileStat{}, domain.ErrFileNotFound
-	}
-	file := fi[0]
-
-	return s.fileInfoToStat(ctx, spaceId, file)
-}
-
 func (s *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fileproto.FileInfo) (FileStat, error) {
 	totalChunks, err := s.countChunks(ctx, spaceId, domain.FileId(file.FileId))
 	if err != nil {

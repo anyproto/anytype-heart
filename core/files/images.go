@@ -26,8 +26,7 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 		// index image files info from ipfs
 		files, err = s.fileIndexInfo(ctx, id, true)
 		if err != nil {
-			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err)
-			return nil, domain.ErrFileNotFound
+			return nil, err
 		}
 	}
 
