@@ -66,6 +66,7 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+      Service:
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:
