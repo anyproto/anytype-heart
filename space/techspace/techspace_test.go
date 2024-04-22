@@ -257,6 +257,19 @@ func TestTechSpace_WakeUpViews(t *testing.T) {
 		fx.techCore.EXPECT().TreeSyncer().Return(treeSyncer)
 		fx.WakeUpViews()
 	})
+	t.Run("wake up views twice don't call get objects twice", func(t *testing.T) {
+		fx := newFixture(t, []string{"1", "2", "3"})
+		defer fx.finish(t)
+		treeSyncer := mock_treesyncer.NewMockTreeSyncer(fx.ctrl)
+		treeSyncer.EXPECT().StartSync()
+		fx.techCore.EXPECT().StoredIds().Times(1).Return(fx.ids)
+		for _, id := range fx.ids {
+			fx.objectCache.EXPECT().GetObject(mock.Anything, id).Times(1).Return(newSpaceViewStub(id), nil)
+		}
+		fx.techCore.EXPECT().TreeSyncer().Times(1).Return(treeSyncer)
+		fx.WakeUpViews()
+		fx.WakeUpViews()
+	})
 	t.Run("wake up views after close", func(t *testing.T) {
 		fx := newFixture(t, []string{"1", "2", "3"})
 		fx.finish(t)

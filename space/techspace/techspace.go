@@ -105,7 +105,7 @@ func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache
 
 func (s *techSpace) WakeUpViews() {
 	s.mu.Lock()
-	if s.isClosed {
+	if s.isClosed || s.idsWokenUp != nil {
 		s.mu.Unlock()
 		return
 	}
