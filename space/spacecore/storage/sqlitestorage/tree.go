@@ -2,8 +2,7 @@ package sqlitestorage
 
 import (
 	"context"
-	"database/sql"
-	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -18,10 +17,7 @@ func newTreeStorage(ss *spaceStorage, treeId string) (treestorage.TreeStorage, e
 	}
 	var headsPayload []byte
 	if err := ss.service.stmt.loadTreeHeads.QueryRow(treeId).Scan(&headsPayload); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, treestorage.ErrUnknownTreeId
-		}
-		return nil, err
+		return nil, replaceNoRowsErr(err, treestorage.ErrUnknownTreeId)
 	}
 	ts.heads = treestorage.ParseHeads(headsPayload)
 	return ts, nil
@@ -107,7 +103,7 @@ func (t *treeStorage) SetHeads(heads []string) error {
 	defer t.mu.Unlock()
 	_, err := t.service.stmt.updateTreeHeads.Exec(treestorage.CreateHeadsPayload(heads), t.treeId)
 	if err != nil {
-		return err
+		return replaceNoRowsErr(err, fmt.Errorf("set heads: %w", ErrTreeNotFound))
 	}
 	t.heads = heads
 	return nil
@@ -155,13 +151,17 @@ func (t *treeStorage) AddRawChangesSetHeads(changes []*treechangeproto.RawTreeCh
 }
 
 func (t *treeStorage) GetRawChange(ctx context.Context, id string) (*treechangeproto.RawTreeChangeWithId, error) {
-	return t.spaceStorage.TreeRoot(id)
+	ch, err := t.spaceStorage.TreeRoot(id)
+	if err != nil {
+		return nil, replaceNoRowsErr(err, treestorage.ErrUnknownChange)
+	}
+	return ch, nil
 }
 
 func (t *treeStorage) HasChange(ctx context.Context, id string) (bool, error) {
 	var res int
 	if err := t.service.stmt.hasChange.QueryRow(id, t.treeId).Scan(&res); err != nil {
-		return false, err
+		return false, replaceNoRowsErr(err, nil)
 	}
 	return res > 0, nil
 }
