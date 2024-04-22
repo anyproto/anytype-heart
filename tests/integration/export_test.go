@@ -88,8 +88,8 @@ func TestExportFiles(t *testing.T) {
 				foundPbFiles++
 			}
 		}
-		// 4 objects total: Page object + Page type + File object + File object type
-		require.GreaterOrEqual(t, foundPbFiles, 4)
+		// 4 objects total: Page object + Page type + File object
+		require.GreaterOrEqual(t, foundPbFiles, 3)
 
 		testImportObjectWithFileBlock(t, exportPath)
 	})
@@ -123,5 +123,4 @@ func TestExportFiles(t *testing.T) {
 
 		testImportFileFromMarkdown(t, exportPath)
 	})
-
 }

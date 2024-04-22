@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -68,7 +69,20 @@ var badgerPrefix = []byte("typeprovider/")
 
 func (p *provider) Init(a *app.App) (err error) {
 	p.cache = map[string]smartblock.SmartBlockType{}
-	p.badger, err = app.MustComponent[datastore.Datastore](a).SpaceStorage()
+	ds := app.MustComponent[datastore.Datastore](a)
+	// todo: use sqlite
+	p.badger, err = ds.SpaceStorage()
+	if err != nil {
+		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
+			p.badger, err = ds.LocalStorage()
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	p.badger, err = app.MustComponent[datastore.Datastore](a).LocalStorage()
 	if err != nil {
 		return fmt.Errorf("get badger storage: %w", err)
 	}

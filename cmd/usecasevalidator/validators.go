@@ -26,33 +26,42 @@ import (
 
 type validator func(snapshot *pb.SnapshotWithType, info *useCaseInfo) error
 
+type keyWithIndex struct {
+	key   string
+	index int
+}
+
 var validators = []validator{
 	validateRelationLinks,
 	validateRelationBlocks,
 	validateDetails,
 	validateObjectTypes,
 	validateBlockLinks,
-	validateFileKeys,
 	validateDeleted,
 	validateRelationOption,
 }
 
 func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	for _, rel := range s.Snapshot.Data.RelationLinks {
+	linksToDelete := make([]keyWithIndex, 0)
+	for i, rel := range s.Snapshot.Data.RelationLinks {
 		if bundle.HasRelation(rel.Key) {
 			continue
 		}
 		if _, found := info.customTypesAndRelations[rel.Key]; found {
 			continue
 		}
-		err = multierror.Append(err, fmt.Errorf("object '%s' contains link to unknown relation: %s(%s)", id,
-			rel.Key, pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyName.String())))
+		linksToDelete = append([]keyWithIndex{{key: rel.Key, index: i}}, linksToDelete...)
+
+	}
+	for _, link := range linksToDelete {
+		fmt.Println("WARNING: object", id, "contains link to unknown relation:", link.key, ", so it was deleted from snapshot")
+		s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks[:link.index], s.Snapshot.Data.RelationLinks[link.index+1:]...)
 	}
 	return err
 }
 
-func validateRelationBlocks(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
+func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	var relKeys []string
 	for _, b := range s.Snapshot.Data.Blocks {
@@ -67,6 +76,13 @@ func validateRelationBlocks(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) 
 				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
 					Key:    rk,
 					Format: rel.Format,
+				})
+				continue
+			}
+			if relInfo, found := info.customTypesAndRelations[rk]; found {
+				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
+					Key:    rk,
+					Format: relInfo.relationFormat,
 				})
 				continue
 			}
@@ -121,6 +137,15 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 
 			_, found := info.objects[val]
 			if !found {
+				if isBrokenTemplate(k, val) {
+					fmt.Println("WARNING: object", id, "is a template with no target type included in the archive, so it will be skipped")
+					return errSkipObject
+				}
+				if k == bundle.RelationKeyRecommendedRelations.String() {
+					// TODO: remove this fix as most of users should obtain version with fixed export of derived objects in GO-2821
+					delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyRecommendedRelations.String())
+					return nil
+				}
 				err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
 			}
 		}
@@ -223,16 +248,21 @@ func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
 }
 
 func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String()) {
-		return fmt.Errorf("object is archived")
+		fmt.Println("WARNING: object", id, " is archived, so it will be skipped")
+		return errSkipObject
 	}
 
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsDeleted.String()) {
-		return fmt.Errorf("object is deleted")
+		fmt.Println("WARNING: object", id, " is deleted, so it will be skipped")
+		return errSkipObject
 	}
 
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsUninstalled.String()) {
-		return fmt.Errorf("object is uninstalled")
+		fmt.Println("WARNING: object", id, " is uninstalled, so it will be skipped")
+		return errSkipObject
 	}
 
 	return nil
@@ -296,4 +326,8 @@ func isDefaultWidget(target string) bool {
 		widget.DefaultWidgetRecent,
 		widget.DefaultWidgetCollection,
 	}, target)
+}
+
+func isBrokenTemplate(key, value string) bool {
+	return key == bundle.RelationKeyTargetObjectType.String() && value == addr.MissingObject
 }

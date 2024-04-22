@@ -108,6 +108,7 @@ type ObjectStore interface {
 	IndexerStore
 	AccountStore
 	VirtualSpacesStore
+	SpaceNameGetter
 
 	SubscribeForAll(callback func(rec database.Record))
 
@@ -131,7 +132,7 @@ type ObjectStore interface {
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 
-	DeleteObject(id string) error
+	DeleteObject(id domain.FullID) error
 	DeleteDetails(id ...string) error
 	DeleteLinks(id ...string) error
 
@@ -152,7 +153,7 @@ type ObjectStore interface {
 	GetRelationByKey(key string) (*model.Relation, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
-	BatchProcessFullTextQueue(limit int, processIds func(processIds []string) error) error
+	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
 }
 
 type IndexerStore interface {
@@ -421,10 +422,7 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string
 		return nil, err
 	}
 	details = detailsModel.Details
-	snippet, err := badgerhelper.GetValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
-	if err != nil && !badgerhelper.IsNotFound(err) {
-		return nil, fmt.Errorf("failed to get snippet: %w", err)
-	}
+	snippet := pbtypes.GetString(details, bundle.RelationKeySnippet.String())
 
 	return &model.ObjectInfo{
 		Id:      id,

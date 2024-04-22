@@ -8,11 +8,11 @@ type reindexFlags struct {
 	bundledRelations        bool
 	objects                 bool
 	fileObjects             bool
-	fulltext                bool
-	fulltextErase           bool
 	bundledTemplates        bool
 	bundledObjects          bool
 	fileKeys                bool
+	removeOldFiles          bool
+	deletedObjects          bool
 }
 
 func (f *reindexFlags) any() bool {
@@ -21,11 +21,11 @@ func (f *reindexFlags) any() bool {
 		f.bundledRelations ||
 		f.objects ||
 		f.fileObjects ||
-		f.fulltext ||
-		f.fulltextErase ||
 		f.bundledTemplates ||
 		f.bundledObjects ||
-		f.fileKeys
+		f.fileKeys ||
+		f.removeOldFiles ||
+		f.deletedObjects
 }
 
 func (f *reindexFlags) enableAll() {
@@ -34,11 +34,11 @@ func (f *reindexFlags) enableAll() {
 	f.bundledRelations = true
 	f.objects = true
 	f.fileObjects = true
-	f.fulltext = true
-	f.fulltextErase = true
 	f.bundledTemplates = true
 	f.bundledObjects = true
 	f.fileKeys = true
+	f.removeOldFiles = true
+	f.deletedObjects = true
 }
 
 func (f *reindexFlags) String() string {

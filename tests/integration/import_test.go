@@ -2,11 +2,8 @@ package integration
 
 import (
 	"context"
-	"io"
-	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -14,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -36,7 +32,7 @@ func TestImportFileFromRelation(t *testing.T) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
+	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId: app.personalSpaceId(),
 		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		Type:    model.Import_Pb,
@@ -46,11 +42,11 @@ func TestImportFileFromRelation(t *testing.T) {
 			},
 		},
 	}, objectorigin.Import(model.Import_Pb), nil)
-	require.NoError(t, err)
+	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
 		if v := msg.GetProcessDone(); v != nil {
-			return v.Process.Id == processId
+			return v.Process.Id == res.ProcessId
 		}
 		return false
 	})
@@ -91,7 +87,7 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
+	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId: app.personalSpaceId(),
 		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		Type:    model.Import_Markdown,
@@ -101,11 +97,11 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 			},
 		},
 	}, objectorigin.Import(model.Import_Markdown), nil)
-	require.NoError(t, err)
+	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
 		if v := msg.GetProcessDone(); v != nil {
-			return v.Process.Id == processId
+			return v.Process.Id == res.ProcessId
 		}
 		return false
 	})
@@ -128,7 +124,7 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 	})
 
 	importerService := getService[importer.Importer](app)
-	_, processId, err := importerService.Import(ctx, &pb.RpcObjectImportRequest{
+	res := importerService.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId: app.personalSpaceId(),
 		Mode:    pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		Type:    model.Import_Pb,
@@ -138,11 +134,11 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 			},
 		},
 	}, objectorigin.Import(model.Import_Pb), nil)
-	require.NoError(t, err)
+	require.NoError(t, res.Err)
 
 	app.waitEventMessage(t, func(msg *pb.EventMessage) bool {
 		if v := msg.GetProcessDone(); v != nil {
-			return v.Process.Id == processId
+			return v.Process.Id == res.ProcessId
 		}
 		return false
 	})
@@ -150,17 +146,4 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 		fileObjectId := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
 		assertImageAvailableInGateway(t, app, fileObjectId)
 	})
-}
-
-func assertImageAvailableInGateway(t *testing.T, app *testApplication, fileObjectId string) {
-	gw := getService[gateway.Gateway](app)
-	host := gw.Addr()
-	resp, err := http.Get("http://" + host + "/image/" + fileObjectId)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	defer resp.Body.Close()
-
-	raw, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	assert.True(t, len(raw) > 0)
 }

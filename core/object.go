@@ -774,7 +774,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
-			d := pbtypes.CopyStruct(current)
+			d := pbtypes.CopyStruct(current, false)
 			return internalflag.PutToDetails(d, req.InternalFlags), nil
 		})
 	})
@@ -785,33 +785,41 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, rootCollectionID string, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}, CollectionId: rootCollectionID}
-		if err != nil {
-			m.Error.Description = err.Error()
+	response := func(code pb.RpcObjectImportResponseErrorCode, res *importer.ImportResponse) *pb.RpcObjectImportResponse {
+		m := &pb.RpcObjectImportResponse{
+			Error: &pb.RpcObjectImportResponseError{
+				Code: code,
+			},
+			CollectionId: res.RootCollectionId,
+			ObjectsCount: res.ObjectsCount,
+		}
+		if res.Err != nil {
+			m.Error.Description = res.Err.Error()
 		}
 		return m
 	}
 
 	originImport := objectorigin.Import(req.Type)
-	rootCollectionId, processID, err := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
-	code := common.GetImportErrorCode(err)
+	res := getService[importer.Importer](mw).Import(cctx, req, originImport, nil)
+	spaceName := getService[objectstore.SpaceNameGetter](mw).GetSpaceName(req.SpaceId)
+	code := common.GetImportErrorCode(res.Err)
 	notificationSendErr := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
 		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Space:   req.SpaceId,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
-			ProcessId:  processID,
+			ProcessId:  res.ProcessId,
 			ErrorCode:  code,
 			ImportType: req.Type,
 			SpaceId:    req.SpaceId,
+			SpaceName:  spaceName,
 		}},
 	})
 	if notificationSendErr != nil {
 		log.Errorf("failed to send notification: %v", notificationSendErr)
 	}
-	return response(pb.RpcObjectImportResponseErrorCode(code), rootCollectionId, err)
+	return response(pb.RpcObjectImportResponseErrorCode(code), res)
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {

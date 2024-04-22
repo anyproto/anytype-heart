@@ -180,6 +180,12 @@ func (t *inMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*filepro
 	panic("not implemented")
 }
 
+func (t *inMemoryStore) SetLimit(limit int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.limit = limit
+}
+
 func (t *inMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {
 	var info fileproto.AccountInfoResponse
 	t.mu.Lock()

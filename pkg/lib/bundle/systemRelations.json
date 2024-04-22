@@ -39,10 +39,12 @@
   "isReadonly",
   "isDeleted",
   "isHidden",
+  "spaceShareableStatus",
+  "isAclShared",
+  "isHiddenDiscovery",
   "done",
   "isArchived",
   "templateIsBundled",
-  "tag",
   "smartblockTypes",
   "targetObjectType",
   "recommendedLayout",
@@ -73,8 +75,12 @@
   "spaceAccessType",
   "spaceInviteFileCid",
   "spaceInviteFileKey",
+  "readersLimit",
+  "writersLimit",
+  "sharedSpacesLimit",
   "participantPermissions",
   "participantStatus",
   "latestAclHeadId",
-  "identity"
+  "identity",
+  "globalName"
 ]

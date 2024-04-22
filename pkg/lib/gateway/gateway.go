@@ -260,10 +260,20 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	parts := strings.Split(fileIdAndPath, "/")
 	fileId := parts[0]
 
-	id, err := g.fileObjectService.GetFileIdFromObject(fileId)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+	var id domain.FullFileId
+	// Treat id as fileId to allow download file directly
+	if domain.IsFileId(fileId) {
+		id = domain.FullFileId{
+			FileId: domain.FileId(fileId),
+		}
+	} else {
+		var err error
+		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, fileId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
+		}
 	}
+
 	file, err := g.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get file by hash: %w", err)
@@ -320,7 +330,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 		}
 	} else {
 		var err error
-		id, err = g.fileObjectService.GetFileIdFromObject(imageId)
+		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, imageId)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
 		}
@@ -333,7 +343,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	var file files.File
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
-		file, err = image.GetOriginalFile(ctx)
+		file, err = image.GetOriginalFile()
 		if err != nil {
 			return nil, nil, fmt.Errorf("get image file: %w", err)
 		}
@@ -342,7 +352,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse width: %w", err)
 		}
-		file, err = image.GetFileForWidth(ctx, wantWidth)
+		file, err = image.GetFileForWidth(wantWidth)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get image file: %w", err)
 		}

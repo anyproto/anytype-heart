@@ -3,84 +3,96 @@ package filesync
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
-func (f *fileSync) RemoveFile(spaceId string, fileId domain.FileId) (err error) {
-	log.Info("add file to removing queue", zap.String("fileId", fileId.String()))
-	defer func() {
-		if err == nil {
-			select {
-			case f.removePingCh <- struct{}{}:
-			default:
-			}
-		}
-	}()
-	err = f.queue.QueueRemove(spaceId, fileId)
-	return
-}
-
-func (f *fileSync) removeLoop() {
-	for {
-		select {
-		case <-f.loopCtx.Done():
-			return
-		case <-f.removePingCh:
-		case <-time.After(loopTimeout):
-		}
-		f.removeOperation()
-
+func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
+	it := &QueueItem{
+		ObjectId: objectId,
+		SpaceId:  fileId.SpaceId,
+		FileId:   fileId.FileId,
 	}
-}
-
-func (f *fileSync) removeOperation() {
-	for {
-		fileId, err := f.tryToRemove()
-		if err == errQueueIsEmpty {
-			return
-		}
-		if err != nil {
-			log.Warn("can't remove file", zap.String("fileId", fileId.String()), zap.Error(err))
-			return
-		}
-		log.Warn("file removed", zap.String("fileId", fileId.String()))
-	}
-}
-
-func (f *fileSync) tryToRemove() (domain.FileId, error) {
-	it, err := f.queue.GetRemove()
-	if err == errQueueIsEmpty {
-		return "", errQueueIsEmpty
-	}
+	err := it.Validate()
 	if err != nil {
-		return "", fmt.Errorf("get remove task from queue: %w", err)
+		return fmt.Errorf("validate queue item: %w", err)
 	}
-	spaceID, fileId := it.SpaceId, it.FileId
-	if err = f.removeFile(f.loopCtx, spaceID, fileId); err != nil {
-		return fileId, fmt.Errorf("remove file: %w", err)
+	err = s.removeFromUploadingQueues(it)
+	if err != nil {
+		return fmt.Errorf("remove from uploading queues: %w", err)
 	}
-	if err = f.queue.DoneRemove(spaceID, fileId); err != nil {
-		return fileId, fmt.Errorf("mark remove task as done: %w", err)
-	}
-	f.updateSpaceUsageInformation(spaceID)
-
-	return fileId, nil
+	return s.deletionQueue.Add(it)
 }
 
-func (f *fileSync) RemoveSynchronously(spaceId string, fileId domain.FileId) (err error) {
-	err = f.removeFile(context.Background(), spaceId, fileId)
+func (s *fileSync) deletionHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
+	fileId := domain.FullFileId{
+		SpaceId: it.SpaceId,
+		FileId:  it.FileId,
+	}
+	err := s.deleteFile(ctx, fileId)
+	if err != nil {
+		log.Error("remove file error", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
+		addErr := s.retryDeletionQueue.Add(it)
+		if addErr != nil {
+			return persistentqueue.ActionRetry, fmt.Errorf("add to removing retry queue: %w", addErr)
+		}
+		return persistentqueue.ActionDone, fmt.Errorf("remove file: %w", err)
+	}
+	s.updateSpaceUsageInformation(fileId.SpaceId)
+	err = s.removeFromDeletionQueues(it)
+	if err != nil {
+		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
+	}
+	return persistentqueue.ActionDone, nil
+}
+
+func (s *fileSync) retryDeletionHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
+	fileId := domain.FullFileId{
+		SpaceId: it.SpaceId,
+		FileId:  it.FileId,
+	}
+	err := s.deleteFile(ctx, fileId)
+	if err != nil {
+		return persistentqueue.ActionRetry, fmt.Errorf("remove file: %w", err)
+	}
+	s.updateSpaceUsageInformation(fileId.SpaceId)
+	err = s.removeFromDeletionQueues(it)
+	if err != nil {
+		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
+	}
+	return persistentqueue.ActionDone, nil
+}
+
+func (s *fileSync) DeleteFileSynchronously(fileId domain.FullFileId) (err error) {
+	err = s.deleteFile(context.Background(), fileId)
 	if err != nil {
 		return fmt.Errorf("remove file: %w", err)
 	}
-	f.updateSpaceUsageInformation(spaceId)
+	s.updateSpaceUsageInformation(fileId.SpaceId)
 	return
 }
 
-func (f *fileSync) removeFile(ctx context.Context, spaceId string, fileId domain.FileId) (err error) {
-	log.Info("removing file", zap.String("fileId", fileId.String()))
-	return f.rpcStore.DeleteFiles(ctx, spaceId, fileId)
+func (s *fileSync) deleteFile(ctx context.Context, fileId domain.FullFileId) error {
+	log.Info("removing file", zap.String("fileId", fileId.FileId.String()))
+	err := s.rpcStore.DeleteFiles(ctx, fileId.SpaceId, fileId.FileId)
+	if err != nil {
+		return err
+	}
+	log.Warn("file deleted", zap.String("fileId", fileId.FileId.String()))
+	return nil
+}
+
+func (s *fileSync) removeFromDeletionQueues(item *QueueItem) error {
+	err := s.deletionQueue.Remove(item.Key())
+	if err != nil {
+		return fmt.Errorf("remove upload task: %w", err)
+	}
+	err = s.retryDeletionQueue.Remove(item.Key())
+	if err != nil {
+		return fmt.Errorf("remove upload task from retrying queue: %w", err)
+	}
+	return nil
 }

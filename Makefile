@@ -5,7 +5,7 @@ CLIENT_IOS_PATH ?= ../anytype-swift
 BUILD_FLAGS ?=
 
 export GOLANGCI_LINT_VERSION=v1.54.2
-export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow
+export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion
 
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
@@ -175,6 +175,7 @@ install-dev-android: setup-go build-android
 	# Print the updated gradle file (for verification)
 	@cd $(CLIENT_ANDROID_PATH) && make setup_local_mw
 	@cd $(CLIENT_ANDROID_PATH) && make normalize_mw_imports
+	@cd $(CLIENT_ANDROID_PATH) && make clean_protos
 
 setup-gomobile:
 	go build -o deps golang.org/x/mobile/cmd/gomobile

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "182c2b3268428bd633d4a92322070958e778a9c54d4dfd9b66d8ca416f80ca17"
+const RelationChecksum = "b549826bf25e72ff31a5bad9159fdd67388a5c4d2492eba3fab64f81477fbb31"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -26,6 +26,9 @@ const (
 	RelationKeyTemplateIsBundled         domain.RelationKey = "templateIsBundled"
 	RelationKeyDateOfBirth               domain.RelationKey = "dateOfBirth"
 	RelationKeyRestrictions              domain.RelationKey = "restrictions"
+	RelationKeyReadersLimit              domain.RelationKey = "readersLimit"
+	RelationKeyWritersLimit              domain.RelationKey = "writersLimit"
+	RelationKeySharedSpacesLimit         domain.RelationKey = "sharedSpacesLimit"
 	RelationKeyIsHighlighted             domain.RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage            domain.RelationKey = "thumbnailImage"
 	RelationKeyAttachments               domain.RelationKey = "attachments"
@@ -57,6 +60,7 @@ const (
 	RelationKeyLinkedContacts            domain.RelationKey = "linkedContacts"
 	RelationKeyRottenTomatoesRating      domain.RelationKey = "rottenTomatoesRating"
 	RelationKeyIsHidden                  domain.RelationKey = "isHidden"
+	RelationKeyIsHiddenDiscovery         domain.RelationKey = "isHiddenDiscovery"
 	RelationKeyAdditional                domain.RelationKey = "additional"
 	RelationKeyBudget                    domain.RelationKey = "budget"
 	RelationKeyMediaArtistName           domain.RelationKey = "mediaArtistName"
@@ -163,6 +167,8 @@ const (
 	RelationKeyOrigin                    domain.RelationKey = "origin"
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
+	RelationKeySpaceShareableStatus      domain.RelationKey = "spaceShareableStatus"
+	RelationKeyIsAclShared               domain.RelationKey = "isAclShared"
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
@@ -177,6 +183,7 @@ const (
 	RelationKeyRevision                  domain.RelationKey = "revision"
 	RelationKeyImageKind                 domain.RelationKey = "imageKind"
 	RelationKeyImportType                domain.RelationKey = "importType"
+	RelationKeyGlobalName                domain.RelationKey = "globalName"
 )
 
 var (
@@ -853,6 +860,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyGlobalName: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Name of profile that the user could be mentioned by",
+			Format:           model.RelationFormat_shorttext,
+			Id:               "_brglobalName",
+			Key:              "globalName",
+			MaxCount:         1,
+			Name:             "Global name",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyHeightInPixels: {
 
 			DataSource:       model.Relation_details,
@@ -1069,6 +1089,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIsAclShared: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Specify if access control list is shared",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisAclShared",
+			Key:              "isAclShared",
+			MaxCount:         1,
+			Name:             "Is Acl Shared",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIsArchived: {
 
 			DataSource:       model.Relation_account,
@@ -1122,6 +1156,20 @@ var (
 			MaxCount:         1,
 			Name:             "Hidden",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsHiddenDiscovery: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Specify if object discovery is hidden",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisHiddenDiscovery",
+			Key:              "isHiddenDiscovery",
+			MaxCount:         1,
+			Name:             "Discovery hidden",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1622,6 +1670,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyReadersLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Readers limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brreadersLimit",
+			Key:              "readersLimit",
+			MaxCount:         1,
+			Name:             "Readers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyRecommendedLayout: {
 
 			DataSource:       model.Relation_details,
@@ -1792,7 +1854,6 @@ var (
 			Hidden:           true,
 			Id:               "_brrestrictions",
 			Key:              "restrictions",
-			MaxCount:         1,
 			Name:             "Object restrictions",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
@@ -1873,6 +1934,20 @@ var (
 			Key:              "setOf",
 			Name:             "Set of",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySharedSpacesLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Shared spaces limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brsharedSpacesLimit",
+			Key:              "sharedSpacesLimit",
+			MaxCount:         1,
+			Name:             "Shared spaces limit",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2106,6 +2181,20 @@ var (
 			Key:              "spaceRemoteStatus",
 			MaxCount:         1,
 			Name:             "Space remote status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceShareableStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Specify if the space is shareable",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceShareableStatus",
+			Key:              "spaceShareableStatus",
+			MaxCount:         1,
+			Name:             "Space shareable status",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2398,6 +2487,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space",
 			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWritersLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Writers limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brwritersLimit",
+			Key:              "writersLimit",
+			MaxCount:         1,
+			Name:             "Writers limit",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

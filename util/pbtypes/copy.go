@@ -30,7 +30,7 @@ func CopyBlock(in *model.Block) (out *model.Block) {
 	return
 }
 
-func CopyStruct(s *types.Struct) *types.Struct {
+func CopyStruct(s *types.Struct, copyVals bool) *types.Struct {
 	if s == nil {
 		return nil
 	}
@@ -45,10 +45,29 @@ func CopyStruct(s *types.Struct) *types.Struct {
 	}
 
 	for key, value := range s.Fields {
-		copiedStruct.Fields[key] = CopyVal(value)
+		if copyVals {
+			copiedStruct.Fields[key] = CopyVal(value)
+		} else {
+			copiedStruct.Fields[key] = value
+		}
 	}
 
 	return copiedStruct
+}
+
+func CopyStructFields(src *types.Struct, fields ...string) *types.Struct {
+	newStruct := &types.Struct{
+		Fields: make(map[string]*types.Value, len(fields)),
+	}
+	if src.GetFields() == nil {
+		return newStruct
+	}
+	for _, field := range fields {
+		if _, ok := src.Fields[field]; ok {
+			newStruct.Fields[field] = CopyVal(src.Fields[field])
+		}
+	}
+	return newStruct
 }
 
 func CopyVal(v *types.Value) *types.Value {
@@ -68,7 +87,7 @@ func CopyVal(v *types.Value) *types.Value {
 	case *types.Value_BoolValue:
 		copiedValue.Kind = &types.Value_BoolValue{BoolValue: kind.BoolValue}
 	case *types.Value_StructValue:
-		copiedValue.Kind = &types.Value_StructValue{StructValue: CopyStruct(kind.StructValue)}
+		copiedValue.Kind = &types.Value_StructValue{StructValue: CopyStruct(kind.StructValue, true)}
 	case *types.Value_ListValue:
 		copiedValue.Kind = &types.Value_ListValue{ListValue: CopyListVal(kind.ListValue)}
 	}

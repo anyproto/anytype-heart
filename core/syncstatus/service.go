@@ -2,7 +2,7 @@ package syncstatus
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
@@ -13,10 +13,11 @@ import (
 	"github.com/dgraph-io/badger/v4"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -47,7 +48,7 @@ type service struct {
 	objectWatchers     map[string]syncstatus.StatusWatcher
 
 	objectStore  objectstore.ObjectStore
-	objectGetter getblock.ObjectGetter
+	objectGetter cache.ObjectGetter
 	badger       *badger.DB
 }
 
@@ -67,14 +68,22 @@ func (s *service) Init(a *app.App) (err error) {
 	eventSender := app.MustComponent[event.Sender](a)
 
 	dbProvider := app.MustComponent[datastore.Datastore](a)
+	// todo: start using sqlite db
 	db, err := dbProvider.SpaceStorage()
 	if err != nil {
-		return fmt.Errorf("get badger from provider: %w", err)
+		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
+			db, err = dbProvider.LocalStorage()
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 	s.badger = db
 
 	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
-	s.objectGetter = app.MustComponent[getblock.ObjectGetter](a)
+	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
 	s.fileSyncService.OnUploaded(s.OnFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.OnFileUploadStarted)

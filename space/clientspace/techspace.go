@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/space/internal/techspace"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 type TechSpace struct {

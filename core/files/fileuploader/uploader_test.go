@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/block/getblock/mock_getblock"
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	file2 "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -176,7 +176,8 @@ func TestUploader_Upload(t *testing.T) {
 }
 
 func newFileServiceFixture(t *testing.T) files.Service {
-	dataStoreProvider := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 
 	blockStorage := filestorage.NewInMemory()
 
@@ -186,6 +187,7 @@ func newFileServiceFixture(t *testing.T) files.Service {
 	fileSyncService := filesync.New()
 	objectStore := objectstore.NewStoreFixture(t)
 	eventSender := mock_event.NewMockSender(t)
+	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	ctx := context.Background()
 	a := new(app.App)
@@ -197,7 +199,7 @@ func newFileServiceFixture(t *testing.T) files.Service {
 	a.Register(blockStorage)
 	a.Register(objectStore)
 	a.Register(rpcStoreService)
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
 
 	s := files.New()
@@ -208,7 +210,7 @@ func newFileServiceFixture(t *testing.T) files.Service {
 }
 
 func newFixture(t *testing.T) *uplFixture {
-	picker := mock_getblock.NewMockObjectGetter(t)
+	picker := mock_cache.NewMockObjectGetter(t)
 	fx := &uplFixture{
 		ctrl:   gomock.NewController(t),
 		picker: picker,
@@ -230,7 +232,7 @@ type uplFixture struct {
 	Uploader
 	fileService       files.Service
 	ctrl              *gomock.Controller
-	picker            *mock_getblock.MockObjectGetter
+	picker            *mock_cache.MockObjectGetter
 	fileObjectService *mock_fileobject.MockService
 }
 

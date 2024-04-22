@@ -101,8 +101,13 @@ func (ind *indexer) initQuery() {
 				),
 			},
 			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+			{
 				RelationKey: bundle.RelationKeyFileIndexingStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Empty,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)),
 			},
 		},
 	}
@@ -122,6 +127,10 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 		fileId := domain.FullFileId{
 			SpaceId: spaceId,
 			FileId:  domain.FileId(pbtypes.GetString(rec.Details, bundle.RelationKeyFileId.String())),
+		}
+		// Additional check if we are accidentally migrated file object
+		if !fileId.Valid() {
+			continue
 		}
 		err = ind.addToQueue(ctx, id, fileId)
 		if err != nil {
@@ -199,7 +208,7 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
 	if errors.Is(err, domain.ErrFileNotFound) {
-		log.Errorf("build details: %v", err)
+		log.With("fileId", fileId.FileId, "objectId", id.ObjectID).Errorf("build details: %v", err)
 		ind.markFileAsNotFound(st)
 		return nil
 	}
@@ -216,7 +225,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	}
 	st.AddBundledRelations(keys...)
 
-	details = pbtypes.StructMerge(prevDetails, details, true)
+	details = pbtypes.StructMerge(prevDetails, details, false)
 	st.SetDetails(details)
 
 	err = ind.addBlocks(st, details, id.ObjectID)

@@ -63,17 +63,17 @@ func (mr *MockObjectStoreMockRecorder) AddToIndexQueue(arg0 any) *gomock.Call {
 }
 
 // BatchProcessFullTextQueue mocks base method.
-func (m *MockObjectStore) BatchProcessFullTextQueue(arg0 int, arg1 func([]string) error) error {
+func (m *MockObjectStore) BatchProcessFullTextQueue(arg0 context.Context, arg1 int, arg2 func([]string) error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchProcessFullTextQueue", arg0, arg1)
+	ret := m.ctrl.Call(m, "BatchProcessFullTextQueue", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // BatchProcessFullTextQueue indicates an expected call of BatchProcessFullTextQueue.
-func (mr *MockObjectStoreMockRecorder) BatchProcessFullTextQueue(arg0, arg1 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) BatchProcessFullTextQueue(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchProcessFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).BatchProcessFullTextQueue), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchProcessFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).BatchProcessFullTextQueue), arg0, arg1, arg2)
 }
 
 // Close mocks base method.
@@ -127,7 +127,7 @@ func (mr *MockObjectStoreMockRecorder) DeleteLinks(arg0 ...any) *gomock.Call {
 }
 
 // DeleteObject mocks base method.
-func (m *MockObjectStore) DeleteObject(arg0 string) error {
+func (m *MockObjectStore) DeleteObject(arg0 domain.FullID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteObject", arg0)
 	ret0, _ := ret[0].(error)
@@ -411,6 +411,20 @@ func (m *MockObjectStore) GetRelationLink(arg0, arg1 string) (*model.RelationLin
 func (mr *MockObjectStoreMockRecorder) GetRelationLink(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationLink", reflect.TypeOf((*MockObjectStore)(nil).GetRelationLink), arg0, arg1)
+}
+
+// GetSpaceName mocks base method.
+func (m *MockObjectStore) GetSpaceName(arg0 string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSpaceName", arg0)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSpaceName indicates an expected call of GetSpaceName.
+func (mr *MockObjectStoreMockRecorder) GetSpaceName(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSpaceName", reflect.TypeOf((*MockObjectStore)(nil).GetSpaceName), arg0)
 }
 
 // GetUniqueKeyById mocks base method.
