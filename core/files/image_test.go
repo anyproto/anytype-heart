@@ -95,7 +95,7 @@ func TestImageDetails(t *testing.T) {
 	}{
 		{key: bundle.RelationKeyWidthInPixels, value: pbtypes.Int64(100)},
 		{key: bundle.RelationKeyHeightInPixels, value: pbtypes.Int64(68)},
-		{key: bundle.RelationKeyIsHidden, value: pbtypes.Bool(true)},
+		{key: bundle.RelationKeyIsHidden, value: nil},
 		{key: bundle.RelationKeyName, value: pbtypes.String("myFile")},
 		{key: bundle.RelationKeyFileExt, value: pbtypes.String("jpg")},
 		{key: bundle.RelationKeyFileMimeType, value: pbtypes.String("image/jpeg")},

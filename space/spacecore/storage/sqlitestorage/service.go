@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/globalsign/mgo/bson"
 	"github.com/mattn/go-sqlite3"
@@ -20,6 +21,12 @@ import (
 var ErrLocked = errors.New("space storage locked")
 
 var log = logger.NewNamed("sqlitestore")
+
+var (
+	ErrSpaceNotFound  = errors.New("space not found")
+	ErrTreeNotFound   = treestorage.ErrUnknownTreeId
+	ErrObjectNotFound = errors.New("object not found")
+)
 
 type configGetter interface {
 	GetSpaceStorePath() string
@@ -162,12 +169,12 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store
 
 func (s *storageService) MarkSpaceCreated(id string) (err error) {
 	_, err = s.stmt.updateSpaceIsCreated.Exec(true, id)
-	return
+	return replaceNoRowsErr(err, ErrSpaceNotFound)
 }
 
 func (s *storageService) UnmarkSpaceCreated(id string) (err error) {
 	_, err = s.stmt.updateSpaceIsCreated.Exec(false, id)
-	return
+	return replaceNoRowsErr(err, ErrSpaceNotFound)
 }
 
 func (s *storageService) IsSpaceCreated(id string) (created bool) {
@@ -268,6 +275,7 @@ func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCre
 
 func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error) {
 	err = s.stmt.getBind.QueryRow(objectID).Scan(&spaceID)
+	err = replaceNoRowsErr(err, ErrObjectNotFound)
 	return
 }
 
@@ -351,4 +359,11 @@ func isUniqueConstraint(err error) bool {
 		return true
 	}
 	return false
+}
+
+func replaceNoRowsErr(err, rErr error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return rErr
+	}
+	return err
 }

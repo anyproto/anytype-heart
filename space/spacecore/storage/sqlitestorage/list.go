@@ -38,7 +38,7 @@ type listStorage struct {
 func (t *listStorage) Root() (*consensusproto.RawRecordWithId, error) {
 	tch, err := t.spaceStorage.TreeRoot(t.listId)
 	if err != nil {
-		return nil, err
+		return nil, replaceNoRowsErr(err, liststorage.ErrUnknownRecord)
 	}
 	return &consensusproto.RawRecordWithId{
 		Payload: tch.RawChange,
@@ -66,7 +66,7 @@ func (t *listStorage) SetHead(headId string) error {
 func (t *listStorage) GetRawRecord(ctx context.Context, id string) (*consensusproto.RawRecordWithId, error) {
 	tch, err := t.spaceStorage.TreeRoot(id)
 	if err != nil {
-		return nil, err
+		return nil, replaceNoRowsErr(err, liststorage.ErrUnknownRecord)
 	}
 	return &consensusproto.RawRecordWithId{
 		Payload: tch.RawChange,

@@ -425,64 +425,6 @@ func (_c *MockFileSync_FileListStats_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// FileStat provides a mock function with given fields: ctx, spaceId, fileId
-func (_m *MockFileSync) FileStat(ctx context.Context, spaceId string, fileId domain.FileId) (filesync.FileStat, error) {
-	ret := _m.Called(ctx, spaceId, fileId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FileStat")
-	}
-
-	var r0 filesync.FileStat
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId) (filesync.FileStat, error)); ok {
-		return rf(ctx, spaceId, fileId)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId) filesync.FileStat); ok {
-		r0 = rf(ctx, spaceId, fileId)
-	} else {
-		r0 = ret.Get(0).(filesync.FileStat)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, domain.FileId) error); ok {
-		r1 = rf(ctx, spaceId, fileId)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockFileSync_FileStat_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FileStat'
-type MockFileSync_FileStat_Call struct {
-	*mock.Call
-}
-
-// FileStat is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceId string
-//   - fileId domain.FileId
-func (_e *MockFileSync_Expecter) FileStat(ctx interface{}, spaceId interface{}, fileId interface{}) *MockFileSync_FileStat_Call {
-	return &MockFileSync_FileStat_Call{Call: _e.mock.On("FileStat", ctx, spaceId, fileId)}
-}
-
-func (_c *MockFileSync_FileStat_Call) Run(run func(ctx context.Context, spaceId string, fileId domain.FileId)) *MockFileSync_FileStat_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.FileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_FileStat_Call) Return(fs filesync.FileStat, err error) *MockFileSync_FileStat_Call {
-	_c.Call.Return(fs, err)
-	return _c
-}
-
-func (_c *MockFileSync_FileStat_Call) RunAndReturn(run func(context.Context, string, domain.FileId) (filesync.FileStat, error)) *MockFileSync_FileStat_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Init provides a mock function with given fields: a
 func (_m *MockFileSync) Init(a *app.App) error {
 	ret := _m.Called(a)
