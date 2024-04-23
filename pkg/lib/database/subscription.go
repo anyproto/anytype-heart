@@ -100,7 +100,8 @@ func (sub *subscription) processQueue() {
 		}
 		select {
 		case sub.ch <- msg:
-			continue
+		case <-sub.quit:
+			log.Warnf("subscription %p is closed, dropping message", sub)
 		}
 	}
 }
