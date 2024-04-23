@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -33,6 +34,8 @@ const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
+var waitSpaceDelay = 500 * time.Millisecond
+
 var (
 	ErrIncorrectSpaceID   = errors.New("incorrect space id")
 	ErrSpaceNotExists     = errors.New("space not exists")
@@ -57,6 +60,7 @@ type Service interface {
 	Join(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
+	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
 	TechSpace() *clientspace.TechSpace
@@ -199,6 +203,32 @@ func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
 	return s.create(ctx)
 }
 
+func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
+	// wait until we open the space views
+	if err := s.techSpace.WaitViews(); err != nil {
+		return nil, err
+	}
+	checkExists := func() bool {
+		s.mu.Lock()
+		_, ctrlOk := s.spaceControllers[spaceId]
+		_, waitingOk := s.waiting[spaceId]
+		s.mu.Unlock()
+		return ctrlOk || waitingOk
+	}
+	if checkExists() {
+		return s.Get(ctx, spaceId)
+	}
+	// waiting a little bit more in case the goroutine in OnViewUpdated has not started yet
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-s.ctx.Done():
+		return nil, s.ctx.Err()
+	case <-time.After(waitSpaceDelay):
+		return s.Get(ctx, spaceId)
+	}
+}
+
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	if spaceId == s.techSpace.TechSpaceId() {
 		return s.techSpace, nil
@@ -302,6 +332,12 @@ func (s *service) sendNotification(spaceId string) {
 	if err != nil {
 		log.Error("failed to send notification", zap.Error(err), zap.String("spaceId", spaceId))
 	}
+}
+
+func (s *service) getTechSpace() *clientspace.TechSpace {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.techSpace
 }
 
 func (s *service) SpaceViewId(spaceId string) (spaceViewId string, err error) {
