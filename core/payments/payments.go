@@ -694,7 +694,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersReq
 		return nil, err
 	}
 	// if your are on 0-tier OR on Explorer -> return full list
-	if status.Data.Tier <= uint32(proto.SubscriptionTier_TierExplorer) {
+	if (status != nil) && (status.Data != nil) && status.Data.Tier <= uint32(proto.SubscriptionTier_TierExplorer) {
 		return out, nil
 	}
 
@@ -796,7 +796,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 
 	// 3 - update tiers, not status
 	var cacheExpireTime time.Time
-	if cachedStatus != nil {
+	if (cachedStatus != nil) && (cachedStatus.Data != nil) {
 		cacheExpireTime = time.Unix(int64(cachedStatus.Data.DateEnds), 0)
 	} else {
 		log.Debug("setting tiers cache to +1 day")
