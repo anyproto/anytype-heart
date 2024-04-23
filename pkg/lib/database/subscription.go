@@ -124,6 +124,7 @@ func (sub *subscription) PublishAsync(id string, msg *types.Struct) bool {
 		go sub.processQueue()
 	})
 	log.Debugf("objStore subscription sendasync %s %p", id, sub)
+	// we have unlimited buffer, so it should never block, no need for context cancellation
 	err := sub.publishQueue.Add(context.Background(), msg)
 	return err == nil
 }
