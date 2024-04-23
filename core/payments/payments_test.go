@@ -525,7 +525,7 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		// w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
-		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
+		req := &pb.RpcMembershipGetPaymentUrlRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
@@ -554,7 +554,7 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
-		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
+		req := &pb.RpcMembershipGetPaymentUrlRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
