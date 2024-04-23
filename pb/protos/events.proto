@@ -103,6 +103,8 @@ message Event {
             Payload.Broadcast payloadBroadcast = 116;
 
             Membership.Update membershipUpdate = 117;
+
+            Space.SyncStatus.Update spaceSyncStatusUpdate = 119;
         }
     }
 
@@ -1059,6 +1061,34 @@ message Event {
     message Payload {
         message Broadcast {
             string payload = 1;
+        }
+    }
+
+    message Space {
+        message SyncStatus {
+            message Update {
+                Status status = 1;
+                anytype.Model.A network = 2;
+                SyncError error = 3;
+                int64 syncingObjectsCounter = 4;
+            }
+        }
+        enum Status {
+            Synced = 0;
+            Syncing = 1;
+            Error = 2;
+            Offline = 3;
+        }
+        enum Network {
+            Anytype = 0;
+            SelfHost = 1;
+            LocalOnly = 2;
+        }
+        enum SyncError {
+            Null = 0;
+            StorageLimitExceed = 1;
+            IncompatibleVersion = 2;
+            NetworkError = 3;
         }
     }
 }

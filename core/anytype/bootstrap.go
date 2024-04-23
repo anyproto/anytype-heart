@@ -283,7 +283,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
-		Register(paymentscache.New())
+		Register(paymentscache.New()).
+		Register(syncstatus.NewSpaceSyncStatus())
 }
 
 func MiddlewareVersion() string {
