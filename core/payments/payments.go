@@ -106,12 +106,13 @@ CACHE LOGICS:
 type Service interface {
 	GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error)
 	IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error)
-	GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error)
+	RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) (*pb.RpcMembershipRegisterPaymentRequestResponse, error)
 	GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error)
 	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
 	FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error)
 	GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error)
+	VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error)
 
 	app.ComponentRunnable
 }
@@ -451,7 +452,7 @@ func (s *service) validateAnyName(tier model.MembershipTierData, name string) pr
 	return proto.IsNameValidResponse_Valid
 }
 
-func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
+func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) (*pb.RpcMembershipRegisterPaymentRequestResponse, error) {
 	// 1 - send request
 	bsr := proto.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -490,7 +491,7 @@ func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPay
 		return nil, err
 	}
 
-	out := pb.RpcMembershipGetPaymentUrlResponse{
+	out := pb.RpcMembershipRegisterPaymentRequestResponse{
 		PaymentUrl: bsRet.PaymentUrl,
 		BillingId:  bsRet.BillingID,
 	}
@@ -811,4 +812,38 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 	}
 
 	return &out, nil
+}
+
+func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error) {
+	verifyReq := proto.VerifyAppStoreReceiptRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
+		BillingID:  req.BillingId,
+		Receipt:    req.Receipt,
+	}
+
+	payload, err := verifyReq.Marshal()
+	if err != nil {
+		log.Error("can not marshal VerifyAppStoreReceiptRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Error("can not sign VerifyAppStoreReceiptRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	reqSigned := proto.VerifyAppStoreReceiptRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	_, err = s.ppclient.VerifyAppStoreReceipt(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipVerifyAppStoreReceiptResponse{}, nil
 }

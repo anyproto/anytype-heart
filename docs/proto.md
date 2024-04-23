@@ -634,10 +634,6 @@
     - [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request)
     - [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response)
     - [Rpc.Membership.Finalize.Response.Error](#anytype-Rpc-Membership-Finalize-Response-Error)
-    - [Rpc.Membership.GetPaymentUrl](#anytype-Rpc-Membership-GetPaymentUrl)
-    - [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request)
-    - [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response)
-    - [Rpc.Membership.GetPaymentUrl.Response.Error](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error)
     - [Rpc.Membership.GetPortalLinkUrl](#anytype-Rpc-Membership-GetPortalLinkUrl)
     - [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request)
     - [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response)
@@ -662,6 +658,14 @@
     - [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request)
     - [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response)
     - [Rpc.Membership.IsNameValid.Response.Error](#anytype-Rpc-Membership-IsNameValid-Response-Error)
+    - [Rpc.Membership.RegisterPaymentRequest](#anytype-Rpc-Membership-RegisterPaymentRequest)
+    - [Rpc.Membership.RegisterPaymentRequest.Request](#anytype-Rpc-Membership-RegisterPaymentRequest-Request)
+    - [Rpc.Membership.RegisterPaymentRequest.Response](#anytype-Rpc-Membership-RegisterPaymentRequest-Response)
+    - [Rpc.Membership.RegisterPaymentRequest.Response.Error](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error)
+    - [Rpc.Membership.VerifyAppStoreReceipt](#anytype-Rpc-Membership-VerifyAppStoreReceipt)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error)
     - [Rpc.Membership.VerifyEmailCode](#anytype-Rpc-Membership-VerifyEmailCode)
     - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
@@ -1255,13 +1259,14 @@
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
     - [Rpc.Membership.Finalize.Response.Error.Code](#anytype-Rpc-Membership-Finalize-Response-Error-Code)
-    - [Rpc.Membership.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code)
     - [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code)
     - [Rpc.Membership.GetTiers.Response.Error.Code](#anytype-Rpc-Membership-GetTiers-Response-Error-Code)
     - [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code)
     - [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code)
     - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
+    - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
@@ -1984,13 +1989,14 @@
 | NotificationTest | [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request) | [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response) |  |
 | MembershipGetStatus | [Rpc.Membership.GetStatus.Request](#anytype-Rpc-Membership-GetStatus-Request) | [Rpc.Membership.GetStatus.Response](#anytype-Rpc-Membership-GetStatus-Response) | Membership *** Get current subscription status (tier, expiration date, etc.) WARNING: can be cached by Anytype Heart |
 | MembershipIsNameValid | [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request) | [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response) |  |
-| MembershipGetPaymentUrl | [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request) | [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
+| MembershipRegisterPaymentRequest | [Rpc.Membership.RegisterPaymentRequest.Request](#anytype-Rpc-Membership-RegisterPaymentRequest-Request) | [Rpc.Membership.RegisterPaymentRequest.Response](#anytype-Rpc-Membership-RegisterPaymentRequest-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
 | MembershipGetPortalLinkUrl | [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request) | [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
 | MembershipGetVerificationEmailStatus | [Rpc.Membership.GetVerificationEmailStatus.Request](#anytype-Rpc-Membership-GetVerificationEmailStatus-Request) | [Rpc.Membership.GetVerificationEmailStatus.Response](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response) | Check the current status of the verification email |
 | MembershipGetVerificationEmail | [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request) | [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
 | MembershipVerifyEmailCode | [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request) | [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (MembershipGetVerificationEmail) |
 | MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
 | MembershipGetTiers | [Rpc.Membership.GetTiers.Request](#anytype-Rpc-Membership-GetTiers-Request) | [Rpc.Membership.GetTiers.Response](#anytype-Rpc-Membership-GetTiers-Response) |  |
+| MembershipVerifyAppStoreReceipt | [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request) | [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -11164,68 +11170,6 @@ users can not have N tiers (no combining)
 
 
 
-<a name="anytype-Rpc-Membership-GetPaymentUrl"></a>
-
-### Rpc.Membership.GetPaymentUrl
-Generate a link to the payment provider
-where user can pay for the membership
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-GetPaymentUrl-Request"></a>
-
-### Rpc.Membership.GetPaymentUrl.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| requestedTier | [uint32](#uint32) |  |  |
-| paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
-| nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
-| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-GetPaymentUrl-Response"></a>
-
-### Rpc.Membership.GetPaymentUrl.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Membership.GetPaymentUrl.Response.Error](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error) |  |  |
-| paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
-| billingId | [string](#string) |  | billingID is only needed for mobile clients |
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-GetPaymentUrl-Response-Error"></a>
-
-### Rpc.Membership.GetPaymentUrl.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Membership.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Membership-GetPortalLinkUrl"></a>
 
 ### Rpc.Membership.GetPortalLinkUrl
@@ -11562,6 +11506,125 @@ before requesting a payment link and paying
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-RegisterPaymentRequest"></a>
+
+### Rpc.Membership.RegisterPaymentRequest
+Generate a unique id for payment request (for mobile clients)
+Generate a link to Stripe where user can pay for the membership (for desktop client)
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-RegisterPaymentRequest-Request"></a>
+
+### Rpc.Membership.RegisterPaymentRequest.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requestedTier | [uint32](#uint32) |  |  |
+| paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
+| nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-RegisterPaymentRequest-Response"></a>
+
+### Rpc.Membership.RegisterPaymentRequest.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.RegisterPaymentRequest.Response.Error](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error) |  |  |
+| paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
+| billingId | [string](#string) |  | billingID is only needed for mobile clients |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error"></a>
+
+### Rpc.Membership.RegisterPaymentRequest.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Request"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| billingId | [string](#string) |  | billingId is used to identify payment request on payment node side |
+| receipt | [string](#string) |  | receipt is a JWT-encoded string including info about subscription purchase |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -20014,28 +20077,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code"></a>
-
-### Rpc.Membership.GetPaymentUrl.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-| CACHE_ERROR | 5 |  |
-| TIER_NOT_FOUND | 6 |  |
-| TIER_INVALID | 7 |  |
-| PAYMENT_METHOD_INVALID | 8 |  |
-| BAD_ANYNAME | 9 |  |
-| MEMBERSHIP_ALREADY_EXISTS | 10 |  |
-| CAN_NOT_CONNECT | 11 |  |
-
-
-
 <a name="anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code"></a>
 
 ### Rpc.Membership.GetPortalLinkUrl.Response.Error.Code
@@ -20147,6 +20188,44 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CACHE_ERROR | 10 |  |
 | CAN_NOT_RESERVE | 11 | for some probable future use (if needed) |
 | CAN_NOT_CONNECT | 12 |  |
+
+
+
+<a name="anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code"></a>
+
+### Rpc.Membership.RegisterPaymentRequest.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| TIER_NOT_FOUND | 6 |  |
+| TIER_INVALID | 7 |  |
+| PAYMENT_METHOD_INVALID | 8 |  |
+| BAD_ANYNAME | 9 |  |
+| MEMBERSHIP_ALREADY_EXISTS | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
 
 
 

@@ -510,7 +510,7 @@ func (fx *fixture) expectLimitsUpdated() {
 	fx.fileLimitsUpdater.EXPECT().UpdateNodeUsage(mock.Anything).Return(nil)
 }
 
-func TestGetPaymentURL(t *testing.T) {
+func TestRegisterPaymentRequest(t *testing.T) {
 	t.Run("fail if BuySubscription method fails", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
@@ -525,7 +525,7 @@ func TestGetPaymentURL(t *testing.T) {
 		// w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
-		req := &pb.RpcMembershipGetPaymentUrlRequest{
+		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
@@ -533,7 +533,7 @@ func TestGetPaymentURL(t *testing.T) {
 		}
 
 		// Call the function being tested
-		_, err := fx.GetPaymentURL(ctx, req)
+		_, err := fx.RegisterPaymentRequest(ctx, req)
 		assert.Error(t, err)
 	})
 
@@ -554,7 +554,7 @@ func TestGetPaymentURL(t *testing.T) {
 		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
-		req := &pb.RpcMembershipGetPaymentUrlRequest{
+		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
@@ -562,7 +562,7 @@ func TestGetPaymentURL(t *testing.T) {
 		}
 
 		// Call the function being tested
-		resp, err := fx.GetPaymentURL(ctx, req)
+		resp, err := fx.RegisterPaymentRequest(ctx, req)
 		assert.NoError(t, err)
 		assert.Equal(t, "https://xxxx.com", resp.PaymentUrl)
 		assert.Equal(t, "killbillingid", resp.BillingId)
@@ -1337,5 +1337,49 @@ func TestIsNameValid(t *testing.T) {
 		resp, err := fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
 		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+	})
+}
+
+func TestVerifyAppStoreReceipt(t *testing.T) {
+	t.Run("fail if VerifyAppStoreReceipt fails", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.ppclient.EXPECT().VerifyAppStoreReceipt(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyAppStoreReceiptResponse, error) {
+			return nil, psp.ErrUnknown
+		}).MinTimes(1)
+
+		req := &pb.RpcMembershipVerifyAppStoreReceiptRequest{
+			BillingId: "billingID",
+			Receipt:   "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
+		}
+
+		// when
+		resp, err := fx.VerifyAppStoreReceipt(ctx, req)
+
+		// then
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("success if VerifyAppStoreReceipt successes", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.ppclient.EXPECT().VerifyAppStoreReceipt(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyAppStoreReceiptResponse, error) {
+			return &psp.VerifyAppStoreReceiptResponse{}, nil
+		}).MinTimes(1)
+
+		req := &pb.RpcMembershipVerifyAppStoreReceiptRequest{
+			BillingId: "billingID",
+			Receipt:   "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
+		}
+
+		// when
+		resp, err := fx.VerifyAppStoreReceipt(ctx, req)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, (*pb.RpcMembershipVerifyAppStoreReceiptResponseError)(nil), resp.Error)
 	})
 }
