@@ -146,10 +146,10 @@ func (s *service) Close(ctx context.Context) (err error) {
 func (s *service) UpdateGlobalNames(myIdentityGlobalName string) {
 	// we update globalName of local identity directly because Naming Node is not registering new name immediately
 	s.updateMyIdentityGlobalName(myIdentityGlobalName)
-	select {
-	case s.globalNamesForceUpdate <- struct{}{}:
-	default:
-	}
+	// select {
+	// case s.globalNamesForceUpdate <- struct{}{}:
+	// default:
+	// }
 }
 
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
