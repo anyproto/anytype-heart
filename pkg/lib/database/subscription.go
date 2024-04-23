@@ -74,16 +74,14 @@ loop:
 // should be called via sub.processQueueOnce
 func (sub *subscription) processQueue() {
 	go func() {
-		select {
-		case <-sub.quit:
-			err := sub.publishQueue.Close()
-			if err != nil && !errors.Is(err, mb.ErrClosed) {
-				log.Errorf("subscription %p failed to close async queue: %s", sub, err)
-			}
-			unprocessed := sub.publishQueue.Len()
-			if unprocessed > 0 {
-				log.Errorf("subscription %p has %d unprocessed messages in the async queue", sub, unprocessed)
-			}
+		<-sub.quit
+		err := sub.publishQueue.Close()
+		if err != nil && !errors.Is(err, mb.ErrClosed) {
+			log.Errorf("subscription %p failed to close async queue: %s", sub, err)
+		}
+		unprocessed := sub.publishQueue.Len()
+		if unprocessed > 0 {
+			log.Warnf("subscription %p has %d unprocessed messages in the async queue", sub, unprocessed)
 		}
 	}()
 
