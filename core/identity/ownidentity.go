@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -35,6 +37,7 @@ type ownProfileSubscription struct {
 	identityRepoClient identityRepoClient
 	fileAclService     fileacl.Service
 	observerService    observerService
+	namingService      nameserviceclient.AnyNsClientService
 
 	myIdentity          string
 	globalNameUpdatedCh chan string
@@ -58,6 +61,7 @@ func newOwnProfileSubscription(
 	identityRepoClient identityRepoClient,
 	fileAclService fileacl.Service,
 	observerService observerService,
+	namingService nameserviceclient.AnyNsClientService,
 	pushIdentityBatchTimeout time.Duration,
 ) *ownProfileSubscription {
 	componentCtx, componentCtxCancel := context.WithCancel(context.Background())
@@ -68,6 +72,7 @@ func newOwnProfileSubscription(
 		identityRepoClient:       identityRepoClient,
 		fileAclService:           fileAclService,
 		observerService:          observerService,
+		namingService:            namingService,
 		globalNameUpdatedCh:      make(chan string),
 		gotDetailsCh:             make(chan struct{}),
 		pushIdentityBatchTimeout: pushIdentityBatchTimeout,
@@ -116,6 +121,8 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		s.handleOwnProfileDetails(records[0].Details)
 	}
 
+	s.fetchGlobalName()
+
 	go func() {
 		for {
 			select {
@@ -139,10 +146,6 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 func (s *ownProfileSubscription) close() {
 	s.componentCtxCancel()
 	close(s.globalNameUpdatedCh)
-}
-
-func (s *ownProfileSubscription) updateGlobalName(globalName string) {
-	s.globalNameUpdatedCh <- globalName
 }
 
 func (s *ownProfileSubscription) enqueuePush() {
@@ -188,6 +191,23 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 
 	s.observerService.broadcastMyIdentityProfile(identityProfile)
 	s.enqueuePush()
+}
+
+func (s *ownProfileSubscription) fetchGlobalName() {
+	response, err := s.namingService.GetNameByAnyId(context.Background(), &nameserviceproto.NameByAnyIdRequest{AnyAddress: s.myIdentity})
+	if err != nil || response == nil {
+		log.Error("error fetching global name of our own identity from Naming Service", zap.Error(err))
+		return
+	}
+	if !response.Found {
+		log.Debug("globalName was not found for our own identity in Naming Service")
+		return
+	}
+	s.handleGlobalNameUpdate(response.Name)
+}
+
+func (s *ownProfileSubscription) updateGlobalName(globalName string) {
+	s.globalNameUpdatedCh <- globalName
 }
 
 func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {

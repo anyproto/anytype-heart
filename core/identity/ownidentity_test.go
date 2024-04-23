@@ -7,11 +7,14 @@ import (
 	"testing"
 	"time"
 
+	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
+	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
@@ -63,10 +66,18 @@ func newOwnSubscriptionFixture(t *testing.T) *ownSubscriptionFixture {
 	coordinatorClient := newInMemoryIdentityRepo()
 	fileAclService := mock_fileacl.NewMockService(t)
 	testObserver := &testObserver{}
+	ctrl := gomock.NewController(t)
+	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
+
+	nsClient.EXPECT().GetNameByAnyId(gomock.Any(), &nameserviceproto.NameByAnyIdRequest{AnyAddress: testIdentity}).AnyTimes().
+		Return(&nameserviceproto.NameByAddressResponse{
+			Found: true,
+			Name:  globalName,
+		}, nil)
 
 	accountService.EXPECT().AccountID().Return("identity1")
 
-	sub := newOwnProfileSubscription(spaceService, objectStore, accountService, coordinatorClient, fileAclService, testObserver, testBatchTimeout)
+	sub := newOwnProfileSubscription(spaceService, objectStore, accountService, coordinatorClient, fileAclService, testObserver, nsClient, testBatchTimeout)
 
 	return &ownSubscriptionFixture{
 		ownProfileSubscription: sub,
@@ -90,6 +101,7 @@ func (fx *ownSubscriptionFixture) getDataFromTestRepo(t *testing.T, accountSymKe
 }
 
 func TestOwnProfileSubscription(t *testing.T) {
+	newName := "foobar"
 	t.Run("do not take global name from profile details", func(t *testing.T) {
 		fx := newOwnSubscriptionFixture(t)
 		personalSpace := mock_clientspace.NewMockSpace(t)
@@ -130,12 +142,18 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		got := fx.testObserver.listObservedProfiles()
 
+		// first we update profile details from store, then globalName from NS
 		want := []*model.IdentityProfile{
+			{
+				Identity:   "identity1",
+				GlobalName: globalName,
+			},
 			{
 				Identity:    "identity1",
 				Name:        "John Doe",
 				Description: "Description",
 				IconCid:     "fileObjectId",
+				GlobalName:  globalName,
 			},
 		}
 		assert.Equal(t, want, got)
@@ -152,6 +170,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 					Key:  "key1",
 				},
 			},
+			GlobalName: globalName,
 		}
 		assert.Equal(t, wantProfile, gotProfile)
 	})
@@ -174,16 +193,21 @@ func TestOwnProfileSubscription(t *testing.T) {
 		err := fx.run(context.Background())
 		require.NoError(t, err)
 
-		fx.updateGlobalName(globalName)
+		fx.updateGlobalName(newName)
 
 		time.Sleep(2 * testBatchTimeout)
 
 		got := fx.testObserver.listObservedProfiles()
 
+		// first we initialize globalName with the one from NS
 		want := []*model.IdentityProfile{
 			{
 				Identity:   testIdentity,
 				GlobalName: globalName,
+			},
+			{
+				Identity:   testIdentity,
+				GlobalName: newName,
 			},
 		}
 		assert.Equal(t, want, got)
@@ -191,7 +215,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 		gotProfile := fx.getDataFromTestRepo(t, accountSymKey)
 		wantProfile := &model.IdentityProfile{
 			Identity:   testIdentity,
-			GlobalName: globalName,
+			GlobalName: newName,
 		}
 
 		assert.Equal(t, wantProfile, gotProfile)
@@ -233,7 +257,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 		})
 		time.Sleep(testBatchTimeout / 4)
 
-		fx.updateGlobalName(globalName)
+		fx.updateGlobalName(newName)
 		time.Sleep(testBatchTimeout / 4)
 
 		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
@@ -254,22 +278,27 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		want := []*model.IdentityProfile{
 			{
-				Identity:    "identity1",
-				Name:        "John Doe",
-				Description: "Description",
+				Identity:   "identity1",
+				GlobalName: globalName,
 			},
 			{
 				Identity:    "identity1",
 				Name:        "John Doe",
 				Description: "Description",
 				GlobalName:  globalName,
+			},
+			{
+				Identity:    "identity1",
+				Name:        "John Doe",
+				Description: "Description",
+				GlobalName:  newName,
 			},
 			{
 				Identity:    "identity1",
 				Name:        "John Doe2",
 				Description: "Description2",
 				IconCid:     "fileObjectId2",
-				GlobalName:  globalName,
+				GlobalName:  newName,
 			},
 		}
 		assert.Equal(t, want, got)
@@ -280,7 +309,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 			Name:        "John Doe2",
 			Description: "Description2",
 			IconCid:     "fileCid2",
-			GlobalName:  globalName,
+			GlobalName:  newName,
 			IconEncryptionKeys: []*model.FileEncryptionKey{
 				{
 					Path: "/0/original",

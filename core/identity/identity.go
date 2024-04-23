@@ -109,7 +109,10 @@ func (s *service) Init(a *app.App) (err error) {
 	objectStore := app.MustComponent[objectstore.ObjectStore](a)
 	spaceService := app.MustComponent[space.Service](a)
 
-	s.ownProfileSubscription = newOwnProfileSubscription(spaceService, objectStore, s.accountService, s.identityRepoClient, s.fileAclService, s, s.pushIdentityBatchTimeout)
+	s.ownProfileSubscription = newOwnProfileSubscription(
+		spaceService, objectStore, s.accountService, s.identityRepoClient,
+		s.fileAclService, s, s.namingService, s.pushIdentityBatchTimeout,
+	)
 	return
 }
 
