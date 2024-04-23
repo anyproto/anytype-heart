@@ -204,10 +204,19 @@ func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
 }
 
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
-	// wait until we open the space views
+	// wait until we start the space view loading process
 	if err := s.techSpace.WaitViews(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("wait views: %w", err)
 	}
+	// if there is no such space view then there is no space
+	exists, err := s.techSpace.SpaceViewExists(ctx, spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("space view exists error: %w", err)
+	}
+	if !exists {
+		return nil, ErrSpaceNotExists
+	}
+	// we have space locally, we just need to wait a bit until the controller is there
 	checkExists := func() bool {
 		s.mu.Lock()
 		_, ctrlOk := s.spaceControllers[spaceId]
@@ -215,25 +224,24 @@ func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Spac
 		s.mu.Unlock()
 		return ctrlOk || waitingOk
 	}
-	if checkExists() {
-		return s.Get(ctx, spaceId)
+	for !checkExists() {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-s.ctx.Done():
+			return nil, s.ctx.Err()
+		case <-time.After(waitSpaceDelay):
+			break
+		}
 	}
-	// waiting a little bit more in case the goroutine in OnViewUpdated has not started yet
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-s.ctx.Done():
-		return nil, s.ctx.Err()
-	case <-time.After(waitSpaceDelay):
-		return s.Get(ctx, spaceId)
-	}
+	return s.Get(ctx, spaceId)
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	if spaceId == s.techSpace.TechSpaceId() {
 		return s.techSpace, nil
 	}
-	ctrl, err := s.getStatus(ctx, spaceId)
+	ctrl, err := s.getCtrl(ctx, spaceId)
 	if err != nil {
 		return nil, err
 	}
