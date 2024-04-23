@@ -18,7 +18,7 @@ type subscription struct {
 	closed           bool
 	ch               chan *types.Struct
 	wg               sync.WaitGroup
-	publishQueue     *mb.MB[*types.Struct]
+	publishQueue     mb.MB[*types.Struct]
 	processQueueOnce sync.Once
 	sync.RWMutex
 }
@@ -77,7 +77,7 @@ func (sub *subscription) processQueue() {
 		select {
 		case <-sub.quit:
 			err := sub.publishQueue.Close()
-			if err != nil {
+			if err != nil && !errors.Is(err, mb.ErrClosed) {
 				log.Errorf("subscription %p failed to close async queue: %s", sub, err)
 			}
 			unprocessed := sub.publishQueue.Len()
