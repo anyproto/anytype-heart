@@ -313,12 +313,6 @@ func (s *service) sendNotification(spaceId string) {
 	}
 }
 
-func (s *service) getTechSpace() *clientspace.TechSpace {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.techSpace
-}
-
 func (s *service) SpaceViewId(spaceId string) (spaceViewId string, err error) {
 	return s.techSpace.SpaceViewId(spaceId)
 }
