@@ -204,37 +204,8 @@ func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
 }
 
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
-	// wait until we start the space view loading process
-	if err := s.techSpace.WaitViews(); err != nil {
-		return nil, fmt.Errorf("wait views: %w", err)
-	}
-	// if there is no such space view then there is no space
-	exists, err := s.techSpace.SpaceViewExists(ctx, spaceId)
-	if err != nil {
-		return nil, fmt.Errorf("space view exists error: %w", err)
-	}
-	if !exists {
-		return nil, ErrSpaceNotExists
-	}
-	// we have space locally, we just need to wait a bit until the controller is there
-	checkExists := func() bool {
-		s.mu.Lock()
-		_, ctrlOk := s.spaceControllers[spaceId]
-		_, waitingOk := s.waiting[spaceId]
-		s.mu.Unlock()
-		return ctrlOk || waitingOk
-	}
-	for !checkExists() {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-s.ctx.Done():
-			return nil, s.ctx.Err()
-		case <-time.After(waitSpaceDelay):
-			break
-		}
-	}
-	return s.Get(ctx, spaceId)
+	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
+	return waiter.waitSpace(ctx, spaceId)
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
