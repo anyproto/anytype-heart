@@ -36,7 +36,7 @@ var (
 type Service interface {
 	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct)
 
-	UpdateGlobalNames(myIdentityGlobalName string)
+	UpdateOwnGlobalName(myIdentityGlobalName string)
 
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 
@@ -75,7 +75,6 @@ type service struct {
 	pushIdentityBatchTimeout time.Duration
 	identityObservePeriod    time.Duration
 	identityForceUpdate      chan struct{}
-	globalNamesForceUpdate   chan struct{}
 
 	lock sync.Mutex
 	// identity => spaceId => observer
@@ -91,7 +90,6 @@ func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Dura
 		componentCtx:             ctx,
 		componentCtxCancel:       cancel,
 		identityForceUpdate:      make(chan struct{}),
-		globalNamesForceUpdate:   make(chan struct{}),
 		identityObservePeriod:    identityObservePeriod,
 		identityObservers:        make(map[string]map[string]*observer),
 		identityEncryptionKeys:   make(map[string]crypto.SymKey),
@@ -111,7 +109,10 @@ func (s *service) Init(a *app.App) (err error) {
 	objectStore := app.MustComponent[objectstore.ObjectStore](a)
 	spaceService := app.MustComponent[space.Service](a)
 
-	s.ownProfileSubscription = newOwnProfileSubscription(spaceService, objectStore, s.accountService, s.identityRepoClient, s.fileAclService, s, s.pushIdentityBatchTimeout)
+	s.ownProfileSubscription = newOwnProfileSubscription(
+		spaceService, objectStore, s.accountService, s.identityRepoClient,
+		s.fileAclService, s, s.namingService, s.pushIdentityBatchTimeout,
+	)
 	return
 }
 
@@ -143,13 +144,9 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) UpdateGlobalNames(myIdentityGlobalName string) {
+func (s *service) UpdateOwnGlobalName(myIdentityGlobalName string) {
 	// we update globalName of local identity directly because Naming Node is not registering new name immediately
-	s.updateMyIdentityGlobalName(myIdentityGlobalName)
-	select {
-	case s.globalNamesForceUpdate <- struct{}{}:
-	default:
-	}
+	s.ownProfileSubscription.updateGlobalName(myIdentityGlobalName)
 }
 
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
@@ -188,8 +185,8 @@ func (s *service) observeIdentitiesLoop() {
 	defer ticker.Stop()
 
 	ctx := context.Background()
-	observe := func(globalNamesForceUpdate bool) {
-		err := s.observeIdentities(ctx, globalNamesForceUpdate)
+	observe := func() {
+		err := s.observeIdentities(ctx)
 		if err != nil {
 			log.Error("error observing identities", zap.Error(err))
 		}
@@ -199,18 +196,16 @@ func (s *service) observeIdentitiesLoop() {
 		case <-s.componentCtx.Done():
 			return
 		case <-s.identityForceUpdate:
-			observe(false)
-		case <-s.globalNamesForceUpdate:
-			observe(true)
+			observe()
 		case <-ticker.C:
-			observe(false)
+			observe()
 		}
 	}
 }
 
 const identityRepoDataKind = "profile"
 
-func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate bool) error {
+func (s *service) observeIdentities(ctx context.Context) error {
 	identities := s.listRegisteredIdentities()
 
 	identitiesData, err := s.getIdentitiesDataFromRepo(ctx, identities)
@@ -218,8 +213,8 @@ func (s *service) observeIdentities(ctx context.Context, globalNamesForceUpdate 
 		return fmt.Errorf("failed to pull identity: %w", err)
 	}
 
-	if err = s.fetchGlobalNames(append(identities, s.myIdentity), globalNamesForceUpdate); err != nil {
-		log.Error("error fetching identities global names from Naming Service", zap.Error(err))
+	if err = s.fetchGlobalNames(identities); err != nil {
+		log.Error("error fetching global names of guest identities from Naming Service", zap.Error(err))
 	}
 
 	for _, identityData := range identitiesData {
@@ -371,9 +366,9 @@ func extractProfile(identityData *identityrepoproto.DataWithIdentity, symKey cry
 	return profile, rawData, nil
 }
 
-func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error {
+func (s *service) fetchGlobalNames(identities []string) error {
 	s.lock.Lock()
-	if len(s.identityGlobalNames) == len(identities) && !forceUpdate {
+	if len(s.identityGlobalNames) == len(identities) {
 		s.lock.Unlock()
 		return nil
 	}
@@ -390,15 +385,8 @@ func (s *service) fetchGlobalNames(identities []string, forceUpdate bool) error 
 		s.lock.Lock()
 		s.identityGlobalNames[anyID] = response.Results[i]
 		s.lock.Unlock()
-		if anyID == s.myIdentity && response.Results[i].Found {
-			s.updateMyIdentityGlobalName(response.Results[i].Name)
-		}
 	}
 	return nil
-}
-
-func (s *service) updateMyIdentityGlobalName(name string) {
-	s.ownProfileSubscription.updateGlobalName(name)
 }
 
 func makeIdentityProfileKey(identity string) []byte {
