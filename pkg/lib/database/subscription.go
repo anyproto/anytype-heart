@@ -94,9 +94,9 @@ func (sub *subscription) processQueue() {
 			return
 		}
 		select {
-		case sub.ch <- msg:
 		case <-sub.quit:
 			log.Warnf("subscription %p is closed, dropping message", sub)
+		case sub.ch <- msg:
 		}
 	}
 }
