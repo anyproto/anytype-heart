@@ -60,15 +60,15 @@ type Queue[T Item] struct {
 }
 
 type options struct {
-	handlerTickPeriod time.Duration
+	retryPauseDuration time.Duration
 }
 
 type Option func(*options)
 
-// WithHandlerTickPeriod adds delay between handling items
-func WithHandlerTickPeriod(period time.Duration) Option {
+// WithRetryPause adds delay between handling items on ActionRetry
+func WithRetryPause(duration time.Duration) Option {
 	return func(o *options) {
-		o.handlerTickPeriod = period
+		o.retryPauseDuration = duration
 	}
 }
 
@@ -131,13 +131,6 @@ func (q *Queue[T]) loop() {
 		if err != nil {
 			q.logger.Error("handle next", zap.Error(err))
 		}
-		if q.options.handlerTickPeriod > 0 {
-			select {
-			case <-time.After(q.options.handlerTickPeriod):
-			case <-q.ctx.Done():
-				return
-			}
-		}
 	}
 
 }
@@ -164,6 +157,13 @@ func (q *Queue[T]) handleNext() error {
 		addErr := q.batcher.Add(q.ctx, it)
 		if addErr != nil {
 			return fmt.Errorf("add to queue: %w", addErr)
+		}
+		if q.options.retryPauseDuration > 0 {
+			select {
+			case <-time.After(q.options.retryPauseDuration):
+			case <-q.ctx.Done():
+				return context.Canceled
+			}
 		}
 	}
 	if err != nil {

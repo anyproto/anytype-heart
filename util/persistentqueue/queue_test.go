@@ -358,27 +358,53 @@ func TestRemove(t *testing.T) {
 }
 
 func TestWithHandlerTickPeriod(t *testing.T) {
-	db := newInMemoryBadger(t)
-	log := logging.Logger("test")
-	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+	t.Run("pause on ActionRetry", func(t *testing.T) {
+		db := newInMemoryBadger(t)
+		log := logging.Logger("test")
+		storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
 
-	tickerPeriod := 50 * time.Millisecond
-	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
-		return ActionDone, nil
-	}, WithHandlerTickPeriod(tickerPeriod))
+		tickerPeriod := 50 * time.Millisecond
+		q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+			return ActionRetry, nil
+		}, WithRetryPause(tickerPeriod))
 
-	err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
-	require.NoError(t, err)
-	err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
-	require.NoError(t, err)
+		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+		require.NoError(t, err)
+		err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
+		require.NoError(t, err)
 
-	q.Run()
+		q.Run()
 
-	time.Sleep(tickerPeriod / 2)
-	assert.Equal(t, 1, q.NumProcessedItems())
+		time.Sleep(tickerPeriod / 2)
+		assert.Equal(t, 1, q.NumProcessedItems())
 
-	time.Sleep(tickerPeriod)
-	assert.Equal(t, 2, q.NumProcessedItems())
+		time.Sleep(tickerPeriod)
+		assert.Equal(t, 2, q.NumProcessedItems())
+	})
+
+	t.Run("do not pause on ActionDone", func(t *testing.T) {
+		db := newInMemoryBadger(t)
+		log := logging.Logger("test")
+		storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+
+		tickerPeriod := 50 * time.Millisecond
+		q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+			return ActionDone, nil
+		}, WithRetryPause(tickerPeriod))
+
+		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+		require.NoError(t, err)
+		err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
+		require.NoError(t, err)
+
+		q.Run()
+
+		time.Sleep(tickerPeriod / 2)
+		assert.Equal(t, 2, q.NumProcessedItems())
+
+		time.Sleep(tickerPeriod)
+		assert.Equal(t, 2, q.NumProcessedItems())
+	})
 }
 
 func assertEventually(t *testing.T, pred func(t *testing.T) bool) {
