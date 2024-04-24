@@ -230,7 +230,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 
 	blocksAvailability, err := s.checkBlocksAvailability(ctx, spaceID, fileId)
 	if err != nil {
-		return fmt.Errorf("calculate file size: %w", err)
+		return fmt.Errorf("check blocks availability: %w", err)
 	}
 	stat, err := s.getAndUpdateSpaceStat(ctx, spaceID)
 	if err != nil {
@@ -326,7 +326,7 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, spaceId string, 
 		})
 		availabilities, err := s.rpcStore.CheckAvailability(ctx, spaceId, fileCids)
 		if err != nil {
-			return fmt.Errorf("check availabilit: %w", err)
+			return fmt.Errorf("check availability: %w", err)
 		}
 		for _, availability := range availabilities {
 			blockCid, err := cid.Cast(availability.Cid)
