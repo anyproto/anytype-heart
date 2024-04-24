@@ -297,7 +297,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	s.sendEvent(&out)
 
 	// 4.2 - update globalName of our own identity
-	s.profileUpdater.UpdateOwnGlobalName(status.RequestedAnyName)
+	if status.RequestedAnyName != "" {
+		s.profileUpdater.UpdateOwnGlobalName(status.RequestedAnyName)
+	}
 
 	// 4.3 - enable cache again (we have received new data)
 	log.Info("enabling cache again")
