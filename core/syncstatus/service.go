@@ -50,6 +50,8 @@ type service struct {
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
 	badger       *badger.DB
+
+	spaceSyncStatus syncstatus.SpaceSyncStatusUpdater
 }
 
 func New(fileWatcherUpdateInterval time.Duration) Service {
@@ -88,6 +90,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnUploaded(s.OnFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.OnFileUploadStarted)
 	s.fileSyncService.OnLimited(s.OnFileLimited)
+
+	s.spaceSyncStatus = app.MustComponent[syncstatus.SpaceSyncStatusUpdater](a)
 	return nil
 }
 

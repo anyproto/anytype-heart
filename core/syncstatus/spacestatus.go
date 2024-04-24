@@ -2,9 +2,9 @@ package syncstatus
 
 import (
 	"context"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/event"
@@ -17,7 +17,7 @@ type NetworkConfig interface {
 
 type UpdateSender interface {
 	app.ComponentRunnable
-	SendUpdate(status pb.EventSpaceStatus, objectsNumber int64, syncError pb.EventSpaceSyncError, isFilesSync, isObjectSync bool)
+	SendUpdate(status syncstatus.SpaceSyncStatus, objectsNumber int, syncError syncstatus.SpaceSyncError, isFilesSync, isObjectSync bool)
 }
 
 type spaceSyncStatus struct {
@@ -25,41 +25,32 @@ type spaceSyncStatus struct {
 	networkConfig NetworkConfig
 	batcher       *mb.MB[*pb.EventSpaceSyncStatusUpdate]
 
-	mu                              sync.Mutex
-	isFilesSyncing, isObjectSyncing bool
+	isFileSyncing, isObjectSyncing bool
 }
 
-func (s *spaceSyncStatus) SendUpdate(status pb.EventSpaceStatus, objectsNumber int64, syncError pb.EventSpaceSyncError, isFilesSync, isObjectSync bool) {
-	if status == pb.EventSpace_Synced && (s.isFilesSyncing || s.isObjectSyncing) {
+func (s *spaceSyncStatus) SendUpdate(status syncstatus.SpaceSyncStatus, objectsNumber int, syncError syncstatus.SpaceSyncError, isFilesSync, isObjectSync bool) {
+	if status == syncstatus.Synced && (s.isFileSyncing || s.isObjectSyncing) {
 		if isFilesSync {
-			s.mu.Lock()
-			s.isFilesSyncing = false
-			s.mu.Unlock()
+			s.isFileSyncing = false
 		}
 		if isObjectSync {
-			s.mu.Lock()
 			s.isObjectSyncing = false
-			s.mu.Unlock()
 		}
 		return
 	}
 
 	if isFilesSync {
-		s.mu.Lock()
-		s.isFilesSyncing = true
-		s.mu.Unlock()
+		s.isFileSyncing = true
 	}
 	if isObjectSync {
-		s.mu.Lock()
 		s.isObjectSyncing = true
-		s.mu.Unlock()
 	}
 
 	e := s.batcher.Add(context.Background(), &pb.EventSpaceSyncStatusUpdate{
-		Status:                status,
+		Status:                mapStatus(status),
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
-		Error:                 syncError,
-		SyncingObjectsCounter: objectsNumber,
+		Error:                 mapError(syncError),
+		SyncingObjectsCounter: int64(objectsNumber),
 	})
 	if e != nil {
 		log.Errorf("failed to add space sync event to queue %s", e)
@@ -77,7 +68,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 }
 
 func (s *spaceSyncStatus) Name() (name string) {
-	return "spaceSyncStatus"
+	return syncstatus.SpaceSyncStatusService
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
@@ -113,5 +104,31 @@ func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 		return pb.EventSpace_SelfHost
 	default:
 		return pb.EventSpace_Anytype
+	}
+}
+
+func mapStatus(status syncstatus.SpaceSyncStatus) pb.EventSpaceStatus {
+	switch status {
+	case syncstatus.Syncing:
+		return pb.EventSpace_Syncing
+	case syncstatus.Offline:
+		return pb.EventSpace_Offline
+	case syncstatus.Error:
+		return pb.EventSpace_Error
+	default:
+		return pb.EventSpace_Synced
+	}
+}
+
+func mapError(err syncstatus.SpaceSyncError) pb.EventSpaceSyncError {
+	switch err {
+	case syncstatus.NetworkError:
+		return pb.EventSpace_NetworkError
+	case syncstatus.IncompatibleVersion:
+		return pb.EventSpace_IncompatibleVersion
+	case syncstatus.StorageLimitExceed:
+		return pb.EventSpace_StorageLimitExceed
+	default:
+		return pb.EventSpace_Null
 	}
 }
