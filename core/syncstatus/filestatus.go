@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
+
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -52,5 +54,32 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 	if err != nil {
 		return fmt.Errorf("update tree: %w", err)
 	}
+
+	s.sendSpaceStatusUpdate(status)
 	return nil
+}
+
+func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status) {
+	var (
+		spaceStatus    syncstatus.SpaceSyncStatus
+		numberOfObject int
+		spaceError     syncstatus.SpaceSyncError
+		syncInProgress bool
+	)
+	switch status {
+	case filesyncstatus.Synced:
+		spaceStatus = syncstatus.Synced
+	case filesyncstatus.Syncing:
+		spaceStatus = syncstatus.Syncing
+		numberOfObject++
+		syncInProgress = true
+	case filesyncstatus.Limited:
+		spaceStatus = syncstatus.Error
+		spaceError = syncstatus.StorageLimitExceed
+	case filesyncstatus.Unknown:
+		spaceStatus = syncstatus.Error
+		spaceError = syncstatus.NetworkError
+	}
+
+	s.spaceSyncStatus.SendUpdate(spaceStatus, numberOfObject, spaceError, syncInProgress, false)
 }

@@ -41,6 +41,9 @@ type service struct {
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
+	badger       *badger.DB
+
+	spaceSyncStatus syncstatus.SpaceSyncStatusUpdater
 }
 
 func New() Service {
@@ -62,6 +65,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnUploaded(s.onFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
 	s.fileSyncService.OnLimited(s.onFileLimited)
+
+	s.spaceSyncStatus = app.MustComponent[syncstatus.SpaceSyncStatusUpdater](a)
 	return nil
 }
 
