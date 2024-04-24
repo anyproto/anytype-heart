@@ -1423,7 +1423,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 
 		if sbt == smartblock.SmartBlockTypeRelation {
 			if rel, errNotFound := bundle.GetRelation(domain.RelationKey(uk.InternalKey())); errNotFound == nil {
-				s.SetDetailAndBundledRelation(bundle.RelationKeyRelationReadonlyValue, pbtypes.Bool(rel.ReadOnlyRelation))
+				s.SetDetailAndBundledRelation(bundle.RelationKeyRelationReadonlyValue, pbtypes.Bool(rel.ReadOnly))
 			} else {
 				s.SetDetailAndBundledRelation(bundle.RelationKeyRelationReadonlyValue, pbtypes.Bool(false))
 			}
