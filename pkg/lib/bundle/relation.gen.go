@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b549826bf25e72ff31a5bad9159fdd67388a5c4d2492eba3fab64f81477fbb31"
+const RelationChecksum = "d961cfa25e59540f1d20f2f8fa65dc7b7428e2e582b2383c1be55e778c86956e"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -1821,7 +1821,7 @@ var (
 		},
 		RelationKeyRelationReadonlyValue: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Indicates whether the relation value is readonly",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,

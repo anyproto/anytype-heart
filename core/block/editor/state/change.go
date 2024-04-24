@@ -269,6 +269,9 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 }
 
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
+	// if slices.Contains(bundle.LocalAndDerivedRelationKeys, set.Key) {
+	// 	return nil
+	// }
 	det := s.Details()
 	if det == nil || det.Fields == nil {
 		det = &types.Struct{

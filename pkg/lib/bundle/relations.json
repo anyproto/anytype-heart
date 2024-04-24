@@ -273,7 +273,7 @@
     "maxCount": 1,
     "name": "Relation value is readonly",
     "readonly": true,
-    "source": "details"
+    "source": "derived"
   },
   {
     "description": "Image icon",

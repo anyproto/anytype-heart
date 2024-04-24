@@ -1420,6 +1420,14 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		} else {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
 		}
+
+		if sbt == smartblock.SmartBlockTypeRelation {
+			if rel, errNotFound := bundle.GetRelation(domain.RelationKey(uk.InternalKey())); errNotFound == nil {
+				s.SetDetailAndBundledRelation(bundle.RelationKeyRelationReadonlyValue, pbtypes.Bool(rel.ReadOnlyRelation))
+			} else {
+				s.SetDetailAndBundledRelation(bundle.RelationKeyRelationReadonlyValue, pbtypes.Bool(false))
+			}
+		}
 	}
 
 	sb.setRestrictionsDetail(s)
