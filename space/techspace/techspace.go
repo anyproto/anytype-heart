@@ -32,6 +32,7 @@ var (
 	ErrSpaceViewExists    = errors.New("spaceView exists")
 	ErrSpaceViewNotExists = errors.New("spaceView not exists")
 	ErrNotASpaceView      = errors.New("smartblock not a spaceView")
+	ErrNotStarted         = errors.New("techspace not started")
 )
 
 type TechSpace interface {
@@ -40,6 +41,7 @@ type TechSpace interface {
 	Close(ctx context.Context) (err error)
 
 	WakeUpViews()
+	WaitViews() error
 	TechSpaceId() string
 	DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error)
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
@@ -115,6 +117,22 @@ func (s *techSpace) WakeUpViews() {
 		defer close(s.idsWokenUp)
 		s.wakeUpViews()
 	}()
+}
+
+func (s *techSpace) WaitViews() error {
+	s.mu.Lock()
+	idsWokenUp := s.idsWokenUp
+	s.mu.Unlock()
+	if idsWokenUp != nil {
+		select {
+		case <-idsWokenUp:
+			return nil
+		case <-s.ctx.Done():
+			return s.ctx.Err()
+		}
+	} else {
+		return ErrNotStarted
+	}
 }
 
 func (s *techSpace) wakeUpViews() {

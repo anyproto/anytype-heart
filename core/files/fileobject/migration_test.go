@@ -1,12 +1,17 @@
 package fileobject
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -30,7 +35,8 @@ func TestMigrateFiles(t *testing.T) {
 			bb.Root(bb.ID("root")),
 		)
 		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Id().Return("spaceId")
+		spaceId := "spaceId"
+		space.EXPECT().Id().Return(spaceId)
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(objectId, nil)
 		space.EXPECT().GetObject(mock.Anything, objectId).Return(nil, fmt.Errorf("not found"))
 
@@ -38,6 +44,8 @@ func TestMigrateFiles(t *testing.T) {
 		space.EXPECT().Do(objectId, mock.Anything).Return(nil)
 
 		fx.spaceService.EXPECT().Get(mock.Anything, "spaceId").Return(space, nil)
+
+		testFileId, _ := fx.givenFileAddedToDAG(t)
 
 		wantKeys := map[string]string{
 			"/0": "encryptionKey2",
@@ -64,6 +72,8 @@ func TestMigrateFiles(t *testing.T) {
 			EncryptionKeys: wantKeys,
 		}
 		assert.Equal(t, wantFileInfo, fx.objectCreator.creationState.GetFileInfo())
+
+		fx.waitFileUploaded(t, spaceId, testFileId)
 	})
 
 	t.Run("file object is already created", func(t *testing.T) {
@@ -116,6 +126,33 @@ func (fx *fixture) waitFileMigrationHandled(t *testing.T) {
 		case <-time.After(10 * time.Millisecond):
 			if fx.migrationQueue.NumProcessedItems() > 0 {
 				return
+			}
+		}
+	}
+}
+
+func (fx *fixture) givenFileAddedToDAG(t *testing.T) (domain.FileId, ipld.Node) {
+	buf := make([]byte, 1024*1024)
+	_, err := rand.Read(buf)
+	require.NoError(t, err)
+	fileNode, err := fx.commonFileService.AddFile(context.Background(), bytes.NewReader(buf))
+	require.NoError(t, err)
+	return domain.FileId(fileNode.Cid().String()), fileNode
+}
+
+func (fx *fixture) waitFileUploaded(t *testing.T, spaceId string, fileId domain.FileId) {
+	timeout := time.NewTimer(100 * time.Millisecond)
+	for {
+		select {
+		case <-timeout.C:
+			t.Fatal("timeout")
+		case <-time.After(10 * time.Millisecond):
+			resp, err := fx.fileSync.FileListStats(context.Background(), spaceId, []domain.FileId{fileId})
+			if err == nil && len(resp) == 1 {
+				// Exact size of file
+				if resp[0].BytesUsage == 1048590 {
+					return
+				}
 			}
 		}
 	}

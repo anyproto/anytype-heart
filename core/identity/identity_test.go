@@ -54,7 +54,7 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
-	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{testIdentity, ""}}).AnyTimes().
+	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{testIdentity}}).AnyTimes().
 		Return(&nameserviceproto.BatchNameByAddressResponse{Results: []*nameserviceproto.NameByAddressResponse{{
 			Found: true,
 			Name:  globalName,

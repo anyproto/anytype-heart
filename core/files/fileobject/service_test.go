@@ -38,11 +38,12 @@ import (
 )
 
 type fixture struct {
-	fileService     files.Service
-	objectStore     *objectstore.StoreFixture
-	objectCreator   *objectCreatorStub
-	spaceService    *mock_space.MockService
-	spaceIdResolver *mock_idresolver.MockResolver
+	fileService       files.Service
+	objectStore       *objectstore.StoreFixture
+	objectCreator     *objectCreatorStub
+	spaceService      *mock_space.MockService
+	spaceIdResolver   *mock_idresolver.MockResolver
+	commonFileService fileservice.FileService
 	*service
 }
 
@@ -55,7 +56,7 @@ func newFixture(t *testing.T) *fixture {
 	dataStoreProvider, err := datastore.NewInMemory()
 	require.NoError(t, err)
 	blockStorage := filestorage.NewInMemory()
-	rpcStore := rpcstore.NewInMemoryStore(1024)
+	rpcStore := rpcstore.NewInMemoryStore(10 * 1024 * 1024)
 	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
 	fileSyncService := filesync.New()
@@ -91,11 +92,12 @@ func newFixture(t *testing.T) *fixture {
 	})
 
 	fx := &fixture{
-		fileService:     fileService,
-		objectStore:     objectStore,
-		objectCreator:   objectCreator,
-		spaceService:    spaceService,
-		spaceIdResolver: spaceIdResolver,
+		fileService:       fileService,
+		objectStore:       objectStore,
+		objectCreator:     objectCreator,
+		spaceService:      spaceService,
+		spaceIdResolver:   spaceIdResolver,
+		commonFileService: commonFileService,
 
 		service: svc.(*service),
 	}

@@ -3,9 +3,7 @@ package database
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
@@ -28,9 +26,6 @@ type Subscription interface {
 	RecordChan() chan *types.Struct
 	Subscribe(ids []string) (added []string)
 	Subscriptions() []string
-	// Publish is blocking
-	// returns false if the subscription is closed or the id is not subscribed
-	Publish(id string, msg *types.Struct) bool
 	// PublishAsync is non-blocking and guarantees the order of messages
 	// returns false if the subscription is closed or the id is not subscribed
 	PublishAsync(id string, msg *types.Struct) bool
@@ -126,36 +121,6 @@ func (sub *subscription) PublishAsync(id string, msg *types.Struct) bool {
 	// we have unlimited buffer, so it should never block, no need for context cancellation
 	err := sub.publishQueue.Add(context.Background(), msg)
 	return err == nil
-}
-
-func (sub *subscription) Publish(id string, msg *types.Struct) bool {
-	sub.RLock()
-	if sub.closed {
-		sub.RUnlock()
-		return false
-	}
-	if !slices.Contains(sub.ids, id) {
-		sub.RUnlock()
-		return false
-	}
-	sub.wg.Add(1)
-	defer sub.wg.Done()
-	sub.RUnlock()
-
-	log.Debugf("objStore subscription send %s %p", id, sub)
-	var total time.Duration
-	for {
-		select {
-		case <-sub.quit:
-			return false
-		case sub.ch <- msg:
-			return true
-		case <-time.After(time.Second * 3):
-			total += time.Second * 3
-			log.Errorf(fmt.Sprintf("subscription %p is blocked for %.0f seconds, failed to send %s", sub, total.Seconds(), id))
-			continue
-		}
-	}
 }
 
 func (sub *subscription) SubscribedForId(id string) bool {

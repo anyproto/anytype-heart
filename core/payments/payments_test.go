@@ -40,7 +40,7 @@ var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
 type mockGlobalNamesUpdater struct{}
 
-func (u *mockGlobalNamesUpdater) UpdateGlobalNames(string) {}
+func (u *mockGlobalNamesUpdater) UpdateOwnGlobalName(string) {}
 
 func (u *mockGlobalNamesUpdater) Init(*app.App) (err error) {
 	return nil

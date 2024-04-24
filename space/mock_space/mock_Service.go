@@ -826,6 +826,65 @@ func (_c *MockService_TechSpaceId_Call) RunAndReturn(run func() string) *MockSer
 	return _c
 }
 
+// Wait provides a mock function with given fields: ctx, spaceId
+func (_m *MockService) Wait(ctx context.Context, spaceId string) (clientspace.Space, error) {
+	ret := _m.Called(ctx, spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Wait")
+	}
+
+	var r0 clientspace.Space
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (clientspace.Space, error)); ok {
+		return rf(ctx, spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) clientspace.Space); ok {
+		r0 = rf(ctx, spaceId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(clientspace.Space)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_Wait_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Wait'
+type MockService_Wait_Call struct {
+	*mock.Call
+}
+
+// Wait is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+func (_e *MockService_Expecter) Wait(ctx interface{}, spaceId interface{}) *MockService_Wait_Call {
+	return &MockService_Wait_Call{Call: _e.mock.On("Wait", ctx, spaceId)}
+}
+
+func (_c *MockService_Wait_Call) Run(run func(ctx context.Context, spaceId string)) *MockService_Wait_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_Wait_Call) Return(sp clientspace.Space, err error) *MockService_Wait_Call {
+	_c.Call.Return(sp, err)
+	return _c
+}
+
+func (_c *MockService_Wait_Call) RunAndReturn(run func(context.Context, string) (clientspace.Space, error)) *MockService_Wait_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockService creates a new instance of MockService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockService(t interface {

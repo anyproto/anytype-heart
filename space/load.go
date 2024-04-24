@@ -19,7 +19,7 @@ type controllerWaiter struct {
 	err  error
 }
 
-func (s *service) getStatus(ctx context.Context, spaceId string) (ctrl spacecontroller.SpaceController, err error) {
+func (s *service) getCtrl(ctx context.Context, spaceId string) (ctrl spacecontroller.SpaceController, err error) {
 	s.mu.Lock()
 	if ctrl, ok := s.spaceControllers[spaceId]; ok {
 		s.mu.Unlock()
