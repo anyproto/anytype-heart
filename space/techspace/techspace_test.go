@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
@@ -274,6 +275,44 @@ func TestTechSpace_WakeUpViews(t *testing.T) {
 		fx := newFixture(t, []string{"1", "2", "3"})
 		fx.finish(t)
 		fx.WakeUpViews()
+	})
+}
+
+func TestTechSpace_WaitViews(t *testing.T) {
+	t.Run("wait after wake up views", func(t *testing.T) {
+		fx := newFixture(t, []string{"1", "2"})
+		// not calling finish to not wait for the views by default
+		treeSyncer := mock_treesyncer.NewMockTreeSyncer(fx.ctrl)
+		treeSyncer.EXPECT().StartSync()
+		fx.techCore.EXPECT().StoredIds().Return(fx.ids)
+		for _, id := range fx.ids {
+			fx.objectCache.EXPECT().GetObject(mock.Anything, id).RunAndReturn(func(ctx2 context.Context, s string) (smartblock.SmartBlock, error) {
+				// adding sleep to prove that we are indeed waiting
+				time.Sleep(100 * time.Millisecond)
+				return newSpaceViewStub(id), nil
+			})
+		}
+		fx.techCore.EXPECT().TreeSyncer().Return(treeSyncer)
+		fx.WakeUpViews()
+		err := fx.WaitViews()
+		require.NoError(t, err)
+	})
+	t.Run("wait without wake up views", func(t *testing.T) {
+		fx := newFixture(t, []string{})
+		defer fx.finish(t)
+		err := fx.WaitViews()
+		require.Equal(t, ErrNotStarted, err)
+	})
+	t.Run("wait views after close", func(t *testing.T) {
+		fx := newFixture(t, []string{})
+		treeSyncer := mock_treesyncer.NewMockTreeSyncer(fx.ctrl)
+		treeSyncer.EXPECT().StartSync()
+		fx.techCore.EXPECT().StoredIds().Return(fx.ids)
+		fx.techCore.EXPECT().TreeSyncer().Return(treeSyncer)
+		fx.WakeUpViews()
+		fx.finish(t)
+		err := fx.WaitViews()
+		require.Equal(t, fx.TechSpace.(*techSpace).ctx.Err(), err)
 	})
 }
 

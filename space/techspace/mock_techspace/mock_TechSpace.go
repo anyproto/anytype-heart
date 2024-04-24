@@ -672,6 +672,51 @@ func (_c *MockTechSpace_TechSpaceId_Call) RunAndReturn(run func() string) *MockT
 	return _c
 }
 
+// WaitViews provides a mock function with given fields:
+func (_m *MockTechSpace) WaitViews() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitViews")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockTechSpace_WaitViews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitViews'
+type MockTechSpace_WaitViews_Call struct {
+	*mock.Call
+}
+
+// WaitViews is a helper method to define mock.On call
+func (_e *MockTechSpace_Expecter) WaitViews() *MockTechSpace_WaitViews_Call {
+	return &MockTechSpace_WaitViews_Call{Call: _e.mock.On("WaitViews")}
+}
+
+func (_c *MockTechSpace_WaitViews_Call) Run(run func()) *MockTechSpace_WaitViews_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_WaitViews_Call) Return(_a0 error) *MockTechSpace_WaitViews_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockTechSpace_WaitViews_Call) RunAndReturn(run func() error) *MockTechSpace_WaitViews_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WakeUpViews provides a mock function with given fields:
 func (_m *MockTechSpace) WakeUpViews() {
 	_m.Called()
