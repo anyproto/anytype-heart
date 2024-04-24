@@ -131,6 +131,7 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 			errToCode(inviteservice.ErrInviteNotExists, pb.RpcSpaceInviteViewResponseError_INVITE_NOT_FOUND),
 			errToCode(inviteservice.ErrInviteGet, pb.RpcSpaceInviteViewResponseError_INVITE_NOT_FOUND),
 			errToCode(inviteservice.ErrInviteBadContent, pb.RpcSpaceInviteViewResponseError_INVITE_BAD_CONTENT),
+			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteViewResponseError_SPACE_IS_DELETED),
 		)
 		return &pb.RpcSpaceInviteViewResponse{
 			Error: &pb.RpcSpaceInviteViewResponseError{
