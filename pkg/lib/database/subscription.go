@@ -79,7 +79,6 @@ func (sub *subscription) processQueue() {
 			log.Warnf("subscription %p has %d unprocessed messages in the async queue", sub, unprocessed)
 		}
 	}()
-	sub.wg.Add(1)
 	defer sub.wg.Done()
 	var (
 		msg *types.Struct
@@ -116,6 +115,7 @@ func (sub *subscription) PublishAsync(id string, msg *types.Struct) bool {
 	}
 	sub.RUnlock()
 	sub.processQueueOnce.Do(func() {
+		sub.wg.Add(1)
 		go sub.processQueue()
 	})
 	log.Debugf("objStore subscription sendasync %s %p", id, sub)
