@@ -111,7 +111,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.ownProfileSubscription = newOwnProfileSubscription(
 		spaceService, objectStore, s.accountService, s.identityRepoClient,
-		s.fileAclService, s, s.namingService, s.pushIdentityBatchTimeout,
+		s.fileAclService, s, s.namingService, s.dbProvider, s.pushIdentityBatchTimeout,
 	)
 	return
 }

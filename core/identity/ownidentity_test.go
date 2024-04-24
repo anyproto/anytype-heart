@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -65,6 +66,8 @@ func newOwnSubscriptionFixture(t *testing.T) *ownSubscriptionFixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	coordinatorClient := newInMemoryIdentityRepo()
 	fileAclService := mock_fileacl.NewMockService(t)
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 	testObserver := &testObserver{}
 	ctrl := gomock.NewController(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
@@ -77,7 +80,12 @@ func newOwnSubscriptionFixture(t *testing.T) *ownSubscriptionFixture {
 
 	accountService.EXPECT().AccountID().Return("identity1")
 
-	sub := newOwnProfileSubscription(spaceService, objectStore, accountService, coordinatorClient, fileAclService, testObserver, nsClient, testBatchTimeout)
+	err = dataStoreProvider.Run(context.Background())
+	require.NoError(t, err)
+	// db, err := dataStoreProvider.LocalStorage()
+	// require.NoError(t, err)
+
+	sub := newOwnProfileSubscription(spaceService, objectStore, accountService, coordinatorClient, fileAclService, testObserver, nsClient, dataStoreProvider, testBatchTimeout)
 
 	return &ownSubscriptionFixture{
 		ownProfileSubscription: sub,
