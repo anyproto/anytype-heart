@@ -79,7 +79,8 @@ func (sub *subscription) processQueue() {
 			log.Warnf("subscription %p has %d unprocessed messages in the async queue", sub, unprocessed)
 		}
 	}()
-
+	sub.wg.Add(1)
+	defer sub.wg.Done()
 	var (
 		msg *types.Struct
 		err error
