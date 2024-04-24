@@ -105,17 +105,25 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 			)
 		}
 
-		err = s.retryUploadingQueue.Add(it)
-		if err != nil {
-			log.Error("can't add upload task to retrying queue", zap.String("fileId", fileId.String()), zap.Error(err))
-		}
-		return persistentqueue.ActionDone, nil
+		return s.addToRetryUploadingQueue(it), nil
 	}
 
-	s.runOnUploadedHook(it.ObjectId, spaceId)
+	err = s.runOnUploadedHook(it.ObjectId, spaceId)
+	if err != nil {
+		return s.addToRetryUploadingQueue(it), err
+	}
 	s.updateSpaceUsageInformation(spaceId)
 
 	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it)
+}
+
+func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Action {
+	err := s.retryUploadingQueue.Add(it)
+	if err != nil {
+		log.Error("can't add upload task to retrying queue", zap.String("fileId", it.FileId.String()), zap.Error(err))
+		return persistentqueue.ActionRetry
+	}
+	return persistentqueue.ActionDone
 }
 
 func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
@@ -134,7 +142,10 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		return persistentqueue.ActionRetry, nil
 	}
 
-	s.runOnUploadedHook(it.ObjectId, spaceId)
+	err = s.runOnUploadedHook(it.ObjectId, spaceId)
+	if err != nil {
+		return persistentqueue.ActionRetry, err
+	}
 	s.updateSpaceUsageInformation(spaceId)
 
 	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it)
@@ -164,16 +175,18 @@ func (s *fileSync) UploadSynchronously(spaceId string, fileId domain.FileId) err
 	return nil
 }
 
-func (s *fileSync) runOnUploadedHook(fileObjectId string, spaceId string) {
+func (s *fileSync) runOnUploadedHook(fileObjectId string, spaceId string) error {
 	if s.onUploaded != nil {
 		err := s.onUploaded(fileObjectId)
-		if err != nil {
+		if err != nil && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 			log.Warn("on upload callback failed",
 				zap.String("fileObjectId", fileObjectId),
 				zap.String("spaceID", spaceId),
 				zap.Error(err))
+			return err
 		}
 	}
+	return nil
 }
 
 func (s *fileSync) runOnUploadStartedHook(fileObjectId string, spaceId string) error {
