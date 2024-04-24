@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/process"
 
+	"github.com/anyproto/anytype-heart/core"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
@@ -25,7 +28,7 @@ var (
 	PromPassword string
 )
 
-func startReportMemory() {
+func startReportMemory(mw *core.Middleware) {
 	if env := os.Getenv("ANYTYPE_REPORT_MEMORY"); env != "" {
 		go func() {
 			var maxAlloc uint64
@@ -89,7 +92,9 @@ func startReportMemory() {
 				}
 
 				err = sendMetrics(
-					lo.Assign(getFileSizes(),
+					lo.Assign(
+						getFileSizes(),
+						getTableSizes(mw),
 						map[string]uint64{
 							"MaxAlloc":      bytesToMegabytes(maxAlloc),
 							"TotalAlloc":    bytesToMegabytes(memStats.TotalAlloc),
@@ -178,7 +183,7 @@ func sendMetrics(metrics map[string]uint64) error {
 		return err
 	}
 
-	fmt.Println("metric has sent")
+	fmt.Println("metric has been sent")
 	return nil
 }
 
@@ -295,6 +300,53 @@ func getFileSizes() map[string]uint64 {
 	}
 	fmt.Println(resultsSizes)
 	return resultsSizes
+}
+
+func getTableSizes(mw *core.Middleware) (tables map[string]uint64) {
+	tables = make(map[string]uint64)
+	cfg := mw.GetApp().MustComponent(config.CName).(*config.Config)
+
+	db, err := sql.Open("sqlite3", cfg.GetSpaceStorePath())
+	if err != nil {
+		fmt.Println("Error opening database:", err)
+		return
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		fmt.Println("Error pinging database:", err)
+		return
+	}
+
+	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table';")
+	if err != nil {
+		fmt.Println("Error querying database:", err)
+	}
+	defer rows.Close()
+
+	fmt.Println("Tables:")
+	for rows.Next() {
+		var tableName string
+		err := rows.Scan(&tableName)
+		if err != nil {
+			fmt.Println("Error scanning row:", err)
+		}
+
+		var count int
+		err = db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s;", tableName)).Scan(&count)
+		if err != nil {
+			fmt.Println("Error querying row:", err)
+		}
+
+		tables[fmt.Sprintf("t_%s", tableName)] = uint64(count)
+
+		fmt.Printf("%s: %d\n", tableName, count)
+	}
+	if err := rows.Err(); err != nil {
+		fmt.Println("Error iterating over rows:", err)
+	}
+	return
 }
 
 func init() {
