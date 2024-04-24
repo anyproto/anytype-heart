@@ -381,10 +381,16 @@ func (s *service) fetchGlobalNames(identities []string) error {
 	if response == nil {
 		return nil
 	}
-	for i, anyID := range identities {
+	for i, identity := range identities {
+		result := response.Results[i]
 		s.lock.Lock()
-		s.identityGlobalNames[anyID] = response.Results[i]
+		s.identityGlobalNames[identity] = result
 		s.lock.Unlock()
+
+		err := badgerhelper.SetValue(s.db, makeGlobalNameKey(identity), result.Name)
+		if err != nil {
+			log.Error("save global name", zap.String("identity", identity), zap.Error(err))
+		}
 	}
 	return nil
 }
@@ -393,7 +399,50 @@ func makeIdentityProfileKey(identity string) []byte {
 	return []byte("/identity_profile/" + identity)
 }
 
+func makeGlobalNameKey(identity string) []byte {
+	return []byte("/identity_global_name/" + identity)
+}
+
+func (s *service) getCachedIdentityProfile(identity string) (*identityrepoproto.DataWithIdentity, error) {
+	rawData, err := badgerhelper.GetValue(s.db, makeIdentityProfileKey(identity), badgerhelper.UnmarshalBytes)
+	if badgerhelper.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &identityrepoproto.DataWithIdentity{
+		Identity: identity,
+		Data: []*identityrepoproto.Data{
+			{
+				Kind: identityRepoDataKind,
+				Data: rawData,
+			},
+		},
+	}, nil
+}
+
+func (s *service) getCachedGlobalName(identity string) (string, error) {
+	rawData, err := badgerhelper.GetValue(s.db, makeGlobalNameKey(identity), badgerhelper.UnmarshalString)
+	if badgerhelper.IsNotFound(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return rawData, nil
+}
+
 func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observerCallback func(identity string, profile *model.IdentityProfile)) error {
+	cachedProfile, err := s.getCachedIdentityProfile(identity)
+	if err != nil {
+		log.Warn("register identity: get cached profile", zap.Error(err))
+	}
+	cachedGlobalName, err := s.getCachedGlobalName(identity)
+	if err != nil {
+		log.Warn("register identity: get cached global name", zap.Error(err))
+	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -411,12 +460,27 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 		s.identityObservers[identity] = observers
 	}
 
+	var isInitialized bool
+	if cachedProfile != nil {
+		profile, _, err := extractProfile(cachedProfile, encryptionKey)
+		if err == nil {
+			if cachedGlobalName != "" {
+				profile.GlobalName = cachedGlobalName
+			}
+			s.identityProfileCache[identity] = profile
+			observerCallback(identity, profile)
+			isInitialized = true
+		} else {
+			log.Warn("register identity: extract profile", zap.Error(err))
+		}
+	}
+
 	if obs, ok := observers[spaceId]; ok {
 		obs.callback = observerCallback
 	} else {
 		s.identityObservers[identity][spaceId] = &observer{
 			callback:    observerCallback,
-			initialized: false,
+			initialized: isInitialized,
 		}
 	}
 	select {
