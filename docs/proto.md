@@ -26768,6 +26768,7 @@ stored |
 | AlignLeft | 0 |  |
 | AlignCenter | 1 |  |
 | AlignRight | 2 |  |
+| AlignJustify | 3 |  |
 
 
 
