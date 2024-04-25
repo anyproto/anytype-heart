@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/internal/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
@@ -67,6 +68,7 @@ type bundledObjectsInstaller interface {
 }
 
 var log = logger.NewNamed("client.space")
+var BundledObjectsPeerFindTimeout = time.Second * 30
 
 type space struct {
 	objectcache.Cache
@@ -146,7 +148,8 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	if err := s.TryLoadBundledObjects(loadCtx); err != nil {
+	ctxWithPeerTimeout := context.WithValue(ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(BundledObjectsPeerFindTimeout))
+	if err := s.TryLoadBundledObjects(ctxWithPeerTimeout); err != nil {
 		log.Error("failed to load bundled objects", zap.Error(err))
 	}
 	s.loadMandatoryObjectsErr = s.InstallBundledObjects(ctx)

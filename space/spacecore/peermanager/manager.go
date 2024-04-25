@@ -2,6 +2,7 @@ package peermanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -15,6 +16,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+)
+
+var (
+	ContextPeerFindDeadlineKey  = "peerFindDeadline"
+	ErrPeerFindDeadlineExceeded = errors.New("peer find deadline exceeded")
 )
 
 type clientPeerManager struct {
@@ -84,16 +90,31 @@ func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.O
 func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	n.Lock()
 	if len(n.responsiblePeers) == 0 {
+		deadline := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
 		if n.availableResponsiblePeers == nil {
 			n.availableResponsiblePeers = make(chan struct{})
 		}
 		ch := n.availableResponsiblePeers
 		n.Unlock()
-		select {
-		case <-ch:
-			return n.GetResponsiblePeers(ctx)
-		case <-ctx.Done():
-			return nil, ctx.Err()
+		if !deadline.IsZero() {
+			if time.Now().After(deadline) {
+				return nil, ErrPeerFindDeadlineExceeded
+			}
+			select {
+			case <-ch:
+				return n.GetResponsiblePeers(ctx)
+			case <-time.After(time.Until(deadline)):
+				return nil, ErrPeerFindDeadlineExceeded
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		} else {
+			select {
+			case <-ch:
+				return n.GetResponsiblePeers(ctx)
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 		}
 	}
 	peers = n.responsiblePeers
