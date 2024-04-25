@@ -64,6 +64,7 @@ type spaceIndexer interface {
 
 type bundledObjectsInstaller interface {
 	InstallBundledObjects(ctx context.Context, spc Space, ids []string, isNewSpace bool) ([]string, []*types.Struct, error)
+
 	BundledObjectsIdsToInstall(ctx context.Context, spc Space, sourceObjectIds []string) (objectIds []string, err error)
 }
 
@@ -148,7 +149,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	ctxWithPeerTimeout := context.WithValue(ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(BundledObjectsPeerFindTimeout))
+	ctxWithPeerTimeout := context.WithValue(loadCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(BundledObjectsPeerFindTimeout))
 	if err := s.TryLoadBundledObjects(ctxWithPeerTimeout); err != nil {
 		log.Error("failed to load bundled objects", zap.Error(err))
 	}
