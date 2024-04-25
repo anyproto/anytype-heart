@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
@@ -80,7 +81,7 @@ func (s *Service) CreateLinkToTheNewObject(
 	ctx context.Context,
 	sctx session.Context,
 	req *pb.RpcBlockLinkCreateWithObjectRequest,
-) (linkID string, objectID string, objectDetails *types.Struct, err error) {
+) (linkID string, objectId string, objectDetails *types.Struct, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
@@ -97,7 +98,7 @@ func (s *Service) CreateLinkToTheNewObject(
 		ObjectTypeKey: objectTypeKey,
 		TemplateId:    req.TemplateId,
 	}
-	objectID, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
+	objectId, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
 		return
 	}
@@ -105,18 +106,29 @@ func (s *Service) CreateLinkToTheNewObject(
 		return
 	}
 
+	if req.Block == nil {
+		req.Block = &model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: objectId,
+					Style:         model.BlockContentLink_Page,
+				},
+			},
+			Fields: req.Fields,
+		}
+	} else {
+		link := req.Block.GetLink()
+		if link != nil {
+			link.TargetBlockId = objectId
+		} else {
+			return "", "", nil, errors.New("block content is not a link")
+		}
+	}
+
 	err = cache.DoStateCtx(s, sctx, req.ContextId, func(st *state.State, sb basic.Creatable) error {
 		linkID, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: objectID,
-						Style:         model.BlockContentLink_Page,
-					},
-				},
-				Fields: req.Fields,
-			},
+			Block:    req.Block,
 			Position: req.Position,
 		})
 		if err != nil {
