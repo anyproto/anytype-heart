@@ -8,12 +8,15 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
+
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
@@ -27,18 +30,20 @@ type clientPeerManager struct {
 	watchingPeers             map[string]struct{}
 	rebuildResponsiblePeers   chan struct{}
 	availableResponsiblePeers chan struct{}
+	isLocalOnly               bool
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	sync.Mutex
 }
 
-func (n *clientPeerManager) Init(_ *app.App) (err error) {
+func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.responsibleNodeIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
+	n.isLocalOnly = app.MustComponent[*config.Config](a).IsLocalOnly()
 	return
 }
 
@@ -89,12 +94,25 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 		}
 		ch := n.availableResponsiblePeers
 		n.Unlock()
-		select {
-		case <-ch:
-			return n.GetResponsiblePeers(ctx)
-		case <-ctx.Done():
-			return nil, ctx.Err()
+
+		if n.isLocalOnly {
+			select {
+			case <-time.After(10 * time.Second):
+				return nil, synctree.ErrNoResponsiblePeers
+			case <-ch:
+				return n.GetResponsiblePeers(ctx)
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		} else {
+			select {
+			case <-ch:
+				return n.GetResponsiblePeers(ctx)
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 		}
+
 	}
 	peers = n.responsiblePeers
 	n.Unlock()

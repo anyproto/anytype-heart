@@ -82,6 +82,10 @@ type Config struct {
 	nodeConf nodeconf.Configuration
 }
 
+func (c *Config) IsLocalOnly() bool {
+	return c.NetworkMode == pb.RpcAccount_LocalOnly
+}
+
 type FSConfig struct {
 	IPFSStorageAddr string
 }
