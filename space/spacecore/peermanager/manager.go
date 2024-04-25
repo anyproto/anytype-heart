@@ -18,9 +18,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
+type contextKey string
+
 var (
-	ContextPeerFindDeadlineKey  = "peerFindDeadline"
-	ErrPeerFindDeadlineExceeded = errors.New("peer find deadline exceeded")
+	ContextPeerFindDeadlineKey  contextKey = "peerFindDeadline"
+	ErrPeerFindDeadlineExceeded            = errors.New("peer find deadline exceeded")
 )
 
 type clientPeerManager struct {
