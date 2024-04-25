@@ -11,7 +11,6 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -46,8 +45,16 @@ type Service interface {
 	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
 }
 
+type BlockService interface {
+	GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
+	GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
+	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error)
+	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error)
+	DeleteObject(objectId string) (err error)
+}
+
 type ObjectCreator struct {
-	service        *block.Service
+	service        BlockService
 	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer *syncer.FileRelationSyncer
@@ -57,7 +64,7 @@ type ObjectCreator struct {
 	mu             sync.Mutex
 }
 
-func New(service *block.Service,
+func New(service BlockService,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer *syncer.FileRelationSyncer,
