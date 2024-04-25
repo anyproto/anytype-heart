@@ -97,7 +97,7 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 
 		if n.isLocalOnly {
 			select {
-			case <-time.After(10 * time.Second):
+			case <-time.After(30 * time.Second):
 				return nil, synctree.ErrNoResponsiblePeers
 			case <-ch:
 				return n.GetResponsiblePeers(ctx)

@@ -136,7 +136,7 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	}
 
 	// Wait object to load
-	ctx = peer.CtxWithPeerId(ctx, "*")
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	_, err = space.GetObject(ctx, it.FileObjectId)
 	// Already migrated or deleted file object
 	if err == nil || errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
