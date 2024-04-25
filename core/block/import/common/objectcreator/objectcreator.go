@@ -162,7 +162,11 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 }
 
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
-	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption && sbType != coresb.SmartBlockTypeFileObject
+	return sbType != coresb.SmartBlockTypeRelation &&
+		sbType != coresb.SmartBlockTypeObjectType &&
+		sbType != coresb.SmartBlockTypeRelationOption &&
+		sbType != coresb.SmartBlockTypeFileObject &&
+		sbType != coresb.SmartBlockTypeParticipant
 }
 
 func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objectorigin.ObjectOrigin) {
