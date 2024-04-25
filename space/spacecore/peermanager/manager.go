@@ -90,7 +90,7 @@ func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.O
 func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	n.Lock()
 	if len(n.responsiblePeers) == 0 {
-		deadline := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
+		deadline, _ := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
 		if n.availableResponsiblePeers == nil {
 			n.availableResponsiblePeers = make(chan struct{})
 		}

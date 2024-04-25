@@ -56,6 +56,27 @@ func TestClientPeerManager_GetResponsiblePeers_Deadline(t *testing.T) {
 		require.NoError(t, err, ErrPeerFindDeadlineExceeded)
 		require.Len(t, peers, 1)
 	})
+
+	t.Run("NoDeadline", func(t *testing.T) {
+		cm := &clientPeerManager{
+			spaceId:                   "x",
+			availableResponsiblePeers: make(chan struct{}),
+			Mutex:                     sync.Mutex{},
+		}
+
+		go func() {
+			<-time.After(time.Millisecond * 100)
+			cm.Lock()
+			cm.responsiblePeers = []peer.Peer{
+				newTestPeer("1"),
+			}
+			cm.Unlock()
+			close(cm.availableResponsiblePeers)
+		}()
+		peers, err := cm.GetResponsiblePeers(context.Background())
+		require.NoError(t, err, ErrPeerFindDeadlineExceeded)
+		require.Len(t, peers, 1)
+	})
 }
 
 func newTestPeer(id string) *testPeer {
