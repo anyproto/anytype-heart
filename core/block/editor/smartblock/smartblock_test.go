@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -462,6 +463,46 @@ func TestInjectLocalDetails(t *testing.T) {
 	})
 
 	// TODO More tests
+}
+
+func TestInjectDerivedDetails(t *testing.T) {
+	t.Run("relationReadonlyValue is set from bundle relation", func(t *testing.T) {
+		// given
+		id1 := "rel-tag"
+		fx1 := newFixture(id1, t)
+		fx1.store.EXPECT().GetInboundLinksByID(mock.Anything).Times(1).Return([]string{}, nil)
+		st1 := state.NewDocWithInternalKey(id1, nil, bundle.RelationKeyTag.String()).NewState()
+
+		id2 := "rel-backlinks"
+		fx2 := newFixture(id2, t)
+		fx2.store.EXPECT().GetInboundLinksByID(mock.Anything).Times(1).Return([]string{}, nil)
+		st2 := state.NewDocWithInternalKey(id2, nil, bundle.RelationKeyBacklinks.String()).NewState()
+
+		// when
+		fx1.injectDerivedDetails(st1, "space1", smartblock.SmartBlockTypeRelation)
+		fx2.injectDerivedDetails(st2, "space1", smartblock.SmartBlockTypeRelation)
+
+		// then
+		assert.False(t, pbtypes.GetBool(st1.LocalDetails(), bundle.RelationKeyRelationReadonlyValue.String()))
+		assert.True(t, pbtypes.GetBool(st2.LocalDetails(), bundle.RelationKeyRelationReadonlyValue.String()))
+	})
+
+	t.Run("relationReadonlyValue is set to false for custom relations", func(t *testing.T) {
+		// given
+		ik := "яваслюбилчегожеболе"
+		id := addr.RelationKeyToIdPrefix + ik
+		fx := newFixture(id, t)
+		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Times(1).Return([]string{}, nil)
+		st := state.NewDocWithInternalKey(id, nil, ik).NewState()
+
+		// when
+		fx.injectDerivedDetails(st, "space1", smartblock.SmartBlockTypeRelation)
+
+		// then
+		assert.False(t, pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyRelationReadonlyValue.String()))
+	})
+
+	// TODO: add more tests on derived relations injection
 }
 
 type fixture struct {
