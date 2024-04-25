@@ -515,7 +515,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 			if canceled {
 				info.err = context.Canceled
 			} else {
-				info.err = dp.addFile(info)
+				dp.addFile(info)
 			}
 			if err := dp.apply(info); err != nil {
 				log.Warnf("can't apply file: %v", err)
@@ -524,7 +524,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 	}
 }
 
-func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
+func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.DragAndDrop())
 	res := upl.
 		SetName(f.name).
