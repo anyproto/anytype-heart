@@ -412,16 +412,22 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 		out.Error.Description = "No .any at the end of the name"
 	case proto.IsNameValidResponse_TooShort:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TOO_SHORT
+		out.Error.Description = "Name is too short"
 	case proto.IsNameValidResponse_TooLong:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TOO_LONG
+		out.Error.Description = "Name is too long"
 	case proto.IsNameValidResponse_HasInvalidChars:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS
+		out.Error.Description = "Name has invalid characters"
 	case proto.IsNameValidResponse_TierFeatureNoName:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME
+		out.Error.Description = "Tier does not support any names"
 	case proto.IsNameValidResponse_CanNotReserve:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_CAN_NOT_RESERVE
+		out.Error.Description = "Can not reserve this name"
 	default:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_UNKNOWN_ERROR
+		out.Error.Description = "Unknown error"
 	}
 
 	out.Error.Description = desc
