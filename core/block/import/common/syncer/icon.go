@@ -12,14 +12,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
@@ -27,48 +25,53 @@ import (
 var log = logging.Logger("import")
 
 type IconSyncer struct {
-	service           *block.Service
-	resolver          idresolver.Resolver
-	objectStore       objectstore.ObjectStore
-	fileStore         filestore.FileStore
+	service           BlockService
 	fileObjectService fileobject.Service
 }
 
-func NewIconSyncer(service *block.Service, resolver idresolver.Resolver, fileStore filestore.FileStore, fileObjectService fileobject.Service, objectStore objectstore.ObjectStore) *IconSyncer {
+func NewIconSyncer(service BlockService, fileObjectService fileobject.Service) *IconSyncer {
 	return &IconSyncer{
 		service:           service,
-		resolver:          resolver,
-		fileStore:         fileStore,
 		fileObjectService: fileObjectService,
-		objectStore:       objectStore,
 	}
 }
 
 func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b simple.Block, origin objectorigin.ObjectOrigin) error {
 	iconImage := b.Model().GetText().GetIconImage()
+	if iconImage == addr.MissingObject {
+		return nil
+	}
 	newId, err := s.handleIconImage(id.SpaceID, newIdsSet, iconImage, origin)
 	if err != nil {
-		return fmt.Errorf("%w: %w", common.ErrFileLoad, err)
+		uplErr := s.updateTextBlock(id, newId, b)
+		if uplErr != nil {
+			return fmt.Errorf("%w: %s", common.ErrFileLoad, uplErr.Error())
+		}
+		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
 	}
 	if newId == iconImage {
 		return nil
 	}
 
-	err = cache.Do(s.service, id.ObjectID, func(sb smartblock.SmartBlock) error {
+	err = s.updateTextBlock(id, newId, b)
+	if err != nil {
+		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
+	}
+	return nil
+}
+
+func (s *IconSyncer) updateTextBlock(id domain.FullID, newId string, b simple.Block) error {
+	return cache.Do(s.service, id.ObjectID, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
 		upErr := updater.Update(nil, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = newId
 			return nil
 		}, b.Model().Id)
 		if upErr != nil {
-			return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
+			return fmt.Errorf("%w: %s", common.ErrFileLoad, upErr.Error())
 		}
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
-	}
-	return nil
 }
 
 func (s *IconSyncer) handleIconImage(spaceId string, newIdsSet map[string]struct{}, iconImage string, origin objectorigin.ObjectOrigin) (string, error) {
