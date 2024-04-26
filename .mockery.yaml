@@ -59,6 +59,10 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/common/objectcreator:
     interfaces:
       Service:
+      BlockService:
+        config:
+          dir: "{{.InterfaceDir}}/mock_blockservice"
+          outpkg: "mock_blockservice"
   github.com/anyproto/anytype-heart/core/subscription:
     interfaces:
       CollectionService:
@@ -130,6 +134,8 @@ packages:
   github.com/anyproto/anytype-heart/core/files:
     interfaces:
       Service:
+      File:
+      Image:
   github.com/anyproto/anytype-heart/core/files/fileacl:
     interfaces:
       Service:

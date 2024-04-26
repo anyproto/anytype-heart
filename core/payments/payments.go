@@ -45,7 +45,7 @@ var (
 )
 
 type globalNamesUpdater interface {
-	UpdateGlobalNames(myIdentityGlobalName string)
+	UpdateOwnGlobalName(myIdentityGlobalName string)
 }
 
 var paymentMethodMap = map[proto.PaymentMethod]model.MembershipPaymentMethod{
@@ -106,12 +106,13 @@ CACHE LOGICS:
 type Service interface {
 	GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error)
 	IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error)
-	GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error)
+	RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error)
 	GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error)
 	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
 	FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error)
 	GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error)
+	VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error)
 
 	app.ComponentRunnable
 }
@@ -276,44 +277,56 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		return nil, ErrCacheProblem
 	}
 
-	nsName, _ := nameservice.FullNameToNsName(status.RequestedAnyName)
-
 	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
 	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
-	isDiffRequestedName := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.NsName != nsName)
 
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
 
-	// 4 - if cache was disabled but the tier is different or status is active
-	if cachedStatus == nil || (isDiffTier || isDiffStatus) {
-		log.Info("subscription status has changed. sending EventMembershipUpdate",
+	// 4 - return, if cache was enabled and nothing is changed
+	if cachedStatus != nil && !isDiffTier && !isDiffStatus {
+		log.Debug("subscription status has NOT changed",
 			zap.Bool("cache was empty", cachedStatus == nil),
 			zap.Bool("isDiffTier", isDiffTier),
 			zap.Bool("isDiffStatus", isDiffStatus),
 		)
+		return &out, nil
+	}
 
-		// 4.1 - send the event
-		s.sendEvent(&out)
+	log.Info("subscription status has changed. sending EventMembershipUpdate",
+		zap.Bool("cache was empty", cachedStatus == nil),
+		zap.Bool("isDiffTier", isDiffTier),
+		zap.Bool("isDiffStatus", isDiffStatus),
+	)
 
-		// 4.2 - enable cache again (we have received new data)
+	// 4.1 - send the event
+	s.sendEvent(&out)
+
+	// 4.2 - update globalName of our own identity
+	if status.RequestedAnyName != "" {
+		log.Debug("update global name",
+			zap.String("requestedAnyName", status.RequestedAnyName),
+			zap.Any("status", status))
+
+		s.profileUpdater.UpdateOwnGlobalName(status.RequestedAnyName)
+	}
+
+	err = s.updateLimits(ctx)
+	if err != nil {
+		log.Error("update limits", zap.Error(err))
+	}
+
+	// 4.3 - enable cache again (only when status is active)
+	isFinished := status.Status == proto.SubscriptionStatus_StatusActive
+
+	if isFinished {
 		log.Info("enabling cache again")
 
 		// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
-		err := s.cache.CacheEnable()
+		err = s.cache.CacheEnable()
 		if err != nil {
 			log.Error("can not enable cache", zap.Error(err))
 			return nil, ErrCacheProblem
 		}
-
-		err = s.updateLimits(ctx)
-		if err != nil {
-			log.Error("update limits", zap.Error(err))
-		}
-	}
-
-	// 5 - if requested any name has changed, then we need to update details of local identity
-	if isDiffRequestedName {
-		s.profileUpdater.UpdateGlobalNames(status.RequestedAnyName)
 	}
 
 	return &out, nil
@@ -451,7 +464,7 @@ func (s *service) validateAnyName(tier model.MembershipTierData, name string) pr
 	return proto.IsNameValidResponse_Valid
 }
 
-func (s *service) GetPaymentURL(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
+func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
 	// 1 - send request
 	bsr := proto.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -667,10 +680,10 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 	}
 
 	// 2 - clear cache
-	log.Debug("clearing cache after subscription was finalized")
-	err = s.cache.CacheClear()
+	log.Debug("disable cache after subscription was finalized")
+	err = s.cache.CacheDisableForNextMinutes(30)
 	if err != nil {
-		log.Error("can not clear cache", zap.Error(err))
+		log.Error("can not disable cache", zap.Error(err))
 		return nil, ErrCacheProblem
 	}
 
@@ -693,7 +706,7 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersReq
 		return nil, err
 	}
 	// if your are on 0-tier OR on Explorer -> return full list
-	if status.Data.Tier <= uint32(proto.SubscriptionTier_TierExplorer) {
+	if (status != nil) && (status.Data != nil) && status.Data.Tier <= uint32(proto.SubscriptionTier_TierExplorer) {
 		return out, nil
 	}
 
@@ -795,7 +808,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 
 	// 3 - update tiers, not status
 	var cacheExpireTime time.Time
-	if cachedStatus != nil {
+	if (cachedStatus != nil) && (cachedStatus.Data != nil) {
 		cacheExpireTime = time.Unix(int64(cachedStatus.Data.DateEnds), 0)
 	} else {
 		log.Debug("setting tiers cache to +1 day")
@@ -811,4 +824,38 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 	}
 
 	return &out, nil
+}
+
+func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error) {
+	verifyReq := proto.VerifyAppStoreReceiptRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
+		BillingID:  req.BillingId,
+		Receipt:    req.Receipt,
+	}
+
+	payload, err := verifyReq.Marshal()
+	if err != nil {
+		log.Error("can not marshal VerifyAppStoreReceiptRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Error("can not sign VerifyAppStoreReceiptRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	reqSigned := proto.VerifyAppStoreReceiptRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	_, err = s.ppclient.VerifyAppStoreReceipt(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipVerifyAppStoreReceiptResponse{}, nil
 }

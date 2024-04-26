@@ -28,8 +28,6 @@ type TechSpaceDeps struct {
 	TechSpace       techspace.TechSpace
 }
 
-// TODO: cover space methods
-
 func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 	sp := &TechSpace{
 		space: &space{

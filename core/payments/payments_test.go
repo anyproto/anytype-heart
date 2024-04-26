@@ -40,7 +40,7 @@ var cacheExpireTime time.Time = time.Unix(int64(subsExpire.Unix()), 0)
 
 type mockGlobalNamesUpdater struct{}
 
-func (u *mockGlobalNamesUpdater) UpdateGlobalNames(string) {}
+func (u *mockGlobalNamesUpdater) UpdateOwnGlobalName(string) {}
 
 func (u *mockGlobalNamesUpdater) Init(*app.App) (err error) {
 	return nil
@@ -129,7 +129,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().CacheEnable().Return(nil)
+		//fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -153,7 +153,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
-		fx.cache.EXPECT().CacheEnable().Return(nil)
+		//fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -343,60 +343,6 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
 	})
 
-	t.Run("if GetSubscriptionStatus returns 0 tier -> cache it for 10 days", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierUnknown),
-			Status:           psp.SubscriptionStatus_StatusUnknown,
-			DateStarted:      0,
-			DateEnds:         0,
-			IsAutoRenew:      false,
-			PaymentMethod:    psp.PaymentMethod_MethodCard,
-			RequestedAnyName: "",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &sr, nil
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().CacheEnable().Return(nil)
-		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-		// here time.Now() will be passed which can be a bit different from the the cacheExpireTime
-		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDisabled)
-		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
-			return nil
-		})
-
-		fx.expectLimitsUpdated()
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusUnknown, resp.Data.Status)
-		assert.Equal(t, uint64(0), resp.Data.DateStarted)
-		assert.Equal(t, uint64(0), resp.Data.DateEnds)
-		assert.Equal(t, false, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.Membership_MethodStripe, resp.Data.PaymentMethod)
-		assert.Equal(t, "", resp.Data.NsName)
-	})
-
 	t.Run("if GetSubscriptionStatus returns active tier and it expires in 5 days -> cache it for 5 days", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
@@ -510,7 +456,7 @@ func (fx *fixture) expectLimitsUpdated() {
 	fx.fileLimitsUpdater.EXPECT().UpdateNodeUsage(mock.Anything).Return(nil)
 }
 
-func TestGetPaymentURL(t *testing.T) {
+func TestRegisterPaymentRequest(t *testing.T) {
 	t.Run("fail if BuySubscription method fails", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
@@ -533,7 +479,7 @@ func TestGetPaymentURL(t *testing.T) {
 		}
 
 		// Call the function being tested
-		_, err := fx.GetPaymentURL(ctx, req)
+		_, err := fx.RegisterPaymentRequest(ctx, req)
 		assert.Error(t, err)
 	})
 
@@ -562,7 +508,7 @@ func TestGetPaymentURL(t *testing.T) {
 		}
 
 		// Call the function being tested
-		resp, err := fx.GetPaymentURL(ctx, req)
+		resp, err := fx.RegisterPaymentRequest(ctx, req)
 		assert.NoError(t, err)
 		assert.Equal(t, "https://xxxx.com", resp.PaymentUrl)
 		assert.Equal(t, "killbillingid", resp.BillingId)
@@ -722,7 +668,7 @@ func TestFinalizeSubscription(t *testing.T) {
 
 		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
 
-		fx.cache.EXPECT().CacheClear().Return(nil).Once()
+		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
 		req := &pb.RpcMembershipFinalizeRequest{}
@@ -1337,5 +1283,49 @@ func TestIsNameValid(t *testing.T) {
 		resp, err := fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
 		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+	})
+}
+
+func TestVerifyAppStoreReceipt(t *testing.T) {
+	t.Run("fail if VerifyAppStoreReceipt fails", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.ppclient.EXPECT().VerifyAppStoreReceipt(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyAppStoreReceiptResponse, error) {
+			return nil, psp.ErrUnknown
+		}).MinTimes(1)
+
+		req := &pb.RpcMembershipVerifyAppStoreReceiptRequest{
+			BillingId: "billingID",
+			Receipt:   "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
+		}
+
+		// when
+		resp, err := fx.VerifyAppStoreReceipt(ctx, req)
+
+		// then
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("success if VerifyAppStoreReceipt successes", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.ppclient.EXPECT().VerifyAppStoreReceipt(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.VerifyAppStoreReceiptResponse, error) {
+			return &psp.VerifyAppStoreReceiptResponse{}, nil
+		}).MinTimes(1)
+
+		req := &pb.RpcMembershipVerifyAppStoreReceiptRequest{
+			BillingId: "billingID",
+			Receipt:   "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
+		}
+
+		// when
+		resp, err := fx.VerifyAppStoreReceipt(ctx, req)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, (*pb.RpcMembershipVerifyAppStoreReceiptResponseError)(nil), resp.Error)
 	})
 }

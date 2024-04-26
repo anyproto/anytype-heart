@@ -32,6 +32,7 @@ var (
 	ErrSpaceViewExists    = errors.New("spaceView exists")
 	ErrSpaceViewNotExists = errors.New("spaceView not exists")
 	ErrNotASpaceView      = errors.New("smartblock not a spaceView")
+	ErrNotStarted         = errors.New("techspace not started")
 )
 
 type TechSpace interface {
@@ -39,6 +40,8 @@ type TechSpace interface {
 	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error)
 	Close(ctx context.Context) (err error)
 
+	WakeUpViews()
+	WaitViews() error
 	TechSpaceId() string
 	DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error)
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
@@ -84,6 +87,7 @@ type techSpace struct {
 	ctx        context.Context
 	ctxCancel  context.CancelFunc
 	idsWokenUp chan struct{}
+	isClosed   bool
 	viewIds    map[string]string
 }
 
@@ -98,12 +102,37 @@ func (s *techSpace) Name() (name string) {
 func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
+	return
+}
+
+func (s *techSpace) WakeUpViews() {
+	s.mu.Lock()
+	if s.isClosed || s.idsWokenUp != nil {
+		s.mu.Unlock()
+		return
+	}
 	s.idsWokenUp = make(chan struct{})
+	s.mu.Unlock()
 	go func() {
 		defer close(s.idsWokenUp)
 		s.wakeUpViews()
 	}()
-	return
+}
+
+func (s *techSpace) WaitViews() error {
+	s.mu.Lock()
+	idsWokenUp := s.idsWokenUp
+	s.mu.Unlock()
+	if idsWokenUp != nil {
+		select {
+		case <-idsWokenUp:
+			return nil
+		case <-s.ctx.Done():
+			return s.ctx.Err()
+		}
+	} else {
+		return ErrNotStarted
+	}
 }
 
 func (s *techSpace) wakeUpViews() {
@@ -259,7 +288,11 @@ func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId
 
 func (s *techSpace) Close(ctx context.Context) (err error) {
 	s.ctxCancel()
-	if s.idsWokenUp != nil {
+	s.mu.Lock()
+	s.isClosed = true
+	wokenUp := s.idsWokenUp
+	s.mu.Unlock()
+	if wokenUp != nil {
 		<-s.idsWokenUp
 	}
 	return nil

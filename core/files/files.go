@@ -168,12 +168,6 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
-	err = s.storeFileSize(spaceId, fileId)
-	if err != nil {
-		addLock.Unlock()
-		return nil, fmt.Errorf("store file size: %w", err)
-	}
-
 	return &AddResult{
 		FileId:         fileId,
 		EncryptionKeys: &fileKeys,
@@ -229,11 +223,6 @@ func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo)
 		FileId:         fileId,
 		EncryptionKeys: keys,
 	}, nil
-}
-
-func (s *service) storeFileSize(spaceId string, fileId domain.FileId) error {
-	_, err := s.fileSync.CalculateFileSize(context.Background(), spaceId, fileId)
-	return err
 }
 
 // addFileRootNode has structure:
@@ -672,7 +661,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 		fileList, err = s.fileIndexInfo(ctx, id, false)
 		if err != nil {
 			log.With("fileId", id.FileId.String()).Errorf("FileByHash: failed to retrieve from IPFS: %s", err)
-			return nil, domain.ErrFileNotFound
+			return nil, err
 		}
 		ok, err := s.fileStore.IsFileImported(id.FileId)
 		if err != nil {

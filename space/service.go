@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -33,6 +34,8 @@ const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
+var waitSpaceDelay = 500 * time.Millisecond
+
 var (
 	ErrIncorrectSpaceID   = errors.New("incorrect space id")
 	ErrSpaceNotExists     = errors.New("space not exists")
@@ -57,6 +60,7 @@ type Service interface {
 	Join(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
+	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
 	TechSpace() *clientspace.TechSpace
@@ -183,6 +187,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
+	s.techSpace.WakeUpViews()
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
 	if err != nil {
@@ -198,11 +203,16 @@ func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
 	return s.create(ctx)
 }
 
+func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
+	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
+	return waiter.waitSpace(ctx, spaceId)
+}
+
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	if spaceId == s.techSpace.TechSpaceId() {
 		return s.techSpace, nil
 	}
-	ctrl, err := s.getStatus(ctx, spaceId)
+	ctrl, err := s.getCtrl(ctx, spaceId)
 	if err != nil {
 		return nil, err
 	}

@@ -26,8 +26,7 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image,
 		// index image files info from ipfs
 		files, err = s.fileIndexInfo(ctx, id, true)
 		if err != nil {
-			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err)
-			return nil, domain.ErrFileNotFound
+			return nil, err
 		}
 	}
 
@@ -101,12 +100,6 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 			return nil, fmt.Errorf("failed to store file variant: %w", err)
 		}
 		successfullyAdded = append(successfullyAdded, domain.FileContentId(variant.fileInfo.Hash))
-	}
-
-	err = s.storeFileSize(spaceId, fileId)
-	if err != nil {
-		addLock.Unlock()
-		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
 	entry := dirEntries[0]
