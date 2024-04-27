@@ -244,6 +244,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	out := pb.RpcMembershipGetStatusResponse{
 		Data: &model.Membership{},
+		Error: &pb.RpcMembershipGetStatusResponseError{
+			Code: pb.RpcMembershipGetStatusResponseError_NULL,
+		},
 	}
 
 	out.Data.Tier = status.Tier
@@ -341,7 +344,11 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	var code proto.IsNameValidResponse_Code
 	var desc string
 
-	out := pb.RpcMembershipIsNameValidResponse{}
+	out := pb.RpcMembershipIsNameValidResponse{
+		Error: &pb.RpcMembershipIsNameValidResponseError{
+			Code: pb.RpcMembershipIsNameValidResponseError_NULL,
+		},
+	}
 
 	// 1 - send request to PP node and ask her please
 	invr := proto.IsNameValidRequest{
@@ -512,6 +519,9 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 	out := pb.RpcMembershipGetPaymentUrlResponse{
 		PaymentUrl: bsRet.PaymentUrl,
 		BillingId:  bsRet.BillingID,
+		Error: &pb.RpcMembershipGetPaymentUrlResponseError{
+			Code: pb.RpcMembershipGetPaymentUrlResponseError_NULL,
+		},
 	}
 
 	// 2 - disable cache for 30 minutes
@@ -558,6 +568,9 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 
 	var out pb.RpcMembershipGetPortalLinkUrlResponse
 	out.PortalUrl = bsRet.PortalUrl
+	out.Error = &pb.RpcMembershipGetPortalLinkUrlResponseError{
+		Code: pb.RpcMembershipGetPortalLinkUrlResponseError_NULL,
+	}
 
 	// 2 - disable cache for 30 minutes
 	log.Debug("disabling cache for 30 minutes after portal link was received")
@@ -603,6 +616,10 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershi
 	}
 
 	var out pb.RpcMembershipGetVerificationEmailResponse
+	out.Error = &pb.RpcMembershipGetVerificationEmailResponseError{
+		Code: pb.RpcMembershipGetVerificationEmailResponseError_NULL,
+	}
+
 	return &out, nil
 }
 
@@ -649,6 +666,10 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 
 	// return out
 	var out pb.RpcMembershipVerifyEmailCodeResponse
+	out.Error = &pb.RpcMembershipVerifyEmailCodeResponseError{
+		Code: pb.RpcMembershipVerifyEmailCodeResponseError_NULL,
+	}
+
 	return &out, nil
 }
 
@@ -695,6 +716,10 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 
 	// return out
 	var out pb.RpcMembershipFinalizeResponse
+	out.Error = &pb.RpcMembershipFinalizeResponseError{
+		Code: pb.RpcMembershipFinalizeResponseError_NULL,
+	}
+
 	return &out, nil
 }
 
@@ -778,6 +803,9 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 
 	// 3 - return out
 	var out pb.RpcMembershipGetTiersResponse
+	out.Error = &pb.RpcMembershipGetTiersResponseError{
+		Code: pb.RpcMembershipGetTiersResponseError_NULL,
+	}
 
 	out.Tiers = make([]*model.MembershipTierData, len(tiers.Tiers))
 	for i, tier := range tiers.Tiers {
@@ -863,5 +891,9 @@ func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembersh
 		return nil, err
 	}
 
-	return &pb.RpcMembershipVerifyAppStoreReceiptResponse{}, nil
+	return &pb.RpcMembershipVerifyAppStoreReceiptResponse{
+		Error: &pb.RpcMembershipVerifyAppStoreReceiptResponseError{
+			Code: pb.RpcMembershipVerifyAppStoreReceiptResponseError_NULL,
+		},
+	}, nil
 }

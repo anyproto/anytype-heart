@@ -285,6 +285,9 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				Code: pb.RpcMembershipGetStatusResponseError_NULL,
+			},
 			Data: &model.Membership{
 				Tier:          uint32(sr.Tier),
 				Status:        model.MembershipStatus(sr.Status),
@@ -360,6 +363,9 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				Code: pb.RpcMembershipGetStatusResponseError_NULL,
+			},
 			Data: &model.Membership{
 				Tier:          uint32(sr.Tier),
 				Status:        model.MembershipStatus(sr.Status),
@@ -411,6 +417,9 @@ func TestGetStatus(t *testing.T) {
 
 		// this is from DB
 		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				Code: pb.RpcMembershipGetStatusResponseError_NULL,
+			},
 			Data: &model.Membership{
 				Tier:          uint32(psp.SubscriptionTier_TierExplorer),
 				Status:        model.MembershipStatus(sr.Status),
@@ -589,7 +598,7 @@ func TestGetVerificationEmail(t *testing.T) {
 		// Call the function being tested
 		resp, err := fx.GetVerificationEmail(ctx, req)
 		assert.NoError(t, err)
-		assert.True(t, resp.Error == nil)
+		assert.Equal(t, pb.RpcMembershipGetVerificationEmailResponseErrorCode(0), resp.Error.Code)
 	})
 }
 
@@ -1282,7 +1291,8 @@ func TestIsNameValid(t *testing.T) {
 		}
 		resp, err := fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
-		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+		//assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseErrorCode(0), resp.Error.Code)
 	})
 }
 
@@ -1326,6 +1336,6 @@ func TestVerifyAppStoreReceipt(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, (*pb.RpcMembershipVerifyAppStoreReceiptResponseError)(nil), resp.Error)
+		assert.Equal(t, pb.RpcMembershipVerifyAppStoreReceiptResponseErrorCode(0), resp.Error.Code)
 	})
 }
