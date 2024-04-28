@@ -10,11 +10,9 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -69,7 +67,7 @@ func (s *service) InstallBundledObjects(
 
 	s.reviseSystemObjects(space, existingObjectMap)
 
-	s.fixReadonlyInRelations(space)
+	go s.fixReadonlyInRelations(space)
 
 	return
 }
@@ -123,46 +121,6 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = existingObject.Details
 	}
 	return existingObjectMap, nil
-}
-
-func (s *service) fixReadonlyInRelations(space clientspace.Space) {
-	rels, err := s.listTagAndStatusRelations(space)
-	if err != nil {
-		log.Errorf("failed to list all relations with tag and status format: %v", err)
-		return
-	}
-
-	for _, r := range rels {
-		det := []*pb.RpcObjectSetDetailsDetail{{
-			Key:   bundle.RelationKeyRelationReadonlyValue.String(),
-			Value: pbtypes.Bool(false),
-		}}
-		if err = space.Do(pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
-			if ds, ok := sb.(basic.DetailsSettable); ok {
-				return ds.SetDetails(nil, det, false)
-			}
-			return nil
-		}); err != nil {
-			source := pbtypes.GetString(r.Details, bundle.RelationKeySourceObject.String())
-			log.Errorf("failed to set readOnlyValue=true to relation %s in space %s: %v", source, space.Id(), err)
-		}
-	}
-}
-
-func (s *service) listTagAndStatusRelations(space clientspace.Space) (records []database.Record, err error) {
-	records, _, err = s.objectStore.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
-		{
-			RelationKey: bundle.RelationKeyRelationFormat.String(),
-			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.IntList(int(model.RelationFormat_status), int(model.RelationFormat_tag)),
-		},
-		{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(space.Id()),
-		},
-	}})
-	return
 }
 
 func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace clientspace.Space, space clientspace.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
