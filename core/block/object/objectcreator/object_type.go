@@ -75,10 +75,9 @@ func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space 
 }
 
 func (s *service) prepareRecommendedRelationIds(ctx context.Context, space clientspace.Space, recommendedRelationKeys []string) ([]string, error) {
-	for _, key := range []string{bundle.RelationKeyTag.String(), bundle.RelationKeyDescription.String()} {
-		if !slices.Contains(recommendedRelationKeys, key) {
-			recommendedRelationKeys = append(recommendedRelationKeys, key)
-		}
+	descriptionRelationKey := bundle.RelationKeyDescription.String()
+	if !slices.Contains(recommendedRelationKeys, descriptionRelationKey) {
+		recommendedRelationKeys = append(recommendedRelationKeys, descriptionRelationKey)
 	}
 	recommendedRelationIDs := make([]string, 0, len(recommendedRelationKeys))
 	relationsToInstall := make([]string, 0, len(recommendedRelationKeys))

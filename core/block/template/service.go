@@ -305,6 +305,7 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
 		template.WithFeaturedRelations,
+		template.WithAddedFeaturedRelation(bundle.RelationKeyTag),
 		template.WithRequiredRelations(),
 		template.WithTitle,
 	)
