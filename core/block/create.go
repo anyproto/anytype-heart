@@ -56,9 +56,9 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
-		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
+		details := make([]*model.Detail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
-			details = append(details, &pb.RpcObjectSetDetailsDetail{
+			details = append(details, &model.Detail{
 				Key:   k,
 				Value: v,
 			})

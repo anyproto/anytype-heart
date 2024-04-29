@@ -63,7 +63,7 @@ type CommonOperations interface {
 }
 
 type DetailsSettable interface {
-	SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
+	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
 }
 
 type DetailsUpdatable interface {

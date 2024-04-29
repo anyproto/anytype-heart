@@ -32,7 +32,7 @@ type detailUpdate struct {
 	value *types.Value
 }
 
-func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	s := bs.NewStateCtx(ctx)
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
@@ -72,7 +72,7 @@ func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct
 	return bs.Apply(s)
 }
 
-func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s *state.State) []*detailUpdate {
+func (bs *basic) collectDetailUpdates(details []*model.Detail, s *state.State) []*detailUpdate {
 	updates := make([]*detailUpdate, 0, len(details))
 	for _, detail := range details {
 		update, err := bs.createDetailUpdate(s, detail)
@@ -102,7 +102,7 @@ func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *type
 	return newDetails
 }
 
-func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDetailsDetail) (*detailUpdate, error) {
+func (bs *basic) createDetailUpdate(st *state.State, detail *model.Detail) (*detailUpdate, error) {
 	if detail.Value != nil {
 		if err := pbtypes.ValidateValue(detail.Value); err != nil {
 			return nil, fmt.Errorf("detail %s validation error: %w", detail.Key, err)
@@ -255,7 +255,7 @@ func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error 
 	return nil
 }
 
-func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetDetailsDetail) error {
+func (bs *basic) setDetailSpecialCases(st *state.State, detail *model.Detail) error {
 	if detail.Key == bundle.RelationKeyType.String() {
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}
