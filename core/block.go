@@ -899,6 +899,25 @@ func (mw *Middleware) BlockFileSetName(cctx context.Context, req *pb.RpcBlockFil
 	return response(pb.RpcBlockFileSetNameResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockFileSetTargetObjectId(cctx context.Context, req *pb.RpcBlockFileSetTargetObjectIdRequest) *pb.RpcBlockFileSetTargetObjectIdResponse {
+	ctx := mw.newContext(cctx)
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetFileTargetObjectId(ctx, req.ContextId, req.BlockId, req.ObjectId)
+	})
+
+	code := mapErrorCode(err,
+		errToCode(err, pb.RpcBlockFileSetTargetObjectIdResponseError_UNKNOWN_ERROR),
+	)
+
+	return &pb.RpcBlockFileSetTargetObjectIdResponse{
+		Error: &pb.RpcBlockFileSetTargetObjectIdResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		Event: mw.getResponseEvent(ctx),
+	}
+}
+
 func (mw *Middleware) BlockFileListSetStyle(cctx context.Context, req *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockFileListSetStyleResponseErrorCode, err error) *pb.RpcBlockFileListSetStyleResponse {
