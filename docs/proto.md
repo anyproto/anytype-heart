@@ -7355,11 +7355,12 @@ set the current active view (persisted only within a session)
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
+| block | [model.Block](#anytype-model-Block) |  |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
-| fields | [google.protobuf.Struct](#google-protobuf-Struct) |  | link block fields |
+| fields | [google.protobuf.Struct](#google-protobuf-Struct) |  | deprecated link block fields |
 
 
 
@@ -11111,7 +11112,7 @@ returns blockShow event for given version
 
 ### Rpc.Membership
 A Membership is a bundle of several &#34;Features&#34;
-every user should have one and only one tier 
+every user should have one and only one tier
 users can not have N tiers (no combining)
 
 
@@ -11642,7 +11643,7 @@ before requesting a payment link and paying
 <a name="anytype-Rpc-Membership-VerifyEmailCode"></a>
 
 ### Rpc.Membership.VerifyEmailCode
-Verify the e-mail address of the user 
+Verify the e-mail address of the user
 need a correct code that was sent to the user when calling GetVerificationEmail
 
 
