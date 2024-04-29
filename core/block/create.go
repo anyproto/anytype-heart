@@ -118,10 +118,10 @@ func (s *Service) CreateLinkToTheNewObject(
 		}
 	} else {
 		link := req.Block.GetLink()
-		if link != nil {
-			link.TargetBlockId = objectId
-		} else {
+		if link == nil {
 			return "", "", nil, errors.New("block content is not a link")
+		} else {
+			link.TargetBlockId = objectId
 		}
 	}
 
