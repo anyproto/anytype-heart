@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -52,7 +51,7 @@ func (t *testPicker) Name() string { return "" }
 
 func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 	sb := smarttest.New(templateName)
-	details := []*pb.RpcObjectSetDetailsDetail{
+	details := []*model.Detail{
 		{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(templateName),
@@ -63,7 +62,7 @@ func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 		},
 	}
 	if templateName == archivedTemplateId {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyIsArchived.String(),
 			Value: pbtypes.Bool(true),
 		})
