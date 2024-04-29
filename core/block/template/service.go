@@ -194,7 +194,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 
 	if err = cache.Do(s.picker, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != coresb.SmartBlockTypePage {
-			return fmt.Errorf("can't make template from this object type")
+			return fmt.Errorf("can't make template from this object type: %s", model.SmartBlockType_name[int32(b.Type())])
 		}
 		st, err = buildTemplateStateFromObject(b)
 		objectTypeKeys = st.ObjectTypeKeys()
