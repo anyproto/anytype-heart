@@ -311,3 +311,22 @@ func TestExtractTargetDetails(t *testing.T) {
 		)
 	}
 }
+
+func TestBuildTemplateStateFromObject(t *testing.T) {
+	t.Run("deleteEmpty flag is not set for new templates", func(t *testing.T) {
+		// given
+		obj := smarttest.New("object")
+		err := obj.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
+			Key:   bundle.RelationKeyInternalFlags.String(),
+			Value: pbtypes.IntList(0, 1, 2, 3),
+		}}, false)
+		assert.NoError(t, err)
+
+		// when
+		st, err := buildTemplateStateFromObject(obj)
+
+		// then
+		assert.NoError(t, err)
+		assert.NotContains(t, pbtypes.GetIntList(st.Details(), bundle.RelationKeyInternalFlags.String()), model.InternalFlag_editorDeleteEmpty)
+	})
+}
