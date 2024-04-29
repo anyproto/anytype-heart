@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -310,4 +312,32 @@ func TestExtractTargetDetails(t *testing.T) {
 			},
 		)
 	}
+}
+
+func TestBuildTemplateStateFromObject(t *testing.T) {
+	t.Run("building state for new template", func(t *testing.T) {
+		// given
+		obj := smarttest.New("object")
+		err := obj.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
+			Key:   bundle.RelationKeyInternalFlags.String(),
+			Value: pbtypes.IntList(0, 1, 2, 3),
+		}}, false)
+		assert.NoError(t, err)
+
+		obj.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyNote})
+
+		sp := mock_space.NewMockSpace(t)
+		sp.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).Times(1).Return(bundle.TypeKeyNote.String(), nil)
+		obj.SetSpace(sp)
+
+		// when
+		st, err := buildTemplateStateFromObject(obj)
+
+		// then
+		assert.NoError(t, err)
+		assert.NotContains(t, pbtypes.GetIntList(st.Details(), bundle.RelationKeyInternalFlags.String()), model.InternalFlag_editorDeleteEmpty)
+		assert.Equal(t, []domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyNote}, st.ObjectTypeKeys())
+		assert.Equal(t, bundle.TypeKeyNote.String(), pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+		assert.Nil(t, st.LocalDetails())
+	})
 }

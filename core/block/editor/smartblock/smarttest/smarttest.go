@@ -119,6 +119,9 @@ func (s *stubSpace) IsPersonal() bool {
 }
 
 func (st *SmartTest) Space() smartblock.Space {
+	if st.space != nil {
+		return st.space
+	}
 	return &stubSpace{}
 }
 
@@ -244,8 +247,8 @@ func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []st
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(ctx session.Context, objectTypes []string) (err error) {
-	return nil
+func (st *SmartTest) SetObjectTypes(objectTypes []domain.TypeKey) {
+	st.Doc.(*state.State).SetObjectTypeKeys(objectTypes)
 }
 
 func (st *SmartTest) DisableLayouts() {
