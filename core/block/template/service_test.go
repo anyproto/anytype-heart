@@ -318,7 +318,7 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 	t.Run("building state for new template", func(t *testing.T) {
 		// given
 		obj := smarttest.New("object")
-		err := obj.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
+		err := obj.SetDetails(nil, []*model.Detail{{
 			Key:   bundle.RelationKeyInternalFlags.String(),
 			Value: pbtypes.IntList(0, 1, 2, 3),
 		}}, false)
