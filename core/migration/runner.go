@@ -90,8 +90,6 @@ func (r *Runner) run() {
 				migration.Name(), spc.Id(), migrated, toMigrate)
 		}
 	}
-
-	return
 }
 
 func (r *Runner) Close(context.Context) error {

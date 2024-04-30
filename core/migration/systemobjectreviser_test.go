@@ -30,6 +30,7 @@ func TestUpdateSystemObject(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
+		space.EXPECT().Id().Times(1).Return("")
 
 		reviseSystemObject(space, objectType, marketObjects)
 	})
@@ -41,6 +42,7 @@ func TestUpdateSystemObject(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
+		space.EXPECT().Id().Times(1).Return("")
 
 		reviseSystemObject(space, objectType, marketObjects)
 	})
@@ -83,6 +85,7 @@ func TestUpdateSystemObject(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
+		space.EXPECT().Id().Times(1).Return("")
 
 		reviseSystemObject(space, rel, marketObjects)
 	})
@@ -94,6 +97,7 @@ func TestUpdateSystemObject(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
+		space.EXPECT().Id().Times(1).Return("")
 
 		reviseSystemObject(space, rel, marketObjects)
 	})
@@ -138,6 +142,7 @@ func TestUpdateSystemObject(t *testing.T) {
 		}}
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
+		space.EXPECT().Id().Times(1).Return("")
 
 		reviseSystemObject(space, rel, marketObjects)
 	})
