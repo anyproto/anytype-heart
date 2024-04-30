@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -48,7 +47,7 @@ func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspa
 
 		log.Infof("setting relationReadonlyValue to FALSE for relation %s (uniqueKey='%s', format='%s')", name, uk, format)
 
-		det := []*pb.RpcObjectSetDetailsDetail{{
+		det := []*model.Detail{{
 			Key:   bundle.RelationKeyRelationReadonlyValue.String(),
 			Value: pbtypes.Bool(false),
 		}}
