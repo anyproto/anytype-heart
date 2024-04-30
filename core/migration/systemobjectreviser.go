@@ -31,12 +31,12 @@ func (systemObjectReviser) Name() string {
 func (systemObjectReviser) Run(store objectstore.ObjectStore, space clientspace.Space) (toMigrate, migrated int, err error) {
 	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %v", err)
+		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
 	}
 
 	marketObjects, err := listAllTypesAndRelations(store, addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %v", err)
+		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
 	}
 
 	err = &multierror.Error{}
@@ -47,7 +47,7 @@ func (systemObjectReviser) Run(store objectstore.ObjectStore, space clientspace.
 		}
 		toMigrate++
 		if e != nil {
-			err = multierror.Append(err, fmt.Errorf("failed to revise object: %v", e))
+			err = multierror.Append(err, fmt.Errorf("failed to revise object: %w", e))
 		} else {
 			migrated++
 		}
@@ -97,7 +97,7 @@ func reviseSystemObject(space clientspace.Space, localObject *types.Struct, mark
 			}
 			return nil
 		}); err != nil {
-			return true, fmt.Errorf("failed to update system object %s in space %s: %v", source, space.Id(), err)
+			return true, fmt.Errorf("failed to update system object %s in space %s: %w", source, space.Id(), err)
 		}
 	}
 	return true, nil

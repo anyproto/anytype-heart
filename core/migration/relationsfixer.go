@@ -27,7 +27,7 @@ func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspa
 	toMigrate = len(relations)
 
 	if err != nil {
-		return toMigrate, 0, fmt.Errorf("failed to list all relations with tag and status format in space %s: %v", space.Id(), err)
+		return toMigrate, 0, fmt.Errorf("failed to list all relations with tag and status format in space %s: %w", space.Id(), err)
 	}
 
 	if toMigrate != 0 {
@@ -58,7 +58,7 @@ func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspa
 			return nil
 		})
 		if e != nil {
-			err = multierror.Append(err, fmt.Errorf("failed to set readOnlyValue=true to relation %s in space %s: %v", uk, space.Id(), e))
+			err = multierror.Append(err, fmt.Errorf("failed to set readOnlyValue=true to relation %s in space %s: %w", uk, space.Id(), e))
 		} else {
 			migrated++
 		}
