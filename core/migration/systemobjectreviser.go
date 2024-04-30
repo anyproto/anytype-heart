@@ -40,6 +40,7 @@ func (systemObjectReviser) Run(store objectstore.ObjectStore, space clientspace.
 		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %v", err)
 	}
 
+	err = &multierror.Error{}
 	for _, details := range spaceObjects {
 		shouldBeRevised, e := reviseSystemObject(space, details, marketObjects)
 		if !shouldBeRevised {
