@@ -112,8 +112,9 @@ func (r *Runner) listSpaceIds() (ids []string, err error) {
 		return nil, err
 	}
 
-	for _, record := range records {
-		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyTargetSpaceId.String()))
+	ids = make([]string, len(records))
+	for i, record := range records {
+		ids[i] = pbtypes.GetString(record.Details, bundle.RelationKeyTargetSpaceId.String())
 	}
 	return
 }
