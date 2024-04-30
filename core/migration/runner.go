@@ -2,6 +2,7 @@ package migration
 
 import (
 	"context"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -15,7 +16,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const CName = "migration-runner"
+const (
+	CName   = "migration-runner"
+	timeout = 30 * time.Second
+)
 
 var log = logging.Logger(CName)
 
@@ -53,15 +57,23 @@ func (r *Runner) Init(a *app.App) error {
 	return nil
 }
 
-func (r *Runner) Run(ctx context.Context) error {
+func (r *Runner) Run(context.Context) error {
+	go r.run()
+	return nil
+}
+
+func (r *Runner) run() {
+	// wait until spaces come up
+	time.Sleep(timeout)
+
 	spaces, err := r.listSpaceIds()
 	if err != nil {
 		log.Errorf("failed to list spaces for performing migrations: %v", err)
-		return nil
+		return
 	}
 
 	for _, spaceId := range spaces {
-		spc, err := r.spaceGetter.Get(ctx, spaceId)
+		spc, err := r.spaceGetter.Get(context.Background(), spaceId)
 		if err != nil {
 			log.Errorf("failed to get space '%s': %v", spaceId, err)
 			continue
@@ -79,7 +91,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	return
 }
 
 func (r *Runner) Close(context.Context) error {

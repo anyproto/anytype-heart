@@ -24,7 +24,8 @@ func (readonlyRelationsFixer) Name() string {
 
 func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspace.Space) (toMigrate, migrated int, err error) {
 	var relations []database.Record
-	relations, toMigrate, err = listReadonlyTagAndStatusRelations(store, space)
+	relations, _, err = listReadonlyTagAndStatusRelations(store, space)
+	toMigrate = len(relations)
 
 	if err != nil {
 		return toMigrate, 0, fmt.Errorf("failed to list all relations with tag and status format in space %s: %v", space.Id(), err)

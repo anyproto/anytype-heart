@@ -61,7 +61,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 
 	t.Run("fix tag and status relations with readonly=true", func(t *testing.T) {
 		spc := mock_space.NewMockSpace(t)
-		spc.EXPECT().Id().Return("space1").Times(1)
+		spc.EXPECT().Id().Return("space1").Times(2)
 
 		// both relations will be processed
 		spc.EXPECT().Do(mock.Anything, mock.Anything).Times(2).Return(nil)

@@ -42,9 +42,10 @@ func (systemObjectReviser) Run(store objectstore.ObjectStore, space clientspace.
 
 	for _, details := range spaceObjects {
 		shouldBeRevised, e := reviseSystemObject(space, details, marketObjects)
-		if shouldBeRevised {
-			toMigrate++
+		if !shouldBeRevised {
+			continue
 		}
+		toMigrate++
 		if e != nil {
 			err = multierror.Append(err, fmt.Errorf("failed to revise object: %v", e))
 		} else {
@@ -89,6 +90,7 @@ func reviseSystemObject(space clientspace.Space, localObject *types.Struct, mark
 	}
 	details := buildDiffDetails(marketObject, localObject)
 	if len(details) != 0 {
+		log.Debugf("updating system object %s in space %s", source, space.Id())
 		if err := space.Do(pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(basic.DetailsSettable); ok {
 				return ds.SetDetails(nil, details, false)
