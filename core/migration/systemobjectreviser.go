@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -119,7 +118,7 @@ func isSystemObject(details *types.Struct) bool {
 	return false
 }
 
-func buildDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjectSetDetailsDetail) {
+func buildDiffDetails(origin, current *types.Struct) (details []*model.Detail) {
 	diff := pbtypes.StructDiff(current, origin)
 	diff = pbtypes.StructFilterKeys(diff, []string{
 		bundle.RelationKeyName.String(), bundle.RelationKeyDescription.String(),
@@ -136,7 +135,7 @@ func buildDiffDetails(origin, current *types.Struct) (details []*pb.RpcObjectSet
 			currentList = append(currentList, missedInCurrent...)
 			value = pbtypes.StringList(currentList)
 		}
-		details = append(details, &pb.RpcObjectSetDetailsDetail{Key: key, Value: value})
+		details = append(details, &model.Detail{Key: key, Value: value})
 	}
 	return
 }

@@ -208,9 +208,7 @@ func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Str
 			Details: detCopy,
 		})
 	}
-	for i := range s.subscriptions {
-		go func(sub database.Subscription) {
-			_ = sub.Publish(id, detCopy)
-		}(s.subscriptions[i])
+	for _, sub := range s.subscriptions {
+		_ = sub.PublishAsync(id, detCopy)
 	}
 }

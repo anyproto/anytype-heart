@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 func TestSpaceController_InvitingLoading(t *testing.T) {
@@ -193,6 +194,11 @@ func (s *spaceStatusStub) SetAclIsEmpty(isEmpty bool) (err error) {
 
 func (s *spaceStatusStub) GetLatestAclHeadId() string {
 	return ""
+}
+
+func (s *spaceStatusStub) GetSpaceView() techspace.SpaceView {
+	return nil
+
 }
 
 var _ spacestatus.SpaceStatus = (*spaceStatusStub)(nil)

@@ -357,17 +357,14 @@ func (s *Service) SetSpaceInfo(req *pb.RpcWorkspaceSetInfoRequest) error {
 	}
 	workspaceId := spc.DerivedIDs().Workspace
 
-	setDetails := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
+	setDetails := make([]*model.Detail, 0, len(req.Details.GetFields()))
 	for k, v := range req.Details.GetFields() {
-		setDetails = append(setDetails, &pb.RpcObjectSetDetailsDetail{
+		setDetails = append(setDetails, &model.Detail{
 			Key:   k,
 			Value: v,
 		})
 	}
-	return s.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: workspaceId,
-		Details:   setDetails,
-	})
+	return s.SetDetails(nil, workspaceId, setDetails)
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
@@ -553,7 +550,7 @@ func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
-		if err = ws.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{
+		if err = ws.SetDetails(ctx, []*model.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),

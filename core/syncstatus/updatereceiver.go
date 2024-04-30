@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -58,22 +59,22 @@ func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStat
 	return true
 }
 
-func (r *updateReceiver) getFileStatus(fileId string) (FileStatus, error) {
+func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, error) {
 	details, err := r.objectStore.GetDetails(fileId)
 	if err != nil {
-		return FileStatusUnknown, fmt.Errorf("get file details: %w", err)
+		return filesyncstatus.Unknown, fmt.Errorf("get file details: %w", err)
 	}
 	if v, ok := details.GetDetails().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		return FileStatus(v.GetNumberValue()), nil
+		return filesyncstatus.Status(v.GetNumberValue()), nil
 	}
-	return FileStatusUnknown, fmt.Errorf("no backup status")
+	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
 func (r *updateReceiver) getObjectStatus(objectId string, status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
 	fileStatus, err := r.getFileStatus(objectId)
 	if err == nil {
 		// Prefer file backup status
-		if fileStatus != FileStatusSynced {
+		if fileStatus != filesyncstatus.Synced {
 			status = fileStatus.ToSyncStatus()
 		}
 	}

@@ -8,8 +8,6 @@ import (
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	files "github.com/anyproto/anytype-heart/core/files"
 
-	mill "github.com/anyproto/anytype-heart/pkg/lib/mill"
-
 	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/gogo/protobuf/types"
@@ -86,64 +84,6 @@ func (_c *MockImage_Details_Call) RunAndReturn(run func(context.Context) (*types
 	return _c
 }
 
-// Exif provides a mock function with given fields: ctx
-func (_m *MockImage) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Exif")
-	}
-
-	var r0 *mill.ImageExifSchema
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*mill.ImageExifSchema, error)); ok {
-		return rf(ctx)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) *mill.ImageExifSchema); ok {
-		r0 = rf(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*mill.ImageExifSchema)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockImage_Exif_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Exif'
-type MockImage_Exif_Call struct {
-	*mock.Call
-}
-
-// Exif is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockImage_Expecter) Exif(ctx interface{}) *MockImage_Exif_Call {
-	return &MockImage_Exif_Call{Call: _e.mock.On("Exif", ctx)}
-}
-
-func (_c *MockImage_Exif_Call) Run(run func(ctx context.Context)) *MockImage_Exif_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *MockImage_Exif_Call) Return(_a0 *mill.ImageExifSchema, _a1 error) *MockImage_Exif_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockImage_Exif_Call) RunAndReturn(run func(context.Context) (*mill.ImageExifSchema, error)) *MockImage_Exif_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // FileId provides a mock function with given fields:
 func (_m *MockImage) FileId() domain.FileId {
 	ret := _m.Called()
@@ -189,67 +129,9 @@ func (_c *MockImage_FileId_Call) RunAndReturn(run func() domain.FileId) *MockIma
 	return _c
 }
 
-// GetFileForLargestWidth provides a mock function with given fields: ctx
-func (_m *MockImage) GetFileForLargestWidth(ctx context.Context) (files.File, error) {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetFileForLargestWidth")
-	}
-
-	var r0 files.File
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (files.File, error)); ok {
-		return rf(ctx)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) files.File); ok {
-		r0 = rf(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(files.File)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockImage_GetFileForLargestWidth_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFileForLargestWidth'
-type MockImage_GetFileForLargestWidth_Call struct {
-	*mock.Call
-}
-
-// GetFileForLargestWidth is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockImage_Expecter) GetFileForLargestWidth(ctx interface{}) *MockImage_GetFileForLargestWidth_Call {
-	return &MockImage_GetFileForLargestWidth_Call{Call: _e.mock.On("GetFileForLargestWidth", ctx)}
-}
-
-func (_c *MockImage_GetFileForLargestWidth_Call) Run(run func(ctx context.Context)) *MockImage_GetFileForLargestWidth_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *MockImage_GetFileForLargestWidth_Call) Return(_a0 files.File, _a1 error) *MockImage_GetFileForLargestWidth_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockImage_GetFileForLargestWidth_Call) RunAndReturn(run func(context.Context) (files.File, error)) *MockImage_GetFileForLargestWidth_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetFileForWidth provides a mock function with given fields: ctx, wantWidth
-func (_m *MockImage) GetFileForWidth(ctx context.Context, wantWidth int) (files.File, error) {
-	ret := _m.Called(ctx, wantWidth)
+// GetFileForWidth provides a mock function with given fields: wantWidth
+func (_m *MockImage) GetFileForWidth(wantWidth int) (files.File, error) {
+	ret := _m.Called(wantWidth)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetFileForWidth")
@@ -257,19 +139,19 @@ func (_m *MockImage) GetFileForWidth(ctx context.Context, wantWidth int) (files.
 
 	var r0 files.File
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) (files.File, error)); ok {
-		return rf(ctx, wantWidth)
+	if rf, ok := ret.Get(0).(func(int) (files.File, error)); ok {
+		return rf(wantWidth)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) files.File); ok {
-		r0 = rf(ctx, wantWidth)
+	if rf, ok := ret.Get(0).(func(int) files.File); ok {
+		r0 = rf(wantWidth)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(files.File)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
-		r1 = rf(ctx, wantWidth)
+	if rf, ok := ret.Get(1).(func(int) error); ok {
+		r1 = rf(wantWidth)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -283,15 +165,14 @@ type MockImage_GetFileForWidth_Call struct {
 }
 
 // GetFileForWidth is a helper method to define mock.On call
-//   - ctx context.Context
 //   - wantWidth int
-func (_e *MockImage_Expecter) GetFileForWidth(ctx interface{}, wantWidth interface{}) *MockImage_GetFileForWidth_Call {
-	return &MockImage_GetFileForWidth_Call{Call: _e.mock.On("GetFileForWidth", ctx, wantWidth)}
+func (_e *MockImage_Expecter) GetFileForWidth(wantWidth interface{}) *MockImage_GetFileForWidth_Call {
+	return &MockImage_GetFileForWidth_Call{Call: _e.mock.On("GetFileForWidth", wantWidth)}
 }
 
-func (_c *MockImage_GetFileForWidth_Call) Run(run func(ctx context.Context, wantWidth int)) *MockImage_GetFileForWidth_Call {
+func (_c *MockImage_GetFileForWidth_Call) Run(run func(wantWidth int)) *MockImage_GetFileForWidth_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int))
+		run(args[0].(int))
 	})
 	return _c
 }
@@ -301,14 +182,14 @@ func (_c *MockImage_GetFileForWidth_Call) Return(_a0 files.File, _a1 error) *Moc
 	return _c
 }
 
-func (_c *MockImage_GetFileForWidth_Call) RunAndReturn(run func(context.Context, int) (files.File, error)) *MockImage_GetFileForWidth_Call {
+func (_c *MockImage_GetFileForWidth_Call) RunAndReturn(run func(int) (files.File, error)) *MockImage_GetFileForWidth_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetOriginalFile provides a mock function with given fields: ctx
-func (_m *MockImage) GetOriginalFile(ctx context.Context) (files.File, error) {
-	ret := _m.Called(ctx)
+// GetOriginalFile provides a mock function with given fields:
+func (_m *MockImage) GetOriginalFile() (files.File, error) {
+	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOriginalFile")
@@ -316,19 +197,19 @@ func (_m *MockImage) GetOriginalFile(ctx context.Context) (files.File, error) {
 
 	var r0 files.File
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (files.File, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func() (files.File, error)); ok {
+		return rf()
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) files.File); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func() files.File); ok {
+		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(files.File)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -342,14 +223,13 @@ type MockImage_GetOriginalFile_Call struct {
 }
 
 // GetOriginalFile is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockImage_Expecter) GetOriginalFile(ctx interface{}) *MockImage_GetOriginalFile_Call {
-	return &MockImage_GetOriginalFile_Call{Call: _e.mock.On("GetOriginalFile", ctx)}
+func (_e *MockImage_Expecter) GetOriginalFile() *MockImage_GetOriginalFile_Call {
+	return &MockImage_GetOriginalFile_Call{Call: _e.mock.On("GetOriginalFile")}
 }
 
-func (_c *MockImage_GetOriginalFile_Call) Run(run func(ctx context.Context)) *MockImage_GetOriginalFile_Call {
+func (_c *MockImage_GetOriginalFile_Call) Run(run func()) *MockImage_GetOriginalFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run()
 	})
 	return _c
 }
@@ -359,7 +239,7 @@ func (_c *MockImage_GetOriginalFile_Call) Return(_a0 files.File, _a1 error) *Moc
 	return _c
 }
 
-func (_c *MockImage_GetOriginalFile_Call) RunAndReturn(run func(context.Context) (files.File, error)) *MockImage_GetOriginalFile_Call {
+func (_c *MockImage_GetOriginalFile_Call) RunAndReturn(run func() (files.File, error)) *MockImage_GetOriginalFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

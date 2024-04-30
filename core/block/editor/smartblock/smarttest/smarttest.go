@@ -62,6 +62,7 @@ type SmartTest struct {
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
 	os               *testMock.MockObjectStore
+	space            smartblock.Space
 
 	// Rudimentary hooks
 	hooks     []smartblock.HookCallback
@@ -73,6 +74,9 @@ type SmartTest struct {
 func (st *SmartTest) SpaceID() string { return st.spaceId }
 func (st *SmartTest) SetSpaceId(spaceId string) {
 	st.spaceId = spaceId
+}
+func (st *SmartTest) SetSpace(space smartblock.Space) {
+	st.space = space
 }
 
 type stubSpace struct {
@@ -115,6 +119,9 @@ func (s *stubSpace) IsPersonal() bool {
 }
 
 func (st *SmartTest) Space() smartblock.Space {
+	if st.space != nil {
+		return st.space
+	}
 	return &stubSpace{}
 }
 
@@ -174,7 +181,10 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 
 func (st *SmartTest) GetDocInfo() smartblock.DocInfo {
 	return smartblock.DocInfo{
-		Id: st.Id(),
+		Id:             st.Id(),
+		Space:          st.Space(),
+		SmartblockType: st.sbType,
+		Heads:          []string{st.Id()},
 	}
 }
 
@@ -237,8 +247,8 @@ func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []st
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(ctx session.Context, objectTypes []string) (err error) {
-	return nil
+func (st *SmartTest) SetObjectTypes(objectTypes []domain.TypeKey) {
+	st.Doc.(*state.State).SetObjectTypeKeys(objectTypes)
 }
 
 func (st *SmartTest) DisableLayouts() {
@@ -249,7 +259,7 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	dets := &types.Struct{Fields: map[string]*types.Value{}}
 	for _, d := range details {
 		dets.Fields[d.Key] = d.Value

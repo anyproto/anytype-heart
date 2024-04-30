@@ -8,9 +8,10 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"golang.org/x/net/context"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -29,6 +30,7 @@ type aclNotificationRecord struct {
 	aclId         string
 	accountStatus spaceinfo.AccountStatus
 	spaceName     string
+	spaceStatus   spaceinfo.LocalStatus
 }
 
 type NotificationSender interface {
@@ -39,19 +41,21 @@ type NotificationSender interface {
 
 type AclNotification interface {
 	app.ComponentRunnable
-	AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
+	AddRecords(acl list.AclList, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus, spaceStatus spaceinfo.LocalStatus)
 	AddSingleRecord(aclId string, aclRecord *list.AclRecord, permissions list.AclPermissions, spaceId string, accountStatus spaceinfo.AccountStatus)
 }
 
 type aclNotificationSender struct {
 	identityService     dependencies.IdentityService
 	notificationService NotificationSender
-	batcher             *mb.MB
+	batcher             *mb.MB[*aclNotificationRecord]
 	spaceNameGetter     objectstore.SpaceNameGetter
+
+	done chan struct{}
 }
 
 func NewAclNotificationSender() AclNotification {
-	return &aclNotificationSender{batcher: mb.New(0)}
+	return &aclNotificationSender{batcher: mb.New[*aclNotificationRecord](0), done: make(chan struct{})}
 }
 
 func (n *aclNotificationSender) Init(a *app.App) (err error) {
@@ -74,6 +78,7 @@ func (n *aclNotificationSender) Close(ctx context.Context) (err error) {
 	if err := n.batcher.Close(); err != nil {
 		logger.Errorf("failed to close batcher, %s", err)
 	}
+	<-n.done
 	return
 }
 
@@ -81,18 +86,20 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 	permissions list.AclPermissions,
 	spaceId string,
 	accountStatus spaceinfo.AccountStatus,
+	spaceStatus spaceinfo.LocalStatus,
 ) {
 	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
 	lastNotificationId := n.notificationService.GetLastNotificationId(acl.Id())
 	if lastNotificationId != "" {
 		acl.IterateFrom(lastNotificationId, func(record *list.AclRecord) (IsContinue bool) {
-			err := n.batcher.Add(&aclNotificationRecord{
+			err := n.batcher.Add(context.Background(), &aclNotificationRecord{
 				record:        *record,
 				permissions:   permissions,
 				spaceId:       spaceId,
 				aclId:         acl.Id(),
 				accountStatus: accountStatus,
 				spaceName:     spaceName,
+				spaceStatus:   spaceStatus,
 			})
 			if err != nil {
 				logger.Errorf("failed to add acl record, %s", err)
@@ -102,13 +109,14 @@ func (n *aclNotificationSender) AddRecords(acl list.AclList,
 		return
 	}
 	for _, record := range acl.Records() {
-		err := n.batcher.Add(&aclNotificationRecord{
+		err := n.batcher.Add(context.Background(), &aclNotificationRecord{
 			record:        *record,
 			permissions:   permissions,
 			spaceId:       spaceId,
 			aclId:         acl.Id(),
 			accountStatus: accountStatus,
 			spaceName:     spaceName,
+			spaceStatus:   spaceStatus,
 		})
 		if err != nil {
 			logger.Errorf("failed to add acl record, %s", err)
@@ -123,7 +131,7 @@ func (n *aclNotificationSender) AddSingleRecord(aclId string,
 	accountStatus spaceinfo.AccountStatus,
 ) {
 	spaceName := n.spaceNameGetter.GetSpaceName(spaceId)
-	err := n.batcher.Add(&aclNotificationRecord{
+	err := n.batcher.Add(context.Background(), &aclNotificationRecord{
 		record:        *aclRecord,
 		permissions:   permissions,
 		spaceId:       spaceId,
@@ -144,6 +152,7 @@ func (n *aclNotificationSender) sendNotification(ctx context.Context, aclNotific
 }
 
 func (n *aclNotificationSender) processRecords() {
+	defer close(n.done)
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
@@ -153,16 +162,12 @@ func (n *aclNotificationSender) processRecords() {
 	}
 
 	for {
-		msgs := n.batcher.Wait()
-		if len(msgs) == 0 {
+		msg, err := n.batcher.Wait(context.Background())
+		if err != nil {
 			return
 		}
-		for _, msg := range msgs {
-			record, ok := msg.(*aclNotificationRecord)
-			if !ok {
-				continue
-			}
-			err := n.sendNotification(context.Background(), record)
+		for _, record := range msg {
+			err = n.sendNotification(context.Background(), record)
 			if err != nil {
 				logger.Errorf("failed to send notifications: %s", err)
 			}
@@ -331,7 +336,11 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 	notificationId string,
 	identities [][]byte,
 ) error {
-	myProfile, _, _ := n.identityService.GetMyProfileDetails(ctx)
+	if aclNotificationRecord.spaceStatus != spaceinfo.LocalStatusOk &&
+		aclNotificationRecord.accountStatus != spaceinfo.AccountStatusDeleted {
+		return nil
+	}
+	myProfile, _, details := n.identityService.GetMyProfileDetails(ctx)
 	found, err := n.isAccountRemoved(identities, myProfile)
 	if err != nil {
 		return err
@@ -340,17 +349,16 @@ func (n *aclNotificationSender) sendAccountRemove(ctx context.Context,
 		return nil
 	}
 	var name, iconCid string
-	profile := n.identityService.WaitProfile(ctx, aclNotificationRecord.record.Identity.Account())
-	if profile != nil {
-		name = profile.Name
-		iconCid = profile.IconCid
+	if details != nil && details.GetFields() != nil {
+		iconCid = details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue()
+		name = details.GetFields()[bundle.RelationKeyName.String()].GetStringValue()
 	}
 	err = n.notificationService.CreateAndSend(&model.Notification{
 		Id:      notificationId,
 		IsLocal: false,
 		Payload: &model.NotificationPayloadOfParticipantRemove{ParticipantRemove: &model.NotificationParticipantRemove{
 			SpaceId:      aclNotificationRecord.spaceId,
-			Identity:     aclNotificationRecord.record.Identity.Account(),
+			Identity:     myProfile,
 			IdentityName: name,
 			IdentityIcon: iconCid,
 			SpaceName:    aclNotificationRecord.spaceName,

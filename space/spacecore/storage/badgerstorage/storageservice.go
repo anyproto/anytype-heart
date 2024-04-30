@@ -1,4 +1,4 @@
-package storage
+package badgerstorage
 
 import (
 	"context"
@@ -29,25 +29,14 @@ type lockSpace struct {
 	err error
 }
 
-type ClientStorage interface {
-	spacestorage.SpaceStorageProvider
-	app.ComponentRunnable
-	AllSpaceIds() (ids []string, err error)
-	GetSpaceID(objectID string) (spaceID string, err error)
-	BindSpaceID(spaceID, objectID string) (err error)
-	DeleteSpaceStorage(ctx context.Context, spaceId string) error
-	MarkSpaceCreated(id string) (err error)
-	UnmarkSpaceCreated(id string) (err error)
-	IsSpaceCreated(id string) (created bool)
-}
-
-func New() ClientStorage {
+func New() *storageService {
 	return &storageService{}
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
 	s.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
 	s.keys = newStorageServiceKeys()
+
 	s.lockedSpaces = map[string]*lockSpace{}
 	return
 }

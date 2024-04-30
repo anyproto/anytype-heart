@@ -2,7 +2,6 @@ package fileobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -128,6 +127,10 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 			SpaceId: spaceId,
 			FileId:  domain.FileId(pbtypes.GetString(rec.Details, bundle.RelationKeyFileId.String())),
 		}
+		// Additional check if we are accidentally migrated file object
+		if !fileId.Valid() {
+			continue
+		}
 		err = ind.addToQueue(ctx, id, fileId)
 		if err != nil {
 			return fmt.Errorf("add to index queue: %w", err)
@@ -203,11 +206,6 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 
 func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
-	if errors.Is(err, domain.ErrFileNotFound) {
-		log.With("fileId", fileId.FileId, "objectId", id.ObjectID).Errorf("build details: %v", err)
-		ind.markFileAsNotFound(st)
-		return nil
-	}
 	if err != nil {
 		return fmt.Errorf("build details: %w", err)
 	}
