@@ -1,4 +1,4 @@
-package objectcreator
+package migration
 
 import (
 	"testing"
@@ -57,35 +57,35 @@ func TestFixReadonlyInRelations(t *testing.T) {
 			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(false),
 		},
 	})
-	s := &service{objectStore: store}
+	fixer := &readonlyRelationsFixer{}
 
 	t.Run("fix tag and status relations with readonly=true", func(t *testing.T) {
-		sp := mock_space.NewMockSpace(t)
-		sp.EXPECT().Id().Return("space1").Times(2)
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return("space1").Times(1)
 
 		// both relations will be processed
-		sp.EXPECT().Do(mock.Anything, mock.Anything).Times(2).Return(nil)
+		spc.EXPECT().Do(mock.Anything, mock.Anything).Times(2).Return(nil)
 
-		s.fixReadonlyInRelations(sp)
+		fixer.Run(store, spc)
 	})
 
 	t.Run("do not process relations of other formats", func(t *testing.T) {
-		sp := mock_space.NewMockSpace(t)
-		sp.EXPECT().Id().Return("space2").Times(1)
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return("space2").Times(1)
 
 		// none of relations will be processed
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		s.fixReadonlyInRelations(sp)
+		fixer.Run(store, spc)
 	})
 
 	t.Run("do not process relations with readonly=false", func(t *testing.T) {
-		sp := mock_space.NewMockSpace(t)
-		sp.EXPECT().Id().Return("space3").Times(1)
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return("space3").Times(1)
 
 		// none of relations will be processed
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		s.fixReadonlyInRelations(sp)
+		fixer.Run(store, spc)
 	})
 }

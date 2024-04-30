@@ -1,4 +1,4 @@
-package objectcreator
+package migration
 
 import (
 	"testing"

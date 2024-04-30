@@ -1,30 +1,40 @@
-package objectcreator
+package migration
 
 import (
+	"fmt"
+
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const logHeader = "relationsFixer"
+type readonlyRelationsFixer struct{}
 
-func (s *service) fixReadonlyInRelations(space clientspace.Space) {
-	rels, err := s.listTagAndStatusRelations(space)
+func (readonlyRelationsFixer) Name() string {
+	return "ReadonlyRelationsFixer"
+}
+
+func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspace.Space) (toMigrate, migrated int, err error) {
+	var relations []database.Record
+	relations, toMigrate, err = listReadonlyTagAndStatusRelations(store, space)
+
 	if err != nil {
-		log.With(logHeader).Errorf("failed to list all relations with tag and status format in space %s: %v", space.Id(), err)
-		return
+		return toMigrate, 0, fmt.Errorf("failed to list all relations with tag and status format in space %s: %v", space.Id(), err)
 	}
 
-	if len(rels) != 0 {
-		log.With(logHeader).Infof("space %s contains %d relations of tag and status format with relationReadonlyValue=true", space.Id(), len(rels))
+	if toMigrate != 0 {
+		log.Infof("space %s contains %d relations of tag and status format with relationReadonlyValue=true", space.Id(), toMigrate)
 	}
 
-	for _, r := range rels {
+	for _, r := range relations {
 		var (
 			name = pbtypes.GetString(r.Details, bundle.RelationKeyName.String())
 			uk   = pbtypes.GetString(r.Details, bundle.RelationKeyUniqueKey.String())
@@ -35,25 +45,29 @@ func (s *service) fixReadonlyInRelations(space clientspace.Space) {
 			format = "<unknown>"
 		}
 
-		log.With(logHeader).Infof("setting relationReadonlyValue to FALSE for relation %s (uniqueKey='%s', format='%s')", name, uk, format)
+		log.Infof("setting relationReadonlyValue to FALSE for relation %s (uniqueKey='%s', format='%s')", name, uk, format)
 
 		det := []*pb.RpcObjectSetDetailsDetail{{
 			Key:   bundle.RelationKeyRelationReadonlyValue.String(),
 			Value: pbtypes.Bool(false),
 		}}
-		if err = space.Do(pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
+		e := space.Do(pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(basic.DetailsSettable); ok {
 				return ds.SetDetails(nil, det, false)
 			}
 			return nil
-		}); err != nil {
-			log.With(logHeader).Errorf("failed to set readOnlyValue=true to relation %s in space %s: %v", uk, space.Id(), err)
+		})
+		if e != nil {
+			err = multierror.Append(err, fmt.Errorf("failed to set readOnlyValue=true to relation %s in space %s: %v", uk, space.Id(), e))
+		} else {
+			migrated++
 		}
 	}
+	return
 }
 
-func (s *service) listTagAndStatusRelations(space clientspace.Space) (records []database.Record, err error) {
-	records, _, err = s.objectStore.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
+func listReadonlyTagAndStatusRelations(store objectstore.ObjectStore, space clientspace.Space) ([]database.Record, int, error) {
+	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),
 			Condition:   model.BlockContentDataviewFilter_In,
@@ -70,5 +84,4 @@ func (s *service) listTagAndStatusRelations(space clientspace.Space) (records []
 			Value:       pbtypes.Bool(true),
 		},
 	}})
-	return
 }
