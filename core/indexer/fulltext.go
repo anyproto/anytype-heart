@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -123,6 +124,12 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string, processo
 			if val == "" {
 				continue
 			}
+			// skip readonly and hidden system relations
+			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
+				if bundledRel.ReadOnly || bundledRel.Hidden {
+					continue
+				}
+			}
 
 			f := ftsearch.SearchDoc{
 				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
@@ -149,6 +156,10 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string, processo
 					return true
 				}
 
+				if len(pbtypes.GetStringList(b.Model().GetFields(), text.DetailsKeyFieldName)) > 0 {
+					// block doesn't store the value itself, but it's a reference to relation
+					return true
+				}
 				doc := ftsearch.SearchDoc{
 					DocId:   id,
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
