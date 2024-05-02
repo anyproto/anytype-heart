@@ -211,11 +211,10 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	prevSnapshot := s.lastSnapshotId
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		st, changes, sinceSnapshot, err := BuildStateFull(s.spaceID, d.(*state.State), ot, "")
+		st, changes, sinceSnapshot, err := BuildState(s.spaceID, d.(*state.State), ot)
 		if err != nil {
 			return
 		}
-		defer st.ResetParentIdsCache()
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {
@@ -282,7 +281,6 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	if err != nil {
 		return
 	}
-	defer st.ResetParentIdsCache()
 
 	validationErr := st.Validate()
 	if validationErr != nil {
@@ -545,8 +543,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 	if initState == nil {
 		startId = ot.Root().Id
 	} else {
-		st = initState
-		st.EnableParentIdsCache()
+		st = newState(st, initState)
 		startId = st.ChangeId()
 	}
 
@@ -563,12 +560,12 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			// that means that we are starting from tree root
 			if change.Id == ot.Id() {
 				if uniqueKeyInternalKey != "" {
-					st = state.NewDocWithInternalKey(ot.Id(), nil, uniqueKeyInternalKey).(*state.State)
+					st = newState(st, state.NewDocWithInternalKey(ot.Id(), nil, uniqueKeyInternalKey).(*state.State))
 				} else {
-					st = state.NewDoc(ot.Id(), nil).(*state.State)
+					st = newState(st, state.NewDoc(ot.Id(), nil).(*state.State))
 				}
-				st.SetChangeId(change.Id)
 				st.EnableParentIdsCache()
+				st.SetChangeId(change.Id)
 				return true
 			}
 
@@ -579,11 +576,10 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			if startId == change.Id {
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
-					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey)).(*state.State)
+					st = newState(st, state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey)).(*state.State))
 				} else {
-					st = st.NewState()
+					st = newState(st, st.NewState())
 				}
-				st.EnableParentIdsCache()
 				return true
 			}
 			if model.Snapshot != nil {
@@ -592,6 +588,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				changesAppliedSinceSnapshot++
 			}
 			appliedContent = append(appliedContent, model.Content...)
+			st.EnableParentIdsCache()
 			st.SetChangeId(change.Id)
 			st.ApplyChangeIgnoreErr(model.Content...)
 			st.AddFileKeys(model.FileKeys...)
@@ -610,71 +607,14 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
+	st.ResetParentIdsCache()
 	return
 }
 
-func BuildStateFull(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
-	var (
-		startId    string
-		lastChange *objecttree.Change
-		count      int
-	)
-	// if the state has no first change
-	if initState == nil {
-		startId = ot.Root().Id
-	} else {
-		st = initState
-		startId = st.ChangeId()
-		st.EnableParentIdsCache()
+func newState(st *state.State, toAssign *state.State) *state.State {
+	if st != nil {
+		st.ResetParentIdsCache()
 	}
-
-	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId, UnmarshalChange, func(change *objecttree.Change) bool {
-		count++
-		lastChange = change
-		// that means that we are starting from tree root
-		if change.Id == ot.Id() {
-			st = state.NewDoc(ot.Id(), nil).(*state.State)
-			st.SetChangeId(change.Id)
-			st.EnableParentIdsCache()
-			return true
-		}
-
-		model := change.Model.(*pb.Change)
-		if model.Version > lastMigrationVersion {
-			lastMigrationVersion = model.Version
-		}
-		if startId == change.Id {
-			if st == nil {
-				changesAppliedSinceSnapshot = 0
-				st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
-				return true
-			} else {
-				st = st.NewState()
-			}
-			st.EnableParentIdsCache()
-			return true
-		}
-		if model.Snapshot != nil {
-			changesAppliedSinceSnapshot = 0
-		} else {
-			changesAppliedSinceSnapshot++
-		}
-		ns := st.NewState()
-		appliedContent = append(appliedContent, model.Content...)
-		ns.SetChangeId(change.Id)
-		ns.ApplyChangeIgnoreErr(model.Content...)
-		ns.AddFileKeys(model.FileKeys...)
-		_, _, err = state.ApplyStateFastOne(ns)
-		return err == nil
-	})
-	if err != nil {
-		return
-	}
-	if lastChange != nil && !st.IsTheHeaderChange() {
-		// todo: why do we don't need to set last modified for the header change?
-		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
-	}
-	st.SetMigrationVersion(lastMigrationVersion)
-	return
+	st = toAssign
+	return st
 }
