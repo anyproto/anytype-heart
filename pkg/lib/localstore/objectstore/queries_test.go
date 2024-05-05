@@ -3,6 +3,7 @@ package objectstore
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
@@ -155,19 +156,19 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		err := s.fts.Index(ftsearch.SearchDoc{
-			Id:    "id1",
+			Id:    "id1/b/123",
 			Title: "name",
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
-			Id:    "id2",
+			Id:    "id2/b/321",
 			Title: "some important note",
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
-			Id:    "id3",
+			Id:    "id3/b/435",
 			Title: "",
 			Text:  "very important text",
 		})
@@ -647,15 +648,27 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 		}
 	})
 
-	t.Run("update details", func(t *testing.T) {
-		err = s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", "name1 updated")))
-		require.NoError(t, err)
+	t.Run("update details order", func(t *testing.T) {
+		for i := 1; i <= 1000; i++ {
+			err = s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", fmt.Sprintf("%d", i))))
+			require.NoError(t, err)
+		}
 
-		select {
-		case rec := <-recordsCh:
-			assert.Equal(t, "name1 updated", pbtypes.GetString(rec, bundle.RelationKeyName.String()))
-		case <-time.After(10 * time.Millisecond):
-			require.Fail(t, "update has not been received")
+		prev := 0
+		for {
+			select {
+			case rec := <-recordsCh:
+				name := pbtypes.GetString(rec, bundle.RelationKeyName.String())
+				num, err := strconv.Atoi(name)
+				require.NoError(t, err)
+				require.Equal(t, prev+1, num)
+				if num == 1000 {
+					return
+				}
+				prev = num
+			case <-time.After(10 * time.Millisecond):
+				require.Fail(t, "update has not been received")
+			}
 		}
 	})
 }

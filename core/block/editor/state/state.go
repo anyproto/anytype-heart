@@ -323,11 +323,26 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	var cacheFound simple.Block
 	if s.isParentIdsCacheEnabled {
-		if parentId, ok := s.getParentIdsCache()[id]; ok {
-			return s.Pick(parentId)
+		cache := s.getParentIdsCache()
+		if parentId, ok := cache[id]; ok {
+			cacheFound = s.Pick(parentId)
 		}
-		return
+		if cacheFound != nil {
+			rootId := s.RootId()
+			topParentId := cacheFound.Model().Id
+			for topParentId != rootId {
+				if nextId, ok := cache[topParentId]; ok {
+					topParentId = nextId
+				} else {
+					cacheFound = nil
+					break
+				}
+			}
+		}
+		// restore this code after checking if cache is working correctly
+		// return
 	}
 
 	s.Iterate(func(b simple.Block) bool {
@@ -337,6 +352,12 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		}
 		return true
 	})
+
+	// remove this code after checking if cache is working correctly
+	if s.isParentIdsCacheEnabled && res != cacheFound {
+		log.With("id", id).Warn("parent not found in cache")
+	}
+
 	return
 }
 
@@ -1113,21 +1134,28 @@ func (s *State) ObjectTypeKey() domain.TypeKey {
 	return ""
 }
 
-func (s *State) Snippet() (snippet string) {
+func (s *State) Snippet() string {
+	var builder strings.Builder
+	var snippetSize int
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title && text.Style != model.BlockContentText_Description {
+		if text := b.Model().GetText(); text != nil &&
+			text.Style != model.BlockContentText_Title &&
+			text.Style != model.BlockContentText_Description {
 			nextText := strings.TrimSpace(text.Text)
-			if snippet != "" && nextText != "" {
-				snippet += "\n"
-			}
-			snippet += nextText
-			if textutil.UTF16RuneCountString(snippet) >= snippetMinSize {
-				return false
+			if nextText != "" {
+				if snippetSize > 0 {
+					builder.WriteString("\n")
+				}
+				builder.WriteString(nextText)
+				snippetSize += textutil.UTF16RuneCountString(nextText)
+				if snippetSize >= snippetMaxSize {
+					return false
+				}
 			}
 		}
 		return true
 	})
-	return textutil.Truncate(snippet, snippetMaxSize)
+	return textutil.Truncate(builder.String(), snippetMaxSize)
 }
 
 func (s *State) FileRelationKeys() []string {

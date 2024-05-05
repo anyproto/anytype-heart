@@ -194,10 +194,10 @@ func HasPrefix(value, prefix []string) bool {
 	return true
 }
 
-func Copy(s []string) []string {
-	res := make([]string, len(s))
-	copy(res, s)
-	return res
+func Copy[T any](list []T) []T {
+	newList := make([]T, len(list))
+	copy(newList, list)
+	return newList
 }
 
 func Intersection(a, b []string) (res []string) {

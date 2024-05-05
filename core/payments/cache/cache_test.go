@@ -11,6 +11,8 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 )
 
 var ctx = context.Background()
@@ -142,11 +144,11 @@ func TestPayments_ClearCache(t *testing.T) {
 
 		err := fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:   uint32(model.Membership_TierExplorer),
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours,
@@ -180,11 +182,11 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 
 		err := fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:   uint32(model.Membership_TierExplorer),
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -192,17 +194,17 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 
 		out, _, err := fx.CacheGet()
 		require.NoError(t, err)
-		require.Equal(t, uint32(model.Membership_TierExplorer), out.Data.Tier)
+		require.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), out.Data.Tier)
 		require.Equal(t, model.Membership_StatusActive, out.Data.Status)
 
 		err = fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier: uint32(model.Membership_TierExplorer),
+				Tier: uint32(psp.SubscriptionTier_TierExplorer),
 				// here
 				Status: model.Membership_StatusUnknown,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -210,7 +212,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 
 		out, _, err = fx.CacheGet()
 		require.NoError(t, err)
-		require.Equal(t, uint32(model.Membership_TierExplorer), out.Data.Tier)
+		require.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), out.Data.Tier)
 		require.Equal(t, model.Membership_StatusUnknown, out.Data.Status)
 	})
 
@@ -232,11 +234,11 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 
 		err = fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:   uint32(model.Membership_TierExplorer),
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -245,7 +247,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		out, _, err := fx.CacheGet()
 		require.Equal(t, ErrCacheDisabled, err)
 		// HERE: weird semantics, error is returned too :-)
-		require.Equal(t, uint32(model.Membership_TierExplorer), out.Data.Tier)
+		require.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), out.Data.Tier)
 
 		err = fx.CacheEnable()
 		require.NoError(t, err)
@@ -255,7 +257,7 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 
 		out, _, err = fx.CacheGet()
 		require.NoError(t, err)
-		require.Equal(t, uint32(model.Membership_TierExplorer), out.Data.Tier)
+		require.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), out.Data.Tier)
 	})
 
 	t.Run("should return error if cache is cleared", func(t *testing.T) {
@@ -267,11 +269,11 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 
 		err := fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:   uint32(model.Membership_TierExplorer),
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -295,11 +297,11 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 
 		err := fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:   uint32(model.Membership_TierExplorer),
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -307,7 +309,7 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 
 		out, _, err := fx.CacheGet()
 		require.NoError(t, err)
-		require.Equal(t, uint32(model.Membership_TierExplorer), out.Data.Tier)
+		require.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), out.Data.Tier)
 		require.Equal(t, model.Membership_StatusActive, out.Data.Status)
 	})
 
@@ -323,11 +325,11 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 
 		err = fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:   uint32(model.Membership_TierExplorer),
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -346,11 +348,11 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 
 		err = fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:   uint32(model.Membership_TierExplorer),
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timePlus5Hours)
@@ -368,11 +370,11 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 
 		err = fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
-				Tier:   uint32(model.Membership_TierExplorer),
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
 				Status: model.Membership_StatusActive,
 			},
 		},
-			&pb.RpcMembershipTiersGetResponse{
+			&pb.RpcMembershipGetTiersResponse{
 				Tiers: []*model.MembershipTierData{},
 			},
 			timeNull)

@@ -350,6 +350,10 @@
     - [Rpc.BlockFile.SetName.Request](#anytype-Rpc-BlockFile-SetName-Request)
     - [Rpc.BlockFile.SetName.Response](#anytype-Rpc-BlockFile-SetName-Response)
     - [Rpc.BlockFile.SetName.Response.Error](#anytype-Rpc-BlockFile-SetName-Response-Error)
+    - [Rpc.BlockFile.SetTargetObjectId](#anytype-Rpc-BlockFile-SetTargetObjectId)
+    - [Rpc.BlockFile.SetTargetObjectId.Request](#anytype-Rpc-BlockFile-SetTargetObjectId-Request)
+    - [Rpc.BlockFile.SetTargetObjectId.Response](#anytype-Rpc-BlockFile-SetTargetObjectId-Response)
+    - [Rpc.BlockFile.SetTargetObjectId.Response.Error](#anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error)
     - [Rpc.BlockImage](#anytype-Rpc-BlockImage)
     - [Rpc.BlockImage.SetName](#anytype-Rpc-BlockImage-SetName)
     - [Rpc.BlockImage.SetName.Request](#anytype-Rpc-BlockImage-SetName-Request)
@@ -646,19 +650,26 @@
     - [Rpc.Membership.GetStatus.Request](#anytype-Rpc-Membership-GetStatus-Request)
     - [Rpc.Membership.GetStatus.Response](#anytype-Rpc-Membership-GetStatus-Response)
     - [Rpc.Membership.GetStatus.Response.Error](#anytype-Rpc-Membership-GetStatus-Response-Error)
+    - [Rpc.Membership.GetTiers](#anytype-Rpc-Membership-GetTiers)
+    - [Rpc.Membership.GetTiers.Request](#anytype-Rpc-Membership-GetTiers-Request)
+    - [Rpc.Membership.GetTiers.Response](#anytype-Rpc-Membership-GetTiers-Response)
+    - [Rpc.Membership.GetTiers.Response.Error](#anytype-Rpc-Membership-GetTiers-Response-Error)
     - [Rpc.Membership.GetVerificationEmail](#anytype-Rpc-Membership-GetVerificationEmail)
     - [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request)
     - [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response)
     - [Rpc.Membership.GetVerificationEmail.Response.Error](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error)
+    - [Rpc.Membership.GetVerificationEmailStatus](#anytype-Rpc-Membership-GetVerificationEmailStatus)
+    - [Rpc.Membership.GetVerificationEmailStatus.Request](#anytype-Rpc-Membership-GetVerificationEmailStatus-Request)
+    - [Rpc.Membership.GetVerificationEmailStatus.Response](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response)
+    - [Rpc.Membership.GetVerificationEmailStatus.Response.Error](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error)
     - [Rpc.Membership.IsNameValid](#anytype-Rpc-Membership-IsNameValid)
     - [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request)
     - [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response)
     - [Rpc.Membership.IsNameValid.Response.Error](#anytype-Rpc-Membership-IsNameValid-Response-Error)
-    - [Rpc.Membership.Tiers](#anytype-Rpc-Membership-Tiers)
-    - [Rpc.Membership.Tiers.Get](#anytype-Rpc-Membership-Tiers-Get)
-    - [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request)
-    - [Rpc.Membership.Tiers.Get.Response](#anytype-Rpc-Membership-Tiers-Get-Response)
-    - [Rpc.Membership.Tiers.Get.Response.Error](#anytype-Rpc-Membership-Tiers-Get-Response-Error)
+    - [Rpc.Membership.VerifyAppStoreReceipt](#anytype-Rpc-Membership-VerifyAppStoreReceipt)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error)
     - [Rpc.Membership.VerifyEmailCode](#anytype-Rpc-Membership-VerifyEmailCode)
     - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
@@ -804,6 +815,10 @@
     - [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request)
     - [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response)
     - [Rpc.Object.ListExport.Response.Error](#anytype-Rpc-Object-ListExport-Response-Error)
+    - [Rpc.Object.ListSetDetails](#anytype-Rpc-Object-ListSetDetails)
+    - [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request)
+    - [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response)
+    - [Rpc.Object.ListSetDetails.Response.Error](#anytype-Rpc-Object-ListSetDetails-Response-Error)
     - [Rpc.Object.ListSetIsArchived](#anytype-Rpc-Object-ListSetIsArchived)
     - [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request)
     - [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response)
@@ -845,7 +860,6 @@
     - [Rpc.Object.SetBreadcrumbs.Response](#anytype-Rpc-Object-SetBreadcrumbs-Response)
     - [Rpc.Object.SetBreadcrumbs.Response.Error](#anytype-Rpc-Object-SetBreadcrumbs-Response-Error)
     - [Rpc.Object.SetDetails](#anytype-Rpc-Object-SetDetails)
-    - [Rpc.Object.SetDetails.Detail](#anytype-Rpc-Object-SetDetails-Detail)
     - [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request)
     - [Rpc.Object.SetDetails.Response](#anytype-Rpc-Object-SetDetails-Response)
     - [Rpc.Object.SetDetails.Response.Error](#anytype-Rpc-Object-SetDetails-Response-Error)
@@ -969,10 +983,6 @@
     - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
     - [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response)
     - [Rpc.Space.Delete.Response.Error](#anytype-Rpc-Space-Delete-Response-Error)
-    - [Rpc.Space.Exit](#anytype-Rpc-Space-Exit)
-    - [Rpc.Space.Exit.Request](#anytype-Rpc-Space-Exit-Request)
-    - [Rpc.Space.Exit.Response](#anytype-Rpc-Space-Exit-Response)
-    - [Rpc.Space.Exit.Response.Error](#anytype-Rpc-Space-Exit-Response-Error)
     - [Rpc.Space.InviteGenerate](#anytype-Rpc-Space-InviteGenerate)
     - [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request)
     - [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response)
@@ -1001,6 +1011,10 @@
     - [Rpc.Space.LeaveApprove.Request](#anytype-Rpc-Space-LeaveApprove-Request)
     - [Rpc.Space.LeaveApprove.Response](#anytype-Rpc-Space-LeaveApprove-Response)
     - [Rpc.Space.LeaveApprove.Response.Error](#anytype-Rpc-Space-LeaveApprove-Response-Error)
+    - [Rpc.Space.MakeShareable](#anytype-Rpc-Space-MakeShareable)
+    - [Rpc.Space.MakeShareable.Request](#anytype-Rpc-Space-MakeShareable-Request)
+    - [Rpc.Space.MakeShareable.Response](#anytype-Rpc-Space-MakeShareable-Response)
+    - [Rpc.Space.MakeShareable.Response.Error](#anytype-Rpc-Space-MakeShareable-Response-Error)
     - [Rpc.Space.ParticipantPermissionsChange](#anytype-Rpc-Space-ParticipantPermissionsChange)
     - [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request)
     - [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response)
@@ -1185,6 +1199,7 @@
     - [Rpc.BlockFile.CreateAndUpload.Response.Error.Code](#anytype-Rpc-BlockFile-CreateAndUpload-Response-Error-Code)
     - [Rpc.BlockFile.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockFile-ListSetStyle-Response-Error-Code)
     - [Rpc.BlockFile.SetName.Response.Error.Code](#anytype-Rpc-BlockFile-SetName-Response-Error-Code)
+    - [Rpc.BlockFile.SetTargetObjectId.Response.Error.Code](#anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error-Code)
     - [Rpc.BlockImage.SetName.Response.Error.Code](#anytype-Rpc-BlockImage-SetName-Response-Error-Code)
     - [Rpc.BlockImage.SetWidth.Response.Error.Code](#anytype-Rpc-BlockImage-SetWidth-Response-Error-Code)
     - [Rpc.BlockLatex.SetProcessor.Response.Error.Code](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error-Code)
@@ -1255,9 +1270,11 @@
     - [Rpc.Membership.GetPaymentUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPaymentUrl-Response-Error-Code)
     - [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code)
+    - [Rpc.Membership.GetTiers.Response.Error.Code](#anytype-Rpc-Membership-GetTiers-Response-Error-Code)
     - [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code)
+    - [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code)
     - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
-    - [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
@@ -1297,6 +1314,7 @@
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
     - [Rpc.Object.ListExport.Response.Error.Code](#anytype-Rpc-Object-ListExport-Response-Error-Code)
+    - [Rpc.Object.ListSetDetails.Response.Error.Code](#anytype-Rpc-Object-ListSetDetails-Response-Error-Code)
     - [Rpc.Object.ListSetIsArchived.Response.Error.Code](#anytype-Rpc-Object-ListSetIsArchived-Response-Error-Code)
     - [Rpc.Object.ListSetIsFavorite.Response.Error.Code](#anytype-Rpc-Object-ListSetIsFavorite-Response-Error-Code)
     - [Rpc.Object.ListSetObjectType.Response.Error.Code](#anytype-Rpc-Object-ListSetObjectType-Response-Error-Code)
@@ -1336,7 +1354,6 @@
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
-    - [Rpc.Space.Exit.Response.Error.Code](#anytype-Rpc-Space-Exit-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
     - [Rpc.Space.InviteRevoke.Response.Error.Code](#anytype-Rpc-Space-InviteRevoke-Response-Error-Code)
@@ -1344,6 +1361,7 @@
     - [Rpc.Space.Join.Response.Error.Code](#anytype-Rpc-Space-Join-Response-Error-Code)
     - [Rpc.Space.JoinCancel.Response.Error.Code](#anytype-Rpc-Space-JoinCancel-Response-Error-Code)
     - [Rpc.Space.LeaveApprove.Response.Error.Code](#anytype-Rpc-Space-LeaveApprove-Response-Error-Code)
+    - [Rpc.Space.MakeShareable.Response.Error.Code](#anytype-Rpc-Space-MakeShareable-Response-Error-Code)
     - [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code)
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
@@ -1512,6 +1530,7 @@
     - [Event.Block.Set.Widget.ViewId](#anytype-Event-Block-Set-Widget-ViewId)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
+    - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Membership](#anytype-Event-Membership)
@@ -1623,6 +1642,7 @@
     - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [Detail](#anytype-model-Detail)
     - [Export](#anytype-model-Export)
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
@@ -1678,6 +1698,7 @@
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
     - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
+    - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
     - [Block.Content.Dataview.View.Type](#anytype-model-Block-Content-Dataview-View-Type)
@@ -1703,10 +1724,11 @@
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus)
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
-    - [Membership.Tier](#anytype-model-Membership-Tier)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
+    - [NameserviceNameType](#anytype-model-NameserviceNameType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
     - [Notification.Status](#anytype-model-Notification-Status)
@@ -1721,6 +1743,7 @@
     - [Restrictions.ObjectRestriction](#anytype-model-Restrictions-ObjectRestriction)
     - [SmartBlockType](#anytype-model-SmartBlockType)
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
+    - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
     - [SpaceStatus](#anytype-model-SpaceStatus)
   
 - [Scalar Value Types](#scalar-value-types)
@@ -1785,11 +1808,11 @@
 | SpaceInviteView | [Rpc.Space.InviteView.Request](#anytype-Rpc-Space-InviteView-Request) | [Rpc.Space.InviteView.Response](#anytype-Rpc-Space-InviteView-Response) |  |
 | SpaceJoin | [Rpc.Space.Join.Request](#anytype-Rpc-Space-Join-Request) | [Rpc.Space.Join.Response](#anytype-Rpc-Space-Join-Response) |  |
 | SpaceJoinCancel | [Rpc.Space.JoinCancel.Request](#anytype-Rpc-Space-JoinCancel-Request) | [Rpc.Space.JoinCancel.Response](#anytype-Rpc-Space-JoinCancel-Response) |  |
-| SpaceExit | [Rpc.Space.Exit.Request](#anytype-Rpc-Space-Exit-Request) | [Rpc.Space.Exit.Response](#anytype-Rpc-Space-Exit-Response) |  |
 | SpaceStopSharing | [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request) | [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response) |  |
 | SpaceRequestApprove | [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request) | [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response) |  |
 | SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
 | SpaceLeaveApprove | [Rpc.Space.LeaveApprove.Request](#anytype-Rpc-Space-LeaveApprove-Request) | [Rpc.Space.LeaveApprove.Response](#anytype-Rpc-Space-LeaveApprove-Response) |  |
+| SpaceMakeShareable | [Rpc.Space.MakeShareable.Request](#anytype-Rpc-Space-MakeShareable-Request) | [Rpc.Space.MakeShareable.Response](#anytype-Rpc-Space-MakeShareable-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
@@ -1819,6 +1842,7 @@
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response) |  |
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectListSetObjectType | [Rpc.Object.ListSetObjectType.Request](#anytype-Rpc-Object-ListSetObjectType-Request) | [Rpc.Object.ListSetObjectType.Response](#anytype-Rpc-Object-ListSetObjectType-Response) |  |
+| ObjectListSetDetails | [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request) | [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response) |  |
 | ObjectApplyTemplate | [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request) | [Rpc.Object.ApplyTemplate.Response](#anytype-Rpc-Object-ApplyTemplate-Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request) | [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response) | ObjectToSet creates new set from given object and removes object |
 | ObjectToCollection | [Rpc.Object.ToCollection.Request](#anytype-Rpc-Object-ToCollection-Request) | [Rpc.Object.ToCollection.Response](#anytype-Rpc-Object-ToCollection-Response) |  |
@@ -1902,6 +1926,7 @@
 | BlockTextListClearStyle | [Rpc.BlockText.ListClearStyle.Request](#anytype-Rpc-BlockText-ListClearStyle-Request) | [Rpc.BlockText.ListClearStyle.Response](#anytype-Rpc-BlockText-ListClearStyle-Response) |  |
 | BlockTextListClearContent | [Rpc.BlockText.ListClearContent.Request](#anytype-Rpc-BlockText-ListClearContent-Request) | [Rpc.BlockText.ListClearContent.Response](#anytype-Rpc-BlockText-ListClearContent-Response) |  |
 | BlockFileSetName | [Rpc.BlockFile.SetName.Request](#anytype-Rpc-BlockFile-SetName-Request) | [Rpc.BlockFile.SetName.Response](#anytype-Rpc-BlockFile-SetName-Response) | File block commands *** |
+| BlockFileSetTargetObjectId | [Rpc.BlockFile.SetTargetObjectId.Request](#anytype-Rpc-BlockFile-SetTargetObjectId-Request) | [Rpc.BlockFile.SetTargetObjectId.Response](#anytype-Rpc-BlockFile-SetTargetObjectId-Response) |  |
 | BlockImageSetName | [Rpc.BlockImage.SetName.Request](#anytype-Rpc-BlockImage-SetName-Request) | [Rpc.BlockImage.SetName.Response](#anytype-Rpc-BlockImage-SetName-Response) |  |
 | BlockVideoSetName | [Rpc.BlockVideo.SetName.Request](#anytype-Rpc-BlockVideo-SetName-Request) | [Rpc.BlockVideo.SetName.Response](#anytype-Rpc-BlockVideo-SetName-Response) |  |
 | BlockFileCreateAndUpload | [Rpc.BlockFile.CreateAndUpload.Request](#anytype-Rpc-BlockFile-CreateAndUpload-Request) | [Rpc.BlockFile.CreateAndUpload.Response](#anytype-Rpc-BlockFile-CreateAndUpload-Response) |  |
@@ -1978,10 +2003,12 @@
 | MembershipIsNameValid | [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request) | [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response) |  |
 | MembershipGetPaymentUrl | [Rpc.Membership.GetPaymentUrl.Request](#anytype-Rpc-Membership-GetPaymentUrl-Request) | [Rpc.Membership.GetPaymentUrl.Response](#anytype-Rpc-Membership-GetPaymentUrl-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
 | MembershipGetPortalLinkUrl | [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request) | [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
+| MembershipGetVerificationEmailStatus | [Rpc.Membership.GetVerificationEmailStatus.Request](#anytype-Rpc-Membership-GetVerificationEmailStatus-Request) | [Rpc.Membership.GetVerificationEmailStatus.Response](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response) | Check the current status of the verification email |
 | MembershipGetVerificationEmail | [Rpc.Membership.GetVerificationEmail.Request](#anytype-Rpc-Membership-GetVerificationEmail-Request) | [Rpc.Membership.GetVerificationEmail.Response](#anytype-Rpc-Membership-GetVerificationEmail-Response) | Send a verification code to the user&#39;s email. The user should enter this code to verify his email. |
 | MembershipVerifyEmailCode | [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request) | [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (MembershipGetVerificationEmail) |
 | MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
-| MembershipGetTiers | [Rpc.Membership.Tiers.Get.Request](#anytype-Rpc-Membership-Tiers-Get-Request) | [Rpc.Membership.Tiers.Get.Response](#anytype-Rpc-Membership-Tiers-Get-Response) |  |
+| MembershipGetTiers | [Rpc.Membership.GetTiers.Request](#anytype-Rpc-Membership-GetTiers-Request) | [Rpc.Membership.GetTiers.Response](#anytype-Rpc-Membership-GetTiers-Response) |  |
+| MembershipVerifyAppStoreReceipt | [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request) | [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -7046,6 +7073,65 @@ set the current active view (persisted only within a session)
 
 
 
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId"></a>
+
+### Rpc.BlockFile.SetTargetObjectId
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId-Request"></a>
+
+### Rpc.BlockFile.SetTargetObjectId.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId-Response"></a>
+
+### Rpc.BlockFile.SetTargetObjectId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockFile.SetTargetObjectId.Response.Error](#anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error"></a>
+
+### Rpc.BlockFile.SetTargetObjectId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockFile.SetTargetObjectId.Response.Error.Code](#anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-BlockImage"></a>
 
 ### Rpc.BlockImage
@@ -7335,11 +7421,12 @@ set the current active view (persisted only within a session)
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
+| block | [model.Block](#anytype-model-Block) |  |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
-| fields | [google.protobuf.Struct](#google-protobuf-Struct) |  | link block fields |
+| fields | [google.protobuf.Struct](#google-protobuf-Struct) |  | deprecated link block fields |
 
 
 
@@ -11091,7 +11178,7 @@ returns blockShow event for given version
 
 ### Rpc.Membership
 A Membership is a bundle of several &#34;Features&#34;
-every user should have one and only one tier 
+every user should have one and only one tier
 users can not have N tiers (no combining)
 
 
@@ -11117,7 +11204,8 @@ users can not have N tiers (no combining)
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11158,8 +11246,9 @@ users can not have N tiers (no combining)
 <a name="anytype-Rpc-Membership-GetPaymentUrl"></a>
 
 ### Rpc.Membership.GetPaymentUrl
-Generate a link to the payment provider
-where user can pay for the membership
+Generate a unique id for payment request (for mobile clients)
+Generate a link to Stripe where user can pay for the membership (for desktop client)
+TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
 
 
 
@@ -11176,7 +11265,8 @@ where user can pay for the membership
 | ----- | ---- | ----- | ----------- |
 | requestedTier | [uint32](#uint32) |  |  |
 | paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
-| requestedAnyName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11330,6 +11420,65 @@ WARNING: this can be cached by Anytype heart
 
 
 
+<a name="anytype-Rpc-Membership-GetTiers"></a>
+
+### Rpc.Membership.GetTiers
+Tiers can change on the backend so if you want to show users the latest data
+you can call this method to get the latest tiers
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetTiers-Request"></a>
+
+### Rpc.Membership.GetTiers.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+| locale | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetTiers-Response"></a>
+
+### Rpc.Membership.GetTiers.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetTiers.Response.Error](#anytype-Rpc-Membership-GetTiers-Response-Error) |  |  |
+| tiers | [model.MembershipTierData](#anytype-model-MembershipTierData) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetTiers-Response-Error"></a>
+
+### Rpc.Membership.GetTiers.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetTiers.Response.Error.Code](#anytype-Rpc-Membership-GetTiers-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Membership-GetVerificationEmail"></a>
 
 ### Rpc.Membership.GetVerificationEmail
@@ -11388,6 +11537,59 @@ can be called multiple times but with some timeout (N seconds) between calls
 
 
 
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus
+Get the current status of the e-mail verification.
+Status can change if you call GetVerificationEmail or VerifyEmailCode
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus-Request"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus-Response"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.GetVerificationEmailStatus.Response.Error](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error) |  |  |
+| status | [model.Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Membership-IsNameValid"></a>
 
 ### Rpc.Membership.IsNameValid
@@ -11408,7 +11610,8 @@ before requesting a payment link and paying
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | requestedTier | [uint32](#uint32) |  |  |
-| requestedAnyName | [string](#string) |  | full name including .any suffix |
+| nsName | [string](#string) |  |  |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11446,20 +11649,9 @@ before requesting a payment link and paying
 
 
 
-<a name="anytype-Rpc-Membership-Tiers"></a>
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt"></a>
 
-### Rpc.Membership.Tiers
-Tiers can change on the backend so if you want to show users the latest data
-you can call this method to get the latest tiers
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-Tiers-Get"></a>
-
-### Rpc.Membership.Tiers.Get
+### Rpc.Membership.VerifyAppStoreReceipt
 
 
 
@@ -11467,47 +11659,46 @@ you can call this method to get the latest tiers
 
 
 
-<a name="anytype-Rpc-Membership-Tiers-Get-Request"></a>
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Request"></a>
 
-### Rpc.Membership.Tiers.Get.Request
+### Rpc.Membership.VerifyAppStoreReceipt.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
-| locale | [string](#string) |  |  |
+| billingId | [string](#string) |  | billingId is used to identify payment request on payment node side |
+| receipt | [string](#string) |  | receipt is a JWT-encoded string including info about subscription purchase |
 
 
 
 
 
 
-<a name="anytype-Rpc-Membership-Tiers-Get-Response"></a>
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response"></a>
 
-### Rpc.Membership.Tiers.Get.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Membership.Tiers.Get.Response.Error](#anytype-Rpc-Membership-Tiers-Get-Response-Error) |  |  |
-| tiers | [model.MembershipTierData](#anytype-model-MembershipTierData) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-Tiers-Get-Response-Error"></a>
-
-### Rpc.Membership.Tiers.Get.Response.Error
+### Rpc.Membership.VerifyAppStoreReceipt.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Membership.Tiers.Get.Response.Error.Code](#anytype-Rpc-Membership-Tiers-Get-Response-Error-Code) |  |  |
+| error | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11518,7 +11709,7 @@ you can call this method to get the latest tiers
 <a name="anytype-Rpc-Membership-VerifyEmailCode"></a>
 
 ### Rpc.Membership.VerifyEmailCode
-Verify the e-mail address of the user 
+Verify the e-mail address of the user
 need a correct code that was sent to the user when calling GetVerificationEmail
 
 
@@ -11684,7 +11875,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.ResolveAnyId.Response.Error](#anytype-Rpc-NameService-ResolveAnyId-Response-Error) |  |  |
 | found | [bool](#bool) |  |  |
-| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+| nsName | [string](#string) |  | not including suffix |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11725,7 +11917,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+| nsName | [string](#string) |  |  |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11804,7 +11997,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.ResolveSpaceId.Response.Error](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error) |  |  |
 | found | [bool](#bool) |  |  |
-| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+| nsName | [string](#string) |  | not including suffix |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 
 
 
@@ -11866,7 +12060,8 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.NameService.UserAccount.Get.Response.Error](#anytype-Rpc-NameService-UserAccount-Get-Response-Error) |  |  |
-| anyNameAttached | [string](#string) |  | this will use ReverseResolve to get current name user can buy many names, but only 1 name can be set as &#34;current&#34;: ETH address &lt;-&gt; name |
+| nsNameAttached | [string](#string) |  | this will use ReverseResolve to get current name user can buy many names, but only 1 name can be set as &#34;current&#34;: ETH address &lt;-&gt; name |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | namesCountLeft | [uint64](#uint64) |  | Number of names that the user can reserve |
 | operationsCountLeft | [uint64](#uint64) |  | Number of operations: update name, add new data, etc |
 
@@ -12901,13 +13096,15 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
 
 DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated |  |
+| spaceId | [string](#string) |  |  |
+| collectionId | [string](#string) |  |  |
+| setSource | [string](#string) | repeated |  |
 
 
 
@@ -13253,6 +13450,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
 | collectionId | [string](#string) |  |  |
+| objectsCount | [int64](#int64) |  |  |
 
 
 
@@ -13634,6 +13832,64 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.ListExport.Response.Error.Code](#anytype-Rpc-Object-ListExport-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListSetDetails"></a>
+
+### Rpc.Object.ListSetDetails
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListSetDetails-Request"></a>
+
+### Rpc.Object.ListSetDetails.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+| details | [model.Detail](#anytype-model-Detail) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListSetDetails-Response"></a>
+
+### Rpc.Object.ListSetDetails.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ListSetDetails.Response.Error](#anytype-Rpc-Object-ListSetDetails-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListSetDetails-Response-Error"></a>
+
+### Rpc.Object.ListSetDetails.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ListSetDetails.Response.Error.Code](#anytype-Rpc-Object-ListSetDetails-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14254,22 +14510,6 @@ DEPRECATED, GO-1926 |
 
 
 
-<a name="anytype-Rpc-Object-SetDetails-Detail"></a>
-
-### Rpc.Object.SetDetails.Detail
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [google.protobuf.Value](#google-protobuf-Value) |  | NUll - removes key |
-
-
-
-
-
-
 <a name="anytype-Rpc-Object-SetDetails-Request"></a>
 
 ### Rpc.Object.SetDetails.Request
@@ -14279,7 +14519,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| details | [Rpc.Object.SetDetails.Detail](#anytype-Rpc-Object-SetDetails-Detail) | repeated |  |
+| details | [model.Detail](#anytype-model-Detail) | repeated |  |
 
 
 
@@ -16028,63 +16268,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Space-Exit"></a>
-
-### Rpc.Space.Exit
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Space-Exit-Request"></a>
-
-### Rpc.Space.Exit.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Space-Exit-Response"></a>
-
-### Rpc.Space.Exit.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Space.Exit.Response.Error](#anytype-Rpc-Space-Exit-Response-Error) |  |  |
-| timestamp | [int64](#int64) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Space-Exit-Response-Error"></a>
-
-### Rpc.Space.Exit.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Space.Exit.Response.Error.Code](#anytype-Rpc-Space-Exit-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Space-InviteGenerate"></a>
 
 ### Rpc.Space.InviteGenerate
@@ -16483,6 +16666,62 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Space.LeaveApprove.Response.Error.Code](#anytype-Rpc-Space-LeaveApprove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-MakeShareable"></a>
+
+### Rpc.Space.MakeShareable
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-MakeShareable-Request"></a>
+
+### Rpc.Space.MakeShareable.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-MakeShareable-Response"></a>
+
+### Rpc.Space.MakeShareable.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.MakeShareable.Response.Error](#anytype-Rpc-Space-MakeShareable-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-MakeShareable-Response-Error"></a>
+
+### Rpc.Space.MakeShareable.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.MakeShareable.Response.Error.Code](#anytype-Rpc-Space-MakeShareable-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19067,6 +19306,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error-Code"></a>
+
+### Rpc.BlockFile.SetTargetObjectId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-BlockImage-SetName-Response-Error-Code"></a>
 
 ### Rpc.BlockImage.SetName.Response.Error.Code
@@ -19950,6 +20202,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
 | BAD_ANYNAME | 8 |  |
+| CAN_NOT_CONNECT | 9 |  |
 
 
 
@@ -19971,6 +20224,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_METHOD_INVALID | 8 |  |
 | BAD_ANYNAME | 9 |  |
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
 
 
 
@@ -19987,6 +20241,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
 
 
 
@@ -20005,6 +20260,24 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CACHE_ERROR | 5 |  |
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
+| CAN_NOT_CONNECT | 8 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetTiers-Response-Error-Code"></a>
+
+### Rpc.Membership.GetTiers.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| CAN_NOT_CONNECT | 6 |  |
 
 
 
@@ -20026,6 +20299,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | EMAIL_ALREDY_SENT | 8 |  |
 | EMAIL_FAILED_TO_SEND | 9 |  |
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
+
+
+
+<a name="anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code"></a>
+
+### Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CAN_NOT_CONNECT | 12 |  |
 
 
 
@@ -20047,12 +20337,14 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 8 |  |
 | PAYMENT_NODE_ERROR | 9 |  |
 | CACHE_ERROR | 10 |  |
+| CAN_NOT_RESERVE | 11 | for some probable future use (if needed) |
+| CAN_NOT_CONNECT | 12 |  |
 
 
 
-<a name="anytype-Rpc-Membership-Tiers-Get-Response-Error-Code"></a>
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code"></a>
 
-### Rpc.Membership.Tiers.Get.Response.Error.Code
+### Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -20084,6 +20376,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CODE_WRONG | 8 |  |
 | MEMBERSHIP_NOT_FOUND | 9 |  |
 | MEMBERSHIP_ALREADY_ACTIVE | 10 |  |
+| CAN_NOT_CONNECT | 11 |  |
 
 
 
@@ -20110,6 +20403,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20123,6 +20417,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20136,6 +20431,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
 
 
 
@@ -20151,6 +20447,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_LOGGED_IN | 3 |  |
 | BAD_NAME_RESOLVE | 4 |  |
+| CAN_NOT_CONNECT | 5 |  |
 
 
 
@@ -20601,6 +20898,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-ListSetDetails-Response-Error-Code"></a>
+
+### Rpc.Object.ListSetDetails.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Object-ListSetIsArchived-Response-Error-Code"></a>
 
 ### Rpc.Object.ListSetIsArchived.Response.Error.Code
@@ -20652,6 +20962,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 3 |  |
 | ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
+| OBJECT_DELETED | 4 | ... |
 
 
 
@@ -20849,6 +21160,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 3 |  |
+| OBJECT_DELETED | 4 |  |
 | ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
 
 
@@ -21116,22 +21428,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
-
-
-
-<a name="anytype-Rpc-Space-Exit-Response-Error-Code"></a>
-
-### Rpc.Space.Exit.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NO_SUCH_SPACE | 101 |  |
-| SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
+| NOT_SHAREABLE | 105 |  |
 
 
 
@@ -21148,6 +21447,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
+| NOT_SHAREABLE | 105 |  |
 
 
 
@@ -21161,9 +21462,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| NO_SUCH_SPACE | 101 |  |
-| SPACE_IS_DELETED | 102 |  |
-| NO_ACTIVE_INVITE | 103 |  |
+| NO_ACTIVE_INVITE | 101 |  |
 
 
 
@@ -21179,8 +21478,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
-| NO_ACTIVE_INVITE | 103 |  |
-| REQUEST_FAILED | 105 |  |
+| LIMIT_REACHED | 103 |  |
+| REQUEST_FAILED | 104 |  |
+| NOT_SHAREABLE | 105 |  |
 
 
 
@@ -21194,10 +21494,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| NO_SUCH_SPACE | 101 |  |
-| SPACE_IS_DELETED | 102 |  |
-| INVITE_NOT_FOUND | 103 |  |
-| INVITE_BAD_SIGNATURE | 104 |  |
+| INVITE_NOT_FOUND | 101 |  |
+| INVITE_BAD_CONTENT | 102 |  |
+| SPACE_IS_DELETED | 103 |  |
 
 
 
@@ -21214,8 +21513,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | INVITE_NOT_FOUND | 103 |  |
-| INVITE_BAD_SIGNATURE | 104 |  |
+| INVITE_BAD_CONTENT | 104 |  |
 | REQUEST_FAILED | 105 |  |
+| LIMIT_REACHED | 106 |  |
+| NOT_SHAREABLE | 107 |  |
 
 
 
@@ -21232,6 +21533,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
+| NO_SUCH_REQUEST | 105 |  |
+| NOT_SHAREABLE | 106 |  |
 
 
 
@@ -21248,7 +21552,26 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
-| NO_APPROVE_REQUESTS | 104 |  |
+| LIMIT_REACHED | 104 |  |
+| NO_APPROVE_REQUESTS | 105 |  |
+| NOT_SHAREABLE | 106 |  |
+
+
+
+<a name="anytype-Rpc-Space-MakeShareable-Response-Error-Code"></a>
+
+### Rpc.Space.MakeShareable.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
 
 
 
@@ -21265,6 +21588,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
+| PARTICIPANT_NOT_FOUND | 105 |  |
+| INCORRECT_PERMISSIONS | 106 |  |
+| NOT_SHAREABLE | 107 |  |
 
 
 
@@ -21282,6 +21609,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | PARTICIPANT_NOT_FOUND | 103 |  |
 | REQUEST_FAILED | 104 |  |
+| LIMIT_REACHED | 105 |  |
+| NOT_SHAREABLE | 106 |  |
 
 
 
@@ -21297,9 +21626,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
-| NO_SUCH_IDENTITY | 103 |  |
+| NO_SUCH_REQUEST | 103 |  |
 | INCORRECT_PERMISSIONS | 104 |  |
 | REQUEST_FAILED | 105 |  |
+| LIMIT_REACHED | 106 |  |
+| NOT_SHAREABLE | 107 |  |
 
 
 
@@ -21316,6 +21647,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
+| NO_SUCH_REQUEST | 105 |  |
+| NOT_SHAREABLE | 106 |  |
 
 
 
@@ -21332,6 +21666,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_SPACE | 101 |  |
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
 
 
 
@@ -23821,6 +24156,21 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-File-LimitUpdated"></a>
+
+### Event.File.LimitUpdated
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bytesLimit | [uint64](#uint64) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-File-LocalUsage"></a>
 
 ### Event.File.LocalUsage
@@ -23946,6 +24296,7 @@ Precondition: user A opened a block
 | fileLimitReached | [Event.File.LimitReached](#anytype-Event-File-LimitReached) |  |  |
 | fileSpaceUsage | [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage) |  |  |
 | fileLocalUsage | [Event.File.LocalUsage](#anytype-Event-File-LocalUsage) |  |  |
+| fileLimitUpdated | [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated) |  |  |
 | notificationSend | [Event.Notification.Send](#anytype-Event-Notification-Send) |  |  |
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
@@ -24892,12 +25243,13 @@ Precondition: user A and user B opened the same block
 | objectsForceReindexCounter | [int32](#int32) |  | increased in order to trigger all objects reindex |
 | filesForceReindexCounter | [int32](#int32) |  | increased in order to fully reindex all objects |
 | idxRebuildCounter | [int32](#int32) |  | increased in order to remove indexes and reindex everything. Automatically triggers objects and files reindex(one time only) |
-| fulltextRebuild | [int32](#int32) |  | increased in order to perform fulltext indexing for all type of objects (useful when we change fulltext config) |
-| fulltextErase | [int32](#int32) |  | remove all the fulltext indexes and add to reindex queue after |
+| fulltextRebuild | [int32](#int32) |  | DEPRECATED increased in order to perform fulltext indexing for all type of objects (useful when we change fulltext config) |
+| fulltextErase | [int32](#int32) |  | DEPRECATED remove all the fulltext indexes and add to reindex queue after |
 | bundledTemplates | [string](#string) |  |  |
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
 | areOldFilesRemoved | [bool](#bool) |  |  |
+| areDeletedObjectsReindexed | [bool](#bool) |  |  |
 
 
 
@@ -25240,12 +25592,13 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
 | RelationKey | [string](#string) |  |  |
 | type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
 | customOrder | [google.protobuf.Value](#google-protobuf-Value) | repeated |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
 | includeTime | [bool](#bool) |  |  |
+| id | [string](#string) |  |  |
+| emptyPlacement | [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType) |  |  |
 
 
 
@@ -25620,6 +25973,22 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Detail"></a>
+
+### Detail
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [google.protobuf.Value](#google-protobuf-Value) |  | NUll - removes key |
+
+
+
+
+
+
 <a name="anytype-model-Export"></a>
 
 ### Export
@@ -25821,7 +26190,8 @@ Used to decode block meta only, without the content itself
 | dateEnds | [uint64](#uint64) |  |  |
 | isAutoRenew | [bool](#bool) |  |  |
 | paymentMethod | [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
-| requestedAnyName | [string](#string) |  | can be empty if user did not ask for any name |
+| nsName | [string](#string) |  | can be empty if user did not ask for any name |
+| nsNameType | [NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
 | subscribeToNewsletter | [bool](#bool) |  |  |
 
@@ -25838,10 +26208,10 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [uint32](#uint32) |  | this is a unique ID of the tier you should hardcode this in your app and provide icon, graphics, etc for each tier (even for old/historical/inactive/hidden tiers) |
+| id | [uint32](#uint32) |  | this is a unique Payment Node ID of the tier WARNING: tiers can be sorted differently, not according to their IDs! |
 | name | [string](#string) |  | localazied name of the tier |
-| description | [string](#string) |  | just a short technical description you don&#39;t have to use it, you can use your own UI-friendly texts |
-| isTest | [bool](#bool) |  | is this tier for debugging only? |
+| description | [string](#string) |  | just a short technical description |
+| isTest | [bool](#bool) |  | is this tier for testing and debugging only? |
 | periodType | [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType) |  | how long is the period of the subscription |
 | periodValue | [uint32](#uint32) |  | i.e. &#34;5 days&#34; or &#34;3 years&#34; |
 | priceStripeUsdCents | [uint32](#uint32) |  | this one is a price we use ONLY on Stripe platform |
@@ -25849,6 +26219,12 @@ Used to decode block meta only, without the content itself
 | anyNameMinLength | [uint32](#uint32) |  | somename.any - is of len 8 |
 | features | [string](#string) | repeated | localized strings for the features |
 | colorStr | [string](#string) |  | green, blue, red, purple, custom |
+| stripeProductId | [string](#string) |  | Stripe platform-specific data: |
+| stripeManageUrl | [string](#string) |  |  |
+| iosProductId | [string](#string) |  | iOS platform-specific data: |
+| iosManageUrl | [string](#string) |  |  |
+| androidProductId | [string](#string) |  | Android platform-specific data: |
+| androidManageUrl | [string](#string) |  |  |
 
 
 
@@ -26471,6 +26847,7 @@ stored |
 | AlignLeft | 0 |  |
 | AlignCenter | 1 |  |
 | AlignRight | 2 |  |
+| AlignJustify | 3 |  |
 
 
 
@@ -26574,6 +26951,19 @@ stored |
 | ---- | ------ | ----------- |
 | Format12 | 0 |  |
 | Format24 | 1 |  |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Sort-EmptyType"></a>
+
+### Block.Content.Dataview.Sort.EmptyType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NotSpecified | 0 |  |
+| Start | 1 |  |
+| End | 2 |  |
 
 
 
@@ -26969,6 +27359,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
+<a name="anytype-model-Membership-EmailVerificationStatus"></a>
+
+### Membership.EmailVerificationStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| StatusNotVerified | 0 | user NEVER comleted the verification of the email |
+| StatusCodeSent | 1 | user has asked for new code, but did not enter it yet (even if email was verified before, you can ask to UPDATE your e-mail) please wait, you can not ask for more codes yet |
+| StatusVerified | 2 | the e-mail is finally verified |
+
+
+
 <a name="anytype-model-Membership-PaymentMethod"></a>
 
 ### Membership.PaymentMethod
@@ -26976,12 +27379,11 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MethodCard | 0 | Stripe |
-| MethodCrypto | 1 |  |
-| MethodApplePay | 2 |  |
-| MethodGooglePay | 3 |  |
-| MethodAppleInapp | 4 |  |
-| MethodGoogleInapp | 5 |  |
+| MethodNone | 0 |  |
+| MethodStripe | 1 |  |
+| MethodCrypto | 2 |  |
+| MethodInappApple | 3 |  |
+| MethodInappGoogle | 4 |  |
 
 
 
@@ -26993,27 +27395,9 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | StatusUnknown | 0 |  |
-| StatusPending | 1 | please wait a bit more |
-| StatusActive | 2 |  |
-| StatusPendingRequiresFinalization | 3 | in some cases we need to finalize the process: - if user has bought membership directly without first calling the BuySubscription method
-
-in this case please call Finalize to finish the process |
-
-
-
-<a name="anytype-model-Membership-Tier"></a>
-
-### Membership.Tier
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| TierNewUser | 0 |  |
-| TierExplorer | 1 | &#34;free&#34; tier |
-| TierBuilder1WeekTEST | 2 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
-| TierCoCreator1WeekTEST | 3 | this tier can be used just for testing in debug mode it will still create an active subscription, but with NO features |
-| TierBuilder | 4 |  |
-| TierCoCreator | 5 |  |
+| StatusPending | 1 | please wait a bit more, we are still processing your request the payment is confirmed, but we need more time to do some side-effects: - increase limits - send emails - allocate names |
+| StatusActive | 2 | the membership is active, ready to use! |
+| StatusPendingRequiresFinalization | 3 | in some cases we need to finalize the process: - if user has bought membership directly without first calling the BuySubscription method in this case please call Finalize to finish the process |
 
 
 
@@ -27030,6 +27414,17 @@ in this case please call Finalize to finish the process |
 | PeriodTypeWeeks | 3 |  |
 | PeriodTypeMonths | 4 |  |
 | PeriodTypeYears | 5 |  |
+
+
+
+<a name="anytype-model-NameserviceNameType"></a>
+
+### NameserviceNameType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| AnyName | 0 | .any suffix |
 
 
 
@@ -27282,6 +27677,19 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Private | 0 |  |
 | Personal | 1 |  |
 | Shared | 2 |  |
+
+
+
+<a name="anytype-model-SpaceShareableStatus"></a>
+
+### SpaceShareableStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| StatusUnknown | 0 |  |
+| StatusShareable | 1 |  |
+| StatusNotShareable | 2 |  |
 
 
 

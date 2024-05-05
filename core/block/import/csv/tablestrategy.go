@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -97,7 +98,7 @@ func (c *TableStrategy) createEmptyHeader(st *state.State, tableID string, colum
 	}
 	for _, colID := range columnIDs {
 		textBlock := &model.Block{
-			Id: uuid.New().String(),
+			Id: bson.NewObjectId().Hex(),
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{Text: ""},
 			},
@@ -123,7 +124,7 @@ func (c *TableStrategy) createCells(columns []string, st *state.State, rowID str
 			continue
 		}
 		textBlock := &model.Block{
-			Id: uuid.New().String(),
+			Id: bson.NewObjectId().Hex(),
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{Text: columns[i]},
 			},

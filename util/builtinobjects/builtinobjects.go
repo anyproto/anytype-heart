@@ -19,6 +19,7 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -301,7 +302,7 @@ func (b *builtinObjects) importArchive(
 	isNewSpace bool,
 ) (err error) {
 	origin := objectorigin.Usecase()
-	_, _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	res := b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  model.Import_Pb,
@@ -318,7 +319,7 @@ func (b *builtinObjects) importArchive(
 		IsNewSpace: isNewSpace,
 	}, origin, progress)
 
-	return err
+	return res.Err
 }
 
 func (b *builtinObjects) handleHomePage(path, spaceId string, removeFunc func(), isMigration bool) {
@@ -384,15 +385,15 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 }
 
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
-	if err := b.blockService.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: spc.DerivedIDs().Workspace,
-		Details: []*pb.RpcObjectSetDetailsDetail{
+	if err := b.blockService.SetDetails(nil,
+		spc.DerivedIDs().Workspace,
+		[]*model.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),
 			},
 		},
-	}); err != nil {
+	); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
 	}
 }
@@ -406,7 +407,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 	widgetObjectID := spc.DerivedIDs().Widgets
 
-	if err = block.DoStateCtx(b.blockService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+	if err = cache.DoStateCtx(b.blockService, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {
