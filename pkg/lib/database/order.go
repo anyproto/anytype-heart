@@ -20,7 +20,7 @@ type Order interface {
 
 // ObjectStore interface is used to enrich filters
 type ObjectStore interface {
-	Query(q Query) (records []Record, total int, err error)
+	Query(q Query) (records []Record, err error)
 	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
 }
 
