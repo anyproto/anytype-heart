@@ -43,7 +43,7 @@ func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 	}
 	newId, err := s.handleIconImage(id.SpaceID, newIdsSet, iconImage, origin)
 	if err != nil {
-		uplErr := s.updateTextBlock(id, newId, b)
+		uplErr := s.updateTextBlock(id, "", b)
 		if uplErr != nil {
 			return fmt.Errorf("%w: %s", common.ErrFileLoad, uplErr.Error())
 		}
