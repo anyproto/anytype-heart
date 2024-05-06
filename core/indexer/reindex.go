@@ -199,7 +199,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 }
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
-	recs, _, err := i.store.Query(database.Query{
+	recs, err := i.store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
