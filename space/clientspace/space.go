@@ -68,6 +68,10 @@ type bundledObjectsInstaller interface {
 	BundledObjectsIdsToInstall(ctx context.Context, spc Space, sourceObjectIds []string) (objectIds []string, err error)
 }
 
+type migrationRunner interface {
+	RunMigrations(space Space)
+}
+
 var log = logger.NewNamed("client.space")
 var BundledObjectsPeerFindTimeout = time.Second * 30
 
@@ -78,6 +82,7 @@ type space struct {
 	indexer         spaceIndexer
 	derivedIDs      threads.DerivedSmartblockIds
 	installer       bundledObjectsInstaller
+	migrationRunner migrationRunner
 	spaceCore       spacecore.SpaceCoreService
 	personalSpaceId string
 
@@ -91,6 +96,7 @@ type space struct {
 type SpaceDeps struct {
 	Indexer           spaceIndexer
 	Installer         bundledObjectsInstaller
+	MigrationRunner   migrationRunner
 	CommonSpace       commonspace.Space
 	ObjectFactory     objectcache.ObjectFactory
 	AccountService    accountservice.Service
@@ -105,6 +111,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 	sp := &space{
 		indexer:                deps.Indexer,
 		installer:              deps.Installer,
+		migrationRunner:        deps.MigrationRunner,
 		common:                 deps.CommonSpace,
 		personalSpaceId:        deps.PersonalSpaceId,
 		spaceCore:              deps.SpaceCore,
@@ -130,6 +137,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		if err = sp.InstallBundledObjects(ctx); err != nil {
 			return nil, fmt.Errorf("install bundled objects: %w", err)
 		}
+		sp.migrationRunner.RunMigrations(sp)
 	}
 	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
 	return sp, nil
@@ -157,6 +165,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
+	s.migrationRunner.RunMigrations(s)
 	err := s.migrationProfileObject(ctx)
 	if err != nil {
 		log.Error("failed to migrate profile object", zap.Error(err))
