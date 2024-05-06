@@ -56,7 +56,7 @@ func (systemObjectReviser) Run(store objectstore.ObjectStore, space clientspace.
 }
 
 func listAllTypesAndRelations(store objectstore.ObjectStore, spaceId string) (map[string]*types.Struct, error) {
-	records, _, err := store.Query(database.Query{
+	records, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),

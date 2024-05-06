@@ -555,6 +555,12 @@ func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	})
 }
 
+func (s *Service) SetFileTargetObjectId(ctx session.Context, contextId string, blockId, targetObjectId string) error {
+	return cache.Do(s, contextId, func(b file.File) error {
+		return b.SetFileTargetObjectId(ctx, blockId, targetObjectId)
+	})
+}
+
 func (s *Service) SetFileStyle(
 	ctx session.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string,
 ) error {

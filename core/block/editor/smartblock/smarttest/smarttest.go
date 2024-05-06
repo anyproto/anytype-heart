@@ -393,6 +393,18 @@ func (st *SmartTest) UniqueKey() domain.UniqueKey {
 	return nil
 }
 
+func (st *SmartTest) Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error) {
+	newState := st.NewState()
+	for _, id := range blockIds {
+		if bl := newState.Get(id); bl != nil {
+			if err = apply(bl); err != nil {
+				return err
+			}
+		}
+	}
+	return st.Apply(newState)
+}
+
 type Results struct {
 	Events  [][]simple.EventMessage
 	Applies [][]*model.Block

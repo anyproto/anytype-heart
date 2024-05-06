@@ -216,6 +216,7 @@ service ClientCommands {
     // File block commands
     // ***
     rpc BlockFileSetName (anytype.Rpc.BlockFile.SetName.Request) returns (anytype.Rpc.BlockFile.SetName.Response);
+    rpc BlockFileSetTargetObjectId (anytype.Rpc.BlockFile.SetTargetObjectId.Request) returns (anytype.Rpc.BlockFile.SetTargetObjectId.Response);
     rpc BlockImageSetName (anytype.Rpc.BlockImage.SetName.Request) returns (anytype.Rpc.BlockImage.SetName.Response);
     rpc BlockVideoSetName (anytype.Rpc.BlockVideo.SetName.Request) returns (anytype.Rpc.BlockVideo.SetName.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.BlockFile.CreateAndUpload.Request) returns (anytype.Rpc.BlockFile.CreateAndUpload.Response);

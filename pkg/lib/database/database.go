@@ -273,7 +273,7 @@ func ListRelationOptions(store ObjectStore, spaceID string, relationKey string) 
 			Value:       pbtypes.String(spaceID),
 		})
 	}
-	records, _, err := store.Query(Query{
+	records, err := store.Query(Query{
 		Filters: filters,
 	})
 
