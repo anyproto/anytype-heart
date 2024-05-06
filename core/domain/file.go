@@ -47,3 +47,10 @@ func IsFileId(raw string) bool {
 	}
 	return c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256
 }
+
+type ReconcilationStatus int
+
+const (
+	ReconcilationStatusUnknown ReconcilationStatus = iota
+	ReconcilationStatusDone
+)

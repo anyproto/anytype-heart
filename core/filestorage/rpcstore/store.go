@@ -35,6 +35,7 @@ type RpcStore interface {
 	SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error)
 	FilesInfo(ctx context.Context, spaceId string, fileIds ...domain.FileId) ([]*fileproto.FileInfo, error)
 	AccountInfo(ctx context.Context) (info *fileproto.AccountInfoResponse, err error)
+	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
 }
 
 type store struct {
@@ -72,6 +73,13 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) 
 		return nil, err
 	}
 	return blocks.NewBlockWithCid(data, k)
+}
+
+func (s *store) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	_, err := writeOperation(s.backgroundCtx, ctx, s, "iterateFiles", func(c *client) (struct{}, error) {
+		return struct{}{}, c.iterateFiles(ctx, iterFunc)
+	})
+	return err
 }
 
 func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {

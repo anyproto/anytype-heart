@@ -35,10 +35,11 @@ type StatusCallback func(fileObjectId string) error
 
 type FileSync interface {
 	AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error)
-	UploadSynchronously(spaceId string, fileId domain.FileId) error
+	UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error
 	OnUploadStarted(StatusCallback)
 	OnUploaded(StatusCallback)
 	OnLimited(StatusCallback)
+	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error
@@ -73,14 +74,14 @@ type fileSync struct {
 	dagService      ipld.DAGService
 	fileStore       filestore.FileStore
 	eventSender     event.Sender
-	onUploaded      StatusCallback
+	onUploaded      []StatusCallback
 	onUploadStarted StatusCallback
 	onLimited       StatusCallback
 
 	uploadingQueue      *persistentqueue.Queue[*QueueItem]
 	retryUploadingQueue *persistentqueue.Queue[*QueueItem]
-	deletionQueue       *persistentqueue.Queue[*QueueItem]
-	retryDeletionQueue  *persistentqueue.Queue[*QueueItem]
+	deletionQueue       *persistentqueue.Queue[*deletionQueueItem]
+	retryDeletionQueue  *persistentqueue.Queue[*deletionQueueItem]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -104,8 +105,8 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	}
 	s.uploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, s.uploadingHandler)
 	s.retryUploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, s.retryingHandler, persistentqueue.WithRetryPause(loopTimeout))
-	s.deletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, deletionKeyPrefix, makeQueueItem), log.Logger, s.deletionHandler)
-	s.retryDeletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeQueueItem), log.Logger, s.retryDeletionHandler, persistentqueue.WithRetryPause(loopTimeout))
+	s.deletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, deletionKeyPrefix, makeDeletionQueueItem), log.Logger, s.deletionHandler)
+	s.retryDeletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeDeletionQueueItem), log.Logger, s.retryDeletionHandler, persistentqueue.WithRetryPause(loopTimeout))
 	return
 }
 
@@ -114,7 +115,7 @@ func (s *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
 }
 
 func (s *fileSync) OnUploaded(callback StatusCallback) {
-	s.onUploaded = callback
+	s.onUploaded = append(s.onUploaded, callback)
 }
 
 func (s *fileSync) OnUploadStarted(callback StatusCallback) {

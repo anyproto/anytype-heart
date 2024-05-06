@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b549826bf25e72ff31a5bad9159fdd67388a5c4d2492eba3fab64f81477fbb31"
+const RelationChecksum = "5f6642428cbf27076c3141852c3a6994d123ae6ba955164dbc9e3369c28dc394"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -184,6 +184,7 @@ const (
 	RelationKeyImageKind                 domain.RelationKey = "imageKind"
 	RelationKeyImportType                domain.RelationKey = "importType"
 	RelationKeyGlobalName                domain.RelationKey = "globalName"
+	RelationKeyFileReconcilationStatus   domain.RelationKey = "fileReconcilationStatus"
 )
 
 var (
@@ -805,6 +806,20 @@ var (
 			MaxCount:         1,
 			Name:             "Mime type",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileReconcilationStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "File reconcilation status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brfileReconcilationStatus",
+			Key:              "fileReconcilationStatus",
+			MaxCount:         1,
+			Name:             "Status indicating that file has been correctly bond to file node",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

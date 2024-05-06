@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
@@ -77,6 +78,7 @@ type service struct {
 	fileService     files.Service
 	fileSync        filesync.FileSync
 	fileStore       filestore.FileStore
+	fileStorage     filestorage.FileStorage
 	objectStore     objectstore.ObjectStore
 	spaceIdResolver idresolver.Resolver
 	migrationQueue  *persistentqueue.Queue[*migrationItem]
@@ -109,6 +111,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 
 	s.indexer = s.newIndexer()
 

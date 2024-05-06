@@ -1728,5 +1728,15 @@
     "name": "Global name",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "File reconcilation status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileReconcilationStatus",
+    "maxCount": 1,
+    "name": "Status indicating that file has been correctly bond to file node",
+    "readonly": true,
+    "source": "details"
   }
 ]

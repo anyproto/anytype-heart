@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
@@ -86,7 +87,7 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 	spaceId, fileId := it.SpaceId, it.FileId
 	err := s.runOnUploadStartedHook(it.ObjectId, spaceId)
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it)
+		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}
 	err = s.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
@@ -114,7 +115,7 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 	}
 	s.updateSpaceUsageInformation(spaceId)
 
-	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it)
+	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 }
 
 func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Action {
@@ -130,7 +131,7 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 	spaceId, fileId := it.SpaceId, it.FileId
 	err := s.runOnUploadStartedHook(it.ObjectId, spaceId)
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it)
+		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}
 	err = s.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
@@ -148,15 +149,18 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 	}
 	s.updateSpaceUsageInformation(spaceId)
 
-	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it)
+	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 }
 
-func (s *fileSync) removeFromUploadingQueues(item *QueueItem) error {
-	err := s.uploadingQueue.Remove(item.Key())
+func (s *fileSync) removeFromUploadingQueues(objectId string) error {
+	if objectId == "" {
+		return nil
+	}
+	err := s.uploadingQueue.Remove(objectId)
 	if err != nil {
 		return fmt.Errorf("remove upload task: %w", err)
 	}
-	err = s.retryUploadingQueue.Remove(item.Key())
+	err = s.retryUploadingQueue.Remove(objectId)
 	if err != nil {
 		return fmt.Errorf("remove upload task from retrying queue: %w", err)
 	}
@@ -164,10 +168,10 @@ func (s *fileSync) removeFromUploadingQueues(item *QueueItem) error {
 }
 
 // UploadSynchronously is used only for invites
-func (s *fileSync) UploadSynchronously(spaceId string, fileId domain.FileId) error {
+func (s *fileSync) UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error {
 	// TODO After we migrate to storing invites as file objects in tech space, we should update their sync status
 	//  via OnUploadStarted and OnUploaded callbacks
-	err := s.uploadFile(context.Background(), spaceId, fileId)
+	err := s.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
 		return err
 	}
@@ -176,8 +180,8 @@ func (s *fileSync) UploadSynchronously(spaceId string, fileId domain.FileId) err
 }
 
 func (s *fileSync) runOnUploadedHook(fileObjectId string, spaceId string) error {
-	if s.onUploaded != nil {
-		err := s.onUploaded(fileObjectId)
+	for _, hook := range s.onUploaded {
+		err := hook(fileObjectId)
 		if err != nil && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 			log.Warn("on upload callback failed",
 				zap.String("fileObjectId", fileObjectId),
@@ -226,6 +230,7 @@ func (e *errLimitReached) Error() string {
 }
 
 func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain.FileId) error {
+	ctx = filestorage.ContextWithDoNotCache(ctx)
 	log.Debug("uploading file", zap.String("fileId", fileId.String()))
 
 	blocksAvailability, err := s.checkBlocksAvailability(ctx, spaceID, fileId)

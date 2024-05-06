@@ -102,6 +102,40 @@ func (c *client) delete(ctx context.Context, spaceID string, fileIds ...domain.F
 	})
 }
 
+func (c *client) iterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	p, err := c.pool.Get(ctx, c.peerId)
+	if err != nil {
+		return err
+	}
+	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		c := fileproto.NewDRPCFileClient(conn)
+
+		resp, err := c.AccountInfo(ctx, &fileproto.AccountInfoRequest{})
+		if err != nil {
+			return rpcerr.Unwrap(err)
+		}
+
+		for _, space := range resp.Spaces {
+			filesStream, err := c.FilesGet(ctx, &fileproto.FilesGetRequest{SpaceId: space.SpaceId})
+			if err != nil {
+				return rpcerr.Unwrap(err)
+			}
+			for {
+				resp, err := filesStream.Recv()
+				if err != nil {
+					return rpcerr.Unwrap(err)
+				}
+				iterFunc(domain.FullFileId{
+					SpaceId: space.SpaceId,
+					FileId:  domain.FileId(resp.FileId),
+				})
+			}
+		}
+		return nil
+	})
+	return nil
+}
+
 func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, cd cid.Cid, data []byte) (err error) {
 	p, err := c.pool.Get(ctx, c.peerId)
 	if err != nil {
