@@ -101,6 +101,17 @@ func assertLinkedObjectHasTextBlocks(t *testing.T, ts testCreator, sourceObject 
 	assertHasTextBlocks(t, object, texts)
 }
 
+func assertDetails(t *testing.T, id string, ts testCreator, details *types.Struct) {
+	object, ok := ts.objects[id]
+	if !ok {
+		return
+	}
+	objDetails := object.Details()
+	for key, value := range details.Fields {
+		assert.Equal(t, value, objDetails.Fields[key])
+	}
+}
+
 func TestExtractObjects(t *testing.T) {
 	makeTestObject := func() *smarttest.SmartTest {
 		sb := smarttest.New("test")
@@ -117,13 +128,21 @@ func TestExtractObjects(t *testing.T) {
 		return sb
 	}
 
+	templateDetails := []*model.Detail{
+		{Key: bundle.RelationKeyName.String(), Value: pbtypes.String("template")},
+		{Key: bundle.RelationKeyIconImage.String(), Value: pbtypes.String("very funny img")},
+		{Key: bundle.RelationKeyFeaturedRelations.String(), Value: pbtypes.StringList([]string{"tag", "type", "status"})},
+		{Key: bundle.RelationKeyCoverId.String(), Value: pbtypes.String("poster with Van Damme")},
+	}
+
 	makeTemplateState := func() *state.State {
 		sb := smarttest.New("template")
 		sb.AddBlock(simple.New(&model.Block{Id: "template", ChildrenIds: []string{"A", "B"}}))
 		sb.AddBlock(newTextBlock("A", "text A", nil))
 		sb.AddBlock(newTextBlock("B", "text B", []string{"B.1"}))
 		sb.AddBlock(newTextBlock("B.1", "text B.1", nil))
-		sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{}}, false)
+		err := sb.SetDetails(nil, templateDetails, false)
+		require.NoError(t, err)
 		return sb.NewState()
 	}
 
@@ -222,6 +241,12 @@ func TestExtractObjects(t *testing.T) {
 					"text 3", "text 3.1", "text 3.1.1",
 				},
 			},
+			wantDetails: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String():              pbtypes.String("text 3"),
+				bundle.RelationKeyIconImage.String():         pbtypes.String("very funny img"),
+				bundle.RelationKeyFeaturedRelations.String(): pbtypes.StringList([]string{"tag", "type", "status"}),
+				bundle.RelationKeyCoverId.String():           pbtypes.String("poster with Van Damme"),
+			}},
 		},
 		{
 			name:       "two blocks with children, from template",
@@ -239,6 +264,11 @@ func TestExtractObjects(t *testing.T) {
 					"text 3", "text 3.1", "text 3.1.1",
 				},
 			},
+			wantDetails: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyIconImage.String():         pbtypes.String("very funny img"),
+				bundle.RelationKeyFeaturedRelations.String(): pbtypes.StringList([]string{"tag", "type", "status"}),
+				bundle.RelationKeyCoverId.String():           pbtypes.String("poster with Van Damme"),
+			}},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -275,8 +305,10 @@ func TestExtractObjects(t *testing.T) {
 			require.Len(t, linkIds, len(tc.wantObjectsWithTexts))
 			for i, wantTexts := range tc.wantObjectsWithTexts {
 				assertLinkedObjectHasTextBlocks(t, creator, sb, linkIds[i], wantTexts)
+				if tc.wantDetails != nil && tc.wantDetails.Fields != nil {
+					assertDetails(t, linkIds[i], creator, tc.wantDetails)
+				}
 			}
-
 		})
 	}
 
