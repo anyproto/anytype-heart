@@ -76,10 +76,7 @@ func TestSpaceUsageUpdate(t *testing.T) {
 	})
 
 	t.Run("update limit", func(t *testing.T) {
-		setter, ok := fx.rpcStore.(limitSetter)
-		require.True(t, ok)
-
-		setter.SetLimit(limit * 10)
+		fx.rpcStore.SetLimit(limit * 10)
 
 		err = fx.UpdateNodeUsage(ctx)
 		require.NoError(t, err)

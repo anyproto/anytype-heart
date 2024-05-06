@@ -45,7 +45,7 @@ var (
 )
 
 type globalNamesUpdater interface {
-	UpdateGlobalNames(myIdentityGlobalName string)
+	UpdateOwnGlobalName(myIdentityGlobalName string)
 }
 
 var paymentMethodMap = map[proto.PaymentMethod]model.MembershipPaymentMethod{
@@ -277,44 +277,56 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		return nil, ErrCacheProblem
 	}
 
-	nsName, _ := nameservice.FullNameToNsName(status.RequestedAnyName)
-
 	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
 	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
-	isDiffRequestedName := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.NsName != nsName)
 
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
 
-	// 4 - if cache was disabled but the tier is different or status is active
-	if cachedStatus == nil || (isDiffTier || isDiffStatus) {
-		log.Info("subscription status has changed. sending EventMembershipUpdate",
+	// 4 - return, if cache was enabled and nothing is changed
+	if cachedStatus != nil && !isDiffTier && !isDiffStatus {
+		log.Debug("subscription status has NOT changed",
 			zap.Bool("cache was empty", cachedStatus == nil),
 			zap.Bool("isDiffTier", isDiffTier),
 			zap.Bool("isDiffStatus", isDiffStatus),
 		)
+		return &out, nil
+	}
 
-		// 4.1 - send the event
-		s.sendEvent(&out)
+	log.Info("subscription status has changed. sending EventMembershipUpdate",
+		zap.Bool("cache was empty", cachedStatus == nil),
+		zap.Bool("isDiffTier", isDiffTier),
+		zap.Bool("isDiffStatus", isDiffStatus),
+	)
 
-		// 4.2 - enable cache again (we have received new data)
+	// 4.1 - send the event
+	s.sendEvent(&out)
+
+	// 4.2 - update globalName of our own identity
+	if status.RequestedAnyName != "" {
+		log.Debug("update global name",
+			zap.String("requestedAnyName", status.RequestedAnyName),
+			zap.Any("status", status))
+
+		s.profileUpdater.UpdateOwnGlobalName(status.RequestedAnyName)
+	}
+
+	err = s.updateLimits(ctx)
+	if err != nil {
+		log.Error("update limits", zap.Error(err))
+	}
+
+	// 4.3 - enable cache again (only when status is active)
+	isFinished := status.Status == proto.SubscriptionStatus_StatusActive
+
+	if isFinished {
 		log.Info("enabling cache again")
 
 		// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
-		err := s.cache.CacheEnable()
+		err = s.cache.CacheEnable()
 		if err != nil {
 			log.Error("can not enable cache", zap.Error(err))
 			return nil, ErrCacheProblem
 		}
-
-		err = s.updateLimits(ctx)
-		if err != nil {
-			log.Error("update limits", zap.Error(err))
-		}
-	}
-
-	// 5 - if requested any name has changed, then we need to update details of local identity
-	if isDiffRequestedName {
-		s.profileUpdater.UpdateGlobalNames(status.RequestedAnyName)
 	}
 
 	return &out, nil
@@ -668,10 +680,10 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 	}
 
 	// 2 - clear cache
-	log.Debug("clearing cache after subscription was finalized")
-	err = s.cache.CacheClear()
+	log.Debug("disable cache after subscription was finalized")
+	err = s.cache.CacheDisableForNextMinutes(30)
 	if err != nil {
-		log.Error("can not clear cache", zap.Error(err))
+		log.Error("can not disable cache", zap.Error(err))
 		return nil, ErrCacheProblem
 	}
 

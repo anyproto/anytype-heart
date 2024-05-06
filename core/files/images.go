@@ -102,12 +102,6 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		successfullyAdded = append(successfullyAdded, domain.FileContentId(variant.fileInfo.Hash))
 	}
 
-	err = s.storeFileSize(spaceId, fileId)
-	if err != nil {
-		addLock.Unlock()
-		return nil, fmt.Errorf("store file size: %w", err)
-	}
-
 	entry := dirEntries[0]
 	return &AddResult{
 		FileId:         fileId,

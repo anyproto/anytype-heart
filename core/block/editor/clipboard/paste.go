@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -29,13 +30,13 @@ type pasteCtrl struct {
 }
 
 type pasteMode struct {
-	removeSelection    bool
-	multiRange         bool
-	singleRange        bool
-	intoBlock          bool
-	intoBlockCopyStyle bool
-	intoCodeBlock      bool
-	textBuf            string
+	removeSelection            bool
+	multiRange                 bool
+	singleRange                bool
+	intoBlock                  bool
+	intoBlockCopyStyle         bool
+	intoBlockMergeWithoutStyle bool
+	textBuf                    string
 }
 
 func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
@@ -46,7 +47,7 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 		if err = p.multiRange(); err != nil {
 			return
 		}
-	} else if p.mode.intoCodeBlock {
+	} else if p.mode.intoBlockMergeWithoutStyle {
 		if err = p.intoCodeBlock(); err != nil {
 			return
 		}
@@ -79,8 +80,9 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 		p.selIds = append([]string{req.FocusedBlockId}, p.selIds...)
 		p.mode.singleRange = true
 		if firstSelText := p.getFirstSelectedText(); firstSelText != nil {
-			p.mode.intoCodeBlock = firstSelText.Model().GetText().Style == model.BlockContentText_Code
-			if p.mode.intoCodeBlock {
+			p.mode.intoBlockMergeWithoutStyle = firstSelText.Model().GetText().Style == model.BlockContentText_Code ||
+				table.IsTableCell(firstSelText.Model().Id)
+			if p.mode.intoBlockMergeWithoutStyle {
 				p.mode.textBuf = req.TextSlot
 				p.mode.removeSelection = false
 				return

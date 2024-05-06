@@ -323,11 +323,26 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	var cacheFound simple.Block
 	if s.isParentIdsCacheEnabled {
-		if parentId, ok := s.getParentIdsCache()[id]; ok {
-			return s.Pick(parentId)
+		cache := s.getParentIdsCache()
+		if parentId, ok := cache[id]; ok {
+			cacheFound = s.Pick(parentId)
 		}
-		return
+		if cacheFound != nil {
+			rootId := s.RootId()
+			topParentId := cacheFound.Model().Id
+			for topParentId != rootId {
+				if nextId, ok := cache[topParentId]; ok {
+					topParentId = nextId
+				} else {
+					cacheFound = nil
+					break
+				}
+			}
+		}
+		// restore this code after checking if cache is working correctly
+		// return
 	}
 
 	s.Iterate(func(b simple.Block) bool {
@@ -337,6 +352,12 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		}
 		return true
 	})
+
+	// remove this code after checking if cache is working correctly
+	if s.isParentIdsCacheEnabled && res != cacheFound {
+		log.With("id", id).Warn("parent not found in cache")
+	}
+
 	return
 }
 
@@ -346,9 +367,6 @@ func (s *State) ResetParentIdsCache() {
 }
 
 func (s *State) EnableParentIdsCache() bool {
-	// temporary disable the cache
-	// todo: enable after we cover everything with tests
-	return true
 	if s.isParentIdsCacheEnabled {
 		return true
 	}

@@ -178,7 +178,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 }
 
 func (s *service) getDerivedIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	spc, err := s.spaceService.Get(ctx, spaceID)
+	spc, err := s.spaceService.Wait(ctx, spaceID)
 	if err != nil {
 		return ids, fmt.Errorf("failed to get space: %w", err)
 	}
