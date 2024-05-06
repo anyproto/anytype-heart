@@ -80,5 +80,6 @@ func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status) {
 		spaceError = syncstatus.NetworkError
 	}
 
-	s.spaceSyncStatus.SendUpdate(spaceStatus, numberOfObject, spaceError, syncInProgress, false)
+	syncStatus := syncstatus.MakeSyncStatus(spaceStatus, numberOfObject, spaceError, syncInProgress, false)
+	s.spaceSyncStatus.SendUpdate(syncStatus)
 }
