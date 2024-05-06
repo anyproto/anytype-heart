@@ -1073,7 +1073,7 @@ message Event {
         message SyncStatus {
             message Update {
                 Status status = 1;
-                anytype.Model.A network = 2;
+                Network network = 2;
                 SyncError error = 3;
                 int64 syncingObjectsCounter = 4;
             }

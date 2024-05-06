@@ -67,6 +67,10 @@ func (n *clientPeerManager) GetNodePeers(ctx context.Context) (peers []peer.Peer
 	return
 }
 
+func (n *clientPeerManager) GetNodeResponsiblePeers() (peers []string) {
+	return n.responsibleNodeIds
+}
+
 func (n *clientPeerManager) SendPeer(ctx context.Context, peerId string, msg *spacesyncproto.ObjectSyncMessage) (err error) {
 	// TODO: peer manager will be changed to not have this possibility
 	// use context.Background()
