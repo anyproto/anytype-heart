@@ -23,7 +23,7 @@ func (readonlyRelationsFixer) Name() string {
 
 func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspace.Space) (toMigrate, migrated int, err error) {
 	var relations []database.Record
-	relations, _, err = listReadonlyTagAndStatusRelations(store, space)
+	relations, err = listReadonlyTagAndStatusRelations(store, space)
 	toMigrate = len(relations)
 
 	if err != nil {
@@ -66,7 +66,7 @@ func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspa
 	return
 }
 
-func listReadonlyTagAndStatusRelations(store objectstore.ObjectStore, space clientspace.Space) ([]database.Record, int, error) {
+func listReadonlyTagAndStatusRelations(store objectstore.ObjectStore, space clientspace.Space) ([]database.Record, error) {
 	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),
