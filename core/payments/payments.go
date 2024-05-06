@@ -431,7 +431,7 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 		out.Error.Description = "Tier does not support any names"
 	case proto.IsNameValidResponse_CanNotReserve:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_CAN_NOT_RESERVE
-		out.Error.Description = "Can not reserve this name"
+		out.Error.Description = "Cannot reserve this name"
 	default:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_UNKNOWN_ERROR
 		out.Error.Description = "Unknown error"

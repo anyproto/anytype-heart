@@ -1291,7 +1291,6 @@ func TestIsNameValid(t *testing.T) {
 		}
 		resp, err := fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
-		//assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
 		assert.Equal(t, pb.RpcMembershipIsNameValidResponseErrorCode(0), resp.Error.Code)
 	})
 }
