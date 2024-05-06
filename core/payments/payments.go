@@ -282,11 +282,12 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
 	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
+	isEmailDiff := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.UserEmail != status.UserEmail)
 
-	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
+	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus), zap.Bool("isEmailDiff", isEmailDiff))
 
 	// 4 - return, if cache was enabled and nothing is changed
-	if cachedStatus != nil && !isDiffTier && !isDiffStatus {
+	if cachedStatus != nil && !isDiffTier && !isDiffStatus && !isEmailDiff {
 		log.Debug("subscription status has NOT changed",
 			zap.Bool("cache was empty", cachedStatus == nil),
 			zap.Bool("isDiffTier", isDiffTier),
@@ -299,6 +300,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		zap.Bool("cache was empty", cachedStatus == nil),
 		zap.Bool("isDiffTier", isDiffTier),
 		zap.Bool("isDiffStatus", isDiffStatus),
+		zap.Bool("isEmailDiff", isEmailDiff),
 	)
 
 	// 4.1 - send the event
