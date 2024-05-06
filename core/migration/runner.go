@@ -16,6 +16,12 @@ type Migration interface {
 }
 
 func Run(store objectstore.ObjectStore, space clientspace.Space) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("panic while running space migrations: %v", r)
+		}
+	}()
+
 	for _, m := range []Migration{
 		systemObjectReviser{},
 		readonlyRelationsFixer{},
