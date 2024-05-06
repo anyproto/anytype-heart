@@ -89,5 +89,35 @@ func TestReorderViewRelations(t *testing.T) {
 
 		assert.Equal(t, want, dv)
 	})
+}
 
+func TestReplaceViewRelation(t *testing.T) {
+	t.Run("add relation that exist in relation links, but not in View", func(t *testing.T) {
+		dv := makeDataviewForReorderTest(
+			[]*model.RelationLink{
+				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+			},
+			[]*model.BlockContentDataviewRelation{},
+		)
+
+		err := dv.ReplaceViewRelation(testViewId, bundle.RelationKeyName.String(), &model.BlockContentDataviewRelation{
+			Key:   bundle.RelationKeyName.String(),
+			Width: DefaultViewRelationWidth,
+		})
+		require.NoError(t, err)
+
+		want := makeDataviewForReorderTest(
+			[]*model.RelationLink{
+				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+			},
+			[]*model.BlockContentDataviewRelation{
+				{
+					Key:   bundle.RelationKeyName.String(),
+					Width: DefaultViewRelationWidth,
+				},
+			},
+		)
+
+		assert.Equal(t, want, dv)
+	})
 }
