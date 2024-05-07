@@ -385,15 +385,15 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 }
 
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
-	if err := b.blockService.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: spc.DerivedIDs().Workspace,
-		Details: []*pb.RpcObjectSetDetailsDetail{
+	if err := b.blockService.SetDetails(nil,
+		spc.DerivedIDs().Workspace,
+		[]*model.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),
 			},
 		},
-	}); err != nil {
+	); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
 	}
 }

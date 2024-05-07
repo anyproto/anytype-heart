@@ -221,7 +221,7 @@ func main() {
 		}
 	}()
 
-	startReportMemory()
+	startReportMemory(mw)
 
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)

@@ -54,7 +54,7 @@ func TestQuery(t *testing.T) {
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		recs, _, err := s.Query(database.Query{})
+		recs, err := s.Query(database.Query{})
 		require.NoError(t, err)
 
 		assertRecordsEqual(t, []TestObject{
@@ -80,7 +80,7 @@ func TestQuery(t *testing.T) {
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
@@ -114,7 +114,7 @@ func TestQuery(t *testing.T) {
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
@@ -175,7 +175,7 @@ func TestQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("just full-text", func(t *testing.T) {
-			recs, _, err := s.Query(database.Query{
+			recs, err := s.Query(database.Query{
 				FullText: "important",
 			})
 			require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestQuery(t *testing.T) {
 		})
 
 		t.Run("full-text and filter", func(t *testing.T) {
-			recs, _, err := s.Query(database.Query{
+			recs, err := s.Query(database.Query{
 				FullText: "important",
 				Filters: []*model.BlockContentDataviewFilter{
 					{
@@ -215,7 +215,7 @@ func TestQuery(t *testing.T) {
 		obj4 := makeObjectWithName("id4", "ignore")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, obj4})
 
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
@@ -246,7 +246,7 @@ func TestQuery(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "012")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Sorts: []*model.BlockContentDataviewSort{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
@@ -271,7 +271,7 @@ func TestQuery(t *testing.T) {
 		obj4 := makeObjectWithNameAndDescription("id4", "bcd", "bar")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, obj4})
 
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Sorts: []*model.BlockContentDataviewSort{
 				{
 					RelationKey: bundle.RelationKeyDescription.String(),
@@ -303,7 +303,7 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, objects)
 
 		// When
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Sorts: []*model.BlockContentDataviewSort{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
@@ -337,7 +337,7 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, objects)
 
 		// When
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Sorts: []*model.BlockContentDataviewSort{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
@@ -372,7 +372,7 @@ func TestQuery(t *testing.T) {
 		// When
 		limit := 15
 		offset := 20
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Sorts: []*model.BlockContentDataviewSort{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
@@ -416,7 +416,7 @@ func TestQuery(t *testing.T) {
 		// When
 		limit := 60
 		offset := 20
-		recs, _, err := s.Query(database.Query{
+		recs, err := s.Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyName.String(),
