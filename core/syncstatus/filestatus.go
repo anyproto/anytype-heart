@@ -29,7 +29,9 @@ func (s *service) onFileLimited(objectId string, _ domain.FullFileId) error {
 }
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
+	var spaceId string
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
+		spaceId = sb.SpaceID()
 		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
 		newStatus := int64(status)
 		if prevStatus == newStatus {
@@ -55,24 +57,20 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 		return fmt.Errorf("update tree: %w", err)
 	}
 
-	s.sendSpaceStatusUpdate(status)
+	s.sendSpaceStatusUpdate(status, spaceId)
 	return nil
 }
 
-func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status) {
+func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string) {
 	var (
-		spaceStatus    syncstatus.SpaceSyncStatus
-		numberOfObject int
-		spaceError     syncstatus.SpaceSyncError
-		syncInProgress bool
+		spaceStatus syncstatus.SpaceSyncStatus
+		spaceError  syncstatus.SpaceSyncError
 	)
 	switch status {
 	case filesyncstatus.Synced:
 		spaceStatus = syncstatus.Synced
 	case filesyncstatus.Syncing:
 		spaceStatus = syncstatus.Syncing
-		numberOfObject++
-		syncInProgress = true
 	case filesyncstatus.Limited:
 		spaceStatus = syncstatus.Error
 		spaceError = syncstatus.StorageLimitExceed
@@ -81,6 +79,6 @@ func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status) {
 		spaceError = syncstatus.NetworkError
 	}
 
-	syncStatus := syncstatus.MakeSyncStatus(spaceStatus, numberOfObject, spaceError, syncInProgress, false)
+	syncStatus := syncstatus.MakeSyncStatus(spaceId, spaceStatus, 0, spaceError, true, false)
 	s.spaceSyncStatus.SendUpdate(syncStatus)
 }

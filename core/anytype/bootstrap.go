@@ -75,6 +75,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -258,6 +259,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).
+		Register(spacesyncstatus.NewSpaceSyncStatus()).
 		Register(syncstatus.New()).
 		Register(history.New()).
 		Register(gateway.New()).
@@ -285,8 +287,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
-		Register(paymentscache.New()).
-		Register(syncstatus.NewSpaceSyncStatus())
+		Register(paymentscache.New())
 }
 
 func MiddlewareVersion() string {
