@@ -634,7 +634,7 @@ func TestVerifyEmailCode(t *testing.T) {
 
 		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
 
-		fx.cache.EXPECT().CacheClear().Return(nil).Once()
+		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
 		req := &pb.RpcMembershipVerifyEmailCodeRequest{}

@@ -282,11 +282,12 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
 	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
+	isEmailDiff := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.UserEmail != status.UserEmail)
 
-	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
+	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus), zap.Bool("isEmailDiff", isEmailDiff))
 
 	// 4 - return, if cache was enabled and nothing is changed
-	if cachedStatus != nil && !isDiffTier && !isDiffStatus {
+	if cachedStatus != nil && !isDiffTier && !isDiffStatus && !isEmailDiff {
 		log.Debug("subscription status has NOT changed",
 			zap.Bool("cache was empty", cachedStatus == nil),
 			zap.Bool("isDiffTier", isDiffTier),
@@ -299,6 +300,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		zap.Bool("cache was empty", cachedStatus == nil),
 		zap.Bool("isDiffTier", isDiffTier),
 		zap.Bool("isDiffStatus", isDiffStatus),
+		zap.Bool("isEmailDiff", isEmailDiff),
 	)
 
 	// 4.1 - send the event
@@ -657,10 +659,10 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 	}
 
 	// 2 - clear cache
-	log.Debug("clearing cache after email verification code was confirmed")
-	err = s.cache.CacheClear()
+	log.Debug("disabling cache after email verification code was confirmed")
+	err = s.cache.CacheDisableForNextMinutes(30)
 	if err != nil {
-		log.Error("can not clear cache", zap.Error(err))
+		log.Error("can not disable cache", zap.Error(err))
 		return nil, ErrCacheProblem
 	}
 
