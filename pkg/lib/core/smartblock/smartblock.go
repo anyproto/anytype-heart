@@ -70,8 +70,10 @@ func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	switch sbt {
 	case SmartBlockTypeDate, SmartBlockTypeAccountOld:
 		return false, false
-	case SmartBlockTypeArchive, SmartBlockTypeHome:
+	case SmartBlockTypeArchive:
 		return false, true
+	case SmartBlockTypeHome:
+		return false, false
 	case SmartBlockTypeWidget:
 		return true, false
 	default:
