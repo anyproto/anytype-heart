@@ -659,10 +659,10 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 	}
 
 	// 2 - clear cache
-	log.Debug("clearing cache after email verification code was confirmed")
-	err = s.cache.CacheClear()
+	log.Debug("disabling cache after email verification code was confirmed")
+	err = s.cache.CacheDisableForNextMinutes(30)
 	if err != nil {
-		log.Error("can not clear cache", zap.Error(err))
+		log.Error("can not disable cache", zap.Error(err))
 		return nil, ErrCacheProblem
 	}
 
