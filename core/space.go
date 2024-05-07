@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
@@ -161,8 +162,9 @@ func viewInvite(ctx context.Context, aclService acl.AclService, req *pb.RpcSpace
 }
 
 func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinRequest) *pb.RpcSpaceJoinResponse {
+	config := getService[config.Config](mw)
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
-	err := join(cctx, aclService, req)
+	err := join(cctx, config, aclService, req)
 	code := mapErrorCode(err,
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceJoinResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceJoinResponseError_NO_SUCH_SPACE),
@@ -172,6 +174,7 @@ func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinReques
 		errToCode(inviteservice.ErrInviteGet, pb.RpcSpaceJoinResponseError_INVITE_NOT_FOUND),
 		errToCode(inviteservice.ErrInviteBadContent, pb.RpcSpaceJoinResponseError_INVITE_BAD_CONTENT),
 		errToCode(acl.ErrNotShareable, pb.RpcSpaceJoinResponseError_NOT_SHAREABLE),
+		errToCode(inviteservice.ErrDifferentNetwork, pb.RpcSpaceJoinResponseError_DIFFERENT_NETWORK),
 	)
 	return &pb.RpcSpaceJoinResponse{
 		Error: &pb.RpcSpaceJoinResponseError{
@@ -314,7 +317,10 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 	}
 }
 
-func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
+func join(ctx context.Context, config config.Config, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
+	if config.NetworkId != req.NetworkId {
+		return inviteservice.ErrDifferentNetwork
+	}
 	inviteFileKey, err := encode.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
 		return fmt.Errorf("decode key: %w, %w", err, inviteservice.ErrInviteBadContent)

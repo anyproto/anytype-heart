@@ -312,6 +312,7 @@ message Rpc {
                         REQUEST_FAILED = 105;
                         LIMIT_REACHED = 106;
                         NOT_SHAREABLE = 107;
+                        DIFFERENT_NETWORK = 108;
                     }
                 }
             }

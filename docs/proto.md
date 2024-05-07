@@ -21516,6 +21516,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 105 |  |
 | LIMIT_REACHED | 106 |  |
 | NOT_SHAREABLE | 107 |  |
+| DIFFERENT_NETWORK | 108 |  |
 
 
 
