@@ -8,17 +8,20 @@ import (
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("anytype-mw-space-status")
+
+type State interface {
+	SetObjectsNumber(status *syncstatus.SpaceSync)
+	SetSyncStatus(status *syncstatus.SpaceSync)
+	GetSyncStatus(spaceId string) syncstatus.SpaceSyncStatus
+	GetSyncObjectCount(spaceId string) int
+	IsSyncFinished(spaceId string) bool
+}
 
 type NetworkConfig interface {
 	GetNetworkMode() pb.RpcAccountNetworkMode
@@ -28,33 +31,26 @@ type spaceSyncStatus struct {
 	eventSender   event.Sender
 	networkConfig NetworkConfig
 	batcher       *mb.MB[*syncstatus.SpaceSync]
-	store         objectstore.ObjectStore
 
-	fileSyncCountBySpace        map[string]int
-	objectSyncCountBySpace      map[string]int
-	fileSyncInProgressBySpace   map[string]bool
-	objectSyncInProgressBySpace map[string]bool
+	filesState   State
+	objectsState State
 
-	spaceSyncStatus map[string]syncstatus.SpaceSyncStatus
-	ctx             context.Context
-	ctxCancel       context.CancelFunc
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+
+	finish chan struct{}
 }
 
 func NewSpaceSyncStatus() syncstatus.SpaceSyncStatusUpdater {
-	return &spaceSyncStatus{
-		batcher:                     mb.New[*syncstatus.SpaceSync](0),
-		fileSyncCountBySpace:        make(map[string]int, 0),
-		objectSyncCountBySpace:      make(map[string]int, 0),
-		fileSyncInProgressBySpace:   make(map[string]bool, 0),
-		objectSyncInProgressBySpace: make(map[string]bool, 0),
-		spaceSyncStatus:             make(map[string]syncstatus.SpaceSyncStatus, 0),
-	}
+	return &spaceSyncStatus{batcher: mb.New[*syncstatus.SpaceSync](0), finish: make(chan struct{})}
 }
 
 func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.networkConfig = app.MustComponent[NetworkConfig](a)
-	s.store = app.MustComponent[objectstore.ObjectStore](a)
+	store := app.MustComponent[objectstore.ObjectStore](a)
+	s.filesState = NewFileState(store)
+	s.objectsState = NewObjectState()
 	return
 }
 
@@ -68,30 +64,40 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	return
 }
 
+func (s *spaceSyncStatus) SendUpdate(status *syncstatus.SpaceSync) {
+	e := s.batcher.Add(context.Background(), status)
+	if e != nil {
+		log.Errorf("failed to add space sync event to queue %s", e)
+	}
+}
+
 func (s *spaceSyncStatus) processEvents() {
+	defer close(s.finish)
 	for {
-		select {
-		case <-s.ctx.Done():
-			return
-		default:
-		}
-		status, err := s.batcher.WaitOne(context.Background())
+		status, err := s.batcher.WaitOne(s.ctx)
 		if err != nil {
 			log.Errorf("failed to get event from batcher: %s", err)
+			return
 		}
 		s.updateSpaceSyncStatus(status)
 	}
 }
 
 func (s *spaceSyncStatus) updateSpaceSyncStatus(status *syncstatus.SpaceSync) {
-	if s.isSyncFinished(status.Status, status.SpaceId) {
+	if s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly {
+		return
+	}
+	// don't send unnecessary event
+	if s.isSyncFinished(status) {
 		return
 	}
 
-	s.setObjectNumber(status)
-	s.setSyncProgress(status)
+	state := s.getCurrentState(status)
+	state.SetObjectsNumber(status)
+	state.SetSyncStatus(status)
 
-	if !s.needToSendSyncedEvent(status) {
+	// send synced event only if files and objects are all synced
+	if !s.needToSendEvent(status) {
 		return
 	}
 
@@ -104,92 +110,77 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(status *syncstatus.SpaceSync) {
 	})
 }
 
-func (s *spaceSyncStatus) needToSendSyncedEvent(status *syncstatus.SpaceSync) bool {
-	if status.Status == syncstatus.Synced {
-		isFileSyncInProgress := s.fileSyncInProgressBySpace[status.SpaceId]
-		isObjectSyncInProgress := s.objectSyncInProgressBySpace[status.SpaceId]
-		if isFileSyncInProgress || isObjectSyncInProgress {
-			return false
-		}
+func (s *spaceSyncStatus) needToSendEvent(status *syncstatus.SpaceSync) bool {
+	if status.Status != syncstatus.Synced {
+		return true
 	}
-	return true
+	return s.getSpaceSyncStatus(status) == syncstatus.Synced && status.Status == syncstatus.Synced
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
+	<-s.finish
 	return s.batcher.Close()
 }
 
-func (s *spaceSyncStatus) SendUpdate(status *syncstatus.SpaceSync) {
-	e := s.batcher.Add(context.Background(), status)
-	if e != nil {
-		log.Errorf("failed to add space sync event to queue %s", e)
-	}
-}
-
-func (s *spaceSyncStatus) setSyncProgress(status *syncstatus.SpaceSync) {
-	var syncInProgress bool
-	if status.Status == syncstatus.Syncing {
-		syncInProgress = true
-	}
-	if status.IsFilesSync {
-		s.fileSyncInProgressBySpace[status.SpaceId] = true
-		if !syncInProgress && s.fileSyncCountBySpace[status.SpaceId] == 0 {
-			s.fileSyncInProgressBySpace[status.SpaceId] = false
-		}
-	}
-	if status.IsObjectSync {
-		s.objectSyncInProgressBySpace[status.SpaceId] = syncInProgress
-	}
-}
-
-func (s *spaceSyncStatus) isSyncFinished(status syncstatus.SpaceSyncStatus, spaceId string) bool {
-	isFileSyncInProgress := s.fileSyncInProgressBySpace[spaceId]
-	isObjectSyncInProgress := s.objectSyncInProgressBySpace[spaceId]
-	return status == syncstatus.Synced && !(isFileSyncInProgress || isObjectSyncInProgress)
+func (s *spaceSyncStatus) isSyncFinished(status *syncstatus.SpaceSync) bool {
+	return status.Status == syncstatus.Synced && s.filesState.IsSyncFinished(status.SpaceId) && s.objectsState.IsSyncFinished(status.SpaceId)
 }
 
 func (s *spaceSyncStatus) makeSpaceSyncEvent(status *syncstatus.SpaceSync) *pb.EventSpaceSyncStatusUpdate {
 	return &pb.EventSpaceSyncStatusUpdate{
-		Status:                mapStatus(status.Status),
+		Status:                mapStatus(s.getSpaceSyncStatus(status)),
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
 		Error:                 mapError(status.SyncError),
-		SyncingObjectsCounter: int64(s.objectSyncCountBySpace[status.SpaceId] + s.fileSyncCountBySpace[status.SpaceId]),
+		SyncingObjectsCounter: int64(s.filesState.GetSyncObjectCount(status.SpaceId) + s.objectsState.GetSyncObjectCount(status.SpaceId)),
 	}
 }
 
-func (s *spaceSyncStatus) setObjectNumber(status *syncstatus.SpaceSync) {
-	if status.IsFilesSync {
-		s.setFilesSyncCount(status)
+func (s *spaceSyncStatus) getSpaceSyncStatus(status *syncstatus.SpaceSync) syncstatus.SpaceSyncStatus {
+	filesStatus := s.filesState.GetSyncStatus(status.SpaceId)
+	objectsStatus := s.objectsState.GetSyncStatus(status.SpaceId)
+
+	if s.isOfflineStatus(filesStatus, objectsStatus) {
+		return syncstatus.Offline
 	}
-	switch status.Status {
-	case syncstatus.Synced, syncstatus.Error, syncstatus.Offline:
-		if status.IsObjectSync {
-			s.objectSyncCountBySpace[status.SpaceId] = 0
-		}
-	case syncstatus.Syncing:
-		if status.IsObjectSync {
-			s.objectSyncCountBySpace[status.SpaceId] = status.ObjectsNumber
-		}
+
+	if s.isSyncedStatus(filesStatus, objectsStatus) {
+		return syncstatus.Synced
 	}
+
+	if s.isErrorStatus(filesStatus, objectsStatus) {
+		return syncstatus.Error
+	}
+
+	if s.isSyncingStatus(filesStatus, objectsStatus) {
+		return syncstatus.Syncing
+	}
+	return syncstatus.Synced
 }
 
-func (s *spaceSyncStatus) setFilesSyncCount(status *syncstatus.SpaceSync) {
-	records, _, err := s.store.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(filesyncstatus.Syncing)),
-			},
-		},
-	})
-	if err != nil {
-		log.Errorf("failed to query file status: %s", err)
+func (s *spaceSyncStatus) isSyncingStatus(filesStatus syncstatus.SpaceSyncStatus, objectsStatus syncstatus.SpaceSyncStatus) bool {
+	return filesStatus == syncstatus.Syncing || objectsStatus == syncstatus.Syncing
+}
+
+func (s *spaceSyncStatus) isErrorStatus(filesStatus syncstatus.SpaceSyncStatus, objectsStatus syncstatus.SpaceSyncStatus) bool {
+	return filesStatus == syncstatus.Error || objectsStatus == syncstatus.Error
+}
+
+func (s *spaceSyncStatus) isSyncedStatus(filesStatus syncstatus.SpaceSyncStatus, objectsStatus syncstatus.SpaceSyncStatus) bool {
+	return filesStatus == syncstatus.Synced && objectsStatus == syncstatus.Synced
+}
+
+func (s *spaceSyncStatus) isOfflineStatus(filesStatus syncstatus.SpaceSyncStatus, objectsStatus syncstatus.SpaceSyncStatus) bool {
+	return filesStatus == syncstatus.Offline && objectsStatus == syncstatus.Offline
+}
+
+func (s *spaceSyncStatus) getCurrentState(status *syncstatus.SpaceSync) State {
+	if status.SyncType == syncstatus.Files {
+		return s.filesState
 	}
-	s.fileSyncCountBySpace[status.SpaceId] = len(records)
+	return s.objectsState
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
