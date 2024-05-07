@@ -43,29 +43,27 @@ func (bs *basic) ExtractBlocksToObjects(
 	rootIds := newState.SelectRoots(req.BlockIds)
 
 	for _, rootID := range rootIds {
-		var (
-			rootBlock        = newState.Pick(rootID)
-			objState         *state.State
-			objectID, linkID string
-		)
+		rootBlock := newState.Pick(rootID)
 
-		objState, err = bs.prepareObjectState(typeUniqueKey, rootBlock, templateStateCreator, req)
+		objState, err := bs.prepareObjectState(typeUniqueKey, rootBlock, templateStateCreator, req)
 		if err != nil {
 			return nil, err
 		}
 
 		insertBlocksToState(newState, rootBlock, objState)
 
-		if objectID, _, err = objectCreator.CreateSmartBlockFromState(
+		objectID, _, err := objectCreator.CreateSmartBlockFromState(
 			context.Background(),
 			bs.SpaceID(),
 			[]domain.TypeKey{typeKey},
 			objState,
-		); err != nil {
+		)
+		if err != nil {
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
 
-		if linkID, err = bs.changeToBlockWithLink(newState, rootBlock, objectID); err != nil {
+		linkID, err := bs.changeToBlockWithLink(newState, rootBlock, objectID)
+		if err != nil {
 			return nil, fmt.Errorf("create link to object %s: %w", objectID, err)
 		}
 
