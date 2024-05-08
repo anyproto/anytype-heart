@@ -59,9 +59,27 @@ func (s *spaceSyncStatus) Name() (name string) {
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
+	if s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly {
+		s.sendLocalOnlyEvent()
+		close(s.finish)
+		return
+	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go s.processEvents()
 	return
+}
+
+func (s *spaceSyncStatus) sendLocalOnlyEvent() {
+	s.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Status:  pb.EventSpace_Offline,
+					Network: pb.EventSpace_LocalOnly,
+				},
+			},
+		}},
+	})
 }
 
 func (s *spaceSyncStatus) SendUpdate(status *syncstatus.SpaceSync) {
@@ -84,9 +102,6 @@ func (s *spaceSyncStatus) processEvents() {
 }
 
 func (s *spaceSyncStatus) updateSpaceSyncStatus(status *syncstatus.SpaceSync) {
-	if s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly {
-		return
-	}
 	// don't send unnecessary event
 	if s.isSyncFinished(status) {
 		return
