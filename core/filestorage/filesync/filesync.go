@@ -31,7 +31,7 @@ var log = logger.NewNamed(CName)
 
 var loopTimeout = time.Minute
 
-type StatusCallback func(fileObjectId string) error
+type StatusCallback func(fileObjectId string, fileId domain.FullFileId) error
 
 type FileSync interface {
 	AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error)

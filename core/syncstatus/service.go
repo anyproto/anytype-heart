@@ -85,9 +85,9 @@ func (s *service) Init(a *app.App) (err error) {
 	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
-	s.fileSyncService.OnUploaded(s.OnFileUploaded)
-	s.fileSyncService.OnUploadStarted(s.OnFileUploadStarted)
-	s.fileSyncService.OnLimited(s.OnFileLimited)
+	s.fileSyncService.OnUploaded(s.onFileUploaded)
+	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
+	s.fileSyncService.OnLimited(s.onFileLimited)
 	return nil
 }
 

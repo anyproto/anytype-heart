@@ -137,7 +137,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 		return nil
 	})
 	if err != nil {
-		log.Error("failed to perform delete operation on object", zap.Error(err))
+		log.With("error", err, "objectId", id.ObjectID).Error("failed to perform delete operation on object")
 	}
 	if err := s.objectStore.DeleteObject(id); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)

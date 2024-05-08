@@ -2,14 +2,16 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -21,17 +23,22 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
-const CName = "core.files.reconciler"
+const (
+	CName             = "core.files.reconciler"
+	isStartedStoreKey = "value"
+)
 
 var log = logging.Logger(CName).Desugar()
 
 type Reconciler interface {
 	app.ComponentRunnable
 
+	Start(ctx context.Context) error
 	FileObjectHook(id domain.FullID) func(applyInfo smartblock.ApplyInfo) error
 }
 
@@ -41,8 +48,12 @@ type reconciler struct {
 	fileStorage  filestorage.FileStorage
 	objectGetter cache.ObjectGetter
 
-	rebindQueue           *persistentqueue.Queue[*queueItem]
-	markAsReconciledQueue *persistentqueue.Queue[*queueItem]
+	lock      sync.Mutex
+	isStarted bool
+
+	isStartedStore keyvaluestore.Store[bool]
+	deletedFiles   keyvaluestore.Store[struct{}]
+	rebindQueue    *persistentqueue.Queue[*queueItem]
 }
 
 type queueItem struct {
@@ -75,36 +86,81 @@ func (r *reconciler) Init(a *app.App) error {
 	if err != nil {
 		return fmt.Errorf("get badger: %w", err)
 	}
+
+	r.isStartedStore = keyvaluestore.New(db, []byte("file_reconciler/is_started"), func(val bool) ([]byte, error) {
+		return json.Marshal(val)
+	}, func(data []byte) (bool, error) {
+		var val bool
+		err := json.Unmarshal(data, &val)
+		return val, err
+	})
+	r.deletedFiles = keyvaluestore.New(db, []byte("file_reconciler/deleted_files"), func(_ struct{}) ([]byte, error) {
+		return []byte(""), nil
+	}, func(data []byte) (struct{}, error) {
+		return struct{}{}, nil
+	})
 	r.rebindQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, []byte("queue/file_reconciler/rebind"), makeQueueItem), log, r.rebindHandler)
-	r.markAsReconciledQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, []byte("queue/file_reconciler/mark"), makeQueueItem), log, r.markAsReconciledHandler)
 	return nil
 }
 
 func (r *reconciler) Run(ctx context.Context) error {
+	isStarted, err := r.isStartedStore.Get(isStartedStoreKey)
+	if err != nil && !errors.Is(err, keyvaluestore.ErrNotFound) {
+		log.Error("get isStarted", zap.Error(err))
+	}
+	r.lock.Lock()
+	r.isStarted = isStarted
+	r.lock.Unlock()
+
 	r.rebindQueue.Run()
-	r.markAsReconciledQueue.Run()
+	return nil
+}
+
+func (r *reconciler) Start(ctx context.Context) error {
+	err := r.isStartedStore.Set(isStartedStoreKey, true)
+	if err != nil {
+		return fmt.Errorf("set isStarted: %w", err)
+	}
+	r.lock.Lock()
+	r.isStarted = true
+	r.lock.Unlock()
+
 	return r.reconcileRemoteStorage(ctx)
+}
+
+func (r *reconciler) isRunning() bool {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	return r.isStarted
 }
 
 func (r *reconciler) FileObjectHook(id domain.FullID) func(applyInfo smartblock.ApplyInfo) error {
 	return func(applyInfo smartblock.ApplyInfo) error {
-		if !needToUpdateReconcilationStatus(applyInfo.State.Details()) {
+		if !r.isRunning() {
 			return nil
 		}
-
-		fileId := domain.FileId(pbtypes.GetString(applyInfo.State.Details(), bundle.RelationKeyFileId.String()))
-		return r.rebindQueue.Add(&queueItem{ObjectId: id.ObjectID, FileId: domain.FullFileId{FileId: fileId, SpaceId: id.SpaceID}})
+		ok, err := r.needToRebind(applyInfo.State.Details())
+		if err != nil {
+			return fmt.Errorf("need to rebind: %w", err)
+		}
+		if ok {
+			fileId := domain.FileId(pbtypes.GetString(applyInfo.State.Details(), bundle.RelationKeyFileId.String()))
+			fmt.Println("FileObjectHook: Was deleted", fileId)
+			return r.rebindQueue.Add(&queueItem{ObjectId: id.ObjectID, FileId: domain.FullFileId{FileId: fileId, SpaceId: id.SpaceID}})
+		}
+		return nil
 	}
 }
 
-func needToUpdateReconcilationStatus(details *types.Struct) bool {
+func (r *reconciler) needToRebind(details *types.Struct) (bool, error) {
 	backupStatus := filesyncstatus.Status(pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()))
+	// It makes no sense to rebind file that hasn't been uploaded yet, because this file could be uploading
+	// by another client. When another client will upload this file, FileObjectHook will be called with FileBackupStatus == Synced
 	if backupStatus != filesyncstatus.Synced {
-		return false
+		return false, nil
 	}
-
-	reconcilationStatus := domain.ReconcilationStatus(pbtypes.GetInt64(details, bundle.RelationKeyFileReconcilationStatus.String()))
-	return reconcilationStatus != domain.ReconcilationStatusDone
+	fileId := domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String()))
+	return r.deletedFiles.Has(fileId.String())
 }
 
 func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persistentqueue.Action, error) {
@@ -122,25 +178,12 @@ func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persis
 	return persistentqueue.ActionDone, nil
 }
 
-func (r *reconciler) markAsReconciledHandler(ctx context.Context, item *queueItem) (persistentqueue.Action, error) {
-	fmt.Println("markAsReconciledHandler", item.ObjectId)
-	return persistentqueue.ActionDone, r.markAsReconciled(item.ObjectId)
-}
-
-func (r *reconciler) markAsReconciled(fileObjectId string) error {
-	return cache.Do(r.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
-		detailsSetter, ok := sb.(basic.DetailsSettable)
-		if !ok {
-			return fmt.Errorf("setting of details is not supported for %T", sb)
-		}
-		fmt.Println("UPDATE RECONC STATUS", fileObjectId)
-		return detailsSetter.SetDetails(nil, []*model.Detail{
-			{
-				Key:   bundle.RelationKeyFileReconcilationStatus.String(),
-				Value: pbtypes.Int64(int64(domain.ReconcilationStatusDone)),
-			},
-		}, true)
-	})
+func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFileId) error {
+	if !r.isRunning() {
+		return nil
+	}
+	fmt.Println("markAsReconciled", fileId)
+	return r.deletedFiles.Delete(fileId.FileId.String())
 }
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
@@ -161,40 +204,30 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 		return fmt.Errorf("query file objects: %w", err)
 	}
 
-	haveIds := map[domain.FileId]*types.Struct{}
+	haveIds := map[domain.FileId]struct{}{}
 	for _, rec := range records {
 		fileId := domain.FileId(pbtypes.GetString(rec.Details, bundle.RelationKeyFileId.String()))
 		if fileId.Valid() {
-			haveIds[fileId] = rec.Details
+			haveIds[fileId] = struct{}{}
 		}
 	}
 
 	err = r.fileStorage.IterateFiles(ctx, func(fileId domain.FullFileId) {
-		if details, ok := haveIds[fileId.FileId]; ok {
-			if needToUpdateReconcilationStatus(details) {
-				objectId := pbtypes.GetString(details, bundle.RelationKeyId.String())
-				err := r.markAsReconciledQueue.Add(&queueItem{ObjectId: objectId})
-				if err != nil {
-					log.Error("add to mark as reconciled queue", zap.String("objectId", objectId), zap.Error(err))
-				}
-			}
-		} else {
+		if _, ok := haveIds[fileId.FileId]; !ok {
 			log.Warn("file not found in local vault, enqueue deletion", zap.String("fileId", fileId.FileId.String()))
 			err := r.fileSync.DeleteFile("", fileId)
 			if err != nil {
 				log.Error("add to deletion queue", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
+			}
+			err = r.deletedFiles.Set(fileId.FileId.String(), struct{}{})
+			if err != nil {
+				log.Error("add to deleted files", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
 			}
 		}
 	})
 	if err != nil {
 		return fmt.Errorf("iterate files: %w", err)
 	}
-
-	// TODO Unbind files not found in local vault
-	// TODO Create queue for files that appeared in local vault after initial deletion
-	// TODO Add hook to file object to add it to reconcilation queue
-	// TODO Reconcilation queue handler: pass noCache context and rebind file
-	// TODO After restart add missing files to reconcilation queue
 	return nil
 }
 

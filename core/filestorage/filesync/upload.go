@@ -10,6 +10,8 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net/peer"
+	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
@@ -70,7 +72,7 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 	}
 	var limitReachedErr *errLimitReached
 	if errors.As(err, &limitReachedErr) {
-		s.runOnLimitedHook(it.ObjectId, it.SpaceId)
+		s.runOnLimitedHook(it.ObjectId, it.FullFileId())
 
 		if it.AddedByUser && !it.Imported {
 			s.sendLimitReachedEvent(it.SpaceId)
@@ -85,9 +87,9 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 
 func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	err := s.runOnUploadStartedHook(it.ObjectId, spaceId)
-	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
+	err := s.runOnUploadStartedHook(it.ObjectId, it.FullFileId())
+	if isObjectDeletedError(err) {
+		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
 	}
 	err = s.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
@@ -109,7 +111,10 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 		return s.addToRetryUploadingQueue(it), nil
 	}
 
-	err = s.runOnUploadedHook(it.ObjectId, spaceId)
+	err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
+	if isObjectDeletedError(err) {
+		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
+	}
 	if err != nil {
 		return s.addToRetryUploadingQueue(it), err
 	}
@@ -129,8 +134,8 @@ func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Actio
 
 func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	err := s.runOnUploadStartedHook(it.ObjectId, spaceId)
-	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+	err := s.runOnUploadStartedHook(it.ObjectId, it.FullFileId())
+	if isObjectDeletedError(err) {
 		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}
 	err = s.uploadFile(ctx, spaceId, fileId)
@@ -143,7 +148,10 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		return persistentqueue.ActionRetry, nil
 	}
 
-	err = s.runOnUploadedHook(it.ObjectId, spaceId)
+	err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
+	if isObjectDeletedError(err) {
+		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
+	}
 	if err != nil {
 		return persistentqueue.ActionRetry, err
 	}
@@ -179,42 +187,52 @@ func (s *fileSync) UploadSynchronously(ctx context.Context, spaceId string, file
 	return nil
 }
 
-func (s *fileSync) runOnUploadedHook(fileObjectId string, spaceId string) error {
+func (s *fileSync) runOnUploadedHook(fileObjectId string, fileId domain.FullFileId) error {
+	var merr multierror.Error
 	for _, hook := range s.onUploaded {
-		err := hook(fileObjectId)
-		if err != nil && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-			log.Warn("on upload callback failed",
-				zap.String("fileObjectId", fileObjectId),
-				zap.String("spaceID", spaceId),
-				zap.Error(err))
+		err := hook(fileObjectId, fileId)
+		if err != nil {
+			if !isObjectDeletedError(err) {
+				log.Warn("on upload callback failed",
+					zap.String("spaceId", fileId.SpaceId),
+					zap.String("fileObjectId", fileObjectId),
+					zap.String("fileId", fileId.FileId.String()),
+					zap.Error(err))
+			}
+			merr.Errors = append(merr.Errors, err)
+		}
+	}
+	return merr.ErrorOrNil()
+}
+
+func (s *fileSync) runOnUploadStartedHook(fileObjectId string, fileId domain.FullFileId) error {
+	if s.onUploadStarted != nil {
+		err := s.onUploadStarted(fileObjectId, fileId)
+		if err != nil {
+			if !isObjectDeletedError(err) {
+				log.Warn("on upload started callback failed",
+					zap.String("spaceId", fileId.SpaceId),
+					zap.String("fileObjectId", fileObjectId),
+					zap.String("fileId", fileId.FileId.String()),
+					zap.Error(err))
+			}
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *fileSync) runOnUploadStartedHook(fileObjectId string, spaceId string) error {
-	if s.onUploadStarted != nil {
-		err := s.onUploadStarted(fileObjectId)
-		if err != nil {
-			log.Warn("on upload started callback failed",
-				zap.String("fileObjectId", fileObjectId),
-				zap.String("spaceID", spaceId),
-				zap.Error(err))
-		}
-		return err
-	}
-	return nil
-}
-
-func (s *fileSync) runOnLimitedHook(fileObjectId string, spaceId string) {
+func (s *fileSync) runOnLimitedHook(fileObjectId string, fileId domain.FullFileId) {
 	if s.onLimited != nil {
-		err := s.onLimited(fileObjectId)
+		err := s.onLimited(fileObjectId, fileId)
 		if err != nil {
-			log.Warn("on limited callback failed",
-				zap.String("fileId", fileObjectId),
-				zap.String("spaceID", spaceId),
-				zap.Error(err))
+			if !isObjectDeletedError(err) {
+				log.Warn("on limited callback failed",
+					zap.String("spaceId", fileId.SpaceId),
+					zap.String("fileObjectId", fileObjectId),
+					zap.String("fileId", fileId.FileId.String()),
+					zap.Error(err))
+			}
 		}
 	}
 }
@@ -388,4 +406,8 @@ func (s *fileSync) uploadOrBindBlocks(ctx context.Context, spaceId string, fileI
 		}
 	}
 	return bytesToUpload, nil
+}
+
+func isObjectDeletedError(err error) bool {
+	return errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, peer.ErrPeerIdNotFoundInContext) || errors.Is(err, domain.ErrObjectIsDeleted)
 }
