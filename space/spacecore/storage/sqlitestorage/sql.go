@@ -21,9 +21,9 @@ CREATE TABLE IF NOT EXISTS trees (
     id text not null primary key,
     spaceId text not null,
     type int not null default 0,
-    heads text,
-    deleteStatus text
+    heads text
 );
+
 CREATE INDEX IF NOT EXISTS 'trees_spaceId' ON trees(spaceId);
 
 CREATE TABLE IF NOT EXISTS changes (
@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS changes (
 );
 CREATE INDEX IF NOT EXISTS 'changes_spaceId' ON changes(spaceId);
 CREATE INDEX IF NOT EXISTS 'changes_treeId' ON changes(treeId);
+
+CREATE TABLE IF NOT EXISTS treeDeleteStatuses (
+    id text not null primary key,
+    deleteStatus text
+);
 `
 
 func initStmts(s *storageService) (err error) {
@@ -61,10 +66,12 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.treeIdsBySpace, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND type != 1`); err != nil {
 		return
 	}
-	if s.stmt.updateTreeDelStatus, err = s.writeDb.Prepare(`UPDATE trees SET deleteStatus = ? WHERE id = ?`); err != nil {
+	if s.stmt.updateTreeDelStatus, err = s.writeDb.Prepare(`
+		INSERT INTO treeDeleteStatuses(id, deleteStatus) VALUES (?, ?) 
+		ON CONFLICT (id) DO UPDATE SET deleteStatus = ?`); err != nil {
 		return
 	}
-	if s.stmt.treeDelStatus, err = s.readDb.Prepare(`SELECT deleteStatus FROM trees WHERE id = ?`); err != nil {
+	if s.stmt.treeDelStatus, err = s.readDb.Prepare(`SELECT deleteStatus FROM treeDeleteStatuses WHERE id = ?`); err != nil {
 		return
 	}
 	if s.stmt.change, err = s.readDb.Prepare(`SELECT data FROM changes WHERE id = ? AND spaceId = ?`); err != nil {
