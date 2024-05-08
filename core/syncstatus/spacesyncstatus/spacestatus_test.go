@@ -29,6 +29,37 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 		eventSender := mock_event.NewMockSender(t)
 		a.Register(testutil.PrepareMock(ctx, a, eventSender))
 		a.Register(objectstore.NewStoreFixture(t))
+		a.Register(&config.Config{NetworkMode: pb.RpcAccount_DefaultConfig})
+
+		// when
+		err := status.Init(a)
+
+		// then
+		assert.Nil(t, err)
+		err = status.Run(ctx)
+		assert.Nil(t, err)
+		err = status.Close(ctx)
+		assert.Nil(t, err)
+	})
+	t.Run("local only mode", func(t *testing.T) {
+		// given
+		status := NewSpaceSyncStatus()
+		ctx := context.Background()
+
+		a := new(app.App)
+		eventSender := mock_event.NewMockSender(t)
+		eventSender.EXPECT().Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Status:  pb.EventSpace_Offline,
+						Network: pb.EventSpace_LocalOnly,
+					},
+				},
+			}},
+		})
+		a.Register(testutil.PrepareMock(ctx, a, eventSender))
+		a.Register(objectstore.NewStoreFixture(t))
 		a.Register(&config.Config{NetworkMode: pb.RpcAccount_LocalOnly})
 
 		// when
@@ -44,24 +75,6 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 }
 
 func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
-	t.Run("local only mode", func(t *testing.T) {
-		// given
-		eventSender := mock_event.NewMockSender(t)
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_LocalOnly},
-			batcher:       mb.New[*syncstatus.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(),
-		}
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Synced, 0, syncstatus.Null, syncstatus.Files)
-
-		// then
-		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		eventSender.AssertNotCalled(t, "Broadcast")
-	})
 	t.Run("don't send not needed synced event", func(t *testing.T) {
 		// given
 		eventSender := mock_event.NewMockSender(t)
