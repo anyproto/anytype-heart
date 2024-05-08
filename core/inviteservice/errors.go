@@ -12,7 +12,6 @@ var (
 	ErrInviteGenerate   = errors.New("generate invite")
 	ErrInviteRemove     = errors.New("remove invite")
 	ErrPersonalSpace    = errors.New("sharing of personal space is forbidden")
-	ErrDifferentNetwork = errors.New("different network")
 )
 
 func removeInviteError(msg string, err error) error {
