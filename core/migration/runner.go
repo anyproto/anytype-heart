@@ -1,38 +1,76 @@
 package migration
 
 import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
-const CName = "migration-runner"
+const (
+	loggerName = "migration-runner"
+	errFormat  = "failed to run migration '%s' in space '%s': %w. %d out of %d objects were migrated"
+)
 
-var log = logging.Logger(CName)
+var (
+	log            = logging.Logger(loggerName)
+	ErrCtxExceeded = errors.New("context exceeded")
+)
 
 type Migration interface {
-	Run(objectstore.ObjectStore, clientspace.Space) (toMigrate, migrated int, err error)
+	Run(QueryableStore, DoableSpace) (toMigrate, migrated int, err error)
 	Name() string
 }
 
-func Run(store objectstore.ObjectStore, space clientspace.Space) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Errorf("panic while running space migrations: %v", r)
+func Run(ctx context.Context, store objectstore.ObjectStore, space clientspace.Space) {
+	if err := run(ctx, store, space,
+		systemObjectReviser{},
+		readonlyRelationsFixer{},
+	); err != nil {
+		log.Errorf("failed to run default migrations: %v", err)
+	}
+}
+
+func run(ctx context.Context, store objectstore.ObjectStore, space clientspace.Space, migrations ...Migration) (mErr error) {
+	var (
+		spaceId = space.Id()
+		finish  = make(chan struct{})
+		sstore  = &safeStore{store: store}
+		sspace  = &safeSpace{space: space}
+	)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				sstore.CtxExceeded = true
+				sspace.CtxExceeded = true
+				return
+			case <-finish:
+				return
+			}
 		}
 	}()
 
-	for _, m := range []Migration{
-		systemObjectReviser{},
-		readonlyRelationsFixer{},
-	} {
-		toMigrate, migrated, err := m.Run(store, space)
+	for _, m := range migrations {
+		toMigrate, migrated, err := m.Run(sstore, sspace)
 		if err != nil {
-			log.Errorf("failed to run migration '%s' in space '%s': %v. %d out of %d objects were migrated",
-				m.Name(), space.Id(), err, migrated, toMigrate)
+			fErr := fmt.Errorf(errFormat, m.Name(), spaceId, err, migrated, toMigrate)
+			mErr = multierror.Append(mErr, fErr)
+			log.Error(fErr)
+			if errors.Is(err, ErrCtxExceeded) {
+				return
+			}
 			continue
 		}
-		log.Debugf("migration '%s' in space '%s' is successful.  %d out of %d objects were migrated",
-			m.Name(), space.Id(), migrated, toMigrate)
+		log.Debugf("migration '%s' in space '%s' is successful. %d out of %d objects were migrated",
+			m.Name(), spaceId, migrated, toMigrate)
 	}
+	finish <- struct{}{}
+	return
 }

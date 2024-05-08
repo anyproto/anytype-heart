@@ -14,9 +14,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -28,7 +26,7 @@ func (systemObjectReviser) Name() string {
 	return "SystemObjectReviser"
 }
 
-func (systemObjectReviser) Run(store objectstore.ObjectStore, space clientspace.Space) (toMigrate, migrated int, err error) {
+func (systemObjectReviser) Run(store QueryableStore, space DoableSpace) (toMigrate, migrated int, err error) {
 	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
@@ -55,7 +53,7 @@ func (systemObjectReviser) Run(store objectstore.ObjectStore, space clientspace.
 	return
 }
 
-func listAllTypesAndRelations(store objectstore.ObjectStore, spaceId string) (map[string]*types.Struct, error) {
+func listAllTypesAndRelations(store QueryableStore, spaceId string) (map[string]*types.Struct, error) {
 	records, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -82,7 +80,7 @@ func listAllTypesAndRelations(store objectstore.ObjectStore, spaceId string) (ma
 	return details, nil
 }
 
-func reviseSystemObject(space clientspace.Space, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
+func reviseSystemObject(space DoableSpace, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {

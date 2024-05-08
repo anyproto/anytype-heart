@@ -9,9 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -21,7 +19,7 @@ func (readonlyRelationsFixer) Name() string {
 	return "ReadonlyRelationsFixer"
 }
 
-func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspace.Space) (toMigrate, migrated int, err error) {
+func (readonlyRelationsFixer) Run(store QueryableStore, space DoableSpace) (toMigrate, migrated int, err error) {
 	var relations []database.Record
 	relations, err = listReadonlyTagAndStatusRelations(store, space)
 	toMigrate = len(relations)
@@ -66,7 +64,7 @@ func (readonlyRelationsFixer) Run(store objectstore.ObjectStore, space clientspa
 	return
 }
 
-func listReadonlyTagAndStatusRelations(store objectstore.ObjectStore, space clientspace.Space) ([]database.Record, error) {
+func listReadonlyTagAndStatusRelations(store QueryableStore, space DoableSpace) ([]database.Record, error) {
 	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),

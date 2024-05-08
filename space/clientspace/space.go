@@ -69,7 +69,7 @@ type bundledObjectsInstaller interface {
 }
 
 type migrationRunner interface {
-	RunMigrations(space Space)
+	RunMigrations(ctx context.Context, space Space)
 }
 
 var log = logger.NewNamed("client.space")
@@ -137,7 +137,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		if err = sp.InstallBundledObjects(ctx); err != nil {
 			return nil, fmt.Errorf("install bundled objects: %w", err)
 		}
-		sp.migrationRunner.RunMigrations(sp)
+		sp.migrationRunner.RunMigrations(ctx, sp)
 	}
 	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
 	return sp, nil
@@ -165,7 +165,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.migrationRunner.RunMigrations(s)
+	s.migrationRunner.RunMigrations(ctx, s)
 	err := s.migrationProfileObject(ctx)
 	if err != nil {
 		log.Error("failed to migrate profile object", zap.Error(err))
