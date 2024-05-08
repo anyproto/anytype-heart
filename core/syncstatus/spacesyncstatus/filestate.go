@@ -28,7 +28,7 @@ func NewFileState(store objectstore.ObjectStore) *FileState {
 }
 
 func (f *FileState) SetObjectsNumber(status *syncstatus.SpaceSync) {
-	records, _, err := f.store.Query(database.Query{
+	records, err := f.store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
