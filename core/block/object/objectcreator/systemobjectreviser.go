@@ -31,7 +31,7 @@ func (s *service) reviseSystemObjects(space clientspace.Space, objects map[strin
 }
 
 func (s *service) listAllTypesAndRelations(spaceId string) (map[string]*types.Struct, error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),

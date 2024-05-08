@@ -259,7 +259,7 @@ func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest
 
 func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested bool, includeFiles bool, isProtobuf bool) (map[string]*types.Struct, error) {
 	docs := make(map[string]*types.Struct)
-	res, _, err := e.objectStore.Query(database.Query{
+	res, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -840,7 +840,7 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	relation, _, err := e.objectStore.Query(database.Query{
+	relation, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
@@ -904,7 +904,7 @@ func (e *export) getRelationOptions(relationOptions *types.Value) ([]database.Re
 	if filter == nil {
 		return nil, nil
 	}
-	relationOptionsDetails, _, err := e.objectStore.Query(database.Query{
+	relationOptionsDetails, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			filter,
 			{
@@ -949,7 +949,7 @@ func (e *export) getFilterForStringOption(value *types.Value, filter *model.Bloc
 }
 
 func (e *export) addTemplates(id string, derivedObjects []database.Record) ([]database.Record, error) {
-	templates, _, err := e.objectStore.Query(database.Query{
+	templates, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
@@ -978,7 +978,7 @@ func (e *export) addTemplates(id string, derivedObjects []database.Record) ([]da
 func (e *export) handleSetOfRelation(object *types.Struct, derivedObjects []database.Record) ([]database.Record, error) {
 	setOfList := pbtypes.GetStringList(object, bundle.RelationKeySetOf.String())
 	if len(setOfList) > 0 {
-		types, _, err := e.objectStore.Query(database.Query{
+		types, err := e.objectStore.Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
