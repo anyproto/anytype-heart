@@ -173,7 +173,7 @@ func (s *spaceSyncStatus) isSyncedStatus(filesStatus syncstatus.SpaceSyncStatus,
 }
 
 func (s *spaceSyncStatus) isOfflineStatus(filesStatus syncstatus.SpaceSyncStatus, objectsStatus syncstatus.SpaceSyncStatus) bool {
-	return filesStatus == syncstatus.Offline && objectsStatus == syncstatus.Offline
+	return filesStatus == syncstatus.Offline || objectsStatus == syncstatus.Offline
 }
 
 func (s *spaceSyncStatus) getCurrentState(status *syncstatus.SpaceSync) State {

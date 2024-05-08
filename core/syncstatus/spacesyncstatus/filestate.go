@@ -51,10 +51,11 @@ func (f *FileState) SetObjectsNumber(status *syncstatus.SpaceSync) {
 func (f *FileState) SetSyncStatus(status *syncstatus.SpaceSync) {
 	switch status.Status {
 	case syncstatus.Synced:
-		if number := f.fileSyncStatusBySpace[status.SpaceId]; number == 0 {
-			f.fileSyncStatusBySpace[status.SpaceId] = syncstatus.Synced
+		f.fileSyncStatusBySpace[status.SpaceId] = syncstatus.Synced
+		if number := f.fileSyncCountBySpace[status.SpaceId]; number > 0 {
+			f.fileSyncStatusBySpace[status.SpaceId] = syncstatus.Syncing
 		}
-	case syncstatus.Error, syncstatus.Syncing:
+	case syncstatus.Error, syncstatus.Syncing, syncstatus.Offline:
 		f.fileSyncStatusBySpace[status.SpaceId] = status.Status
 	}
 }
