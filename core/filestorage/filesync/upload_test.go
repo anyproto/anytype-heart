@@ -99,7 +99,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		fileId, _ := fx.givenFileAddedToDAG(t)
 		spaceId := "space1"
 
-		fx.onUploadStarted = func(fileObjectId string) error {
+		fx.onUploadStarted = func(objectId string, fileId domain.FullFileId) error {
 			return spacestorage.ErrTreeStorageAlreadyDeleted
 		}
 

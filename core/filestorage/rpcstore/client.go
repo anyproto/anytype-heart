@@ -2,6 +2,9 @@ package rpcstore
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -108,32 +111,42 @@ func (c *client) iterateFiles(ctx context.Context, iterFunc func(fileId domain.F
 		return err
 	}
 	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
-		c := fileproto.NewDRPCFileClient(conn)
+		cl := fileproto.NewDRPCFileClient(conn)
 
-		resp, err := c.AccountInfo(ctx, &fileproto.AccountInfoRequest{})
+		resp, err := cl.AccountInfo(ctx, &fileproto.AccountInfoRequest{})
 		if err != nil {
 			return rpcerr.Unwrap(err)
 		}
-
 		for _, space := range resp.Spaces {
-			filesStream, err := c.FilesGet(ctx, &fileproto.FilesGetRequest{SpaceId: space.SpaceId})
+			err := iterateSpaceFiles(ctx, cl, space.SpaceId, iterFunc)
 			if err != nil {
-				return rpcerr.Unwrap(err)
-			}
-			for {
-				resp, err := filesStream.Recv()
-				if err != nil {
-					return rpcerr.Unwrap(err)
-				}
-				iterFunc(domain.FullFileId{
-					SpaceId: space.SpaceId,
-					FileId:  domain.FileId(resp.FileId),
-				})
+				return fmt.Errorf("iterate space files: %w", err)
 			}
 		}
 		return nil
 	})
 	return nil
+}
+
+func iterateSpaceFiles(ctx context.Context, client fileproto.DRPCFileClient, spaceId string, iterFunc func(fileId domain.FullFileId)) error {
+	filesStream, err := client.FilesGet(ctx, &fileproto.FilesGetRequest{SpaceId: spaceId})
+	if err != nil {
+		return rpcerr.Unwrap(err)
+	}
+	defer filesStream.Close()
+	for {
+		resp, err := filesStream.Recv()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return rpcerr.Unwrap(err)
+		}
+		iterFunc(domain.FullFileId{
+			SpaceId: spaceId,
+			FileId:  domain.FileId(resp.FileId),
+		})
+	}
 }
 
 func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, cd cid.Cid, data []byte) (err error) {

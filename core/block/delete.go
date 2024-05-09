@@ -67,11 +67,9 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 		if err != nil {
 			return fmt.Errorf("delete file data: %w", err)
 		}
-		// this will call DeleteTree asynchronously in the end
-		return spc.DeleteTree(context.Background(), id.ObjectID)
+		err = spc.DeleteTree(context.Background(), id.ObjectID)
 	default:
-		// this will call DeleteTree asynchronously in the end
-		return spc.DeleteTree(context.Background(), id.ObjectID)
+		err = spc.DeleteTree(context.Background(), id.ObjectID)
 	}
 	if err != nil {
 		return
