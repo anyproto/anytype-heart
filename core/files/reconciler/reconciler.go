@@ -153,6 +153,9 @@ func (r *reconciler) FileObjectHook(id domain.FullID) func(applyInfo smartblock.
 }
 
 func (r *reconciler) needToRebind(details *types.Struct) (bool, error) {
+	if pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String()) {
+		return false, nil
+	}
 	backupStatus := filesyncstatus.Status(pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()))
 	// It makes no sense to rebind file that hasn't been uploaded yet, because this file could be uploading
 	// by another client. When another client will upload this file, FileObjectHook will be called with FileBackupStatus == Synced
@@ -182,7 +185,6 @@ func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFil
 	if !r.isRunning() {
 		return nil
 	}
-	fmt.Println("markAsReconciled", fileId)
 	return r.deletedFiles.Delete(fileId.FileId.String())
 }
 
