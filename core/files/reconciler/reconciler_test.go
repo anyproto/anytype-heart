@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
@@ -50,6 +51,7 @@ type fixture struct {
 	fileSync     *mock_filesync.MockFileSync
 	objectStore  *objectstore.StoreFixture
 	objectGetter *mock_cache.MockObjectGetterComponent
+	fileStorage  *mock_filestorage.MockFileStorage
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -81,38 +83,48 @@ func newFixture(t *testing.T) *fixture {
 		fileSync:     fileSync,
 		objectStore:  objectStore,
 		objectGetter: objectGetter,
+		fileStorage:  fileStorage,
 	}
 }
 
-func TestReconciler(t *testing.T) {
-	t.Run("start", func(t *testing.T) {
-		t.Run("file object found, mark it as reconciled", func(t *testing.T) {
-
-		})
-		t.Run("no file object found", func(t *testing.T) {
-			t.Run("this file has disappeared in pre-FilesAsObject version, delete it for good", func(t *testing.T) {
-
-			})
-			t.Run("this file eventually will be loaded from remote peer, push it to rebinding queue", func(t *testing.T) {
-				// fullFileId := domain.FullFileId{
-				// 	SpaceId: "spaceId",
-				// 	FileId:  testFileId,
-				// }
-				//
-				// fx.fileSync.EXPECT().CancelDeletion(fullId.ObjectID, fullFileId).Return(nil)
-
-			})
-		})
+func TestReconcileRemoteStorage(t *testing.T) {
+	fx := newFixture(t)
+	fx.objectStore.AddObjects(t, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               pbtypes.String("objectId1"),
+			bundle.RelationKeyFileId:           pbtypes.String(testFileId.String()),
+			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+		},
+		{
+			bundle.RelationKeyId:               pbtypes.String("objectId2"),
+			bundle.RelationKeyFileId:           pbtypes.String("deletedFileId"),
+			bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
+			bundle.RelationKeyIsDeleted:        pbtypes.Bool(true),
+		},
 	})
 
-	t.Run("app restarted", func(t *testing.T) {
-		t.Run("reconcilation has not been started", func(t *testing.T) {
+	fx.fileStorage.EXPECT().IterateFiles(mock.Anything, mock.Anything).
+		Run(func(ctx context.Context, iterFunc func(domain.FullFileId)) {
+			iterFunc(domain.FullFileId{SpaceId: "spaceId", FileId: testFileId})
+			iterFunc(domain.FullFileId{SpaceId: "spaceId", FileId: "deletedFileId"})
+			iterFunc(domain.FullFileId{SpaceId: "spaceId", FileId: "anotherFileId"})
+		}).
+		Return(nil)
 
-		})
-		t.Run("reconcilation has been started", func(t *testing.T) {
+	wantDeletedFiles := []domain.FileId{
+		"deletedFileId",
+		"anotherFileId",
+	}
+	for _, fileId := range wantDeletedFiles {
+		fx.fileSync.EXPECT().DeleteFile("", domain.FullFileId{SpaceId: "spaceId", FileId: fileId}).Return(nil)
+		ok, err := fx.deletedFiles.Has(fileId.String())
+		require.NoError(t, err)
+		assert.False(t, ok)
+	}
 
-		})
-	})
+	err := fx.reconcileRemoteStorage(context.Background())
+
+	require.NoError(t, err)
 }
 
 func TestFileObjectHook(t *testing.T) {
@@ -192,4 +204,34 @@ func TestFileObjectHook(t *testing.T) {
 			assert.True(t, ok)
 		})
 	})
+}
+
+func TestRebindQueue(t *testing.T) {
+	fx := newFixture(t)
+
+	fx.fileSync.EXPECT().CancelDeletion("objectId1", testFullFileId).Return(nil)
+	fx.fileSync.EXPECT().AddFile("objectId1", testFullFileId, false, false).Return(nil)
+
+	err := fx.rebindQueue.Add(&queueItem{
+		ObjectId: "objectId1",
+		FileId:   testFullFileId,
+	})
+	require.NoError(t, err)
+
+	fx.rebindQueue.Run()
+
+	timeout := time.NewTimer(50 * time.Millisecond)
+	defer timeout.Stop()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if fx.rebindQueue.NumProcessedItems() == 1 {
+				return
+			}
+		case <-timeout.C:
+			t.Fatal("timeout")
+		}
+	}
 }
