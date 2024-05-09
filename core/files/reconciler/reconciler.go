@@ -145,7 +145,6 @@ func (r *reconciler) FileObjectHook(id domain.FullID) func(applyInfo smartblock.
 		}
 		if ok {
 			fileId := domain.FileId(pbtypes.GetString(applyInfo.State.Details(), bundle.RelationKeyFileId.String()))
-			fmt.Println("FileObjectHook: Was deleted", fileId)
 			return r.rebindQueue.Add(&queueItem{ObjectId: id.ObjectID, FileId: domain.FullFileId{FileId: fileId, SpaceId: id.SpaceID}})
 		}
 		return nil
