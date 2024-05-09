@@ -1,10 +1,14 @@
 package migration
 
 import (
+	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -58,34 +62,61 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		},
 	})
 	fixer := &readonlyRelationsFixer{}
+	ctx := context.Background()
 
 	t.Run("fix tag and status relations with readonly=true", func(t *testing.T) {
+		// given
 		spc := mock_space.NewMockSpace(t)
-		spc.EXPECT().Id().Return("space1").Times(2)
+		spc.EXPECT().Id().Return("space1").Maybe()
 
 		// both relations will be processed
-		spc.EXPECT().Do(mock.Anything, mock.Anything).Times(2).Return(nil)
+		spc.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) error {
+				assert.True(t, slices.Contains([]string{"rel-customTag", "rel-tag"}, objectId))
+				return nil
+			},
+		).Times(2)
 
-		fixer.Run(store, spc)
+		// when
+		migrated, toMigrate, err := fixer.Run(ctx, store, spc)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, 2, migrated)
+		assert.Equal(t, 2, toMigrate)
 	})
 
 	t.Run("do not process relations of other formats", func(t *testing.T) {
+		// given
 		spc := mock_space.NewMockSpace(t)
-		spc.EXPECT().Id().Return("space2").Times(1)
+		spc.EXPECT().Id().Return("space2").Maybe()
 
 		// none of relations will be processed
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		fixer.Run(store, spc)
+		// when
+		migrated, toMigrate, err := fixer.Run(ctx, store, spc)
+
+		// then
+		assert.NoError(t, err)
+		assert.Zero(t, migrated)
+		assert.Zero(t, toMigrate)
 	})
 
 	t.Run("do not process relations with readonly=false", func(t *testing.T) {
+		// given
 		spc := mock_space.NewMockSpace(t)
-		spc.EXPECT().Id().Return("space3").Times(1)
+		spc.EXPECT().Id().Return("space3").Maybe()
 
 		// none of relations will be processed
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
-		fixer.Run(store, spc)
+		// when
+		migrated, toMigrate, err := fixer.Run(ctx, store, spc)
+
+		// then
+		assert.NoError(t, err)
+		assert.Zero(t, migrated)
+		assert.Zero(t, toMigrate)
 	})
 }

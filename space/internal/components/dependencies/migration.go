@@ -1,7 +1,11 @@
 package dependencies
 
-import "github.com/anyproto/anytype-heart/space/clientspace"
+import (
+	"context"
+
+	"github.com/anyproto/anytype-heart/space/clientspace"
+)
 
 type SpaceMigrationRunner interface {
-	RunMigrations(space clientspace.Space)
+	RunMigrations(ctx context.Context, space clientspace.Space)
 }

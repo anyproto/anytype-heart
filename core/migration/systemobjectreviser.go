@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
@@ -26,7 +27,7 @@ func (systemObjectReviser) Name() string {
 	return "SystemObjectReviser"
 }
 
-func (systemObjectReviser) Run(store QueryableStore, space DoableSpace) (toMigrate, migrated int, err error) {
+func (systemObjectReviser) Run(ctx context.Context, store QueryableStore, space DoableViaContext) (toMigrate, migrated int, err error) {
 	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
@@ -37,9 +38,8 @@ func (systemObjectReviser) Run(store QueryableStore, space DoableSpace) (toMigra
 		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
 	}
 
-	err = &multierror.Error{}
 	for _, details := range spaceObjects {
-		shouldBeRevised, e := reviseSystemObject(space, details, marketObjects)
+		shouldBeRevised, e := reviseSystemObject(ctx, space, details, marketObjects)
 		if !shouldBeRevised {
 			continue
 		}
@@ -80,7 +80,7 @@ func listAllTypesAndRelations(store QueryableStore, spaceId string) (map[string]
 	return details, nil
 }
 
-func reviseSystemObject(space DoableSpace, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
+func reviseSystemObject(ctx context.Context, space DoableViaContext, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
@@ -89,7 +89,7 @@ func reviseSystemObject(space DoableSpace, localObject *types.Struct, marketObje
 	details := buildDiffDetails(marketObject, localObject)
 	if len(details) != 0 {
 		log.Debugf("updating system object %s in space %s", source, space.Id())
-		if err := space.Do(pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
+		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(basic.DetailsSettable); ok {
 				return ds.SetDetails(nil, details, false)
 			}

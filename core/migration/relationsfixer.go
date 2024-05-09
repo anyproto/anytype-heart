@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
@@ -19,17 +20,19 @@ func (readonlyRelationsFixer) Name() string {
 	return "ReadonlyRelationsFixer"
 }
 
-func (readonlyRelationsFixer) Run(store QueryableStore, space DoableSpace) (toMigrate, migrated int, err error) {
+func (readonlyRelationsFixer) Run(ctx context.Context, store QueryableStore, space DoableViaContext) (toMigrate, migrated int, err error) {
+	spaceId := space.Id()
 	var relations []database.Record
-	relations, err = listReadonlyTagAndStatusRelations(store, space)
+
+	relations, err = listReadonlyTagAndStatusRelations(store, spaceId)
 	toMigrate = len(relations)
 
 	if err != nil {
-		return toMigrate, 0, fmt.Errorf("failed to list all relations with tag and status format in space %s: %w", space.Id(), err)
+		return toMigrate, 0, fmt.Errorf("failed to list all relations with tag and status format in space %s: %w", spaceId, err)
 	}
 
 	if toMigrate != 0 {
-		log.Infof("space %s contains %d relations of tag and status format with relationReadonlyValue=true", space.Id(), toMigrate)
+		log.Infof("space %s contains %d relations of tag and status format with relationReadonlyValue=true", spaceId, toMigrate)
 	}
 
 	for _, r := range relations {
@@ -49,14 +52,14 @@ func (readonlyRelationsFixer) Run(store QueryableStore, space DoableSpace) (toMi
 			Key:   bundle.RelationKeyRelationReadonlyValue.String(),
 			Value: pbtypes.Bool(false),
 		}}
-		e := space.Do(pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
+		e := space.DoCtx(ctx, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(basic.DetailsSettable); ok {
 				return ds.SetDetails(nil, det, false)
 			}
 			return nil
 		})
 		if e != nil {
-			err = multierror.Append(err, fmt.Errorf("failed to set readOnlyValue=true to relation %s in space %s: %w", uk, space.Id(), e))
+			err = multierror.Append(err, fmt.Errorf("failed to set readOnlyValue=true to relation %s in space %s: %w", uk, spaceId, e))
 		} else {
 			migrated++
 		}
@@ -64,7 +67,7 @@ func (readonlyRelationsFixer) Run(store QueryableStore, space DoableSpace) (toMi
 	return
 }
 
-func listReadonlyTagAndStatusRelations(store QueryableStore, space DoableSpace) ([]database.Record, error) {
+func listReadonlyTagAndStatusRelations(store QueryableStore, spaceId string) ([]database.Record, error) {
 	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),
@@ -74,7 +77,7 @@ func listReadonlyTagAndStatusRelations(store QueryableStore, space DoableSpace) 
 		{
 			RelationKey: bundle.RelationKeySpaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(space.Id()),
+			Value:       pbtypes.String(spaceId),
 		},
 		{
 			RelationKey: bundle.RelationKeyRelationReadonlyValue.String(),

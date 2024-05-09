@@ -47,6 +47,7 @@ type Space interface {
 	CommonSpace() commonspace.Space
 
 	Do(objectId string, apply func(sb smartblock.SmartBlock) error) error
+	DoCtx(ctx context.Context, objectId string, apply func(sb smartblock.SmartBlock) error) error
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
@@ -217,7 +218,11 @@ func (s *space) WaitMandatoryObjects(ctx context.Context) (err error) {
 }
 
 func (s *space) Do(objectId string, apply func(sb smartblock.SmartBlock) error) error {
-	sb, err := s.GetObject(context.Background(), objectId)
+	return s.DoCtx(context.Background(), objectId, apply)
+}
+
+func (s *space) DoCtx(ctx context.Context, objectId string, apply func(sb smartblock.SmartBlock) error) error {
+	sb, err := s.GetObject(ctx, objectId)
 	if err != nil {
 		return err
 	}

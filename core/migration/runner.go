@@ -17,13 +17,10 @@ const (
 	errFormat  = "failed to run migration '%s' in space '%s': %w. %d out of %d objects were migrated"
 )
 
-var (
-	log            = logging.Logger(loggerName)
-	ErrCtxExceeded = errors.New("context exceeded")
-)
+var log = logging.Logger(loggerName)
 
 type Migration interface {
-	Run(QueryableStore, DoableSpace) (toMigrate, migrated int, err error)
+	Run(context.Context, QueryableStore, DoableViaContext) (toMigrate, migrated int, err error)
 	Name() string
 }
 
@@ -41,15 +38,13 @@ func run(ctx context.Context, store objectstore.ObjectStore, space clientspace.S
 		spaceId = space.Id()
 		finish  = make(chan struct{})
 		sstore  = &safeStore{store: store}
-		sspace  = &safeSpace{space: space}
 	)
 
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
-				sstore.CtxExceeded = true
-				sspace.CtxExceeded = true
+				sstore.Lock()
 				return
 			case <-finish:
 				return
@@ -58,12 +53,12 @@ func run(ctx context.Context, store objectstore.ObjectStore, space clientspace.S
 	}()
 
 	for _, m := range migrations {
-		toMigrate, migrated, err := m.Run(sstore, sspace)
+		toMigrate, migrated, err := m.Run(ctx, sstore, space)
 		if err != nil {
 			fErr := fmt.Errorf(errFormat, m.Name(), spaceId, err, migrated, toMigrate)
 			mErr = multierror.Append(mErr, fErr)
 			log.Error(fErr)
-			if errors.Is(err, ErrCtxExceeded) {
+			if errors.Is(err, context.Canceled) {
 				return
 			}
 			continue
