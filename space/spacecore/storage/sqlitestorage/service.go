@@ -43,6 +43,7 @@ type storageService struct {
 		updateSpaceOldHash,
 		updateSpaceIsCreated,
 		updateSpaceIsDeleted,
+		getSpaceIsDeleted,
 		treeIdsBySpace,
 		updateTreeDelStatus,
 		treeDelStatus,

@@ -47,17 +47,34 @@ func newSpaceStorage(s *storageService, spaceId string) (spacestorage.SpaceStora
 			Id: spaceId,
 		},
 	}
-	err := s.stmt.loadSpace.QueryRow(spaceId).Scan(
+
+	tx, err := s.readDb.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	err = tx.Stmt(s.stmt.loadSpace).QueryRow(spaceId).Scan(
 		&ss.header.RawHeader,
 		&ss.spaceSettingsId,
 		&ss.aclId,
 		&ss.hash,
 		&ss.oldHash,
-		&ss.isDeleted,
 	)
 	if err != nil {
 		return nil, replaceNoRowsErr(err, spacestorage.ErrSpaceStorageMissing)
 	}
+
+	err = tx.Stmt(s.stmt.getSpaceIsDeleted).QueryRow(spaceId).Scan(&ss.isDeleted)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+
 	if ss.aclStorage, err = newListStorage(ss, ss.aclId); err != nil {
 		return nil, err
 	}
@@ -166,7 +183,7 @@ func (s *spaceStorage) Id() string {
 func (s *spaceStorage) SetSpaceDeleted() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, err := s.service.stmt.updateSpaceIsDeleted.Exec(true, s.spaceId); err != nil {
+	if _, err := s.service.stmt.updateSpaceIsDeleted.Exec(s.spaceId, true, true); err != nil {
 		return err
 	}
 	s.isDeleted = true

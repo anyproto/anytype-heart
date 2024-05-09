@@ -8,8 +8,7 @@ CREATE TABLE IF NOT EXISTS spaces  (
   aclId text not null,
   hash text not null default '',
   oldHash text not null default '',
-  isCreated boolean not null default false,
-  isDeleted boolean not null default false                        
+  isCreated boolean not null default false
 );
 
 CREATE TABLE IF NOT EXISTS binds (
@@ -35,9 +34,14 @@ CREATE TABLE IF NOT EXISTS changes (
 CREATE INDEX IF NOT EXISTS 'changes_spaceId' ON changes(spaceId);
 CREATE INDEX IF NOT EXISTS 'changes_treeId' ON changes(treeId);
 
-CREATE TABLE IF NOT EXISTS treeDeleteStatuses (
+CREATE TABLE IF NOT EXISTS spaceDeletedStatuses (
+    spaceId text not null primary key,
+    isDeleted boolean not null default false
+);
+
+CREATE TABLE IF NOT EXISTS treeDeletedStatuses (
     id text not null primary key,
-    deleteStatus text
+    deletedStatus text
 );
 `
 
@@ -60,18 +64,23 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.updateSpaceIsCreated, err = s.writeDb.Prepare(`UPDATE spaces SET isCreated = ? WHERE id = ?`); err != nil {
 		return
 	}
-	if s.stmt.updateSpaceIsDeleted, err = s.writeDb.Prepare(`UPDATE spaces SET isDeleted = ? WHERE id = ?`); err != nil {
+	if s.stmt.updateSpaceIsDeleted, err = s.writeDb.Prepare(`
+		INSERT INTO spaceDeletedStatuses(spaceId, isDeleted) VALUES (?, ?) 
+		ON CONFLICT (spaceId) DO UPDATE SET isDeleted = ?`); err != nil {
+		return
+	}
+	if s.stmt.getSpaceIsDeleted, err = s.readDb.Prepare(`SELECT isDeleted FROM spaceDeletedStatuses WHERE spaceId = ?`); err != nil {
 		return
 	}
 	if s.stmt.treeIdsBySpace, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND type != 1`); err != nil {
 		return
 	}
 	if s.stmt.updateTreeDelStatus, err = s.writeDb.Prepare(`
-		INSERT INTO treeDeleteStatuses(id, deleteStatus) VALUES (?, ?) 
-		ON CONFLICT (id) DO UPDATE SET deleteStatus = ?`); err != nil {
+		INSERT INTO treeDeletedStatuses(id, deletedStatus) VALUES (?, ?) 
+		ON CONFLICT (id) DO UPDATE SET deletedStatus = ?`); err != nil {
 		return
 	}
-	if s.stmt.treeDelStatus, err = s.readDb.Prepare(`SELECT deleteStatus FROM treeDeleteStatuses WHERE id = ?`); err != nil {
+	if s.stmt.treeDelStatus, err = s.readDb.Prepare(`SELECT deletedStatus FROM treeDeletedStatuses WHERE id = ?`); err != nil {
 		return
 	}
 	if s.stmt.change, err = s.readDb.Prepare(`SELECT data FROM changes WHERE id = ? AND spaceId = ?`); err != nil {
@@ -95,7 +104,7 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.loadTreeHeads, err = s.readDb.Prepare(`SELECT heads FROM trees WHERE id = ?`); err != nil {
 		return
 	}
-	if s.stmt.loadSpace, err = s.readDb.Prepare(`SELECT header, settingsId, aclId, hash, oldHash, isDeleted FROM spaces WHERE id = ?`); err != nil {
+	if s.stmt.loadSpace, err = s.readDb.Prepare(`SELECT header, settingsId, aclId, hash, oldHash FROM spaces WHERE id = ?`); err != nil {
 		return
 	}
 	if s.stmt.spaceIds, err = s.readDb.Prepare(`SELECT id FROM spaces`); err != nil {
