@@ -194,9 +194,9 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 
 	if err = cache.Do(s.picker, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != coresb.SmartBlockTypePage {
-			return fmt.Errorf("can't make template from this obect type")
+			return fmt.Errorf("can't make template from this object type: %s", model.SmartBlockType_name[int32(b.Type())])
 		}
-		st, err = s.templateCreateFromObjectState(b)
+		st, err = buildTemplateStateFromObject(b)
 		objectTypeKeys = st.ObjectTypeKeys()
 		return err
 	}); err != nil {
@@ -305,6 +305,7 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
 		template.WithFeaturedRelations,
+		template.WithAddedFeaturedRelation(bundle.RelationKeyTag),
 		template.WithRequiredRelations(),
 		template.WithTitle,
 	)
@@ -336,7 +337,7 @@ func (s *service) updateTypeKey(st *state.State) (err error) {
 	return nil
 }
 
-func (s *service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*state.State, error) {
+func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	targetObjectTypeId, err := sb.Space().GetTypeIdByKey(context.Background(), st.ObjectTypeKey())
@@ -350,5 +351,8 @@ func (s *service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*stat
 			st.RemoveDetail(rel.Key)
 		}
 	}
+	flags := internalflag.NewFromState(st)
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	flags.AddToState(st)
 	return st, nil
 }

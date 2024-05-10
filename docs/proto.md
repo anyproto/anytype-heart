@@ -16,8 +16,6 @@
     - [Change.Content](#anytype-Change-Content)
     - [Change.DetailsSet](#anytype-Change-DetailsSet)
     - [Change.DetailsUnset](#anytype-Change-DetailsUnset)
-    - [Change.DeviceAdd](#anytype-Change-DeviceAdd)
-    - [Change.DeviceUpdate](#anytype-Change-DeviceUpdate)
     - [Change.FileKeys](#anytype-Change-FileKeys)
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
     - [Change.NotificationCreate](#anytype-Change-NotificationCreate)
@@ -352,6 +350,10 @@
     - [Rpc.BlockFile.SetName.Request](#anytype-Rpc-BlockFile-SetName-Request)
     - [Rpc.BlockFile.SetName.Response](#anytype-Rpc-BlockFile-SetName-Response)
     - [Rpc.BlockFile.SetName.Response.Error](#anytype-Rpc-BlockFile-SetName-Response-Error)
+    - [Rpc.BlockFile.SetTargetObjectId](#anytype-Rpc-BlockFile-SetTargetObjectId)
+    - [Rpc.BlockFile.SetTargetObjectId.Request](#anytype-Rpc-BlockFile-SetTargetObjectId-Request)
+    - [Rpc.BlockFile.SetTargetObjectId.Response](#anytype-Rpc-BlockFile-SetTargetObjectId-Response)
+    - [Rpc.BlockFile.SetTargetObjectId.Response.Error](#anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error)
     - [Rpc.BlockImage](#anytype-Rpc-BlockImage)
     - [Rpc.BlockImage.SetName](#anytype-Rpc-BlockImage-SetName)
     - [Rpc.BlockImage.SetName.Request](#anytype-Rpc-BlockImage-SetName-Request)
@@ -560,15 +562,6 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
-    - [Rpc.Device](#anytype-Rpc-Device)
-    - [Rpc.Device.List](#anytype-Rpc-Device-List)
-    - [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request)
-    - [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response)
-    - [Rpc.Device.List.Response.Error](#anytype-Rpc-Device-List-Response-Error)
-    - [Rpc.Device.SetName](#anytype-Rpc-Device-SetName)
-    - [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request)
-    - [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response)
-    - [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -673,6 +666,10 @@
     - [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request)
     - [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response)
     - [Rpc.Membership.IsNameValid.Response.Error](#anytype-Rpc-Membership-IsNameValid-Response-Error)
+    - [Rpc.Membership.VerifyAppStoreReceipt](#anytype-Rpc-Membership-VerifyAppStoreReceipt)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error)
     - [Rpc.Membership.VerifyEmailCode](#anytype-Rpc-Membership-VerifyEmailCode)
     - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
@@ -818,6 +815,10 @@
     - [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request)
     - [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response)
     - [Rpc.Object.ListExport.Response.Error](#anytype-Rpc-Object-ListExport-Response-Error)
+    - [Rpc.Object.ListSetDetails](#anytype-Rpc-Object-ListSetDetails)
+    - [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request)
+    - [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response)
+    - [Rpc.Object.ListSetDetails.Response.Error](#anytype-Rpc-Object-ListSetDetails-Response-Error)
     - [Rpc.Object.ListSetIsArchived](#anytype-Rpc-Object-ListSetIsArchived)
     - [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request)
     - [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response)
@@ -859,7 +860,6 @@
     - [Rpc.Object.SetBreadcrumbs.Response](#anytype-Rpc-Object-SetBreadcrumbs-Response)
     - [Rpc.Object.SetBreadcrumbs.Response.Error](#anytype-Rpc-Object-SetBreadcrumbs-Response-Error)
     - [Rpc.Object.SetDetails](#anytype-Rpc-Object-SetDetails)
-    - [Rpc.Object.SetDetails.Detail](#anytype-Rpc-Object-SetDetails-Detail)
     - [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request)
     - [Rpc.Object.SetDetails.Response](#anytype-Rpc-Object-SetDetails-Response)
     - [Rpc.Object.SetDetails.Response.Error](#anytype-Rpc-Object-SetDetails-Response-Error)
@@ -1199,6 +1199,7 @@
     - [Rpc.BlockFile.CreateAndUpload.Response.Error.Code](#anytype-Rpc-BlockFile-CreateAndUpload-Response-Error-Code)
     - [Rpc.BlockFile.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockFile-ListSetStyle-Response-Error-Code)
     - [Rpc.BlockFile.SetName.Response.Error.Code](#anytype-Rpc-BlockFile-SetName-Response-Error-Code)
+    - [Rpc.BlockFile.SetTargetObjectId.Response.Error.Code](#anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error-Code)
     - [Rpc.BlockImage.SetName.Response.Error.Code](#anytype-Rpc-BlockImage-SetName-Response-Error-Code)
     - [Rpc.BlockImage.SetWidth.Response.Error.Code](#anytype-Rpc-BlockImage-SetWidth-Response-Error-Code)
     - [Rpc.BlockLatex.SetProcessor.Response.Error.Code](#anytype-Rpc-BlockLatex-SetProcessor-Response-Error-Code)
@@ -1248,8 +1249,6 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
-    - [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code)
-    - [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1275,6 +1274,7 @@
     - [Rpc.Membership.GetVerificationEmail.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmail-Response-Error-Code)
     - [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code)
     - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
+    - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
@@ -1314,6 +1314,7 @@
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
     - [Rpc.Object.ListExport.Response.Error.Code](#anytype-Rpc-Object-ListExport-Response-Error-Code)
+    - [Rpc.Object.ListSetDetails.Response.Error.Code](#anytype-Rpc-Object-ListSetDetails-Response-Error-Code)
     - [Rpc.Object.ListSetIsArchived.Response.Error.Code](#anytype-Rpc-Object-ListSetIsArchived-Response-Error-Code)
     - [Rpc.Object.ListSetIsFavorite.Response.Error.Code](#anytype-Rpc-Object-ListSetIsFavorite-Response-Error-Code)
     - [Rpc.Object.ListSetObjectType.Response.Error.Code](#anytype-Rpc-Object-ListSetObjectType-Response-Error-Code)
@@ -1641,7 +1642,7 @@
     - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
-    - [DeviceInfo](#anytype-model-DeviceInfo)
+    - [Detail](#anytype-model-Detail)
     - [Export](#anytype-model-Export)
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
@@ -1841,6 +1842,7 @@
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response) |  |
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectListSetObjectType | [Rpc.Object.ListSetObjectType.Request](#anytype-Rpc-Object-ListSetObjectType-Request) | [Rpc.Object.ListSetObjectType.Response](#anytype-Rpc-Object-ListSetObjectType-Response) |  |
+| ObjectListSetDetails | [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request) | [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response) |  |
 | ObjectApplyTemplate | [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request) | [Rpc.Object.ApplyTemplate.Response](#anytype-Rpc-Object-ApplyTemplate-Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request) | [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response) | ObjectToSet creates new set from given object and removes object |
 | ObjectToCollection | [Rpc.Object.ToCollection.Request](#anytype-Rpc-Object-ToCollection-Request) | [Rpc.Object.ToCollection.Response](#anytype-Rpc-Object-ToCollection-Response) |  |
@@ -1924,6 +1926,7 @@
 | BlockTextListClearStyle | [Rpc.BlockText.ListClearStyle.Request](#anytype-Rpc-BlockText-ListClearStyle-Request) | [Rpc.BlockText.ListClearStyle.Response](#anytype-Rpc-BlockText-ListClearStyle-Response) |  |
 | BlockTextListClearContent | [Rpc.BlockText.ListClearContent.Request](#anytype-Rpc-BlockText-ListClearContent-Request) | [Rpc.BlockText.ListClearContent.Response](#anytype-Rpc-BlockText-ListClearContent-Response) |  |
 | BlockFileSetName | [Rpc.BlockFile.SetName.Request](#anytype-Rpc-BlockFile-SetName-Request) | [Rpc.BlockFile.SetName.Response](#anytype-Rpc-BlockFile-SetName-Response) | File block commands *** |
+| BlockFileSetTargetObjectId | [Rpc.BlockFile.SetTargetObjectId.Request](#anytype-Rpc-BlockFile-SetTargetObjectId-Request) | [Rpc.BlockFile.SetTargetObjectId.Response](#anytype-Rpc-BlockFile-SetTargetObjectId-Response) |  |
 | BlockImageSetName | [Rpc.BlockImage.SetName.Request](#anytype-Rpc-BlockImage-SetName-Request) | [Rpc.BlockImage.SetName.Response](#anytype-Rpc-BlockImage-SetName-Response) |  |
 | BlockVideoSetName | [Rpc.BlockVideo.SetName.Request](#anytype-Rpc-BlockVideo-SetName-Request) | [Rpc.BlockVideo.SetName.Response](#anytype-Rpc-BlockVideo-SetName-Response) |  |
 | BlockFileCreateAndUpload | [Rpc.BlockFile.CreateAndUpload.Request](#anytype-Rpc-BlockFile-CreateAndUpload-Request) | [Rpc.BlockFile.CreateAndUpload.Response](#anytype-Rpc-BlockFile-CreateAndUpload-Response) |  |
@@ -2005,12 +2008,11 @@
 | MembershipVerifyEmailCode | [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request) | [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response) | Verify the user&#39;s email with the code received in the previous step (MembershipGetVerificationEmail) |
 | MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
 | MembershipGetTiers | [Rpc.Membership.GetTiers.Request](#anytype-Rpc-Membership-GetTiers-Request) | [Rpc.Membership.GetTiers.Response](#anytype-Rpc-Membership-GetTiers-Response) |  |
+| MembershipVerifyAppStoreReceipt | [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request) | [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
-| DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
-| DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
 
  
 
@@ -2152,8 +2154,6 @@ the element of change tree used to store and internal apply smartBlock history
 | setFileInfo | [Change.SetFileInfo](#anytype-Change-SetFileInfo) |  |  |
 | notificationCreate | [Change.NotificationCreate](#anytype-Change-NotificationCreate) |  |  |
 | notificationUpdate | [Change.NotificationUpdate](#anytype-Change-NotificationUpdate) |  |  |
-| deviceAdd | [Change.DeviceAdd](#anytype-Change-DeviceAdd) |  |  |
-| deviceUpdate | [Change.DeviceUpdate](#anytype-Change-DeviceUpdate) |  |  |
 
 
 
@@ -2185,37 +2185,6 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-DeviceAdd"></a>
-
-### Change.DeviceAdd
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| device | [model.DeviceInfo](#anytype-model-DeviceInfo) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-DeviceUpdate"></a>
-
-### Change.DeviceUpdate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| name | [string](#string) |  |  |
 
 
 
@@ -3929,6 +3898,7 @@ common simple block command
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -7103,6 +7073,65 @@ set the current active view (persisted only within a session)
 
 
 
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId"></a>
+
+### Rpc.BlockFile.SetTargetObjectId
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId-Request"></a>
+
+### Rpc.BlockFile.SetTargetObjectId.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId-Response"></a>
+
+### Rpc.BlockFile.SetTargetObjectId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockFile.SetTargetObjectId.Response.Error](#anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error"></a>
+
+### Rpc.BlockFile.SetTargetObjectId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockFile.SetTargetObjectId.Response.Error.Code](#anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-BlockImage"></a>
 
 ### Rpc.BlockImage
@@ -7392,11 +7421,12 @@ set the current active view (persisted only within a session)
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
+| block | [model.Block](#anytype-model-Block) |  |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
-| fields | [google.protobuf.Struct](#google-protobuf-Struct) |  | link block fields |
+| fields | [google.protobuf.Struct](#google-protobuf-Struct) |  | deprecated link block fields |
 
 
 
@@ -10109,125 +10139,6 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype-Rpc-Device"></a>
-
-### Rpc.Device
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Device-List"></a>
-
-### Rpc.Device.List
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Device-List-Request"></a>
-
-### Rpc.Device.List.Request
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Device-List-Response"></a>
-
-### Rpc.Device.List.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Device.List.Response.Error](#anytype-Rpc-Device-List-Response-Error) |  |  |
-| devices | [model.DeviceInfo](#anytype-model-DeviceInfo) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Device-List-Response-Error"></a>
-
-### Rpc.Device.List.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Device-SetName"></a>
-
-### Rpc.Device.SetName
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Device-SetName-Request"></a>
-
-### Rpc.Device.SetName.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| deviceId | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Device-SetName-Response"></a>
-
-### Rpc.Device.SetName.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Device-SetName-Response-Error"></a>
-
-### Rpc.Device.SetName.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-File"></a>
 
 ### Rpc.File
@@ -11267,7 +11178,7 @@ returns blockShow event for given version
 
 ### Rpc.Membership
 A Membership is a bundle of several &#34;Features&#34;
-every user should have one and only one tier 
+every user should have one and only one tier
 users can not have N tiers (no combining)
 
 
@@ -11335,8 +11246,9 @@ users can not have N tiers (no combining)
 <a name="anytype-Rpc-Membership-GetPaymentUrl"></a>
 
 ### Rpc.Membership.GetPaymentUrl
-Generate a link to the payment provider
-where user can pay for the membership
+Generate a unique id for payment request (for mobile clients)
+Generate a link to Stripe where user can pay for the membership (for desktop client)
+TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
 
 
 
@@ -11737,10 +11649,67 @@ before requesting a payment link and paying
 
 
 
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Request"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| billingId | [string](#string) |  | billingId is used to identify payment request on payment node side |
+| receipt | [string](#string) |  | receipt is a JWT-encoded string including info about subscription purchase |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Membership-VerifyEmailCode"></a>
 
 ### Rpc.Membership.VerifyEmailCode
-Verify the e-mail address of the user 
+Verify the e-mail address of the user
 need a correct code that was sent to the user when calling GetVerificationEmail
 
 
@@ -13870,6 +13839,64 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype-Rpc-Object-ListSetDetails"></a>
+
+### Rpc.Object.ListSetDetails
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListSetDetails-Request"></a>
+
+### Rpc.Object.ListSetDetails.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+| details | [model.Detail](#anytype-model-Detail) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListSetDetails-Response"></a>
+
+### Rpc.Object.ListSetDetails.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ListSetDetails.Response.Error](#anytype-Rpc-Object-ListSetDetails-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListSetDetails-Response-Error"></a>
+
+### Rpc.Object.ListSetDetails.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ListSetDetails.Response.Error.Code](#anytype-Rpc-Object-ListSetDetails-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ListSetIsArchived"></a>
 
 ### Rpc.Object.ListSetIsArchived
@@ -14483,22 +14510,6 @@ DEPRECATED, GO-1926 |
 
 
 
-<a name="anytype-Rpc-Object-SetDetails-Detail"></a>
-
-### Rpc.Object.SetDetails.Detail
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [google.protobuf.Value](#google-protobuf-Value) |  | NUll - removes key |
-
-
-
-
-
-
 <a name="anytype-Rpc-Object-SetDetails-Request"></a>
 
 ### Rpc.Object.SetDetails.Request
@@ -14508,7 +14519,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| details | [Rpc.Object.SetDetails.Detail](#anytype-Rpc-Object-SetDetails-Detail) | repeated |  |
+| details | [model.Detail](#anytype-model-Detail) | repeated |  |
 
 
 
@@ -19295,6 +19306,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockFile-SetTargetObjectId-Response-Error-Code"></a>
+
+### Rpc.BlockFile.SetTargetObjectId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-BlockImage-SetName-Response-Error-Code"></a>
 
 ### Rpc.BlockImage.SetName.Response.Error.Code
@@ -19933,32 +19957,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Device-List-Response-Error-Code"></a>
-
-### Rpc.Device.List.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-Device-SetName-Response-Error-Code"></a>
-
-### Rpc.Device.SetName.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -20341,6 +20339,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CACHE_ERROR | 10 |  |
 | CAN_NOT_RESERVE | 11 | for some probable future use (if needed) |
 | CAN_NOT_CONNECT | 12 |  |
+
+
+
+<a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code"></a>
+
+### Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
 
 
 
@@ -20874,6 +20888,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-ListExport-Response-Error-Code"></a>
 
 ### Rpc.Object.ListExport.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-ListSetDetails-Response-Error-Code"></a>
+
+### Rpc.Object.ListSetDetails.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -21469,6 +21496,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | INVITE_NOT_FOUND | 101 |  |
 | INVITE_BAD_CONTENT | 102 |  |
+| SPACE_IS_DELETED | 103 |  |
 
 
 
@@ -25945,18 +25973,16 @@ Used to decode block meta only, without the content itself
 
 
 
-<a name="anytype-model-DeviceInfo"></a>
+<a name="anytype-model-Detail"></a>
 
-### DeviceInfo
+### Detail
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| addDate | [int64](#int64) |  |  |
-| archived | [bool](#bool) |  |  |
+| key | [string](#string) |  |  |
+| value | [google.protobuf.Value](#google-protobuf-Value) |  | NUll - removes key |
 
 
 
@@ -26821,6 +26847,7 @@ stored |
 | AlignLeft | 0 |  |
 | AlignCenter | 1 |  |
 | AlignRight | 2 |  |
+| AlignJustify | 3 |  |
 
 
 

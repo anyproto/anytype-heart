@@ -69,7 +69,7 @@ type fixture struct {
 	ctrl             *gomock.Controller
 	a                *app.App
 	tmpDir           string
-	rpcStore         rpcstore.RpcStore
+	rpcStore         *rpcstore.InMemoryStore
 	eventsLock       sync.Mutex
 	events           []*pb.Event
 }

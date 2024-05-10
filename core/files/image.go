@@ -21,10 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const (
-	imageObjectHiddenWidth = 263
-)
-
 type Image interface {
 	FileId() domain.FileId
 	Details(ctx context.Context) (*types.Struct, error)
@@ -197,9 +193,6 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 
 	if v := pbtypes.Get(largest.GetMeta(), "width"); v != nil {
 		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
-		if v.GetNumberValue() < imageObjectHiddenWidth {
-			details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
-		}
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "height"); v != nil {

@@ -217,7 +217,6 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	if err != nil {
 		return
 	}
-	defer st.ResetParentIdsCache()
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}

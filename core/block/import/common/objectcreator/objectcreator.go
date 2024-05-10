@@ -11,7 +11,6 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -46,8 +45,16 @@ type Service interface {
 	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
 }
 
+type BlockService interface {
+	GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
+	GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
+	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error)
+	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error)
+	DeleteObject(objectId string) (err error)
+}
+
 type ObjectCreator struct {
-	service        *block.Service
+	service        BlockService
 	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer *syncer.FileRelationSyncer
@@ -57,7 +64,7 @@ type ObjectCreator struct {
 	mu             sync.Mutex
 }
 
-func New(service *block.Service,
+func New(service BlockService,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer *syncer.FileRelationSyncer,
@@ -162,7 +169,11 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 }
 
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
-	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption && sbType != coresb.SmartBlockTypeFileObject
+	return sbType != coresb.SmartBlockTypeRelation &&
+		sbType != coresb.SmartBlockTypeObjectType &&
+		sbType != coresb.SmartBlockTypeRelationOption &&
+		sbType != coresb.SmartBlockTypeFileObject &&
+		sbType != coresb.SmartBlockTypeParticipant
 }
 
 func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objectorigin.ObjectOrigin) {
@@ -313,10 +324,10 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
-	var details []*pb.RpcObjectSetDetailsDetail
+	var details []*model.Detail
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 	if spaceDashBoardID != "" {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeySpaceDashboardId.String(),
 			Value: pbtypes.String(spaceDashBoardID),
 		})
@@ -324,7 +335,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 
 	spaceName := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String())
 	if spaceName != "" {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(spaceName),
 		})
@@ -332,7 +343,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 
 	iconOption := pbtypes.GetInt64(st.CombinedDetails(), bundle.RelationKeyIconOption.String())
 	if iconOption != 0 {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyIconOption.String(),
 			Value: pbtypes.Int64(iconOption),
 		})

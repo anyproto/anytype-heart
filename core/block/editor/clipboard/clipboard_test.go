@@ -1075,7 +1075,7 @@ func addRelations(st *smarttest.SmartTest) {
 	state.ApplyState(newState, false)
 }
 
-func TestClipboard_PasteToCodeBock(t *testing.T) {
+func TestClipboard_PasteToCodeBlock(t *testing.T) {
 	sb := smarttest.New("text")
 	require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
 	s := sb.NewState()
@@ -1100,6 +1100,48 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "some\nsome text\nhere\ncode", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
 	assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Style)
+}
+
+func TestClipboard_PasteToTableCellBlock(t *testing.T) {
+	// given
+	sb := smarttest.New("text")
+	sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+		blockbuilder.ID("root"),
+		blockbuilder.Children(
+			blockbuilder.Text(
+				"table",
+				blockbuilder.ID("2-2"),
+				blockbuilder.TextStyle(model.BlockContentText_Paragraph),
+			),
+		)))
+
+	// when
+	cb := newFixture(t, sb)
+	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+		FocusedBlockId:    "2-2",
+		SelectedTextRange: rng(0, 0),
+		AnySlot: []*model.Block{
+			blockbuilder.Text(
+				"text1",
+				blockbuilder.ID("id1"),
+				blockbuilder.TextStyle(model.BlockContentText_Code),
+			).Block(),
+			blockbuilder.Text(
+				"text2",
+				blockbuilder.ID("id2"),
+				blockbuilder.TextStyle(model.BlockContentText_Toggle),
+			).Block(),
+			blockbuilder.Text(
+				"table",
+				blockbuilder.ID("2-2"),
+				blockbuilder.TextStyle(model.BlockContentText_Paragraph),
+			).Block(),
+		},
+	}, "")
+
+	// then
+	require.NoError(t, err)
+	assert.Equal(t, "text1\ntext2\ntabletable", sb.Doc.Pick("2-2").Model().GetText().Text)
 }
 
 func Test_PasteText(t *testing.T) {

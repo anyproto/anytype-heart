@@ -7,7 +7,10 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
+	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
+	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -18,9 +21,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -35,6 +40,9 @@ type ownProfileSubscription struct {
 	identityRepoClient identityRepoClient
 	fileAclService     fileacl.Service
 	observerService    observerService
+	namingService      nameserviceclient.AnyNsClientService
+	dbProvider         datastore.Datastore
+	db                 *badger.DB
 
 	myIdentity          string
 	globalNameUpdatedCh chan string
@@ -58,6 +66,8 @@ func newOwnProfileSubscription(
 	identityRepoClient identityRepoClient,
 	fileAclService fileacl.Service,
 	observerService observerService,
+	namingService nameserviceclient.AnyNsClientService,
+	dbProvider datastore.Datastore,
 	pushIdentityBatchTimeout time.Duration,
 ) *ownProfileSubscription {
 	componentCtx, componentCtxCancel := context.WithCancel(context.Background())
@@ -68,15 +78,22 @@ func newOwnProfileSubscription(
 		identityRepoClient:       identityRepoClient,
 		fileAclService:           fileAclService,
 		observerService:          observerService,
+		namingService:            namingService,
 		globalNameUpdatedCh:      make(chan string),
 		gotDetailsCh:             make(chan struct{}),
 		pushIdentityBatchTimeout: pushIdentityBatchTimeout,
 		componentCtx:             componentCtx,
 		componentCtxCancel:       componentCtxCancel,
+		dbProvider:               dbProvider,
 	}
 }
 
 func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
+	s.db, err = s.dbProvider.LocalStorage()
+	if err != nil {
+		return err
+	}
+
 	s.myIdentity = s.accountService.AccountID()
 
 	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeProfilePage, "")
@@ -116,6 +133,8 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		s.handleOwnProfileDetails(records[0].Details)
 	}
 
+	s.fetchGlobalName()
+
 	go func() {
 		for {
 			select {
@@ -139,10 +158,6 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 func (s *ownProfileSubscription) close() {
 	s.componentCtxCancel()
 	close(s.globalNameUpdatedCh)
-}
-
-func (s *ownProfileSubscription) updateGlobalName(globalName string) {
-	s.globalNameUpdatedCh <- globalName
 }
 
 func (s *ownProfileSubscription) enqueuePush() {
@@ -190,6 +205,23 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 	s.enqueuePush()
 }
 
+func (s *ownProfileSubscription) fetchGlobalName() {
+	response, err := s.namingService.GetNameByAnyId(context.Background(), &nameserviceproto.NameByAnyIdRequest{AnyAddress: s.myIdentity})
+	if err != nil || response == nil {
+		log.Error("error fetching global name of our own identity from Naming Service", zap.Error(err))
+		return
+	}
+	if !response.Found {
+		log.Debug("globalName was not found for our own identity in Naming Service")
+		return
+	}
+	s.handleGlobalNameUpdate(response.Name)
+}
+
+func (s *ownProfileSubscription) updateGlobalName(globalName string) {
+	s.globalNameUpdatedCh <- globalName
+}
+
 func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 	s.detailsLock.Lock()
 	if s.details == nil {
@@ -200,6 +232,11 @@ func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 	s.details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(globalName)
 	identityProfile := s.prepareIdentityProfile()
 	s.detailsLock.Unlock()
+
+	err := badgerhelper.SetValue(s.db, makeGlobalNameKey(s.myIdentity), globalName)
+	if err != nil {
+		log.Error("save global name", zap.String("identity", s.myIdentity), zap.Error(err))
+	}
 
 	s.observerService.broadcastMyIdentityProfile(identityProfile)
 
@@ -247,7 +284,8 @@ func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Conte
 	if err != nil {
 		return fmt.Errorf("failed to push identity: %w", err)
 	}
-	return nil
+
+	return badgerhelper.SetValue(s.db, makeIdentityProfileKey(identityProfile.Identity), data)
 }
 
 func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityProfile, error) {

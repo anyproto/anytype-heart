@@ -85,9 +85,10 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 	return out
 }
 
+// TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
 func (mw *Middleware) MembershipGetPaymentUrl(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) *pb.RpcMembershipGetPaymentUrlResponse {
 	ps := getService[payments.Service](mw)
-	out, err := ps.GetPaymentURL(ctx, req)
+	out, err := ps.RegisterPaymentRequest(ctx, req)
 
 	if err != nil {
 		code := mapErrorCode(err,
@@ -297,6 +298,31 @@ func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembers
 			Error: &pb.RpcMembershipGetTiersResponseError{
 				Code:        code,
 				Description: errStr,
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) *pb.RpcMembershipVerifyAppStoreReceiptResponse {
+	ps := getService[payments.Service](mw)
+	out, err := ps.VerifyAppStoreReceipt(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipVerifyAppStoreReceiptResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipVerifyAppStoreReceiptResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
+			errToCode(payments.ErrCacheProblem, pb.RpcMembershipVerifyAppStoreReceiptResponseError_CACHE_ERROR),
+			errToCode(proto.ErrUnknown, pb.RpcMembershipVerifyAppStoreReceiptResponseError_UNKNOWN_ERROR),
+		)
+
+		return &pb.RpcMembershipVerifyAppStoreReceiptResponse{
+			Error: &pb.RpcMembershipVerifyAppStoreReceiptResponseError{
+				Code:        code,
+				Description: err.Error(),
 			},
 		}
 	}

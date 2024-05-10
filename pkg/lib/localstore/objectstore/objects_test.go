@@ -27,7 +27,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	recs, _, err := s.Query(database.Query{})
+	recs, err := s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -37,7 +37,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	recs, _, err = s.Query(database.Query{})
+	recs, err = s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))

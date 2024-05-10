@@ -88,17 +88,18 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 	}
 
 	err = gr.subscriptionService.Unsubscribe(resp.SubId)
+	// workaround should be reviewed in GO-3332
 	if err != nil {
 		log.Error("unsubscribe", zap.Error(err))
 	}
-	records := resp.Records
 
-	nodes := make([]*types.Struct, 0, len(records))
-	edges := make([]*pb.RpcObjectGraphEdge, 0, len(records)*2)
-
-	existedNodes := fillExistedNodes(records)
-
-	nodes, edges = gr.buildGraph(records, nodes, req, relations, edges, existedNodes)
+	nodes, edges := gr.buildGraph(
+		resp.Records,
+		make([]*types.Struct, 0, len(resp.Records)),
+		req,
+		relations,
+		make([]*pb.RpcObjectGraphEdge, 0, len(resp.Records)*2),
+	)
 	return nodes, edges, nil
 }
 
@@ -112,26 +113,53 @@ func (gr *Builder) buildGraph(
 	req *pb.RpcObjectGraphRequest,
 	relations relationutils.Relations,
 	edges []*pb.RpcObjectGraphEdge,
-	existedNodes map[string]struct{},
 ) ([]*types.Struct, []*pb.RpcObjectGraphEdge) {
+	existedNodes := fillExistedNodes(records)
 	for _, rec := range records {
 		sourceId := pbtypes.GetString(rec, bundle.RelationKeyId.String())
 
 		nodes = append(nodes, pbtypes.Map(rec, req.Keys...))
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
-		for relKey, relValue := range rec.GetFields() {
-			rel := relations.GetByKey(relKey)
-			if !isRelationShouldBeIncludedAsEdge(rel) {
-				continue
-			}
-
-			edges = appendRelations(relValue, existedNodes, rel, edges, sourceId, outgoingRelationLink)
-		}
-
+		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
 		edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
 	}
 	return nodes, edges
+}
+
+func (gr *Builder) appendRelations(
+	rec *types.Struct,
+	relations relationutils.Relations,
+	edges []*pb.RpcObjectGraphEdge,
+	existedNodes map[string]struct{},
+	sourceId string,
+	outgoingRelationLink map[string]struct{},
+) []*pb.RpcObjectGraphEdge {
+	for relKey, relValue := range rec.GetFields() {
+		rel := relations.GetByKey(relKey)
+		if !isRelationShouldBeIncludedAsEdge(rel) {
+			continue
+		}
+		stringValues := pbtypes.GetStringListValue(relValue)
+		if len(stringValues) == 0 || isExcludedRelation(rel) {
+			continue
+		}
+
+		for _, strValue := range stringValues {
+			if _, exists := existedNodes[strValue]; exists {
+				edges = append(edges, &pb.RpcObjectGraphEdge{
+					Source:      sourceId,
+					Target:      strValue,
+					Name:        rel.Name,
+					Type:        pb.RpcObjectGraphEdge_Relation,
+					Description: rel.Description,
+					Hidden:      rel.Hidden,
+				})
+				outgoingRelationLink[strValue] = struct{}{}
+			}
+		}
+	}
+	return edges
 }
 
 func fillExistedNodes(records []*types.Struct) map[string]struct{} {
@@ -141,35 +169,6 @@ func fillExistedNodes(records []*types.Struct) map[string]struct{} {
 		existedNodes[id] = struct{}{}
 	}
 	return existedNodes
-}
-
-func appendRelations(
-	v *types.Value,
-	existedNodes map[string]struct{},
-	rel *relationutils.Relation,
-	edges []*pb.RpcObjectGraphEdge,
-	id string,
-	outgoingRelationLink map[string]struct{},
-) []*pb.RpcObjectGraphEdge {
-	stringValues := pbtypes.GetStringListValue(v)
-	if len(stringValues) == 0 || isExcludedRelation(rel) {
-		return edges
-	}
-
-	for _, strValue := range stringValues {
-		if _, exists := existedNodes[strValue]; exists {
-			edges = append(edges, &pb.RpcObjectGraphEdge{
-				Source:      id,
-				Target:      strValue,
-				Name:        rel.Name,
-				Type:        pb.RpcObjectGraphEdge_Relation,
-				Description: rel.Description,
-				Hidden:      rel.Hidden,
-			})
-			outgoingRelationLink[strValue] = struct{}{}
-		}
-	}
-	return edges
 }
 
 func isExcludedRelation(rel *relationutils.Relation) bool {

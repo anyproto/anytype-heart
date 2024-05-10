@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -138,12 +139,7 @@ func (fx *fixture) assertFileUploadedToRemoteNode(t *testing.T, fileNode ipld.No
 }
 
 func (fx *fixture) givenFileAddedToDAG(t *testing.T) (domain.FileId, ipld.Node) {
-	buf := make([]byte, 1024*1024)
-	_, err := rand.Read(buf)
-	require.NoError(t, err)
-	fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
-	require.NoError(t, err)
-	return domain.FileId(fileNode.Cid().String()), fileNode
+	return fx.givenFileWithSizeAddedToDAG(t, 1024*1024)
 }
 
 func (fx *fixture) givenFileUploaded(t *testing.T, spaceId string, fileId domain.FileId) {
@@ -158,4 +154,116 @@ func (fx *fixture) givenFileUploaded(t *testing.T, spaceId string, fileId domain
 	require.NoError(t, err)
 	require.Len(t, fileInfos, 1)
 	assert.NotZero(t, fileInfos[0].UsageBytes)
+}
+
+func (fx *fixture) givenFileWithSizeAddedToDAG(t *testing.T, size int) (domain.FileId, ipld.Node) {
+	buf := make([]byte, size)
+	_, err := rand.Read(buf)
+	require.NoError(t, err)
+	fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
+	require.NoError(t, err)
+	return domain.FileId(fileNode.Cid().String()), fileNode
+}
+
+func TestUpload(t *testing.T) {
+	t.Run("with file absent on node, upload it", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		spaceId := "space1"
+		fileId, _ := fx.givenFileAddedToDAG(t)
+
+		err := fx.uploadFile(ctx, spaceId, fileId)
+		require.NoError(t, err)
+
+		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
+		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
+	})
+
+	t.Run("with already uploaded file, bind cids", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		spaceId := "space1"
+		fileId, _ := fx.givenFileAddedToDAG(t)
+
+		err := fx.uploadFile(ctx, spaceId, fileId)
+		require.NoError(t, err)
+
+		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
+		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
+
+		err = fx.uploadFile(ctx, spaceId, fileId)
+		require.NoError(t, err)
+
+		assert.True(t, fx.rpcStore.Stats().CidsBinded() == fx.rpcStore.Stats().BlocksAdded())
+	})
+
+	t.Run("with too large file, upload limit is reached", func(t *testing.T) {
+		fx := newFixture(t, 1024)
+		defer fx.Finish(t)
+
+		spaceId := "space1"
+		fileId, _ := fx.givenFileAddedToDAG(t)
+
+		err := fx.uploadFile(ctx, spaceId, fileId)
+		var errLimit *errLimitReached
+		require.ErrorAs(t, err, &errLimit)
+	})
+
+	t.Run("with multiple files are uploading simultaneously, only one will be uploaded, other unbinded", func(t *testing.T) {
+		// Limit is exact size of test file. It doesn't equal to raw data because of DAG overhead
+		fileSize := 10 * 1024 * 1024
+		limit := fileSize*2 - 1 // Place only for one file
+		fx := newFixture(t, limit)
+		defer fx.Finish(t)
+
+		spaceId := "space1"
+
+		var (
+			errorsLock sync.Mutex
+			errors     []error
+			wg         sync.WaitGroup
+			fileIds    []domain.FileId
+		)
+
+		numberOfFiles := 3
+		for i := 0; i < numberOfFiles; i++ {
+			fileId, _ := fx.givenFileWithSizeAddedToDAG(t, fileSize)
+			fileIds = append(fileIds, fileId)
+		}
+
+		for _, fileId := range fileIds {
+			wg.Add(1)
+			go func(fileId domain.FileId) {
+				defer wg.Done()
+
+				err := fx.uploadFile(ctx, spaceId, fileId)
+				if err != nil {
+					errorsLock.Lock()
+					errors = append(errors, err)
+					errorsLock.Unlock()
+				}
+
+			}(fileId)
+		}
+		wg.Wait()
+
+		for _, err := range errors {
+			var errLimit *errLimitReached
+			require.ErrorAs(t, err, &errLimit)
+		}
+
+		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
+		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
+
+		filesInfo, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileIds...)
+		require.NoError(t, err)
+
+		// Check invariants:
+		// Number of deleted files <= number of limit reached errors
+		assert.LessOrEqual(t, int(fx.rpcStore.Stats().FilesDeleted()), len(errors))
+		// Number of uploaded files == number of tried files - number of errors
+		assert.Equal(t, len(filesInfo), numberOfFiles-len(errors))
+	})
 }

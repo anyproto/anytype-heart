@@ -114,7 +114,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	}
 
 	bs := s.app.MustComponent(block.CName).(*block.Service)
-	commonDetails := []*pb.RpcObjectSetDetailsDetail{
+	commonDetails := []*model.Detail{
 		{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(req.Name),
@@ -124,7 +124,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 			Value: pbtypes.Int64(req.Icon),
 		},
 	}
-	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)
+	profileDetails := make([]*model.Detail, 0)
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
@@ -139,7 +139,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 			log.Warnf("can't add avatar: %v", err)
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
-			profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+			profileDetails = append(profileDetails, &model.Detail{
 				Key:   bundle.RelationKeyIconImage.String(),
 				Value: pbtypes.String(hash),
 			})
@@ -153,17 +153,17 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	}
 	accountObjects := spc.DerivedIDs()
 
-	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: accountObjects.Profile,
-		Details:   profileDetails,
-	}); err != nil {
+	if err := bs.SetDetails(nil,
+		accountObjects.Profile,
+		profileDetails,
+	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
 
-	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: accountObjects.Workspace,
-		Details:   commonDetails,
-	}); err != nil {
+	if err := bs.SetDetails(nil,
+		accountObjects.Workspace,
+		commonDetails,
+	); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
 	return nil

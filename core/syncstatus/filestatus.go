@@ -8,8 +8,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -36,7 +36,7 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 		if !ok {
 			return fmt.Errorf("setting of details is not supported for %T", sb)
 		}
-		return detailsSetter.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
+		return detailsSetter.SetDetails(nil, []*model.Detail{
 			{
 				Key:   bundle.RelationKeyFileBackupStatus.String(),
 				Value: pbtypes.Int64(newStatus),
