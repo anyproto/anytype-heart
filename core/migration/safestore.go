@@ -8,18 +8,18 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
-type QueryableStore interface {
+type queryableStore interface {
 	Query(q database.Query) (records []database.Record, err error)
 	Lock()
 }
 
-type safeStore struct {
+type storeWithLock struct {
 	store  objectstore.ObjectStore
 	locked bool
 	m      sync.RWMutex
 }
 
-func (s *safeStore) Query(q database.Query) (records []database.Record, err error) {
+func (s *storeWithLock) Query(q database.Query) (records []database.Record, err error) {
 	s.m.RLock()
 	if s.locked {
 		s.m.RUnlock()
@@ -29,7 +29,7 @@ func (s *safeStore) Query(q database.Query) (records []database.Record, err erro
 	return s.store.Query(q)
 }
 
-func (s *safeStore) Lock() {
+func (s *storeWithLock) Lock() {
 	s.m.Lock()
 	s.locked = true
 	s.m.Unlock()

@@ -20,11 +20,10 @@ func (readonlyRelationsFixer) Name() string {
 	return "ReadonlyRelationsFixer"
 }
 
-func (readonlyRelationsFixer) Run(ctx context.Context, store QueryableStore, space DoableViaContext) (toMigrate, migrated int, err error) {
+func (readonlyRelationsFixer) Run(ctx context.Context, store queryableStore, space doableViaContext) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
-	var relations []database.Record
 
-	relations, err = listReadonlyTagAndStatusRelations(store, spaceId)
+	relations, err := listReadonlyTagAndStatusRelations(store, spaceId)
 	toMigrate = len(relations)
 
 	if err != nil {
@@ -41,11 +40,7 @@ func (readonlyRelationsFixer) Run(ctx context.Context, store QueryableStore, spa
 			uk   = pbtypes.GetString(r.Details, bundle.RelationKeyUniqueKey.String())
 		)
 
-		format, ok := model.RelationFormat_name[int32(pbtypes.GetInt64(r.Details, bundle.RelationKeyRelationFormat.String()))]
-		if !ok {
-			format = "<unknown>"
-		}
-
+		format, _ := model.RelationFormat_name[int32(pbtypes.GetInt64(r.Details, bundle.RelationKeyRelationFormat.String()))]
 		log.Infof("setting relationReadonlyValue to FALSE for relation %s (uniqueKey='%s', format='%s')", name, uk, format)
 
 		det := []*model.Detail{{
@@ -67,7 +62,7 @@ func (readonlyRelationsFixer) Run(ctx context.Context, store QueryableStore, spa
 	return
 }
 
-func listReadonlyTagAndStatusRelations(store QueryableStore, spaceId string) ([]database.Record, error) {
+func listReadonlyTagAndStatusRelations(store queryableStore, spaceId string) ([]database.Record, error) {
 	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),

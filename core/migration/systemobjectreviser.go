@@ -27,7 +27,7 @@ func (systemObjectReviser) Name() string {
 	return "SystemObjectReviser"
 }
 
-func (systemObjectReviser) Run(ctx context.Context, store QueryableStore, space DoableViaContext) (toMigrate, migrated int, err error) {
+func (systemObjectReviser) Run(ctx context.Context, store queryableStore, space doableViaContext) (toMigrate, migrated int, err error) {
 	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
@@ -53,7 +53,7 @@ func (systemObjectReviser) Run(ctx context.Context, store QueryableStore, space 
 	return
 }
 
-func listAllTypesAndRelations(store QueryableStore, spaceId string) (map[string]*types.Struct, error) {
+func listAllTypesAndRelations(store queryableStore, spaceId string) (map[string]*types.Struct, error) {
 	records, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -80,7 +80,7 @@ func listAllTypesAndRelations(store QueryableStore, spaceId string) (map[string]
 	return details, nil
 }
 
-func reviseSystemObject(ctx context.Context, space DoableViaContext, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
+func reviseSystemObject(ctx context.Context, space doableViaContext, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {

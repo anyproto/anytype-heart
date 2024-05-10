@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -19,8 +20,13 @@ const (
 
 var log = logging.Logger(loggerName)
 
+type doableViaContext interface {
+	DoCtx(ctx context.Context, objectId string, apply func(sb smartblock.SmartBlock) error) error
+	Id() string
+}
+
 type Migration interface {
-	Run(context.Context, QueryableStore, DoableViaContext) (toMigrate, migrated int, err error)
+	Run(context.Context, queryableStore, doableViaContext) (toMigrate, migrated int, err error)
 	Name() string
 }
 
@@ -35,16 +41,16 @@ func Run(ctx context.Context, store objectstore.ObjectStore, space clientspace.S
 
 func run(ctx context.Context, store objectstore.ObjectStore, space clientspace.Space, migrations ...Migration) (mErr error) {
 	var (
-		spaceId = space.Id()
-		finish  = make(chan struct{})
-		sstore  = &safeStore{store: store}
+		spaceId       = space.Id()
+		finish        = make(chan struct{})
+		lockableStore = &storeWithLock{store: store}
 	)
 
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
-				sstore.Lock()
+				lockableStore.Lock()
 				return
 			case <-finish:
 				return
@@ -53,7 +59,7 @@ func run(ctx context.Context, store objectstore.ObjectStore, space clientspace.S
 	}()
 
 	for _, m := range migrations {
-		toMigrate, migrated, err := m.Run(ctx, sstore, space)
+		toMigrate, migrated, err := m.Run(ctx, lockableStore, space)
 		if err != nil {
 			fErr := fmt.Errorf(errFormat, m.Name(), spaceId, err, migrated, toMigrate)
 			mErr = multierror.Append(mErr, fErr)
