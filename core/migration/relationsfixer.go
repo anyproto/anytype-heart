@@ -40,7 +40,7 @@ func (readonlyRelationsFixer) Run(ctx context.Context, store queryableStore, spa
 			uk   = pbtypes.GetString(r.Details, bundle.RelationKeyUniqueKey.String())
 		)
 
-		format, _ := model.RelationFormat_name[int32(pbtypes.GetInt64(r.Details, bundle.RelationKeyRelationFormat.String()))]
+		format := model.RelationFormat_name[int32(pbtypes.GetInt64(r.Details, bundle.RelationKeyRelationFormat.String()))]
 		log.Infof("setting relationReadonlyValue to FALSE for relation %s (uniqueKey='%s', format='%s')", name, uk, format)
 
 		det := []*model.Detail{{
