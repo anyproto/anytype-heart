@@ -100,6 +100,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:                    "spaceId",
 						Status:                pb.EventSpace_Syncing,
 						Network:               pb.EventSpace_Anytype,
 						Error:                 pb.EventSpace_Null,
@@ -132,6 +133,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:                    "spaceId",
 						Status:                pb.EventSpace_Syncing,
 						Network:               pb.EventSpace_Anytype,
 						Error:                 pb.EventSpace_Null,
@@ -203,6 +205,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:                    "spaceId",
 						Status:                pb.EventSpace_Error,
 						Network:               pb.EventSpace_Anytype,
 						Error:                 pb.EventSpace_Null,
@@ -235,6 +238,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:                    "spaceId",
 						Status:                pb.EventSpace_Offline,
 						Network:               pb.EventSpace_SelfHost,
 						Error:                 pb.EventSpace_Null,
@@ -267,6 +271,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:                    "spaceId",
 						Status:                pb.EventSpace_Synced,
 						Network:               pb.EventSpace_SelfHost,
 						Error:                 pb.EventSpace_Null,

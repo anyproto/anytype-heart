@@ -146,6 +146,7 @@ func (s *spaceSyncStatus) isSyncFinished(status *syncstatus.SpaceSync) bool {
 
 func (s *spaceSyncStatus) makeSpaceSyncEvent(status *syncstatus.SpaceSync) *pb.EventSpaceSyncStatusUpdate {
 	return &pb.EventSpaceSyncStatusUpdate{
+		Id:                    status.SpaceId,
 		Status:                mapStatus(s.getSpaceSyncStatus(status)),
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
 		Error:                 mapError(status.SyncError),
