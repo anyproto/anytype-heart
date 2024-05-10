@@ -6837,6 +6837,7 @@ message Rpc {
                         NOT_LOGGED_IN = 3;
                         PAYMENT_NODE_ERROR = 4;
                         CACHE_ERROR = 5;
+                        INVALID_RECEIPT = 6;
                     }
                 }
             }
