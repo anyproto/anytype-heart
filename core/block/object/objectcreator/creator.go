@@ -48,7 +48,7 @@ type Service interface {
 
 	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
 
-	RunMigrations(ctx context.Context, space clientspace.Space)
+	RunMigrations(space clientspace.Space)
 	app.ComponentRunnable
 }
 
@@ -65,7 +65,8 @@ type service struct {
 	templateService   TemplateService
 	fileService       files.Service
 
-	cancelMigrations []context.CancelFunc
+	ctxMigration    context.Context
+	cancelMigration context.CancelFunc
 }
 
 func NewCreator() Service {
@@ -80,7 +81,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.templateService = app.MustComponent[TemplateService](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.app = a
-	s.cancelMigrations = make([]context.CancelFunc, 0)
+	s.ctxMigration, s.cancelMigration = context.WithCancel(context.Background())
 	return nil
 }
 
