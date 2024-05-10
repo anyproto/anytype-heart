@@ -103,6 +103,8 @@ message Event {
             Payload.Broadcast payloadBroadcast = 116;
 
             Membership.Update membershipUpdate = 117;
+
+            P2PStatus.Update p2pStatusUpdate = 119;
         }
     }
 
@@ -1059,6 +1061,18 @@ message Event {
     message Payload {
         message Broadcast {
             string payload = 1;
+        }
+    }
+
+    message P2PStatus {
+        message Update {
+            Status status = 1;
+        }
+
+        enum Status {
+            Possible = 0;
+            Connected = 1;
+            NotConnected = 2;
         }
     }
 }
