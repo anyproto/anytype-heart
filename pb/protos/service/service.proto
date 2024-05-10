@@ -320,7 +320,7 @@ service ClientCommands {
     rpc MembershipGetStatus (anytype.Rpc.Membership.GetStatus.Request) returns (anytype.Rpc.Membership.GetStatus.Response);
     rpc MembershipIsNameValid( anytype.Rpc.Membership.IsNameValid.Request) returns (anytype.Rpc.Membership.IsNameValid.Response);
     // Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
-    rpc MembershipGetPaymentUrl (anytype.Rpc.Membership.GetPaymentUrl.Request) returns (anytype.Rpc.Membership.GetPaymentUrl.Response);
+    rpc MembershipRegisterPaymentRequest (anytype.Rpc.Membership.RegisterPaymentRequest.Request) returns (anytype.Rpc.Membership.RegisterPaymentRequest.Response);
     // Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
     // a) change his billing details
     // b) see payment info, invoices, etc

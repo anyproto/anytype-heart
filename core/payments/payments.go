@@ -106,7 +106,7 @@ CACHE LOGICS:
 type Service interface {
 	GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error)
 	IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error)
-	RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error)
+	RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) (*pb.RpcMembershipRegisterPaymentRequestResponse, error)
 	GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error)
 	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
@@ -479,7 +479,7 @@ func (s *service) validateAnyName(tier model.MembershipTierData, name string) pr
 	return proto.IsNameValidResponse_Valid
 }
 
-func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
+func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) (*pb.RpcMembershipRegisterPaymentRequestResponse, error) {
 	// 1 - send request
 	bsr := proto.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -518,11 +518,11 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		return nil, err
 	}
 
-	out := pb.RpcMembershipGetPaymentUrlResponse{
+	out := pb.RpcMembershipRegisterPaymentRequestResponse{
 		PaymentUrl: bsRet.PaymentUrl,
 		BillingId:  bsRet.BillingID,
-		Error: &pb.RpcMembershipGetPaymentUrlResponseError{
-			Code: pb.RpcMembershipGetPaymentUrlResponseError_NULL,
+		Error: &pb.RpcMembershipRegisterPaymentRequestResponseError{
+			Code: pb.RpcMembershipRegisterPaymentRequestResponseError_NULL,
 		},
 	}
 

@@ -6556,7 +6556,7 @@ message Rpc {
         * Generate a link to Stripe where user can pay for the membership (for desktop client)
         * TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
         */
-        message GetPaymentUrl {
+        message RegisterPaymentRequest {
             message Request {
                 uint32 requestedTier = 1;
 
