@@ -1072,10 +1072,11 @@ message Event {
     message Space {
         message SyncStatus {
             message Update {
-                Status status = 1;
-                Network network = 2;
-                SyncError error = 3;
-                int64 syncingObjectsCounter = 4;
+                string id = 1;
+                Status status = 2;
+                Network network = 3;
+                SyncError error = 4;
+                int64 syncingObjectsCounter = 5;
             }
         }
         enum Status {

@@ -25003,6 +25003,7 @@ Removes document from subscription
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 | status | [Event.Space.Status](#anytype-Event-Space-Status) |  |  |
 | network | [Event.Space.Network](#anytype-Event-Space-Network) |  |  |
 | error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
