@@ -16,6 +16,8 @@
     - [Change.Content](#anytype-Change-Content)
     - [Change.DetailsSet](#anytype-Change-DetailsSet)
     - [Change.DetailsUnset](#anytype-Change-DetailsUnset)
+    - [Change.DeviceAdd](#anytype-Change-DeviceAdd)
+    - [Change.DeviceUpdate](#anytype-Change-DeviceUpdate)
     - [Change.FileKeys](#anytype-Change-FileKeys)
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
     - [Change.NotificationCreate](#anytype-Change-NotificationCreate)
@@ -562,6 +564,15 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
+    - [Rpc.Device](#anytype-Rpc-Device)
+    - [Rpc.Device.List](#anytype-Rpc-Device-List)
+    - [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request)
+    - [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response)
+    - [Rpc.Device.List.Response.Error](#anytype-Rpc-Device-List-Response-Error)
+    - [Rpc.Device.SetName](#anytype-Rpc-Device-SetName)
+    - [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request)
+    - [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response)
+    - [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -1249,6 +1260,8 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
+    - [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code)
+    - [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1643,6 +1656,7 @@
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [Detail](#anytype-model-Detail)
+    - [DeviceInfo](#anytype-model-DeviceInfo)
     - [Export](#anytype-model-Export)
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
@@ -2013,6 +2027,8 @@
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
+| DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
+| DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
 
  
 
@@ -2154,6 +2170,8 @@ the element of change tree used to store and internal apply smartBlock history
 | setFileInfo | [Change.SetFileInfo](#anytype-Change-SetFileInfo) |  |  |
 | notificationCreate | [Change.NotificationCreate](#anytype-Change-NotificationCreate) |  |  |
 | notificationUpdate | [Change.NotificationUpdate](#anytype-Change-NotificationUpdate) |  |  |
+| deviceAdd | [Change.DeviceAdd](#anytype-Change-DeviceAdd) |  |  |
+| deviceUpdate | [Change.DeviceUpdate](#anytype-Change-DeviceUpdate) |  |  |
 
 
 
@@ -2185,6 +2203,37 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-DeviceAdd"></a>
+
+### Change.DeviceAdd
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| device | [model.DeviceInfo](#anytype-model-DeviceInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-DeviceUpdate"></a>
+
+### Change.DeviceUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 
 
 
@@ -10133,6 +10182,125 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | treeId | [string](#string) |  |  |
 | headIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device"></a>
+
+### Rpc.Device
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List"></a>
+
+### Rpc.Device.List
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Request"></a>
+
+### Rpc.Device.List.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Response"></a>
+
+### Rpc.Device.List.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Device.List.Response.Error](#anytype-Rpc-Device-List-Response-Error) |  |  |
+| devices | [model.DeviceInfo](#anytype-model-DeviceInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Response-Error"></a>
+
+### Rpc.Device.List.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName"></a>
+
+### Rpc.Device.SetName
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Request"></a>
+
+### Rpc.Device.SetName.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deviceId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response"></a>
+
+### Rpc.Device.SetName.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response-Error"></a>
+
+### Rpc.Device.SetName.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -19957,6 +20125,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Device-List-Response-Error-Code"></a>
+
+### Rpc.Device.List.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response-Error-Code"></a>
+
+### Rpc.Device.SetName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -25983,6 +26177,25 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [google.protobuf.Value](#google-protobuf-Value) |  | NUll - removes key |
+
+
+
+
+
+
+<a name="anytype-model-DeviceInfo"></a>
+
+### DeviceInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| addDate | [int64](#int64) |  |  |
+| archived | [bool](#bool) |  |  |
+| isConnected | [bool](#bool) |  |  |
 
 
 

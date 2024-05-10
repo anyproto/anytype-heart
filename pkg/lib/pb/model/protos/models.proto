@@ -1287,4 +1287,5 @@ message DeviceInfo {
     string name = 2;
     int64 addDate = 3;
     bool archived = 4;
+    bool isConnected = 5;
 }
