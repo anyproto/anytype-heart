@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
-	github.com/PuerkitoBio/goquery v1.9.1
+	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-sync v0.4.8
@@ -24,7 +24,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/dsoprea/go-exif/v3 v3.0.1
 	github.com/dsoprea/go-jpeg-image-structure/v2 v2.0.0-20210512043942-b434301c6836
-	github.com/ethereum/go-ethereum v1.13.12
+	github.com/ethereum/go-ethereum v1.13.15
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-shiori/go-readability v0.0.0-20220215145315-dd6828d2f09b
@@ -79,7 +79,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.39.0
 	github.com/sasha-s/go-deadlock v0.3.1
-	github.com/shirou/gopsutil/v3 v3.24.3
+	github.com/shirou/gopsutil/v3 v3.24.4
 	github.com/stretchr/testify v1.9.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/fastjson v1.6.4
@@ -92,7 +92,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
 	golang.org/x/image v0.15.0
-	golang.org/x/mobile v0.0.0-20231006135142-2b44d11868fe
+	golang.org/x/mobile v0.0.0-20240404231514-09dbf07665ed
 	golang.org/x/net v0.24.0
 	golang.org/x/oauth2 v0.19.0
 	golang.org/x/text v0.14.0
@@ -261,12 +261,12 @@ require (
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
-	golang.org/x/mod v0.16.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.19.0 // indirect
+	golang.org/x/tools v0.20.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect

@@ -14,13 +14,13 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) Query(q database.Query) ([]database.Record, int, error) {
+func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 	filters, err := s.buildQuery(q)
 	if err != nil {
-		return nil, 0, fmt.Errorf("build query: %w", err)
+		return nil, fmt.Errorf("build query: %w", err)
 	}
 	recs, err := s.QueryRaw(filters, q.Limit, q.Offset)
-	return recs, 0, err
+	return recs, err
 }
 
 func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {

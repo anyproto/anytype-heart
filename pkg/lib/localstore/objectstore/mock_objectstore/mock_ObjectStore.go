@@ -2099,7 +2099,7 @@ func (_c *MockObjectStore_Name_Call) RunAndReturn(run func() string) *MockObject
 }
 
 // Query provides a mock function with given fields: q
-func (_m *MockObjectStore) Query(q database.Query) ([]database.Record, int, error) {
+func (_m *MockObjectStore) Query(q database.Query) ([]database.Record, error) {
 	ret := _m.Called(q)
 
 	if len(ret) == 0 {
@@ -2107,9 +2107,8 @@ func (_m *MockObjectStore) Query(q database.Query) ([]database.Record, int, erro
 	}
 
 	var r0 []database.Record
-	var r1 int
-	var r2 error
-	if rf, ok := ret.Get(0).(func(database.Query) ([]database.Record, int, error)); ok {
+	var r1 error
+	if rf, ok := ret.Get(0).(func(database.Query) ([]database.Record, error)); ok {
 		return rf(q)
 	}
 	if rf, ok := ret.Get(0).(func(database.Query) []database.Record); ok {
@@ -2120,19 +2119,13 @@ func (_m *MockObjectStore) Query(q database.Query) ([]database.Record, int, erro
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(database.Query) int); ok {
+	if rf, ok := ret.Get(1).(func(database.Query) error); ok {
 		r1 = rf(q)
 	} else {
-		r1 = ret.Get(1).(int)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(database.Query) error); ok {
-		r2 = rf(q)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockObjectStore_Query_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Query'
@@ -2153,12 +2146,12 @@ func (_c *MockObjectStore_Query_Call) Run(run func(q database.Query)) *MockObjec
 	return _c
 }
 
-func (_c *MockObjectStore_Query_Call) Return(records []database.Record, total int, err error) *MockObjectStore_Query_Call {
-	_c.Call.Return(records, total, err)
+func (_c *MockObjectStore_Query_Call) Return(records []database.Record, err error) *MockObjectStore_Query_Call {
+	_c.Call.Return(records, err)
 	return _c
 }
 
-func (_c *MockObjectStore_Query_Call) RunAndReturn(run func(database.Query) ([]database.Record, int, error)) *MockObjectStore_Query_Call {
+func (_c *MockObjectStore_Query_Call) RunAndReturn(run func(database.Query) ([]database.Record, error)) *MockObjectStore_Query_Call {
 	_c.Call.Return(run)
 	return _c
 }

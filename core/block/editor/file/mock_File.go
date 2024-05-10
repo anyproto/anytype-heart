@@ -197,6 +197,54 @@ func (_c *MockFile_SetFileStyle_Call) RunAndReturn(run func(session.Context, mod
 	return _c
 }
 
+// SetFileTargetObjectId provides a mock function with given fields: ctx, blockId, targetObjectId
+func (_m *MockFile) SetFileTargetObjectId(ctx session.Context, blockId string, targetObjectId string) error {
+	ret := _m.Called(ctx, blockId, targetObjectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetFileTargetObjectId")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, string, string) error); ok {
+		r0 = rf(ctx, blockId, targetObjectId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFile_SetFileTargetObjectId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetFileTargetObjectId'
+type MockFile_SetFileTargetObjectId_Call struct {
+	*mock.Call
+}
+
+// SetFileTargetObjectId is a helper method to define mock.On call
+//   - ctx session.Context
+//   - blockId string
+//   - targetObjectId string
+func (_e *MockFile_Expecter) SetFileTargetObjectId(ctx interface{}, blockId interface{}, targetObjectId interface{}) *MockFile_SetFileTargetObjectId_Call {
+	return &MockFile_SetFileTargetObjectId_Call{Call: _e.mock.On("SetFileTargetObjectId", ctx, blockId, targetObjectId)}
+}
+
+func (_c *MockFile_SetFileTargetObjectId_Call) Run(run func(ctx session.Context, blockId string, targetObjectId string)) *MockFile_SetFileTargetObjectId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockFile_SetFileTargetObjectId_Call) Return(_a0 error) *MockFile_SetFileTargetObjectId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFile_SetFileTargetObjectId_Call) RunAndReturn(run func(session.Context, string, string) error) *MockFile_SetFileTargetObjectId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateFile provides a mock function with given fields: id, groupId, apply
 func (_m *MockFile) UpdateFile(id string, groupId string, apply func(simplefile.Block) error) error {
 	ret := _m.Called(id, groupId, apply)
