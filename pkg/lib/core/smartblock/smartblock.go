@@ -68,11 +68,7 @@ func (sbt SmartBlockType) IsOneOf(sbts ...SmartBlockType) bool {
 // Indexable determines if the object of specific type need to be proceeded by the indexer in order to appear in sets
 func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	switch sbt {
-	case SmartBlockTypeDate, SmartBlockTypeAccountOld:
-		return false, false
-	case SmartBlockTypeArchive:
-		return false, true
-	case SmartBlockTypeHome:
+	case SmartBlockTypeDate, SmartBlockTypeAccountOld, SmartBlockTypeArchive, SmartBlockTypeHome:
 		return false, false
 	case SmartBlockTypeWidget:
 		return true, false

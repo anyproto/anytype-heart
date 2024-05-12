@@ -41,6 +41,9 @@ const (
 
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
 	ForceFilestoreKeysReindexCounter int32 = 2
+
+	// ForceLinksReindexCounter forces to erase links from store and reindex them
+	ForceLinksReindexCounter int32 = 1
 )
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
@@ -64,6 +67,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 				IdxRebuildCounter: ForceIdxRebuildCounter,
 				// per space
 				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+				LinksErase:                       ForceLinksReindexCounter,
 				// global
 				BundledObjects:             ForceBundledObjectsReindexCounter,
 				AreOldFilesRemoved:         true,
@@ -102,6 +106,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if !checksums.AreDeletedObjectsReindexed {
 		flags.deletedObjects = true
+	}
+	if checksums.LinksErase != ForceLinksReindexCounter {
+		flags.eraseLinks = true
 	}
 	return flags, nil
 }
@@ -186,6 +193,19 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
 			}
 		}()
+	}
+
+	if flags.eraseLinks {
+		ids, err := i.getIdsForTypes(space.Id(), smartblock2.SmartBlockTypeHome, smartblock2.SmartBlockTypeArchive)
+		if err != nil {
+			log.Errorf("reindex: failed to get ids (eraseLinks): %v", err)
+		} else {
+			for _, id := range ids {
+				if err = i.store.DeleteLinks(id); err != nil {
+					log.Errorf("reindex: failed to delete links (eraseLinks): %v", err)
+				}
+			}
+		}
 	}
 
 	if flags.deletedObjects {
@@ -393,6 +413,20 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 			}
 		}
 	}
+
+	if flags.eraseLinks && !flags.removeAllIndexedObjects {
+		var ids []string
+		ids, err = i.store.ListIdsBySpace(spaceId)
+		if err != nil {
+			log.Errorf("reindex failed to get all ids(eraseLinks): %v", err)
+		}
+		for _, id := range ids {
+			if err = i.store.DeleteLinks(id); err != nil {
+				log.Errorf("reindex failed to delete links(eraseLinks): %v", err)
+			}
+		}
+	}
+
 	return
 }
 
@@ -478,6 +512,7 @@ func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
 		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 		AreOldFilesRemoved:               true,
 		AreDeletedObjectsReindexed:       true,
+		LinksErase:                       ForceLinksReindexCounter,
 	}
 }
 
