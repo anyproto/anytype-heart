@@ -11,8 +11,6 @@ import (
 
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
-
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var errRemoved = fmt.Errorf("removed from queue")
@@ -51,7 +49,6 @@ const (
 )
 
 type handledWaiter struct {
-	key    string
 	waitCh chan struct{}
 }
 
@@ -178,7 +175,7 @@ func (q *Queue[T]) handleNext() error {
 		q.lock.Lock()
 		// We don't need to check that the item has been removed from queue here, it will be checked on next iteration
 		// So just notify waiters that the item has been processed
-		q.notifyWaiters(it.Key())
+		q.notifyWaiters()
 		q.lock.Unlock()
 		addErr := q.batcher.Add(q.ctx, it)
 		if addErr != nil {
@@ -294,19 +291,15 @@ func (q *Queue[T]) removeAndNotifyWaiters(key string) error {
 	}
 	q.lock.Lock()
 	delete(q.set, key)
-	q.notifyWaiters(key)
+	q.notifyWaiters()
 	q.lock.Unlock()
 
 	return q.storage.Delete(key)
 }
 
-func (q *Queue[T]) notifyWaiters(key string) {
-	idx := slice.Find(q.waiters, func(waiter handledWaiter) bool {
-		return waiter.key == key
-	})
-	if idx >= 0 {
-		close(q.waiters[idx].waitCh)
-		q.waiters = slice.RemoveIndex(q.waiters, idx)
+func (q *Queue[T]) notifyWaiters() {
+	for _, w := range q.waiters {
+		close(w.waitCh)
 	}
 	q.currentProcessingKey = nil
 }
@@ -335,7 +328,6 @@ func (q *Queue[T]) RemoveWait(key string) (chan struct{}, error) {
 	if q.currentProcessingKey != nil && *q.currentProcessingKey == key {
 		// Channel will be closed after handling
 		q.waiters = append(q.waiters, handledWaiter{
-			key:    key,
 			waitCh: waitCh,
 		})
 		q.lock.Unlock()

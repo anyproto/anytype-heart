@@ -53,6 +53,10 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/filestorage/rpcstore:
+    interfaces:
+      Service:
+      RpcStore:
   github.com/anyproto/anytype-heart/core/block/import/common/objectid:
     interfaces:
       IdGetterProvider:

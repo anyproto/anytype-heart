@@ -93,8 +93,8 @@ func New() FileSync {
 
 func (s *fileSync) Init(a *app.App) (err error) {
 	s.dbProvider = app.MustComponent[datastore.Datastore](a)
-	s.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
-	s.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
+	s.rpcStore = app.MustComponent[rpcstore.Service](a).NewStore()
+	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.removePingCh = make(chan struct{})

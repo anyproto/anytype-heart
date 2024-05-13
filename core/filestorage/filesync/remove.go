@@ -119,7 +119,7 @@ func (s *fileSync) removeFromDeletionQueues(item *deletionQueueItem) error {
 }
 
 func (s *fileSync) CancelDeletion(objectId string, fileId domain.FullFileId) error {
-	it := &QueueItem{
+	it := &deletionQueueItem{
 		ObjectId: objectId,
 		SpaceId:  fileId.SpaceId,
 		FileId:   fileId.FileId,
