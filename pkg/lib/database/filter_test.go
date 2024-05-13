@@ -542,3 +542,153 @@ func TestFilterOptionsEqual(t *testing.T) {
 		assertFilter(t, eq, obj, false)
 	})
 }
+
+func TestMakeFilters(t *testing.T) {
+	t.Run("no filters", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+
+		// when
+		filters, err := MakeFilters(nil, mockStore)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, filters, 0)
+	})
+	t.Run("or filter", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_Or,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: "relationKey",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("option2"),
+						Format:      model.RelationFormat_status,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyName.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("Object 1"),
+						Format:      model.RelationFormat_shorttext,
+					},
+				},
+			},
+		}
+
+		// when
+		filters, err := MakeFilters(filter, mockStore)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, filters, 2)
+		assert.NotNil(t, filters.(FiltersOr))
+		assert.NotNil(t, filters.(FiltersOr)[0].(FilterEq))
+		assert.NotNil(t, filters.(FiltersOr)[1].(FilterEq))
+		assert.Equal(t, "relationKey", filters.(FiltersOr)[0].(FilterEq).Key)
+		assert.Equal(t, pbtypes.String("option2"), filters.(FiltersOr)[0].(FilterEq).Value)
+		assert.Equal(t, "name", filters.(FiltersOr)[1].(FilterEq).Key)
+		assert.Equal(t, pbtypes.String("Object 1"), filters.(FiltersOr)[1].(FilterEq).Value)
+	})
+	t.Run("and filter", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_And,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: "relationKey",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("option2"),
+						Format:      model.RelationFormat_status,
+					},
+					{
+						Operator:    model.BlockContentDataviewFilter_No,
+						RelationKey: bundle.RelationKeyName.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String("Object 1"),
+						Format:      model.RelationFormat_shorttext,
+					},
+				},
+			},
+		}
+
+		// when
+		filters, err := MakeFilters(filter, mockStore)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, filters, 2)
+		assert.NotNil(t, filters.(FiltersAnd))
+		assert.NotNil(t, filters.(FiltersAnd)[0].(FilterEq))
+		assert.NotNil(t, filters.(FiltersAnd)[1].(FilterEq))
+		assert.Equal(t, "relationKey", filters.(FiltersAnd)[0].(FilterEq).Key)
+		assert.Equal(t, pbtypes.String("option2"), filters.(FiltersAnd)[0].(FilterEq).Value)
+		assert.Equal(t, "name", filters.(FiltersAnd)[1].(FilterEq).Key)
+		assert.Equal(t, pbtypes.String("Object 1"), filters.(FiltersAnd)[1].(FilterEq).Value)
+	})
+	t.Run("none filter", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: "relationKey",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String("option1"),
+				Format:      model.RelationFormat_status,
+			},
+		}
+
+		// when
+		filters, err := MakeFilters(filter, mockStore)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, filters, 1)
+		assert.NotNil(t, filters.(FiltersAnd))
+		assert.NotNil(t, filters.(FiltersAnd)[0].(FilterEq))
+		assert.Equal(t, "relationKey", filters.(FiltersAnd)[0].(FilterEq).Key)
+		assert.Equal(t, pbtypes.String("option1"), filters.(FiltersAnd)[0].(FilterEq).Value)
+	})
+	t.Run("combined filter", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_And,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						Operator: model.BlockContentDataviewFilter_No,
+						NestedFilters: []*model.BlockContentDataviewFilter{
+							{
+								Operator:    model.BlockContentDataviewFilter_No,
+								RelationKey: "relationKey",
+								Condition:   model.BlockContentDataviewFilter_Equal,
+								Value:       pbtypes.String("option1"),
+								Format:      model.RelationFormat_status,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		filters, err := MakeFilters(filter, mockStore)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, filters, 1)
+		assert.NotNil(t, filters.(FiltersAnd))
+		assert.NotNil(t, filters.(FiltersAnd)[0].(FilterEq))
+		assert.Equal(t, "relationKey", filters.(FiltersAnd)[0].(FilterEq).Key)
+		assert.Equal(t, pbtypes.String("option1"), filters.(FiltersAnd)[0].(FilterEq).Value)
+	})
+}
