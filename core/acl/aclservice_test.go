@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
@@ -41,6 +42,22 @@ import (
 
 var ctx = context.Background()
 
+type mockConfig struct {
+	Config nodeconf.Configuration
+}
+
+func (c *mockConfig) Name() string {
+	return ""
+}
+
+func (c *mockConfig) Init(*app.App) (err error) {
+	return nil
+}
+
+func (c *mockConfig) GetNodeConf() (conf nodeconf.Configuration) {
+	return c.Config
+}
+
 type fixture struct {
 	*aclService
 	a                     *app.App
@@ -56,6 +73,7 @@ type fixture struct {
 	mockCommonSpace       *mock_commonspace.MockSpace
 	mockSpaceClient       *mock_aclclient.MockAclSpaceClient
 	mockAcl               *mock_list.MockAclList
+	mockConfig            *mockConfig
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -75,12 +93,14 @@ func newFixture(t *testing.T) *fixture {
 		mockCommonSpace:       mock_commonspace.NewMockSpace(ctrl),
 		mockSpaceClient:       mock_aclclient.NewMockAclSpaceClient(ctrl),
 		mockAcl:               mock_list.NewMockAclList(ctrl),
+		mockConfig:            &mockConfig{},
 	}
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockJoiningClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockSpaceService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCoordinatorClient)).
+		Register(fx.mockConfig).
 		Register(fx.aclService)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -374,7 +394,7 @@ func TestService_Join(t *testing.T) {
 		fx.mockSpaceService.EXPECT().Join(ctx, "spaceId", "aclHeadId").Return(nil)
 		fx.mockSpaceService.EXPECT().TechSpace().Return(&clientspace.TechSpace{TechSpace: fx.mockTechSpace})
 		fx.mockTechSpace.EXPECT().SpaceViewSetData(ctx, "spaceId", mock.Anything).Return(nil)
-		err = fx.Join(ctx, "spaceId", realCid, key)
+		err = fx.Join(ctx, "spaceId", "", realCid, key)
 		require.NoError(t, err)
 	})
 	t.Run("join fail, space is deleted", func(t *testing.T) {
@@ -399,7 +419,7 @@ func TestService_Join(t *testing.T) {
 			InviteKey: inviteKey,
 			Metadata:  metadataPayload,
 		}).Return("", coordinatorproto.ErrSpaceIsDeleted)
-		err = fx.Join(ctx, "spaceId", realCid, key)
+		err = fx.Join(ctx, "spaceId", "", realCid, key)
 		require.Equal(t, space.ErrSpaceDeleted, err)
 	})
 	t.Run("join success, already member", func(t *testing.T) {
@@ -426,8 +446,20 @@ func TestService_Join(t *testing.T) {
 		}).Return("", list.ErrInsufficientPermissions)
 		fx.mockJoiningClient.EXPECT().CancelRemoveSelf(ctx, "spaceId").Return(nil)
 		fx.mockSpaceService.EXPECT().CancelLeave(ctx, "spaceId").Return(nil)
-		err = fx.Join(ctx, "spaceId", realCid, key)
+		err = fx.Join(ctx, "spaceId", "", realCid, key)
 		require.NoError(t, err)
+	})
+	t.Run("join fail, different network", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.mockConfig.Config = nodeconf.Configuration{NetworkId: "net1"}
+
+		// when
+		err := fx.Join(ctx, "spaceId", "net2", cid.Cid{}, nil)
+
+		// then
+		require.True(t, errors.Is(err, ErrDifferentNetwork))
 	})
 }
 
