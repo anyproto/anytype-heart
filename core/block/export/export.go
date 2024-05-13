@@ -665,7 +665,6 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypePage ||
 		sbType == smartblock.SmartBlockTypeSubObject ||
 		sbType == smartblock.SmartBlockTypeTemplate ||
-		sbType == smartblock.SmartBlockTypeDate ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
 		sbType == smartblock.SmartBlockTypeWidget ||
 		sbType == smartblock.SmartBlockTypeObjectType ||
