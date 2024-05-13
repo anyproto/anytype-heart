@@ -4041,6 +4041,7 @@ message Rpc {
                 string contextId = 1;
                 repeated string blockIds = 2;
                 string objectTypeUniqueKey = 3;
+                string templateId = 4;
             }
 
             message Response {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -22,9 +21,18 @@ type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
+type TemplateStateCreator interface {
+	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
+}
+
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
-func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+func (bs *basic) ExtractBlocksToObjects(
+	ctx session.Context,
+	objectCreator ObjectCreator,
+	templateStateCreator TemplateStateCreator,
+	req pb.RpcBlockListConvertToObjectsRequest,
+) (linkIds []string, err error) {
 	typeUniqueKey, err := domain.UnmarshalUniqueKey(req.ObjectTypeUniqueKey)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal unique key: %w", err)
@@ -37,14 +45,12 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 	for _, rootID := range rootIds {
 		rootBlock := newState.Pick(rootID)
 
-		objState := prepareTargetObjectState(newState, rootID, rootBlock, req)
-
-		details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), req, typeUniqueKey, rootBlock, objectCreator)
+		objState, err := bs.prepareObjectState(typeUniqueKey, rootBlock, templateStateCreator, req)
 		if err != nil {
-			return nil, fmt.Errorf("extract blocks to objects: %w", err)
+			return nil, err
 		}
 
-		objState.SetDetails(details)
+		insertBlocksToState(newState, rootBlock, objState)
 
 		objectID, _, err := objectCreator.CreateSmartBlockFromState(
 			context.Background(),
@@ -67,12 +73,20 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 	return linkIds, bs.Apply(newState)
 }
 
+func (bs *basic) prepareObjectState(
+	uk domain.UniqueKey, root simple.Block, creator TemplateStateCreator, req pb.RpcBlockListConvertToObjectsRequest,
+) (*state.State, error) {
+	details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), uk, root)
+	if err != nil {
+		return nil, fmt.Errorf("prepare target details: %w", err)
+	}
+	return creator.CreateTemplateStateWithDetails(req.TemplateId, details)
+}
+
 func (bs *basic) prepareTargetObjectDetails(
 	spaceID string,
-	req pb.RpcBlockListConvertToObjectsRequest,
 	typeUniqueKey domain.UniqueKey,
 	rootBlock simple.Block,
-	objectCreator ObjectCreator,
 ) (*types.Struct, error) {
 	objType, err := bs.objectStore.GetObjectByUniqueKey(spaceID, typeUniqueKey)
 	if err != nil {
@@ -83,15 +97,24 @@ func (bs *basic) prepareTargetObjectDetails(
 	return details, nil
 }
 
-func prepareTargetObjectState(newState *state.State, rootID string, rootBlock simple.Block, req pb.RpcBlockListConvertToObjectsRequest) *state.State {
+func insertBlocksToState(
+	newState *state.State,
+	rootBlock simple.Block,
+	objState *state.State,
+) {
+	rootID := rootBlock.Model().Id
 	descendants := newState.Descendants(rootID)
 	newRoot, newBlocks := reassignSubtreeIds(rootID, append(descendants, rootBlock))
+
+	// remove descendant blocks from source object
 	removeBlocks(newState, descendants)
 
-	objState := buildStateFromBlocks(newBlocks)
-	fixStateForNoteLayout(objState, req, newRoot)
-	injectSmartBlockContentToRootBlock(objState)
-	return objState
+	for _, b := range newBlocks {
+		objState.Add(b)
+	}
+	rootB := objState.Pick(objState.RootId()).Model()
+	rootB.ChildrenIds = append(rootB.ChildrenIds, newRoot)
+	objState.Set(simple.New(rootB))
 }
 
 func (bs *basic) changeToBlockWithLink(newState *state.State, blockToChange simple.Block, objectID string) (string, error) {
@@ -107,38 +130,6 @@ func (bs *basic) changeToBlockWithLink(newState *state.State, blockToChange simp
 		},
 		Position: model.Block_Replace,
 	})
-}
-
-func injectSmartBlockContentToRootBlock(objState *state.State) {
-	rootID := objState.RootId()
-	rootBlock := objState.Get(rootID).Model()
-	rootBlock.Content = &model.BlockContentOfSmartblock{
-		Smartblock: &model.BlockContentSmartblock{},
-	}
-	objState.Set(simple.New(rootBlock))
-}
-
-func fixStateForNoteLayout(
-	objState *state.State,
-	req pb.RpcBlockListConvertToObjectsRequest,
-	newRoot string,
-) {
-	// todo: add check or remove this. It supposed to be run only for note
-	{
-		objState.Add(base.NewBase(&model.Block{
-			// This id will be replaced by id of the new object
-			Id:          "_root",
-			ChildrenIds: []string{newRoot},
-		}))
-	}
-}
-
-func buildStateFromBlocks(newBlocks []simple.Block) *state.State {
-	objState := state.NewDoc("", nil).NewState()
-	for _, b := range newBlocks {
-		objState.Add(b)
-	}
-	return objState
 }
 
 func removeBlocks(state *state.State, descendants []simple.Block) {

@@ -182,6 +182,11 @@ func (s *State) setChildrenIds(parent *model.Block, childrenIds []string) {
 	s.addCacheIds(parent, childrenIds...)
 }
 
+func (s *State) removeChildren(parent *model.Block, childrenId string) {
+	parent.ChildrenIds = slice.RemoveMut(parent.ChildrenIds, childrenId)
+	s.removeFromCache(childrenId)
+}
+
 func (s *State) addCacheIds(parent *model.Block, childrenIds ...string) {
 	if s.isParentIdsCacheEnabled {
 		cache := s.getParentIdsCache()
