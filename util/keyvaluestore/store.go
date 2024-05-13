@@ -10,6 +10,7 @@ import (
 
 var ErrNotFound = fmt.Errorf("not found")
 
+// Store is a simple generic key-value store backed by Badger
 type Store[T any] interface {
 	Get(key string) (T, error)
 	Set(key string, value T) error
