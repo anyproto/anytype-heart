@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -20,13 +21,17 @@ const (
 
 var log = logging.Logger(loggerName)
 
-type doableViaContext interface {
+type spaceWithCtx interface {
 	DoCtx(ctx context.Context, objectId string, apply func(sb smartblock.SmartBlock) error) error
 	Id() string
 }
 
+type storeWithCtx interface {
+	QueryWithContext(ctx context.Context, q database.Query) (records []database.Record, err error)
+}
+
 type Migration interface {
-	Run(context.Context, queryableStore, doableViaContext) (toMigrate, migrated int, err error)
+	Run(context.Context, storeWithCtx, spaceWithCtx) (toMigrate, migrated int, err error)
 	Name() string
 }
 
@@ -40,26 +45,10 @@ func Run(ctx context.Context, store objectstore.ObjectStore, space clientspace.S
 }
 
 func run(ctx context.Context, store objectstore.ObjectStore, space clientspace.Space, migrations ...Migration) (mErr error) {
-	var (
-		spaceId       = space.Id()
-		finish        = make(chan struct{})
-		lockableStore = &storeWithLock{store: store}
-	)
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				lockableStore.Lock()
-				return
-			case <-finish:
-				return
-			}
-		}
-	}()
+	spaceId := space.Id()
 
 	for _, m := range migrations {
-		toMigrate, migrated, err := m.Run(ctx, lockableStore, space)
+		toMigrate, migrated, err := m.Run(ctx, store, space)
 		if err != nil {
 			fErr := fmt.Errorf(errFormat, m.Name(), spaceId, err, migrated, toMigrate)
 			mErr = multierror.Append(mErr, fErr)
@@ -72,6 +61,5 @@ func run(ctx context.Context, store objectstore.ObjectStore, space clientspace.S
 		log.Debugf("migration '%s' in space '%s' is successful. %d out of %d objects were migrated",
 			m.Name(), spaceId, migrated, toMigrate)
 	}
-	finish <- struct{}{}
 	return
 }

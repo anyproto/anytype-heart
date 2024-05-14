@@ -31,7 +31,6 @@ func New() SpaceBuilder {
 type spaceBuilder struct {
 	indexer         dependencies2.SpaceIndexer
 	installer       dependencies2.BundledObjectsInstaller
-	migrationRunner dependencies2.SpaceMigrationRunner
 	spaceCore       spacecore.SpaceCoreService
 	techSpace       techspace.TechSpace
 	accountService  accountservice.Service
@@ -49,7 +48,6 @@ func (b *spaceBuilder) Init(a *app.App) (err error) {
 	b.status = app.MustComponent[spacestatus.SpaceStatus](a)
 	b.indexer = app.MustComponent[dependencies2.SpaceIndexer](a)
 	b.installer = app.MustComponent[dependencies2.BundledObjectsInstaller](a)
-	b.migrationRunner = app.MustComponent[dependencies2.SpaceMigrationRunner](a)
 	b.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	b.techSpace = app.MustComponent[techspace.TechSpace](a)
 	b.accountService = app.MustComponent[accountservice.Service](a)
@@ -93,7 +91,6 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 	deps := clientspace.SpaceDeps{
 		Indexer:         b.indexer,
 		Installer:       b.installer,
-		MigrationRunner: b.migrationRunner,
 		CommonSpace:     coreSpace,
 		ObjectFactory:   b.objectFactory,
 		AccountService:  b.accountService,

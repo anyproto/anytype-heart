@@ -127,9 +127,9 @@ func (longStoreMigration) Name() string {
 	return "long migration"
 }
 
-func (longStoreMigration) Run(_ context.Context, store queryableStore, _ doableViaContext) (toMigrate, migrated int, err error) {
+func (longStoreMigration) Run(ctx context.Context, store storeWithCtx, _ spaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
-		if _, err = store.Query(database.Query{}); err != nil {
+		if _, err = store.QueryWithContext(ctx, database.Query{}); err != nil {
 			return 0, 0, err
 		}
 	}
@@ -141,7 +141,7 @@ func (longSpaceMigration) Name() string {
 	return "long migration"
 }
 
-func (longSpaceMigration) Run(ctx context.Context, _ queryableStore, space doableViaContext) (toMigrate, migrated int, err error) {
+func (longSpaceMigration) Run(ctx context.Context, _ storeWithCtx, space spaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
 		if err = space.DoCtx(ctx, "", func(smartblock.SmartBlock) error {
 			// do smth
@@ -158,6 +158,6 @@ func (instantMigration) Name() string {
 	return "instant migration"
 }
 
-func (instantMigration) Run(_ context.Context, _ queryableStore, _ doableViaContext) (toMigrate, migrated int, err error) {
+func (instantMigration) Run(_ context.Context, _ storeWithCtx, _ spaceWithCtx) (toMigrate, migrated int, err error) {
 	return 0, 0, nil
 }

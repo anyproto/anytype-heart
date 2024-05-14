@@ -20,10 +20,10 @@ func (readonlyRelationsFixer) Name() string {
 	return "ReadonlyRelationsFixer"
 }
 
-func (readonlyRelationsFixer) Run(ctx context.Context, store queryableStore, space doableViaContext) (toMigrate, migrated int, err error) {
+func (readonlyRelationsFixer) Run(ctx context.Context, store storeWithCtx, space spaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
 
-	relations, err := listReadonlyTagAndStatusRelations(store, spaceId)
+	relations, err := listReadonlyTagAndStatusRelations(ctx, store, spaceId)
 	toMigrate = len(relations)
 
 	if err != nil {
@@ -62,8 +62,8 @@ func (readonlyRelationsFixer) Run(ctx context.Context, store queryableStore, spa
 	return
 }
 
-func listReadonlyTagAndStatusRelations(store queryableStore, spaceId string) ([]database.Record, error) {
-	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
+func listReadonlyTagAndStatusRelations(ctx context.Context, store storeWithCtx, spaceId string) ([]database.Record, error) {
+	return store.QueryWithContext(ctx, database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),
 			Condition:   model.BlockContentDataviewFilter_In,

@@ -113,6 +113,7 @@ type ObjectStore interface {
 	SubscribeForAll(callback func(rec database.Record))
 
 	Query(q database.Query) (records []database.Record, err error)
+	QueryWithContext(ctx context.Context, q database.Query) (records []database.Record, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)

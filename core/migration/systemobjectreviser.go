@@ -27,13 +27,13 @@ func (systemObjectReviser) Name() string {
 	return "SystemObjectReviser"
 }
 
-func (systemObjectReviser) Run(ctx context.Context, store queryableStore, space doableViaContext) (toMigrate, migrated int, err error) {
-	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
+func (systemObjectReviser) Run(ctx context.Context, store storeWithCtx, space spaceWithCtx) (toMigrate, migrated int, err error) {
+	spaceObjects, err := listAllTypesAndRelations(ctx, store, space.Id())
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
 	}
 
-	marketObjects, err := listAllTypesAndRelations(store, addr.AnytypeMarketplaceWorkspace)
+	marketObjects, err := listAllTypesAndRelations(ctx, store, addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
 	}
@@ -53,8 +53,8 @@ func (systemObjectReviser) Run(ctx context.Context, store queryableStore, space 
 	return
 }
 
-func listAllTypesAndRelations(store queryableStore, spaceId string) (map[string]*types.Struct, error) {
-	records, err := store.Query(database.Query{
+func listAllTypesAndRelations(ctx context.Context, store storeWithCtx, spaceId string) (map[string]*types.Struct, error) {
+	records, err := store.QueryWithContext(ctx, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -80,7 +80,7 @@ func listAllTypesAndRelations(store queryableStore, spaceId string) (map[string]
 	return details, nil
 }
 
-func reviseSystemObject(ctx context.Context, space doableViaContext, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
+func reviseSystemObject(ctx context.Context, space spaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
