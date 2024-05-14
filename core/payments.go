@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/net"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
-	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/payments"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -62,6 +61,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipIsNameValidResponseError_NOT_LOGGED_IN),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipIsNameValidResponseError_CACHE_ERROR),
+			errToCode(payments.ErrNameIsAlreadyReserved, pb.RpcMembershipIsNameValidResponseError_NAME_IS_RESERVED),
 
 			errToCode(payments.ErrNoTiers, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
 			errToCode(payments.ErrNoTierFound, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
@@ -79,61 +79,6 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 			Error: &pb.RpcMembershipIsNameValidResponseError{
 				Code:        code,
 				Description: errStr,
-			},
-		}
-	}
-
-	// out.Error will contain validation error if something is wrong with the name
-	if out.Error != nil && out.Error.Code != pb.RpcMembershipIsNameValidResponseError_NULL {
-		return out
-	}
-
-	// special backward compatibility logic for some clients
-	// if name is empty -> return "it's OK"
-	// because if you don't pass a name to MembershipIsNameValid() - means you don't want to reserve or change it
-	// so ps.IsNameValid() returned no error for empty string
-	//
-	// and we should preserve that behavior also here
-	if req.NsName == "" {
-		return &pb.RpcMembershipIsNameValidResponse{
-			Error: &pb.RpcMembershipIsNameValidResponseError{
-				Code:        pb.RpcMembershipIsNameValidResponseError_NULL,
-				Description: "",
-			},
-		}
-	}
-
-	// 2 - check in the NameService if name is vacant (remote call #2)
-	ns := getService[nameservice.Service](mw)
-	nsreq := pb.RpcNameServiceResolveNameRequest{
-		NsName:     req.NsName,
-		NsNameType: req.NsNameType,
-	}
-	nsout, err := ns.NameServiceResolveName(ctx, &nsreq)
-	if err != nil {
-		code := mapErrorCode(err,
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT),
-		)
-
-		// if client doesn't handle that error - let it show unlocalized string at least
-		errStr := err.Error()
-		if code == pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT {
-			errStr = "please connect to the internet"
-		}
-
-		return &pb.RpcMembershipIsNameValidResponse{
-			Error: &pb.RpcMembershipIsNameValidResponseError{
-				Code:        code,
-				Description: errStr,
-			},
-		}
-	}
-
-	if !nsout.Available {
-		return &pb.RpcMembershipIsNameValidResponse{
-			Error: &pb.RpcMembershipIsNameValidResponseError{
-				Code:        pb.RpcMembershipIsNameValidResponseError_NAME_IS_RESERVED,
-				Description: "Name is already reserved",
 			},
 		}
 	}
