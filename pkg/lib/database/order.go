@@ -96,10 +96,7 @@ func (ko *KeyOrder) tryAdjustEmptyPositions(av *types.Value, bv *types.Value, co
 		return comp
 	}
 
-	if ko.Type == model.BlockContentDataviewSort_Desc && ko.EmptyPlacement == model.BlockContentDataviewSort_End ||
-		ko.Type == model.BlockContentDataviewSort_Asc && ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
-		comp = -comp
-	}
+	comp = ko.tryFlipComp(comp)
 	return comp
 }
 
@@ -117,6 +114,15 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 	if aString && bString && comp == 0 {
 		ko.ensureComparator()
 		comp = ko.comparator.CompareString(av.GetStringValue(), bv.GetStringValue())
+	}
+	comp = ko.tryFlipComp(comp)
+	return comp
+}
+
+func (ko *KeyOrder) tryFlipComp(comp int) int {
+	if ko.Type == model.BlockContentDataviewSort_Desc && ko.EmptyPlacement == model.BlockContentDataviewSort_End ||
+		ko.Type == model.BlockContentDataviewSort_Asc && ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+		comp = -comp
 	}
 	return comp
 }
