@@ -413,8 +413,6 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	}
 
 	// 2 - convert code to error
-	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
-
 	switch code {
 	case proto.IsNameValidResponse_NoDotAny:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_BAD_INPUT
