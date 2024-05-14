@@ -245,7 +245,7 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 }
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), NodeStatus: syncstatus.NewNodeStatus(id)})
+	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), SyncStatus: syncstatus.NewSyncStatusService()})
 	if err != nil {
 		return
 	}

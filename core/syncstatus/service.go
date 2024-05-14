@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/dgraph-io/badger/v4"
 
@@ -27,6 +29,10 @@ var log = logging.Logger("anytype-mw-status")
 const CName = "status"
 
 type Service interface {
+	Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error)
+	Unwatch(spaceID string, id string)
+	RegisterSpace(space commonspace.Space)
+
 	app.ComponentRunnable
 }
 
@@ -40,6 +46,7 @@ type service struct {
 	fileWatcherUpdateInterval time.Duration
 
 	objectWatchersLock sync.Mutex
+	objectWatchers     map[string]StatusWatcher
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
@@ -51,6 +58,7 @@ type service struct {
 func New(fileWatcherUpdateInterval time.Duration) Service {
 	return &service{
 		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
+		objectWatchers:            map[string]StatusWatcher{},
 	}
 }
 
@@ -94,6 +102,54 @@ func (s *service) Run(ctx context.Context) (err error) {
 
 func (s *service) Name() string {
 	return CName
+}
+
+func (s *service) RegisterSpace(space commonspace.Space) {
+	s.objectWatchersLock.Lock()
+	defer s.objectWatchersLock.Unlock()
+
+	watcher := space.SyncStatus().(syncstatus.StatusUpdater)
+	watcher.SetUpdateReceiver(s.updateReceiver)
+	s.objectWatchers[space.Id()] = watcher
+}
+
+func (s *service) UnregisterSpace(space commonspace.Space) {
+	s.objectWatchersLock.Lock()
+	defer s.objectWatchersLock.Unlock()
+
+	// TODO: [MR] now we can't set a nil update receiver, but maybe it doesn't matter that much
+	//  and we can just leave as it is, because no events will come through
+	delete(s.objectWatchers, space.Id())
+}
+
+func (s *service) Unwatch(spaceID string, id string) {
+	s.unwatch(spaceID, id)
+}
+
+func (s *service) Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error) {
+	s.updateReceiver.ClearLastObjectStatus(id)
+
+	s.objectWatchersLock.Lock()
+	defer s.objectWatchersLock.Unlock()
+	objectWatcher := s.objectWatchers[spaceId]
+	if objectWatcher != nil {
+		if err = objectWatcher.Watch(id); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+
+}
+
+func (s *service) unwatch(spaceID string, id string) {
+	s.updateReceiver.ClearLastObjectStatus(id)
+
+	s.objectWatchersLock.Lock()
+	defer s.objectWatchersLock.Unlock()
+	objectWatcher := s.objectWatchers[spaceID]
+	if objectWatcher != nil {
+		objectWatcher.Unwatch(id)
+	}
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
