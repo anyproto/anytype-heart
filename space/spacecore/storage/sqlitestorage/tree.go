@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 )
 
 func newTreeStorage(ss *spaceStorage, treeId string) (treestorage.TreeStorage, error) {
@@ -173,8 +172,7 @@ func (t *treeStorage) Delete() error {
 		return err
 	}
 
-	status := spacestorage.TreeDeletedStatusDeleted
-	if _, err := tx.Stmt(t.service.stmt.deleteTree).Exec(t.treeId, status, status); err != nil {
+	if _, err := tx.Stmt(t.service.stmt.deleteTree).Exec(t.treeId); err != nil {
 		_ = tx.Rollback()
 		return err
 	}

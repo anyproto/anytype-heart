@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -124,19 +123,31 @@ func TestTreeStorage_Delete(t *testing.T) {
 		_, err = ss.TreeStorage(payload.RootRawChange.Id)
 		require.ErrorIs(t, err, treestorage.ErrUnknownTreeId)
 
-		var heads sql.NullString
-		err := fx.readDb.QueryRow("SELECT heads FROM trees WHERE id = ?", payload.RootRawChange.Id).Scan(&heads)
-		require.NoError(t, err)
-		assert.False(t, heads.Valid)
-		assert.Empty(t, heads.String)
+		t.Run("heads should be nulled", func(t *testing.T) {
+			var heads sql.NullString
+			err := fx.readDb.QueryRow("SELECT heads FROM trees WHERE id = ?", payload.RootRawChange.Id).Scan(&heads)
+			require.NoError(t, err)
+			assert.False(t, heads.Valid)
+			assert.Empty(t, heads.String)
+		})
 
-		status, err := ss.TreeDeletedStatus(payload.RootRawChange.Id)
-		require.NoError(t, err)
-		assert.Equal(t, spacestorage.TreeDeletedStatusDeleted, status)
+		t.Run("tree is deleted: has tree should return false", func(t *testing.T) {
+			ok, err := ss.HasTree(payload.RootRawChange.Id)
+			require.NoError(t, err)
+			assert.False(t, ok)
+		})
 
-		ok, err := ss.HasTree(payload.RootRawChange.Id)
-		require.NoError(t, err)
-		assert.False(t, ok)
+		t.Run("tree deleted status updates independently, so should not be changed", func(t *testing.T) {
+			status, err := ss.TreeDeletedStatus(payload.RootRawChange.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", status)
+		})
+
+		t.Run("stored ids still contains deleted tree id", func(t *testing.T) {
+			ids, err := ss.StoredIds()
+			require.NoError(t, err)
+			assert.Contains(t, ids, payload.RootRawChange.Id)
+		})
 	})
 }
 
