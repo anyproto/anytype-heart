@@ -369,7 +369,7 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 
 	if resp.Code == proto.IsNameValidResponse_Valid {
 		// no error, now check if vacant in NS
-		return s.checkInNS(ctx, req)
+		return s.checkIfNameAvailInNS(ctx, req)
 	}
 
 	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
@@ -378,7 +378,7 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 
 	if code == proto.IsNameValidResponse_Valid {
 		// no error, now check if vacant in NS
-		return s.checkInNS(ctx, req)
+		return s.checkIfNameAvailInNS(ctx, req)
 	}
 
 	// 2 - convert code to error
@@ -410,7 +410,7 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	return &out, nil
 }
 
-func (s *service) checkInNS(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
+func (s *service) checkIfNameAvailInNS(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
 	// special backward compatibility logic for some clients
 	// if name is empty -> return "it's OK"
 	// because if you don't pass a name to MembershipIsNameValid() - means you don't want to reserve or change it
