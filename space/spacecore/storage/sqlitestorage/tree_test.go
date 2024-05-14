@@ -2,11 +2,14 @@ package sqlitestorage
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -119,7 +122,21 @@ func TestTreeStorage_Delete(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = ss.TreeStorage(payload.RootRawChange.Id)
-		require.Equal(t, err, treestorage.ErrUnknownTreeId)
+		require.ErrorIs(t, err, treestorage.ErrUnknownTreeId)
+
+		var heads sql.NullString
+		err := fx.readDb.QueryRow("SELECT heads FROM trees WHERE id = ?", payload.RootRawChange.Id).Scan(&heads)
+		require.NoError(t, err)
+		assert.False(t, heads.Valid)
+		assert.Empty(t, heads.String)
+
+		status, err := ss.TreeDeletedStatus(payload.RootRawChange.Id)
+		require.NoError(t, err)
+		assert.Equal(t, spacestorage.TreeDeletedStatusDeleted, status)
+
+		ok, err := ss.HasTree(payload.RootRawChange.Id)
+		require.NoError(t, err)
+		assert.False(t, ok)
 	})
 }
 
