@@ -95,26 +95,28 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 }
 
 func TestSpaceStorage_SetTreeDeletedStatus(t *testing.T) {
-	fx := newFixture(t)
-	defer fx.finish(t)
+	t.Run("set status with absent tree row", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
 
-	payload := spaceTestPayload()
-	store, err := createSpaceStorage(fx.storageService, payload)
-	require.NoError(t, err)
+		payload := spaceTestPayload()
+		store, err := createSpaceStorage(fx.storageService, payload)
+		require.NoError(t, err)
 
-	err = store.SetTreeDeletedStatus("treeId", spacestorage.TreeDeletedStatusDeleted)
-	require.NoError(t, err)
+		err = store.SetTreeDeletedStatus("treeId", spacestorage.TreeDeletedStatusDeleted)
+		require.NoError(t, err)
 
-	status, err := store.TreeDeletedStatus("treeId")
-	require.NoError(t, err)
-	require.Equal(t, spacestorage.TreeDeletedStatusDeleted, status)
+		status, err := store.TreeDeletedStatus("treeId")
+		require.NoError(t, err)
+		require.Equal(t, spacestorage.TreeDeletedStatusDeleted, status)
 
-	_, err = store.TreeStorage("treeId")
-	require.ErrorIs(t, err, treestorage.ErrUnknownTreeId)
+		_, err = store.TreeStorage("treeId")
+		require.ErrorIs(t, err, treestorage.ErrUnknownTreeId)
 
-	ok, err := store.HasTree("treeId")
-	require.NoError(t, err)
-	assert.False(t, ok)
+		ok, err := store.HasTree("treeId")
+		require.NoError(t, err)
+		assert.False(t, ok)
+	})
 }
 
 func TestSpaceStorage_IsSpaceDeleted(t *testing.T) {
