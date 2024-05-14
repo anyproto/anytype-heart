@@ -32,7 +32,6 @@ type service struct {
 	fileSyncService filesync.FileSync
 
 	objectWatchersLock sync.Mutex
-	objectWatchers     map[string]StatusWatcher
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
@@ -44,6 +43,7 @@ type service struct {
 func New() Service {
 	return &service{
 		objectWatchers: map[string]StatusWatcher{},
+		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
 	}
 }
 
