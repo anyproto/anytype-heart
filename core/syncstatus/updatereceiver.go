@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anyproto/any-sync/commonspace/node"
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -114,10 +113,10 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 	r.nodeConnected = online
 }
 
-func (r *updateReceiver) UpdateNodeStatus(status node.ConnectionStatus) {
+func (r *updateReceiver) UpdateNodeStatus(status ConnectionStatus) {
 	r.Lock()
 	defer r.Unlock()
-	r.nodeConnected = status == node.Online
+	r.nodeConnected = status == Online
 }
 
 func (r *updateReceiver) notify(

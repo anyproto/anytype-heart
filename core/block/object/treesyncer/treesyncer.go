@@ -149,7 +149,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 		err      error
 		nodePeer = slices.Contains(t.peerManager.GetNodeResponsiblePeers(), peerId)
 	)
-	defer t.sendResultEvent(err, nodePeer)
+	defer t.sendResultEvent(err, nodePeer, peerId)
 	t.sendSyncingEvent(peerId, existing, missing, nodePeer)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
@@ -189,17 +189,17 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 }
 
 func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing []string, nodePeer bool) {
-	if !t.peerManager.IsPeerOffline(peerId) {
+	if t.peerManager.IsPeerOffline(peerId) {
+		t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Offline, 0, spacesyncstatus.Null, spacesyncstatus.Objects))
+	} else {
 		if (len(existing) != 0 || len(missing) != 0) && nodePeer {
 			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Syncing, len(existing)+len(missing), spacesyncstatus.Null, spacesyncstatus.Objects))
 		}
-	} else {
-		t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Offline, 0, spacesyncstatus.Null, spacesyncstatus.Objects))
 	}
 }
 
-func (t *treeSyncer) sendResultEvent(err error, nodePeer bool) {
-	if nodePeer {
+func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string) {
+	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
 		if err != nil {
 			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Error, 0, spacesyncstatus.NetworkError, spacesyncstatus.Objects))
 		} else {
