@@ -608,6 +608,7 @@ type ClientCommandsHandler interface {
 	// Get current subscription status (tier, expiration date, etc.)
 	// WARNING: can be cached by Anytype Heart
 	MembershipGetStatus(context.Context, *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse
+	// Check if the requested name is valid and vacant for the requested tier
 	MembershipIsNameValid(context.Context, *pb.RpcMembershipIsNameValidRequest) *pb.RpcMembershipIsNameValidResponse
 	// Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
 	MembershipRegisterPaymentRequest(context.Context, *pb.RpcMembershipRegisterPaymentRequestRequest) *pb.RpcMembershipRegisterPaymentRequestResponse

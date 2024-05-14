@@ -6509,7 +6509,7 @@ message Rpc {
         }
 
         /**
-        * Check if the requested name is valid for the requested tier
+        * Check if the requested name is valid and vacant for the requested tier
         * before requesting a payment link and paying
         */
         message IsNameValid {
@@ -6547,6 +6547,9 @@ message Rpc {
                         // for some probable future use (if needed)
                         CAN_NOT_RESERVE = 11;
                         CAN_NOT_CONNECT = 12;
+                        // Same as if NameService.ResolveName returned that name is already
+                        // occupied by some user
+                        NAME_IS_RESERVED = 13;
                     }
                 }
             }

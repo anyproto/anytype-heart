@@ -614,6 +614,7 @@ type ClientCommandsClient interface {
 	// Get current subscription status (tier, expiration date, etc.)
 	// WARNING: can be cached by Anytype Heart
 	MembershipGetStatus(ctx context.Context, in *pb.RpcMembershipGetStatusRequest, opts ...grpc.CallOption) (*pb.RpcMembershipGetStatusResponse, error)
+	// Check if the requested name is valid and vacant for the requested tier
 	MembershipIsNameValid(ctx context.Context, in *pb.RpcMembershipIsNameValidRequest, opts ...grpc.CallOption) (*pb.RpcMembershipIsNameValidResponse, error)
 	// Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
 	MembershipRegisterPaymentRequest(ctx context.Context, in *pb.RpcMembershipRegisterPaymentRequestRequest, opts ...grpc.CallOption) (*pb.RpcMembershipRegisterPaymentRequestResponse, error)
@@ -3138,6 +3139,7 @@ type ClientCommandsServer interface {
 	// Get current subscription status (tier, expiration date, etc.)
 	// WARNING: can be cached by Anytype Heart
 	MembershipGetStatus(context.Context, *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse
+	// Check if the requested name is valid and vacant for the requested tier
 	MembershipIsNameValid(context.Context, *pb.RpcMembershipIsNameValidRequest) *pb.RpcMembershipIsNameValidResponse
 	// Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
 	MembershipRegisterPaymentRequest(context.Context, *pb.RpcMembershipRegisterPaymentRequestRequest) *pb.RpcMembershipRegisterPaymentRequestResponse

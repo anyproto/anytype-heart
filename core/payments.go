@@ -52,6 +52,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 	ps := getService[payments.Service](mw)
 	out, err := ps.IsNameValid(ctx, req)
 
+	// 1 - check the validity first (remote call #1)
 	// out will already contain validation Error
 	// but if something bad has happened we need to process other errors here too:
 	if err != nil {
@@ -60,6 +61,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipIsNameValidResponseError_NOT_LOGGED_IN),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipIsNameValidResponseError_CACHE_ERROR),
+			errToCode(payments.ErrNameIsAlreadyReserved, pb.RpcMembershipIsNameValidResponseError_NAME_IS_RESERVED),
 
 			errToCode(payments.ErrNoTiers, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
 			errToCode(payments.ErrNoTierFound, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
@@ -81,7 +83,6 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 		}
 	}
 
-	// out.Error will contain validation error if something is wrong with the name
 	return out
 }
 
