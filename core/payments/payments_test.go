@@ -129,7 +129,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -153,7 +153,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -480,7 +480,7 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		// w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
-		req := &pb.RpcMembershipGetPaymentUrlRequest{
+		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
@@ -509,7 +509,7 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
-		req := &pb.RpcMembershipGetPaymentUrlRequest{
+		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
