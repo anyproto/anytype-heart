@@ -251,21 +251,22 @@ func unlinkAndClearBlocks(
 }
 
 func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map[string]*model.Block, error) {
-	if len(requestBlocks) == 0 || requestBlocks[0].Id == "" {
+	if len(requestBlocks) == 0 || requestBlocks[0].GetId() == "" {
 		return nil, errors.New("nothing to cut")
 	}
 
 	idToBlockMap := make(map[string]*model.Block)
 	for _, stateBlock := range stateBlocks {
-		idToBlockMap[stateBlock.Id] = stateBlock
+		idToBlockMap[stateBlock.GetId()] = stateBlock
 	}
 
 	for _, requestBlock := range requestBlocks {
-		if requestBlock.Id == "" {
+		reqId := requestBlock.GetId()
+		if reqId == "" {
 			return nil, errors.New("empty requestBlock id")
 		}
-		if stateBlock, ok := idToBlockMap[requestBlock.Id]; !ok {
-			return nil, fmt.Errorf("requestBlock with id %s not found", stateBlock.Id)
+		if _, ok := idToBlockMap[reqId]; !ok {
+			return nil, fmt.Errorf("requestBlock with id %s not found", reqId)
 		}
 	}
 	return idToBlockMap, nil
