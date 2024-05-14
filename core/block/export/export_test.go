@@ -219,4 +219,140 @@ func Test_docsForExport(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(docsForExport))
 	})
+
+	t.Run("get relation options - no relation options", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		relationKey := "key"
+		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:            pbtypes.String("id"),
+				domain.RelationKey(relationKey): pbtypes.String("value"),
+				bundle.RelationKeyType:          pbtypes.String("objectType"),
+			},
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyRelationKey:    pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(uniqueKey.Marshal()),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+
+		smartBlockTest := smarttest.New("id")
+		smartBlockRelation := smarttest.New(relationKey)
+		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String("id"),
+				relationKey:                     pbtypes.String("value"),
+				bundle.RelationKeyType.String(): pbtypes.String("objectType"),
+			}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    relationKey,
+			Format: model.RelationFormat_tag,
+		})
+		smartBlockTest.Doc = doc
+
+		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), relationKey).Return(smartBlockRelation, nil)
+
+		e := &export{
+			objectStore: storeFixture,
+			picker:      objectGetter,
+		}
+
+		// when
+		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
+			SpaceId:   "spaceId",
+			ObjectIds: []string{"id"},
+			Format:    model.Export_Protobuf,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(docsForExport))
+	})
+	t.Run("get relation options - 1 relation option", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		relationKey := "key"
+		optionId := "optionId"
+		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+		optionUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionId)
+		assert.Nil(t, err)
+
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:            pbtypes.String("id"),
+				domain.RelationKey(relationKey): pbtypes.String(optionId),
+				bundle.RelationKeyType:          pbtypes.String("objectType"),
+			},
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyRelationKey:    pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(uniqueKey.Marshal()),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String(optionId),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:   pbtypes.String(optionUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+
+		smartBlockTest := smarttest.New("id")
+		smartBlockRelation := smarttest.New(relationKey)
+		smartBlockRelationOption := smarttest.New(optionId)
+		doc := smartBlockTest.NewState().SetDetails(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():   pbtypes.String("id"),
+				relationKey:                     pbtypes.String("value"),
+				bundle.RelationKeyType.String(): pbtypes.String("objectType"),
+			}})
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    relationKey,
+			Format: model.RelationFormat_tag,
+		})
+		smartBlockTest.Doc = doc
+
+		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), relationKey).Return(smartBlockRelation, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), optionId).Return(smartBlockRelationOption, nil)
+
+		e := &export{
+			objectStore: storeFixture,
+			picker:      objectGetter,
+		}
+
+		// when
+		docsForExport, err := e.docsForExport("spaceId", pb.RpcObjectListExportRequest{
+			SpaceId:   "spaceId",
+			ObjectIds: []string{"id"},
+			Format:    model.Export_Protobuf,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 3, len(docsForExport))
+		var objectIds []string
+		for objectId := range docsForExport {
+			objectIds = append(objectIds, objectId)
+		}
+		assert.Contains(t, objectIds, optionId)
+	})
 }
