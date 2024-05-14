@@ -28,6 +28,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
+	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
@@ -236,11 +237,11 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 }
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id)})
+	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), NodeStatus: syncstatus.NewNodeStatus()})
 	if err != nil {
 		return
 	}
-	ns, err := newAnySpace(cc, s.syncStatusService)
+	ns, err := newAnySpace(cc)
 	if err != nil {
 		return
 	}

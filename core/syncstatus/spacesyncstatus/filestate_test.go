@@ -3,7 +3,6 @@ package spacesyncstatus
 import (
 	"testing"
 
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
@@ -42,11 +41,11 @@ func TestFileState_GetSyncStatus(t *testing.T) {
 		fileState := NewFileState(nil)
 
 		// when
-		fileState.fileSyncStatusBySpace["spaceId"] = syncstatus.Syncing
+		fileState.fileSyncStatusBySpace["spaceId"] = Syncing
 		syncStatus := fileState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, syncstatus.Syncing, syncStatus)
+		assert.Equal(t, Syncing, syncStatus)
 	})
 	t.Run("GetSyncStatus: zero value", func(t *testing.T) {
 		// given
@@ -56,7 +55,7 @@ func TestFileState_GetSyncStatus(t *testing.T) {
 		syncStatus := fileState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, syncstatus.Synced, syncStatus)
+		assert.Equal(t, Synced, syncStatus)
 	})
 }
 
@@ -82,7 +81,7 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 			},
 		})
 		fileState := NewFileState(storeFixture)
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Synced, 0, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
 
 		// when
 		fileState.SetObjectsNumber(syncStatus)
@@ -94,7 +93,7 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
 		fileState := NewFileState(storeFixture)
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Synced, 0, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
 
 		// when
 		fileState.SetObjectsNumber(syncStatus)
@@ -120,7 +119,7 @@ func TestFileState_IsSyncFinished(t *testing.T) {
 		fileState := NewFileState(nil)
 
 		// when
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Synced, 0, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
 		fileState.SetSyncStatus(syncStatus)
 		finished := fileState.IsSyncFinished("spaceId")
 
@@ -132,7 +131,7 @@ func TestFileState_IsSyncFinished(t *testing.T) {
 		fileState := NewFileState(nil)
 
 		// when
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Offline, 3, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Offline, 3, Null, Files)
 		fileState.SetSyncStatus(syncStatus)
 		finished := fileState.IsSyncFinished("spaceId")
 
@@ -147,11 +146,11 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(nil)
 
 		// when
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Synced, 0, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
 		fileState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, syncstatus.Synced, fileState.GetSyncStatus("spaceId"))
+		assert.Equal(t, Synced, fileState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatus, received status synced, but there are syncing files in store", func(t *testing.T) {
 		// given
@@ -176,44 +175,44 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(storeFixture)
 
 		// when
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Synced, 0, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
 		fileState.SetObjectsNumber(syncStatus)
 		fileState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, syncstatus.Syncing, fileState.GetSyncStatus("spaceId"))
+		assert.Equal(t, Syncing, fileState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatus, sync in progress", func(t *testing.T) {
 		// given
 		fileState := NewFileState(nil)
 
 		// when
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Syncing, 0, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Syncing, 0, Null, Files)
 		fileState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, syncstatus.Syncing, fileState.GetSyncStatus("spaceId"))
+		assert.Equal(t, Syncing, fileState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatus, sync is finished with error", func(t *testing.T) {
 		// given
 		fileState := NewFileState(nil)
 
 		// when
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Error, 3, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Error, 3, Null, Files)
 		fileState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, syncstatus.Error, fileState.GetSyncStatus("spaceId"))
+		assert.Equal(t, Error, fileState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatus, offline", func(t *testing.T) {
 		// given
 		fileState := NewFileState(nil)
 
 		// when
-		syncStatus := syncstatus.MakeSyncStatus("spaceId", syncstatus.Offline, 3, syncstatus.Null, syncstatus.Files)
+		syncStatus := MakeSyncStatus("spaceId", Offline, 3, Null, Files)
 		fileState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, syncstatus.Offline, fileState.GetSyncStatus("spaceId"))
+		assert.Equal(t, Offline, fileState.GetSyncStatus("spaceId"))
 	})
 }

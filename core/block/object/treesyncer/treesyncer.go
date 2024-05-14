@@ -10,9 +10,13 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
+	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -55,16 +59,18 @@ func (e *executor) close() {
 
 type treeSyncer struct {
 	sync.Mutex
-	mainCtx      context.Context
-	cancel       context.CancelFunc
-	requests     int
-	spaceId      string
-	timeout      time.Duration
-	requestPools map[string]*executor
-	headPools    map[string]*executor
-	treeManager  treemanager.TreeManager
-	isRunning    bool
-	isSyncing    bool
+	mainCtx         context.Context
+	cancel          context.CancelFunc
+	requests        int
+	spaceId         string
+	timeout         time.Duration
+	requestPools    map[string]*executor
+	headPools       map[string]*executor
+	treeManager     treemanager.TreeManager
+	isRunning       bool
+	isSyncing       bool
+	spaceSyncStatus spacesyncstatus.Updater
+	peerManager     peermanager.PeerManager
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -83,6 +89,8 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
+	t.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
+	t.peerManager = app.MustComponent[peermanager.PeerManager](a)
 	return nil
 }
 
@@ -137,6 +145,12 @@ func (t *treeSyncer) ShouldSync(peerId string) bool {
 func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) error {
 	t.Lock()
 	defer t.Unlock()
+	var (
+		err      error
+		nodePeer = slices.Contains(t.peerManager.GetNodeResponsiblePeers(), peerId)
+	)
+	defer t.sendResultEvent(err, nodePeer)
+	t.sendSyncingEvent(peerId, existing, missing, nodePeer)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
@@ -155,7 +169,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	}
 	for _, id := range existing {
 		idCopy := id
-		err := headExec.tryAdd(idCopy, func() {
+		err = headExec.tryAdd(idCopy, func() {
 			t.updateTree(peerId, idCopy)
 		})
 		if err != nil {
@@ -164,7 +178,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	}
 	for _, id := range missing {
 		idCopy := id
-		err := reqExec.tryAdd(idCopy, func() {
+		err = reqExec.tryAdd(idCopy, func() {
 			t.requestTree(peerId, idCopy)
 		})
 		if err != nil {
@@ -172,6 +186,26 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 		}
 	}
 	return nil
+}
+
+func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing []string, nodePeer bool) {
+	if !t.peerManager.IsPeerOffline(peerId) {
+		if (len(existing) != 0 || len(missing) != 0) && nodePeer {
+			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Syncing, len(existing)+len(missing), spacesyncstatus.Null, spacesyncstatus.Objects))
+		}
+	} else {
+		t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Offline, 0, spacesyncstatus.Null, spacesyncstatus.Objects))
+	}
+}
+
+func (t *treeSyncer) sendResultEvent(err error, nodePeer bool) {
+	if nodePeer {
+		if err != nil {
+			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Error, 0, spacesyncstatus.NetworkError, spacesyncstatus.Objects))
+		} else {
+			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Synced, 0, spacesyncstatus.Null, spacesyncstatus.Objects))
+		}
+	}
 }
 
 func (t *treeSyncer) requestTree(peerId, id string) {
