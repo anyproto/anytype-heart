@@ -56,6 +56,7 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	code := mapErrorCode(err,
 		errToCode(application.ErrBadInput, pb.RpcWalletCreateSessionResponseError_BAD_INPUT),
 		errToCode(wallet.ErrAppLinkNotFound, pb.RpcWalletCreateSessionResponseError_APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR),
 	)
 	return &pb.RpcWalletCreateSessionResponse{
 		Token:     token,

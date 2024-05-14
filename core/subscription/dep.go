@@ -44,7 +44,7 @@ func (ds *dependencyService) depIdsByEntries(entries []*entry, depKeys, forceIds
 	for _, e := range entries {
 		for _, k := range depKeys {
 			for _, depId := range pbtypes.GetStringList(e.data, k) {
-				if depId != "" && slice.FindPos(depIds, depId) == -1 {
+				if depId != "" && slice.FindPos(depIds, depId) == -1 && depId != e.id {
 					depIds = append(depIds, depId)
 				}
 			}

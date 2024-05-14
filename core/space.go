@@ -172,6 +172,7 @@ func (mw *Middleware) SpaceJoin(cctx context.Context, req *pb.RpcSpaceJoinReques
 		errToCode(inviteservice.ErrInviteGet, pb.RpcSpaceJoinResponseError_INVITE_NOT_FOUND),
 		errToCode(inviteservice.ErrInviteBadContent, pb.RpcSpaceJoinResponseError_INVITE_BAD_CONTENT),
 		errToCode(acl.ErrNotShareable, pb.RpcSpaceJoinResponseError_NOT_SHAREABLE),
+		errToCode(acl.ErrDifferentNetwork, pb.RpcSpaceJoinResponseError_DIFFERENT_NETWORK),
 	)
 	return &pb.RpcSpaceJoinResponse{
 		Error: &pb.RpcSpaceJoinResponseError{
@@ -323,7 +324,7 @@ func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRe
 	if err != nil {
 		return fmt.Errorf("decode key: %w, %w", err, inviteservice.ErrInviteBadContent)
 	}
-	return aclService.Join(ctx, req.SpaceId, inviteCid, inviteFileKey)
+	return aclService.Join(ctx, req.SpaceId, req.NetworkId, inviteCid, inviteFileKey)
 }
 
 func accept(ctx context.Context, spaceId, identity string, permissions model.ParticipantPermissions, aclService acl.AclService) (err error) {

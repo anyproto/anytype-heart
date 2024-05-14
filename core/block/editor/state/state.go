@@ -279,11 +279,9 @@ func (s *State) PickOrigin(id string) (b simple.Block) {
 	return
 }
 
-func (s *State) Unlink(id string) (ok bool) {
-	if parent := s.GetParentOf(id); parent != nil {
-		parentM := parent.Model()
-		parentM.ChildrenIds = slice.RemoveMut(parentM.ChildrenIds, id)
-		s.removeFromCache(id)
+func (s *State) Unlink(blockId string) (ok bool) {
+	if parent := s.GetParentOf(blockId); parent != nil {
+		s.removeChildren(parent.Model(), blockId)
 		return true
 	}
 	return
@@ -355,7 +353,18 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 
 	// remove this code after checking if cache is working correctly
 	if s.isParentIdsCacheEnabled && res != cacheFound {
-		log.With("id", id).Warn("parent not found in cache")
+		var cacheFoundId, resFoundId string
+		if cacheFound != nil {
+			cacheFoundId = cacheFound.Model().Id
+		}
+		if res != nil {
+			resFoundId = res.Model().Id
+		}
+		log.With("id", id).
+			With("cacheFoundId", cacheFoundId).
+			With("resFoundId", resFoundId).
+			With("objId", s.RootId()).
+			Warn("discrepancy in state parent search")
 	}
 
 	return
