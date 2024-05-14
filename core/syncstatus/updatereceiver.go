@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/commonspace/node"
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -38,7 +38,7 @@ func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eve
 	}
 }
 
-func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status syncstatus.SyncStatus) error {
+func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status SyncStatus) error {
 	objStatus := r.getObjectStatus(objId, status)
 
 	if !r.isStatusUpdated(objId, objStatus) {
@@ -70,7 +70,7 @@ func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, er
 	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
-func (r *updateReceiver) getObjectStatus(objectId string, status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) getObjectStatus(objectId string, status SyncStatus) pb.EventStatusThreadSyncStatus {
 	fileStatus, err := r.getFileStatus(objectId)
 	if err == nil {
 		// Prefer file backup status
@@ -88,9 +88,9 @@ func (r *updateReceiver) getObjectStatus(objectId string, status syncstatus.Sync
 	}
 
 	switch status {
-	case syncstatus.StatusUnknown:
+	case StatusUnknown:
 		return pb.EventStatusThread_Unknown
-	case syncstatus.StatusSynced:
+	case StatusSynced:
 		return pb.EventStatusThread_Synced
 	}
 	return pb.EventStatusThread_Syncing
@@ -114,10 +114,10 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 	r.nodeConnected = online
 }
 
-func (r *updateReceiver) UpdateNodeStatus(status syncstatus.ConnectionStatus) {
+func (r *updateReceiver) UpdateNodeStatus(status node.ConnectionStatus) {
 	r.Lock()
 	defer r.Unlock()
-	r.nodeConnected = status == syncstatus.Online
+	r.nodeConnected = status == node.Online
 }
 
 func (r *updateReceiver) notify(

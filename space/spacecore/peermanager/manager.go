@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/node"
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -35,18 +36,20 @@ type clientPeerManager struct {
 	watchingPeers             map[string]struct{}
 	rebuildResponsiblePeers   chan struct{}
 	availableResponsiblePeers chan struct{}
+	nodeStatus                node.NodeStatus
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	sync.Mutex
 }
 
-func (n *clientPeerManager) Init(_ *app.App) (err error) {
+func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.responsibleNodeIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
+	n.nodeStatus = app.MustComponent[node.NodeStatus](a)
 	return
 }
 
@@ -180,8 +183,10 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	p, err := n.p.pool.GetOneOf(n.ctx, n.responsibleNodeIds)
 	if err == nil {
 		peers = []peer.Peer{p}
+		n.nodeStatus.SetNodesStatus(p.Id(), node.Online)
 	} else {
 		log.Info("can't get node peers", zap.Error(err))
+		n.nodeStatus.SetNodesStatus(p.Id(), node.ConnectionError)
 	}
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
@@ -235,4 +240,8 @@ func (n *clientPeerManager) watchPeer(p peer.Peer) {
 func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 	n.ctxCancel()
 	return
+}
+
+func (n *clientPeerManager) IsPeerOffline(senderId string) bool {
+	return n.nodeStatus.GetNodeStatus(senderId) != node.Online
 }
