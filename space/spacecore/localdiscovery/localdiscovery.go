@@ -19,7 +19,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/net/addrs"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 )
 
@@ -44,6 +46,7 @@ type localDiscovery struct {
 	started     bool
 	notifier    Notifier
 	m           sync.Mutex
+	eventSender event.Sender
 }
 
 func New() LocalDiscovery {
@@ -60,12 +63,14 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
 	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.ClientServer)
+	l.eventSender = app.MustComponent[event.Sender](a)
 	return
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
 	if l.manualStart && len(l.nodeConf.Nodes) > 0 {
 		// let's wait for the explicit command to enable local discovery
+		l.sendP2PStatusEvent(pb.EventP2PStatus_NotConnected)
 		return
 	}
 
@@ -216,17 +221,38 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
-	newAddrs, err := addrs.GetInterfacesAddrs()
+	var (
+		err      error
+		newAddrs addrs.InterfacesAddrs
+	)
+	defer func() {
+		if err != nil {
+			l.sendP2PStatusEvent(pb.EventP2PStatus_NotConnected)
+		}
+	}()
+	l.sendP2PStatusEvent(pb.EventP2PStatus_Connected)
+	newAddrs, err = addrs.GetInterfacesAddrs()
 	if err != nil {
 		return
 	}
 
 	newAddrs.SortWithPriority(interfacesSortPriority)
-
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*1),
 		zeroconf.SelectIfaces(newAddrs.Interfaces),
 		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
+}
+
+func (l *localDiscovery) sendP2PStatusEvent(status pb.EventP2PStatusStatus) {
+	l.eventSender.Broadcast(&pb.Event{Messages: []*pb.EventMessage{
+		{
+			Value: &pb.EventMessageValueOfP2PStatusUpdate{
+				P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+					Status: status,
+				},
+			},
+		},
+	}})
 }
