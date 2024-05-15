@@ -114,6 +114,7 @@ type Service struct {
 	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
 	objectCreator        objectcreator.Service
+	templateService      templateService
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	commonAccount        accountservice.Service
@@ -135,6 +136,10 @@ type builtinObjects interface {
 	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
+type templateService interface {
+	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error)
+}
+
 type openedObjects struct {
 	objects map[string]bool
 	lock    *sync.Mutex
@@ -154,6 +159,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
+	s.templateService = app.MustComponent[templateService](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
@@ -357,17 +363,14 @@ func (s *Service) SetSpaceInfo(req *pb.RpcWorkspaceSetInfoRequest) error {
 	}
 	workspaceId := spc.DerivedIDs().Workspace
 
-	setDetails := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
+	setDetails := make([]*model.Detail, 0, len(req.Details.GetFields()))
 	for k, v := range req.Details.GetFields() {
-		setDetails = append(setDetails, &pb.RpcObjectSetDetailsDetail{
+		setDetails = append(setDetails, &model.Detail{
 			Key:   k,
 			Value: v,
 		})
 	}
-	return s.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: workspaceId,
-		Details:   setDetails,
-	})
+	return s.SetDetails(nil, workspaceId, setDetails)
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
@@ -553,7 +556,7 @@ func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
-		if err = ws.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{
+		if err = ws.SetDetails(ctx, []*model.Detail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
 				Value: pbtypes.String(id),
@@ -654,7 +657,7 @@ func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) erro
 				st := b.NewState()
 				relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
 
-				records, _, err := s.objectStore.Query(database.Query{
+				records, err := s.objectStore.Query(database.Query{
 					Filters: []*model.BlockContentDataviewFilter{
 						{
 							Condition:   model.BlockContentDataviewFilter_Equal,

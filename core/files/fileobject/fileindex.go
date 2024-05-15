@@ -113,7 +113,7 @@ func (ind *indexer) initQuery() {
 }
 
 func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
-	recs, _, err := ind.objectStore.Query(ind.query)
+	recs, err := ind.objectStore.Query(ind.query)
 	if err != nil {
 		return fmt.Errorf("query: %w", err)
 	}

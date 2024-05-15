@@ -154,7 +154,7 @@ func (s *service) Run(_ context.Context) error {
 
 // After migrating to new sync queue we need to ensure that all not synced files are added to the queue
 func (s *service) ensureNotSyncedFilesAddedToQueue() error {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -360,7 +360,7 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 }
 
 func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -384,7 +384,7 @@ func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) 
 }
 
 func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -518,7 +518,7 @@ func (s *service) FilesOffload(ctx context.Context, objectIds []string, includeN
 }
 
 func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -545,7 +545,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (f
 }
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
@@ -585,7 +585,7 @@ func (s *service) DeleteFileData(objectId string) error {
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -624,7 +624,7 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	record database.Record,
 	includeNotPinned bool,
 ) (uint64, error) {
-	existingObjects, _, err := s.objectStore.Query(database.Query{
+	existingObjects, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),

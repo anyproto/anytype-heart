@@ -101,7 +101,7 @@ func (s *service) prepareRecommendedRelationIds(ctx context.Context, space clien
 }
 
 func (s *service) installTemplatesForObjectType(spc clientspace.Space, typeKey domain.TypeKey) error {
-	bundledTemplates, _, err := s.objectStore.Query(database.Query{
+	bundledTemplates, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -147,7 +147,7 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 	if err != nil {
 		return nil, fmt.Errorf("get type id by key: %w", err)
 	}
-	alreadyInstalledTemplates, _, err := s.objectStore.Query(database.Query{
+	alreadyInstalledTemplates, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),

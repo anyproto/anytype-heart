@@ -97,6 +97,7 @@ service ClientCommands {
     rpc ObjectListSetIsArchived (anytype.Rpc.Object.ListSetIsArchived.Request) returns (anytype.Rpc.Object.ListSetIsArchived.Response);
     rpc ObjectListSetIsFavorite (anytype.Rpc.Object.ListSetIsFavorite.Request) returns (anytype.Rpc.Object.ListSetIsFavorite.Response);
     rpc ObjectListSetObjectType (anytype.Rpc.Object.ListSetObjectType.Request) returns (anytype.Rpc.Object.ListSetObjectType.Response);
+    rpc ObjectListSetDetails (anytype.Rpc.Object.ListSetDetails.Request) returns (anytype.Rpc.Object.ListSetDetails.Response);
     rpc ObjectApplyTemplate (anytype.Rpc.Object.ApplyTemplate.Request) returns (anytype.Rpc.Object.ApplyTemplate.Response);
     // ObjectToSet creates new set from given object and removes object
     rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);
@@ -215,6 +216,7 @@ service ClientCommands {
     // File block commands
     // ***
     rpc BlockFileSetName (anytype.Rpc.BlockFile.SetName.Request) returns (anytype.Rpc.BlockFile.SetName.Response);
+    rpc BlockFileSetTargetObjectId (anytype.Rpc.BlockFile.SetTargetObjectId.Request) returns (anytype.Rpc.BlockFile.SetTargetObjectId.Response);
     rpc BlockImageSetName (anytype.Rpc.BlockImage.SetName.Request) returns (anytype.Rpc.BlockImage.SetName.Response);
     rpc BlockVideoSetName (anytype.Rpc.BlockVideo.SetName.Request) returns (anytype.Rpc.BlockVideo.SetName.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.BlockFile.CreateAndUpload.Request) returns (anytype.Rpc.BlockFile.CreateAndUpload.Response);
@@ -316,9 +318,10 @@ service ClientCommands {
     // Get current subscription status (tier, expiration date, etc.)
     // WARNING: can be cached by Anytype Heart
     rpc MembershipGetStatus (anytype.Rpc.Membership.GetStatus.Request) returns (anytype.Rpc.Membership.GetStatus.Response);
+    // Check if the requested name is valid and vacant for the requested tier
     rpc MembershipIsNameValid( anytype.Rpc.Membership.IsNameValid.Request) returns (anytype.Rpc.Membership.IsNameValid.Response);
     // Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment.
-    rpc MembershipGetPaymentUrl (anytype.Rpc.Membership.GetPaymentUrl.Request) returns (anytype.Rpc.Membership.GetPaymentUrl.Response);
+    rpc MembershipRegisterPaymentRequest (anytype.Rpc.Membership.RegisterPaymentRequest.Request) returns (anytype.Rpc.Membership.RegisterPaymentRequest.Response);
     // Get a link to the user's subscription management portal. The user should be redirected to this URL to manage their subscription:
     // a) change his billing details
     // b) see payment info, invoices, etc

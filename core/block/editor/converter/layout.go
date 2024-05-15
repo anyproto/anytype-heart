@@ -192,7 +192,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 		return []string{}, nil
 	}
 
-	records, _, err := c.objectStore.Query(
+	records, err := c.objectStore.Query(
 		database.Query{
 			Filters: filters,
 		},

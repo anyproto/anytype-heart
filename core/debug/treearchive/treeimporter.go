@@ -43,7 +43,7 @@ func (m MarshalledJsonChange) MarshalJSON() ([]byte, error) {
 
 type TreeImporter interface {
 	ObjectTree() objecttree.ReadableObjectTree
-	State(fullStateChain bool) (*state.State, error) // set fullStateChain to true to get full state chain, otherwise only the last state will be returned
+	State() (*state.State, error) // set fullStateChain to true to get full state chain, otherwise only the last state will be returned
 	Import(fromRoot bool, beforeId string) error
 	Json() (TreeJson, error)
 	ChangeAt(idx int) (IdChange, error)
@@ -66,24 +66,16 @@ func (t *treeImporter) ObjectTree() objecttree.ReadableObjectTree {
 	return t.objectTree
 }
 
-func (t *treeImporter) State(fullStateChain bool) (*state.State, error) {
+func (t *treeImporter) State() (*state.State, error) {
 	var (
 		st  *state.State
 		err error
 	)
 
-	if fullStateChain {
-		st, _, _, err = source.BuildStateFull("", nil, t.objectTree, "")
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		st, _, _, err = source.BuildState("", nil, t.objectTree)
-		if err != nil {
-			return nil, err
-		}
+	st, _, _, err = source.BuildState("", nil, t.objectTree)
+	if err != nil {
+		return nil, err
 	}
-	defer st.ResetParentIdsCache()
 
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return nil, err

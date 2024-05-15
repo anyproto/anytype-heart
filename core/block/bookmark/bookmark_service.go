@@ -57,7 +57,7 @@ type ObjectCreator interface {
 }
 
 type DetailsSetter interface {
-	SetDetails(ctx session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
+	SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error)
 }
 
 type service struct {
@@ -123,7 +123,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	}
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
-	records, _, err := s.store.Query(database.Query{
+	records, err := s.store.Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
@@ -192,18 +192,15 @@ func detailsFromContent(content *bookmark.ObjectContent) map[string]*types.Value
 func (s *service) UpdateObject(objectId string, getContent *bookmark.ObjectContent) error {
 	detailsMap := detailsFromContent(getContent)
 
-	details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(detailsMap))
+	details := make([]*model.Detail, 0, len(detailsMap))
 	for k, v := range detailsMap {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   k,
 			Value: v,
 		})
 	}
 
-	return s.detailsSetter.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: objectId,
-		Details:   details,
-	})
+	return s.detailsSetter.SetDetails(nil, objectId, details)
 }
 
 func (s *service) FetchAsync(spaceID string, blockID string, params bookmark.FetchParams) {
