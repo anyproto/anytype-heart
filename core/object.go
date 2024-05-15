@@ -45,7 +45,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetDetails(ctx, *req)
+		return bs.SetDetails(ctx, req.ContextId, req.GetDetails())
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
@@ -115,7 +115,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, _, err := ds.Query(database.Query{
+	records, err := ds.Query(database.Query{
 		Filters:  req.Filters,
 		Sorts:    req.Sorts,
 		Offset:   int(req.Offset),
@@ -551,6 +551,27 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 	}
 
 	return response(pb.RpcObjectListSetObjectTypeResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectListSetDetails(cctx context.Context, req *pb.RpcObjectListSetDetailsRequest) *pb.RpcObjectListSetDetailsResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectListSetDetailsResponseErrorCode, err error) *pb.RpcObjectListSetDetailsResponse {
+		m := &pb.RpcObjectListSetDetailsResponse{Error: &pb.RpcObjectListSetDetailsResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = mw.getResponseEvent(ctx)
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetDetailsList(ctx, req.ObjectIds, req.Details)
+	}); err != nil {
+		return response(pb.RpcObjectListSetDetailsResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcObjectListSetDetailsResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {

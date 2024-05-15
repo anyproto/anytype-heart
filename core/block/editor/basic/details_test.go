@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -84,7 +83,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 	t.Run("modify details", func(t *testing.T) {
 		// given
 		f := newDUFixture(t)
-		err := f.sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
+		err := f.sb.SetDetails(nil, []*model.Detail{{
 			Key:   bundle.RelationKeySpaceDashboardId.String(),
 			Value: pbtypes.String("123"),
 		}}, false)
@@ -115,7 +114,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 	t.Run("delete details", func(t *testing.T) {
 		// given
 		f := newDUFixture(t)
-		err := f.sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
+		err := f.sb.SetDetails(nil, []*model.Detail{{
 			Key:   bundle.RelationKeyTargetObjectType.String(),
 			Value: pbtypes.String("ot-note"),
 		}}, false)

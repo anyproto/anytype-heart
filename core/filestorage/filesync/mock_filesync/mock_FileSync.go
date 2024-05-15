@@ -78,64 +78,6 @@ func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(string, domain.FullFi
 	return _c
 }
 
-// CalculateFileSize provides a mock function with given fields: ctx, spaceId, fileId
-func (_m *MockFileSync) CalculateFileSize(ctx context.Context, spaceId string, fileId domain.FileId) (int, error) {
-	ret := _m.Called(ctx, spaceId, fileId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CalculateFileSize")
-	}
-
-	var r0 int
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId) (int, error)); ok {
-		return rf(ctx, spaceId, fileId)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId) int); ok {
-		r0 = rf(ctx, spaceId, fileId)
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, domain.FileId) error); ok {
-		r1 = rf(ctx, spaceId, fileId)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockFileSync_CalculateFileSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CalculateFileSize'
-type MockFileSync_CalculateFileSize_Call struct {
-	*mock.Call
-}
-
-// CalculateFileSize is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceId string
-//   - fileId domain.FileId
-func (_e *MockFileSync_Expecter) CalculateFileSize(ctx interface{}, spaceId interface{}, fileId interface{}) *MockFileSync_CalculateFileSize_Call {
-	return &MockFileSync_CalculateFileSize_Call{Call: _e.mock.On("CalculateFileSize", ctx, spaceId, fileId)}
-}
-
-func (_c *MockFileSync_CalculateFileSize_Call) Run(run func(ctx context.Context, spaceId string, fileId domain.FileId)) *MockFileSync_CalculateFileSize_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.FileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_CalculateFileSize_Call) Return(_a0 int, _a1 error) *MockFileSync_CalculateFileSize_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockFileSync_CalculateFileSize_Call) RunAndReturn(run func(context.Context, string, domain.FileId) (int, error)) *MockFileSync_CalculateFileSize_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ClearImportEvents provides a mock function with given fields:
 func (_m *MockFileSync) ClearImportEvents() {
 	_m.Called()

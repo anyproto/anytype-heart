@@ -10,6 +10,9 @@ packages:
   github.com/anyproto/anytype-heart/core/wallet:
     interfaces:
       Wallet:
+  github.com/anyproto/anytype-heart/core/nameservice:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/core/event:
     interfaces:
       Sender:
@@ -63,6 +66,9 @@ packages:
         config:
           dir: "{{.InterfaceDir}}/mock_blockservice"
           outpkg: "mock_blockservice"
+  github.com/anyproto/anytype-heart/core/block/import/common/syncer:
+    interfaces:
+      BlockService:
   github.com/anyproto/anytype-heart/core/subscription:
     interfaces:
       CollectionService:
@@ -70,6 +76,7 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+      Service:
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:

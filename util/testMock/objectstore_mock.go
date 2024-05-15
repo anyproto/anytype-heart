@@ -5,7 +5,6 @@
 //
 //	mockgen -package testMock -destination objectstore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore ObjectStore
 //
-
 // Package testMock is a generated GoMock package.
 package testMock
 
@@ -609,13 +608,12 @@ func (mr *MockObjectStoreMockRecorder) Name() *gomock.Call {
 }
 
 // Query mocks base method.
-func (m *MockObjectStore) Query(arg0 database.Query) ([]database.Record, int, error) {
+func (m *MockObjectStore) Query(arg0 database.Query) ([]database.Record, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Query", arg0)
 	ret0, _ := ret[0].([]database.Record)
-	ret1, _ := ret[1].(int)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Query indicates an expected call of Query.

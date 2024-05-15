@@ -324,10 +324,10 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
-	var details []*pb.RpcObjectSetDetailsDetail
+	var details []*model.Detail
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 	if spaceDashBoardID != "" {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeySpaceDashboardId.String(),
 			Value: pbtypes.String(spaceDashBoardID),
 		})
@@ -335,7 +335,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 
 	spaceName := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String())
 	if spaceName != "" {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(spaceName),
 		})
@@ -343,7 +343,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 
 	iconOption := pbtypes.GetInt64(st.CombinedDetails(), bundle.RelationKeyIconOption.String())
 	if iconOption != 0 {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyIconOption.String(),
 			Value: pbtypes.Int64(iconOption),
 		})

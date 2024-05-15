@@ -61,7 +61,16 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.treeIdsBySpace, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND type != 1`); err != nil {
 		return
 	}
-	if s.stmt.updateTreeDelStatus, err = s.writeDb.Prepare(`UPDATE trees SET deleteStatus = ? WHERE id = ?`); err != nil {
+	if s.stmt.deleteTree, err = s.writeDb.Prepare(`
+			INSERT INTO trees (id, spaceId, heads) VALUES(?, "", NULL)
+			ON CONFLICT (id) DO UPDATE SET heads = NULL
+	`); err != nil {
+		return
+	}
+	if s.stmt.updateTreeDelStatus, err = s.writeDb.Prepare(`
+			INSERT INTO trees (id, deleteStatus, spaceId) VALUES(?, ?, "")
+			ON CONFLICT (id) DO UPDATE SET deleteStatus = ?
+	`); err != nil {
 		return
 	}
 	if s.stmt.treeDelStatus, err = s.readDb.Prepare(`SELECT deleteStatus FROM trees WHERE id = ?`); err != nil {
@@ -70,7 +79,7 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.change, err = s.readDb.Prepare(`SELECT data FROM changes WHERE id = ? AND spaceId = ?`); err != nil {
 		return
 	}
-	if s.stmt.hasTree, err = s.readDb.Prepare(`SELECT COUNT(*) FROM trees WHERE id = ? AND spaceId = ?`); err != nil {
+	if s.stmt.hasTree, err = s.readDb.Prepare(`SELECT COUNT(*) FROM trees WHERE id = ? AND spaceId = ? AND heads IS NOT NULL`); err != nil {
 		return
 	}
 	if s.stmt.hasChange, err = s.readDb.Prepare(`SELECT COUNT(*) FROM changes WHERE id = ? AND treeId = ?`); err != nil {
@@ -79,13 +88,10 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.updateTreeHeads, err = s.writeDb.Prepare(`UPDATE trees SET heads = ? WHERE id = ?`); err != nil {
 		return
 	}
-	if s.stmt.deleteTree, err = s.writeDb.Prepare(`DELETE FROM trees WHERE id = ?`); err != nil {
-		return
-	}
 	if s.stmt.deleteChangesByTree, err = s.writeDb.Prepare(`DELETE FROM changes WHERE treeId = ?`); err != nil {
 		return
 	}
-	if s.stmt.loadTreeHeads, err = s.readDb.Prepare(`SELECT heads FROM trees WHERE id = ?`); err != nil {
+	if s.stmt.loadTreeHeads, err = s.readDb.Prepare(`SELECT heads FROM trees WHERE id = ? AND heads IS NOT NULL`); err != nil {
 		return
 	}
 	if s.stmt.loadSpace, err = s.readDb.Prepare(`SELECT header, settingsId, aclId, hash, oldHash, isDeleted FROM spaces WHERE id = ?`); err != nil {

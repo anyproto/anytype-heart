@@ -279,11 +279,9 @@ func (s *State) PickOrigin(id string) (b simple.Block) {
 	return
 }
 
-func (s *State) Unlink(id string) (ok bool) {
-	if parent := s.GetParentOf(id); parent != nil {
-		parentM := parent.Model()
-		parentM.ChildrenIds = slice.RemoveMut(parentM.ChildrenIds, id)
-		s.removeFromCache(id)
+func (s *State) Unlink(blockId string) (ok bool) {
+	if parent := s.GetParentOf(blockId); parent != nil {
+		s.removeChildren(parent.Model(), blockId)
 		return true
 	}
 	return
@@ -323,11 +321,26 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	var cacheFound simple.Block
 	if s.isParentIdsCacheEnabled {
-		if parentId, ok := s.getParentIdsCache()[id]; ok {
-			return s.Pick(parentId)
+		cache := s.getParentIdsCache()
+		if parentId, ok := cache[id]; ok {
+			cacheFound = s.Pick(parentId)
 		}
-		return
+		if cacheFound != nil {
+			rootId := s.RootId()
+			topParentId := cacheFound.Model().Id
+			for topParentId != rootId {
+				if nextId, ok := cache[topParentId]; ok {
+					topParentId = nextId
+				} else {
+					cacheFound = nil
+					break
+				}
+			}
+		}
+		// restore this code after checking if cache is working correctly
+		// return
 	}
 
 	s.Iterate(func(b simple.Block) bool {
@@ -337,6 +350,23 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		}
 		return true
 	})
+
+	// remove this code after checking if cache is working correctly
+	if s.isParentIdsCacheEnabled && res != cacheFound {
+		var cacheFoundId, resFoundId string
+		if cacheFound != nil {
+			cacheFoundId = cacheFound.Model().Id
+		}
+		if res != nil {
+			resFoundId = res.Model().Id
+		}
+		log.With("id", id).
+			With("cacheFoundId", cacheFoundId).
+			With("resFoundId", resFoundId).
+			With("objId", s.RootId()).
+			Warn("discrepancy in state parent search")
+	}
+
 	return
 }
 
@@ -346,9 +376,6 @@ func (s *State) ResetParentIdsCache() {
 }
 
 func (s *State) EnableParentIdsCache() bool {
-	// temporary disable the cache
-	// todo: enable after we cover everything with tests
-	return true
 	if s.isParentIdsCacheEnabled {
 		return true
 	}
