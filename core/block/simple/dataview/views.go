@@ -181,7 +181,8 @@ func (l *Dataview) ReplaceViewRelation(viewID string, relationKey string, relati
 		return f.Key == relationKey
 	})
 	if idx < 0 {
-		return l.AddViewRelation(viewID, relation)
+		view.Relations = append(view.Relations, relation)
+		return nil
 	}
 
 	view.Relations[idx] = relation
