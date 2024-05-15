@@ -437,7 +437,7 @@ func selectItemOptions(property *property.SelectItem, rel string, relation *prop
 }
 
 func statusItemOptions(property *property.StatusItem, rel string, relation *property.PropertiesStore) *model.SmartBlockSnapshotBase {
-	if property.Status.Name == "" {
+	if property.Status == nil || property.Status.Name == "" {
 		return nil
 	}
 	exist, optionID := isOptionAlreadyExist(property.Status.Name, rel, relation)
