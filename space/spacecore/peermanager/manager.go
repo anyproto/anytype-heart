@@ -186,7 +186,9 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		n.nodeStatus.SetNodesStatus(p.Id(), syncstatus.Online)
 	} else {
 		log.Info("can't get node peers", zap.Error(err))
-		n.nodeStatus.SetNodesStatus(p.Id(), syncstatus.ConnectionError)
+		for _, p := range n.responsiblePeers {
+			n.nodeStatus.SetNodesStatus(p.Id(), syncstatus.ConnectionError)
+		}
 	}
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
