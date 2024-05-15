@@ -7,6 +7,7 @@ import (
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -14,42 +15,17 @@ import (
 
 const service = "common.commonspace.spaceSyncStatusUpdater"
 
-type SpaceSyncType int32
-
-const (
-	Objects SpaceSyncType = 0
-	Files   SpaceSyncType = 1
-)
-
-type SpaceSyncStatus int32
-
-const (
-	Synced  SpaceSyncStatus = 0
-	Syncing SpaceSyncStatus = 1
-	Error   SpaceSyncStatus = 2
-	Offline SpaceSyncStatus = 3
-)
-
-type SpaceSyncError int32
-
-const (
-	Null                SpaceSyncError = 0
-	StorageLimitExceed  SpaceSyncError = 1
-	IncompatibleVersion SpaceSyncError = 2
-	NetworkError        SpaceSyncError = 3
-)
-
 var log = logging.Logger("anytype-mw-space-status")
 
 type Updater interface {
 	app.ComponentRunnable
-	SendUpdate(spaceSync *SpaceSync)
+	SendUpdate(spaceSync *helpers.SpaceSync)
 }
 
 type State interface {
-	SetObjectsNumber(status *SpaceSync)
-	SetSyncStatus(status *SpaceSync)
-	GetSyncStatus(spaceId string) SpaceSyncStatus
+	SetObjectsNumber(status *helpers.SpaceSync)
+	SetSyncStatus(status *helpers.SpaceSync)
+	GetSyncStatus(spaceId string) helpers.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
 	IsSyncFinished(spaceId string) bool
 }
@@ -61,7 +37,7 @@ type NetworkConfig interface {
 type spaceSyncStatus struct {
 	eventSender   event.Sender
 	networkConfig NetworkConfig
-	batcher       *mb.MB[*SpaceSync]
+	batcher       *mb.MB[*helpers.SpaceSync]
 
 	filesState   State
 	objectsState State
@@ -73,7 +49,7 @@ type spaceSyncStatus struct {
 }
 
 func NewSpaceSyncStatus() Updater {
-	return &spaceSyncStatus{batcher: mb.New[*SpaceSync](0), finish: make(chan struct{})}
+	return &spaceSyncStatus{batcher: mb.New[*helpers.SpaceSync](0), finish: make(chan struct{})}
 }
 
 func (s *spaceSyncStatus) Init(a *app.App) (err error) {
@@ -113,7 +89,7 @@ func (s *spaceSyncStatus) sendLocalOnlyEvent() {
 	})
 }
 
-func (s *spaceSyncStatus) SendUpdate(status *SpaceSync) {
+func (s *spaceSyncStatus) SendUpdate(status *helpers.SpaceSync) {
 	e := s.batcher.Add(context.Background(), status)
 	if e != nil {
 		log.Errorf("failed to add space sync event to queue %s", e)
@@ -132,7 +108,7 @@ func (s *spaceSyncStatus) processEvents() {
 	}
 }
 
-func (s *spaceSyncStatus) updateSpaceSyncStatus(status *SpaceSync) {
+func (s *spaceSyncStatus) updateSpaceSyncStatus(status *helpers.SpaceSync) {
 	// don't send unnecessary event
 	if s.isSyncFinished(status) {
 		return
@@ -156,11 +132,11 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(status *SpaceSync) {
 	})
 }
 
-func (s *spaceSyncStatus) needToSendEvent(status *SpaceSync) bool {
-	if status.Status != Synced {
+func (s *spaceSyncStatus) needToSendEvent(status *helpers.SpaceSync) bool {
+	if status.Status != helpers.Synced {
 		return true
 	}
-	return s.getSpaceSyncStatus(status) == Synced && status.Status == Synced
+	return s.getSpaceSyncStatus(status) == helpers.Synced && status.Status == helpers.Synced
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
@@ -171,11 +147,11 @@ func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	return s.batcher.Close()
 }
 
-func (s *spaceSyncStatus) isSyncFinished(status *SpaceSync) bool {
-	return status.Status == Synced && s.filesState.IsSyncFinished(status.SpaceId) && s.objectsState.IsSyncFinished(status.SpaceId)
+func (s *spaceSyncStatus) isSyncFinished(status *helpers.SpaceSync) bool {
+	return status.Status == helpers.Synced && s.filesState.IsSyncFinished(status.SpaceId) && s.objectsState.IsSyncFinished(status.SpaceId)
 }
 
-func (s *spaceSyncStatus) makeSpaceSyncEvent(status *SpaceSync) *pb.EventSpaceSyncStatusUpdate {
+func (s *spaceSyncStatus) makeSpaceSyncEvent(status *helpers.SpaceSync) *pb.EventSpaceSyncStatusUpdate {
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    status.SpaceId,
 		Status:                mapStatus(s.getSpaceSyncStatus(status)),
@@ -185,46 +161,46 @@ func (s *spaceSyncStatus) makeSpaceSyncEvent(status *SpaceSync) *pb.EventSpaceSy
 	}
 }
 
-func (s *spaceSyncStatus) getSpaceSyncStatus(status *SpaceSync) SpaceSyncStatus {
+func (s *spaceSyncStatus) getSpaceSyncStatus(status *helpers.SpaceSync) helpers.SpaceSyncStatus {
 	filesStatus := s.filesState.GetSyncStatus(status.SpaceId)
 	objectsStatus := s.objectsState.GetSyncStatus(status.SpaceId)
 
 	if s.isOfflineStatus(filesStatus, objectsStatus) {
-		return Offline
+		return helpers.Offline
 	}
 
 	if s.isSyncedStatus(filesStatus, objectsStatus) {
-		return Synced
+		return helpers.Synced
 	}
 
 	if s.isErrorStatus(filesStatus, objectsStatus) {
-		return Error
+		return helpers.Error
 	}
 
 	if s.isSyncingStatus(filesStatus, objectsStatus) {
-		return Syncing
+		return helpers.Syncing
 	}
-	return Synced
+	return helpers.Synced
 }
 
-func (s *spaceSyncStatus) isSyncingStatus(filesStatus SpaceSyncStatus, objectsStatus SpaceSyncStatus) bool {
-	return filesStatus == Syncing || objectsStatus == Syncing
+func (s *spaceSyncStatus) isSyncingStatus(filesStatus helpers.SpaceSyncStatus, objectsStatus helpers.SpaceSyncStatus) bool {
+	return filesStatus == helpers.Syncing || objectsStatus == helpers.Syncing
 }
 
-func (s *spaceSyncStatus) isErrorStatus(filesStatus SpaceSyncStatus, objectsStatus SpaceSyncStatus) bool {
-	return filesStatus == Error || objectsStatus == Error
+func (s *spaceSyncStatus) isErrorStatus(filesStatus helpers.SpaceSyncStatus, objectsStatus helpers.SpaceSyncStatus) bool {
+	return filesStatus == helpers.Error || objectsStatus == helpers.Error
 }
 
-func (s *spaceSyncStatus) isSyncedStatus(filesStatus SpaceSyncStatus, objectsStatus SpaceSyncStatus) bool {
-	return filesStatus == Synced && objectsStatus == Synced
+func (s *spaceSyncStatus) isSyncedStatus(filesStatus helpers.SpaceSyncStatus, objectsStatus helpers.SpaceSyncStatus) bool {
+	return filesStatus == helpers.Synced && objectsStatus == helpers.Synced
 }
 
-func (s *spaceSyncStatus) isOfflineStatus(filesStatus SpaceSyncStatus, objectsStatus SpaceSyncStatus) bool {
-	return filesStatus == Offline || objectsStatus == Offline
+func (s *spaceSyncStatus) isOfflineStatus(filesStatus helpers.SpaceSyncStatus, objectsStatus helpers.SpaceSyncStatus) bool {
+	return filesStatus == helpers.Offline || objectsStatus == helpers.Offline
 }
 
-func (s *spaceSyncStatus) getCurrentState(status *SpaceSync) State {
-	if status.SyncType == Files {
+func (s *spaceSyncStatus) getCurrentState(status *helpers.SpaceSync) State {
+	if status.SyncType == helpers.Files {
 		return s.filesState
 	}
 	return s.objectsState
@@ -241,46 +217,28 @@ func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 	}
 }
 
-func mapStatus(status SpaceSyncStatus) pb.EventSpaceStatus {
+func mapStatus(status helpers.SpaceSyncStatus) pb.EventSpaceStatus {
 	switch status {
-	case Syncing:
+	case helpers.Syncing:
 		return pb.EventSpace_Syncing
-	case Offline:
+	case helpers.Offline:
 		return pb.EventSpace_Offline
-	case Error:
+	case helpers.Error:
 		return pb.EventSpace_Error
 	default:
 		return pb.EventSpace_Synced
 	}
 }
 
-func mapError(err SpaceSyncError) pb.EventSpaceSyncError {
+func mapError(err helpers.SpaceSyncError) pb.EventSpaceSyncError {
 	switch err {
-	case NetworkError:
+	case helpers.NetworkError:
 		return pb.EventSpace_NetworkError
-	case IncompatibleVersion:
+	case helpers.IncompatibleVersion:
 		return pb.EventSpace_IncompatibleVersion
-	case StorageLimitExceed:
+	case helpers.StorageLimitExceed:
 		return pb.EventSpace_StorageLimitExceed
 	default:
 		return pb.EventSpace_Null
-	}
-}
-
-type SpaceSync struct {
-	SpaceId       string
-	Status        SpaceSyncStatus
-	ObjectsNumber int
-	SyncError     SpaceSyncError
-	SyncType      SpaceSyncType
-}
-
-func MakeSyncStatus(spaceId string, status SpaceSyncStatus, objectsNumber int, syncError SpaceSyncError, syncType SpaceSyncType) *SpaceSync {
-	return &SpaceSync{
-		SpaceId:       spaceId,
-		Status:        status,
-		ObjectsNumber: objectsNumber,
-		SyncError:     syncError,
-		SyncType:      syncType,
 	}
 }

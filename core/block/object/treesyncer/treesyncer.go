@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -57,6 +57,11 @@ func (e *executor) close() {
 	e.pool.Close()
 }
 
+type Updater interface {
+	app.ComponentRunnable
+	SendUpdate(spaceSync *helpers.SpaceSync)
+}
+
 type treeSyncer struct {
 	sync.Mutex
 	mainCtx         context.Context
@@ -69,7 +74,7 @@ type treeSyncer struct {
 	treeManager     treemanager.TreeManager
 	isRunning       bool
 	isSyncing       bool
-	spaceSyncStatus spacesyncstatus.Updater
+	spaceSyncStatus Updater
 	peerManager     peermanager.PeerManager
 }
 
@@ -89,7 +94,7 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
-	t.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
+	t.spaceSyncStatus = app.MustComponent[Updater](a)
 	t.peerManager = app.MustComponent[peermanager.PeerManager](a)
 	return nil
 }
@@ -189,21 +194,24 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 }
 
 func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing []string, nodePeer bool) {
+	if !nodePeer {
+		return
+	}
 	if t.peerManager.IsPeerOffline(peerId) {
-		t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Offline, 0, spacesyncstatus.Null, spacesyncstatus.Objects))
-	} else {
-		if (len(existing) != 0 || len(missing) != 0) && nodePeer {
-			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Syncing, len(existing)+len(missing), spacesyncstatus.Null, spacesyncstatus.Objects))
-		}
+		t.spaceSyncStatus.SendUpdate(helpers.MakeSyncStatus(t.spaceId, helpers.Offline, 0, helpers.Null, helpers.Objects))
+		return
+	}
+	if len(existing) != 0 || len(missing) != 0 {
+		t.spaceSyncStatus.SendUpdate(helpers.MakeSyncStatus(t.spaceId, helpers.Syncing, len(existing)+len(missing), helpers.Null, helpers.Objects))
 	}
 }
 
 func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string) {
 	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
 		if err != nil {
-			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Error, 0, spacesyncstatus.NetworkError, spacesyncstatus.Objects))
+			t.spaceSyncStatus.SendUpdate(helpers.MakeSyncStatus(t.spaceId, helpers.Error, 0, helpers.NetworkError, helpers.Objects))
 		} else {
-			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Synced, 0, spacesyncstatus.Null, spacesyncstatus.Objects))
+			t.spaceSyncStatus.SendUpdate(helpers.MakeSyncStatus(t.spaceId, helpers.Synced, 0, helpers.Null, helpers.Objects))
 		}
 	}
 }

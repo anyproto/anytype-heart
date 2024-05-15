@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-sync v0.4.14-0.20240508132744-18a250ed22b1
+	github.com/anyproto/any-sync v0.4.17-0.20240515074051-295280e27667
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.0
@@ -74,7 +74,7 @@ require (
 	github.com/otiai10/copy v1.14.0
 	github.com/otiai10/opengraph/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.19.0
+	github.com/prometheus/client_golang v1.19.1
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.39.0
@@ -93,7 +93,7 @@ require (
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
 	golang.org/x/image v0.15.0
 	golang.org/x/mobile v0.0.0-20240404231514-09dbf07665ed
-	golang.org/x/net v0.24.0
+	golang.org/x/net v0.25.0
 	golang.org/x/oauth2 v0.19.0
 	golang.org/x/text v0.15.0
 	google.golang.org/grpc v1.63.2
@@ -295,5 +295,3 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr v0.8.1-0.20221213144344-0b6b93adaec4
 
 replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38
-
-replace github.com/anyproto/any-sync => ./../any-sync

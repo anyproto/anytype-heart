@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -28,7 +27,6 @@ type Service interface {
 }
 
 type service struct {
-	objectStore objectstore.ObjectStore
 }
 
 func New() Service {
@@ -36,7 +34,6 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return
 }
 

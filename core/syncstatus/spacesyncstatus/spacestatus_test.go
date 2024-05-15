@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -80,11 +81,11 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*SpaceSync](0),
+			batcher:       mb.New[*helpers.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(),
 		}
-		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Synced, 0, helpers.Null, helpers.Files)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
@@ -111,19 +112,19 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*SpaceSync](0),
+			batcher:       mb.New[*helpers.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(),
 		}
-		syncStatus := MakeSyncStatus("spaceId", Syncing, 2, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Syncing, 2, helpers.Null, helpers.Objects)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, Syncing, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Syncing, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 2, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, Syncing, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, helpers.Syncing, status.getSpaceSyncStatus(syncStatus))
 	})
 	t.Run("syncing event for files", func(t *testing.T) {
 		// given
@@ -163,19 +164,19 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*SpaceSync](0),
+			batcher:       mb.New[*helpers.SpaceSync](0),
 			filesState:    NewFileState(storeFixture),
 			objectsState:  NewObjectState(),
 		}
-		syncStatus := MakeSyncStatus("spaceId", Syncing, 0, Null, Files)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Syncing, 0, helpers.Null, helpers.Files)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, Syncing, status.filesState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Syncing, status.filesState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 2, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, Syncing, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, helpers.Syncing, status.getSpaceSyncStatus(syncStatus))
 	})
 	t.Run("don't send not needed synced event if files or objects are still syncing", func(t *testing.T) {
 		// given
@@ -183,15 +184,15 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*SpaceSync](0),
+			batcher:       mb.New[*helpers.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(),
 		}
-		objectsSyncStatus := MakeSyncStatus("spaceId", Syncing, 2, Null, Objects)
+		objectsSyncStatus := helpers.MakeSyncStatus("spaceId", helpers.Syncing, 2, helpers.Null, helpers.Objects)
 		status.objectsState.SetSyncStatus(objectsSyncStatus)
 
 		// then
-		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Synced, 0, helpers.Null, helpers.Files)
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
@@ -216,19 +217,19 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*SpaceSync](0),
+			batcher:       mb.New[*helpers.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(),
 		}
-		syncStatus := MakeSyncStatus("spaceId", Error, 0, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Error, 0, helpers.Null, helpers.Objects)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, Error, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Error, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, Error, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, helpers.Error, status.getSpaceSyncStatus(syncStatus))
 	})
 	t.Run("send offline event", func(t *testing.T) {
 		// given
@@ -249,19 +250,19 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
-			batcher:       mb.New[*SpaceSync](0),
+			batcher:       mb.New[*helpers.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(),
 		}
-		syncStatus := MakeSyncStatus("spaceId", Offline, 0, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Offline, 0, helpers.Null, helpers.Objects)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, Offline, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Offline, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, Offline, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, helpers.Offline, status.getSpaceSyncStatus(syncStatus))
 	})
 	t.Run("send synced event", func(t *testing.T) {
 		// given
@@ -282,24 +283,24 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
-			batcher:       mb.New[*SpaceSync](0),
+			batcher:       mb.New[*helpers.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(),
 		}
-		syncStatus := MakeSyncStatus("spaceId", Syncing, 2, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Syncing, 2, helpers.Null, helpers.Objects)
 		status.objectsState.SetObjectsNumber(syncStatus)
 		status.objectsState.SetSyncStatus(syncStatus)
 
 		// then
-		syncStatus = MakeSyncStatus("spaceId", Synced, 0, Null, Objects)
+		syncStatus = helpers.MakeSyncStatus("spaceId", helpers.Synced, 0, helpers.Null, helpers.Objects)
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, Synced, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Synced, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, Synced, status.filesState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Synced, status.filesState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, Synced, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, helpers.Synced, status.getSpaceSyncStatus(syncStatus))
 	})
 }
 
@@ -310,11 +311,11 @@ func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
 		spaceStatus := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
-			batcher:       mb.New[*SpaceSync](0),
+			batcher:       mb.New[*helpers.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(),
 		}
-		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Synced, 0, helpers.Null, helpers.Files)
 
 		// then
 		spaceStatus.SendUpdate(syncStatus)

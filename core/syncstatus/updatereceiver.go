@@ -10,6 +10,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -23,9 +25,15 @@ type updateReceiver struct {
 	nodeConnected bool
 	lastStatus    map[string]pb.EventStatusThreadSyncStatus
 	objectStore   objectstore.ObjectStore
+	nodeStatus    nodestatus.NodeStatus
 }
 
-func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender, objectStore objectstore.ObjectStore) *updateReceiver {
+func newUpdateReceiver(nodeConfService nodeconf.Service,
+	cfg *config.Config,
+	eventSender event.Sender,
+	objectStore objectstore.ObjectStore,
+	nodeStatus nodestatus.NodeStatus,
+) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		eventSender = nil
 	}
@@ -34,10 +42,11 @@ func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eve
 		lastStatus:      make(map[string]pb.EventStatusThreadSyncStatus),
 		eventSender:     eventSender,
 		objectStore:     objectStore,
+		nodeStatus:      nodeStatus,
 	}
 }
 
-func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status SyncStatus) error {
+func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status objectsyncstatus.SyncStatus) error {
 	objStatus := r.getObjectStatus(objId, status)
 
 	if !r.isStatusUpdated(objId, objStatus) {
@@ -69,7 +78,7 @@ func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, er
 	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
-func (r *updateReceiver) getObjectStatus(objectId string, status SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) getObjectStatus(objectId string, status objectsyncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
 	fileStatus, err := r.getFileStatus(objectId)
 	if err == nil {
 		// Prefer file backup status
@@ -87,9 +96,9 @@ func (r *updateReceiver) getObjectStatus(objectId string, status SyncStatus) pb.
 	}
 
 	switch status {
-	case StatusUnknown:
+	case objectsyncstatus.StatusUnknown:
 		return pb.EventStatusThread_Unknown
-	case StatusSynced:
+	case objectsyncstatus.StatusSynced:
 		return pb.EventStatusThread_Synced
 	}
 	return pb.EventStatusThread_Syncing
@@ -113,10 +122,10 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 	r.nodeConnected = online
 }
 
-func (r *updateReceiver) UpdateNodeStatus(status ConnectionStatus) {
+func (r *updateReceiver) UpdateNodeStatus() {
 	r.Lock()
 	defer r.Unlock()
-	r.nodeConnected = status == Online
+	r.nodeConnected = r.nodeStatus.GetNodeStatus() == nodestatus.Online
 }
 
 func (r *updateReceiver) notify(

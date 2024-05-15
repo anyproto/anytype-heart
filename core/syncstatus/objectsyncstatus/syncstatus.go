@@ -1,4 +1,4 @@
-package syncstatus
+package objectsyncstatus
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 
@@ -23,10 +24,20 @@ const (
 	syncTimeout        = time.Second
 )
 
+var log = logger.NewNamed(syncstatus.CName)
+
 type UpdateReceiver interface {
 	UpdateTree(ctx context.Context, treeId string, status SyncStatus) (err error)
-	UpdateNodeStatus(status ConnectionStatus)
+	UpdateNodeStatus()
 }
+
+type SyncStatus int
+
+const (
+	StatusUnknown SyncStatus = iota
+	StatusSynced
+	StatusNotSynced
+)
 
 type StatusUpdater interface {
 	HeadsChange(treeId string, heads []string)
@@ -37,12 +48,6 @@ type StatusWatcher interface {
 	Watch(treeId string) (err error)
 	Unwatch(treeId string)
 	SetUpdateReceiver(updater UpdateReceiver)
-}
-
-type NodeStatus interface {
-	app.Component
-	SetNodesStatus(senderId string, status ConnectionStatus)
-	GetNodeStatus(senderId string) ConnectionStatus
 }
 
 type StatusService interface {
@@ -74,7 +79,6 @@ type syncStatusService struct {
 	treeHeads    map[string]treeHeadsEntry
 	watchers     map[string]struct{}
 	stateCounter uint64
-	nodeStatus   ConnectionStatus
 
 	treeStatusBuf []treeStatus
 
@@ -95,6 +99,11 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
 	s.configuration = a.MustComponent(nodeconf.CName).(nodeconf.NodeConf)
+	s.periodicSync = periodicsync.NewPeriodicSync(
+		s.updateIntervalSecs,
+		s.updateTimeout,
+		s.update,
+		log)
 	return
 }
 
@@ -129,17 +138,6 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	s.stateCounter++
 }
 
-func (s *syncStatusService) SetNodesStatus(senderId string, status ConnectionStatus) {
-	if !s.isSenderResponsible(senderId) {
-		return
-	}
-
-	s.Lock()
-	defer s.Unlock()
-
-	s.nodeStatus = status
-}
-
 func (s *syncStatusService) update(ctx context.Context) (err error) {
 	s.treeStatusBuf = s.treeStatusBuf[:0]
 
@@ -158,9 +156,8 @@ func (s *syncStatusService) update(ctx context.Context) (err error) {
 		}
 		s.treeStatusBuf = append(s.treeStatusBuf, treeStatus{treeId, treeHeads.syncStatus, treeHeads.heads})
 	}
-	nodeStatus := s.nodeStatus
 	s.Unlock()
-	s.updateReceiver.UpdateNodeStatus(nodeStatus)
+	s.updateReceiver.UpdateNodeStatus()
 	for _, entry := range s.treeStatusBuf {
 		err = s.updateReceiver.UpdateTree(ctx, entry.treeId, entry.status)
 		if err != nil {
@@ -233,9 +230,7 @@ func (s *syncStatusService) Unwatch(treeId string) {
 	s.Lock()
 	defer s.Unlock()
 
-	if _, ok := s.watchers[treeId]; ok {
-		delete(s.watchers, treeId)
-	}
+	delete(s.watchers, treeId)
 }
 
 func (s *syncStatusService) StateCounter() uint64 {
@@ -275,8 +270,4 @@ func (s *syncStatusService) Close(ctx context.Context) error {
 
 func (s *syncStatusService) isSenderResponsible(senderId string) bool {
 	return slices.Contains(s.configuration.NodeIds(s.spaceId), senderId)
-}
-
-func (s *syncStatusService) GetNodeStatus() ConnectionStatus {
-	return s.nodeStatus
 }

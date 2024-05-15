@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 )
 
 func TestObjectState_GetSyncObjectCount(t *testing.T) {
@@ -36,11 +38,11 @@ func TestObjectState_GetSyncStatus(t *testing.T) {
 		objectState := NewObjectState()
 
 		// when
-		objectState.objectSyncStatusBySpace["spaceId"] = Syncing
+		objectState.objectSyncStatusBySpace["spaceId"] = helpers.Syncing
 		syncStatus := objectState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, Syncing, syncStatus)
+		assert.Equal(t, helpers.Syncing, syncStatus)
 	})
 	t.Run("GetSyncStatus: zero value", func(t *testing.T) {
 		// given
@@ -50,7 +52,7 @@ func TestObjectState_GetSyncStatus(t *testing.T) {
 		syncStatus := objectState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, Synced, syncStatus)
+		assert.Equal(t, helpers.Synced, syncStatus)
 	})
 }
 
@@ -58,7 +60,7 @@ func TestObjectState_SetObjectsNumber(t *testing.T) {
 	t.Run("SetObjectsNumber", func(t *testing.T) {
 		// given
 		objectState := NewObjectState()
-		syncStatus := MakeSyncStatus("spaceId", Syncing, 2, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Syncing, 2, helpers.Null, helpers.Objects)
 
 		// when
 		objectState.SetObjectsNumber(syncStatus)
@@ -69,7 +71,7 @@ func TestObjectState_SetObjectsNumber(t *testing.T) {
 	t.Run("SetObjectsNumber: no object", func(t *testing.T) {
 		// given
 		objectState := NewObjectState()
-		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Synced, 0, helpers.Null, helpers.Objects)
 
 		// when
 		objectState.SetObjectsNumber(syncStatus)
@@ -95,7 +97,7 @@ func TestObjectState_IsSyncFinished(t *testing.T) {
 		objectState := NewObjectState()
 
 		// when
-		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Synced, 0, helpers.Null, helpers.Objects)
 		objectState.SetSyncStatus(syncStatus)
 		finished := objectState.IsSyncFinished("spaceId")
 
@@ -107,7 +109,7 @@ func TestObjectState_IsSyncFinished(t *testing.T) {
 		objectState := NewObjectState()
 
 		// when
-		syncStatus := MakeSyncStatus("spaceId", Offline, 3, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Offline, 3, helpers.Null, helpers.Objects)
 		objectState.SetSyncStatus(syncStatus)
 		finished := objectState.IsSyncFinished("spaceId")
 
@@ -122,43 +124,43 @@ func TestObjectState_SetSyncStatus(t *testing.T) {
 		objectState := NewObjectState()
 
 		// when
-		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Synced, 0, helpers.Null, helpers.Objects)
 		objectState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, Synced, objectState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Synced, objectState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatus, sync in progress", func(t *testing.T) {
 		// given
 		objectState := NewObjectState()
 
 		// when
-		syncStatus := MakeSyncStatus("spaceId", Syncing, 1, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Syncing, 1, helpers.Null, helpers.Objects)
 		objectState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, Syncing, objectState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Syncing, objectState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatus, sync is finished with error", func(t *testing.T) {
 		// given
 		objectState := NewObjectState()
 
 		// when
-		syncStatus := MakeSyncStatus("spaceId", Error, 3, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Error, 3, helpers.Null, helpers.Objects)
 		objectState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, Error, objectState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Error, objectState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatus, offline", func(t *testing.T) {
 		// given
 		objectState := NewObjectState()
 
 		// when
-		syncStatus := MakeSyncStatus("spaceId", Offline, 3, Null, Objects)
+		syncStatus := helpers.MakeSyncStatus("spaceId", helpers.Offline, 3, helpers.Null, helpers.Objects)
 		objectState.SetSyncStatus(syncStatus)
 
 		// then
-		assert.Equal(t, Offline, objectState.GetSyncStatus("spaceId"))
+		assert.Equal(t, helpers.Offline, objectState.GetSyncStatus("spaceId"))
 	})
 }

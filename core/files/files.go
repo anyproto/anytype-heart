@@ -31,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
@@ -66,7 +65,6 @@ type service struct {
 	fileSync    filesync.FileSync
 	dagService  ipld.DAGService
 	fileStorage filestorage.FileStorage
-	objectStore objectstore.ObjectStore
 
 	lock              sync.Mutex
 	addOperationLocks map[string]*sync.Mutex
@@ -85,7 +83,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 

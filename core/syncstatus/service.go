@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace"
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/dgraph-io/badger/v4"
 
@@ -16,6 +15,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
@@ -31,7 +32,7 @@ const CName = "status"
 type Service interface {
 	Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error)
 	Unwatch(spaceID string, id string)
-	RegisterSpace(space commonspace.Space)
+	RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher)
 
 	app.ComponentRunnable
 }
@@ -46,7 +47,7 @@ type service struct {
 	fileWatcherUpdateInterval time.Duration
 
 	objectWatchersLock sync.Mutex
-	objectWatchers     map[string]StatusWatcher
+	objectWatchers     map[string]objectsyncstatus.StatusWatcher
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
@@ -58,7 +59,7 @@ type service struct {
 func New(fileWatcherUpdateInterval time.Duration) Service {
 	return &service{
 		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
-		objectWatchers:            map[string]StatusWatcher{},
+		objectWatchers:            map[string]objectsyncstatus.StatusWatcher{},
 	}
 }
 
@@ -84,8 +85,9 @@ func (s *service) Init(a *app.App) (err error) {
 		}
 	}
 	s.badger = db
+	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
-	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
 	s.fileSyncService.OnUploaded(s.OnFileUploaded)
@@ -104,13 +106,12 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) RegisterSpace(space commonspace.Space) {
+func (s *service) RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher) {
 	s.objectWatchersLock.Lock()
 	defer s.objectWatchersLock.Unlock()
 
-	watcher := space.SyncStatus().(syncstatus.StatusUpdater)
-	watcher.SetUpdateReceiver(s.updateReceiver)
-	s.objectWatchers[space.Id()] = watcher
+	sw.SetUpdateReceiver(s.updateReceiver)
+	s.objectWatchers[space.Id()] = sw
 }
 
 func (s *service) UnregisterSpace(space commonspace.Space) {

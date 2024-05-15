@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/syncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
@@ -25,6 +25,12 @@ var (
 	ContextPeerFindDeadlineKey  contextKey = "peerFindDeadline"
 	ErrPeerFindDeadlineExceeded            = errors.New("peer find deadline exceeded")
 )
+
+type NodeStatus interface {
+	app.Component
+	SetNodesStatus(spaceId string, senderId string, status nodestatus.ConnectionStatus)
+	GetNodeStatus() nodestatus.ConnectionStatus
+}
 
 type clientPeerManager struct {
 	spaceId            string
@@ -36,7 +42,7 @@ type clientPeerManager struct {
 	watchingPeers             map[string]struct{}
 	rebuildResponsiblePeers   chan struct{}
 	availableResponsiblePeers chan struct{}
-	nodeStatus                syncstatus.NodeStatus
+	nodeStatus                NodeStatus
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -49,7 +55,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
-	n.nodeStatus = app.MustComponent[syncstatus.NodeStatus](a)
+	n.nodeStatus = app.MustComponent[NodeStatus](a)
 	return
 }
 
@@ -183,10 +189,10 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	p, err := n.p.pool.GetOneOf(n.ctx, n.responsibleNodeIds)
 	if err == nil {
 		peers = []peer.Peer{p}
-		n.nodeStatus.SetNodesStatus(p.Id(), syncstatus.Online)
+		n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.Online)
 	} else {
 		log.Info("can't get node peers", zap.Error(err))
-		n.nodeStatus.SetNodesStatus(p.Id(), syncstatus.ConnectionError)
+		n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.ConnectionError)
 	}
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
@@ -243,5 +249,5 @@ func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 }
 
 func (n *clientPeerManager) IsPeerOffline(senderId string) bool {
-	return n.nodeStatus.GetNodeStatus(senderId) != syncstatus.Online
+	return n.nodeStatus.GetNodeStatus() != nodestatus.Online
 }

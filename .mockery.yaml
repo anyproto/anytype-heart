@@ -165,3 +165,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
+  github.com/anyproto/anytype-heart/core/block/object/treesyncer:
+    interfaces:
+      Updater:

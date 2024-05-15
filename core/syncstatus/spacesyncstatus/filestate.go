@@ -2,6 +2,7 @@ package spacesyncstatus
 
 import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -11,7 +12,7 @@ import (
 
 type FileState struct {
 	fileSyncCountBySpace  map[string]int
-	fileSyncStatusBySpace map[string]SpaceSyncStatus
+	fileSyncStatusBySpace map[string]helpers.SpaceSyncStatus
 
 	store objectstore.ObjectStore
 }
@@ -19,13 +20,13 @@ type FileState struct {
 func NewFileState(store objectstore.ObjectStore) *FileState {
 	return &FileState{
 		fileSyncCountBySpace:  make(map[string]int, 0),
-		fileSyncStatusBySpace: make(map[string]SpaceSyncStatus, 0),
+		fileSyncStatusBySpace: make(map[string]helpers.SpaceSyncStatus, 0),
 
 		store: store,
 	}
 }
 
-func (f *FileState) SetObjectsNumber(status *SpaceSync) {
+func (f *FileState) SetObjectsNumber(status *helpers.SpaceSync) {
 	records, err := f.store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -46,19 +47,19 @@ func (f *FileState) SetObjectsNumber(status *SpaceSync) {
 	f.fileSyncCountBySpace[status.SpaceId] = len(records)
 }
 
-func (f *FileState) SetSyncStatus(status *SpaceSync) {
+func (f *FileState) SetSyncStatus(status *helpers.SpaceSync) {
 	switch status.Status {
-	case Synced:
-		f.fileSyncStatusBySpace[status.SpaceId] = Synced
+	case helpers.Synced:
+		f.fileSyncStatusBySpace[status.SpaceId] = helpers.Synced
 		if number := f.fileSyncCountBySpace[status.SpaceId]; number > 0 {
-			f.fileSyncStatusBySpace[status.SpaceId] = Syncing
+			f.fileSyncStatusBySpace[status.SpaceId] = helpers.Syncing
 		}
-	case Error, Syncing, Offline:
+	case helpers.Error, helpers.Syncing, helpers.Offline:
 		f.fileSyncStatusBySpace[status.SpaceId] = status.Status
 	}
 }
 
-func (f *FileState) GetSyncStatus(spaceId string) SpaceSyncStatus {
+func (f *FileState) GetSyncStatus(spaceId string) helpers.SpaceSyncStatus {
 	return f.fileSyncStatusBySpace[spaceId]
 }
 
@@ -69,5 +70,5 @@ func (f *FileState) GetSyncObjectCount(spaceId string) int {
 func (f *FileState) IsSyncFinished(spaceId string) bool {
 	status := f.fileSyncStatusBySpace[spaceId]
 	count := f.fileSyncCountBySpace[spaceId]
-	return count == 0 && status == Synced
+	return count == 0 && status == helpers.Synced
 }
