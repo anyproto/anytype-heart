@@ -129,7 +129,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -153,7 +153,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -285,6 +285,9 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				Code: pb.RpcMembershipGetStatusResponseError_NULL,
+			},
 			Data: &model.Membership{
 				Tier:          uint32(sr.Tier),
 				Status:        model.MembershipStatus(sr.Status),
@@ -360,6 +363,9 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				Code: pb.RpcMembershipGetStatusResponseError_NULL,
+			},
 			Data: &model.Membership{
 				Tier:          uint32(sr.Tier),
 				Status:        model.MembershipStatus(sr.Status),
@@ -411,6 +417,9 @@ func TestGetStatus(t *testing.T) {
 
 		// this is from DB
 		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				Code: pb.RpcMembershipGetStatusResponseError_NULL,
+			},
 			Data: &model.Membership{
 				Tier:          uint32(psp.SubscriptionTier_TierExplorer),
 				Status:        model.MembershipStatus(sr.Status),
@@ -471,7 +480,7 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		// w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
-		req := &pb.RpcMembershipGetPaymentUrlRequest{
+		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
@@ -500,7 +509,7 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
-		req := &pb.RpcMembershipGetPaymentUrlRequest{
+		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
@@ -589,7 +598,7 @@ func TestGetVerificationEmail(t *testing.T) {
 		// Call the function being tested
 		resp, err := fx.GetVerificationEmail(ctx, req)
 		assert.NoError(t, err)
-		assert.True(t, resp.Error == nil)
+		assert.Equal(t, pb.RpcMembershipGetVerificationEmailResponseErrorCode(0), resp.Error.Code)
 	})
 }
 
@@ -625,7 +634,7 @@ func TestVerifyEmailCode(t *testing.T) {
 
 		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
 
-		fx.cache.EXPECT().CacheClear().Return(nil).Once()
+		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
 		req := &pb.RpcMembershipVerifyEmailCodeRequest{}
@@ -1282,7 +1291,7 @@ func TestIsNameValid(t *testing.T) {
 		}
 		resp, err := fx.IsNameValid(ctx, &req)
 		assert.NoError(t, err)
-		assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseErrorCode(0), resp.Error.Code)
 	})
 }
 
@@ -1326,6 +1335,6 @@ func TestVerifyAppStoreReceipt(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, (*pb.RpcMembershipVerifyAppStoreReceiptResponseError)(nil), resp.Error)
+		assert.Equal(t, pb.RpcMembershipVerifyAppStoreReceiptResponseErrorCode(0), resp.Error.Code)
 	})
 }

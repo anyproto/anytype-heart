@@ -123,7 +123,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	}
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
-	records, _, err := s.store.Query(database.Query{
+	records, err := s.store.Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
