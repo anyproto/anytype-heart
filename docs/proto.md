@@ -11590,8 +11590,7 @@ before requesting a payment link and paying
 
 ### Rpc.Membership.RegisterPaymentRequest
 Generate a unique id for payment request (for mobile clients)
-Generate a link to Stripe where user can pay for the membership (for desktop client)
-TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
+Generate a link to Stripe/Crypto where user can pay for the membership (for desktop client)
 
 
 
@@ -11610,6 +11609,7 @@ TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
 | paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
 | nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
 | nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
+| userEmail | [string](#string) |  | for some tiers and payment methods (like crypto) we need an e-mail please get if either from: 1. Membership.GetStatus() -&gt; anytype.model.Membership.userEmail field 2. Ask user from the UI |
 
 
 
@@ -20340,6 +20340,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_ANYNAME | 9 |  |
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
 | CAN_NOT_CONNECT | 11 |  |
+| EMAIL_WRONG_FORMAT | 12 | for tiers and payment methods that require that |
 
 
 
