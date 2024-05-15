@@ -61,6 +61,7 @@ type Queue[T Item] struct {
 
 type options struct {
 	retryPauseDuration time.Duration
+	ctx                context.Context
 }
 
 type Option func(*options)
@@ -69,6 +70,12 @@ type Option func(*options)
 func WithRetryPause(duration time.Duration) Option {
 	return func(o *options) {
 		o.retryPauseDuration = duration
+	}
+}
+
+func WithContext(ctx context.Context) Option {
+	return func(o *options) {
+		o.ctx = ctx
 	}
 }
 
@@ -90,7 +97,11 @@ func New[T Item](
 	for _, opt := range opts {
 		opt(&q.options)
 	}
-	q.ctx, q.ctxCancel = context.WithCancel(context.Background())
+	rootCtx := context.Background()
+	if q.options.ctx != nil {
+		rootCtx = q.options.ctx
+	}
+	q.ctx, q.ctxCancel = context.WithCancel(rootCtx)
 	err := q.restore()
 	if err != nil {
 		q.logger.Error("can't restore queue", zap.Error(err))

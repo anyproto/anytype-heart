@@ -163,7 +163,7 @@ func (s *ownProfileSubscription) close() {
 func (s *ownProfileSubscription) enqueuePush() {
 	if s.pushIdentityTimer == nil {
 		s.pushIdentityTimer = time.AfterFunc(0, func() {
-			pushErr := s.pushProfileToIdentityRegistry(context.Background())
+			pushErr := s.pushProfileToIdentityRegistry(s.componentCtx)
 			if pushErr != nil {
 				log.Error("push profile to identity registry", zap.Error(pushErr))
 			}
@@ -206,7 +206,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 }
 
 func (s *ownProfileSubscription) fetchGlobalName() {
-	response, err := s.namingService.GetNameByAnyId(context.Background(), &nameserviceproto.NameByAnyIdRequest{AnyAddress: s.myIdentity})
+	response, err := s.namingService.GetNameByAnyId(s.componentCtx, &nameserviceproto.NameByAnyIdRequest{AnyAddress: s.myIdentity})
 	if err != nil || response == nil {
 		log.Error("error fetching global name of our own identity from Naming Service", zap.Error(err))
 		return
