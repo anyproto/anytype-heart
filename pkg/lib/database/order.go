@@ -115,7 +115,9 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 		ko.ensureComparator()
 		comp = ko.comparator.CompareString(av.GetStringValue(), bv.GetStringValue())
 	}
-	comp = ko.tryFlipComp(comp)
+	if av.GetStringValue() == "" || bv.GetStringValue() == "" {
+		comp = ko.tryFlipComp(comp)
+	}
 	return comp
 }
 
