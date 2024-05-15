@@ -107,8 +107,6 @@ func TestService_Search(t *testing.T) {
 		option1 := "option1"
 		option2 := "option2"
 
-		defer fx.a.Close(context.Background())
-		defer fx.ctrl.Finish()
 		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
 		require.NoError(t, err)
 
@@ -140,8 +138,6 @@ func TestService_Search(t *testing.T) {
 		option1 := "option1"
 		option2 := "option2"
 
-		defer fx.a.Close(context.Background())
-		defer fx.ctrl.Finish()
 		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
 		require.NoError(t, err)
 
@@ -178,8 +174,6 @@ func TestService_Search(t *testing.T) {
 		option1 := "option1"
 		option2 := "option2"
 
-		defer fx.a.Close(context.Background())
-		defer fx.ctrl.Finish()
 		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
 		require.NoError(t, err)
 
@@ -221,8 +215,6 @@ func TestService_Search(t *testing.T) {
 		option1 := "option1"
 		option2 := "option2"
 
-		defer fx.a.Close(context.Background())
-		defer fx.ctrl.Finish()
 		err := addTestObjects(t, source, relationKey, option1, option2, spaceID, fx)
 		require.NoError(t, err)
 
@@ -261,9 +253,6 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
-		defer fx.a.Close(context.Background())
-		defer fx.ctrl.Finish()
-
 		spaceID := "spaceId"
 
 		option1 := "option1"
@@ -286,9 +275,6 @@ func TestService_Search(t *testing.T) {
 	})
 	t.Run("search with filters: tree structure with Or filter in root and combined filters as NestedFilter", func(t *testing.T) {
 		fx := newFixtureWithRealObjectStore(t)
-		defer fx.a.Close(context.Background())
-		defer fx.ctrl.Finish()
-
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
