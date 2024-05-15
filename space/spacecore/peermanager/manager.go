@@ -192,7 +192,9 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.Online)
 	} else {
 		log.Info("can't get node peers", zap.Error(err))
-		n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.ConnectionError)
+		for _, p := range n.responsiblePeers {
+			n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.ConnectionError)
+		}
 	}
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
