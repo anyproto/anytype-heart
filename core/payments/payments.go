@@ -37,11 +37,12 @@ const (
 )
 
 var (
-	ErrCanNotSign   = errors.New("can not sign")
-	ErrCacheProblem = errors.New("cache problem")
-	ErrNoConnection = errors.New("can not connect to payment node")
-	ErrNoTiers      = errors.New("can not get tiers")
-	ErrNoTierFound  = errors.New("can not find requested tier")
+	ErrCanNotSign            = errors.New("can not sign")
+	ErrCacheProblem          = errors.New("cache problem")
+	ErrNoConnection          = errors.New("can not connect to payment node")
+	ErrNoTiers               = errors.New("can not get tiers")
+	ErrNoTierFound           = errors.New("can not find requested tier")
+	ErrNameIsAlreadyReserved = errors.New("name is already reserved")
 )
 
 type globalNamesUpdater interface {
@@ -106,7 +107,7 @@ CACHE LOGICS:
 type Service interface {
 	GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error)
 	IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error)
-	RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error)
+	RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) (*pb.RpcMembershipRegisterPaymentRequestResponse, error)
 	GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPortalLinkUrlRequest) (*pb.RpcMembershipGetPortalLinkUrlResponse, error)
 	GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error)
 	VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error)
@@ -129,6 +130,7 @@ type service struct {
 	periodicGetStatus periodicsync.PeriodicSync
 	eventSender       event.Sender
 	profileUpdater    globalNamesUpdater
+	ns                nameservice.Service
 
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
@@ -142,6 +144,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
+	s.ns = app.MustComponent[nameservice.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
@@ -365,56 +368,20 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	}
 
 	if resp.Code == proto.IsNameValidResponse_Valid {
-		// no error
-		return &out, nil
+		// no error, now check if vacant in NS
+		return s.checkIfNameAvailInNS(ctx, req)
 	}
 
 	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
 	code = resp.Code
 	desc = resp.Description
 
-	// this LOCAL code is switched off because we need more info on the PP node side
-	// so instead we call it (see above ^)
-	/*
-		// 1 - get all tiers from cache or PP node
-		// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
-		// and first is much simpler/faster
-		tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipGetTiersRequest{
-			NoCache: false,
-			// TODO: warning! no locale and payment method are passed here!
-			// Locale:        "",
-			// PaymentMethod: pb.RpcMembershipPaymentMethod_PAYMENT_METHOD_UNKNOWN,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if tiers.Tiers == nil {
-			return nil, ErrNoTiers
-		}
-
-		// find req.RequestedTier
-		var tier *model.MembershipTierData
-		for _, t := range tiers.Tiers {
-			if t.Id == req.RequestedTier {
-				tier = t
-				break
-			}
-		}
-		if tier == nil {
-			return nil, ErrNoTierFound
-		}
-
-		code = s.validateAnyName(*tier, nameservice.NsNameToFullName(req.NsName, req.NsNameType))
-	*/
-
 	if code == proto.IsNameValidResponse_Valid {
-		// valid
-		return &out, nil
+		// no error, now check if vacant in NS
+		return s.checkIfNameAvailInNS(ctx, req)
 	}
 
 	// 2 - convert code to error
-	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
-
 	switch code {
 	case proto.IsNameValidResponse_NoDotAny:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_BAD_INPUT
@@ -441,6 +408,43 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 
 	out.Error.Description = desc
 	return &out, nil
+}
+
+func (s *service) checkIfNameAvailInNS(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
+	// special backward compatibility logic for some clients
+	// if name is empty -> return "it's OK"
+	// because if you don't pass a name to MembershipIsNameValid() - means you don't want to reserve or change it
+	// so ps.IsNameValid() returned no error for empty string
+	//
+	// and we should preserve that behavior also here
+	if req.NsName == "" {
+		return &pb.RpcMembershipIsNameValidResponse{
+			Error: &pb.RpcMembershipIsNameValidResponseError{
+				Code:        pb.RpcMembershipIsNameValidResponseError_NULL,
+				Description: "",
+			},
+		}, nil
+	}
+
+	// check in the NameService if name is vacant (remote call #2)
+	nsreq := pb.RpcNameServiceResolveNameRequest{
+		NsName:     req.NsName,
+		NsNameType: req.NsNameType,
+	}
+	nsout, err := s.ns.NameServiceResolveName(ctx, &nsreq)
+	if err != nil {
+		return nil, err
+	}
+	if !nsout.Available {
+		return nil, ErrNameIsAlreadyReserved
+	}
+
+	return &pb.RpcMembershipIsNameValidResponse{
+		Error: &pb.RpcMembershipIsNameValidResponseError{
+			Code:        pb.RpcMembershipIsNameValidResponseError_NULL,
+			Description: "",
+		},
+	}, nil
 }
 
 func (s *service) validateAnyName(tier model.MembershipTierData, name string) proto.IsNameValidResponse_Code {
@@ -479,7 +483,7 @@ func (s *service) validateAnyName(tier model.MembershipTierData, name string) pr
 	return proto.IsNameValidResponse_Valid
 }
 
-func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) (*pb.RpcMembershipGetPaymentUrlResponse, error) {
+func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) (*pb.RpcMembershipRegisterPaymentRequestResponse, error) {
 	// 1 - send request
 	bsr := proto.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
@@ -518,11 +522,11 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		return nil, err
 	}
 
-	out := pb.RpcMembershipGetPaymentUrlResponse{
+	out := pb.RpcMembershipRegisterPaymentRequestResponse{
 		PaymentUrl: bsRet.PaymentUrl,
 		BillingId:  bsRet.BillingID,
-		Error: &pb.RpcMembershipGetPaymentUrlResponseError{
-			Code: pb.RpcMembershipGetPaymentUrlResponseError_NULL,
+		Error: &pb.RpcMembershipRegisterPaymentRequestResponseError{
+			Code: pb.RpcMembershipRegisterPaymentRequestResponseError_NULL,
 		},
 	}
 

@@ -16,7 +16,11 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	appKey := req.GetAppKey()
 
 	if appKey != "" {
-		wallet := s.app.Component(walletComp.CName)
+		app := s.GetApp()
+		if app == nil {
+			return "", "", ErrApplicationIsNotRunning
+		}
+		wallet := app.Component(walletComp.CName)
 		if wallet == nil {
 			return "", "", fmt.Errorf("appToken auth not yet supported for the main app")
 		}

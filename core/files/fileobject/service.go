@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -33,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
@@ -101,6 +103,12 @@ func (s *service) Name() string {
 	return CName
 }
 
+type configProvider interface {
+	IsLocalOnlyMode() bool
+}
+
+var _ configProvider = (*config.Config)(nil)
+
 func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.objectCreator = app.MustComponent[objectCreatorService](a)
@@ -109,6 +117,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()
 
@@ -117,7 +126,17 @@ func (s *service) Init(a *app.App) error {
 	if err != nil {
 		return fmt.Errorf("get badger: %w", err)
 	}
-	s.migrationQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, []byte("queue/file_migration/"), makeMigrationItem), log.Desugar(), s.migrationQueueHandler)
+
+	migrationQueueCtx := context.Background()
+	if cfg.IsLocalOnlyMode() {
+		migrationQueueCtx = context.WithValue(migrationQueueCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(1*time.Minute))
+	}
+	s.migrationQueue = persistentqueue.New(
+		persistentqueue.NewBadgerStorage(db, []byte("queue/file_migration/"), makeMigrationItem),
+		log.Desugar(),
+		s.migrationQueueHandler,
+		persistentqueue.WithContext(migrationQueueCtx),
+	)
 	return nil
 }
 

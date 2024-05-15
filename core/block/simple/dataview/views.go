@@ -154,14 +154,7 @@ func (l *Dataview) ReorderSorts(viewID string, ids []string) error {
 }
 
 func (l *Dataview) AddViewRelation(viewID string, relation *model.BlockContentDataviewRelation) error {
-	view, err := l.GetView(viewID)
-	if err != nil {
-		return err
-	}
-	l.syncViewRelationWithRelationLinks(view)
-
-	view.Relations = append(view.Relations, relation)
-	return nil
+	return l.ReplaceViewRelation(viewID, relation.Key, relation)
 }
 
 func (l *Dataview) RemoveViewRelations(viewID string, relationKeys []string) error {
@@ -188,7 +181,8 @@ func (l *Dataview) ReplaceViewRelation(viewID string, relationKey string, relati
 		return f.Key == relationKey
 	})
 	if idx < 0 {
-		return l.AddViewRelation(viewID, relation)
+		view.Relations = append(view.Relations, relation)
+		return nil
 	}
 
 	view.Relations[idx] = relation
