@@ -337,7 +337,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 			return nil, err
 		}
 		return res, nil
-	})
+	}, retryOptions...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get image reader: %w", err)
 	}

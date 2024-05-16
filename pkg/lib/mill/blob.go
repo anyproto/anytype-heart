@@ -4,8 +4,10 @@ import "io"
 
 type Blob struct{}
 
+const BlobId = "/blob"
+
 func (m *Blob) ID() string {
-	return "/blob"
+	return BlobId
 }
 
 func (m *Blob) Pin() bool {
