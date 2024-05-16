@@ -2,35 +2,145 @@ package fileobject
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type indexerFixture struct {
 	*indexer
+	fileService        *mock_files.MockService
 	objectStoreFixture *objectstore.StoreFixture
 }
 
 func newIndexerFixture(t *testing.T) *indexerFixture {
 	objectStore := objectstore.NewStoreFixture(t)
+	fileService := mock_files.NewMockService(t)
 
 	svc := &service{
 		objectStore: objectStore,
+		fileService: fileService,
 	}
 	ind := svc.newIndexer()
 
 	return &indexerFixture{
 		objectStoreFixture: objectStore,
+		fileService:        fileService,
 		indexer:            ind,
 	}
+}
+
+func TestIndexer_buildDetails(t *testing.T) {
+	t.Run("with file", func(t *testing.T) {
+		for _, typeKey := range []domain.TypeKey{
+			bundle.TypeKeyFile,
+			bundle.TypeKeyAudio,
+			bundle.TypeKeyVideo,
+		} {
+			t.Run(fmt.Sprintf("with type %s", typeKey), func(t *testing.T) {
+				fx := newIndexerFixture(t)
+				id := domain.FullFileId{
+					SpaceId: "space1",
+					FileId:  testFileId,
+				}
+				ctx := context.Background()
+
+				file := mock_files.NewMockFile(t)
+				file.EXPECT().Info().Return(&storage.FileInfo{
+					Mill:  mill.BlobId,
+					Media: "text",
+				})
+				file.EXPECT().Details(ctx).Return(&types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyName.String(): pbtypes.String("name"),
+					},
+				}, typeKey, nil)
+				fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
+
+				details, gotTypeKey, err := fx.buildDetails(ctx, id)
+				require.NoError(t, err)
+				assert.Equal(t, typeKey, gotTypeKey)
+				assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+				assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
+			})
+		}
+	})
+	t.Run("with image", func(t *testing.T) {
+		fx := newIndexerFixture(t)
+		id := domain.FullFileId{
+			SpaceId: "space1",
+			FileId:  testFileId,
+		}
+		ctx := context.Background()
+
+		file := mock_files.NewMockFile(t)
+		file.EXPECT().Info().Return(&storage.FileInfo{
+			Mill:  mill.ImageResizeId,
+			Media: "image/jpeg",
+		})
+
+		image := mock_files.NewMockImage(t)
+		image.EXPECT().Details(ctx).Return(&types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String("name"),
+			},
+		}, nil)
+		fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
+		fx.fileService.EXPECT().ImageByHash(ctx, id).Return(image, nil)
+
+		details, gotTypeKey, err := fx.buildDetails(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
+		assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+		assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
+	})
+	t.Run("with image fell back to file", func(t *testing.T) {
+		for _, typeKey := range []domain.TypeKey{
+			bundle.TypeKeyFile,
+			bundle.TypeKeyAudio,
+			bundle.TypeKeyVideo,
+			bundle.TypeKeyImage,
+		} {
+			t.Run(fmt.Sprintf("with type %s", typeKey), func(t *testing.T) {
+				fx := newIndexerFixture(t)
+				id := domain.FullFileId{
+					SpaceId: "space1",
+					FileId:  testFileId,
+				}
+				ctx := context.Background()
+
+				file := mock_files.NewMockFile(t)
+				file.EXPECT().Info().Return(&storage.FileInfo{
+					Mill:  mill.BlobId,
+					Media: "image/jpeg",
+				})
+				file.EXPECT().Details(ctx).Return(&types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyName.String(): pbtypes.String("name"),
+					},
+				}, typeKey, nil)
+				fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
+
+				details, gotTypeKey, err := fx.buildDetails(ctx, id)
+				require.NoError(t, err)
+				assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
+				assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+				assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
+			})
+		}
+	})
 }
 
 func TestIndexer_addFromObjectStore(t *testing.T) {
