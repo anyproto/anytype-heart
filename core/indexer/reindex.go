@@ -401,9 +401,9 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 		var virtualObjectIds []string
 		if len(ids) == 0 {
 			ids, err = i.store.ListIdsBySpace(spaceId)
-			if err != nil {
-				log.Errorf("reindex failed to get all ids(eraseLinks): %v", err)
-			}
+		}
+		if err != nil {
+			log.Errorf("reindex failed to get all ids(eraseLinks): %v", err)
 		}
 		// we get ids of Home and Archive separately from other objects,
 		// because we do not index its details, so it could not be fetched via store.Query
