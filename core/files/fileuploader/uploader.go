@@ -452,9 +452,6 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			errors.Is(err, mill.ErrFormatSupportNotEnabled) ||
 			errors.Is(err, mill.ErrProcessing) {
 			err = nil
-			if errors.Is(err, mill.ErrProcessing) {
-				fmt.Println(err)
-			}
 			return u.ForceUploadingAsFile().Upload(ctx)
 		}
 		if err != nil {
