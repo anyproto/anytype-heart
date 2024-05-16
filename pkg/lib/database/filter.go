@@ -54,7 +54,7 @@ func MakeFilter(protoFilter *model.BlockContentDataviewFilter, store ObjectStore
 	case model.BlockContentDataviewFilter_Or:
 		return FiltersOr(filters), nil
 	}
-	return nil, fmt.Errorf("unsupported filter format")
+	return nil, fmt.Errorf("unsupported filter operator %v", protoFilter.Operator)
 }
 
 func NestedRelationKey(baseRelationKey domain.RelationKey, nestedRelationKey domain.RelationKey) string {
