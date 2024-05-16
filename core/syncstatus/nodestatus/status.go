@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 )
 
-const CName = "nodeStatus"
+const CName = "core.syncstatus.nodestatus"
 
 type nodeStatus struct {
 	sync.Mutex

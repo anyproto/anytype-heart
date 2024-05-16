@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-const service = "common.commonspace.spaceSyncStatusUpdater"
+const service = "core.syncstatus.spacesyncstatus"
 
 var log = logging.Logger("anytype-mw-space-status")
 

@@ -2,6 +2,7 @@ package treesyncer
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -13,8 +14,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 )
@@ -76,6 +77,7 @@ type treeSyncer struct {
 	isSyncing       bool
 	spaceSyncStatus Updater
 	peerManager     peermanager.PeerManager
+	nodeConf        nodeconf.NodeConf
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -96,6 +98,7 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
 	t.spaceSyncStatus = app.MustComponent[Updater](a)
 	t.peerManager = app.MustComponent[peermanager.PeerManager](a)
+	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	return nil
 }
 
@@ -150,12 +153,10 @@ func (t *treeSyncer) ShouldSync(peerId string) bool {
 func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) error {
 	t.Lock()
 	defer t.Unlock()
-	var (
-		err      error
-		nodePeer = slices.Contains(t.peerManager.GetNodeResponsiblePeers(), peerId)
-	)
-	defer t.sendResultEvent(err, nodePeer, peerId)
-	t.sendSyncingEvent(peerId, existing, missing, nodePeer)
+	var err error
+	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
+	defer t.sendResultEvent(err, isResponsible, peerId)
+	t.sendSyncingEvent(peerId, existing, missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
