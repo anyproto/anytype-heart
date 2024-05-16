@@ -85,15 +85,16 @@ func (f *ftSearch) Name() (name string) {
 }
 
 func (f *ftSearch) Run(context.Context) (err error) {
-	f.index, err = bleve.Open(f.ftsPath)
+	index, err := bleve.Open(f.ftsPath)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
-		if f.index, err = bleve.New(f.ftsPath, makeMapping()); err != nil {
+		if index, err = bleve.New(f.ftsPath, makeMapping()); err != nil {
 			return
 		}
 		f.cleanUpOldIndexes()
 	} else if err != nil {
 		return
 	}
+	f.index = index
 	return nil
 }
 
