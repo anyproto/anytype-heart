@@ -195,19 +195,6 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}()
 	}
 
-	if flags.eraseLinks {
-		ids, err := i.getIdsForTypes(space.Id(), smartblock2.SmartBlockTypeHome, smartblock2.SmartBlockTypeArchive)
-		if err != nil {
-			log.Errorf("reindex: failed to get ids (eraseLinks): %v", err)
-		} else {
-			for _, id := range ids {
-				if err = i.store.DeleteLinks(id); err != nil {
-					log.Errorf("reindex: failed to delete links (eraseLinks): %v", err)
-				}
-			}
-		}
-	}
-
 	if flags.deletedObjects {
 		err = i.reindexDeletedObjects(space)
 		if err != nil {
@@ -391,21 +378,17 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 		}
 	}
 
+	var ids []string
 	if flags.removeAllIndexedObjects {
+		flags.eraseLinks = true
 		err = i.removeOldObjects()
 		if err != nil {
 			err = nil
 			log.Errorf("reindex failed to removeOldObjects: %v", err)
 		}
-		var ids []string
 		ids, err = i.store.ListIdsBySpace(spaceId)
 		if err != nil {
 			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
-		}
-		for _, id := range ids {
-			if err = i.store.DeleteLinks(id); err != nil {
-				log.Errorf("reindex failed to delete links(removeAllIndexedObjects): %v", err)
-			}
 		}
 		for _, id := range ids {
 			if err = i.store.DeleteDetails(id); err != nil {
@@ -414,13 +397,21 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 		}
 	}
 
-	if flags.eraseLinks && !flags.removeAllIndexedObjects {
-		var ids []string
-		ids, err = i.store.ListIdsBySpace(spaceId)
-		if err != nil {
-			log.Errorf("reindex failed to get all ids(eraseLinks): %v", err)
+	if flags.eraseLinks {
+		var virtualObjectIds []string
+		if len(ids) == 0 {
+			ids, err = i.store.ListIdsBySpace(spaceId)
+			if err != nil {
+				log.Errorf("reindex failed to get all ids(eraseLinks): %v", err)
+			}
 		}
-		for _, id := range ids {
+		// we get ids of Home and Archive separately from other objects,
+		// because we do not index its details, so it could not be fetched via store.Query
+		virtualObjectIds, err = i.getIdsForTypes(spaceId, smartblock2.SmartBlockTypeHome, smartblock2.SmartBlockTypeArchive)
+		if err != nil {
+			log.Errorf("reindex: failed to get ids of virtual objects (eraseLinks): %v", err)
+		}
+		for _, id := range append(ids, virtualObjectIds...) {
 			if err = i.store.DeleteLinks(id); err != nil {
 				log.Errorf("reindex failed to delete links(eraseLinks): %v", err)
 			}
