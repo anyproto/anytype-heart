@@ -67,6 +67,9 @@ func (f *FileState) GetSyncObjectCount(spaceId string) int {
 }
 
 func (f *FileState) IsSyncFinished(spaceId string) bool {
+	if _, ok := f.fileSyncStatusBySpace[spaceId]; !ok {
+		return false
+	}
 	status := f.fileSyncStatusBySpace[spaceId]
 	count := f.fileSyncCountBySpace[spaceId]
 	return count == 0 && status == Synced

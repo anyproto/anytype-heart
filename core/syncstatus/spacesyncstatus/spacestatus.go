@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-const service = "common.commonspace.spaceSyncStatusUpdater"
+const service = "core.syncstatus.spacesyncstatus"
 
 type SpaceSyncType int32
 
