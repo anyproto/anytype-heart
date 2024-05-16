@@ -407,6 +407,36 @@ func TestWithHandlerTickPeriod(t *testing.T) {
 	})
 }
 
+type testContextKeyType string
+
+const testContextKey testContextKeyType = "testKey"
+
+func TestWithContext(t *testing.T) {
+	db := newInMemoryBadger(t)
+	log := logging.Logger("test")
+	testRootCtx := context.WithValue(context.Background(), testContextKey, "testValue")
+
+	wait := make(chan struct{})
+	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+		val, ok := ctx.Value(testContextKey).(string)
+		assert.True(t, ok)
+		assert.Equal(t, "testValue", val)
+		close(wait)
+		return ActionDone, nil
+	}, WithContext(testRootCtx))
+	q.Run()
+	t.Cleanup(func() {
+		q.Close()
+		db.Close()
+	})
+
+	err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+
+	<-wait
+}
+
 func assertEventually(t *testing.T, pred func(t *testing.T) bool) {
 	timeout := time.NewTimer(100 * time.Millisecond)
 	for {
