@@ -17,6 +17,9 @@ import (
 func (m *ImageResize) resizeHEIC(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
 	goheif.SafeEncoding = true
 	img, err := goheif.Decode(r)
+	if err != nil {
+		return nil, fmt.Errorf("decode heic: %w", err)
+	}
 
 	var height int
 	width, err := strconv.Atoi(m.Opts.Width)

@@ -47,6 +47,20 @@ type fixture struct {
 	*service
 }
 
+type dummyConfig struct{}
+
+func (c *dummyConfig) IsLocalOnlyMode() bool {
+	return false
+}
+
+func (c *dummyConfig) Init(_ *app.App) error {
+	return nil
+}
+
+func (c *dummyConfig) Name() string {
+	return "dummyConfig"
+}
+
 const testResolveRetryDelay = 5 * time.Millisecond
 
 func newFixture(t *testing.T) *fixture {
@@ -70,6 +84,7 @@ func newFixture(t *testing.T) *fixture {
 
 	ctx := context.Background()
 	a := new(app.App)
+	a.Register(&dummyConfig{})
 	a.Register(dataStoreProvider)
 	a.Register(fileStore)
 	a.Register(objectStore)

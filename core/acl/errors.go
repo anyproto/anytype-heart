@@ -19,6 +19,7 @@ var (
 	ErrAclRequestFailed     = errors.New("acl request failed")
 	ErrNotShareable         = errors.New("space is not shareable")
 	ErrLimitReached         = errors.New("limit reached")
+	ErrDifferentNetwork     = errors.New("different network")
 	ErrInternal             = errors.New("internal error")
 )
 

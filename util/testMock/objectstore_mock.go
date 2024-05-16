@@ -5,7 +5,6 @@
 //
 //	mockgen -package testMock -destination objectstore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore ObjectStore
 //
-
 // Package testMock is a generated GoMock package.
 package testMock
 
