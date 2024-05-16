@@ -586,9 +586,10 @@ type Status struct {
 }
 
 func (sp *StatusItem) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.StringList([]string{})
 	if sp.Status != nil {
 		details[key] = pbtypes.StringList([]string{sp.Status.ID})
+	} else {
+		details[key] = pbtypes.StringList([]string{})
 	}
 }
 
