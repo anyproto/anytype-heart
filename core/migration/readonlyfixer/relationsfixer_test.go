@@ -1,4 +1,4 @@
-package migration
+package readonlyfixer
 
 import (
 	"context"
@@ -61,7 +61,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(false),
 		},
 	})
-	fixer := &readonlyRelationsFixer{}
+	fixer := &Migration{}
 	ctx := context.Background()
 
 	t.Run("fix tag and status relations with readonly=true", func(t *testing.T) {

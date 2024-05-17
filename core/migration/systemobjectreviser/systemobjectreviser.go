@@ -1,4 +1,4 @@
-package migration
+package systemobjectreviser
 
 import (
 	"context"
@@ -11,23 +11,34 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/migration/common"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var revisionKey = bundle.RelationKeyRevision.String()
+const name = "SystemObjectReviser"
 
-type systemObjectReviser struct{}
+var (
+	revisionKey = bundle.RelationKeyRevision.String()
+	log         = logging.Logger(name)
+)
 
-func (systemObjectReviser) Name() string {
-	return "SystemObjectReviser"
+// Migration SystemObjectReviser performs revision of all system object types and relations, so after Migration
+// objects installed in space should correspond to bundled objects from library.
+// To modify relations of system objects relation revision should be incremented in types.json or relations.json
+// For more info see 'System Objects Update' section of docs/Flow.md
+type Migration struct{}
+
+func (Migration) Name() string {
+	return name
 }
 
-func (systemObjectReviser) Run(ctx context.Context, store storeWithCtx, space spaceWithCtx) (toMigrate, migrated int, err error) {
+func (Migration) Run(ctx context.Context, store common.StoreWithCtx, space common.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceObjects, err := listAllTypesAndRelations(ctx, store, space.Id())
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
@@ -53,7 +64,7 @@ func (systemObjectReviser) Run(ctx context.Context, store storeWithCtx, space sp
 	return
 }
 
-func listAllTypesAndRelations(ctx context.Context, store storeWithCtx, spaceId string) (map[string]*types.Struct, error) {
+func listAllTypesAndRelations(ctx context.Context, store common.StoreWithCtx, spaceId string) (map[string]*types.Struct, error) {
 	records, err := store.QueryWithContext(ctx, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -80,7 +91,7 @@ func listAllTypesAndRelations(ctx context.Context, store storeWithCtx, spaceId s
 	return details, nil
 }
 
-func reviseSystemObject(ctx context.Context, space spaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
+func reviseSystemObject(ctx context.Context, space common.SpaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {

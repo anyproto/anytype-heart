@@ -1,4 +1,4 @@
-package migration
+package readonlyfixer
 
 import (
 	"context"
@@ -8,19 +8,27 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/migration/common"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type readonlyRelationsFixer struct{}
+const name = "ReadonlyRelationsFixer"
 
-func (readonlyRelationsFixer) Name() string {
-	return "ReadonlyRelationsFixer"
+var log = logging.Logger(name)
+
+// Migration ReadonlyRelationsFixer performs setting readOnlyValue relation to true for all relations with Status and Tag format
+// This migration was implemented to fix relations in accounts of users that are not able to modify its value (GO-2331)
+type Migration struct{}
+
+func (Migration) Name() string {
+	return name
 }
 
-func (readonlyRelationsFixer) Run(ctx context.Context, store storeWithCtx, space spaceWithCtx) (toMigrate, migrated int, err error) {
+func (Migration) Run(ctx context.Context, store common.StoreWithCtx, space common.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
 
 	relations, err := listReadonlyTagAndStatusRelations(ctx, store, spaceId)
@@ -62,7 +70,7 @@ func (readonlyRelationsFixer) Run(ctx context.Context, store storeWithCtx, space
 	return
 }
 
-func listReadonlyTagAndStatusRelations(ctx context.Context, store storeWithCtx, spaceId string) ([]database.Record, error) {
+func listReadonlyTagAndStatusRelations(ctx context.Context, store common.StoreWithCtx, spaceId string) ([]database.Record, error) {
 	return store.QueryWithContext(ctx, database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),

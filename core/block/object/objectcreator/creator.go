@@ -47,9 +47,7 @@ type Service interface {
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 
 	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*types.Struct, err error)
-
-	RunMigrations(space clientspace.Space)
-	app.ComponentRunnable
+	app.Component
 }
 
 type bookmarkService interface {
@@ -64,9 +62,6 @@ type service struct {
 	spaceService      space.Service
 	templateService   TemplateService
 	fileService       files.Service
-
-	ctxMigration    context.Context
-	cancelMigration context.CancelFunc
 }
 
 func NewCreator() Service {
@@ -81,7 +76,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.templateService = app.MustComponent[TemplateService](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.app = a
-	s.ctxMigration, s.cancelMigration = context.WithCancel(context.Background())
 	return nil
 }
 

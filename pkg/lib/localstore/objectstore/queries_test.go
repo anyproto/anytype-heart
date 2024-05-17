@@ -744,3 +744,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
 	})
 }
+
+func TestQueryWithCtx(t *testing.T) {
+
+}
