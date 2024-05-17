@@ -29,6 +29,9 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	if targetId == "" {
 		reqPos = model.Block_Inner
 		target = s.Get(s.RootId())
+		if target == nil {
+			return fmt.Errorf("target (root) block not found")
+		}
 	} else {
 		target = s.Get(targetId)
 		if target == nil {
