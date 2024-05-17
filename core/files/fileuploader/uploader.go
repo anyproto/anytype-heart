@@ -142,20 +142,21 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
-	spaceId           string
-	fileObjectService fileobject.Service
-	picker            cache.ObjectGetter
-	block             file.Block
-	getReader         func(ctx context.Context) (*fileReader, error)
-	name              string
-	lastModifiedDate  int64
-	typeDetect        bool
-	forceType         bool
-	smartBlockID      string
-	fileType          model.BlockContentFileType
-	fileStyle         model.BlockContentFileStyle
-	opts              []files.AddOption
-	groupID           string
+	spaceId              string
+	fileObjectService    fileobject.Service
+	picker               cache.ObjectGetter
+	block                file.Block
+	getReader            func(ctx context.Context) (*fileReader, error)
+	name                 string
+	lastModifiedDate     int64
+	typeDetect           bool
+	forceType            bool
+	forceUploadingAsFile bool
+	smartBlockID         string
+	fileType             model.BlockContentFileType
+	fileStyle            model.BlockContentFileStyle
+	opts                 []files.AddOption
+	groupID              string
 
 	tempDirProvider      core.TempDirProvider
 	fileService          files.Service
@@ -211,6 +212,11 @@ func (u *uploader) SetName(name string) Uploader {
 func (u *uploader) SetType(tp model.BlockContentFileType) Uploader {
 	u.fileType = tp
 	u.forceType = true
+	return u
+}
+
+func (u *uploader) ForceUploadingAsFile() Uploader {
+	u.forceUploadingAsFile = true
 	return u
 }
 
@@ -440,10 +446,13 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	var addResult *files.AddResult
-	if u.fileType == model.BlockContentFile_Image {
+	if !u.forceUploadingAsFile && u.fileType == model.BlockContentFile_Image {
 		addResult, err = u.fileService.ImageAdd(ctx, u.spaceId, opts...)
-		if errors.Is(err, image.ErrFormat) || errors.Is(err, mill.ErrFormatSupportNotEnabled) {
-			return u.SetType(model.BlockContentFile_File).Upload(ctx)
+		if errors.Is(err, image.ErrFormat) ||
+			errors.Is(err, mill.ErrFormatSupportNotEnabled) ||
+			errors.Is(err, mill.ErrProcessing) {
+			err = nil
+			return u.ForceUploadingAsFile().Upload(ctx)
 		}
 		if err != nil {
 			return UploadResult{Err: fmt.Errorf("add image to storage: %w", err)}
