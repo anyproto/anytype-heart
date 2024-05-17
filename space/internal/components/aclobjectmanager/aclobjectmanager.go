@@ -161,6 +161,12 @@ func (a *aclObjectManager) process() {
 	acl.SetAclUpdater(a)
 	acl.RLock()
 	defer acl.RUnlock()
+	// because ACL lock may take a long time (e.g. in case of sync operation) we need to check if context is done
+	// it's critical to exit because space may be already closed
+	if a.ctx.Err() != nil {
+		log.Warn("error processing acl", zap.Error(err))
+		return
+	}
 	err = a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))

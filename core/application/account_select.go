@@ -118,6 +118,7 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	s.appAccountStartInProcessCancelMutex.Lock()
 	s.appAccountStartInProcessCancel = cancel
 	s.appAccountStartInProcessCancelMutex.Unlock()
+
 	s.app, err = anytype.StartNewApp(
 		ctx,
 		s.clientWithVersion,

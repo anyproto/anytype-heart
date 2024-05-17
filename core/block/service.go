@@ -178,7 +178,8 @@ func (s *Service) Init(a *app.App) (err error) {
 }
 
 func (s *Service) Run(ctx context.Context) (err error) {
-	return
+	return fmt.Errorf("test error")
+	// return
 }
 
 func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {

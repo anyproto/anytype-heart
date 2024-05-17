@@ -32,6 +32,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/anytype/comptester"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/backlinks"
@@ -119,11 +120,106 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 	return wallet.NewWithAccountRepo(rootPath, derivationResult)
 }
 
+func bootstrapComponents() []app.Component {
+	const fileWatcherUpdateInterval = 5 * time.Second
+
+	return []app.Component{
+		clientds.New(),
+		debugstat.New(),
+		ftsearch.New(),
+		objectstore.New(),
+		backlinks.New(),
+		filestore.New(),
+		// Services
+		nodeconfsource.New(),
+		nodeconfstore.New(),
+		nodeconf.New(),
+		peerstore.New(),
+		syncstatusprovider.New(),
+		storage.New(),
+		secureservice.New(),
+		metric.New(),
+		server.New(),
+		debugserver.New(),
+		pool.New(),
+		peerservice.New(),
+		yamux.New(),
+		quic.New(),
+		clientserver.New(),
+		streampool.New(),
+		coordinatorclient.New(),
+		nodeclient.New(),
+		credentialprovider.New(),
+		commonspace.New(),
+		aclclient.NewAclJoiningClient(),
+		virtualspaceservice.New(),
+		spacecore.New(),
+		idresolver.New(),
+		localdiscovery.New(),
+		peermanager.New(),
+		typeprovider.New(),
+		fileuploader.New(),
+		rpcstore.New(),
+		fileservice.New(),
+		filestorage.New(),
+		files.New(),
+		fileacl.New(),
+		source.New(),
+		spacefactory.New(),
+		space.New(),
+		deletioncontroller.New(),
+		invitestore.New(),
+		filesync.New(),
+		fileobject.New(200*time.Millisecond, 2*time.Second),
+		inviteservice.New(),
+		acl.New(),
+		builtintemplate.New(),
+		converter.NewLayoutConverter(),
+		recordsbatcher.New(),
+		configfetcher.New(),
+		process.New(),
+		core.New(),
+		core.NewTempDirService(),
+		treemanager.New(),
+		block.New(),
+		indexer.New(),
+		syncstatus.New(fileWatcherUpdateInterval),
+		history.New(),
+		gateway.New(),
+		export.New(),
+		linkpreview.New(),
+		unsplash.New(),
+		restriction.New(),
+		debug.New(),
+		collection.New(),
+		subscription.New(),
+		builtinobjects.New(),
+		bookmark.New(),
+		importer.New(),
+		decorator.New(),
+		objectcreator.NewCreator(),
+		kanban.New(),
+		editor.NewObjectFactory(),
+		objectgraph.NewBuilder(),
+		account.New(),
+		profiler.New(),
+		identity.New(30*time.Second, 10*time.Second),
+		templateservice.New(),
+		notifications.New(),
+		paymentserviceclient.New(),
+		nameservice.New(),
+		nameserviceclient.New(),
+		payments.New(),
+		paymentscache.New(),
+	}
+}
+
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
 	complexAppVersion := appVersion(a, clientWithVersion)
 	a.SetVersionName(complexAppVersion)
 	logging.SetVersion(complexAppVersion)
+	components = append(components, bootstrapComponents()...)
 	Bootstrap(a, components...)
 	metrics.Service.SetAppVersion(a.VersionName())
 	metrics.Service.Run()
@@ -188,102 +284,17 @@ func appVersion(a *app.App, clientWithVersion string) string {
 	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
+func BootstrapTester(a *app.App, mode comptester.TestMode, failAt int, components ...app.Component) {
+	tester := comptester.New(comptester.TestModeFailOnInit, 0)
+	for _, c := range components {
+		a.Register(comptester.New(c))
+	}
+}
+
 func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
-
-	const fileWatcherUpdateInterval = 5 * time.Second
-
-	a.
-		// Data storages
-		Register(clientds.New()).
-		Register(debugstat.New()).
-		Register(ftsearch.New()).
-		Register(objectstore.New()).
-		Register(backlinks.New()).
-		Register(filestore.New()).
-		// Services
-		Register(nodeconfsource.New()).
-		Register(nodeconfstore.New()).
-		Register(nodeconf.New()).
-		Register(peerstore.New()).
-		Register(syncstatusprovider.New()).
-		Register(storage.New()).
-		Register(secureservice.New()).
-		Register(metric.New()).
-		Register(server.New()).
-		Register(debugserver.New()).
-		Register(pool.New()).
-		Register(peerservice.New()).
-		Register(yamux.New()).
-		Register(quic.New()).
-		Register(clientserver.New()).
-		Register(streampool.New()).
-		Register(coordinatorclient.New()).
-		Register(nodeclient.New()).
-		Register(credentialprovider.New()).
-		Register(commonspace.New()).
-		Register(aclclient.NewAclJoiningClient()).
-		Register(virtualspaceservice.New()).
-		Register(spacecore.New()).
-		Register(idresolver.New()).
-		Register(localdiscovery.New()).
-		Register(peermanager.New()).
-		Register(typeprovider.New()).
-		Register(fileuploader.New()).
-		Register(rpcstore.New()).
-		Register(fileservice.New()).
-		Register(filestorage.New()).
-		Register(files.New()).
-		Register(fileacl.New()).
-		Register(source.New()).
-		Register(spacefactory.New()).
-		Register(space.New()).
-		Register(deletioncontroller.New()).
-		Register(invitestore.New()).
-		Register(filesync.New()).
-		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
-		Register(inviteservice.New()).
-		Register(acl.New()).
-		Register(builtintemplate.New()).
-		Register(converter.NewLayoutConverter()).
-		Register(recordsbatcher.New()).
-		Register(configfetcher.New()).
-		Register(process.New()).
-		Register(core.New()).
-		Register(core.NewTempDirService()).
-		Register(treemanager.New()).
-		Register(block.New()).
-		Register(indexer.New()).
-		Register(syncstatus.New(fileWatcherUpdateInterval)).
-		Register(history.New()).
-		Register(gateway.New()).
-		Register(export.New()).
-		Register(linkpreview.New()).
-		Register(unsplash.New()).
-		Register(restriction.New()).
-		Register(debug.New()).
-		Register(collection.New()).
-		Register(subscription.New()).
-		Register(builtinobjects.New()).
-		Register(bookmark.New()).
-		Register(importer.New()).
-		Register(decorator.New()).
-		Register(objectcreator.NewCreator()).
-		Register(kanban.New()).
-		Register(editor.NewObjectFactory()).
-		Register(objectgraph.NewBuilder()).
-		Register(account.New()).
-		Register(profiler.New()).
-		Register(identity.New(30*time.Second, 10*time.Second)).
-		Register(templateservice.New()).
-		Register(notifications.New()).
-		Register(paymentserviceclient.New()).
-		Register(nameservice.New()).
-		Register(nameserviceclient.New()).
-		Register(payments.New()).
-		Register(paymentscache.New())
 }
 
 func MiddlewareVersion() string {
