@@ -25,6 +25,10 @@ var (
 	ErrPeerFindDeadlineExceeded            = errors.New("peer find deadline exceeded")
 )
 
+type StatusUpdater interface {
+	SendPeerUpdate(spaceIds []string)
+}
+
 type clientPeerManager struct {
 	spaceId            string
 	responsibleNodeIds []string
@@ -35,18 +39,20 @@ type clientPeerManager struct {
 	watchingPeers             map[string]struct{}
 	rebuildResponsiblePeers   chan struct{}
 	availableResponsiblePeers chan struct{}
+	peerToPeerStatusObserver  StatusUpdater
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	sync.Mutex
 }
 
-func (n *clientPeerManager) Init(_ *app.App) (err error) {
+func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.responsibleNodeIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
+	n.peerToPeerStatusObserver = app.MustComponent[StatusUpdater](a)
 	return
 }
 
@@ -143,14 +149,19 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 		peerIds = []string{p.Id()}
 	}
 	peerIds = append(peerIds, n.peerStore.LocalPeerIds(n.spaceId)...)
+	var needUpdate bool
 	for _, peerId := range peerIds {
 		p, err := n.p.pool.Get(ctx, peerId)
 		if err != nil {
 			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get peer from stream pool", zap.String("peerId", peerId), zap.Error(err))
+			needUpdate = true
 			continue
 		}
 		peers = append(peers, p)
+	}
+	if needUpdate {
+		n.peerToPeerStatusObserver.SendPeerUpdate([]string{n.spaceId})
 	}
 	// set node error if no local peers
 	if len(peers) == 0 {
@@ -181,14 +192,19 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	}
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
+	var needUpdate bool
 	for _, peerId := range peerIds {
 		p, err := n.p.pool.Get(n.ctx, peerId)
 		if err != nil {
 			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))
+			needUpdate = true
 			continue
 		}
 		peers = append(peers, p)
+	}
+	if needUpdate {
+		n.peerToPeerStatusObserver.SendPeerUpdate([]string{n.spaceId})
 	}
 
 	n.Lock()

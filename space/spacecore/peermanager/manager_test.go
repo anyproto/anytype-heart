@@ -9,8 +9,15 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/net/pool/mock_pool"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"storj.io/drpc"
+
+	"github.com/anyproto/anytype-heart/core/syncstatus/p2p"
+	"github.com/anyproto/anytype-heart/core/syncstatus/p2p/mock_p2p"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 func TestClientPeerManager_GetResponsiblePeers_Deadline(t *testing.T) {
@@ -76,6 +83,99 @@ func TestClientPeerManager_GetResponsiblePeers_Deadline(t *testing.T) {
 		peers, err := cm.GetResponsiblePeers(context.Background())
 		require.NoError(t, err, ErrPeerFindDeadlineExceeded)
 		require.Len(t, peers, 1)
+	})
+}
+
+func Test_fetchResponsiblePeers(t *testing.T) {
+	spaceId := "spaceId"
+	t.Run("no local peers", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.cm.fetchResponsiblePeers()
+
+		// then
+		f.p2pStatusSender.AssertNotCalled(t, "SendPeerUpdate")
+	})
+	t.Run("local peers connected", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(newTestPeer("id1"), nil)
+		f.cm.fetchResponsiblePeers()
+
+		// then
+		f.p2pStatusSender.AssertNotCalled(t, "SendPeerUpdate")
+	})
+	t.Run("local peer not connected", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
+		f.p2pStatusSender.EXPECT().SendPeerUpdate().Return()
+		f.cm.fetchResponsiblePeers()
+
+		// then
+		f.p2pStatusSender.AssertCalled(t, "SendPeerUpdate")
+	})
+}
+
+func Test_getStreamResponsiblePeers(t *testing.T) {
+	spaceId := "spaceId"
+	t.Run("no local peers", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, peers, 1)
+		f.p2pStatusSender.AssertNotCalled(t, "SendPeerUpdate")
+	})
+	t.Run("local peers connected", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(newTestPeer("id1"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(newTestPeer("id"), nil)
+		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, peers, 2)
+		f.p2pStatusSender.AssertNotCalled(t, "SendPeerUpdate")
+	})
+	t.Run("local peer not connected", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
+		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(newTestPeer("id"), nil)
+		f.p2pStatusSender.EXPECT().SendPeerUpdate().Return()
+		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, peers, 1)
+		f.p2pStatusSender.AssertCalled(t, "SendPeerUpdate")
 	})
 }
 
@@ -153,4 +253,35 @@ func (t *testPeer) IsClosed() bool {
 
 func (t *testPeer) CloseChan() <-chan struct{} {
 	return t.closed
+}
+
+type fixture struct {
+	cm              *clientPeerManager
+	pool            *mock_pool.MockPool
+	p2pStatusSender *mock_p2p.MockStatusUpdateSender
+	store           peerstore.PeerStore
+}
+
+func newFixtureManager(t *testing.T, spaceId string) *fixture {
+	ctrl := gomock.NewController(t)
+	pool := mock_pool.NewMockPool(ctrl)
+	provider := &provider{pool: pool}
+	store := peerstore.New()
+	observers := p2p.NewObservers()
+	p2pStatusSender := mock_p2p.NewMockStatusUpdateSender(t)
+	observers.AddObserver(spaceId, p2pStatusSender)
+	cm := &clientPeerManager{
+		p:                        provider,
+		spaceId:                  spaceId,
+		peerStore:                store,
+		peerToPeerStatusObserver: observers,
+		watchingPeers:            map[string]struct{}{},
+		ctx:                      context.Background(),
+	}
+	return &fixture{
+		cm:              cm,
+		pool:            pool,
+		p2pStatusSender: p2pStatusSender,
+		store:           store,
+	}
 }

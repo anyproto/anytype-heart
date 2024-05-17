@@ -30,6 +30,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
+	"github.com/anyproto/anytype-heart/core/syncstatus/p2p"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
@@ -48,6 +49,10 @@ var log = logger.NewNamed(CName)
 
 func New() SpaceCoreService {
 	return &service{}
+}
+
+type StatusUpdater interface {
+	SendPeerUpdate(spaceIds []string)
 }
 
 type PoolManager interface {
@@ -83,6 +88,7 @@ type service struct {
 	poolManager          PoolManager
 	streamHandler        *streamHandler
 	syncStatusService    syncStatusService
+	peerToPeerStatus     StatusUpdater
 }
 
 type syncStatusService interface {
@@ -119,6 +125,7 @@ func (s *service) Init(a *app.App) (err error) {
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
 
+	s.peerToPeerStatus = app.MustComponent[StatusUpdater](a)
 	err = spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
 	if err != nil {
 		return
@@ -244,7 +251,7 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 }
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id)})
+	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), PeerStatus: p2p.NewP2PStatus(id)})
 	if err != nil {
 		return
 	}

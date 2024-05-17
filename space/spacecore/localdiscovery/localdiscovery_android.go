@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/peerstatus"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -40,10 +41,11 @@ type localDiscovery struct {
 	peerId string
 	port   int
 
-	notifier    Notifier
-	drpcServer  clientserver.ClientServer
-	manualStart bool
-	m           sync.Mutex
+	peerToPeerStatusUpdater StatusUpdater
+	notifier                Notifier
+	drpcServer              clientserver.ClientServer
+	manualStart             bool
+	m                       sync.Mutex
 }
 
 func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
@@ -53,6 +55,9 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 	}
 	// TODO: move this to android side
 	newAddrs, err := addrs.GetInterfacesAddrs()
+	if len(newAddrs.Interfaces) == 0 {
+		l.peerToPeerStatusUpdater.BroadcastStatus(peerstatus.NotPossible)
+	}
 	if err != nil {
 		return
 	}
@@ -83,6 +88,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.ClientServer)
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
+	l.peerToPeerStatusUpdater = app.MustComponent[StatusUpdater](a)
 
 	return
 }

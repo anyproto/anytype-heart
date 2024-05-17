@@ -165,3 +165,9 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
+  github.com/anyproto/anytype-heart/space/spacecore/clientserver:
+    interfaces:
+      ClientServer:
+  github.com/anyproto/anytype-heart/core/syncstatus/p2p:
+    interfaces:
+      StatusUpdateSender:

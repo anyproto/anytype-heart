@@ -24637,6 +24637,7 @@ Removes document from subscription
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | status | [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status) |  |  |
 
 
@@ -25037,8 +25038,8 @@ Precondition: user A and user B opened the same block
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Possible | 0 |  |
-| Connected | 1 |  |
+| Connected | 0 |  |
+| NotPossible | 1 |  |
 | NotConnected | 2 |  |
 
 

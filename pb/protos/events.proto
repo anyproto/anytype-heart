@@ -1066,12 +1066,13 @@ message Event {
 
     message P2PStatus {
         message Update {
-            Status status = 1;
+            string spaceId = 1;
+            Status status = 2;
         }
 
         enum Status {
-            Possible = 0;
-            Connected = 1;
+            Connected = 0;
+            NotPossible = 1;
             NotConnected = 2;
         }
     }

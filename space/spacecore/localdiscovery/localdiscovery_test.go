@@ -1,0 +1,101 @@
+package localdiscovery
+
+import (
+	"context"
+	"testing"
+
+	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/syncstatus/p2p"
+	"github.com/anyproto/anytype-heart/space/spacecore/clientserver/mock_clientserver"
+	"github.com/anyproto/anytype-heart/tests/testutil"
+)
+
+type fixture struct {
+	LocalDiscovery
+	nodeConf                *mock_nodeconf.MockService
+	eventSender             *mock_event.MockSender
+	peerToPeerStatusUpdater *p2p.Observers
+	clientServer            *mock_clientserver.MockClientServer
+	account                 *mock_accountservice.MockService
+}
+
+func newFixture(t *testing.T) *fixture {
+	ctrl := gomock.NewController(t)
+	c := &config.Config{}
+	nodeConf := mock_nodeconf.NewMockService(ctrl)
+	eventSender := mock_event.NewMockSender(t)
+	peerToPeerStatusUpdater := p2p.NewObservers()
+
+	clientServer := mock_clientserver.NewMockClientServer(t)
+	accountKeys, err := accountdata.NewRandom()
+	assert.Nil(t, err)
+
+	account := mock_accountservice.NewAccountServiceWithAccount(ctrl, accountKeys)
+	a := &app.App{}
+	ctx := context.Background()
+	a.Register(c).
+		Register(testutil.PrepareMock(ctx, a, nodeConf)).
+		Register(testutil.PrepareMock(ctx, a, eventSender)).
+		Register(peerToPeerStatusUpdater).
+		Register(account).
+		Register(testutil.PrepareMock(ctx, a, clientServer))
+
+	discovery := New()
+	err = discovery.Init(a)
+	assert.Nil(t, err)
+
+	f := &fixture{
+		LocalDiscovery:          discovery,
+		nodeConf:                nodeConf,
+		eventSender:             eventSender,
+		peerToPeerStatusUpdater: peerToPeerStatusUpdater,
+		clientServer:            clientServer,
+		account:                 account,
+	}
+	return f
+}
+
+func TestLocalDiscovery_Init(t *testing.T) {
+	t.Run("init success", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+
+		// when
+		f.clientServer.EXPECT().ServerStarted().Return(true)
+		f.clientServer.EXPECT().Port().Return(6789)
+
+		err := f.Run(context.Background())
+		assert.Nil(t, err)
+
+		// then
+		err = f.Close(context.Background())
+		assert.Nil(t, err)
+	})
+}
+
+func TestLocalDiscovery_checkAddrs(t *testing.T) {
+	t.Run("checkAddrs - server run successfully", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.clientServer.EXPECT().ServerStarted().Return(true)
+		f.clientServer.EXPECT().Port().Return(6789)
+
+		err := f.Run(context.Background())
+		assert.Nil(t, err)
+
+		// when
+		ld := f.LocalDiscovery.(*localDiscovery)
+		err = ld.checkAddrs(context.Background())
+
+		// then
+		assert.Nil(t, err)
+	})
+}

@@ -39,6 +39,7 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdi
 	}
 	log.Debug("got peer ids from peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", resp.SpaceIds))
 	s.peerStore.UpdateLocalPeer(peer.PeerId, resp.SpaceIds)
+	s.peerToPeerStatus.SendPeerUpdate(resp.SpaceIds)
 }
 
 func (s *service) addSchema(addrs []string) (res []string) {
