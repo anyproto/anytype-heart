@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -65,7 +64,6 @@ type indexer struct {
 	picker         cache.ObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
-	fileService    files.Service
 
 	quit            chan struct{}
 	ftQueueFinished chan struct{}
@@ -89,7 +87,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.ObjectGetter](a)
-	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})

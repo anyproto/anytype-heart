@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
-	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/core/indexer/mock_indexer"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -81,7 +80,6 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indexerFx.ftsearch = indxr.ftsearch
 	indexerFx.pickerFx = mock_cache.NewMockObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
-	indxr.fileService = mock_files.NewMockService(t)
 	indxr.quit = make(chan struct{})
 	indxr.forceFt = make(chan struct{})
 
