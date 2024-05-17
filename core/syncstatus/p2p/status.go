@@ -96,22 +96,30 @@ func (p *p2pStatus) updateSpaceP2PStatus() {
 	peerIds := p.peerStore.LocalPeerIds(p.spaceId)
 	if p.status != peerstatus.Unknown {
 		// avoiding sending of redundant event
-		if p.status == peerstatus.Connected && len(peerIds) == 0 {
-			p.sendEvent(p.spaceId, pb.EventP2PStatus_NotConnected)
-			p.status = peerstatus.NotConnected
-		}
-		if (p.status == peerstatus.NotConnected || p.status == peerstatus.NotPossible) && len(peerIds) > 0 {
-			p.sendEvent(p.spaceId, pb.EventP2PStatus_Connected)
-			p.status = peerstatus.Connected
-		}
+		p.handleUnknownStatus(peerIds)
 	} else {
-		if len(peerIds) > 0 {
-			p.sendEvent(p.spaceId, pb.EventP2PStatus_Connected)
-			p.status = peerstatus.Connected
-		} else {
-			p.sendEvent(p.spaceId, pb.EventP2PStatus_NotConnected)
-			p.status = peerstatus.NotConnected
-		}
+		p.handleNonUnknownStatuses(peerIds)
+	}
+}
+
+func (p *p2pStatus) handleNonUnknownStatuses(peerIds []string) {
+	if len(peerIds) > 0 {
+		p.sendEvent(p.spaceId, pb.EventP2PStatus_Connected)
+		p.status = peerstatus.Connected
+	} else {
+		p.sendEvent(p.spaceId, pb.EventP2PStatus_NotConnected)
+		p.status = peerstatus.NotConnected
+	}
+}
+
+func (p *p2pStatus) handleUnknownStatus(peerIds []string) {
+	if p.status == peerstatus.Connected && len(peerIds) == 0 {
+		p.sendEvent(p.spaceId, pb.EventP2PStatus_NotConnected)
+		p.status = peerstatus.NotConnected
+	}
+	if (p.status == peerstatus.NotConnected || p.status == peerstatus.NotPossible) && len(peerIds) > 0 {
+		p.sendEvent(p.spaceId, pb.EventP2PStatus_Connected)
+		p.status = peerstatus.Connected
 	}
 }
 
