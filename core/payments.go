@@ -102,6 +102,7 @@ func (mw *Middleware) MembershipRegisterPaymentRequest(ctx context.Context, req 
 			errToCode(proto.ErrPaymentMethodWrong, pb.RpcMembershipRegisterPaymentRequestResponseError_PAYMENT_METHOD_INVALID),
 			errToCode(proto.ErrBadAnyName, pb.RpcMembershipRegisterPaymentRequestResponseError_BAD_ANYNAME),
 			errToCode(proto.ErrSubsAlreadyActive, pb.RpcMembershipRegisterPaymentRequestResponseError_MEMBERSHIP_ALREADY_EXISTS),
+			errToCode(proto.ErrEmailWrongFormat, pb.RpcMembershipRegisterPaymentRequestResponseError_EMAIL_WRONG_FORMAT),
 
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipRegisterPaymentRequestResponseError_CAN_NOT_CONNECT),
 		)

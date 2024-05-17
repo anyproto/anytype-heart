@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
@@ -90,6 +91,31 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 		treeIds, err := store.StoredIds()
 		require.NoError(t, err)
 		assert.Equal(t, []string{payload.SpaceSettingsWithId.Id, otherStore.Id()}, treeIds)
+	})
+}
+
+func TestSpaceStorage_SetTreeDeletedStatus(t *testing.T) {
+	t.Run("set status with absent tree row", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		payload := spaceTestPayload()
+		store, err := createSpaceStorage(fx.storageService, payload)
+		require.NoError(t, err)
+
+		err = store.SetTreeDeletedStatus("treeId", spacestorage.TreeDeletedStatusDeleted)
+		require.NoError(t, err)
+
+		status, err := store.TreeDeletedStatus("treeId")
+		require.NoError(t, err)
+		require.Equal(t, spacestorage.TreeDeletedStatusDeleted, status)
+
+		_, err = store.TreeStorage("treeId")
+		require.ErrorIs(t, err, treestorage.ErrUnknownTreeId)
+
+		ok, err := store.HasTree("treeId")
+		require.NoError(t, err)
+		assert.False(t, ok)
 	})
 }
 

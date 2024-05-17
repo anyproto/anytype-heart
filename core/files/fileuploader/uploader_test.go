@@ -62,6 +62,20 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
 		assert.Equal(t, res.MIME, "image/jpeg")
 	})
+	t.Run("corrupted image: fall back to file", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.tearDown()
+
+		fileObjectId := fx.expectCreateObject()
+
+		b := newBlock(model.BlockContentFile_Image)
+		res := fx.Uploader.SetBlock(b).SetFile("./testdata/corrupted.jpg").Upload(ctx)
+		require.NoError(t, res.Err)
+		assert.Equal(t, res.FileObjectId, fileObjectId)
+		assert.Equal(t, res.Name, "corrupted.jpg")
+		assert.Equal(t, b.Model().GetFile().Name, "corrupted.jpg")
+		assert.Equal(t, res.MIME, "image/jpeg")
+	})
 	t.Run("image type detect", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()

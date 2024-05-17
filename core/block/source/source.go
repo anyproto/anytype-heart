@@ -211,7 +211,8 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	prevSnapshot := s.lastSnapshotId
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		st, changes, sinceSnapshot, err := BuildState(s.spaceID, d.(*state.State), ot)
+		// State will be applied later in smartblock.StateAppend
+		st, changes, sinceSnapshot, err := BuildState(s.spaceID, d.(*state.State), ot, false)
 		if err != nil {
 			return
 		}
@@ -277,7 +278,7 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(s.spaceID, nil, s.ObjectTree)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(s.spaceID, nil, s.ObjectTree, true)
 	if err != nil {
 		return
 	}
@@ -533,7 +534,7 @@ func (s *source) Close() (err error) {
 	return s.ObjectTree.Close()
 }
 
-func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
+func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, applyState bool) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -598,9 +599,11 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 	if err != nil {
 		return
 	}
-	_, _, err = state.ApplyStateFastOne(st)
-	if err != nil {
-		return
+	if applyState {
+		_, _, err = state.ApplyStateFastOne(st)
+		if err != nil {
+			return
+		}
 	}
 
 	if lastChange != nil && !st.IsTheHeaderChange() {
