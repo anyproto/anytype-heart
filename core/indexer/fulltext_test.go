@@ -4,7 +4,6 @@ import (
 	"context"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -12,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -56,16 +54,13 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	testApp.Register(objectStore.FTSearch())
 
-	indxr := &indexer{
-		indexedFiles: &sync.Map{},
-	}
+	indxr := &indexer{}
 
 	indexerFx := &IndexerFixture{
 		indexer:     indxr,
 		objectStore: objectStore,
 	}
 
-	indxr.newAccount = config.New().NewAccount
 	indxr.store = objectStore
 	indexerFx.storageService = clientStorage
 	indexerFx.storageServiceFx = clientStorage

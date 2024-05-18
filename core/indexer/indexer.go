@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -14,7 +13,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -38,9 +36,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 func New() Indexer {
-	return &indexer{
-		indexedFiles: &sync.Map{},
-	}
+	return &indexer{}
 }
 
 type Indexer interface {
@@ -68,16 +64,13 @@ type indexer struct {
 	quit            chan struct{}
 	ftQueueFinished chan struct{}
 
-	btHash     Hasher
-	newAccount bool
-	forceFt    chan struct{}
+	btHash  Hasher
+	forceFt chan struct{}
 
-	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
-	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.source = a.MustComponent(source.CName).(source.Service)

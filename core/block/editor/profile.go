@@ -56,7 +56,7 @@ func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
 			f.fileService,
 			f.fileObjectService,
 		),
-		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService),
 		TableEditor:       table.NewEditor(sb),
 		eventSender:       f.eventSender,
 		fileObjectService: f.fileObjectService,

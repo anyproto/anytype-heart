@@ -24,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -74,7 +73,6 @@ type service struct {
 	objectStore       objectstore.ObjectStore
 	kanban            kanban.Service
 	collectionService CollectionService
-	sbtProvider       typeprovider.SmartBlockTypeProvider
 	eventSender       event.Sender
 
 	m      sync.Mutex
@@ -91,7 +89,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
 	s.collectionService = app.MustComponent[CollectionService](a)
-	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.ctxBuf = &opCtx{c: s.cache}
 	s.initDebugger()

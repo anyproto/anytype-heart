@@ -43,7 +43,6 @@ var _ ParticipantWatcher = (*participantWatcher)(nil)
 
 type participantWatcher struct {
 	identityService   dependencies.IdentityService
-	modifier          dependencies.DetailsModifier
 	status            spacestatus.SpaceStatus
 	mx                sync.Mutex
 	addedParticipants map[string]struct{}
@@ -82,7 +81,6 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 
 func (p *participantWatcher) Init(a *app.App) (err error) {
 	p.identityService = app.MustComponent[dependencies.IdentityService](a)
-	p.modifier = app.MustComponent[dependencies.DetailsModifier](a)
 	p.status = app.MustComponent[spacestatus.SpaceStatus](a)
 	return nil
 }

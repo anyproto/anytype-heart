@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
@@ -45,7 +44,6 @@ type notificationService struct {
 	notificationStore  NotificationStore
 	spaceService       space.Service
 	picker             cache.ObjectGetter
-	spaceCore          spacecore.SpaceCoreService
 	mu                 sync.Mutex
 	loadFinish         chan struct{}
 
@@ -68,7 +66,6 @@ func (n *notificationService) Init(a *app.App) (err error) {
 	}
 	n.notificationStore = NewNotificationStore(db)
 	n.eventSender = app.MustComponent[event.Sender](a)
-	n.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	n.spaceService = app.MustComponent[space.Service](a)
 	n.picker = app.MustComponent[cache.ObjectGetter](a)
 	return nil

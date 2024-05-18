@@ -143,7 +143,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		return nil, fmt.Errorf("build tree: %w", err)
 	}
 
-	sbt, key, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+	sbt, _, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -151,11 +151,9 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 	return &source{
 		ObjectTree:         ot,
 		id:                 id,
-		headerKey:          key,
 		space:              space,
 		spaceID:            space.Id(),
 		spaceService:       s.spaceCoreService,
-		openedAt:           time.Now(),
 		smartblockType:     sbt,
 		accountService:     s.accountService,
 		accountKeysService: s.accountKeysService,
@@ -181,13 +179,11 @@ type source struct {
 	space                Space
 	spaceID              string
 	smartblockType       smartblock.SmartBlockType
-	headerKey            string // used for header(id) derivation together with smartblockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
 	receiver             ChangeReceiver
 	unsubscribe          func()
 	closed               chan struct{}
-	openedAt             time.Time
 
 	fileService        files.Service
 	accountService     accountService
@@ -295,7 +291,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.accountService.PersonalSpaceID(), s.objectStore)
+	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.objectStore)
 	migration.Migrate(st)
 
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {

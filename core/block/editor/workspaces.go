@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -25,7 +24,6 @@ type Workspaces struct {
 	stext.Text
 
 	spaceService spaceService
-	objectStore  objectstore.ObjectStore
 	config       *config.Config
 	migrator     subObjectsMigrator
 }
@@ -41,7 +39,6 @@ func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
 			f.eventSender,
 		),
 		Dataview:     dataview.NewDataview(sb, f.objectStore),
-		objectStore:  f.objectStore,
 		spaceService: f.spaceService,
 		config:       f.config,
 	}

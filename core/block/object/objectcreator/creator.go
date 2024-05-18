@@ -57,7 +57,6 @@ type service struct {
 	objectStore       objectstore.ObjectStore
 	collectionService CollectionService
 	bookmarkService   bookmarkService
-	app               *app.App
 	spaceService      space.Service
 	templateService   TemplateService
 }
@@ -72,7 +71,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
-	s.app = a
 	return nil
 }
 

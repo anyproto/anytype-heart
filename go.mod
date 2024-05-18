@@ -295,5 +295,3 @@ replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr
 
 replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38
 
-replace github.com/anyproto/any-sync => /Users/mikhailyudin/GolandProjects/any-sync2
-
