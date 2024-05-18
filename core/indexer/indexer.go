@@ -74,8 +74,6 @@ type indexer struct {
 
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
-
-	flags reindexFlags
 }
 
 func (i *indexer) Init(a *app.App) (err error) {

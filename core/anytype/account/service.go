@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"sync"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -59,7 +58,6 @@ type service struct {
 	coordClient  coordinatorclient.CoordinatorClient
 
 	picker          cache.ObjectGetter
-	once            sync.Once
 	personalSpaceId string
 }
 

@@ -6,7 +6,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -17,8 +16,6 @@ const (
 
 var (
 	ErrRestricted = errors.New("restricted")
-
-	log = logging.Logger("anytype-mw-restrictions")
 )
 
 type Service interface {

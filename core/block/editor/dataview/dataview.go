@@ -26,10 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const DefaultDetailsFieldName = "_defaultRecordFields"
-
 var log = logging.Logger("anytype-mw-editor-dataview")
-var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 
 type Dataview interface {
 	SetSource(ctx session.Context, blockId string, source []string) (err error)

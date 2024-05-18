@@ -34,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestUploader_Upload(t *testing.T) {
@@ -248,19 +247,6 @@ type uplFixture struct {
 	ctrl              *gomock.Controller
 	picker            *mock_cache.MockObjectGetter
 	fileObjectService *mock_fileobject.MockService
-}
-
-func (fx *uplFixture) newImage(fileId domain.FileId) *testMock.MockImage {
-	im := testMock.NewMockImage(fx.ctrl)
-	im.EXPECT().FileId().Return(fileId).AnyTimes()
-	return im
-}
-
-func (fx *uplFixture) newFile(fileId domain.FileId, meta *files.FileMeta) *testMock.MockFile {
-	f := testMock.NewMockFile(fx.ctrl)
-	f.EXPECT().FileId().Return(fileId).AnyTimes()
-	f.EXPECT().Meta().Return(meta).AnyTimes()
-	return f
 }
 
 func (fx *uplFixture) tearDown() {

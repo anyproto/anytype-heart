@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objectsync"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
-	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"storj.io/drpc"
 )
@@ -79,19 +78,6 @@ func (s *streamHandler) HandleMessage(ctx context.Context, peerId string, msg dr
 		PeerCtx:  ctx,
 	})
 	return
-}
-
-func (s *streamHandler) handleMessage(ctx context.Context, senderId string, req *spacesyncproto.ObjectSyncMessage) (err error) {
-	var msg = &spacesyncproto.SpaceSubscription{}
-	if err = msg.Unmarshal(req.Payload); err != nil {
-		return
-	}
-	log.InfoCtx(ctx, "got subscription message", zap.Strings("spaceIds", msg.SpaceIds))
-	if msg.Action == spacesyncproto.SpaceSubscriptionAction_Subscribe {
-		return s.spaceCore.streamPool.AddTagsCtx(ctx, msg.SpaceIds...)
-	} else {
-		return s.spaceCore.streamPool.RemoveTagsCtx(ctx, msg.SpaceIds...)
-	}
 }
 
 func (s *streamHandler) NewReadMessage() drpc.Message {

@@ -210,21 +210,6 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) 
 
 }
 
-func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo) (domain.FileId, *domain.FileEncryptionKeys, error) {
-	if len(fileInfo.Targets) == 0 {
-		return "", nil, fmt.Errorf("file exists but has no root")
-	}
-	fileId := domain.FileId(fileInfo.Targets[0])
-	keys, err := s.fileStore.GetFileKeys(fileId)
-	if err != nil {
-		return "", nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
-	}
-	return fileId, &domain.FileEncryptionKeys{
-		FileId:         fileId,
-		EncryptionKeys: keys,
-	}, nil
-}
-
 // addFileRootNode has structure:
 /*
 - dir (outer)

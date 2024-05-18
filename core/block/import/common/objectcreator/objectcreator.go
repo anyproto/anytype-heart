@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
@@ -61,7 +60,6 @@ type ObjectCreator struct {
 	syncFactory    *syncer.Factory
 	fileStore      filestore.FileStore
 	objectCreator  objectcreator.Service
-	mu             sync.Mutex
 }
 
 func New(service BlockService,

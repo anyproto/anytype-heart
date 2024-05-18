@@ -1196,14 +1196,6 @@ func (sb *smartBlock) AddHookOnce(id string, f HookCallback, events ...Hook) {
 	}
 }
 
-func (sb *smartBlock) baseRelations() []*model.Relation {
-	rels := []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji), bundle.MustGetRelation(bundle.RelationKeyName)}
-	for _, rel := range rels {
-		rel.Scope = model.Relation_object
-	}
-	return rels
-}
-
 // deprecated, use RelationLinks instead
 func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	var links []*model.RelationLink

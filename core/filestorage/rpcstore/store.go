@@ -3,7 +3,6 @@ package rpcstore
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
@@ -40,7 +39,6 @@ type RpcStore interface {
 type store struct {
 	s  *service
 	cm *clientManager
-	mu sync.RWMutex
 
 	backgroundCtx    context.Context
 	backgroundCancel context.CancelFunc

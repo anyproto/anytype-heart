@@ -186,7 +186,6 @@ type source struct {
 	changesSinceSnapshot int
 	receiver             ChangeReceiver
 	unsubscribe          func()
-	metaOnly             bool
 	closed               chan struct{}
 	openedAt             time.Time
 
