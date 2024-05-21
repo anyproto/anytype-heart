@@ -8,12 +8,15 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
+	"github.com/libp2p/zeroconf/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/syncstatus/p2p"
+	"github.com/anyproto/anytype-heart/core/syncstatus/p2p/mock_p2p"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver/mock_clientserver"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -97,5 +100,73 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
+	})
+}
+
+func TestLocalDiscovery_readAnswers(t *testing.T) {
+	t.Run("readAnswers - send peer update for itself", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.clientServer.EXPECT().ServerStarted().Return(true)
+		f.clientServer.EXPECT().Port().Return(6789)
+
+		err := f.Run(context.Background())
+		assert.Nil(t, err)
+
+		status := mock_p2p.NewMockStatusUpdateSender(t)
+		f.peerToPeerStatusUpdater.AddObserver("spaceId", status)
+
+		// when
+		ld := f.LocalDiscovery.(*localDiscovery)
+		peerUpdate := make(chan *zeroconf.ServiceEntry)
+		status.EXPECT().SendPeerUpdate().Return()
+
+		go func() {
+			ld.closeWait.Add(1)
+			peerUpdate <- &zeroconf.ServiceEntry{
+				ServiceRecord: zeroconf.ServiceRecord{
+					Instance: f.account.Account().PeerId,
+				},
+			}
+			close(peerUpdate)
+		}()
+		ld.readAnswers(peerUpdate)
+
+		// then
+		status.AssertCalled(t, "SendPeerUpdate")
+	})
+	t.Run("readAnswers - send peer update to notifier", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+		f.clientServer.EXPECT().Port().Return(6789).Maybe()
+
+		// when
+		ld := f.LocalDiscovery.(*localDiscovery)
+		peerUpdate := make(chan *zeroconf.ServiceEntry)
+
+		notifier := NewMockNotifier(t)
+		accountKeys, err := accountdata.NewRandom()
+		assert.Nil(t, err)
+		notifier.EXPECT().PeerDiscovered(DiscoveredPeer{
+			PeerId: accountKeys.PeerId,
+		}, mock.Anything).Return()
+		ld.SetNotifier(notifier)
+
+		go func() {
+			ld.closeWait.Add(1)
+			peerUpdate <- &zeroconf.ServiceEntry{
+				ServiceRecord: zeroconf.ServiceRecord{
+					Instance: accountKeys.PeerId,
+				},
+			}
+			close(peerUpdate)
+		}()
+		ld.readAnswers(peerUpdate)
+
+		// then
+		notifier.AssertCalled(t, "PeerDiscovered", DiscoveredPeer{
+			PeerId: accountKeys.PeerId,
+		}, mock.Anything)
 	})
 }

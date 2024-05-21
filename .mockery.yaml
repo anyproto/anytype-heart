@@ -171,3 +171,10 @@ packages:
   github.com/anyproto/anytype-heart/core/syncstatus/p2p:
     interfaces:
       StatusUpdateSender:
+  github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
+    interfaces:
+      Notifier:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
