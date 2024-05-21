@@ -70,7 +70,7 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
 		SetRemoteStatus(spaceinfo.RemoteStatusUnknown).
 		UpdateDetails(ctx.State).
-		Log(log)
+		Log(s.log)
 	s.spaceService.OnViewUpdated(newInfo)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)
 	return
