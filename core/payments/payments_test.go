@@ -1278,8 +1278,7 @@ func TestVerifyAppStoreReceipt(t *testing.T) {
 		}).MinTimes(1)
 
 		req := &pb.RpcMembershipVerifyAppStoreReceiptRequest{
-			BillingId: "billingID",
-			Receipt:   "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
+			Receipt: "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
 		}
 
 		// when
@@ -1299,8 +1298,7 @@ func TestVerifyAppStoreReceipt(t *testing.T) {
 		}).MinTimes(1)
 
 		req := &pb.RpcMembershipVerifyAppStoreReceiptRequest{
-			BillingId: "billingID",
-			Receipt:   "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
+			Receipt: "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
 		}
 
 		// when

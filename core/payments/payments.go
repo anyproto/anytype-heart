@@ -883,7 +883,6 @@ func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembersh
 	verifyReq := proto.VerifyAppStoreReceiptRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
-		BillingID:  req.BillingId,
 		Receipt:    req.Receipt,
 	}
 
