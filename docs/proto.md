@@ -11670,7 +11670,6 @@ Generate a link to Stripe/Crypto where user can pay for the membership (for desk
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| billingId | [string](#string) |  | billingId is used to identify payment request on payment node side |
 | receipt | [string](#string) |  | receipt is a JWT-encoded string including info about subscription purchase |
 
 
