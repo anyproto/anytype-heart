@@ -124,7 +124,7 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 
 func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
 	st := s.NewState()
-	info.UpdateDetails(st).Log(log)
+	info.UpdateDetails(st).Log(s.log)
 	s.updateAccessType(st)
 	return s.Apply(st)
 }
