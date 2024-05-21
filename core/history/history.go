@@ -213,7 +213,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 		return
 	}
 
-	st, _, _, err = source.BuildState(id.SpaceID, nil, tree)
+	st, _, _, err = source.BuildState(id.SpaceID, nil, tree, true)
 	if err != nil {
 		return
 	}

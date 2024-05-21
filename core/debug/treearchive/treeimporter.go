@@ -72,7 +72,7 @@ func (t *treeImporter) State() (*state.State, error) {
 		err error
 	)
 
-	st, _, _, err = source.BuildState("", nil, t.objectTree)
+	st, _, _, err = source.BuildState("", nil, t.objectTree, true)
 	if err != nil {
 		return nil, err
 	}

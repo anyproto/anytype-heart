@@ -497,6 +497,8 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		PaymentMethod: PaymentMethodToProto(req.PaymentMethod),
 
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+
+		UserEmail: req.UserEmail,
 	}
 
 	payload, err := bsr.Marshal()

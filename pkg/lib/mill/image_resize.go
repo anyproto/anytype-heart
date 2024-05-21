@@ -59,6 +59,7 @@ func isImageFormatSupported(format Format) bool {
 }
 
 var ErrFormatSupportNotEnabled = errors.New("this image format support is not enabled in this build")
+var ErrProcessing = fmt.Errorf("failed to process")
 
 type ImageSize struct {
 	Width  int

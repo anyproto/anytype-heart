@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mb0/diff"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 )
 
@@ -141,10 +142,13 @@ func (m *MixedInput[T]) Equal(a, b int) bool {
 // Diff returns a list of changes that need to be applied to origin slice to become changed
 // returned slice is reproducible and deterministic
 func Diff[T any](origin, changed []T, getID func(T) string, equal func(T, T) bool) []Change[T] {
+	origin = lo.UniqBy(origin, getID)
+	changed = lo.UniqBy(changed, getID)
+
 	m := &MixedInput[T]{
-		origin,
-		changed,
-		getID,
+		A:     origin,
+		B:     changed,
+		getID: getID,
 	}
 
 	var result []Change[T]
@@ -244,8 +248,7 @@ func findPos[T any](s []T, getID func(T) string, id string) int {
 }
 
 func ApplyChanges[T any](origin []T, changes []Change[T], getID func(T) string) []T {
-	res := make([]T, len(origin))
-	copy(res, origin)
+	res := lo.UniqBy(origin, getID)
 
 	itemsMap := make(map[string]T, len(origin))
 	for _, it := range origin {

@@ -417,7 +417,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", m.ErrProcessing, err)
 	}
 
 	// count the result size after the applied mill
