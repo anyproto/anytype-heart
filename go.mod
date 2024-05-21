@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-sync v0.4.18-0.20240521091226-d8b93f5aec5f
+	github.com/anyproto/any-sync v0.4.19
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.0
@@ -90,7 +90,7 @@ require (
 	go.uber.org/mock v0.4.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
+	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
 	golang.org/x/image v0.16.0
 	golang.org/x/mobile v0.0.0-20240404231514-09dbf07665ed
 	golang.org/x/net v0.25.0
@@ -231,7 +231,7 @@ require (
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/pseudomuto/protokit v0.2.1 // indirect
-	github.com/quic-go/quic-go v0.43.1 // indirect
+	github.com/quic-go/quic-go v0.44.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
@@ -266,7 +266,7 @@ require (
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.20.0 // indirect
+	golang.org/x/tools v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
