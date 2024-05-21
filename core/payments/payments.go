@@ -201,7 +201,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	// 1 - check in cache
 	// tiers var. is unused here
-	cachedStatus, _, err := s.cache.CacheGet()
+	cachedStatus, tiers, err := s.cache.CacheGet()
 
 	// if NoCache -> skip returning from cache
 	if !req.NoCache && (err == nil) && (cachedStatus != nil) && (cachedStatus.Data != nil) {
@@ -236,6 +236,17 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	status, err := s.ppclient.GetSubscriptionStatus(ctx, &reqSigned)
 	if err != nil {
+		// if we have non-standard tiers already -> then try not to overwrite cache please
+		// but just return error
+		if tiers != nil && tiers.Tiers != nil && len(tiers.Tiers) > 0 {
+			if tiers.Tiers[0].Id != uint32(proto.SubscriptionTier_TierExplorer) {
+				// return error
+				log.Error("returning error in get status", zap.Error(err))
+				return nil, err
+			}
+		}
+
+		// if we have no tiers or standard tier -> overwrite cache and return no error please
 		log.Info("creating empty subscription in cache because can not get subscription status from payment node")
 
 		// eat error and create empty status ("no tier") so that we will then save it to the cache
