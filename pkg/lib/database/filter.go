@@ -36,11 +36,10 @@ func MakeFilters(protoFilters []*model.BlockContentDataviewFilter, store ObjectS
 }
 
 func MakeFilter(protoFilter *model.BlockContentDataviewFilter, store ObjectStore, spaceId string) (Filter, error) {
-	protoFilter = transformQuickOption(protoFilter, nil)
 	if protoFilter.Operator == model.BlockContentDataviewFilter_No {
 		return makeFilter(spaceId, protoFilter, store)
 	}
-	var filters []Filter
+	filters := make([]Filter, 0, len(protoFilter.NestedFilters))
 	for _, nestedFilter := range protoFilter.NestedFilters {
 		filter, err := MakeFilter(nestedFilter, store, spaceId)
 		if err != nil {
@@ -61,10 +60,12 @@ func NestedRelationKey(baseRelationKey domain.RelationKey, nestedRelationKey dom
 	return fmt.Sprintf("%s.%s", baseRelationKey.String(), nestedRelationKey.String())
 }
 
+// nolint:funlen
 func makeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
 	if store == nil {
 		return nil, fmt.Errorf("objectStore dependency is nil")
 	}
+	rawFilter = transformQuickOption(rawFilter, nil)
 	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
 	if len(parts) == 2 {
 		return makeFilterNestedIn(spaceID, rawFilter, store, parts[0], parts[1])

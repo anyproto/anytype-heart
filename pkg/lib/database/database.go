@@ -47,7 +47,7 @@ func addDefaultFiltersToNested(filters []*model.BlockContentDataviewFilter, hasA
 		filters[0].NestedFilters = addDefaultFilters(filters[0].NestedFilters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
 	}
 	// build And filter based on original Or filter and default filters
-	if filters[0].Operator == model.BlockContentDataviewFilter_Or {
+	if filters[0].Operator != model.BlockContentDataviewFilter_And {
 		filters = addDefaultFilters(filters, hasArchivedFilter, hasDeletedFilter, hasTypeFilter)
 		return []*model.BlockContentDataviewFilter{
 			{
