@@ -29,7 +29,7 @@ type subObjectsAndProfileLinksMigration struct {
 	objectStore      RelationGetter
 }
 
-func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string,  objectStore RelationGetter) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore RelationGetter) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,

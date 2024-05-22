@@ -12,6 +12,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -40,7 +43,6 @@ type service struct {
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
-	badger       *badger.DB
 
 	spaceSyncStatus spacesyncstatus.Updater
 }
@@ -57,8 +59,9 @@ func (s *service) Init(a *app.App) (err error) {
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	cfg := app.MustComponent[*config.Config](a)
 	eventSender := app.MustComponent[event.Sender](a)
+	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
-	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
 	s.fileSyncService.OnUploaded(s.OnFileUploaded)
