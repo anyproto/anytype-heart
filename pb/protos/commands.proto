@@ -6826,11 +6826,8 @@ message Rpc {
 
         message VerifyAppStoreReceipt {
             message Request {
-                // billingId is used to identify payment request on payment node side
-                string billingId = 1;
-
                 // receipt is a JWT-encoded string including info about subscription purchase
-                string receipt = 2;
+                string receipt = 1;
             }
 
             message Response {

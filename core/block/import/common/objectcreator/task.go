@@ -50,13 +50,12 @@ func NewDataObject(ctx context.Context,
 }
 
 type Task struct {
-	spaceID string
-	sn      *common.Snapshot
-	oc      Service
+	sn *common.Snapshot
+	oc Service
 }
 
-func NewTask(spaceID string, sn *common.Snapshot, oc Service) *Task {
-	return &Task{sn: sn, oc: oc, spaceID: spaceID}
+func NewTask(sn *common.Snapshot, oc Service) *Task {
+	return &Task{sn: sn, oc: oc}
 }
 
 func (t *Task) Execute(data interface{}) interface{} {

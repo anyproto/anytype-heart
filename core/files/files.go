@@ -207,21 +207,6 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) 
 
 }
 
-func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo) (domain.FileId, *domain.FileEncryptionKeys, error) {
-	if len(fileInfo.Targets) == 0 {
-		return "", nil, fmt.Errorf("file exists but has no root")
-	}
-	fileId := domain.FileId(fileInfo.Targets[0])
-	keys, err := s.fileStore.GetFileKeys(fileId)
-	if err != nil {
-		return "", nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
-	}
-	return fileId, &domain.FileEncryptionKeys{
-		FileId:         fileId,
-		EncryptionKeys: keys,
-	}, nil
-}
-
 // addFileRootNode has structure:
 /*
 - dir (outer)
@@ -332,18 +317,6 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 	file.MetaHash = id.String()
 	file.Targets = []string{fileId.String()}
 	return &file, nil
-}
-
-func (s *service) fileContent(ctx context.Context, spaceId string, childId domain.FileContentId) (io.ReadSeeker, *storage.FileInfo, error) {
-	var err error
-	var file *storage.FileInfo
-	var reader io.ReadSeeker
-	file, err = s.fileStore.GetFileVariant(childId)
-	if err != nil {
-		return nil, nil, err
-	}
-	reader, err = s.getContentReader(ctx, spaceId, file)
-	return reader, file, err
 }
 
 func (s *service) getContentReader(ctx context.Context, spaceID string, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {

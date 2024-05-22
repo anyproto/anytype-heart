@@ -29,7 +29,6 @@ func NewWidgetObject(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	layoutConverter converter.LayoutConverter,
-	accountService accountService,
 ) *WidgetObject {
 	bs := basic.NewBasic(sb, objectStore, layoutConverter)
 	return &WidgetObject{
@@ -37,7 +36,7 @@ func NewWidgetObject(
 		Movable:    bs,
 		Updatable:  bs,
 		IHistory:   basic.NewHistory(sb),
-		Widget:     widget.NewWidget(sb, accountService),
+		Widget:     widget.NewWidget(sb),
 	}
 }
 

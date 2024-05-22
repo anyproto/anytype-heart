@@ -29,13 +29,11 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type Anytype struct {
-	migrationOnce    sync.Once
 	lock             sync.RWMutex
 	isStarted        bool // use under the lock
 	shutdownStartsCh chan struct {
 	} // closed when node shutdown starts
 
-	subscribeOnce sync.Once
 }
 
 func New() *Anytype {

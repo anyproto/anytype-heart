@@ -23,12 +23,6 @@ func newFileSyncStore(db *badger.DB) (*fileSyncStore, error) {
 	return s, nil
 }
 
-func (s *fileSyncStore) updateTxn(f func(txn *badger.Txn) error) error {
-	return badgerhelper.RetryOnConflict(func() error {
-		return s.db.Update(f)
-	})
-}
-
 func (s *fileSyncStore) setNodeUsage(usage NodeUsage) error {
 	data, err := json.Marshal(usage)
 	if err != nil {
