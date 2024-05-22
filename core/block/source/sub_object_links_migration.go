@@ -24,17 +24,15 @@ import (
 type subObjectsAndProfileLinksMigration struct {
 	profileID        string
 	identityObjectID string
-	personalSpaceId  string
 	sbType           smartblock.SmartBlockType
 	space            Space
 	objectStore      RelationGetter
 }
 
-func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, personalSpaceId string, objectStore RelationGetter) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore RelationGetter) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
-		personalSpaceId:  personalSpaceId,
 		sbType:           sbType,
 		objectStore:      objectStore,
 	}

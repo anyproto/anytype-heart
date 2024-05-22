@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
-	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
@@ -63,6 +62,11 @@ type Updater interface {
 	SendUpdate(spaceSync *helpers.SpaceSync)
 }
 
+type PeerStatusChecker interface {
+	app.Component
+	IsPeerOffline(peerId string) bool
+}
+
 type treeSyncer struct {
 	sync.Mutex
 	mainCtx         context.Context
@@ -76,7 +80,7 @@ type treeSyncer struct {
 	isRunning       bool
 	isSyncing       bool
 	spaceSyncStatus Updater
-	peerManager     peermanager.PeerManager
+	peerManager     PeerStatusChecker
 	nodeConf        nodeconf.NodeConf
 }
 
@@ -97,7 +101,7 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
 	t.spaceSyncStatus = app.MustComponent[Updater](a)
-	t.peerManager = app.MustComponent[peermanager.PeerManager](a)
+	t.peerManager = app.MustComponent[PeerStatusChecker](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	return nil
 }

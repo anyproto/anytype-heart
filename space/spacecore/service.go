@@ -3,8 +3,6 @@ package spacecore
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -133,12 +131,6 @@ func (s *service) Name() (name string) {
 
 func (s *service) Run(ctx context.Context) (err error) {
 	return
-}
-
-func parseReplicationKey(spaceID string) (uint64, error) {
-	parts := strings.Split(spaceID, ".")
-	raw := parts[len(parts)-1]
-	return strconv.ParseUint(raw, 36, 64)
 }
 
 func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace, err error) {

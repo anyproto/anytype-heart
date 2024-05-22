@@ -34,15 +34,6 @@ type file struct {
 	node    *service
 }
 
-func (s *service) newFile(spaceId string, fileId domain.FileId, info *storage.FileInfo) File {
-	return &file{
-		spaceID: spaceId,
-		fileId:  fileId,
-		info:    info,
-		node:    s,
-	}
-}
-
 type FileMeta struct {
 	Media            string
 	Name             string

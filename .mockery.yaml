@@ -168,6 +168,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/treesyncer:
     interfaces:
       Updater:
+      PeerStatusChecker:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/updater:
     interfaces:
       Updater:

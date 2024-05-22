@@ -36,10 +36,6 @@ func (rh *restrictionHolder) Layout() (model.ObjectTypeLayout, bool) {
 	return rh.layout, rh.layout != noLayout
 }
 
-func (rh *restrictionHolder) ObjectTypeID() string {
-	return rh.objectTypeID
-}
-
 func (s *restrictionHolder) UniqueKey() domain.UniqueKey {
 	return s.uniqueKey
 }

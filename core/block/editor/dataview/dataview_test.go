@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -12,65 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func Test_calculateEntriesDiff(t *testing.T) {
-	a := []database.Record{
-		{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id1"),
-				"name": pbtypes.String("name1"),
-			},
-		}},
-		{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id2"),
-				"name": pbtypes.String("name2"),
-			},
-		}},
-		{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id3"),
-				"name": pbtypes.String("name3"),
-			},
-		}},
-	}
-
-	b := []database.Record{
-		{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id1"),
-				"name": pbtypes.String("name1_change"),
-			},
-		}},
-		{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id2"),
-				"name": pbtypes.String("name2"),
-			},
-		}},
-		{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id4"),
-				"name": pbtypes.String("name4"),
-			},
-		}},
-	}
-
-	updated, removed, inserted := calculateEntriesDiff(a, b)
-
-	require.Len(t, updated, 1)
-	require.Len(t, removed, 1)
-	require.Len(t, inserted, 1)
-
-	require.Equal(t, b[0].Details, updated[0])
-	require.Equal(t, "id3", removed[0])
-	require.Equal(t, 2, inserted[0].position)
-	require.Equal(t, []*types.Struct{b[2].Details}, inserted[0].entries)
-}
 
 func TestDataviewCollectionImpl_SetViewPosition(t *testing.T) {
 	newTestDv := func() (Dataview, *smarttest.SmartTest) {

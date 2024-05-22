@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/globalsign/mgo/bson"
@@ -21,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -32,14 +30,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -48,13 +44,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -66,14 +60,12 @@ import (
 )
 
 const (
-	CName           = "block-service"
-	linkObjectShare = "anytype://object/share?"
+	CName = "block-service"
 )
 
 var (
-	ErrUnexpectedBlockType   = errors.New("unexpected block type")
-	ErrUnknownObjectType     = fmt.Errorf("unknown object type")
-	ErrObjectNotFoundByOldID = fmt.Errorf("failed to find template by Source Object id")
+	ErrUnexpectedBlockType = errors.New("unexpected block type")
+	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
@@ -106,10 +98,8 @@ func New() *Service {
 type Service struct {
 	syncStatus           syncstatus.Service
 	eventSender          event.Sender
-	linkPreview          linkpreview.LinkPreview
 	process              process.Service
 	app                  *app.App
-	source               source.Service
 	objectStore          objectstore.ObjectStore
 	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
@@ -117,14 +107,10 @@ type Service struct {
 	templateService      templateService
 	resolver             idresolver.Resolver
 	spaceService         space.Service
-	commonAccount        accountservice.Service
-	fileStore            filestore.FileStore
 	tempDirProvider      core.TempDirProvider
-	layoutConverter      converter.LayoutConverter
 	builtinObjectService builtinObjects
 	fileObjectService    fileobject.Service
 
-	fileSync            filesync.FileSync
 	fileService         files.Service
 	fileUploaderService fileuploader.Service
 
@@ -151,26 +137,20 @@ func (s *Service) Name() string {
 
 func (s *Service) Init(a *app.App) (err error) {
 	s.syncStatus = a.MustComponent(syncstatus.CName).(syncstatus.Service)
-	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
-	s.source = a.MustComponent(source.CName).(source.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-	s.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.app = a

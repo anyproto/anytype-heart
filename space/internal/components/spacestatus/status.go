@@ -63,7 +63,7 @@ func New(spaceId string) SpaceStatus {
 }
 
 func (s *spaceStatus) Init(a *app.App) (err error) {
-	s.techSpace = a.MustComponent(techspace.CName).(techspace.TechSpace)
+	s.techSpace = app.MustComponent[techspace.TechSpace](a)
 	s.spaceView, err = s.techSpace.GetSpaceView(context.Background(), s.spaceId)
 	if err != nil {
 		return err
@@ -87,6 +87,12 @@ func (s *spaceStatus) Close(ctx context.Context) (err error) {
 	return nil
 }
 
+func doSpaceView[T any](spaceView techspace.SpaceView, f func(techspace.SpaceView) T) (res T) {
+	spaceView.Lock()
+	defer spaceView.Unlock()
+	return f(spaceView)
+}
+
 func (s *spaceStatus) Name() (name string) {
 	return CName
 }
@@ -100,24 +106,24 @@ func (s *spaceStatus) GetSpaceView() techspace.SpaceView {
 }
 
 func (s *spaceStatus) GetLocalStatus() spaceinfo.LocalStatus {
-	s.spaceView.Lock()
-	defer s.spaceView.Unlock()
-	info := s.spaceView.GetLocalInfo()
-	return info.GetLocalStatus()
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) spaceinfo.LocalStatus {
+		info := view.GetLocalInfo()
+		return info.GetLocalStatus()
+	})
 }
 
 func (s *spaceStatus) GetPersistentStatus() spaceinfo.AccountStatus {
-	s.spaceView.Lock()
-	defer s.spaceView.Unlock()
-	info := s.spaceView.GetPersistentInfo()
-	return info.GetAccountStatus()
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) spaceinfo.AccountStatus {
+		info := view.GetPersistentInfo()
+		return info.GetAccountStatus()
+	})
 }
 
 func (s *spaceStatus) GetLatestAclHeadId() string {
-	s.spaceView.Lock()
-	defer s.spaceView.Unlock()
-	info := s.spaceView.GetPersistentInfo()
-	return info.GetAclHeadId()
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) string {
+		info := view.GetPersistentInfo()
+		return info.GetAclHeadId()
+	})
 }
 
 func (s *spaceStatus) SetLocalStatus(status spaceinfo.LocalStatus) error {
@@ -127,33 +133,33 @@ func (s *spaceStatus) SetLocalStatus(status spaceinfo.LocalStatus) error {
 }
 
 func (s *spaceStatus) SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
-	s.spaceView.Lock()
-	defer s.spaceView.Unlock()
-	return s.spaceView.SetSpaceLocalInfo(info)
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetSpaceLocalInfo(info)
+	})
 }
 
 func (s *spaceStatus) SetPersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
-	s.spaceView.Lock()
-	defer s.spaceView.Unlock()
-	return s.spaceView.SetSpacePersistentInfo(info)
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetSpacePersistentInfo(info)
+	})
 }
 
 func (s *spaceStatus) SetPersistentStatus(status spaceinfo.AccountStatus) (err error) {
 	info := spaceinfo.NewSpacePersistentInfo(s.spaceId)
 	info.SetAccountStatus(status)
-	return s.spaceView.SetSpacePersistentInfo(info)
+	return s.SetPersistentInfo(info)
 }
 
 func (s *spaceStatus) SetAccessType(acc spaceinfo.AccessType) (err error) {
-	s.spaceView.Lock()
-	defer s.spaceView.Unlock()
-	return s.spaceView.SetAccessType(acc)
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetAccessType(acc)
+	})
 }
 
 func (s *spaceStatus) SetAclIsEmpty(isEmpty bool) (err error) {
-	s.spaceView.Lock()
-	defer s.spaceView.Unlock()
-	return s.spaceView.SetAclIsEmpty(isEmpty)
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetAclIsEmpty(isEmpty)
+	})
 }
 
 type spaceStatusStat struct {

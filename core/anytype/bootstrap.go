@@ -195,8 +195,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
-	const fileWatcherUpdateInterval = 5 * time.Second
-
 	a.
 		// Data storages
 		Register(clientds.New()).

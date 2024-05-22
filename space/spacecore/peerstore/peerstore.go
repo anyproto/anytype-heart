@@ -27,7 +27,6 @@ type PeerStore interface {
 func New() PeerStore {
 	return &peerStore{
 		localPeerIdsBySpace:  map[string][]string{},
-		responsibleIds:       map[string][]string{},
 		spacesByLocalPeerIds: map[string][]string{},
 		Mutex:                sync.Mutex{},
 	}
@@ -40,7 +39,6 @@ type peerStore struct {
 	localPeerIds         []string
 	localPeerIdsBySpace  map[string][]string
 	spacesByLocalPeerIds map[string][]string
-	responsibleIds       map[string][]string
 	observers            []Observer
 	sync.Mutex
 }
