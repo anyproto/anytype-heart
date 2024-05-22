@@ -62,7 +62,7 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 			f.fileService,
 			f.fileObjectService,
 		),
-		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService),
 		Dataview:          dataview.NewDataview(sb, f.objectStore),
 		TableEditor:       table.NewEditor(sb),
 		objectStore:       f.objectStore,

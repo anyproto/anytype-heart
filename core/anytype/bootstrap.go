@@ -193,8 +193,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
-	const fileWatcherUpdateInterval = 5 * time.Second
-
 	a.
 		// Data storages
 		Register(clientds.New()).
@@ -256,7 +254,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).
-		Register(syncstatus.New(fileWatcherUpdateInterval)).
+		Register(syncstatus.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).

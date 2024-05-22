@@ -14,11 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-var (
-	pasteCmdArgs = "pbpaste"
-	copyCmdArgs  = "pbcopy"
-)
-
 type TestCase struct {
 	Blocks []map[string]interface{} `json:"blocks"`
 	HTML   string                   `json:"html"`

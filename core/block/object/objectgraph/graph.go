@@ -40,7 +40,6 @@ type Service interface {
 }
 
 type Builder struct {
-	graphService        Service //nolint:unused
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	objectStore         objectstore.ObjectStore
 	subscriptionService subscription.Service

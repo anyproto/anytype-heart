@@ -229,10 +229,6 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	return nil
 }
 
-func (ind *indexer) markFileAsNotFound(st *state.State) {
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileIndexingStatus, pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)))
-}
-
 func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {
 	file, err := ind.fileService.FileByHash(ctx, id)
 	if err != nil {

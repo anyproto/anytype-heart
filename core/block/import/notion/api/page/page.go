@@ -28,7 +28,6 @@ const (
 
 type Service struct {
 	blockService    *block.Service
-	client          *client.Client
 	propertyService *property.Service
 }
 
@@ -36,7 +35,6 @@ type Service struct {
 func New(client *client.Client) *Service {
 	return &Service{
 		blockService:    block.New(client),
-		client:          client,
 		propertyService: property.New(client),
 	}
 }

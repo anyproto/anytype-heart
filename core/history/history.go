@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -47,17 +46,15 @@ type History interface {
 }
 
 type history struct {
-	accountService account.Service
-	picker         cache.ObjectGetter
-	objectStore    objectstore.ObjectStore
-	spaceService   space.Service
+	picker       cache.ObjectGetter
+	objectStore  objectstore.ObjectStore
+	spaceService space.Service
 }
 
 func (h *history) Init(a *app.App) (err error) {
 	h.picker = app.MustComponent[cache.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.spaceService = app.MustComponent[space.Service](a)
-	h.accountService = app.MustComponent[account.Service](a)
 	return
 }
 

@@ -25,17 +25,15 @@ import (
 
 var log = logging.Logger("html-converter").Desugar()
 
-func NewHTMLConverter(spaceID string, fileService files.Service, s *state.State, fileObjectService fileobject.Service) *HTML {
+func NewHTMLConverter(fileService files.Service, s *state.State, fileObjectService fileobject.Service) *HTML {
 	return &HTML{
 		s:                 s,
-		spaceID:           spaceID,
 		fileService:       fileService,
 		fileObjectService: fileObjectService,
 	}
 }
 
 type HTML struct {
-	spaceID           string
 	s                 *state.State
 	buf               *bytes.Buffer
 	fileService       files.Service

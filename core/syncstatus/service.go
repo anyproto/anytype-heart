@@ -2,25 +2,19 @@ package syncstatus
 
 import (
 	"context"
-	"errors"
 	"sync"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
-	"github.com/dgraph-io/badger/v4"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 var log = logging.Logger("anytype-mw-status")
@@ -40,47 +34,27 @@ var _ Service = (*service)(nil)
 type service struct {
 	updateReceiver *updateReceiver
 
-	typeProvider              typeprovider.SmartBlockTypeProvider
-	fileSyncService           filesync.FileSync
-	fileWatcherUpdateInterval time.Duration
+	fileSyncService filesync.FileSync
 
 	objectWatchersLock sync.Mutex
 	objectWatchers     map[string]syncstatus.StatusWatcher
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
-	badger       *badger.DB
 }
 
-func New(fileWatcherUpdateInterval time.Duration) Service {
+func New() Service {
 	return &service{
-		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
-		objectWatchers:            map[string]syncstatus.StatusWatcher{},
+		objectWatchers: map[string]syncstatus.StatusWatcher{},
 	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.typeProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	cfg := app.MustComponent[*config.Config](a)
 	eventSender := app.MustComponent[event.Sender](a)
-
-	dbProvider := app.MustComponent[datastore.Datastore](a)
-	// todo: start using sqlite db
-	db, err := dbProvider.SpaceStorage()
-	if err != nil {
-		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
-			db, err = dbProvider.LocalStorage()
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	s.badger = db
 
 	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
