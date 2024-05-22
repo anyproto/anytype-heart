@@ -50,15 +50,14 @@ func TestObservers_BroadcastStatus(t *testing.T) {
 			},
 		})
 		observers.BroadcastStatus(peerstatus.Connected)
-		for status.StatusUpdateSender.(*p2pStatus).status != peerstatus.Connected {
-		}
-
-		for status2.StatusUpdateSender.(*p2pStatus).status != peerstatus.Connected {
-		}
+		err = waitForStatus(status.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		assert.Nil(t, err)
+		err = waitForStatus(status2.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		assert.Nil(t, err)
 
 		// then
-		assert.Equal(t, peerstatus.Connected, status.StatusUpdateSender.(*p2pStatus).status)
-		assert.Equal(t, peerstatus.Connected, status2.StatusUpdateSender.(*p2pStatus).status)
+		checkStatus(t, status.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		checkStatus(t, status2.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
 
 		err = status.Close(context.Background())
 		assert.Nil(t, err)
@@ -109,15 +108,14 @@ func TestObservers_BroadcastPeerUpdate(t *testing.T) {
 		status.store.UpdateLocalPeer("peerId", []string{"spaceId1"})
 		status2.store.UpdateLocalPeer("peerId", []string{"spaceId2"})
 		observers.BroadcastPeerUpdate()
-		for status.StatusUpdateSender.(*p2pStatus).status != peerstatus.Connected {
-		}
-
-		for status2.StatusUpdateSender.(*p2pStatus).status != peerstatus.Connected {
-		}
+		err = waitForStatus(status.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		assert.Nil(t, err)
+		err = waitForStatus(status2.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		assert.Nil(t, err)
 
 		// then
-		assert.Equal(t, peerstatus.Connected, status.StatusUpdateSender.(*p2pStatus).status)
-		assert.Equal(t, peerstatus.Connected, status2.StatusUpdateSender.(*p2pStatus).status)
+		checkStatus(t, status.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		checkStatus(t, status2.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
 
 		err = status.Close(context.Background())
 		assert.Nil(t, err)
@@ -155,12 +153,11 @@ func TestObservers_SendPeerUpdate(t *testing.T) {
 		})
 		status.store.UpdateLocalPeer("peerId", []string{"spaceId1"})
 		observers.SendPeerUpdate([]string{"spaceId1"})
-		for status.StatusUpdateSender.(*p2pStatus).status != peerstatus.Connected {
-		}
-
+		err = waitForStatus(status.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		assert.Nil(t, err)
 		// then
-		assert.Equal(t, peerstatus.Connected, status.StatusUpdateSender.(*p2pStatus).status)
-		assert.Equal(t, peerstatus.NotConnected, status2.StatusUpdateSender.(*p2pStatus).status)
+		checkStatus(t, status.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		checkStatus(t, status2.StatusUpdateSender.(*p2pStatus), peerstatus.NotConnected)
 
 		err = status.Close(context.Background())
 		assert.Nil(t, err)

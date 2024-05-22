@@ -238,11 +238,11 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 		newAddrs addrs.InterfacesAddrs
 	)
 	newAddrs, err = addrs.GetInterfacesAddrs()
-	if len(newAddrs.Interfaces) == 0 {
-		l.peerToPeerStatusUpdater.BroadcastStatus(peerstatus.NotPossible)
-	}
 	if err != nil {
 		return
+	}
+	if len(newAddrs.Interfaces) == 0 {
+		l.peerToPeerStatusUpdater.BroadcastStatus(peerstatus.NotPossible)
 	}
 
 	newAddrs.SortWithPriority(interfacesSortPriority)

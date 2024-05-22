@@ -64,7 +64,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		assert.Equal(t, peerstatus.NotPossible, status.status)
+		checkStatus(t, status, peerstatus.NotPossible)
 		err = f.Close(context.Background())
 		assert.Nil(t, err)
 	})
@@ -93,7 +93,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		assert.Equal(t, peerstatus.NotConnected, status.status)
+		checkStatus(t, status, peerstatus.NotConnected)
 
 		err = f.Close(context.Background())
 		assert.Nil(t, err)
@@ -122,7 +122,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		assert.Equal(t, peerstatus.NotConnected, status.status)
+		checkStatus(t, status, peerstatus.NotConnected)
 		err = f.Close(context.Background())
 		assert.Nil(t, err)
 	})
@@ -150,7 +150,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		assert.Equal(t, peerstatus.Connected, status.status)
+		checkStatus(t, status, peerstatus.Connected)
 		err = f.Close(context.Background())
 		assert.Nil(t, err)
 	})
@@ -173,7 +173,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		assert.Equal(t, peerstatus.Connected, status.status)
+		checkStatus(t, status, peerstatus.Connected)
 	})
 	t.Run("send NotConnected status, because we have peer were disconnected", func(t *testing.T) {
 		// given
@@ -184,8 +184,8 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 		err := f.Run(context.Background())
 		assert.Nil(t, err)
 
-		for f.StatusUpdateSender.(*p2pStatus).status != peerstatus.Connected {
-		}
+		err = waitForStatus(f.StatusUpdateSender.(*p2pStatus), peerstatus.Connected)
+		assert.Nil(t, err)
 
 		f.store.RemoveLocalPeer("peerId")
 		f.sender.EXPECT().Broadcast(&pb.Event{
@@ -210,7 +210,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		assert.Equal(t, peerstatus.NotConnected, status.status)
+		checkStatus(t, status, peerstatus.NotConnected)
 	})
 	t.Run("connection was not possible, but after a while starts working", func(t *testing.T) {
 		// given
@@ -259,7 +259,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		assert.Equal(t, peerstatus.Connected, status.status)
+		checkStatus(t, status, peerstatus.Connected)
 	})
 	t.Run("no peers were connected, but after a while one is connected", func(t *testing.T) {
 		// given
@@ -295,7 +295,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		assert.Equal(t, peerstatus.Connected, status.status)
+		checkStatus(t, status, peerstatus.Connected)
 	})
 }
 
@@ -345,9 +345,18 @@ func waitForStatus(statusSender *p2pStatus, expectedStatus peerstatus.Status) er
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			statusSender.Lock()
 			if statusSender.status == expectedStatus {
+				statusSender.Unlock()
 				return nil
 			}
+			statusSender.Unlock()
 		}
 	}
+}
+
+func checkStatus(t *testing.T, statusSender *p2pStatus, expectedStatus peerstatus.Status) {
+	statusSender.Lock()
+	defer statusSender.Unlock()
+	assert.Equal(t, expectedStatus, statusSender.status)
 }

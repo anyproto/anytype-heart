@@ -88,15 +88,11 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 	t.Run("checkAddrs - server run successfully", func(t *testing.T) {
 		// given
 		f := newFixture(t)
-		f.clientServer.EXPECT().ServerStarted().Return(true)
-		f.clientServer.EXPECT().Port().Return(6789)
-
-		err := f.Run(context.Background())
-		assert.Nil(t, err)
 
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
-		err = ld.checkAddrs(context.Background())
+		ld.port = 6789
+		err := ld.checkAddrs(context.Background())
 
 		// then
 		assert.Nil(t, err)
