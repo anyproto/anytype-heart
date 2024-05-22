@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
+	"github.com/anyproto/anytype-heart/space/internal/components/migration"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/components/aclindexcleaner"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
@@ -32,7 +33,8 @@ func New(app *app.App, params Params) Remover {
 	child := app.ChildApp()
 	child.Register(aclindexcleaner.New()).
 		Register(builder.New()).
-		Register(spaceloader.New(params.StopIfMandatoryFail, true))
+		Register(spaceloader.New(params.StopIfMandatoryFail, true)).
+		Register(migration.New())
 	return &remover{
 		app: child,
 	}

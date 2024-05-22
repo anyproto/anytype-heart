@@ -10,14 +10,14 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/migration/common"
-	"github.com/anyproto/anytype-heart/core/migration/readonlyfixer"
-	"github.com/anyproto/anytype-heart/core/migration/systemobjectreviser"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/migration/common"
+	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
+	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -28,14 +28,14 @@ func TestRunner(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Id().Times(1).Return("")
-		runner := Runner{ctx: ctx, store: store}
+		runner := Runner{ctx: ctx, store: store, spc: space}
 
 		// when
 		go func() {
 			time.Sleep(10 * time.Millisecond)
 			cancel()
 		}()
-		err := runner.run(ctx, space, longStoreMigration{})
+		err := runner.run(longStoreMigration{})
 
 		// then
 		assert.Error(t, err)
@@ -58,14 +58,14 @@ func TestRunner(t *testing.T) {
 				}
 			},
 		)
-		runner := Runner{ctx: ctx}
+		runner := Runner{ctx: ctx, spc: space}
 
 		// when
 		go func() {
 			time.Sleep(10 * time.Millisecond)
 			cancel()
 		}()
-		err := runner.run(ctx, space, longSpaceMigration{})
+		err := runner.run(longSpaceMigration{})
 
 		// then
 		assert.Error(t, err)
@@ -78,14 +78,14 @@ func TestRunner(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Id().Times(1).Return("")
-		runner := Runner{ctx: ctx, store: store}
+		runner := Runner{ctx: ctx, store: store, spc: space}
 
 		// when
 		go func() {
 			time.Sleep(10 * time.Millisecond)
 			cancel()
 		}()
-		err := runner.run(ctx, space, instantMigration{})
+		err := runner.run(instantMigration{})
 
 		// then
 		assert.NoError(t, err)
@@ -96,10 +96,10 @@ func TestRunner(t *testing.T) {
 		store := objectstore.NewStoreFixture(t)
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Id().Return("").Maybe()
-		runner := Runner{store: store}
+		runner := Runner{ctx: context.Background(), store: store, spc: space}
 
 		// when
-		err := runner.run(context.Background(), space, systemobjectreviser.Migration{})
+		err := runner.run(systemobjectreviser.Migration{})
 
 		// then
 		assert.NoError(t, err)
@@ -118,10 +118,10 @@ func TestRunner(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Id().Return("space1").Maybe()
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Maybe().Return(spaceErr)
-		runner := Runner{store: store}
+		runner := Runner{ctx: context.Background(), store: store, spc: space}
 
 		// when
-		err := runner.run(context.Background(), space, readonlyfixer.Migration{})
+		err := runner.run(readonlyfixer.Migration{})
 
 		// then
 		assert.Error(t, err)
