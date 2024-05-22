@@ -9,8 +9,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/net/netmodule"
 	"github.com/anyproto/any-sync/net/transport"
-	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
@@ -38,16 +38,16 @@ type ClientServer interface {
 }
 
 type clientServer struct {
-	quic          quic.Quic
 	provider      datastore.Datastore
 	port          int
 	storage       *portStorage
 	serverStarted bool
+	netModule     netmodule.NetModule
 }
 
 func (s *clientServer) Init(a *app.App) (err error) {
 	s.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
-	s.quic = a.MustComponent(quic.CName).(quic.Quic)
+	s.netModule = app.MustComponent[netmodule.NetModule](a)
 	return nil
 }
 
@@ -128,7 +128,7 @@ func (s *clientServer) listenQuic(ctx context.Context, savedPort int) (port int,
 		return
 	}
 	_ = list.Close()
-	addrs, err := s.quic.ListenAddrs(ctx, "0.0.0.0:"+strconv.Itoa(port))
+	addrs, err := s.netModule.ListenAddrs(ctx, "0.0.0.0:"+strconv.Itoa(port))
 	if err != nil {
 		return
 	}

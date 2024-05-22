@@ -12,9 +12,9 @@ import (
 )
 
 func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
-	s.peerService.SetPeerAddrs(peer.PeerId, s.addSchema(peer.Addrs))
+	s.netModule.SetPeerAddrs(peer.PeerId, s.addSchema(peer.Addrs))
 	ctx := context.Background()
-	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
+	unaryPeer, err := s.netModule.Get(ctx, peer.PeerId)
 	if err != nil {
 		return
 	}

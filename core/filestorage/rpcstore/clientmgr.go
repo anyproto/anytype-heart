@@ -9,7 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
-	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/netmodule"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
@@ -31,7 +31,7 @@ var (
 	clientCreateTimeout = 1 * time.Minute
 )
 
-func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateCh chan struct{}) *clientManager {
+func newClientManager(module netmodule.NetModule, peerStore peerstore.PeerStore, peerUpdateCh chan struct{}) *clientManager {
 	cm := &clientManager{
 		mb: mb.New[*task](maxTasks),
 		ocache: ocache.New(
@@ -43,7 +43,7 @@ func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateC
 			ocache.WithGCPeriod(0),
 		),
 		checkPeersCh: peerUpdateCh,
-		pool:         pool,
+		module:       module,
 		peerStore:    peerStore,
 	}
 	cm.ctx, cm.ctxCancel = context.WithCancel(context.Background())
@@ -60,7 +60,7 @@ type clientManager struct {
 	ocache       ocache.OCache
 	checkPeersCh chan struct{}
 
-	pool      pool.Pool
+	module    netmodule.NetModule
 	peerStore peerstore.PeerStore
 
 	mu sync.RWMutex
@@ -162,7 +162,7 @@ func (m *clientManager) checkPeers(ctx context.Context, needClient bool) (err er
 		if _, cerr := m.ocache.Pick(ctx, peerId); cerr == ocache.ErrNotExists {
 			var cancel context.CancelFunc
 			ctx, cancel := context.WithTimeout(ctx, clientCreateTimeout)
-			cl, e := newClient(ctx, m.pool, peerId, m.mb)
+			cl, e := newClient(ctx, m.module, peerId, m.mb)
 			if e != nil {
 				opName, _ := ctx.Value(operationNameKey).(string)
 				log.Info("can't create client", zap.String("operation", opName), zap.Error(e))

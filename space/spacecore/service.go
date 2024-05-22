@@ -10,17 +10,15 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/net/netmodule"
+
 	// nolint: misspell
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
-	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/anyproto/any-sync/net/peerservice"
-	"github.com/anyproto/any-sync/net/pool"
-	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -48,11 +46,6 @@ func New() SpaceCoreService {
 	return &service{}
 }
 
-type PoolManager interface {
-	UnaryPeerPool() pool.Pool
-	StreamPeerPool() pool.Pool
-}
-
 type SpaceCoreService interface {
 	Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
@@ -77,8 +70,7 @@ type service struct {
 	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
 	peerStore            peerstore.PeerStore
-	peerService          peerservice.PeerService
-	poolManager          PoolManager
+	netModule            netmodule.NetModule
 	streamHandler        *streamHandler
 	syncStatusService    syncStatusService
 }
@@ -90,22 +82,21 @@ type syncStatusService interface {
 
 func (s *service) Init(a *app.App) (err error) {
 	conf := a.MustComponent(config.CName).(*config.Config)
+	s.netModule = app.MustComponent[netmodule.NetModule](a)
 	s.conf = conf.GetSpace()
 	s.accountKeys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
 	s.nodeConf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.coordinator = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
-	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
-	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
 	s.syncStatusService = app.MustComponent[syncStatusService](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{spaceCore: s}
 
-	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(s.streamHandler, streampool.StreamConfig{
+	s.streamPool = s.netModule.NewStreamPool(s.streamHandler, streampool.StreamConfig{
 		SendQueueSize:    300,
 		DialQueueWorkers: 4,
 		DialQueueSize:    300,
@@ -117,11 +108,11 @@ func (s *service) Init(a *app.App) (err error) {
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
 
-	err = spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
+	err = spacesyncproto.DRPCRegisterSpaceSync(s.netModule.GetDrpcServer(), &rpcHandler{s})
 	if err != nil {
 		return
 	}
-	return clientspaceproto.DRPCRegisterClientSpace(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
+	return clientspaceproto.DRPCRegisterClientSpace(s.netModule.GetDrpcServer(), &rpcHandler{s})
 }
 
 func (s *service) Name() (name string) {

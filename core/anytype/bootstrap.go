@@ -13,14 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
-	"github.com/anyproto/any-sync/net/peerservice"
-	"github.com/anyproto/any-sync/net/pool"
-	"github.com/anyproto/any-sync/net/rpc/debugserver"
-	"github.com/anyproto/any-sync/net/rpc/server"
-	"github.com/anyproto/any-sync/net/secureservice"
-	"github.com/anyproto/any-sync/net/streampool"
-	"github.com/anyproto/any-sync/net/transport/quic"
-	"github.com/anyproto/any-sync/net/transport/yamux"
+	"github.com/anyproto/any-sync/net/netmodule/netscope"
 	"github.com/anyproto/any-sync/node/nodeclient"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
@@ -208,16 +201,23 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peerstore.New()).
 		Register(syncstatusprovider.New()).
 		Register(storage.New()).
-		Register(secureservice.New()).
+		RegisterScope(netscope.NetworkApp()).
+		// Register(secureservice.New()).
 		Register(metric.New()).
-		Register(server.New()).
-		Register(debugserver.New()).
-		Register(pool.New()).
+		// Register(server.New()).
+		// Register(debugserver.New()).
+		/*Register(pool.New()).
 		Register(peerservice.New()).
 		Register(yamux.New()).
-		Register(quic.New()).
-		Register(clientserver.New()).
-		Register(streampool.New()).
+		Register(quic.New()).*/
+		// Register(clientserver.New()). moved to others
+		// Register(streampool.New()).
+		RegisterScope(getOthers())
+}
+
+func getOthers() *app.App {
+	a := &app.App{}
+	a.Register(clientserver.New()).
 		Register(coordinatorclient.New()).
 		Register(nodeclient.New()).
 		Register(credentialprovider.New()).
@@ -282,6 +282,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
 		Register(paymentscache.New())
+	return a
 }
 
 func MiddlewareVersion() string {
