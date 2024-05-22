@@ -62,8 +62,8 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 
 func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string) {
 	var (
-		spaceStatus spacesyncstatus.SpaceSyncStatus
-		spaceError  spacesyncstatus.SpaceSyncError
+		spaceStatus spacesyncstatus.SyncStatus
+		spaceError  spacesyncstatus.SyncError
 	)
 	switch status {
 	case filesyncstatus.Synced:

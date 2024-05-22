@@ -185,7 +185,7 @@ func (s *spaceSyncStatus) makeSpaceSyncEvent(status *SpaceSync) *pb.EventSpaceSy
 	}
 }
 
-func (s *spaceSyncStatus) getSpaceSyncStatus(status *SpaceSync) SpaceSyncStatus {
+func (s *spaceSyncStatus) getSpaceSyncStatus(status *helpers.SpaceSync) helpers.SyncStatus {
 	filesStatus := s.filesState.GetSyncStatus(status.SpaceId)
 	objectsStatus := s.objectsState.GetSyncStatus(status.SpaceId)
 
@@ -207,20 +207,20 @@ func (s *spaceSyncStatus) getSpaceSyncStatus(status *SpaceSync) SpaceSyncStatus 
 	return Synced
 }
 
-func (s *spaceSyncStatus) isSyncingStatus(filesStatus SpaceSyncStatus, objectsStatus SpaceSyncStatus) bool {
-	return filesStatus == Syncing || objectsStatus == Syncing
+func (s *spaceSyncStatus) isSyncingStatus(filesStatus helpers.SyncStatus, objectsStatus helpers.SyncStatus) bool {
+	return filesStatus == helpers.Syncing || objectsStatus == helpers.Syncing
 }
 
-func (s *spaceSyncStatus) isErrorStatus(filesStatus SpaceSyncStatus, objectsStatus SpaceSyncStatus) bool {
-	return filesStatus == Error || objectsStatus == Error
+func (s *spaceSyncStatus) isErrorStatus(filesStatus helpers.SyncStatus, objectsStatus helpers.SyncStatus) bool {
+	return filesStatus == helpers.Error || objectsStatus == helpers.Error
 }
 
-func (s *spaceSyncStatus) isSyncedStatus(filesStatus SpaceSyncStatus, objectsStatus SpaceSyncStatus) bool {
-	return filesStatus == Synced && objectsStatus == Synced
+func (s *spaceSyncStatus) isSyncedStatus(filesStatus helpers.SyncStatus, objectsStatus helpers.SyncStatus) bool {
+	return filesStatus == helpers.Synced && objectsStatus == helpers.Synced
 }
 
-func (s *spaceSyncStatus) isOfflineStatus(filesStatus SpaceSyncStatus, objectsStatus SpaceSyncStatus) bool {
-	return filesStatus == Offline || objectsStatus == Offline
+func (s *spaceSyncStatus) isOfflineStatus(filesStatus helpers.SyncStatus, objectsStatus helpers.SyncStatus) bool {
+	return filesStatus == helpers.Offline || objectsStatus == helpers.Offline
 }
 
 func (s *spaceSyncStatus) getCurrentState(status *SpaceSync) State {
@@ -241,7 +241,7 @@ func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 	}
 }
 
-func mapStatus(status SpaceSyncStatus) pb.EventSpaceStatus {
+func mapStatus(status helpers.SyncStatus) pb.EventSpaceStatus {
 	switch status {
 	case Syncing:
 		return pb.EventSpace_Syncing
@@ -254,7 +254,7 @@ func mapStatus(status SpaceSyncStatus) pb.EventSpaceStatus {
 	}
 }
 
-func mapError(err SpaceSyncError) pb.EventSpaceSyncError {
+func mapError(err helpers.SyncError) pb.EventSpaceSyncError {
 	switch err {
 	case NetworkError:
 		return pb.EventSpace_NetworkError

@@ -175,3 +175,6 @@ packages:
   github.com/anyproto/anytype-heart/util/linkpreview:
     interfaces:
       LinkPreview:
+  github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/updater:
+    interfaces:
+      Updater:

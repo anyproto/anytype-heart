@@ -13,6 +13,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -30,6 +33,10 @@ type Service interface {
 	app.ComponentRunnable
 }
 
+type Updater interface {
+	UpdateDetails(objectId string, status helpers.SyncStatus, syncError helpers.SyncError) error
+}
+
 var _ Service = (*service)(nil)
 
 type service struct {
@@ -42,7 +49,6 @@ type service struct {
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
-	badger       *badger.DB
 
 	spaceSyncStatus spacesyncstatus.Updater
 }
@@ -51,7 +57,6 @@ func New() Service {
 	return &service{
 		objectWatchers: map[string]StatusWatcher{},
 		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
-		objectWatchers:            map[string]StatusWatcher{},
 	}
 }
 
@@ -62,7 +67,10 @@ func (s *service) Init(a *app.App) (err error) {
 	cfg := app.MustComponent[*config.Config](a)
 	eventSender := app.MustComponent[event.Sender](a)
 
-	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
+	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
+
+	objectSyncStatusUpdater := app.MustComponent[Updater](a)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus, objectSyncStatusUpdater)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
 	s.fileSyncService.OnUploaded(s.onFileUploaded)
