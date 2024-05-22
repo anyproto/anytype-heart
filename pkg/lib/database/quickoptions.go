@@ -12,6 +12,9 @@ func transformQuickOption(protoFilter *model.BlockContentDataviewFilter, loc *ti
 	if protoFilter == nil {
 		return nil
 	}
+	if len(protoFilter.NestedFilters) > 0 {
+		return protoFilter
+	}
 	var filters []*model.BlockContentDataviewFilter
 	filters = append(filters, protoFilter)
 	if protoFilter.QuickOption > model.BlockContentDataviewFilter_ExactDate || protoFilter.Format == model.RelationFormat_date {
