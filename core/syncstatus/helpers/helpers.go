@@ -1,39 +1,39 @@
 package helpers
 
-type SpaceSyncType int32
+type SyncType int32
 
 const (
-	Objects SpaceSyncType = 0
-	Files   SpaceSyncType = 1
+	Objects SyncType = 0
+	Files   SyncType = 1
 )
 
-type SpaceSyncStatus int32
+type SyncStatus int32
 
 const (
-	Synced  SpaceSyncStatus = 0
-	Syncing SpaceSyncStatus = 1
-	Error   SpaceSyncStatus = 2
-	Offline SpaceSyncStatus = 3
+	Synced  SyncStatus = 0
+	Syncing SyncStatus = 1
+	Error   SyncStatus = 2
+	Offline SyncStatus = 3
 )
 
-type SpaceSyncError int32
+type SyncError int32
 
 const (
-	Null                SpaceSyncError = 0
-	StorageLimitExceed  SpaceSyncError = 1
-	IncompatibleVersion SpaceSyncError = 2
-	NetworkError        SpaceSyncError = 3
+	Null                SyncError = 0
+	StorageLimitExceed  SyncError = 1
+	IncompatibleVersion SyncError = 2
+	NetworkError        SyncError = 3
 )
 
 type SpaceSync struct {
 	SpaceId       string
-	Status        SpaceSyncStatus
+	Status        SyncStatus
 	ObjectsNumber int
-	SyncError     SpaceSyncError
-	SyncType      SpaceSyncType
+	SyncError     SyncError
+	SyncType      SyncType
 }
 
-func MakeSyncStatus(spaceId string, status SpaceSyncStatus, objectsNumber int, syncError SpaceSyncError, syncType SpaceSyncType) *SpaceSync {
+func MakeSyncStatus(spaceId string, status SyncStatus, objectsNumber int, syncError SyncError, syncType SyncType) *SpaceSync {
 	return &SpaceSync{
 		SpaceId:       spaceId,
 		Status:        status,

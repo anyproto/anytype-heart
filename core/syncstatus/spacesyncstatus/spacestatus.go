@@ -25,7 +25,7 @@ type Updater interface {
 type State interface {
 	SetObjectsNumber(status *helpers.SpaceSync)
 	SetSyncStatus(status *helpers.SpaceSync)
-	GetSyncStatus(spaceId string) helpers.SpaceSyncStatus
+	GetSyncStatus(spaceId string) helpers.SyncStatus
 	GetSyncObjectCount(spaceId string) int
 	IsSyncFinished(spaceId string) bool
 }
@@ -161,7 +161,7 @@ func (s *spaceSyncStatus) makeSpaceSyncEvent(status *helpers.SpaceSync) *pb.Even
 	}
 }
 
-func (s *spaceSyncStatus) getSpaceSyncStatus(status *helpers.SpaceSync) helpers.SpaceSyncStatus {
+func (s *spaceSyncStatus) getSpaceSyncStatus(status *helpers.SpaceSync) helpers.SyncStatus {
 	filesStatus := s.filesState.GetSyncStatus(status.SpaceId)
 	objectsStatus := s.objectsState.GetSyncStatus(status.SpaceId)
 
@@ -183,19 +183,19 @@ func (s *spaceSyncStatus) getSpaceSyncStatus(status *helpers.SpaceSync) helpers.
 	return helpers.Synced
 }
 
-func (s *spaceSyncStatus) isSyncingStatus(filesStatus helpers.SpaceSyncStatus, objectsStatus helpers.SpaceSyncStatus) bool {
+func (s *spaceSyncStatus) isSyncingStatus(filesStatus helpers.SyncStatus, objectsStatus helpers.SyncStatus) bool {
 	return filesStatus == helpers.Syncing || objectsStatus == helpers.Syncing
 }
 
-func (s *spaceSyncStatus) isErrorStatus(filesStatus helpers.SpaceSyncStatus, objectsStatus helpers.SpaceSyncStatus) bool {
+func (s *spaceSyncStatus) isErrorStatus(filesStatus helpers.SyncStatus, objectsStatus helpers.SyncStatus) bool {
 	return filesStatus == helpers.Error || objectsStatus == helpers.Error
 }
 
-func (s *spaceSyncStatus) isSyncedStatus(filesStatus helpers.SpaceSyncStatus, objectsStatus helpers.SpaceSyncStatus) bool {
+func (s *spaceSyncStatus) isSyncedStatus(filesStatus helpers.SyncStatus, objectsStatus helpers.SyncStatus) bool {
 	return filesStatus == helpers.Synced && objectsStatus == helpers.Synced
 }
 
-func (s *spaceSyncStatus) isOfflineStatus(filesStatus helpers.SpaceSyncStatus, objectsStatus helpers.SpaceSyncStatus) bool {
+func (s *spaceSyncStatus) isOfflineStatus(filesStatus helpers.SyncStatus, objectsStatus helpers.SyncStatus) bool {
 	return filesStatus == helpers.Offline || objectsStatus == helpers.Offline
 }
 
@@ -217,7 +217,7 @@ func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 	}
 }
 
-func mapStatus(status helpers.SpaceSyncStatus) pb.EventSpaceStatus {
+func mapStatus(status helpers.SyncStatus) pb.EventSpaceStatus {
 	switch status {
 	case helpers.Syncing:
 		return pb.EventSpace_Syncing
@@ -230,7 +230,7 @@ func mapStatus(status helpers.SpaceSyncStatus) pb.EventSpaceStatus {
 	}
 }
 
-func mapError(err helpers.SpaceSyncError) pb.EventSpaceSyncError {
+func mapError(err helpers.SyncError) pb.EventSpaceSyncError {
 	switch err {
 	case helpers.NetworkError:
 		return pb.EventSpace_NetworkError

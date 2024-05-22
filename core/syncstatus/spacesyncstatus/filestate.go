@@ -12,7 +12,7 @@ import (
 
 type FileState struct {
 	fileSyncCountBySpace  map[string]int
-	fileSyncStatusBySpace map[string]helpers.SpaceSyncStatus
+	fileSyncStatusBySpace map[string]helpers.SyncStatus
 
 	store objectstore.ObjectStore
 }
@@ -20,7 +20,7 @@ type FileState struct {
 func NewFileState(store objectstore.ObjectStore) *FileState {
 	return &FileState{
 		fileSyncCountBySpace:  make(map[string]int, 0),
-		fileSyncStatusBySpace: make(map[string]helpers.SpaceSyncStatus, 0),
+		fileSyncStatusBySpace: make(map[string]helpers.SyncStatus, 0),
 
 		store: store,
 	}
@@ -59,7 +59,7 @@ func (f *FileState) SetSyncStatus(status *helpers.SpaceSync) {
 	}
 }
 
-func (f *FileState) GetSyncStatus(spaceId string) helpers.SpaceSyncStatus {
+func (f *FileState) GetSyncStatus(spaceId string) helpers.SyncStatus {
 	return f.fileSyncStatusBySpace[spaceId]
 }
 

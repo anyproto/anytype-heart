@@ -3,14 +3,14 @@ package spacesyncstatus
 import "github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 
 type ObjectState struct {
-	objectSyncStatusBySpace map[string]helpers.SpaceSyncStatus
+	objectSyncStatusBySpace map[string]helpers.SyncStatus
 	objectSyncCountBySpace  map[string]int
 }
 
 func NewObjectState() *ObjectState {
 	return &ObjectState{
 		objectSyncCountBySpace:  make(map[string]int, 0),
-		objectSyncStatusBySpace: make(map[string]helpers.SpaceSyncStatus, 0),
+		objectSyncStatusBySpace: make(map[string]helpers.SyncStatus, 0),
 	}
 }
 
@@ -27,7 +27,7 @@ func (o *ObjectState) SetSyncStatus(status *helpers.SpaceSync) {
 	o.objectSyncStatusBySpace[status.SpaceId] = status.Status
 }
 
-func (o *ObjectState) GetSyncStatus(spaceId string) helpers.SpaceSyncStatus {
+func (o *ObjectState) GetSyncStatus(spaceId string) helpers.SyncStatus {
 	return o.objectSyncStatusBySpace[spaceId]
 }
 
