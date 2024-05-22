@@ -80,7 +80,7 @@ func TestObjectState_SetObjectsNumber(t *testing.T) {
 }
 
 func TestObjectState_IsSyncFinished(t *testing.T) {
-	t.Run("IsSyncFinished, sync is finished", func(t *testing.T) {
+	t.Run("IsSyncFinished, sync is not finished", func(t *testing.T) {
 		// given
 		objectState := NewObjectState()
 
@@ -88,7 +88,7 @@ func TestObjectState_IsSyncFinished(t *testing.T) {
 		finished := objectState.IsSyncFinished("spaceId")
 
 		// then
-		assert.True(t, finished)
+		assert.False(t, finished)
 	})
 	t.Run("IsSyncFinished, sync is finished", func(t *testing.T) {
 		// given

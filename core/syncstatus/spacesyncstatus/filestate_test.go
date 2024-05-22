@@ -104,7 +104,7 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 }
 
 func TestFileState_IsSyncFinished(t *testing.T) {
-	t.Run("IsSyncFinished, sync is finished", func(t *testing.T) {
+	t.Run("IsSyncFinished, sync is not finished", func(t *testing.T) {
 		// given
 		fileState := NewFileState(nil)
 
@@ -112,7 +112,7 @@ func TestFileState_IsSyncFinished(t *testing.T) {
 		finished := fileState.IsSyncFinished("spaceId")
 
 		// then
-		assert.True(t, finished)
+		assert.False(t, finished)
 	})
 	t.Run("IsSyncFinished, sync is finished", func(t *testing.T) {
 		// given

@@ -178,3 +178,4 @@ packages:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/updater:
     interfaces:
       Updater:
+      PeerStatusChecker:

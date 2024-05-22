@@ -66,6 +66,7 @@ func (s *service) Init(a *app.App) (err error) {
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	cfg := app.MustComponent[*config.Config](a)
 	eventSender := app.MustComponent[event.Sender](a)
+	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
 	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 

@@ -85,6 +85,10 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			objectsState:  NewObjectState(),
 		}
 		syncStatus := MakeSyncStatus("spaceId", Synced, 0, Null, Files)
+		status.filesState.SetSyncStatus(syncStatus)
+		status.filesState.SetObjectsNumber(syncStatus)
+		status.objectsState.SetSyncStatus(syncStatus)
+		status.objectsState.SetObjectsNumber(syncStatus)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
