@@ -45,17 +45,17 @@ func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eve
 }
 
 func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status SyncStatus) error {
-	objStatus, syncError := r.getObjectStatus(objId, status)
+	objStatusEvent, syncError := r.getObjectSyncStatusAndError(objId, status)
 
-	if !r.isStatusUpdated(objId, objStatus) {
+	if !r.isStatusUpdated(objId, objStatusEvent) {
 		return nil
 	}
-	syncStatus := mapEventToSyncStatus(objStatus)
+	syncStatus := mapEventToSyncStatus(objStatusEvent)
 	err := r.syncStatusUpdater.UpdateDetails(objId, syncStatus, syncError)
 	if err != nil {
 		return err
 	}
-	r.notify(objId, objStatus)
+	r.notify(objId, objStatusEvent)
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, er
 	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
-func (r *updateReceiver) getObjectStatus(objectId string, status SyncStatus) (pb.EventStatusThreadSyncStatus, helpers.SyncError) {
+func (r *updateReceiver) getObjectSyncStatusAndError(objectId string, status SyncStatus) (pb.EventStatusThreadSyncStatus, helpers.SyncError) {
 	fileStatus, err := r.getFileStatus(objectId)
 	var syncError helpers.SyncError
 	if err == nil {
