@@ -64,7 +64,8 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		checkStatus(t, status, peerstatus.NotPossible)
+		err = waitForStatus(status, peerstatus.NotPossible)
+		assert.Nil(t, err)
 		err = f.Close(context.Background())
 		assert.Nil(t, err)
 	})
