@@ -28,6 +28,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	msgs = d.diffOrderOfViews(other, msgs)
 	msgs = d.diffTargetObjectIDs(other, msgs)
 	msgs = d.diffIsCollections(other, msgs)
+	msgs = d.diffActiveView(other, msgs)
 
 	return
 }
@@ -245,6 +246,21 @@ func (d *Dataview) diffGroupOrders(other *Dataview, msgs []simple.EventMessage) 
 							GroupOrder: order2,
 						}}}})
 		}
+	}
+	return msgs
+}
+
+func (d *Dataview) diffActiveView(other *Dataview, msgs []simple.EventMessage) []simple.EventMessage {
+	if other.content.ActiveView != d.content.ActiveView {
+		msgs = append(msgs, simple.EventMessage{
+			Virtual: true,
+			Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewActiveViewIsSet{
+				BlockDataviewActiveViewIsSet: &pb.EventBlockDataviewActiveViewIsSet{
+					BlockId: other.Id,
+					ViewId:  other.content.ActiveView,
+				}},
+			}},
+		)
 	}
 	return msgs
 }

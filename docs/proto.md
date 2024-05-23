@@ -1403,6 +1403,7 @@
     - [Event.Block](#anytype-Event-Block)
     - [Event.Block.Add](#anytype-Event-Block-Add)
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
+    - [Event.Block.Dataview.ActiveViewIsSet](#anytype-Event-Block-Dataview-ActiveViewIsSet)
     - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
     - [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet)
     - [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate)
@@ -22139,6 +22140,22 @@ B. Partial block load
 
 
 
+<a name="anytype-Event-Block-Dataview-ActiveViewIsSet"></a>
+
+### Event.Block.Dataview.ActiveViewIsSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Block-Dataview-GroupOrderUpdate"></a>
 
 ### Event.Block.Dataview.GroupOrderUpdate
@@ -24285,6 +24302,7 @@ Precondition: user A opened a block
 | blockDataviewViewUpdate | [Event.Block.Dataview.ViewUpdate](#anytype-Event-Block-Dataview-ViewUpdate) |  |  |
 | blockDataviewTargetObjectIdSet | [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet) |  |  |
 | blockDataviewIsCollectionSet | [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet) |  |  |
+| blockDataviewActiveViewIsSet | [Event.Block.Dataview.ActiveViewIsSet](#anytype-Event-Block-Dataview-ActiveViewIsSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
 | blockDataviewOldRelationSet | [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet) |  | deprecated |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |
@@ -25455,8 +25473,8 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | source | [string](#string) | repeated |  |
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
+| activeView | [string](#string) |  | do not generate changes for this field |
 | relations | [Relation](#anytype-model-Relation) | repeated | deprecated |
-| activeView | [string](#string) |  | saved within a session |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |

@@ -355,6 +355,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+	sb.injectActiveViews(ctx.State)
 	return
 }
 
@@ -717,6 +718,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
+	if err = sb.saveActiveViews(msgs); err != nil {
+		log.With("objectID", sb.Id()).Warnf("failed to update active views: %v", err)
+	}
+
 	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
@@ -759,6 +764,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
+	sb.injectActiveViews(s)
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -1005,6 +1011,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
+	sb.injectActiveViews(d.(*state.State))
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1344,6 +1351,35 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 		}
 	}
 	return false
+}
+
+func (sb *smartBlock) saveActiveViews(msgs []simple.EventMessage) error {
+	for _, msg := range msgs {
+		ev := msg.Msg.GetBlockDataviewActiveViewIsSet()
+		if ev != nil {
+			err := sb.objectStore.SetActiveView(sb.Id(), ev.BlockId, ev.ViewId)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (sb *smartBlock) injectActiveViews(s *state.State) {
+	if err := s.Iterate(func(b simple.Block) (isContinue bool) {
+		if d := b.Model().GetDataview(); d != nil {
+			viewId, err := sb.objectStore.GetActiveView(sb.Id(), b.Model().Id)
+			if err != nil {
+				d.ActiveView = viewId
+			} else {
+				log.With("objectId", sb.Id()).With("blockId", b.Model().Id).Warnf("failed to inject active view")
+			}
+		}
+		return true
+	}); err != nil {
+		log.With("objectId", sb.Id()).Warnf("failed to inject active view to blocks of smartblock")
+	}
 }
 
 type IndexOptions struct {
