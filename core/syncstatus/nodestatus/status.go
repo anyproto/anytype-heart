@@ -35,7 +35,7 @@ func NewNodeStatus() NodeStatus {
 }
 
 func (n *nodeStatus) Init(a *app.App) (err error) {
-	n.configuration = a.MustComponent(nodeconf.CName).(nodeconf.NodeConf)
+	n.configuration = app.MustComponent[nodeconf.NodeConf](a)
 	return
 }
 

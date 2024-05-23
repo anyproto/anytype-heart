@@ -93,8 +93,8 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.updateIntervalSecs = syncUpdateInterval
 	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
-	s.configuration = a.MustComponent(nodeconf.CName).(nodeconf.NodeConf)
-	s.storage = a.MustComponent(spacestorage.CName).(spacestorage.SpaceStorage)
+	s.configuration = app.MustComponent[nodeconf.NodeConf](a)
+	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
