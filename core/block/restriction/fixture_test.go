@@ -56,7 +56,3 @@ func givenRestrictionHolder(sbType smartblock.SmartBlockType, typeKey domain.Typ
 		uniqueKey: uk,
 	}
 }
-
-func givenTemplate(layout model.ObjectTypeLayout) {
-
-}
