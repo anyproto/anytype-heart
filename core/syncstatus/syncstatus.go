@@ -60,7 +60,6 @@ type treeHeadsEntry struct {
 type treeStatus struct {
 	treeId string
 	status SyncStatus
-	heads  []string
 }
 
 type syncStatusService struct {
@@ -162,7 +161,7 @@ func (s *syncStatusService) update(ctx context.Context) (err error) {
 			s.Unlock()
 			return
 		}
-		s.treeStatusBuf = append(s.treeStatusBuf, treeStatus{treeId, treeHeads.syncStatus, treeHeads.heads})
+		s.treeStatusBuf = append(s.treeStatusBuf, treeStatus{treeId, treeHeads.syncStatus})
 	}
 	nodeStatus := s.nodeStatus
 	s.Unlock()
