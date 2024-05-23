@@ -57,9 +57,8 @@ type StatusService interface {
 }
 
 type treeHeadsEntry struct {
-	heads        []string
-	stateCounter uint64
-	syncStatus   SyncStatus
+	heads      []string
+	syncStatus SyncStatus
 }
 
 type treeStatus struct {
@@ -131,9 +130,8 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	headsCopy = append(headsCopy, heads...)
 
 	s.treeHeads[treeId] = treeHeadsEntry{
-		heads:        headsCopy,
-		stateCounter: s.stateCounter,
-		syncStatus:   StatusNotSynced,
+		heads:      headsCopy,
+		syncStatus: StatusNotSynced,
 	}
 	s.stateCounter++
 }
@@ -216,9 +214,8 @@ func (s *syncStatusService) Watch(treeId string) (err error) {
 		slices.Sort(heads)
 		s.stateCounter++
 		s.treeHeads[treeId] = treeHeadsEntry{
-			heads:        heads,
-			stateCounter: s.stateCounter,
-			syncStatus:   StatusUnknown,
+			heads:      heads,
+			syncStatus: StatusUnknown,
 		}
 	}
 
