@@ -9,10 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-type limitSetter interface {
-	SetLimit(limit int)
-}
-
 func TestSpaceUsageUpdate(t *testing.T) {
 	const limit = 1024 * 1024 * 1024
 	fx := newFixture(t, limit)

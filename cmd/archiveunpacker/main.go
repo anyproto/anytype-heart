@@ -139,40 +139,6 @@ func handleZip(input, output string) {
 	}
 }
 
-func handleDirectory(input, output string) {
-	err := filepath.Walk(input, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() {
-			// Get relative path
-			rel, err := filepath.Rel(input, path)
-			if err != nil {
-				return err
-			}
-
-			outputFile := filepath.Join(output, rel)
-
-			f, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-
-			processFile(File{
-				Name: f.Name(),
-				RC:   f,
-			}, outputFile)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		log.Fatalf("Failed to process directory: %v", err)
-	}
-}
-
 func createZipFromDirectory(input, output string) {
 	// create a new zip file
 	newZipFile, err := os.Create(output)

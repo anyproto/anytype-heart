@@ -224,10 +224,6 @@ func (f *Filters) unmarshal(e query.Entry) *types.Struct {
 	return details.Details
 }
 
-func (f *Filters) hasOrders() bool {
-	return f.Order != nil
-}
-
 func (f *Filters) String() string {
 	var filterString string
 	var orderString string

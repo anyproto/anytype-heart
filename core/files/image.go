@@ -40,7 +40,7 @@ type image struct {
 func selectAndSortResizeVariants(variants []*storage.FileInfo) []*storage.FileInfo {
 	onlyResizeVariants := variants[:0]
 	for _, variant := range variants {
-		if variant.Mill == mill.ImageResizeId {
+		if variant.Mill == mill.ImageResizeId || variant.Mill == mill.BlobId {
 			onlyResizeVariants = append(onlyResizeVariants, variant)
 		}
 	}

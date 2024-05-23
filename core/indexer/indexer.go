@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -14,11 +13,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -39,9 +36,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 func New() Indexer {
-	return &indexer{
-		indexedFiles: &sync.Map{},
-	}
+	return &indexer{}
 }
 
 type Indexer interface {
@@ -65,23 +60,17 @@ type indexer struct {
 	picker         cache.ObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
-	fileService    files.Service
 
 	quit            chan struct{}
 	ftQueueFinished chan struct{}
 
-	btHash     Hasher
-	newAccount bool
-	forceFt    chan struct{}
+	btHash  Hasher
+	forceFt chan struct{}
 
-	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
-
-	flags reindexFlags
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
-	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.source = a.MustComponent(source.CName).(source.Service)
@@ -89,7 +78,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.ObjectGetter](a)
-	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})

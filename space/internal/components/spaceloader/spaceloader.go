@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.components.spaceloader"
@@ -29,7 +28,6 @@ type SpaceLoader interface {
 }
 
 type spaceLoader struct {
-	techSpace           techspace.TechSpace
 	status              spacestatus.SpaceStatus
 	builder             builder.SpaceBuilder
 	loading             *loadingSpace
@@ -51,7 +49,6 @@ func New(stopIfMandatoryFail, disableRemoteLoad bool) SpaceLoader {
 
 func (s *spaceLoader) Init(a *app.App) (err error) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.techSpace = app.MustComponent[techspace.TechSpace](a)
 	s.status = app.MustComponent[spacestatus.SpaceStatus](a)
 	s.builder = app.MustComponent[builder.SpaceBuilder](a)
 	return nil
