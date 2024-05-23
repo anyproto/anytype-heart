@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/object/treesyncer/mock_treesyncer"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -186,7 +188,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(true)
-		fx.updater.EXPECT().SendUpdate(helpers.MakeSyncStatus(spaceId, helpers.Offline, 0, helpers.Null, helpers.Objects))
+		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Offline, 0, domain.Null, domain.Objects))
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
@@ -205,8 +207,8 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(false)
-		fx.updater.EXPECT().SendUpdate(helpers.MakeSyncStatus(spaceId, helpers.Syncing, 2, helpers.Null, helpers.Objects))
-		fx.updater.EXPECT().SendUpdate(helpers.MakeSyncStatus(spaceId, helpers.Synced, 0, helpers.Null, helpers.Objects))
+		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Syncing, 2, domain.Null, domain.Objects))
+		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Synced, 0, domain.Null, domain.Objects))
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})

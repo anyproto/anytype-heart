@@ -243,36 +243,6 @@ func (s *syncStatusService) Unwatch(treeId string) {
 	}
 }
 
-func (s *syncStatusService) StateCounter() uint64 {
-	s.Lock()
-	defer s.Unlock()
-
-	return s.stateCounter
-}
-
-func (s *syncStatusService) RemoveAllExcept(senderId string, differentRemoteIds []string, stateCounter uint64) {
-	// if sender is not a responsible node, then this should have no effect
-	if !s.isSenderResponsible(senderId) {
-		return
-	}
-
-	s.Lock()
-	defer s.Unlock()
-
-	slices.Sort(differentRemoteIds)
-	for treeId, entry := range s.treeHeads {
-		// if the current update is outdated
-		if entry.stateCounter > stateCounter {
-			continue
-		}
-		// if we didn't find our treeId in heads ids which are different from us and node
-		if _, found := slices.BinarySearch(differentRemoteIds, treeId); !found {
-			entry.syncStatus = StatusSynced
-			s.treeHeads[treeId] = entry
-		}
-	}
-}
-
 func (s *syncStatusService) Close(ctx context.Context) error {
 	s.periodicSync.Close()
 	return nil

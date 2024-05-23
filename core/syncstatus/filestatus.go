@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -62,22 +61,22 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 
 func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string) {
 	var (
-		spaceStatus spacesyncstatus.SyncStatus
-		spaceError  spacesyncstatus.SyncError
+		spaceStatus domain.SpaceSyncStatus
+		spaceError  domain.SpaceSyncError
 	)
 	switch status {
 	case filesyncstatus.Synced:
-		spaceStatus = spacesyncstatus.Synced
+		spaceStatus = domain.Synced
 	case filesyncstatus.Syncing:
-		spaceStatus = spacesyncstatus.Syncing
+		spaceStatus = domain.Syncing
 	case filesyncstatus.Limited:
-		spaceStatus = spacesyncstatus.Error
-		spaceError = spacesyncstatus.StorageLimitExceed
+		spaceStatus = domain.Error
+		spaceError = domain.StorageLimitExceed
 	case filesyncstatus.Unknown:
-		spaceStatus = spacesyncstatus.Error
-		spaceError = spacesyncstatus.NetworkError
+		spaceStatus = domain.Error
+		spaceError = domain.NetworkError
 	}
 
-	syncStatus := spacesyncstatus.MakeSyncStatus(spaceId, spaceStatus, 0, spaceError, spacesyncstatus.Files)
+	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, 0, spaceError, domain.Files)
 	s.spaceSyncStatus.SendUpdate(syncStatus)
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -59,7 +59,7 @@ func (e *executor) close() {
 
 type Updater interface {
 	app.ComponentRunnable
-	SendUpdate(spaceSync *helpers.SpaceSync)
+	SendUpdate(spaceSync *domain.SpaceSync)
 }
 
 type PeerStatusChecker interface {
@@ -200,20 +200,20 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 
 func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing []string, nodePeer bool) {
 	if t.peerManager.IsPeerOffline(peerId) {
-		t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Offline, 0, spacesyncstatus.Null, spacesyncstatus.Objects))
-	} else {
-		if (len(existing) != 0 || len(missing) != 0) && nodePeer {
-			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Syncing, len(existing)+len(missing), spacesyncstatus.Null, spacesyncstatus.Objects))
-		}
+		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Offline, 0, domain.Null, domain.Objects))
+		return
+	}
+	if len(existing) != 0 || len(missing) != 0 {
+		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Syncing, len(existing)+len(missing), domain.Null, domain.Objects))
 	}
 }
 
 func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string) {
 	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
 		if err != nil {
-			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Error, 0, spacesyncstatus.NetworkError, spacesyncstatus.Objects))
+			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Error, 0, domain.NetworkError, domain.Objects))
 		} else {
-			t.spaceSyncStatus.SendUpdate(spacesyncstatus.MakeSyncStatus(t.spaceId, spacesyncstatus.Synced, 0, spacesyncstatus.Null, spacesyncstatus.Objects))
+			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Synced, 0, domain.Null, domain.Objects))
 		}
 	}
 }
