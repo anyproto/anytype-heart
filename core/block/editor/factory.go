@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
-	historyService "github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -60,7 +59,6 @@ type ObjectFactory struct {
 	processService      process.Service
 	fileUploaderService fileuploader.Service
 	objectDeleter       ObjectDeleter
-	historyService      historyService.History
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -87,7 +85,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.processService = app.MustComponent[process.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
-	f.historyService = app.MustComponent[historyService.History](a)
 	return nil
 }
 
@@ -145,7 +142,6 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.Sma
 		f.objectStore,
 		f.indexer,
 		f.eventSender,
-		f.historyService,
 	)
 }
 

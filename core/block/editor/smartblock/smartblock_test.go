@@ -484,7 +484,7 @@ func newFixture(id string, t *testing.T) *fixture {
 
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(nil, "", nil, restrictionService, objectStore, indexer, sender, nil).(*smartBlock)
+	sb := New(nil, "", nil, restrictionService, objectStore, indexer, sender).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",

@@ -97,7 +97,6 @@ func New(
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
 	eventSender event.Sender,
-	historyService History,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -112,7 +111,6 @@ func New(
 		objectStore:        objectStore,
 		indexer:            indexer,
 		eventSender:        eventSender,
-		historyService:     historyService,
 	}
 	return s
 }
@@ -250,7 +248,6 @@ type smartBlock struct {
 	objectStore        objectstore.ObjectStore
 	indexer            Indexer
 	eventSender        event.Sender
-	historyService     History
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -414,13 +411,6 @@ func (sb *smartBlock) Show() (*model.ObjectView, error) {
 
 	undo, redo := sb.History().Counters()
 
-	blockModifiers, err := sb.historyService.GetBlocksModifiers(domain.FullID{
-		ObjectID: sb.Id(),
-		SpaceID:  sb.SpaceID(),
-	}, "", sb.Blocks())
-	if err != nil {
-		return nil, err
-	}
 	// todo: sb.Relations() makes extra query to read objectType which we already have here
 	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
 	return &model.ObjectView{
@@ -434,7 +424,6 @@ func (sb *smartBlock) Show() (*model.ObjectView, error) {
 			Undo: undo,
 			Redo: redo,
 		},
-		BlocksModifiers: blockModifiers,
 	}, nil
 }
 
