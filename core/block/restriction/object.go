@@ -37,12 +37,6 @@ var (
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 	}
-	collectionRestrictions = ObjectRestrictions{
-		model.Restrictions_Blocks,
-		model.Restrictions_LayoutChange,
-		model.Restrictions_TypeChange,
-		model.Restrictions_Template,
-	}
 	sysTypesRestrictions = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
@@ -65,8 +59,8 @@ var (
 		model.ObjectType_basic:      {},
 		model.ObjectType_profile:    {},
 		model.ObjectType_todo:       {},
-		model.ObjectType_set:        collectionRestrictions,
-		model.ObjectType_collection: collectionRestrictions,
+		model.ObjectType_set:        objRestrictEdit,
+		model.ObjectType_collection: objRestrictEdit,
 		model.ObjectType_objectType: objRestrictEdit,
 		model.ObjectType_relation:   objRestrictEdit,
 		model.ObjectType_file:       objFileRestrictions,
@@ -189,10 +183,10 @@ func (or ObjectRestrictions) ToPB() *types.Value {
 	return pbtypes.IntList(ints...)
 }
 
-func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
+func getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
 	uk := rh.UniqueKey()
-	if uk != nil {
-		return GetRestrictionsForUniqueKey(rh.UniqueKey())
+	if uk != nil && uk.InternalKey() != "" {
+		return getRestrictionsForUniqueKey(uk)
 	}
 
 	var ok bool
@@ -208,7 +202,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	return
 }
 
-func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
+func getRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	r = objectRestrictionsBySBType[uk.SmartblockType()]
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
@@ -228,22 +222,4 @@ func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	}
 	// we assume that all sb types exist in objectRestrictionsBySBType
 	return r
-}
-
-func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) DataviewRestrictions {
-	switch uk.SmartblockType() {
-	case smartblock.SmartBlockTypeObjectType:
-		key := uk.InternalKey()
-		if lo.Contains(bundle.InternalTypes, domain.TypeKey(key)) {
-			return DataviewRestrictions{
-				model.RestrictionsDataviewRestrictions{
-					BlockId:      DataviewBlockId,
-					Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
-				},
-			}
-		}
-	case smartblock.SmartBlockTypeRelation:
-		// should we handle this?
-	}
-	return nil
 }
