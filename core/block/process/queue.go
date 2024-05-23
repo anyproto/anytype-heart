@@ -180,13 +180,13 @@ func (p *queue) Info() pb.ModelProcess {
 	defer p.m.Unlock()
 	return pb.ModelProcess{
 		Id:    p.id,
-		Type:  p.info.Type,
 		State: p.state,
 		Progress: &pb.ModelProcessProgress{
 			Total:   atomic.LoadInt64(&p.pTotal),
 			Done:    atomic.LoadInt64(&p.pDone),
 			Message: p.message,
 		},
+		Message: p.info.Message,
 	}
 }
 

@@ -29,7 +29,7 @@ func (p *MockTempDirProvider) TempDir() string {
 
 func TestHTML_GetSnapshots(t *testing.T) {
 	h := &HTML{}
-	p := process.NewProgress(pb.ModelProcess_Import)
+	p := process.NewProgress(&pb.ModelProcessMessageOfImport{})
 	sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
 			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
