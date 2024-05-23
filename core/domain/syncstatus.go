@@ -1,4 +1,4 @@
-package helpers
+package domain
 
 type SpaceSyncType int32
 

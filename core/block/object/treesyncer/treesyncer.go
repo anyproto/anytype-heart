@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -59,7 +59,7 @@ func (e *executor) close() {
 
 type Updater interface {
 	app.ComponentRunnable
-	SendUpdate(spaceSync *helpers.SpaceSync)
+	SendUpdate(spaceSync *domain.SpaceSync)
 }
 
 type PeerStatusChecker interface {
@@ -203,20 +203,20 @@ func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing 
 		return
 	}
 	if t.peerManager.IsPeerOffline(peerId) {
-		t.spaceSyncStatus.SendUpdate(helpers.MakeSyncStatus(t.spaceId, helpers.Offline, 0, helpers.Null, helpers.Objects))
+		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Offline, 0, domain.Null, domain.Objects))
 		return
 	}
 	if len(existing) != 0 || len(missing) != 0 {
-		t.spaceSyncStatus.SendUpdate(helpers.MakeSyncStatus(t.spaceId, helpers.Syncing, len(existing)+len(missing), helpers.Null, helpers.Objects))
+		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Syncing, len(existing)+len(missing), domain.Null, domain.Objects))
 	}
 }
 
 func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string) {
 	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
 		if err != nil {
-			t.spaceSyncStatus.SendUpdate(helpers.MakeSyncStatus(t.spaceId, helpers.Error, 0, helpers.NetworkError, helpers.Objects))
+			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Error, 0, domain.NetworkError, domain.Objects))
 		} else {
-			t.spaceSyncStatus.SendUpdate(helpers.MakeSyncStatus(t.spaceId, helpers.Synced, 0, helpers.Null, helpers.Objects))
+			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Synced, 0, domain.Null, domain.Objects))
 		}
 	}
 }
