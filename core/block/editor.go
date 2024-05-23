@@ -534,8 +534,6 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 	upl.SetAdditionalDetails(req.Details)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
-	} else {
-		upl.AutoType(true)
 	}
 	if req.LocalPath != "" {
 		upl.SetFile(req.LocalPath)

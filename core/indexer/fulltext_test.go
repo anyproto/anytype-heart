@@ -4,7 +4,6 @@ import (
 	"context"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -12,12 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
-	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/core/indexer/mock_indexer"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -38,6 +35,7 @@ type IndexerFixture struct {
 	pickerFx         *mock_cache.MockObjectGetter
 	storageServiceFx *mock_storage.MockClientStorage
 	objectStore      *objectstore.StoreFixture
+	sourceFx         *mock_source.MockService
 }
 
 func NewIndexerFixture(t *testing.T) *IndexerFixture {
@@ -57,16 +55,14 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	testApp.Register(objectStore.FTSearch())
 
-	indxr := &indexer{
-		indexedFiles: &sync.Map{},
-	}
+	indxr := &indexer{}
 
 	indexerFx := &IndexerFixture{
 		indexer:     indxr,
 		objectStore: objectStore,
+		sourceFx:    sourceService,
 	}
 
-	indxr.newAccount = config.New().NewAccount
 	indxr.store = objectStore
 	indexerFx.storageService = clientStorage
 	indexerFx.storageServiceFx = clientStorage
@@ -81,7 +77,6 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indexerFx.ftsearch = indxr.ftsearch
 	indexerFx.pickerFx = mock_cache.NewMockObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
-	indxr.fileService = mock_files.NewMockService(t)
 	indxr.quit = make(chan struct{})
 	indxr.forceFt = make(chan struct{})
 

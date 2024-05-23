@@ -14,7 +14,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
-	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
@@ -32,8 +31,7 @@ type AclObjectManager interface {
 
 func New(ownerMetadata []byte) AclObjectManager {
 	return &aclObjectManager{
-		ownerMetadata:     ownerMetadata,
-		addedParticipants: make(map[string]struct{}),
+		ownerMetadata: ownerMetadata,
 	}
 }
 
@@ -46,17 +44,15 @@ type aclObjectManager struct {
 	loadErr             error
 	spaceLoader         spaceloader.SpaceLoader
 	status              spacestatus.SpaceStatus
-	indexer             dependencies.SpaceIndexer
 	statService         debugstat.StatService
 	started             bool
 	notificationService aclnotifications.AclNotification
 	participantWatcher  participantwatcher.ParticipantWatcher
 	inviteMigrator      invitemigrator.InviteMigrator
 
-	ownerMetadata     []byte
-	lastIndexed       string
-	addedParticipants map[string]struct{}
-	mx                sync.Mutex
+	ownerMetadata []byte
+	lastIndexed   string
+	mx            sync.Mutex
 }
 
 func (a *aclObjectManager) ProvideStat() any {
@@ -88,7 +84,6 @@ func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 
 func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](ap)
-	a.indexer = app.MustComponent[dependencies.SpaceIndexer](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
 	a.participantWatcher = app.MustComponent[participantwatcher.ParticipantWatcher](ap)
 	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)

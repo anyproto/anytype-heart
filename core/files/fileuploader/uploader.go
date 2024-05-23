@@ -103,7 +103,6 @@ type Uploader interface {
 	SetGroupId(groupId string) Uploader
 	SetCustomEncryptionKeys(keys map[string]string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
-	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
 	Upload(ctx context.Context) (result UploadResult)
@@ -149,7 +148,6 @@ type uploader struct {
 	getReader            func(ctx context.Context) (*fileReader, error)
 	name                 string
 	lastModifiedDate     int64
-	typeDetect           bool
 	forceType            bool
 	forceUploadingAsFile bool
 	smartBlockID         string
@@ -360,11 +358,6 @@ func (u *uploader) setLastModifiedDate(path string) {
 	} else {
 		u.lastModifiedDate = time.Now().Unix()
 	}
-}
-
-func (u *uploader) AutoType(enable bool) Uploader {
-	u.typeDetect = enable
-	return u
 }
 
 func (u *uploader) AsyncUpdates(smartBlockId string) Uploader {

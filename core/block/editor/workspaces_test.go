@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestWorkspaces_FileInfo(t *testing.T) {
@@ -47,15 +46,11 @@ func (m migratorStub) migrateSubObjects(st *state.State) {
 
 func NewWorkspacesTest(ctrl *gomock.Controller) (*Workspaces, error) {
 	sb := smarttest.New("root")
-	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
-	objectStore.EXPECT().Query(gomock.Any()).AnyTimes()
 	a := &Workspaces{
 		SmartBlock:   sb,
 		spaceService: &spaceServiceStub{},
 		migrator:     migratorStub{},
 		config:       &config.Config{},
-		objectStore:  objectStore,
 	}
 	initCtx := &smartblock.InitContext{
 		IsNewObject: true,

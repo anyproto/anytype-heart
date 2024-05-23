@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -141,6 +142,145 @@ func TestReindexDeletedObjects(t *testing.T) {
 	assert.Equal(t, []string{"3"}, got)
 }
 
+func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
+	const (
+		spaceId1 = "space1"
+		spaceId2 = "space2"
+	)
+	fx := NewIndexerFixture(t)
+
+	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ string, sbt coresb.SmartBlockType) (source.IDsLister, error) {
+			switch sbt {
+			case coresb.SmartBlockTypeHome:
+				return idsLister{Ids: []string{"home"}}, nil
+			case coresb.SmartBlockTypeArchive:
+				return idsLister{Ids: []string{"bin"}}, nil
+			default:
+				return nil, nil
+			}
+		},
+	)
+
+	fx.objectStore.AddObjects(t, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:      pbtypes.String("fav1"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("fav2"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("trash1"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("trash2"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId1),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("obj1"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId2),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("obj2"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId2),
+		},
+		{
+			bundle.RelationKeyId:      pbtypes.String("obj3"),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId2),
+		},
+	})
+
+	checksums := fx.getLatestChecksums()
+	checksums.LinksErase = checksums.LinksErase - 1
+
+	err := fx.objectStore.SaveChecksums(spaceId1, &checksums)
+	require.NoError(t, err)
+	err = fx.objectStore.SaveChecksums(spaceId2, &checksums)
+	require.NoError(t, err)
+
+	t.Run("links from archive and home are deleted", func(t *testing.T) {
+		// given
+		favs := []string{"fav1", "fav2"}
+		trash := []string{"trash1", "trash2"}
+		err = fx.store.UpdateObjectLinks("home", favs)
+		require.NoError(t, err)
+		err = fx.store.UpdateObjectLinks("bin", trash)
+		require.NoError(t, err)
+
+		homeLinks, err := fx.store.GetOutboundLinksByID("home")
+		require.Equal(t, favs, homeLinks)
+
+		archiveLinks, err := fx.store.GetOutboundLinksByID("bin")
+		require.Equal(t, trash, archiveLinks)
+
+		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().Id().Return(spaceId1)
+		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
+
+		// when
+		err = fx.ReindexSpace(space1)
+		assert.NoError(t, err)
+
+		// then
+		homeLinks, err = fx.store.GetOutboundLinksByID("home")
+		assert.NoError(t, err)
+		assert.Empty(t, homeLinks)
+
+		archiveLinks, err = fx.store.GetOutboundLinksByID("bin")
+		assert.NoError(t, err)
+		assert.Empty(t, archiveLinks)
+
+		storeChecksums, err := fx.store.GetChecksums(spaceId1)
+		assert.Equal(t, ForceLinksReindexCounter, storeChecksums.LinksErase)
+	})
+
+	t.Run("links from plain objects are deleted as well", func(t *testing.T) {
+		// given
+		obj1links := []string{"obj2", "obj3"}
+		obj2links := []string{"obj1"}
+		obj3links := []string{"obj2"}
+		err = fx.store.UpdateObjectLinks("obj1", obj1links)
+		require.NoError(t, err)
+		err = fx.store.UpdateObjectLinks("obj2", obj2links)
+		require.NoError(t, err)
+		err = fx.store.UpdateObjectLinks("obj3", obj3links)
+		require.NoError(t, err)
+
+		storedObj1links, err := fx.store.GetOutboundLinksByID("obj1")
+		require.Equal(t, obj1links, storedObj1links)
+		storedObj2links, err := fx.store.GetOutboundLinksByID("obj2")
+		require.Equal(t, obj2links, storedObj2links)
+		storedObj3links, err := fx.store.GetOutboundLinksByID("obj3")
+		require.Equal(t, obj3links, storedObj3links)
+
+		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().Id().Return(spaceId2)
+		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
+
+		// when
+		err = fx.ReindexSpace(space1)
+		assert.NoError(t, err)
+
+		// then
+		storedObj1links, err = fx.store.GetOutboundLinksByID("obj1")
+		assert.NoError(t, err)
+		assert.Empty(t, storedObj1links)
+		storedObj2links, err = fx.store.GetOutboundLinksByID("obj2")
+		assert.NoError(t, err)
+		assert.Empty(t, storedObj2links)
+		storedObj3links, err = fx.store.GetOutboundLinksByID("obj3")
+		assert.NoError(t, err)
+		assert.Empty(t, storedObj3links)
+
+		storeChecksums, err := fx.store.GetChecksums(spaceId2)
+		assert.NoError(t, err)
+		assert.Equal(t, ForceLinksReindexCounter, storeChecksums.LinksErase)
+	})
+}
+
 func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
 	ids, _, err := fx.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -158,4 +298,12 @@ func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []
 	})
 	require.NoError(t, err)
 	return ids
+}
+
+type idsLister struct {
+	Ids []string
+}
+
+func (l idsLister) ListIds() ([]string, error) {
+	return l.Ids, nil
 }

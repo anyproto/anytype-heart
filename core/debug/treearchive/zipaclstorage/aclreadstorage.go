@@ -13,17 +13,13 @@ import (
 
 type zipAclReadStorage struct {
 	id    string
-	head  string
 	files map[string]*zip.File
-	zr    *zip.ReadCloser
 }
 
 func NewZipAclReadStorage(id string, zr *zip.ReadCloser) (ls liststorage.ListStorage, err error) {
 	aclStorage := &zipAclReadStorage{
 		id:    id,
-		head:  id,
 		files: map[string]*zip.File{},
-		zr:    zr,
 	}
 	for _, f := range zr.Reader.File {
 		if len(f.Name) > len(id) && strings.Contains(f.Name, id) {

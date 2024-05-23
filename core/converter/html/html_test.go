@@ -18,7 +18,7 @@ func TestHTML_Convert(t *testing.T) {
 		s := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{}),
 		}).(*state.State)
-		assert.Empty(t, NewHTMLConverter("space1", nil, s, nil).Convert())
+		assert.Empty(t, NewHTMLConverter(nil, s, nil).Convert())
 	})
 
 	t.Run("markup", func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestHTML_Convert(t *testing.T) {
 }
 
 func convertHtml(s *state.State) string {
-	return NewHTMLConverter("space1", nil, s, nil).Convert()
+	return NewHTMLConverter(nil, s, nil).Convert()
 }
 
 func givenMarkup() *state.State {

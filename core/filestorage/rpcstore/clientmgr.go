@@ -125,7 +125,7 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 		}
 	}
 	log.Debug("finishing task task", zap.String("cid", t.cid.String()))
-	t.ready <- result{cid: t.cid, err: taskErr}
+	t.ready <- result{err: taskErr}
 	t.release()
 }
 
