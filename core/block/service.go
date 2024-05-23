@@ -283,6 +283,9 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 			sendOnRemoveEvent(s.eventSender, id.ObjectID)
 		}
 	}
+
+	sendOnCloseEvent(s.eventSender, id.ObjectID)
+
 	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id.ObjectID); return nil })
 	return nil
 }
