@@ -85,11 +85,11 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 
 	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, true, true, false, true, false)
 	// nolint:errcheck
-	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
-	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
+	meta, _ := h.objectStore.QueryByID(dependentObjectIDs)
 
-	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
-	for _, m := range metaD {
+	meta = append(meta, database.Record{Details: s.CombinedDetails()})
+	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
+	for _, m := range meta {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
 			Details: m.Details,
@@ -201,21 +201,20 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 		return nil, nil, fmt.Errorf("failed to get history events for versions %s, %s: %w", req.CurrentVersion, req.PreviousVersion, err)
 	}
 
-	historyEvents := getHistoryEvents(msg)
+	historyEvents := filterHistoryEvents(msg)
 	spc, err := h.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
 	dependentObjectIDs := objectlink.DependentObjectIDs(currState, spc, true, true, false, true, false)
-	metaD, err := h.objectStore.QueryByID(dependentObjectIDs)
+	meta, err := h.objectStore.QueryByID(dependentObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get dependencies: %w", err)
 	}
 
-	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
-
-	metaD = append(metaD, database.Record{Details: currState.CombinedDetails()})
-	for _, m := range metaD {
+	meta = append(meta, database.Record{Details: currState.CombinedDetails()})
+	details := make([]*model.ObjectViewDetailsSet, 0, len(meta))
+	for _, m := range meta {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
 			Details: m.Details,
@@ -231,7 +230,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	return historyEvents, objectView, nil
 }
 
-func getHistoryEvents(msg []simple.EventMessage) []*pb.EventMessage {
+func filterHistoryEvents(msg []simple.EventMessage) []*pb.EventMessage {
 	var response []*pb.EventMessage
 	for _, message := range msg {
 		if message.Virtual {
@@ -310,28 +309,26 @@ func (h *history) GetBlocksModifiers(id domain.FullID, versionId string, blocks 
 		return nil, err
 	}
 
-	blocksModifiersMap := make(map[string]string, 0)
+	blocksParticipantsMap := make(map[string]string, 0)
 	err = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
-		if !c.IsSnapshot {
-			h.processChange(c, id, blocksModifiersMap, existingBlocks)
-		}
+		h.fillBlockParticipantMap(c, id, blocksParticipantsMap, existingBlocks)
 		return true
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	blocksModifiers := make([]*model.ObjectViewBlockModifier, 0)
-	for blockId, participantId := range blocksModifiersMap {
-		blocksModifiers = append(blocksModifiers, &model.ObjectViewBlockModifier{
+	blocksParticipants := make([]*model.ObjectViewBlockModifier, 0)
+	for blockId, participantId := range blocksParticipantsMap {
+		blocksParticipants = append(blocksParticipants, &model.ObjectViewBlockModifier{
 			BlockId:       blockId,
 			ParticipantId: participantId,
 		})
 	}
-	return blocksModifiers, nil
+	return blocksParticipants, nil
 }
 
-func (h *history) processChange(c *objecttree.Change,
+func (h *history) fillBlockParticipantMap(c *objecttree.Change,
 	id domain.FullID,
 	blocksToParticipant map[string]string,
 	existingBlocks map[string]struct{},
