@@ -2,6 +2,7 @@ package database
 
 import (
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/types"
@@ -734,5 +735,69 @@ func TestMakeFilters(t *testing.T) {
 		assert.NotNil(t, filters.(FiltersAnd))
 		assert.NotNil(t, filters.(FiltersAnd)[0].(FilterEq))
 		assert.NotNil(t, filters.(FiltersAnd)[1].(FiltersOr))
+	})
+	t.Run("transform quick options", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_Or,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: "key2",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(time.Now().Unix()),
+						QuickOption: model.BlockContentDataviewFilter_CurrentMonth,
+					},
+					{
+						RelationKey: "key3",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Bool(true),
+					},
+				},
+			},
+		}
+
+		// when
+		filters, err := MakeFilters(filter, mockStore)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, filters, 2)
+		assert.NotNil(t, filters.(FiltersOr))
+		assert.NotNil(t, filters.(FiltersOr)[0].(FiltersAnd))
+		assert.NotNil(t, filters.(FiltersOr)[1].(FilterEq))
+	})
+	t.Run("transform quick options", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator: model.BlockContentDataviewFilter_Or,
+				NestedFilters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: "key2",
+						Condition:   model.BlockContentDataviewFilter_Less,
+						Value:       pbtypes.Int64(time.Now().Unix()),
+						QuickOption: model.BlockContentDataviewFilter_CurrentMonth,
+					},
+					{
+						RelationKey: "key3",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Bool(true),
+					},
+				},
+			},
+		}
+
+		// when
+		filters, err := MakeFilters(filter, mockStore)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, filters, 2)
+		assert.NotNil(t, filters.(FiltersOr))
+		assert.NotNil(t, filters.(FiltersOr)[0].(FilterEq))
+		assert.NotNil(t, filters.(FiltersOr)[1].(FilterEq))
 	})
 }

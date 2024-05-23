@@ -8,12 +8,9 @@ import (
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-func transformQuickOption(protoFilter *model.BlockContentDataviewFilter, loc *time.Location) *model.BlockContentDataviewFilter {
+func transformQuickOption(protoFilter *model.BlockContentDataviewFilter, loc *time.Location) []*model.BlockContentDataviewFilter {
 	if protoFilter == nil {
 		return nil
-	}
-	if len(protoFilter.NestedFilters) > 0 {
-		return protoFilter
 	}
 	var filters []*model.BlockContentDataviewFilter
 	filters = append(filters, protoFilter)
@@ -48,14 +45,7 @@ func transformQuickOption(protoFilter *model.BlockContentDataviewFilter, loc *ti
 			})
 		}
 	}
-	if len(filters) == 1 {
-		return protoFilter
-	}
-
-	return &model.BlockContentDataviewFilter{
-		Operator:      model.BlockContentDataviewFilter_And,
-		NestedFilters: filters,
-	}
+	return filters
 }
 
 func getRange(f *model.BlockContentDataviewFilter, loc *time.Location) (int64, int64) {
