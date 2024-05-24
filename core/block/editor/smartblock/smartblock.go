@@ -701,7 +701,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				sb.undo.Add(act)
 			}
 		}
-	} else if hasChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
+	} else if hasChangesToPush(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		err = pushChange()
 		if err != nil {
@@ -1318,7 +1318,7 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }
 
-func hasChanges(changes []*pb.ChangeContent) bool {
+func hasChangesToPush(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
 		if isSuitableChanges(ch) {
 			return true

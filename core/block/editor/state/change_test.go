@@ -859,4 +859,23 @@ func TestRootDeviceChanges(t *testing.T) {
 		assert.Len(t, s.GetChanges(), 1)
 		assert.Equal(t, "test1", s.GetChanges()[0].GetDeviceUpdate().GetName())
 	})
+	t.Run("add device - parent nil", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		s := a.NewState()
+
+		device := &model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		}
+		s.AddDevice(device)
+		s.parent = nil
+		// when
+		_, _, err := ApplyState(s, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetChanges(), 1)
+		assert.Equal(t, device, s.GetChanges()[0].GetDeviceAdd().GetDevice())
+	})
 }
