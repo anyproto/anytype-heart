@@ -807,3 +807,56 @@ func Test_migrateObjectTypeIDToKey(t *testing.T) {
 		})
 	}
 }
+
+func TestRootDeviceChanges(t *testing.T) {
+	t.Run("no changes", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		s := a.NewState()
+
+		// when
+		_, _, err := ApplyState(s, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetChanges(), 0)
+	})
+	t.Run("add new device", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		s := a.NewState()
+
+		device := &model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		}
+		s.AddDevice(device)
+
+		// when
+		_, _, err := ApplyState(s, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetChanges(), 1)
+		assert.Equal(t, device, s.GetChanges()[0].GetDeviceAdd().GetDevice())
+	})
+	t.Run("update device", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		device := &model.DeviceInfo{
+			Id:   "id",
+			Name: "test",
+		}
+		a.AddDevice(device)
+
+		s := a.NewState()
+		s.SetDeviceName("id", "test1")
+		// when
+		_, _, err := ApplyState(s, true)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, s.GetChanges(), 1)
+		assert.Equal(t, "test1", s.GetChanges()[0].GetDeviceUpdate().GetName())
+	})
+}

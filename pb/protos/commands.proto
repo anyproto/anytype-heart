@@ -3735,6 +3735,7 @@ message Rpc {
                 string blockId = 2;
                 string filePath = 3;
                 string url = 4;
+                bytes bytes = 5;
             }
 
             message Response {
@@ -7015,6 +7016,47 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         INTERNAL_ERROR = 3;
+                    }
+                }
+            }
+        }
+    }
+
+    message Device {
+        message SetName {
+            message Request {
+                string deviceId = 1;
+                string name = 2;
+            }
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message List {
+            message Request {}
+            message Response {
+                Error error = 1;
+                repeated anytype.model.DeviceInfo devices = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
                     }
                 }
             }
