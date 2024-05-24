@@ -196,7 +196,7 @@ func getCustomHTMLRules() []html2md.Rule {
 				src, title string
 				ok         bool
 			)
-			if src, ok = selec.Attr("src"); !ok {
+			if src = extractImageSource(src, ok, selec); src == "" {
 				return nil
 			}
 
@@ -231,6 +231,15 @@ func getCustomHTMLRules() []html2md.Rule {
 
 	return []html2md.Rule{span, del, underscore, br, anohref,
 		simpleText, blockquote, italic, code, bdo, div, img, table}
+}
+
+func extractImageSource(src string, ok bool, selec *goquery.Selection) string {
+	if src, ok = selec.Attr("src"); !ok || src == "" {
+		if src, ok = selec.Attr("data-src"); !ok || src == "" {
+			return ""
+		}
+	}
+	return src
 }
 
 func addHeaderRow(content string, numberOfCells int, numberOfRows int) string {
