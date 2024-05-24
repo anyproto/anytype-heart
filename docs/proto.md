@@ -5011,6 +5011,7 @@ Makes blocks copy by given ids and paste it to shown place
 | blockId | [string](#string) |  |  |
 | filePath | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| bytes | [bytes](#bytes) |  |  |
 
 
 
