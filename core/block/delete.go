@@ -78,6 +78,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 	}
 
 	sendOnRemoveEvent(s.eventSender, id.ObjectID)
+	sendOnCloseEvent(s.eventSender, id.ObjectID)
 
 	err = spc.Remove(context.Background(), id.ObjectID)
 	return

@@ -157,8 +157,15 @@ func (s *Service) Init(a *app.App) (err error) {
 	return
 }
 
-func (s *Service) Run(ctx context.Context) (err error) {
+func (s *Service) Run(context.Context) (err error) {
 	return
+}
+
+func (s *Service) Close(context.Context) (err error) {
+	for _, obj := range s.GetOpenedObjects() {
+		sendOnCloseEvent(s.eventSender, obj)
+	}
+	return nil
 }
 
 func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
@@ -283,8 +290,6 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 			sendOnRemoveEvent(s.eventSender, id.ObjectID)
 		}
 	}
-
-	sendOnCloseEvent(s.eventSender, id.ObjectID)
 
 	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id.ObjectID); return nil })
 	return nil
@@ -685,10 +690,6 @@ func (s *Service) ProcessAdd(p process.Process) (err error) {
 // TODO: remove proxy
 func (s *Service) ProcessCancel(id string) (err error) {
 	return s.process.Cancel(id)
-}
-
-func (s *Service) Close(ctx context.Context) (err error) {
-	return nil
 }
 
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
