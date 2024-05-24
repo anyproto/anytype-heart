@@ -9,8 +9,10 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -18,10 +20,14 @@ import (
 
 var log = logging.Logger("anytype-database")
 
-const RecordIDField = "id"
+const (
+	RecordIDField    = "id"
+	RecordScoreField = "_score"
+)
 
 type Record struct {
 	Details *types.Struct
+	Meta    model.SearchMeta
 }
 
 func (r Record) Get(key string) *types.Value {
@@ -29,11 +35,12 @@ func (r Record) Get(key string) *types.Value {
 }
 
 type Query struct {
-	FullText string
-	Filters  []*model.BlockContentDataviewFilter // filters results. apply sequentially
-	Sorts    []*model.BlockContentDataviewSort   // order results. apply hierarchically
-	Limit    int                                 // maximum number of results
-	Offset   int                                 // skip given number of results
+	FullText    string
+	Highlighter ftsearch.HighlightFormatter         // default is json
+	Filters     []*model.BlockContentDataviewFilter // filters results. apply sequentially
+	Sorts       []*model.BlockContentDataviewSort   // order results. apply hierarchically
+	Limit       int                                 // maximum number of results
+	Offset      int                                 // skip given number of results
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
@@ -71,10 +78,33 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	return filters
 }
 
+func injectDefaultOrder(qry Query, sorts []*model.BlockContentDataviewSort) []*model.BlockContentDataviewSort {
+	var (
+		hasScoreSort bool
+	)
+	if qry.FullText == "" {
+		return sorts
+	}
+
+	for _, sort := range sorts {
+		// include archived objects if we have explicit filter about it
+		if sort.RelationKey == RecordScoreField {
+			hasScoreSort = true
+		}
+	}
+
+	if !hasScoreSort {
+		sorts = append([]*model.BlockContentDataviewSort{{RelationKey: RecordScoreField, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
+	}
+
+	return sorts
+}
+
 func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
 	// spaceID could be empty
 	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
+	qry.Sorts = injectDefaultOrder(qry, qry.Sorts)
 	filters = new(Filters)
 
 	filterObj, err := compose(qry.Filters, store)
@@ -176,6 +206,23 @@ func (f sortGetter) Get(key string) *types.Value {
 	return pbtypes.Get(f.curEl, key)
 }
 
+type FulltextResult struct {
+	Path            domain.ObjectPath
+	Highlight       string
+	HighlightRanges []*model.Range
+	Score           float64
+}
+
+func (r FulltextResult) Model() model.SearchMeta {
+	return model.SearchMeta{
+		Highlight:       r.Highlight,
+		HighlightRanges: r.HighlightRanges,
+		RelationKey:     r.Path.RelationKey,
+		BlockId:         r.Path.BlockId,
+	}
+}
+
+// todo: rename to SearchParams?
 type Filters struct {
 	FilterObj Filter
 	Order     Order
