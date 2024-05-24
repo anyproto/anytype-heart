@@ -10,8 +10,6 @@ type FullID struct {
 	SpaceID  string
 }
 
-type ObjectTypeKey string
-
 const ParticipantPrefix = "_participant_"
 
 func NewParticipantId(spaceId, identity string) string {

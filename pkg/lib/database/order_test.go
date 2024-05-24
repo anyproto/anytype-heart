@@ -25,6 +25,20 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assert.Equal(t, -1, asc.Compare(a, b))
 	})
 
+	t.Run("desc_float", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(1)}
+		b := testGetter{"k": pbtypes.Float64(2)}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_float", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(1)}
+		b := testGetter{"k": pbtypes.Float64(2)}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
 	t.Run("asc_emptylast", func(t *testing.T) {
 		a := testGetter{"k": pbtypes.String("a")}
 		b := testGetter{"k": pbtypes.String("")}
@@ -32,8 +46,132 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assert.Equal(t, -1, asc.Compare(a, b))
 	})
 
+	t.Run("asc_emptylast_float", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(1)}
+		b := testGetter{"k": pbtypes.Null()}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_emptylast_str", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": pbtypes.String("")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("desc_emptylast_str", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": pbtypes.String("")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_emptyfirst_str", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": pbtypes.String("")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
+	t.Run("desc_emptyfirst_str", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": pbtypes.String("")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_str_end", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": pbtypes.String("b")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("desc_str_end", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": pbtypes.String("b")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_str_start", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": pbtypes.String("b")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("desc_str_start", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": pbtypes.String("b")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
+	date := time.Unix(-1, 0)
+
+	t.Run("asc_date_end_empty", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Int64(date.Unix())}
+		b := testGetter{"k": nil}
+		asc := KeyOrder{
+			Key:            "k",
+			Type:           model.BlockContentDataviewSort_Asc,
+			EmptyPlacement: model.BlockContentDataviewSort_End,
+			IncludeTime:    false,
+			RelationFormat: model.RelationFormat_date,
+		}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("desc_date_end_empty", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Int64(date.Unix())}
+		b := testGetter{"k": nil}
+		asc := KeyOrder{
+			Key:            "k",
+			Type:           model.BlockContentDataviewSort_Desc,
+			EmptyPlacement: model.BlockContentDataviewSort_End,
+			IncludeTime:    false,
+			RelationFormat: model.RelationFormat_date,
+		}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_date_start_empty", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Int64(date.Unix())}
+		b := testGetter{"k": nil}
+		asc := KeyOrder{
+			Key:            "k",
+			Type:           model.BlockContentDataviewSort_Asc,
+			EmptyPlacement: model.BlockContentDataviewSort_Start,
+			IncludeTime:    false,
+			RelationFormat: model.RelationFormat_date,
+		}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
+	t.Run("desc_date_start", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Int64(date.Unix())}
+		b := testGetter{"k": nil}
+		asc := KeyOrder{
+			Key:            "k",
+			Type:           model.BlockContentDataviewSort_Desc,
+			EmptyPlacement: model.BlockContentDataviewSort_Start,
+			IncludeTime:    false,
+			RelationFormat: model.RelationFormat_date,
+		}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
 	t.Run("asc_nil_emptylast", func(t *testing.T) {
 		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": nil}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_nil_emptylast_float", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(1)}
 		b := testGetter{"k": nil}
 		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End}
 		assert.Equal(t, -1, asc.Compare(a, b))
@@ -46,8 +184,22 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assert.Equal(t, -1, asc.Compare(a, b))
 	})
 
+	t.Run("desc_nil_emptylast_float", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(1)}
+		b := testGetter{"k": nil}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
 	t.Run("asc_nil_emptyfirst", func(t *testing.T) {
 		a := testGetter{"k": pbtypes.String("a")}
+		b := testGetter{"k": nil}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_nil_emptyfirst_float", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(1)}
 		b := testGetter{"k": nil}
 		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start}
 		assert.Equal(t, 1, asc.Compare(a, b))
@@ -60,9 +212,23 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assert.Equal(t, 1, asc.Compare(a, b))
 	})
 
+	t.Run("desc_nil_emptyfirst_float", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(1)}
+		b := testGetter{"k": nil}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
 	t.Run("asc_nil", func(t *testing.T) {
 		a := testGetter{"k": nil}
 		b := testGetter{"k": pbtypes.String("")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("asc_nil", func(t *testing.T) {
+		a := testGetter{"k": nil}
+		b := testGetter{"k": pbtypes.Float64(0)}
 		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc}
 		assert.Equal(t, -1, asc.Compare(a, b))
 	})
@@ -74,9 +240,23 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assert.Equal(t, 1, asc.Compare(a, b))
 	})
 
+	t.Run("asc_notspecified", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(1)}
+		b := testGetter{"k": pbtypes.Float64(0)}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
 	t.Run("desc_notspecified", func(t *testing.T) {
 		a := testGetter{"k": pbtypes.String("a")}
 		b := testGetter{"k": pbtypes.String("b")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+
+	t.Run("desc_notspecified_float", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.Float64(0)}
+		b := testGetter{"k": pbtypes.Float64(1)}
 		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc}
 		assert.Equal(t, 1, asc.Compare(a, b))
 	})

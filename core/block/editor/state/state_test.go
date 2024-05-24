@@ -2597,15 +2597,6 @@ func TestState_RootId(t *testing.T) {
 //	})
 // }
 
-func assertAllDetailsLessThenLimit(details *types.Struct) bool {
-	for _, v := range details.Fields {
-		if v.Size() > detailSizeLimit {
-			return false
-		}
-	}
-	return true
-}
-
 func TestState_AddDevice(t *testing.T) {
 	t.Run("add device", func(t *testing.T) {
 		// given

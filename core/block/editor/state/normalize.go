@@ -14,8 +14,8 @@ import (
 
 var (
 	maxChildrenThreshold = 40
-	blockSizeLimit       = 1 * 1024 * 1024
-	detailSizeLimit      = 65 * 1024
+
+	detailSizeLimit = 65 * 1024
 )
 
 func (s *State) Normalize(withLayouts bool) (err error) {
@@ -103,12 +103,12 @@ func (s *State) removeEmptyLayoutBlocks(blocks map[string]simple.Block) {
 	}
 }
 
-func (s *State) normalizeChildren(b simple.Block) {
-	m := b.Model()
-	for _, cid := range m.ChildrenIds {
-		if !s.Exists(cid) {
-			s.setChildrenIds(m, slice.RemoveMut(m.ChildrenIds, cid))
-			s.normalizeChildren(b)
+func (s *State) normalizeChildren(block simple.Block) {
+	model := block.Model()
+	for _, childrenId := range model.ChildrenIds {
+		if !s.Exists(childrenId) {
+			s.removeChildren(model, childrenId)
+			s.normalizeChildren(block)
 			return
 		}
 	}

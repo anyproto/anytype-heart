@@ -21,6 +21,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
+	"github.com/anyproto/anytype-heart/core/nameservice/mock_nameservice"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -61,6 +62,8 @@ type fixture struct {
 	identitiesUpdater        *mockGlobalNamesUpdater
 	multiplayerLimitsUpdater *mock_deletioncontroller.MockDeletionController
 	fileLimitsUpdater        *mock_filesync.MockFileSync
+	ns                       *mock_nameservice.MockService
+
 	*service
 }
 
@@ -77,6 +80,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.eventSender = mock_event.NewMockSender(t)
 	fx.multiplayerLimitsUpdater = mock_deletioncontroller.NewMockDeletionController(t)
 	fx.fileLimitsUpdater = mock_filesync.NewMockFileSync(t)
+	fx.ns = mock_nameservice.NewMockService(t)
 
 	// init w mock
 	SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
@@ -106,7 +110,8 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender)).
 		Register(fx.identitiesUpdater).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.multiplayerLimitsUpdater)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.fileLimitsUpdater))
+		Register(testutil.PrepareMock(ctx, fx.a, fx.fileLimitsUpdater)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.ns))
 
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -117,7 +122,7 @@ func (fx *fixture) finish(t *testing.T) {
 }
 
 func TestGetStatus(t *testing.T) {
-	t.Run("success if no cache and GetSubscriptionStatus returns error", func(t *testing.T) {
+	t.Run("fail if no cache and GetSubscriptionStatus returns error", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
@@ -129,7 +134,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -153,7 +158,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -167,6 +172,118 @@ func TestGetStatus(t *testing.T) {
 
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
 		assert.Equal(t, model.Membership_StatusUnknown, resp.Data.Status)
+	})
+
+	t.Run("fail if no cache, GetSubscriptionStatus returns error, and default tiers", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				Code: pb.RpcMembershipGetStatusResponseError_NULL,
+			},
+			Data: &model.Membership{
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			},
+		}
+
+		tgr := pb.RpcMembershipGetTiersResponse{
+			Tiers: []*model.MembershipTierData{
+				{
+					Id:          1,
+					Name:        "Explorer",
+					Description: "Explorer tier",
+				},
+			},
+		}
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return nil, errors.New("no internet")
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, cache.ErrCacheExpired)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
+			return nil
+		})
+
+		fx.expectLimitsUpdated()
+
+		// Call the function being tested
+		_, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+		assert.NoError(t, err)
+
+		// resp object is nil in case of error
+		// assert.Equal(t, pb.RpcPaymentsSubscriptionGetStatusResponseErrorCode(pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR), resp.Error.Code)
+		// assert.Equal(t, "can not write to cache!", resp.Error.Description)
+	})
+
+	t.Run("fail if no cache, GetSubscriptionStatus returns error, and NOT default tiers", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				Code: pb.RpcMembershipGetStatusResponseError_NULL,
+			},
+			Data: &model.Membership{
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			},
+		}
+
+		tgr := pb.RpcMembershipGetTiersResponse{
+			Tiers: []*model.MembershipTierData{
+				{
+					// see here
+					Id:          2,
+					Name:        "TIER2",
+					Description: "TIER2 tier",
+				},
+			},
+		}
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return nil, errors.New("no internet")
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, cache.ErrCacheExpired)
+
+		// Call the function being tested
+		_, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+		assert.Error(t, err)
 	})
 
 	t.Run("success if cache is expired and GetSubscriptionStatus returns no error", func(t *testing.T) {
@@ -480,7 +597,7 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		// w.EXPECT().GetAccountEthPrivkey().Return(&ethPrivateKey)
 
 		// Create a test request
-		req := &pb.RpcMembershipGetPaymentUrlRequest{
+		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
@@ -509,7 +626,7 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		fx.cache.EXPECT().CacheDisableForNextMinutes(30).Return(nil).Once()
 
 		// Create a test request
-		req := &pb.RpcMembershipGetPaymentUrlRequest{
+		req := &pb.RpcMembershipRegisterPaymentRequestRequest{
 			RequestedTier: uint32(psp.SubscriptionTier_TierBuilder1Year),
 			PaymentMethod: model.Membership_MethodCrypto,
 			NsName:        "something",
@@ -1059,203 +1176,6 @@ func TestGetTiers(t *testing.T) {
 }
 
 func TestIsNameValid(t *testing.T) {
-
-	/*
-		t.Run("success if reading from cache", func(t *testing.T) {
-			fx := newFixture(t)
-			defer fx.finish(t)
-
-			tgr := pb.RpcMembershipGetTiersResponse{
-				Tiers: []*model.MembershipTierData{
-					{
-						Id:                    1,
-						Name:                  "Explorer",
-						Description:           "Explorer tier",
-						AnyNamesCountIncluded: 1,
-						AnyNameMinLength:      5,
-					},
-					{
-						Id:                    2,
-						Name:                  "Suppa",
-						Description:           "Suppa tieren",
-						AnyNamesCountIncluded: 2,
-						AnyNameMinLength:      7,
-					},
-					{
-						Id:                    3,
-						Name:                  "NoNamme",
-						Description:           "Nicht Suppa tieren",
-						AnyNamesCountIncluded: 0,
-						AnyNameMinLength:      0,
-					},
-				},
-			}
-			fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
-
-			req := pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 0,
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err := fx.IsNameValid(ctx, &req)
-			assert.Error(t, err)
-			assert.Equal(t, (*pb.RpcMembershipIsNameValidResponse)(nil), resp)
-
-			// 2
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 1,
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.NoError(t, err)
-			assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
-
-			// 3
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 2,
-				NsName:        "somet",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.NoError(t, err)
-			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TOO_SHORT, resp.Error.Code)
-
-			// 4
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 3,
-				NsName:        "somet",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.NoError(t, err)
-			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
-
-			// 5 - TIER NOT FOUND will return error immediately
-			// not response
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 4,
-				NsName:        "somet",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			_, err = fx.IsNameValid(ctx, &req)
-			assert.Error(t, err)
-
-			// 6 - space between
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 1,
-				NsName:        "some thing",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.NoError(t, err)
-			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
-
-			// 7 - dot
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 1,
-				NsName:        "some.thing",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.NoError(t, err)
-			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
-		})
-
-		t.Run("success if asking directly from node", func(t *testing.T) {
-			fx := newFixture(t)
-			defer fx.finish(t)
-
-			fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
-				return &psp.GetTiersResponse{
-
-					Tiers: []*psp.TierData{
-						{
-							Id:                    1,
-							Name:                  "Explorer",
-							Description:           "Explorer tier",
-							IsActive:              true,
-							IsHiddenTier:          false,
-							AnyNamesCountIncluded: 1,
-							AnyNameMinLength:      5,
-						},
-						{
-							Id:                    2,
-							Name:                  "Suppa",
-							Description:           "Suppa tieren",
-							IsActive:              true,
-							IsHiddenTier:          false,
-							AnyNamesCountIncluded: 2,
-							AnyNameMinLength:      7,
-						},
-						{
-							Id:                    3,
-							Name:                  "NoNamme",
-							Description:           "Nicht Suppa tieren",
-							IsActive:              true,
-							IsHiddenTier:          false,
-							AnyNamesCountIncluded: 0,
-							AnyNameMinLength:      0,
-						},
-					},
-				}, nil
-			}).MinTimes(1)
-
-			fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheExpired)
-			fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse"), mock.AnythingOfType("time.Time")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expire time.Time) (err error) {
-				return nil
-			})
-
-			req := pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 0,
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err := fx.IsNameValid(ctx, &req)
-			assert.Error(t, err)
-			assert.Equal(t, (*pb.RpcMembershipIsNameValidResponse)(nil), resp)
-
-			// 2
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 1,
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.NoError(t, err)
-			assert.Equal(t, (*pb.RpcMembershipIsNameValidResponseError)(nil), resp.Error)
-
-			// 3
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 2,
-				NsName:        "some",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.NoError(t, err)
-			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TOO_SHORT, resp.Error.Code)
-
-			// 4
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 3,
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.NoError(t, err)
-			assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_TIER_FEATURES_NO_NAME, resp.Error.Code)
-
-			// 5
-			req = pb.RpcMembershipIsNameValidRequest{
-				RequestedTier: 4,
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			}
-			resp, err = fx.IsNameValid(ctx, &req)
-			assert.Error(t, err)
-		})
-	*/
-
 	t.Run("validation error", func(t *testing.T) {
 		fx := newFixture(t)
 
@@ -1275,7 +1195,7 @@ func TestIsNameValid(t *testing.T) {
 		assert.Equal(t, pb.RpcMembershipIsNameValidResponseError_HAS_INVALID_CHARS, resp.Error.Code)
 	})
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("error if name is not available", func(t *testing.T) {
 		fx := newFixture(t)
 
 		fx.ppclient.EXPECT().IsNameValid(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.IsNameValidResponse, error) {
@@ -1283,6 +1203,59 @@ func TestIsNameValid(t *testing.T) {
 				Code: psp.IsNameValidResponse_Valid,
 			}, nil
 		}).MinTimes(1)
+
+		rr := &pb.RpcNameServiceResolveNameRequest{NsName: "something", NsNameType: 0}
+		fx.ns.EXPECT().NameServiceResolveName(ctx, rr).Return(&pb.RpcNameServiceResolveNameResponse{
+			Error: &pb.RpcNameServiceResolveNameResponseError{
+				Code: pb.RpcNameServiceResolveNameResponseError_NULL,
+			},
+			Available: false,
+		}, nil)
+
+		req := pb.RpcMembershipIsNameValidRequest{
+			RequestedTier: 4,
+			NsName:        "something",
+			NsNameType:    model.NameserviceNameType_AnyName,
+		}
+		_, err := fx.IsNameValid(ctx, &req)
+		assert.Error(t, err)
+	})
+
+	t.Run("success if name is empty", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.ppclient.EXPECT().IsNameValid(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.IsNameValidResponse, error) {
+			return &psp.IsNameValidResponse{
+				Code: psp.IsNameValidResponse_Valid,
+			}, nil
+		}).MinTimes(1)
+
+		req := pb.RpcMembershipIsNameValidRequest{
+			RequestedTier: 4,
+			NsName:        "",
+			NsNameType:    model.NameserviceNameType_AnyName,
+		}
+		resp, err := fx.IsNameValid(ctx, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, pb.RpcMembershipIsNameValidResponseErrorCode(0), resp.Error.Code)
+	})
+
+	t.Run("success if name is available", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.ppclient.EXPECT().IsNameValid(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.IsNameValidResponse, error) {
+			return &psp.IsNameValidResponse{
+				Code: psp.IsNameValidResponse_Valid,
+			}, nil
+		}).MinTimes(1)
+
+		rr := &pb.RpcNameServiceResolveNameRequest{NsName: "something", NsNameType: 0}
+		fx.ns.EXPECT().NameServiceResolveName(ctx, rr).Return(&pb.RpcNameServiceResolveNameResponse{
+			Error: &pb.RpcNameServiceResolveNameResponseError{
+				Code: pb.RpcNameServiceResolveNameResponseError_NULL,
+			},
+			Available: true,
+		}, nil)
 
 		req := pb.RpcMembershipIsNameValidRequest{
 			RequestedTier: 4,
@@ -1305,8 +1278,7 @@ func TestVerifyAppStoreReceipt(t *testing.T) {
 		}).MinTimes(1)
 
 		req := &pb.RpcMembershipVerifyAppStoreReceiptRequest{
-			BillingId: "billingID",
-			Receipt:   "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
+			Receipt: "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
 		}
 
 		// when
@@ -1326,8 +1298,7 @@ func TestVerifyAppStoreReceipt(t *testing.T) {
 		}).MinTimes(1)
 
 		req := &pb.RpcMembershipVerifyAppStoreReceiptRequest{
-			BillingId: "billingID",
-			Receipt:   "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
+			Receipt: "sjakflkajsfh.kajsflksadjflas.oicpvoxvpovi",
 		}
 
 		// when

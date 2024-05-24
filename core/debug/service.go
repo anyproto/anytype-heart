@@ -19,7 +19,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/jsonpb"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -46,7 +45,6 @@ type Debug interface {
 }
 
 type debug struct {
-	block        *block.Service
 	store        objectstore.ObjectStore
 	spaceService space.Service
 	resolver     idresolver.Resolver
@@ -61,7 +59,6 @@ type Debuggable interface {
 
 func (d *debug) Init(a *app.App) (err error) {
 	d.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	d.block = a.MustComponent(block.CName).(*block.Service)
 	d.spaceService = app.MustComponent[space.Service](a)
 	d.resolver = app.MustComponent[idresolver.Resolver](a)
 	d.statService, _ = a.Component(debugstat.CName).(debugstat.StatService)

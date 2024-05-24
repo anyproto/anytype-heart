@@ -11,15 +11,13 @@ import (
 	"github.com/blevesearch/bleve/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
 type fixture struct {
-	ft   FTSearch
-	ta   *app.App
-	ctrl *gomock.Controller
+	ft FTSearch
+	ta *app.App
 }
 
 func newFixture(path string, t *testing.T) *fixture {

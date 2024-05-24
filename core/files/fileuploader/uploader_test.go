@@ -34,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestUploader_Upload(t *testing.T) {
@@ -62,13 +61,27 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
 		assert.Equal(t, res.MIME, "image/jpeg")
 	})
+	t.Run("corrupted image: fall back to file", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.tearDown()
+
+		fileObjectId := fx.expectCreateObject()
+
+		b := newBlock(model.BlockContentFile_Image)
+		res := fx.Uploader.SetBlock(b).SetFile("./testdata/corrupted.jpg").Upload(ctx)
+		require.NoError(t, res.Err)
+		assert.Equal(t, res.FileObjectId, fileObjectId)
+		assert.Equal(t, res.Name, "corrupted.jpg")
+		assert.Equal(t, b.Model().GetFile().Name, "corrupted.jpg")
+		assert.Equal(t, res.MIME, "image/jpeg")
+	})
 	t.Run("image type detect", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
 		fx.expectCreateObject()
 
-		res := fx.Uploader.AutoType(true).SetFile("./testdata/unnamed.jpg").Upload(ctx)
+		res := fx.Uploader.SetFile("./testdata/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 	})
 	t.Run("image to file failover", func(t *testing.T) {
@@ -98,7 +111,7 @@ func TestUploader_Upload(t *testing.T) {
 
 		fileObjectId := fx.expectCreateObject()
 
-		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
+		res := fx.Uploader.SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "unnamed.jpg")
@@ -120,7 +133,7 @@ func TestUploader_Upload(t *testing.T) {
 
 		fileObjectId := fx.expectCreateObject()
 
-		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
+		res := fx.Uploader.SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "filename")
@@ -141,7 +154,7 @@ func TestUploader_Upload(t *testing.T) {
 
 		fileObjectId := fx.expectCreateObject()
 
-		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
+		res := fx.Uploader.SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.FileObjectId, fileObjectId)
 		assert.Equal(t, res.Name, "unnamed.jpg")
@@ -234,19 +247,6 @@ type uplFixture struct {
 	ctrl              *gomock.Controller
 	picker            *mock_cache.MockObjectGetter
 	fileObjectService *mock_fileobject.MockService
-}
-
-func (fx *uplFixture) newImage(fileId domain.FileId) *testMock.MockImage {
-	im := testMock.NewMockImage(fx.ctrl)
-	im.EXPECT().FileId().Return(fileId).AnyTimes()
-	return im
-}
-
-func (fx *uplFixture) newFile(fileId domain.FileId, meta *files.FileMeta) *testMock.MockFile {
-	f := testMock.NewMockFile(fx.ctrl)
-	f.EXPECT().FileId().Return(fileId).AnyTimes()
-	f.EXPECT().Meta().Return(meta).AnyTimes()
-	return f
 }
 
 func (fx *uplFixture) tearDown() {

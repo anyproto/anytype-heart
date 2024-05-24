@@ -9,6 +9,8 @@ run:
   go: '1.22'
 
 linters-settings:
+  unused:
+    field-writes-are-uses: false
   errcheck:
     check-blank: true
   errchkjson:

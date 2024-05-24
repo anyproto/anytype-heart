@@ -9,6 +9,9 @@ import (
 )
 
 func CutValueToDay(val *types.Value) *types.Value {
+	if val == nil {
+		return val
+	}
 	t := time.Unix(int64(val.GetNumberValue()), 0)
 	roundTime := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 	return pbtypes.Int64(roundTime.Unix())

@@ -20,8 +20,7 @@ func init() {
 func NewBlock(b *model.Block) simple.Block {
 	if c := b.GetTable(); c != nil {
 		return &block{
-			Base:    base.NewBase(b).(*base.Base),
-			content: c,
+			Base: base.NewBase(b).(*base.Base),
 		}
 	}
 	return nil
@@ -35,7 +34,6 @@ type Block interface {
 
 type block struct {
 	*base.Base
-	content *model.BlockContentTable
 }
 
 func (b *block) Copy() simple.Block {

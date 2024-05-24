@@ -180,7 +180,7 @@ func (s *spaceStorage) IsSpaceDeleted() (bool, error) {
 }
 
 func (s *spaceStorage) SetTreeDeletedStatus(id, state string) error {
-	_, err := s.service.stmt.updateTreeDelStatus.Exec(state, id)
+	_, err := s.service.stmt.updateTreeDelStatus.Exec(id, state, state)
 	return replaceNoRowsErr(err, ErrTreeNotFound)
 }
 

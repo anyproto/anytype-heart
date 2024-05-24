@@ -29,6 +29,9 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	if targetId == "" {
 		reqPos = model.Block_Inner
 		target = s.Get(s.RootId())
+		if target == nil {
+			return fmt.Errorf("target (root) block not found")
+		}
 	} else {
 		target = s.Get(targetId)
 		if target == nil {
@@ -180,6 +183,11 @@ func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block
 func (s *State) setChildrenIds(parent *model.Block, childrenIds []string) {
 	parent.ChildrenIds = childrenIds
 	s.addCacheIds(parent, childrenIds...)
+}
+
+func (s *State) removeChildren(parent *model.Block, childrenId string) {
+	parent.ChildrenIds = slice.RemoveMut(parent.ChildrenIds, childrenId)
+	s.removeFromCache(childrenId)
 }
 
 func (s *State) addCacheIds(parent *model.Block, childrenIds ...string) {

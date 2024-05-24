@@ -561,7 +561,6 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.DragAndDrop())
 	res := upl.
 		SetName(f.name).
-		AutoType(true).
 		SetFile(f.path).
 		Upload(context.Background())
 

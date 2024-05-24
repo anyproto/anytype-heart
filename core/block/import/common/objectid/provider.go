@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -26,7 +25,6 @@ type IDProvider interface {
 }
 
 type Provider struct {
-	objectStore                objectstore.ObjectStore
 	idProviderBySmartBlockType map[sb.SmartBlockType]IDProvider
 }
 
@@ -36,20 +34,16 @@ func NewIDProvider(
 	blockService *block.Service,
 	fileStore filestore.FileStore,
 	fileObjectService fileobject.Service,
-	fileService files.Service,
 ) IDProvider {
 	p := &Provider{
-		objectStore:                objectStore,
 		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
 	existingObject := newExistingObject(objectStore)
 	treeObject := newTreeObject(existingObject, spaceService)
 	derivedObject := newDerivedObject(existingObject, spaceService)
 	fileObject := &fileObject{
-		treeObject:        treeObject,
-		blockService:      blockService,
-		fileService:       fileService,
-		fileObjectService: fileObjectService,
+		treeObject:   treeObject,
+		blockService: blockService,
 	}
 	oldFile := &oldFile{
 		blockService:      blockService,

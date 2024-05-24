@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
-	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/blevesearch/bleve/v2/search/query"
@@ -66,17 +65,15 @@ type FTSearch interface {
 }
 
 type ftSearch struct {
-	rootPath       string
-	ftsPath        string
-	index          bleve.Index
-	enStopWordsMap map[string]bool
+	rootPath string
+	ftsPath  string
+	index    bleve.Index
 }
 
 func (f *ftSearch) Init(a *app.App) (err error) {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir, ftsVer)
-	f.enStopWordsMap, err = en.TokenMapConstructor(nil, nil)
 	return err
 }
 
@@ -85,15 +82,16 @@ func (f *ftSearch) Name() (name string) {
 }
 
 func (f *ftSearch) Run(context.Context) (err error) {
-	f.index, err = bleve.Open(f.ftsPath)
+	index, err := bleve.Open(f.ftsPath)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
-		if f.index, err = bleve.New(f.ftsPath, makeMapping()); err != nil {
+		if index, err = bleve.New(f.ftsPath, makeMapping()); err != nil {
 			return
 		}
 		f.cleanUpOldIndexes()
 	} else if err != nil {
 		return
 	}
+	f.index = index
 	return nil
 }
 
