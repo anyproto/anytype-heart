@@ -90,9 +90,13 @@ func (r *clientds) syncer() error {
 				}
 
 				var skip = true
-				if syncer.LastMaxVersion == maxVersion {
+				if syncer.LastMaxVersion == maxVersion && syncer.LastMaxVersionSynced != maxVersion {
+					// we don't have any writes for the last SyncDbAfterInactivity duration
+					// and the current version is not synced before
 					skip = false
 				} else if syncer.LastMaxVersionSynced+uint64(SyncDbAfterVersions) < maxVersion {
+					// we have some critical amount of writes since the last sync
+					// so we need to force sync despite having write activity
 					// todo: write local metrics on it to test in case of cold account recovery
 					skip = false
 				}
