@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"errors"
 	"strconv"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
@@ -1076,6 +1078,20 @@ func TestClipboard_TitleOps(t *testing.T) {
 		assert.Contains(t, htmlSlot, ">it<")
 		require.Len(t, anySlot, 1)
 		assert.Equal(t, "it", anySlot[0].GetText().Text)
+	})
+
+	t.Run("do not paste if Blocks restriction is set to smartblock", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.SetRestrictions(restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks}})
+		cb := newFixture(t, sb)
+
+		// when
+		_, _, _, _, err := cb.Paste(nil, nil, "")
+
+		// then
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, restriction.ErrRestricted))
 	})
 }
 
