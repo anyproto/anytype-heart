@@ -60,7 +60,7 @@ func (n *clientPeerManager) Run(ctx context.Context) (err error) {
 }
 
 func (n *clientPeerManager) GetNodePeers(ctx context.Context) (peers []peer.Peer, err error) {
-	p, err := n.p.netModule.GetOneOf(ctx, n.responsibleNodeIds)
+	p, err := n.p.netService.GetOneOf(ctx, n.responsibleNodeIds)
 	if err == nil {
 		peers = []peer.Peer{p}
 	}
@@ -126,7 +126,7 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 }
 
 func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (peers []peer.Peer, err error) {
-	p, err := n.p.netModule.Get(ctx, peerId)
+	p, err := n.p.netService.Get(ctx, peerId)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (pe
 func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	var peerIds []string
 	// lookup in common pool for existing connection
-	p, nodeErr := n.p.netModule.GetOneOf(ctx, n.responsibleNodeIds)
+	p, nodeErr := n.p.netService.GetOneOf(ctx, n.responsibleNodeIds)
 	if nodeErr != nil {
 		log.Warn("failed to get responsible peer from common pool", zap.Error(nodeErr))
 	} else {
@@ -144,7 +144,7 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 	}
 	peerIds = append(peerIds, n.peerStore.LocalPeerIds(n.spaceId)...)
 	for _, peerId := range peerIds {
-		p, err := n.p.netModule.Get(ctx, peerId)
+		p, err := n.p.netService.Get(ctx, peerId)
 		if err != nil {
 			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get peer from stream pool", zap.String("peerId", peerId), zap.Error(err))
@@ -173,7 +173,7 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 
 func (n *clientPeerManager) fetchResponsiblePeers() {
 	var peers []peer.Peer
-	p, err := n.p.netModule.GetOneOf(n.ctx, n.responsibleNodeIds)
+	p, err := n.p.netService.GetOneOf(n.ctx, n.responsibleNodeIds)
 	if err == nil {
 		peers = []peer.Peer{p}
 	} else {
@@ -182,7 +182,7 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
 	for _, peerId := range peerIds {
-		p, err := n.p.netModule.Get(n.ctx, peerId)
+		p, err := n.p.netService.Get(n.ctx, peerId)
 		if err != nil {
 			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))

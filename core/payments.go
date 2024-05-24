@@ -3,9 +3,9 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/net/neterr"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/any-sync/net"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/payments"
@@ -28,7 +28,7 @@ func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMember
 			errToCode(proto.ErrSubsNotFound, pb.RpcMembershipGetStatusResponseError_MEMBERSHIP_NOT_FOUND),
 			errToCode(proto.ErrSubsWrongState, pb.RpcMembershipGetStatusResponseError_MEMBERSHIP_WRONG_STATE),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipGetStatusResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipGetStatusResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -66,7 +66,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 			errToCode(payments.ErrNoTiers, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
 			errToCode(payments.ErrNoTierFound, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -104,7 +104,7 @@ func (mw *Middleware) MembershipRegisterPaymentRequest(ctx context.Context, req 
 			errToCode(proto.ErrSubsAlreadyActive, pb.RpcMembershipRegisterPaymentRequestResponseError_MEMBERSHIP_ALREADY_EXISTS),
 			errToCode(proto.ErrEmailWrongFormat, pb.RpcMembershipRegisterPaymentRequestResponseError_EMAIL_WRONG_FORMAT),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipRegisterPaymentRequestResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipRegisterPaymentRequestResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -135,7 +135,7 @@ func (mw *Middleware) MembershipGetPortalLinkUrl(ctx context.Context, req *pb.Rp
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipGetPortalLinkUrlResponseError_CAN_NOT_CONNECT),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipGetPortalLinkUrlResponseError_CACHE_ERROR),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipGetPortalLinkUrlResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipGetPortalLinkUrlResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -172,7 +172,7 @@ func (mw *Middleware) MembershipGetVerificationEmail(ctx context.Context, req *p
 			errToCode(proto.ErrEmailFailedToSend, pb.RpcMembershipGetVerificationEmailResponseError_EMAIL_FAILED_TO_SEND),
 			errToCode(proto.ErrSubsAlreadyActive, pb.RpcMembershipGetVerificationEmailResponseError_MEMBERSHIP_ALREADY_EXISTS),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipGetVerificationEmailResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipGetVerificationEmailResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -219,7 +219,7 @@ func (mw *Middleware) MembershipVerifyEmailCode(ctx context.Context, req *pb.Rpc
 			errToCode(proto.ErrSubsNotFound, pb.RpcMembershipVerifyEmailCodeResponseError_MEMBERSHIP_NOT_FOUND),
 			errToCode(proto.ErrSubsAlreadyActive, pb.RpcMembershipVerifyEmailCodeResponseError_MEMBERSHIP_ALREADY_ACTIVE),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipVerifyEmailCodeResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipVerifyEmailCodeResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -255,7 +255,7 @@ func (mw *Middleware) MembershipFinalize(ctx context.Context, req *pb.RpcMembers
 
 			errToCode(proto.ErrBadAnyName, pb.RpcMembershipFinalizeResponseError_BAD_ANYNAME),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipFinalizeResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipFinalizeResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -286,7 +286,7 @@ func (mw *Middleware) MembershipGetTiers(ctx context.Context, req *pb.RpcMembers
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipGetTiersResponseError_CAN_NOT_CONNECT),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipGetTiersResponseError_CACHE_ERROR),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipGetTiersResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipGetTiersResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -315,7 +315,7 @@ func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *
 			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipVerifyAppStoreReceiptResponseError_NOT_LOGGED_IN),
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipVerifyAppStoreReceiptResponseError_NOT_LOGGED_IN),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipVerifyAppStoreReceiptResponseError_CACHE_ERROR),
 			errToCode(proto.ErrInvalidReceipt, pb.RpcMembershipVerifyAppStoreReceiptResponseError_INVALID_RECEIPT),
 			errToCode(proto.ErrUnknown, pb.RpcMembershipVerifyAppStoreReceiptResponseError_UNKNOWN_ERROR),

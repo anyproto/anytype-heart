@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/anyproto/any-sync/net/netmodule"
+	net2 "github.com/anyproto/any-sync/net"
 	"github.com/dgraph-io/badger/v4"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -76,7 +76,7 @@ func (f *fileStorage) Init(a *app.App) (err error) {
 		f.flatfsPath = fileCfg.IPFSStorageAddr
 	}
 
-	return fileproto.DRPCRegisterFile(app.MustComponent[netmodule.NetModule](a).GetDrpcServer(), f.handler)
+	return fileproto.DRPCRegisterFile(app.MustComponent[net2.Service](a).GetDrpcServer(), f.handler)
 }
 
 func (f *fileStorage) Name() (name string) {

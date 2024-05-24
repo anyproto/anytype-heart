@@ -6,7 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
-	"github.com/anyproto/any-sync/net/netmodule"
+	net2 "github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/net/streampool"
 
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -22,13 +22,13 @@ const CName = peermanager.CName
 var log = logger.NewNamed(CName)
 
 type provider struct {
-	netModule  netmodule.NetModule
+	netService net2.Service
 	streamPool streampool.StreamPool
 	peerStore  peerstore.PeerStore
 }
 
 func (p *provider) Init(a *app.App) (err error) {
-	p.netModule = app.MustComponent[netmodule.NetModule](a)
+	p.netService = app.MustComponent[net2.Service](a)
 	p.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	p.streamPool = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService).StreamPool()
 	return nil

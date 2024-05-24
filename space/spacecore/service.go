@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
-	"github.com/anyproto/any-sync/net/netmodule"
+	net2 "github.com/anyproto/any-sync/net"
 
 	// nolint: misspell
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
@@ -70,7 +70,7 @@ type service struct {
 	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
 	peerStore            peerstore.PeerStore
-	netModule            netmodule.NetModule
+	netService           net2.Service
 	streamHandler        *streamHandler
 	syncStatusService    syncStatusService
 }
@@ -82,7 +82,7 @@ type syncStatusService interface {
 
 func (s *service) Init(a *app.App) (err error) {
 	conf := a.MustComponent(config.CName).(*config.Config)
-	s.netModule = app.MustComponent[netmodule.NetModule](a)
+	s.netService = app.MustComponent[net2.Service](a)
 	s.conf = conf.GetSpace()
 	s.accountKeys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
 	s.nodeConf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
@@ -96,7 +96,7 @@ func (s *service) Init(a *app.App) (err error) {
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{spaceCore: s}
 
-	s.streamPool = s.netModule.NewStreamPool(s.streamHandler, streampool.StreamConfig{
+	s.streamPool = s.netService.NewStreamPool(s.streamHandler, streampool.StreamConfig{
 		SendQueueSize:    300,
 		DialQueueWorkers: 4,
 		DialQueueSize:    300,
@@ -108,11 +108,11 @@ func (s *service) Init(a *app.App) (err error) {
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
 
-	err = spacesyncproto.DRPCRegisterSpaceSync(s.netModule.GetDrpcServer(), &rpcHandler{s})
+	err = spacesyncproto.DRPCRegisterSpaceSync(s.netService.GetDrpcServer(), &rpcHandler{s})
 	if err != nil {
 		return
 	}
-	return clientspaceproto.DRPCRegisterClientSpace(s.netModule.GetDrpcServer(), &rpcHandler{s})
+	return clientspaceproto.DRPCRegisterClientSpace(s.netService.GetDrpcServer(), &rpcHandler{s})
 }
 
 func (s *service) Name() (name string) {

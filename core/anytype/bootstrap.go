@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
 	"github.com/anyproto/any-sync/metric"
-	"github.com/anyproto/any-sync/net/netmodule/netscope"
+	"github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/node/nodeclient"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
@@ -201,7 +201,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peerstore.New()).
 		Register(syncstatusprovider.New()).
 		Register(storage.New()).
-		RegisterScope(netscope.NetworkApp()).
+		RegisterScope(net.NetworkApp()).
 		// Register(secureservice.New()).
 		Register(metric.New()).
 		// Register(server.New()).

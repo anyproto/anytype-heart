@@ -52,7 +52,7 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 		for _, ip := range request.LocalServer.Ips {
 			portAddrs = append(portAddrs, fmt.Sprintf("%spaceCore:%d", ip, request.LocalServer.Port))
 		}
-		r.s.netModule.SetPeerAddrs(peerId, portAddrs)
+		r.s.netService.SetPeerAddrs(peerId, portAddrs)
 		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)
 		log.Info("updated local peer", zap.Strings("ips", portAddrs), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
 	}
