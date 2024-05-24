@@ -1,6 +1,8 @@
 package device
 
 import (
+	"sync"
+
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -15,6 +17,7 @@ type NetworkState interface {
 }
 
 type networkState struct {
+	sync.Mutex
 	networkState model.DeviceNetworkType
 }
 
@@ -31,9 +34,13 @@ func (n *networkState) Name() (name string) {
 }
 
 func (n *networkState) GetNetworkState() model.DeviceNetworkType {
+	n.Lock()
+	defer n.Unlock()
 	return n.networkState
 }
 
 func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType) {
+	n.Lock()
+	defer n.Unlock()
 	n.networkState = networkState
 }
