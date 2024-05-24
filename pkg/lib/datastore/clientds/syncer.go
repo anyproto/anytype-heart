@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 // SyncDbAfterInactivity shows the minimum time after db was changed to call db.Sync
@@ -75,8 +77,15 @@ func (r *clientds) syncer() error {
 					return nil
 				default:
 				}
-				maxVersion := syncer.db.MaxVersion()
-				if syncer.LastMaxVersionSynced == maxVersion {
+				var maxVersion uint64
+				err := badgerhelper.RetryOnConflict(func() error {
+					return syncer.db.View(func(txn *badger.Txn) error {
+						maxVersion = txn.ReadTs()
+						return nil
+					})
+				})
+				if err != nil {
+					log.Errorf("failed to get max version for %s: %s", syncer.info(), err)
 					continue
 				}
 
