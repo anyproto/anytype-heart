@@ -68,7 +68,7 @@ type syncStatusService struct {
 	updateReceiver UpdateReceiver
 	storage        spacestorage.SpaceStorage
 
-	spaceId      string
+	spaceId   string
 	treeHeads    map[string]treeHeadsEntry
 	watchers     map[string]struct{}
 	stateCounter uint64
@@ -129,7 +129,6 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 		heads:      headsCopy,
 		syncStatus: StatusNotSynced,
 	}
-	s.stateCounter++
 }
 
 func (s *syncStatusService) SetNodesStatus(senderId string, status ConnectionStatus) {
@@ -220,7 +219,6 @@ func (s *syncStatusService) Watch(treeId string) (err error) {
 			return
 		}
 		slices.Sort(heads)
-		s.stateCounter++
 		s.treeHeads[treeId] = treeHeadsEntry{
 			heads:      heads,
 			syncStatus: StatusUnknown,
