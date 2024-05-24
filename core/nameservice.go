@@ -3,7 +3,8 @@ package core
 import (
 	"context"
 
-	"github.com/anyproto/any-sync/net"
+	"github.com/anyproto/any-sync/net/neterr"
+
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -15,7 +16,7 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(net.ErrUnableToConnect, pb.RpcNameServiceResolveNameResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcNameServiceResolveNameResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -42,7 +43,7 @@ func (mw *Middleware) NameServiceResolveAnyId(ctx context.Context, req *pb.RpcNa
 
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(net.ErrUnableToConnect, pb.RpcNameServiceResolveAnyIdResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcNameServiceResolveAnyIdResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -77,7 +78,7 @@ func (mw *Middleware) NameServiceUserAccountGet(ctx context.Context, req *pb.Rpc
 
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(net.ErrUnableToConnect, pb.RpcNameServiceUserAccountGetResponseError_CAN_NOT_CONNECT),
+			errToCode(neterr.ErrUnableToConnect, pb.RpcNameServiceUserAccountGetResponseError_CAN_NOT_CONNECT),
 			errToCode(nameservice.ErrBadResolve, pb.RpcNameServiceUserAccountGetResponseError_BAD_NAME_RESOLVE),
 		)
 

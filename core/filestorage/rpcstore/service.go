@@ -4,7 +4,7 @@ package rpcstore
 import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/net/pool"
+	net2 "github.com/anyproto/any-sync/net"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
@@ -23,13 +23,13 @@ type Service interface {
 }
 
 type service struct {
-	pool         pool.Pool
+	netService   net2.Service
 	peerStore    peerstore.PeerStore
 	peerUpdateCh chan struct{}
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.pool = a.MustComponent(pool.CName).(pool.Pool)
+	s.netService = app.MustComponent[net2.Service](a)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerStore.AddObserver(func(peerId string, spaceIds []string) {
 		select {
@@ -45,6 +45,6 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) NewStore() RpcStore {
-	cm := newClientManager(s.pool, s.peerStore, s.peerUpdateCh)
+	cm := newClientManager(s.netService, s.peerStore, s.peerUpdateCh)
 	return newStore(cm)
 }

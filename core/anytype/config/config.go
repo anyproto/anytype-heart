@@ -3,16 +3,17 @@ package config
 import (
 	"errors"
 	"fmt"
-	"net"
+	net "net"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
+
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
-	"github.com/anyproto/any-sync/net/peerservice"
+	net2 "github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/net/rpc"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/transport/quic"
@@ -156,7 +157,7 @@ func (c *Config) Init(a *app.App) (err error) {
 	}
 	if !c.PeferYamuxTransport {
 		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
-		a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
+		app.MustComponent[net2.Service](a).PreferQuic(true)
 	}
 	// check if sqlite db exists
 	if _, err2 := os.Stat(filepath.Join(repoPath, SpaceStoreSqlitePath)); err2 == nil {
