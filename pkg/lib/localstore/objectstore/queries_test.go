@@ -1,8 +1,6 @@
 package objectstore
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -744,61 +742,5 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 			},
 		}
 		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
-	})
-}
-
-func TestQueryWithCtx(t *testing.T) {
-	q := database.Query{
-		Sorts: []*model.BlockContentDataviewSort{
-			{
-				RelationKey: bundle.RelationKeyDescription.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
-			},
-			{
-				RelationKey: bundle.RelationKeyName.String(),
-				Type:        model.BlockContentDataviewSort_Asc,
-			},
-		},
-	}
-	t.Run("ctx exceeds -> ErrCanceled is returned", func(t *testing.T) {
-		// given
-		fx := NewStoreFixture(t)
-		ctx, cancel := context.WithCancel(context.Background())
-		obj1 := makeObjectWithNameAndDescription("id1", "dfg", "foo")
-		obj2 := makeObjectWithNameAndDescription("id4", "bcd", "bar")
-		fx.AddObjects(t, []TestObject{obj1, obj2})
-
-		// when
-		go func() {
-			time.Sleep(10 * time.Microsecond)
-			cancel()
-		}()
-		_, err := fx.QueryWithContext(ctx, q)
-
-		// then
-		assert.True(t, errors.Is(err, context.Canceled))
-	})
-
-	t.Run("no ctx cancellation -> query performs normally", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-		obj1 := makeObjectWithNameAndDescription("id1", "dfg", "foo")
-		obj2 := makeObjectWithNameAndDescription("id2", "abc", "foo")
-		obj3 := makeObjectWithNameAndDescription("id3", "012", "bar")
-		obj4 := makeObjectWithNameAndDescription("id4", "bcd", "bar")
-		s.AddObjects(t, []TestObject{obj1, obj2, obj3, obj4})
-		ctx := context.Background()
-
-		// when
-		recs, err := s.QueryWithContext(ctx, q)
-
-		// then
-		assert.NoError(t, err)
-		assertRecordsEqual(t, []TestObject{
-			obj2,
-			obj1,
-			obj3,
-			obj4,
-		}, recs)
 	})
 }

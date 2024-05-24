@@ -4,34 +4,33 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/internal/components/migration/common"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const name = "ReadonlyRelationsFixer"
-
-var log = logging.Logger(name)
+const MName = "ReadonlyRelationsFixer"
 
 // Migration ReadonlyRelationsFixer performs setting readOnlyValue relation to true for all relations with Status and Tag format
 // This migration was implemented to fix relations in accounts of users that are not able to modify its value (GO-2331)
 type Migration struct{}
 
 func (Migration) Name() string {
-	return name
+	return MName
 }
 
-func (Migration) Run(ctx context.Context, store common.StoreWithCtx, space common.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
 
-	relations, err := listReadonlyTagAndStatusRelations(ctx, store, spaceId)
+	relations, err := listReadonlyTagAndStatusRelations(store, spaceId)
 	toMigrate = len(relations)
 
 	if err != nil {
@@ -39,7 +38,7 @@ func (Migration) Run(ctx context.Context, store common.StoreWithCtx, space commo
 	}
 
 	if toMigrate != 0 {
-		log.Infof("space %s contains %d relations of tag and status format with relationReadonlyValue=true", spaceId, toMigrate)
+		log.Debug(fmt.Sprintf("space %s contains %d relations of tag and status format with relationReadonlyValue=true", spaceId, toMigrate), zap.String("migration", MName))
 	}
 
 	for _, r := range relations {
@@ -49,7 +48,7 @@ func (Migration) Run(ctx context.Context, store common.StoreWithCtx, space commo
 		)
 
 		format := model.RelationFormat_name[int32(pbtypes.GetInt64(r.Details, bundle.RelationKeyRelationFormat.String()))]
-		log.Infof("setting relationReadonlyValue to FALSE for relation %s (uniqueKey='%s', format='%s')", name, uk, format)
+		log.Debug("setting relationReadonlyValue to FALSE for relation", zap.String("name", name), zap.String("uniqueKey", uk), zap.String("format", format), zap.String("migration", MName))
 
 		det := []*model.Detail{{
 			Key:   bundle.RelationKeyRelationReadonlyValue.String(),
@@ -70,8 +69,8 @@ func (Migration) Run(ctx context.Context, store common.StoreWithCtx, space commo
 	return
 }
 
-func listReadonlyTagAndStatusRelations(ctx context.Context, store common.StoreWithCtx, spaceId string) ([]database.Record, error) {
-	return store.QueryWithContext(ctx, database.Query{Filters: []*model.BlockContentDataviewFilter{
+func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore, spaceId string) ([]database.Record, error) {
+	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyRelationFormat.String(),
 			Condition:   model.BlockContentDataviewFilter_In,

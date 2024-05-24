@@ -1,7 +1,6 @@
 package objectstore
 
 import (
-	"context"
 	"fmt"
 	"sort"
 
@@ -22,32 +21,6 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 	}
 	recs, err := s.QueryRaw(filters, q.Limit, q.Offset)
 	return recs, err
-}
-
-func (s *dsObjectStore) QueryWithContext(ctx context.Context, q database.Query) (records []database.Record, err error) {
-	if err = ctx.Err(); err != nil {
-		return
-	}
-
-	recordsCh := make(chan []database.Record, 1)
-	errCh := make(chan error, 1)
-	go func() {
-		recs, err := s.Query(q)
-		if err != nil {
-			errCh <- err
-		} else {
-			recordsCh <- recs
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case records = <-recordsCh:
-		return records, nil
-	case err = <-errCh:
-		return nil, err
-	}
 }
 
 func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {

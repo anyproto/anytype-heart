@@ -2407,65 +2407,6 @@ func (_c *MockObjectStore_QueryRaw_Call) RunAndReturn(run func(*database.Filters
 	return _c
 }
 
-// QueryWithContext provides a mock function with given fields: ctx, q
-func (_m *MockObjectStore) QueryWithContext(ctx context.Context, q database.Query) ([]database.Record, error) {
-	ret := _m.Called(ctx, q)
-
-	if len(ret) == 0 {
-		panic("no return value specified for QueryWithContext")
-	}
-
-	var r0 []database.Record
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, database.Query) ([]database.Record, error)); ok {
-		return rf(ctx, q)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, database.Query) []database.Record); ok {
-		r0 = rf(ctx, q)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]database.Record)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, database.Query) error); ok {
-		r1 = rf(ctx, q)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockObjectStore_QueryWithContext_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueryWithContext'
-type MockObjectStore_QueryWithContext_Call struct {
-	*mock.Call
-}
-
-// QueryWithContext is a helper method to define mock.On call
-//   - ctx context.Context
-//   - q database.Query
-func (_e *MockObjectStore_Expecter) QueryWithContext(ctx interface{}, q interface{}) *MockObjectStore_QueryWithContext_Call {
-	return &MockObjectStore_QueryWithContext_Call{Call: _e.mock.On("QueryWithContext", ctx, q)}
-}
-
-func (_c *MockObjectStore_QueryWithContext_Call) Run(run func(ctx context.Context, q database.Query)) *MockObjectStore_QueryWithContext_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(database.Query))
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_QueryWithContext_Call) Return(records []database.Record, err error) *MockObjectStore_QueryWithContext_Call {
-	_c.Call.Return(records, err)
-	return _c
-}
-
-func (_c *MockObjectStore_QueryWithContext_Call) RunAndReturn(run func(context.Context, database.Query) ([]database.Record, error)) *MockObjectStore_QueryWithContext_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // RemoveIDsFromFullTextQueue provides a mock function with given fields: ids
 func (_m *MockObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
 	_m.Called(ids)

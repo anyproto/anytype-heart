@@ -685,21 +685,6 @@ func (mr *MockObjectStoreMockRecorder) QueryRaw(arg0, arg1, arg2 any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRaw", reflect.TypeOf((*MockObjectStore)(nil).QueryRaw), arg0, arg1, arg2)
 }
 
-// QueryWithContext mocks base method.
-func (m *MockObjectStore) QueryWithContext(arg0 context.Context, arg1 database.Query) ([]database.Record, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryWithContext", arg0, arg1)
-	ret0, _ := ret[0].([]database.Record)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryWithContext indicates an expected call of QueryWithContext.
-func (mr *MockObjectStoreMockRecorder) QueryWithContext(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryWithContext", reflect.TypeOf((*MockObjectStore)(nil).QueryWithContext), arg0, arg1)
-}
-
 // RemoveIDsFromFullTextQueue mocks base method.
 func (m *MockObjectStore) RemoveIDsFromFullTextQueue(arg0 []string) {
 	m.ctrl.T.Helper()

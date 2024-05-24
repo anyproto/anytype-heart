@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -15,18 +17,14 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/internal/components/migration/common"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const name = "SystemObjectReviser"
+const MName = "SystemObjectReviser"
 
-var (
-	revisionKey = bundle.RelationKeyRevision.String()
-	log         = logging.Logger(name)
-)
+var revisionKey = bundle.RelationKeyRevision.String()
 
 // Migration SystemObjectReviser performs revision of all system object types and relations, so after Migration
 // objects installed in space should correspond to bundled objects from library.
@@ -35,22 +33,22 @@ var (
 type Migration struct{}
 
 func (Migration) Name() string {
-	return name
+	return MName
 }
 
-func (Migration) Run(ctx context.Context, store common.StoreWithCtx, space common.SpaceWithCtx) (toMigrate, migrated int, err error) {
-	spaceObjects, err := listAllTypesAndRelations(ctx, store, space.Id())
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
 	}
 
-	marketObjects, err := listAllTypesAndRelations(ctx, store, addr.AnytypeMarketplaceWorkspace)
+	marketObjects, err := listAllTypesAndRelations(store, addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
 	}
 
 	for _, details := range spaceObjects {
-		shouldBeRevised, e := reviseSystemObject(ctx, space, details, marketObjects)
+		shouldBeRevised, e := reviseSystemObject(ctx, log, space, details, marketObjects)
 		if !shouldBeRevised {
 			continue
 		}
@@ -64,8 +62,8 @@ func (Migration) Run(ctx context.Context, store common.StoreWithCtx, space commo
 	return
 }
 
-func listAllTypesAndRelations(ctx context.Context, store common.StoreWithCtx, spaceId string) (map[string]*types.Struct, error) {
-	records, err := store.QueryWithContext(ctx, database.Query{
+func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*types.Struct, error) {
+	records, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -91,7 +89,7 @@ func listAllTypesAndRelations(ctx context.Context, store common.StoreWithCtx, sp
 	return details, nil
 }
 
-func reviseSystemObject(ctx context.Context, space common.SpaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
+func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
@@ -99,7 +97,7 @@ func reviseSystemObject(ctx context.Context, space common.SpaceWithCtx, localObj
 	}
 	details := buildDiffDetails(marketObject, localObject)
 	if len(details) != 0 {
-		log.Debugf("updating system object %s in space %s", source, space.Id())
+		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(basic.DetailsSettable); ok {
 				return ds.SetDetails(nil, details, false)
