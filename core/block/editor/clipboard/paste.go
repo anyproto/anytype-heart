@@ -1,6 +1,8 @@
 package clipboard
 
 import (
+	"encoding/base64"
+	"errors"
 	"strings"
 
 	"github.com/samber/lo"
@@ -8,11 +10,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
+
+const base64ImagePrefix = "data:image"
+const base64Prefix = ";base64,"
 
 type pasteCtrl struct {
 	// doc state
@@ -29,13 +35,13 @@ type pasteCtrl struct {
 }
 
 type pasteMode struct {
-	removeSelection    bool
-	multiRange         bool
-	singleRange        bool
-	intoBlock          bool
-	intoBlockCopyStyle bool
-	intoCodeBlock      bool
-	textBuf            string
+	removeSelection            bool
+	multiRange                 bool
+	singleRange                bool
+	intoBlock                  bool
+	intoBlockCopyStyle         bool
+	intoBlockMergeWithoutStyle bool
+	textBuf                    string
 }
 
 func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
@@ -46,7 +52,7 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 		if err = p.multiRange(); err != nil {
 			return
 		}
-	} else if p.mode.intoCodeBlock {
+	} else if p.mode.intoBlockMergeWithoutStyle {
 		if err = p.intoCodeBlock(); err != nil {
 			return
 		}
@@ -79,8 +85,9 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 		p.selIds = append([]string{req.FocusedBlockId}, p.selIds...)
 		p.mode.singleRange = true
 		if firstSelText := p.getFirstSelectedText(); firstSelText != nil {
-			p.mode.intoCodeBlock = firstSelText.Model().GetText().Style == model.BlockContentText_Code
-			if p.mode.intoCodeBlock {
+			p.mode.intoBlockMergeWithoutStyle = firstSelText.Model().GetText().Style == model.BlockContentText_Code ||
+				table.IsTableCell(firstSelText.Model().Id)
+			if p.mode.intoBlockMergeWithoutStyle {
 				p.mode.textBuf = req.TextSlot
 				p.mode.removeSelection = false
 				return
@@ -308,16 +315,42 @@ func (p *pasteCtrl) removeSelection() {
 	}
 }
 
-func (p *pasteCtrl) processFiles() {
+func (p *pasteCtrl) processFiles() (err error) {
 	p.ps.Iterate(func(b simple.Block) (isContinue bool) {
 		if file := b.Model().GetFile(); file != nil && file.State == model.BlockContentFile_Empty {
-			p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
-				BlockId: b.Model().Id,
-				Url:     file.Name,
-			})
+			if strings.HasPrefix(file.Name, base64ImagePrefix) {
+				err = p.handleBase64(b, file)
+				if err != nil {
+					log.Errorf("error handling base64 image: %v", err)
+				}
+			} else {
+				p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
+					BlockId: b.Model().Id,
+					Url:     file.Name,
+				})
+			}
 		}
 		return true
 	})
+	return
+}
+
+func (p *pasteCtrl) handleBase64(b simple.Block, file *model.BlockContentFile) error {
+	index := strings.Index(file.Name, base64Prefix)
+	if index > 0 {
+		file.Name = file.Name[index+len(base64Prefix):]
+		fileContent, err := base64.StdEncoding.DecodeString(file.Name)
+		if err != nil {
+			return err
+		}
+		file.Name = "image"
+		p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
+			BlockId: b.Model().Id,
+			Bytes:   fileContent,
+		})
+		return nil
+	}
+	return errors.New("invalid base64 image")
 }
 
 func (p *pasteCtrl) normalize() {

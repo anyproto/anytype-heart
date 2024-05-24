@@ -112,7 +112,8 @@ type ObjectStore interface {
 
 	SubscribeForAll(callback func(rec database.Record))
 
-	Query(q database.Query) (records []database.Record, total int, err error)
+	Query(q database.Query) (records []database.Record, err error)
+
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
@@ -454,7 +455,7 @@ func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, spaceID string, ids []st
 }
 
 func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error) {
-	records, _, err := s.Query(database.Query{
+	records, err := s.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

@@ -48,7 +48,6 @@ type FileSync interface {
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
-	CalculateFileSize(ctx context.Context, spaceId string, fileId domain.FileId) (int, error)
 	app.ComponentRunnable
 }
 
@@ -69,8 +68,6 @@ type fileSync struct {
 	rpcStore        rpcstore.RpcStore
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
-	uploadPingCh    chan struct{}
-	removePingCh    chan struct{}
 	dagService      ipld.DAGService
 	fileStore       filestore.FileStore
 	eventSender     event.Sender
@@ -97,16 +94,14 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
-	s.removePingCh = make(chan struct{})
-	s.uploadPingCh = make(chan struct{})
 	db, err := s.dbProvider.LocalStorage()
 	if err != nil {
 		return
 	}
 	s.uploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, s.uploadingHandler)
-	s.retryUploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, s.retryingHandler, persistentqueue.WithHandlerTickPeriod(loopTimeout))
+	s.retryUploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, s.retryingHandler, persistentqueue.WithRetryPause(loopTimeout))
 	s.deletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, deletionKeyPrefix, makeQueueItem), log.Logger, s.deletionHandler)
-	s.retryDeletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeQueueItem), log.Logger, s.retryDeletionHandler, persistentqueue.WithHandlerTickPeriod(loopTimeout))
+	s.retryDeletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeQueueItem), log.Logger, s.retryDeletionHandler, persistentqueue.WithRetryPause(loopTimeout))
 	return
 }
 

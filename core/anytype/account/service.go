@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"sync"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -59,7 +58,6 @@ type service struct {
 	coordClient  coordinatorclient.CoordinatorClient
 
 	picker          cache.ObjectGetter
-	once            sync.Once
 	personalSpaceId string
 }
 
@@ -178,7 +176,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 }
 
 func (s *service) getDerivedIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	spc, err := s.spaceService.Get(ctx, spaceID)
+	spc, err := s.spaceService.Wait(ctx, spaceID)
 	if err != nil {
 		return ids, fmt.Errorf("failed to get space: %w", err)
 	}

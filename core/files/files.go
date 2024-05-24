@@ -31,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
@@ -66,7 +65,6 @@ type service struct {
 	fileSync    filesync.FileSync
 	dagService  ipld.DAGService
 	fileStorage filestorage.FileStorage
-	objectStore objectstore.ObjectStore
 
 	lock              sync.Mutex
 	addOperationLocks map[string]*sync.Mutex
@@ -85,7 +83,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -168,12 +165,6 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
-	err = s.storeFileSize(spaceId, fileId)
-	if err != nil {
-		addLock.Unlock()
-		return nil, fmt.Errorf("store file size: %w", err)
-	}
-
 	return &AddResult{
 		FileId:         fileId,
 		EncryptionKeys: &fileKeys,
@@ -214,26 +205,6 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) 
 		lock:           lock,
 	}, nil
 
-}
-
-func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo) (domain.FileId, *domain.FileEncryptionKeys, error) {
-	if len(fileInfo.Targets) == 0 {
-		return "", nil, fmt.Errorf("file exists but has no root")
-	}
-	fileId := domain.FileId(fileInfo.Targets[0])
-	keys, err := s.fileStore.GetFileKeys(fileId)
-	if err != nil {
-		return "", nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
-	}
-	return fileId, &domain.FileEncryptionKeys{
-		FileId:         fileId,
-		EncryptionKeys: keys,
-	}, nil
-}
-
-func (s *service) storeFileSize(spaceId string, fileId domain.FileId) error {
-	_, err := s.fileSync.CalculateFileSize(context.Background(), spaceId, fileId)
-	return err
 }
 
 // addFileRootNode has structure:
@@ -348,18 +319,6 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 	return &file, nil
 }
 
-func (s *service) fileContent(ctx context.Context, spaceId string, childId domain.FileContentId) (io.ReadSeeker, *storage.FileInfo, error) {
-	var err error
-	var file *storage.FileInfo
-	var reader io.ReadSeeker
-	file, err = s.fileStore.GetFileVariant(childId)
-	if err != nil {
-		return nil, nil, err
-	}
-	reader, err = s.getContentReader(ctx, spaceId, file)
-	return reader, file, err
-}
-
 func (s *service) getContentReader(ctx context.Context, spaceID string, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
@@ -431,7 +390,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", m.ErrProcessing, err)
 	}
 
 	// count the result size after the applied mill

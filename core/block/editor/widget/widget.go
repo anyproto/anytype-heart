@@ -21,14 +21,8 @@ type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
 }
 
-type accountService interface {
-	PersonalSpaceID() string
-	MyParticipantId(string) string
-}
-
 type widget struct {
 	smartblock.SmartBlock
-	accountService accountService
 }
 
 type ImportWidgetFlags struct {
@@ -62,10 +56,9 @@ func IsPredefinedWidgetTargetId(targetID string) bool {
 	}
 }
 
-func NewWidget(sb smartblock.SmartBlock, accountService accountService) Widget {
+func NewWidget(sb smartblock.SmartBlock) Widget {
 	return &widget{
-		SmartBlock:     sb,
-		accountService: accountService,
+		SmartBlock: sb,
 	}
 }
 

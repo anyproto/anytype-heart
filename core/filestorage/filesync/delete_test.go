@@ -23,8 +23,9 @@ func TestDeleteFile(t *testing.T) {
 
 		fx.waitEmptyQueue(t, fx.deletionQueue, time.Second*1)
 
-		_, err = fx.rpcStore.FilesInfo(ctx, spaceId, fileId)
-		require.Error(t, err)
+		resp, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileId)
+		require.NoError(t, err)
+		require.Empty(t, resp)
 	})
 
 	t.Run("with error while deleting, add to retry queue", func(t *testing.T) {

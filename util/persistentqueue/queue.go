@@ -60,15 +60,22 @@ type Queue[T Item] struct {
 }
 
 type options struct {
-	handlerTickPeriod time.Duration
+	retryPauseDuration time.Duration
+	ctx                context.Context
 }
 
 type Option func(*options)
 
-// WithHandlerTickPeriod adds delay between handling items
-func WithHandlerTickPeriod(period time.Duration) Option {
+// WithRetryPause adds delay between handling items on ActionRetry
+func WithRetryPause(duration time.Duration) Option {
 	return func(o *options) {
-		o.handlerTickPeriod = period
+		o.retryPauseDuration = duration
+	}
+}
+
+func WithContext(ctx context.Context) Option {
+	return func(o *options) {
+		o.ctx = ctx
 	}
 }
 
@@ -90,7 +97,11 @@ func New[T Item](
 	for _, opt := range opts {
 		opt(&q.options)
 	}
-	q.ctx, q.ctxCancel = context.WithCancel(context.Background())
+	rootCtx := context.Background()
+	if q.options.ctx != nil {
+		rootCtx = q.options.ctx
+	}
+	q.ctx, q.ctxCancel = context.WithCancel(rootCtx)
 	err := q.restore()
 	if err != nil {
 		q.logger.Error("can't restore queue", zap.Error(err))
@@ -131,13 +142,6 @@ func (q *Queue[T]) loop() {
 		if err != nil {
 			q.logger.Error("handle next", zap.Error(err))
 		}
-		if q.options.handlerTickPeriod > 0 {
-			select {
-			case <-time.After(q.options.handlerTickPeriod):
-			case <-q.ctx.Done():
-				return
-			}
-		}
 	}
 
 }
@@ -164,6 +168,13 @@ func (q *Queue[T]) handleNext() error {
 		addErr := q.batcher.Add(q.ctx, it)
 		if addErr != nil {
 			return fmt.Errorf("add to queue: %w", addErr)
+		}
+		if q.options.retryPauseDuration > 0 {
+			select {
+			case <-time.After(q.options.retryPauseDuration):
+			case <-q.ctx.Done():
+				return context.Canceled
+			}
 		}
 	}
 	if err != nil {

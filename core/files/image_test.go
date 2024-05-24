@@ -13,6 +13,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -95,7 +97,7 @@ func TestImageDetails(t *testing.T) {
 	}{
 		{key: bundle.RelationKeyWidthInPixels, value: pbtypes.Int64(100)},
 		{key: bundle.RelationKeyHeightInPixels, value: pbtypes.Int64(68)},
-		{key: bundle.RelationKeyIsHidden, value: pbtypes.Bool(true)},
+		{key: bundle.RelationKeyIsHidden, value: nil},
 		{key: bundle.RelationKeyName, value: pbtypes.String("myFile")},
 		{key: bundle.RelationKeyFileExt, value: pbtypes.String("jpg")},
 		{key: bundle.RelationKeyFileMimeType, value: pbtypes.String("image/jpeg")},
@@ -156,4 +158,87 @@ func testAddImageWithRichExifData(t *testing.T, fx *fixture) *AddResult {
 	require.NoError(t, err)
 	got.Commit()
 	return got
+}
+
+func TestSelectAndSortResizeVariants(t *testing.T) {
+	t.Run("with resize variants", func(t *testing.T) {
+		got := selectAndSortResizeVariants([]*storage.FileInfo{
+			{
+				Mill: mill.ImageResizeId,
+				Meta: &types.Struct{
+					Fields: map[string]*types.Value{
+						"width": pbtypes.Int64(200),
+					},
+				},
+			},
+			{
+				Mill: mill.ImageResizeId,
+				Meta: &types.Struct{
+					Fields: map[string]*types.Value{
+						"width": pbtypes.Int64(100),
+					},
+				},
+			},
+			{
+				Mill: mill.ImageExifId,
+				Meta: &types.Struct{
+					Fields: map[string]*types.Value{
+						"width": pbtypes.Int64(300),
+					},
+				},
+			},
+			{
+				Mill: mill.ImageResizeId,
+				Meta: &types.Struct{
+					Fields: map[string]*types.Value{
+						"width": pbtypes.Int64(300),
+					},
+				},
+			},
+		})
+
+		want := []*storage.FileInfo{
+			{
+				Mill: mill.ImageResizeId,
+				Meta: &types.Struct{
+					Fields: map[string]*types.Value{
+						"width": pbtypes.Int64(100),
+					},
+				},
+			},
+			{
+				Mill: mill.ImageResizeId,
+				Meta: &types.Struct{
+					Fields: map[string]*types.Value{
+						"width": pbtypes.Int64(200),
+					},
+				},
+			},
+			{
+				Mill: mill.ImageResizeId,
+				Meta: &types.Struct{
+					Fields: map[string]*types.Value{
+						"width": pbtypes.Int64(300),
+					},
+				},
+			},
+		}
+
+		assert.Equal(t, want, got)
+	})
+	t.Run("with blob variant", func(t *testing.T) {
+		got := selectAndSortResizeVariants([]*storage.FileInfo{
+			{
+				Mill: mill.BlobId,
+			},
+		})
+
+		want := []*storage.FileInfo{
+			{
+				Mill: mill.BlobId,
+			},
+		}
+
+		assert.Equal(t, want, got)
+	})
 }

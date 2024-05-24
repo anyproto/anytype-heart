@@ -38,12 +38,27 @@ import (
 )
 
 type fixture struct {
-	fileService     files.Service
-	objectStore     *objectstore.StoreFixture
-	objectCreator   *objectCreatorStub
-	spaceService    *mock_space.MockService
-	spaceIdResolver *mock_idresolver.MockResolver
+	fileService       files.Service
+	objectStore       *objectstore.StoreFixture
+	objectCreator     *objectCreatorStub
+	spaceService      *mock_space.MockService
+	spaceIdResolver   *mock_idresolver.MockResolver
+	commonFileService fileservice.FileService
 	*service
+}
+
+type dummyConfig struct{}
+
+func (c *dummyConfig) IsLocalOnlyMode() bool {
+	return false
+}
+
+func (c *dummyConfig) Init(_ *app.App) error {
+	return nil
+}
+
+func (c *dummyConfig) Name() string {
+	return "dummyConfig"
 }
 
 const testResolveRetryDelay = 5 * time.Millisecond
@@ -55,7 +70,7 @@ func newFixture(t *testing.T) *fixture {
 	dataStoreProvider, err := datastore.NewInMemory()
 	require.NoError(t, err)
 	blockStorage := filestorage.NewInMemory()
-	rpcStore := rpcstore.NewInMemoryStore(1024)
+	rpcStore := rpcstore.NewInMemoryStore(10 * 1024 * 1024)
 	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
 	fileSyncService := filesync.New()
@@ -69,6 +84,7 @@ func newFixture(t *testing.T) *fixture {
 
 	ctx := context.Background()
 	a := new(app.App)
+	a.Register(&dummyConfig{})
 	a.Register(dataStoreProvider)
 	a.Register(fileStore)
 	a.Register(objectStore)
@@ -91,11 +107,12 @@ func newFixture(t *testing.T) *fixture {
 	})
 
 	fx := &fixture{
-		fileService:     fileService,
-		objectStore:     objectStore,
-		objectCreator:   objectCreator,
-		spaceService:    spaceService,
-		spaceIdResolver: spaceIdResolver,
+		fileService:       fileService,
+		objectStore:       objectStore,
+		objectCreator:     objectCreator,
+		spaceService:      spaceService,
+		spaceIdResolver:   spaceIdResolver,
+		commonFileService: commonFileService,
 
 		service: svc.(*service),
 	}

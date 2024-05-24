@@ -46,10 +46,6 @@ type Gateway interface {
 	app.ComponentStatable
 }
 
-type spaceIDResolver interface {
-	ResolveSpaceID(objectID string) (spaceID string, err error)
-}
-
 type gateway struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
@@ -60,21 +56,6 @@ type gateway struct {
 	mu                sync.Mutex
 	isServerStarted   bool
 	limitCh           chan struct{}
-}
-
-func getRandomPort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return 0, err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
-	}
-
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
 func GatewayAddr() string {
@@ -337,7 +318,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 			return nil, err
 		}
 		return res, nil
-	})
+	}, retryOptions...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get image reader: %w", err)
 	}

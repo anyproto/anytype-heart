@@ -57,6 +57,7 @@ type File interface {
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
+	SetFileTargetObjectId(ctx session.Context, blockId, targetObjectId string) error
 	dropFilesHandler // do not remove, used in downcasts
 }
 
@@ -114,6 +115,34 @@ func (sf *sfile) SetFileStyle(ctx session.Context, style model.BlockContentFileS
 	}
 
 	return sf.Apply(s)
+}
+
+func (sf *sfile) SetFileTargetObjectId(ctx session.Context, blockId, targetObjectId string) error {
+	sb, err := sf.picker.GetObject(context.TODO(), targetObjectId)
+	if err != nil {
+		return err
+	}
+	var blockContentFileType model.BlockContentFileType
+	switch model.ObjectTypeLayout(pbtypes.GetInt64(sb.Details(), bundle.RelationKeyLayout.String())) {
+	case model.ObjectType_image:
+		blockContentFileType = model.BlockContentFile_Image
+	case model.ObjectType_audio:
+		blockContentFileType = model.BlockContentFile_Audio
+	case model.ObjectType_video:
+		blockContentFileType = model.BlockContentFile_Video
+	case model.ObjectType_pdf:
+		blockContentFileType = model.BlockContentFile_PDF
+	default:
+		blockContentFileType = model.BlockContentFile_File
+	}
+
+	return sf.updateFile(ctx, blockId, "", func(b file.Block) error {
+		b.SetTargetObjectId(targetObjectId)
+		b.SetStyle(model.BlockContentFile_Embed)
+		b.SetState(model.BlockContentFile_Done)
+		b.SetType(blockContentFileType)
+		return nil
+	})
 }
 
 func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
@@ -174,7 +203,11 @@ func (sf *sfile) newUploader(origin objectorigin.ObjectOrigin) fileuploader.Uplo
 }
 
 func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) (err error) {
-	s := sf.NewState().SetGroupId(groupId)
+	return sf.updateFile(nil, id, groupId, apply)
+}
+
+func (sf *sfile) updateFile(ctx session.Context, id, groupId string, apply func(b file.Block) error) (err error) {
+	s := sf.NewStateCtx(ctx).SetGroupId(groupId)
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
@@ -515,7 +548,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 			if canceled {
 				info.err = context.Canceled
 			} else {
-				info.err = dp.addFile(info)
+				dp.addFile(info)
 			}
 			if err := dp.apply(info); err != nil {
 				log.Warnf("can't apply file: %v", err)
@@ -524,11 +557,10 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 	}
 }
 
-func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
+func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.DragAndDrop())
 	res := upl.
 		SetName(f.name).
-		AutoType(true).
 		SetFile(f.path).
 		Upload(context.Background())
 

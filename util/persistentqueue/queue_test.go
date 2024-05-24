@@ -358,27 +358,83 @@ func TestRemove(t *testing.T) {
 }
 
 func TestWithHandlerTickPeriod(t *testing.T) {
+	t.Run("pause on ActionRetry", func(t *testing.T) {
+		db := newInMemoryBadger(t)
+		log := logging.Logger("test")
+		storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+
+		tickerPeriod := 50 * time.Millisecond
+		q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+			return ActionRetry, nil
+		}, WithRetryPause(tickerPeriod))
+
+		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+		require.NoError(t, err)
+		err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
+		require.NoError(t, err)
+
+		q.Run()
+
+		time.Sleep(tickerPeriod / 2)
+		assert.Equal(t, 1, q.NumProcessedItems())
+
+		time.Sleep(tickerPeriod)
+		assert.Equal(t, 2, q.NumProcessedItems())
+	})
+
+	t.Run("do not pause on ActionDone", func(t *testing.T) {
+		db := newInMemoryBadger(t)
+		log := logging.Logger("test")
+		storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+
+		tickerPeriod := 50 * time.Millisecond
+		q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+			return ActionDone, nil
+		}, WithRetryPause(tickerPeriod))
+
+		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+		require.NoError(t, err)
+		err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
+		require.NoError(t, err)
+
+		q.Run()
+
+		time.Sleep(tickerPeriod / 2)
+		assert.Equal(t, 2, q.NumProcessedItems())
+
+		time.Sleep(tickerPeriod)
+		assert.Equal(t, 2, q.NumProcessedItems())
+	})
+}
+
+type testContextKeyType string
+
+const testContextKey testContextKeyType = "testKey"
+
+func TestWithContext(t *testing.T) {
 	db := newInMemoryBadger(t)
 	log := logging.Logger("test")
-	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+	testRootCtx := context.WithValue(context.Background(), testContextKey, "testValue")
 
-	tickerPeriod := 50 * time.Millisecond
+	wait := make(chan struct{})
+	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
 	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+		val, ok := ctx.Value(testContextKey).(string)
+		assert.True(t, ok)
+		assert.Equal(t, "testValue", val)
+		close(wait)
 		return ActionDone, nil
-	}, WithHandlerTickPeriod(tickerPeriod))
+	}, WithContext(testRootCtx))
+	q.Run()
+	t.Cleanup(func() {
+		q.Close()
+		db.Close()
+	})
 
 	err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 	require.NoError(t, err)
-	err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
-	require.NoError(t, err)
 
-	q.Run()
-
-	time.Sleep(tickerPeriod / 2)
-	assert.Equal(t, 1, q.NumProcessedItems())
-
-	time.Sleep(tickerPeriod)
-	assert.Equal(t, 2, q.NumProcessedItems())
+	<-wait
 }
 
 func assertEventually(t *testing.T, pred func(t *testing.T) bool) {

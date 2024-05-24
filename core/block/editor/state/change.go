@@ -145,12 +145,6 @@ func (s *State) Merge(s2 *State) *State {
 
 // ApplyChange used in tests only
 func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
-	alreadyEnabled := s.EnableParentIdsCache()
-	defer func() {
-		if !alreadyEnabled {
-			s.ResetParentIdsCache()
-		}
-	}()
 	for _, ch := range changes {
 		if err = s.applyChange(ch); err != nil {
 			return
@@ -181,12 +175,6 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 
 // ApplyChangeIgnoreErr should be called with changes from the single pb.Change
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
-	alreadyEnabled := s.EnableParentIdsCache()
-	defer func() {
-		if !alreadyEnabled {
-			s.ResetParentIdsCache()
-		}
-	}()
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
 			log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)

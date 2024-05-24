@@ -66,8 +66,14 @@ type clipboard struct {
 	fileObjectService fileobject.Service
 }
 
-func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (
+	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
+) {
 	caretPosition = -1
+	if err = cb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return nil, nil, caretPosition, false, err
+	}
+
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
 		return
@@ -251,21 +257,22 @@ func unlinkAndClearBlocks(
 }
 
 func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map[string]*model.Block, error) {
-	if len(requestBlocks) == 0 || requestBlocks[0].Id == "" {
+	if len(requestBlocks) == 0 || requestBlocks[0].GetId() == "" {
 		return nil, errors.New("nothing to cut")
 	}
 
 	idToBlockMap := make(map[string]*model.Block)
 	for _, stateBlock := range stateBlocks {
-		idToBlockMap[stateBlock.Id] = stateBlock
+		idToBlockMap[stateBlock.GetId()] = stateBlock
 	}
 
 	for _, requestBlock := range requestBlocks {
-		if requestBlock.Id == "" {
+		reqId := requestBlock.GetId()
+		if reqId == "" {
 			return nil, errors.New("empty requestBlock id")
 		}
-		if stateBlock, ok := idToBlockMap[requestBlock.Id]; !ok {
-			return nil, fmt.Errorf("requestBlock with id %s not found", stateBlock.Id)
+		if _, ok := idToBlockMap[reqId]; !ok {
+			return nil, fmt.Errorf("requestBlock with id %s not found", reqId)
 		}
 	}
 	return idToBlockMap, nil
@@ -575,7 +582,7 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 }
 
 func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
-	return html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s, cb.fileObjectService)
+	return html.NewHTMLConverter(cb.fileService, s, cb.fileObjectService)
 }
 
 func renderText(s *state.State, ignoreStyle bool) string {

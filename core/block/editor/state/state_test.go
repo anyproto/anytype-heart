@@ -2596,12 +2596,3 @@ func TestState_RootId(t *testing.T) {
 //		assert.True(t, assertAllDetailsLessThenLimit(s.CombinedDetails()))
 //	})
 // }
-
-func assertAllDetailsLessThenLimit(details *types.Struct) bool {
-	for _, v := range details.Fields {
-		if v.Size() > detailSizeLimit {
-			return false
-		}
-	}
-	return true
-}

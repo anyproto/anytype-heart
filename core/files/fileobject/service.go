@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -33,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
@@ -101,6 +103,12 @@ func (s *service) Name() string {
 	return CName
 }
 
+type configProvider interface {
+	IsLocalOnlyMode() bool
+}
+
+var _ configProvider = (*config.Config)(nil)
+
 func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.objectCreator = app.MustComponent[objectCreatorService](a)
@@ -109,6 +117,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()
 
@@ -117,7 +126,17 @@ func (s *service) Init(a *app.App) error {
 	if err != nil {
 		return fmt.Errorf("get badger: %w", err)
 	}
-	s.migrationQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, []byte("queue/file_migration/"), makeMigrationItem), log.Desugar(), s.migrationQueueHandler)
+
+	migrationQueueCtx := context.Background()
+	if cfg.IsLocalOnlyMode() {
+		migrationQueueCtx = context.WithValue(migrationQueueCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(1*time.Minute))
+	}
+	s.migrationQueue = persistentqueue.New(
+		persistentqueue.NewBadgerStorage(db, []byte("queue/file_migration/"), makeMigrationItem),
+		log.Desugar(),
+		s.migrationQueueHandler,
+		persistentqueue.WithContext(migrationQueueCtx),
+	)
 	return nil
 }
 
@@ -135,7 +154,7 @@ func (s *service) Run(_ context.Context) error {
 
 // After migrating to new sync queue we need to ensure that all not synced files are added to the queue
 func (s *service) ensureNotSyncedFilesAddedToQueue() error {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -341,7 +360,7 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 }
 
 func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -365,7 +384,7 @@ func (s *service) GetObjectIdByFileId(fileId domain.FullFileId) (string, error) 
 }
 
 func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -499,7 +518,7 @@ func (s *service) FilesOffload(ctx context.Context, objectIds []string, includeN
 }
 
 func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
@@ -526,7 +545,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (f
 }
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
@@ -566,7 +585,7 @@ func (s *service) DeleteFileData(objectId string) error {
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
-	records, _, err := s.objectStore.Query(database.Query{
+	records, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -605,7 +624,7 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	record database.Record,
 	includeNotPinned bool,
 ) (uint64, error) {
-	existingObjects, _, err := s.objectStore.Query(database.Query{
+	existingObjects, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),

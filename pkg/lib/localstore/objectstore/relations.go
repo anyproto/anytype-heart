@@ -55,7 +55,7 @@ func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation
 		Value:       pbtypes.String(spaceID),
 	})
 
-	records, _, err := s.Query(q)
+	records, err := s.Query(q)
 	if err != nil {
 		return
 	}
@@ -75,7 +75,7 @@ func (s *dsObjectStore) FetchRelationByKeys(spaceId string, keys ...string) (rel
 		}
 		uks = append(uks, uk.Marshal())
 	}
-	records, _, err := s.Query(database.Query{
+	records, err := s.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
@@ -135,7 +135,7 @@ func (s *dsObjectStore) ListAllRelations(spaceId string) (relations relationutil
 		Value:       pbtypes.String(spaceId),
 	})
 
-	relations2, _, err := s.Query(database.Query{
+	relations2, err := s.Query(database.Query{
 		Filters: filters,
 	})
 	if err != nil {
@@ -165,7 +165,7 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 		},
 	}
 
-	records, _, err := s.Query(q)
+	records, err := s.Query(q)
 	if err != nil {
 		return nil, err
 	}

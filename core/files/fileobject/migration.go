@@ -135,8 +135,7 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 		return persistentqueue.ActionDone, fmt.Errorf("get space: %w", err)
 	}
 
-	// Wait object to load
-	ctx = peer.CtxWithPeerId(ctx, "*")
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	_, err = space.GetObject(ctx, it.FileObjectId)
 	// Already migrated or deleted file object
 	if err == nil || errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
@@ -175,11 +174,17 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 	if err != nil {
 		return fmt.Errorf("create object: %w", err)
 	}
-	err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId})
+	fullFileId := domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}
+	err = s.indexer.addToQueue(ctx, domain.FullID{SpaceID: space.Id(), ObjectID: id}, fullFileId)
 	if err != nil {
 		// Will be retried in background, so don't return error
 		log.Errorf("add to index queue: %v", err)
 		err = nil
 	}
-	return err
+
+	err = s.addToSyncQueue(id, fullFileId, false, false)
+	if err != nil {
+		return fmt.Errorf("add to sync queue: %w", err)
+	}
+	return nil
 }

@@ -24,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
@@ -73,7 +72,6 @@ type export struct {
 	objectStore         objectstore.ObjectStore
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
-	resolver            idresolver.Resolver
 	spaceService        space.Service
 	accountService      account.Service
 	notificationService notifications.Notifications
@@ -88,7 +86,6 @@ func (e *export) Init(a *app.App) (err error) {
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
 	e.picker = app.MustComponent[cache.ObjectGetter](a)
-	e.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
@@ -259,7 +256,7 @@ func (e *export) docsForExport(spaceID string, req pb.RpcObjectListExportRequest
 
 func (e *export) getObjectsByIDs(spaceId string, reqIds []string, includeNested bool, includeFiles bool, isProtobuf bool) (map[string]*types.Struct, error) {
 	docs := make(map[string]*types.Struct)
-	res, _, err := e.objectStore.Query(database.Query{
+	res, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -665,7 +662,6 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypePage ||
 		sbType == smartblock.SmartBlockTypeSubObject ||
 		sbType == smartblock.SmartBlockTypeTemplate ||
-		sbType == smartblock.SmartBlockTypeDate ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
 		sbType == smartblock.SmartBlockTypeWidget ||
 		sbType == smartblock.SmartBlockTypeObjectType ||
@@ -779,7 +775,7 @@ func (e *export) processObject(object *types.Struct,
 			return nil, err
 		}
 		if storeRelation != nil {
-			derivedObjects, err = e.addRelationAndOptions(storeRelation, object, derivedObjects, relation)
+			derivedObjects, err = e.addRelationAndOptions(storeRelation, derivedObjects, relation)
 			if err != nil {
 				return nil, err
 			}
@@ -840,7 +836,7 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	relation, _, err := e.objectStore.Query(database.Query{
+	relation, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
@@ -868,17 +864,15 @@ func (e *export) getRelation(key string) (*database.Record, error) {
 	return &relation[0], nil
 }
 
-func (e *export) addRelationAndOptions(relation *database.Record, object *types.Struct, derivedObjects []database.Record, relationKey string) ([]database.Record, error) {
+func (e *export) addRelationAndOptions(relation *database.Record, derivedObjects []database.Record, relationKey string) ([]database.Record, error) {
 	derivedObjects = e.addRelation(*relation, derivedObjects)
 	format := pbtypes.GetInt64(relation.Details, bundle.RelationKeyRelationFormat.String())
 	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
-		if value := pbtypes.Get(object, relationKey); value != nil {
-			relationOptions, err := e.getRelationOptions(value)
-			if err != nil {
-				return nil, err
-			}
-			derivedObjects = append(derivedObjects, relationOptions...)
+		relationOptions, err := e.getRelationOptions(relationKey)
+		if err != nil {
+			return nil, err
 		}
+		derivedObjects = append(derivedObjects, relationOptions...)
 	}
 
 	return derivedObjects, nil
@@ -893,20 +887,19 @@ func (e *export) addRelation(relation database.Record, derivedObjects []database
 	return derivedObjects
 }
 
-func (e *export) getRelationOptions(relationOptions *types.Value) ([]database.Record, error) {
-	var filter *model.BlockContentDataviewFilter
-	if relationOptions.GetStringValue() != "" {
-		filter = e.getFilterForStringOption(relationOptions, filter)
-	}
-	if relationOptions.GetListValue() != nil && len(relationOptions.GetListValue().Values) != 0 {
-		filter = e.getFilterForOptionsList(relationOptions, filter)
-	}
-	if filter == nil {
-		return nil, nil
-	}
-	relationOptionsDetails, _, err := e.objectStore.Query(database.Query{
+func (e *export) getRelationOptions(relationKey string) ([]database.Record, error) {
+	relationOptionsDetails, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
-			filter,
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(relationKey),
+			},
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -925,31 +918,8 @@ func (e *export) getRelationOptions(relationOptions *types.Value) ([]database.Re
 	return relationOptionsDetails, nil
 }
 
-func (e *export) getFilterForOptionsList(relationOptions *types.Value, filter *model.BlockContentDataviewFilter) *model.BlockContentDataviewFilter {
-	ids := make([]string, 0, len(relationOptions.GetListValue().Values))
-	for _, id := range relationOptions.GetListValue().Values {
-		ids = append(ids, id.GetStringValue())
-	}
-	filter = &model.BlockContentDataviewFilter{
-		RelationKey: bundle.RelationKeyId.String(),
-		Condition:   model.BlockContentDataviewFilter_In,
-		Value:       pbtypes.StringList(ids),
-	}
-	return filter
-}
-
-func (e *export) getFilterForStringOption(value *types.Value, filter *model.BlockContentDataviewFilter) *model.BlockContentDataviewFilter {
-	id := value.GetStringValue()
-	filter = &model.BlockContentDataviewFilter{
-		RelationKey: bundle.RelationKeyId.String(),
-		Condition:   model.BlockContentDataviewFilter_Equal,
-		Value:       pbtypes.String(id),
-	}
-	return filter
-}
-
 func (e *export) addTemplates(id string, derivedObjects []database.Record) ([]database.Record, error) {
-	templates, _, err := e.objectStore.Query(database.Query{
+	templates, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
@@ -978,7 +948,7 @@ func (e *export) addTemplates(id string, derivedObjects []database.Record) ([]da
 func (e *export) handleSetOfRelation(object *types.Struct, derivedObjects []database.Record) ([]database.Record, error) {
 	setOfList := pbtypes.GetStringList(object, bundle.RelationKeySetOf.String())
 	if len(setOfList) > 0 {
-		types, _, err := e.objectStore.Query(database.Query{
+		types, err := e.objectStore.Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyId.String(),
