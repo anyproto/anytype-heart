@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -140,6 +141,56 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
+}
+
+func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObjectSearchWithMetaRequest) *pb.RpcObjectSearchWithMetaResponse {
+	response := func(code pb.RpcObjectSearchWithMetaResponseErrorCode, results []*model.SearchResult, err error) *pb.RpcObjectSearchWithMetaResponse {
+		m := &pb.RpcObjectSearchWithMetaResponse{Error: &pb.RpcObjectSearchWithMetaResponseError{Code: code}, Results: results}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	if mw.applicationService.GetApp() == nil {
+		return response(pb.RpcObjectSearchWithMetaResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
+	}
+
+	if req.FullText != "" {
+		mw.applicationService.GetApp().MustComponent(indexer.CName).(indexer.Indexer).ForceFTIndex()
+	}
+
+	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	highlighter := ftsearch.DefaultHighlightFormatter
+	if req.ReturnHTMLHighlightsInsteadOfRanges {
+		highlighter = ftsearch.HtmlHighlightFormatter
+	}
+	results, err := ds.Query(database.Query{
+		Filters:     req.Filters,
+		Sorts:       req.Sorts,
+		Offset:      int(req.Offset),
+		Limit:       int(req.Limit),
+		FullText:    req.FullText,
+		Highlighter: highlighter,
+	})
+
+	var resultsModels = make([]*model.SearchResult, 0, len(results))
+	for i, rec := range results {
+		if len(req.Keys) > 0 {
+			rec.Details = pbtypes.StructFilterKeys(rec.Details, req.Keys)
+		}
+		resultsModels = append(resultsModels, &model.SearchResult{
+			ObjectId: pbtypes.GetString(rec.Details, database.RecordIDField),
+			Details:  rec.Details,
+			Meta:     []*model.SearchMeta{&(results[i].Meta)},
+		})
+	}
+	if err != nil {
+		return response(pb.RpcObjectSearchWithMetaResponseError_UNKNOWN_ERROR, nil, err)
+	}
+
+	return response(pb.RpcObjectSearchWithMetaResponseError_NULL, resultsModels, nil)
 }
 
 func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
