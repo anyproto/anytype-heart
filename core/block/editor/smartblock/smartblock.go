@@ -214,10 +214,6 @@ type Indexer interface {
 	app.ComponentRunnable
 }
 
-type History interface {
-	GetBlocksModifiers(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockModifier, error)
-}
-
 type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree

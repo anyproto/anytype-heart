@@ -901,8 +901,8 @@ message ObjectView {
         int32 redo = 2;
     }
 
-    repeated BlockModifier blocksModifiers = 11;
-    message BlockModifier {
+    repeated BlockParticipant blockParticipants = 11;
+    message BlockParticipant {
         string blockId = 1;
         string participantId = 2;
     }

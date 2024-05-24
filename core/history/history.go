@@ -45,7 +45,7 @@ type History interface {
 	Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(id domain.FullID, versionId string) (err error)
 	DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.EventMessage, *model.ObjectView, error)
-	GetBlocksModifiers(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockModifier, error)
+	GetBlocksParticipants(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockParticipant, error)
 	app.Component
 }
 
@@ -100,17 +100,17 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
 	}
-	blocksModifiers, err := h.GetBlocksModifiers(id, versionID, s.Blocks())
+	blocksParticipants, err := h.GetBlocksParticipants(id, versionID, s.Blocks())
 	if err != nil {
 		return nil, nil, fmt.Errorf("get blocks modifiers: %w", err)
 	}
 	return &model.ObjectView{
-		RootId:          id.ObjectID,
-		Type:            model.SmartBlockType(sbType),
-		Blocks:          s.Blocks(),
-		Details:         details,
-		RelationLinks:   relations.RelationLinks(),
-		BlocksModifiers: blocksModifiers,
+		RootId:            id.ObjectID,
+		Type:              model.SmartBlockType(sbType),
+		Blocks:            s.Blocks(),
+		Details:           details,
+		RelationLinks:     relations.RelationLinks(),
+		BlockParticipants: blocksParticipants,
 	}, ver, nil
 }
 
@@ -299,7 +299,7 @@ func isBasicBlockChange(message simple.EventMessage) bool {
 		message.Msg.GetBlockDelete() != nil
 }
 
-func (h *history) GetBlocksModifiers(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockModifier, error) {
+func (h *history) GetBlocksParticipants(id domain.FullID, versionId string, blocks []*model.Block) ([]*model.ObjectViewBlockParticipant, error) {
 	if len(blocks) == 0 {
 		return nil, nil
 	}
@@ -318,9 +318,9 @@ func (h *history) GetBlocksModifiers(id domain.FullID, versionId string, blocks 
 		return nil, err
 	}
 
-	blocksParticipants := make([]*model.ObjectViewBlockModifier, 0)
+	blocksParticipants := make([]*model.ObjectViewBlockParticipant, 0)
 	for blockId, participantId := range blocksParticipantsMap {
-		blocksParticipants = append(blocksParticipants, &model.ObjectViewBlockModifier{
+		blocksParticipants = append(blocksParticipants, &model.ObjectViewBlockParticipant{
 			BlockId:       blockId,
 			ParticipantId: participantId,
 		})

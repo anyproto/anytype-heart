@@ -1679,7 +1679,7 @@
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
     - [ObjectView](#anytype-model-ObjectView)
-    - [ObjectView.BlockModifier](#anytype-model-ObjectView-BlockModifier)
+    - [ObjectView.BlockParticipant](#anytype-model-ObjectView-BlockParticipant)
     - [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet)
     - [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize)
     - [ObjectView.RelationWithValuePerObject](#anytype-model-ObjectView-RelationWithValuePerObject)
@@ -26631,16 +26631,16 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
 | history | [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize) |  |  |
-| blocksModifiers | [ObjectView.BlockModifier](#anytype-model-ObjectView-BlockModifier) | repeated |  |
+| blockParticipants | [ObjectView.BlockParticipant](#anytype-model-ObjectView-BlockParticipant) | repeated |  |
 
 
 
 
 
 
-<a name="anytype-model-ObjectView-BlockModifier"></a>
+<a name="anytype-model-ObjectView-BlockParticipant"></a>
 
-### ObjectView.BlockModifier
+### ObjectView.BlockParticipant
 
 
 

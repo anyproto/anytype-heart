@@ -125,7 +125,7 @@ func (h historyStub) IterateFrom(id string, convert objecttree.ChangeConvertFunc
 	return nil
 }
 
-func TestHistory_GetBlocksModifiers(t *testing.T) {
+func TestHistory_GetBlocksParticipants(t *testing.T) {
 	objectId := "objectId"
 	spaceID := "spaceId"
 	versionId := "versionId"
@@ -143,14 +143,14 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		history := newFixture(t, nil, objectId, spaceID, versionId)
 
 		// when
-		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
+		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
 		}, versionId, nil)
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 0)
+		assert.Len(t, blocksParticipants, 0)
 	})
 	t.Run("object with 1 created block", func(t *testing.T) {
 		// given
@@ -161,16 +161,16 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
 
 		// when
-		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
+		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
 		}, versionId, []*model.Block{bl})
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 1)
-		assert.Equal(t, bl.Id, blocksModifiers[0].BlockId)
-		assert.Equal(t, participantId, blocksModifiers[0].ParticipantId)
+		assert.Len(t, blocksParticipants, 1)
+		assert.Equal(t, bl.Id, blocksParticipants[0].BlockId)
+		assert.Equal(t, participantId, blocksParticipants[0].ParticipantId)
 	})
 	t.Run("object with 1 modified block", func(t *testing.T) {
 		// given
@@ -184,16 +184,16 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
 
 		// when
-		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
+		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
 		}, versionId, []*model.Block{bl})
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 1)
-		assert.Equal(t, bl.Id, blocksModifiers[0].BlockId)
-		assert.Equal(t, participantId, blocksModifiers[0].ParticipantId)
+		assert.Len(t, blocksParticipants, 1)
+		assert.Equal(t, bl.Id, blocksParticipants[0].BlockId)
+		assert.Equal(t, participantId, blocksParticipants[0].ParticipantId)
 	})
 	t.Run("object with simple blocks changes by 1 participant", func(t *testing.T) {
 		// given
@@ -232,14 +232,14 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
 
 		// when
-		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
+		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
 		}, versionId, []*model.Block{bl, blBookmark, blLatex, blDiv, blFile, blLink, blRelation, blTableRow})
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 8)
+		assert.Len(t, blocksParticipants, 8)
 	})
 	t.Run("object with modified blocks changes by 1 participant", func(t *testing.T) {
 		// given
@@ -264,14 +264,14 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 
 		// when
 		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
-		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
+		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
 		}, versionId, []*model.Block{bl, blBookmark, blLatex, blDiv, blFile, blLink, blRelation})
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 5)
+		assert.Len(t, blocksParticipants, 5)
 	})
 	t.Run("object with moved block changes by 1 participant", func(t *testing.T) {
 		// given
@@ -286,16 +286,16 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		// when
 		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
 		participantId := domain.NewParticipantId(spaceID, keys.SignKey.GetPublic().Account())
-		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
+		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
 		}, versionId, []*model.Block{bl})
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 1)
-		assert.Equal(t, bl.Id, blocksModifiers[0].BlockId)
-		assert.Equal(t, participantId, blocksModifiers[0].ParticipantId)
+		assert.Len(t, blocksParticipants, 1)
+		assert.Equal(t, bl.Id, blocksParticipants[0].BlockId)
+		assert.Equal(t, participantId, blocksParticipants[0].ParticipantId)
 	})
 	t.Run("object block was deleted, don't add it in response", func(t *testing.T) {
 		bl := &model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}
@@ -309,16 +309,16 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		// when
 		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
 		participantId := domain.NewParticipantId(spaceID, keys.SignKey.GetPublic().Account())
-		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
+		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
 		}, versionId, []*model.Block{bl})
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 1)
-		assert.Equal(t, bl.Id, blocksModifiers[0].BlockId)
-		assert.Equal(t, participantId, blocksModifiers[0].ParticipantId)
+		assert.Len(t, blocksParticipants, 1)
+		assert.Equal(t, bl.Id, blocksParticipants[0].BlockId)
+		assert.Equal(t, participantId, blocksParticipants[0].ParticipantId)
 	})
 	t.Run("object with block changes by 2 participants", func(t *testing.T) {
 		// given
@@ -344,27 +344,27 @@ func TestHistory_GetBlocksModifiers(t *testing.T) {
 		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
 
 		// when
-		blocksModifiers, err := history.GetBlocksModifiers(domain.FullID{
+		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
 			ObjectID: objectId,
 			SpaceID:  spaceID,
 		}, versionId, []*model.Block{bl, blBookmark, blLatex, blRelation})
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksModifiers, 4)
-		assert.Contains(t, blocksModifiers, &model.ObjectViewBlockModifier{
+		assert.Len(t, blocksParticipants, 4)
+		assert.Contains(t, blocksParticipants, &model.ObjectViewBlockParticipant{
 			BlockId:       bl.Id,
 			ParticipantId: secondParticipantId,
 		})
-		assert.Contains(t, blocksModifiers, &model.ObjectViewBlockModifier{
+		assert.Contains(t, blocksParticipants, &model.ObjectViewBlockParticipant{
 			BlockId:       blBookmark.Id,
 			ParticipantId: firstParticipantId,
 		})
-		assert.Contains(t, blocksModifiers, &model.ObjectViewBlockModifier{
+		assert.Contains(t, blocksParticipants, &model.ObjectViewBlockParticipant{
 			BlockId:       blLatex.Id,
 			ParticipantId: secondParticipantId,
 		})
-		assert.Contains(t, blocksModifiers, &model.ObjectViewBlockModifier{
+		assert.Contains(t, blocksParticipants, &model.ObjectViewBlockParticipant{
 			BlockId:       blRelation.Id,
 			ParticipantId: secondParticipantId,
 		})
