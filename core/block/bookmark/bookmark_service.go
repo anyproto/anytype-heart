@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -240,7 +241,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 
 	updaters := make(chan func(contentBookmark *bookmark.ObjectContent), 1)
 
-	data, body, err := s.linkPreview.Fetch(ctx, url)
+	data, body, isFile, err := s.linkPreview.Fetch(ctx, url)
 	if err != nil {
 		updaters <- func(c *bookmark.ObjectContent) {
 			if c.BookmarkContent == nil {
@@ -312,6 +313,10 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		go func() {
 			defer wg.Done()
 			updaters <- func(c *bookmark.ObjectContent) {
+				if isFile {
+					s.handleFileBlock(c, url)
+					return
+				}
 				blocks, _, err := anymark.HTMLToBlocks(body, url)
 				if err != nil {
 					log.Errorf("parse blocks: %s", err)
@@ -326,6 +331,19 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		close(updaters)
 	}()
 	return updaters, nil
+}
+
+func (s *service) handleFileBlock(c *bookmark.ObjectContent, url string) {
+	c.Blocks = append(
+		c.Blocks,
+		&model.Block{
+			Id: bson.NewObjectId().Hex(),
+			Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{
+					Name: url,
+				}},
+		},
+	)
 }
 
 func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchParams) error {
