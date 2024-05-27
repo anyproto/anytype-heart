@@ -66,8 +66,14 @@ type clipboard struct {
 	fileObjectService fileobject.Service
 }
 
-func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (
+	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
+) {
 	caretPosition = -1
+	if err = cb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return nil, nil, caretPosition, false, err
+	}
+
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
 		return

@@ -493,6 +493,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupI
 		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
+			Bytes:   req.Bytes,
 			GroupID: groupID,
 			Origin:  req.ObjectOrigin,
 		}, false)
@@ -505,6 +506,7 @@ func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (e
 		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
 			Url:    req.Url,
+			Bytes:  req.Bytes,
 			Origin: req.ObjectOrigin,
 		}, true)
 		return err
@@ -574,6 +576,7 @@ func (s *Service) UploadFileBlock(
 		fileObjectId, err = b.Upload(nil, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
+			Bytes:   req.Bytes,
 			GroupID: "",
 			Origin:  req.ObjectOrigin,
 		}, true)

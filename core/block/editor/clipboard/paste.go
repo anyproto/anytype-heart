@@ -1,6 +1,8 @@
 package clipboard
 
 import (
+	"encoding/base64"
+	"errors"
 	"strings"
 
 	"github.com/samber/lo"
@@ -14,6 +16,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
+
+const base64ImagePrefix = "data:image"
+const base64Prefix = ";base64,"
 
 type pasteCtrl struct {
 	// doc state
@@ -310,16 +315,42 @@ func (p *pasteCtrl) removeSelection() {
 	}
 }
 
-func (p *pasteCtrl) processFiles() {
+func (p *pasteCtrl) processFiles() (err error) {
 	p.ps.Iterate(func(b simple.Block) (isContinue bool) {
 		if file := b.Model().GetFile(); file != nil && file.State == model.BlockContentFile_Empty {
-			p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
-				BlockId: b.Model().Id,
-				Url:     file.Name,
-			})
+			if strings.HasPrefix(file.Name, base64ImagePrefix) {
+				err = p.handleBase64(b, file)
+				if err != nil {
+					log.Errorf("error handling base64 image: %v", err)
+				}
+			} else {
+				p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
+					BlockId: b.Model().Id,
+					Url:     file.Name,
+				})
+			}
 		}
 		return true
 	})
+	return
+}
+
+func (p *pasteCtrl) handleBase64(b simple.Block, file *model.BlockContentFile) error {
+	index := strings.Index(file.Name, base64Prefix)
+	if index > 0 {
+		file.Name = file.Name[index+len(base64Prefix):]
+		fileContent, err := base64.StdEncoding.DecodeString(file.Name)
+		if err != nil {
+			return err
+		}
+		file.Name = "image"
+		p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
+			BlockId: b.Model().Id,
+			Bytes:   fileContent,
+		})
+		return nil
+	}
+	return errors.New("invalid base64 image")
 }
 
 func (p *pasteCtrl) normalize() {

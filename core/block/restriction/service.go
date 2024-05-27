@@ -5,17 +5,20 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const (
-	CName    = "restriction"
-	noLayout = -1
-)
+const CName = "restriction"
 
-var (
-	ErrRestricted = errors.New("restricted")
-)
+var ErrRestricted = errors.New("restricted")
+
+type RestrictionHolder interface {
+	Type() smartblock.SmartBlockType
+	Layout() (model.ObjectTypeLayout, bool)
+	UniqueKey() domain.UniqueKey
+}
 
 type Service interface {
 	GetRestrictions(RestrictionHolder) Restrictions
@@ -23,14 +26,13 @@ type Service interface {
 	app.Component
 }
 
-type service struct {
-}
+type service struct{}
 
 func New() Service {
 	return &service{}
 }
 
-func (s *service) Init(a *app.App) (err error) {
+func (s *service) Init(*app.App) (err error) {
 	return
 }
 
@@ -40,13 +42,13 @@ func (s *service) Name() (name string) {
 
 func (s *service) GetRestrictions(rh RestrictionHolder) (r Restrictions) {
 	return Restrictions{
-		Object:   s.getObjectRestrictions(rh),
-		Dataview: s.getDataviewRestrictions(rh),
+		Object:   getObjectRestrictions(rh),
+		Dataview: getDataviewRestrictions(rh),
 	}
 }
 
 func (s *service) CheckRestrictions(rh RestrictionHolder, cr ...model.RestrictionsObjectRestriction) error {
-	r := s.getObjectRestrictions(rh)
+	r := getObjectRestrictions(rh)
 	if err := r.Check(cr...); err != nil {
 		return err
 	}
