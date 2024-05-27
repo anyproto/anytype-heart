@@ -97,7 +97,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.cm.fetchResponsiblePeers()
 
 		// then
-		f.p2pStatusSender.AssertNotCalled(t, "SendPeerUpdate")
+		f.p2pStatusSender.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peers connected", func(t *testing.T) {
 		// given
@@ -110,7 +110,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.cm.fetchResponsiblePeers()
 
 		// then
-		f.p2pStatusSender.AssertNotCalled(t, "SendPeerUpdate")
+		f.p2pStatusSender.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peer not connected", func(t *testing.T) {
 		// given
@@ -124,7 +124,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.cm.fetchResponsiblePeers()
 
 		// then
-		f.p2pStatusSender.AssertCalled(t, "SendPeerUpdate")
+		f.p2pStatusSender.AssertCalled(t, "CheckPeerStatus")
 	})
 }
 
@@ -142,7 +142,7 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 1)
-		f.p2pStatusSender.AssertNotCalled(t, "SendPeerUpdate")
+		f.p2pStatusSender.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peers connected", func(t *testing.T) {
 		// given
@@ -158,7 +158,7 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 2)
-		f.p2pStatusSender.AssertNotCalled(t, "SendPeerUpdate")
+		f.p2pStatusSender.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peer not connected", func(t *testing.T) {
 		// given
@@ -175,7 +175,7 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 1)
-		f.p2pStatusSender.AssertCalled(t, "SendPeerUpdate")
+		f.p2pStatusSender.AssertCalled(t, "CheckPeerStatus")
 	})
 }
 

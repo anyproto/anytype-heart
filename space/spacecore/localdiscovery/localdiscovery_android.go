@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/peerstatus"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -18,6 +17,15 @@ import (
 
 var notifierProvider NotifierProvider
 var proxyLock = sync.Mutex{}
+
+type Hook int
+
+const (
+	PeerDiscovered       Hook = 0
+	PeerToPeerImpossible Hook = 1
+)
+
+type HookCallback func()
 
 type NotifierProvider interface {
 	Provide(notifier Notifier, port int, peerId, serviceName string)
@@ -46,6 +54,7 @@ type localDiscovery struct {
 	drpcServer              clientserver.ClientServer
 	manualStart             bool
 	m                       sync.Mutex
+	hooks                   map[Hook]HookCallback
 }
 
 func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
@@ -55,9 +64,10 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 	}
 	// TODO: move this to android side
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	if len(newAddrs.Interfaces) == 0 {
-		l.peerToPeerStatusUpdater.BroadcastStatus(peerstatus.NotPossible)
+	if len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces) {
+		l.executeHook(PeerToPeerImpossible)
 	}
+
 	if err != nil {
 		return
 	}
@@ -77,7 +87,7 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 }
 
 func New() LocalDiscovery {
-	return &localDiscovery{}
+	return &localDiscovery{hooks: make(map[Hook]HookCallback, 0)}
 }
 
 func (l *localDiscovery) SetNotifier(notifier Notifier) {
@@ -88,8 +98,6 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.ClientServer)
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
-	l.peerToPeerStatusUpdater = app.MustComponent[StatusUpdater](a)
-
 	return
 }
 
@@ -120,6 +128,14 @@ func (l *localDiscovery) Name() (name string) {
 	return CName
 }
 
+func (l *localDiscovery) RegisterPeerDiscoveredHook(hook func()) {
+	l.hooks[PeerDiscovered] = hook
+}
+
+func (l *localDiscovery) RegisterPeerToPeerImpossibleHook(hook func()) {
+	l.hooks[PeerToPeerImpossible] = hook
+}
+
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	if !l.drpcServer.ServerStarted() {
 		return
@@ -130,4 +146,10 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	}
 	provider.Remove()
 	return nil
+}
+
+func (l *localDiscovery) executeHook(hook Hook) {
+	if h, ok := l.hooks[hook]; ok {
+		h()
+	}
 }

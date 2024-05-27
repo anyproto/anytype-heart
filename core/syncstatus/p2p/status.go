@@ -6,44 +6,68 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/peerstatus"
+	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/net/pool"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 const CName = "core.syncstatus.p2p"
 
+type Status int32
+
+const (
+	Unknown      Status = 0
+	Connected    Status = 1
+	NotPossible  Status = 2
+	NotConnected Status = 3
+)
+
+type HookRegister interface {
+	RegisterPeerDiscovered(hook func())
+	RegisterP2PNotPossible(hook func())
+}
+
+type PeerUpdateHook interface {
+	Register(hook func())
+}
+
 type StatusUpdateSender interface {
 	app.ComponentRunnable
-	SendPeerUpdate()
-	SendNewStatus(status peerstatus.Status)
+	CheckPeerStatus()
+	P2PNotPossible()
 }
 
 type p2pStatus struct {
 	spaceId       string
-	peerStore     peerstore.PeerStore
 	eventSender   event.Sender
 	contextCancel context.CancelFunc
 	ctx           context.Context
 
 	sync.Mutex
-	status peerstatus.Status
+	status Status
 
-	forceCheckSpace chan struct{}
-	updateStatus    chan peerstatus.Status
+	forceCheckSpace     chan struct{}
+	updateStatus        chan Status
+	peersConnectionPool pool.Service
 }
 
 func NewP2PStatus(spaceId string) StatusUpdateSender {
-	return &p2pStatus{forceCheckSpace: make(chan struct{}), updateStatus: make(chan peerstatus.Status), spaceId: spaceId}
+	return &p2pStatus{forceCheckSpace: make(chan struct{}), updateStatus: make(chan Status), spaceId: spaceId}
 }
 
 func (p *p2pStatus) Init(a *app.App) (err error) {
-	p.peerStore = app.MustComponent[peerstore.PeerStore](a)
 	p.eventSender = app.MustComponent[event.Sender](a)
-	observerComponent := app.MustComponent[ObserverComponent](a)
-	observerComponent.AddObserver(p.spaceId, p)
+	p.peersConnectionPool = app.MustComponent[pool.Service](a)
+
+	hookRegister := app.MustComponent[HookRegister](a)
+
+	hookRegister.RegisterP2PNotPossible(p.P2PNotPossible)
+	hookRegister.RegisterPeerDiscovered(p.CheckPeerStatus)
+
+	peerManager := app.MustComponent[PeerUpdateHook](a)
+	peerManager.Register(p.CheckPeerStatus)
 	return
 }
 
@@ -64,16 +88,16 @@ func (p *p2pStatus) Close(ctx context.Context) (err error) {
 	return
 }
 
-func (p *p2pStatus) SendPeerUpdate() {
+func (p *p2pStatus) CheckPeerStatus() {
 	p.forceCheckSpace <- struct{}{}
 }
 
-func (p *p2pStatus) SendNewStatus(status peerstatus.Status) {
-	p.updateStatus <- status
+func (p *p2pStatus) P2PNotPossible() {
+	p.updateStatus <- NotPossible
 }
 
 func (p *p2pStatus) checkP2PDevices() {
-	timer := time.NewTimer(10 * time.Second)
+	timer := time.NewTimer(20 * time.Second)
 	defer timer.Stop()
 	p.updateSpaceP2PStatus()
 	for {
@@ -93,44 +117,48 @@ func (p *p2pStatus) checkP2PDevices() {
 func (p *p2pStatus) updateSpaceP2PStatus() {
 	p.Lock()
 	defer p.Unlock()
-	peerIds := p.peerStore.LocalPeerIds(p.spaceId)
-	if p.status != peerstatus.Unknown {
+	var connectionCount int64
+	p.peersConnectionPool.ForEach(func(v ocache.Object) bool {
+		connectionCount++
+		return true
+	})
+	if p.status != Unknown {
 		// avoiding sending of redundant event
-		p.handleUnknownStatus(peerIds)
+		p.handleNonUnknownStatus(connectionCount)
 	} else {
-		p.handleNonUnknownStatuses(peerIds)
+		p.handleUnknownStatus(connectionCount)
 	}
 }
 
-func (p *p2pStatus) handleNonUnknownStatuses(peerIds []string) {
-	if len(peerIds) > 0 {
+func (p *p2pStatus) handleUnknownStatus(connectionCount int64) {
+	if connectionCount > 0 {
 		p.sendEvent(p.spaceId, pb.EventP2PStatus_Connected)
-		p.status = peerstatus.Connected
+		p.status = Connected
 	} else {
 		p.sendEvent(p.spaceId, pb.EventP2PStatus_NotConnected)
-		p.status = peerstatus.NotConnected
+		p.status = NotConnected
 	}
 }
 
-func (p *p2pStatus) handleUnknownStatus(peerIds []string) {
-	if p.status == peerstatus.Connected && len(peerIds) == 0 {
+func (p *p2pStatus) handleNonUnknownStatus(connectionCount int64) {
+	if p.status == Connected && connectionCount == 0 {
 		p.sendEvent(p.spaceId, pb.EventP2PStatus_NotConnected)
-		p.status = peerstatus.NotConnected
+		p.status = NotConnected
 	}
-	if (p.status == peerstatus.NotConnected || p.status == peerstatus.NotPossible) && len(peerIds) > 0 {
+	if (p.status == NotConnected || p.status == NotPossible) && connectionCount > 0 {
 		p.sendEvent(p.spaceId, pb.EventP2PStatus_Connected)
-		p.status = peerstatus.Connected
+		p.status = Connected
 	}
 }
 
-func (p *p2pStatus) sendNewStatus(status peerstatus.Status) {
+func (p *p2pStatus) sendNewStatus(status Status) {
 	var pbStatus pb.EventP2PStatusStatus
 	switch status {
-	case peerstatus.Connected:
+	case Connected:
 		pbStatus = pb.EventP2PStatus_Connected
-	case peerstatus.NotConnected:
+	case NotConnected:
 		pbStatus = pb.EventP2PStatus_NotConnected
-	case peerstatus.NotPossible:
+	case NotPossible:
 		pbStatus = pb.EventP2PStatus_NotPossible
 	}
 	p.Lock()

@@ -129,7 +129,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		ld.readAnswers(peerUpdate)
 
 		// then
-		status.AssertCalled(t, "SendPeerUpdate")
+		status.AssertCalled(t, "CheckPeerStatus")
 	})
 	t.Run("readAnswers - send peer update to notifier", func(t *testing.T) {
 		// given

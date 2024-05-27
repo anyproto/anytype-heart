@@ -25,10 +25,6 @@ var (
 	ErrPeerFindDeadlineExceeded            = errors.New("peer find deadline exceeded")
 )
 
-type StatusUpdater interface {
-	SendPeerUpdate(spaceIds []string)
-}
-
 type clientPeerManager struct {
 	spaceId            string
 	responsibleNodeIds []string
@@ -39,11 +35,12 @@ type clientPeerManager struct {
 	watchingPeers             map[string]struct{}
 	rebuildResponsiblePeers   chan struct{}
 	availableResponsiblePeers chan struct{}
-	peerToPeerStatusObserver  StatusUpdater
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	sync.Mutex
+
+	peerUpdateHook func()
 }
 
 func (n *clientPeerManager) Init(a *app.App) (err error) {
@@ -52,7 +49,6 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
-	n.peerToPeerStatusObserver = app.MustComponent[StatusUpdater](a)
 	return
 }
 
@@ -131,6 +127,10 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 	return
 }
 
+func (n *clientPeerManager) Register(hook func()) {
+	n.peerUpdateHook = hook
+}
+
 func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (peers []peer.Peer, err error) {
 	p, err := n.p.pool.Get(ctx, peerId)
 	if err != nil {
@@ -161,7 +161,7 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 		peers = append(peers, p)
 	}
 	if needUpdate {
-		n.peerToPeerStatusObserver.SendPeerUpdate([]string{n.spaceId})
+		n.peerUpdateHook()
 	}
 	// set node error if no local peers
 	if len(peers) == 0 {
@@ -204,7 +204,7 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		peers = append(peers, p)
 	}
 	if needUpdate {
-		n.peerToPeerStatusObserver.SendPeerUpdate([]string{n.spaceId})
+		n.peerUpdateHook()
 	}
 
 	n.Lock()

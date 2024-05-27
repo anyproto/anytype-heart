@@ -5,7 +5,8 @@ package addrs
 
 import (
 	"net"
-	"strings"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -27,7 +28,7 @@ func GetInterfacesAddrs() (iAddrs InterfacesAddrs, err error) {
 	if err != nil {
 		return
 	}
-	iAddrs.Addrs = slice.Filter(addrs, func(addr net.Addr) bool { return !strings.HasPrefix(addr.String(), "127.0.0.1") })
+	iAddrs.Addrs = addrs
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return
@@ -35,7 +36,13 @@ func GetInterfacesAddrs() (iAddrs InterfacesAddrs, err error) {
 	iAddrs.Interfaces = ifaces
 
 	iAddrs.Interfaces = slice.Filter(iAddrs.Interfaces, func(iface net.Interface) bool {
-		return iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagMulticast != 0 && iface.Flags&net.FlagLoopback == 0
+		return iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagMulticast != 0
 	})
 	return
+}
+
+func IsLoopBack(interfaces []net.Interface) bool {
+	return slices.ContainsFunc(interfaces, func(n net.Interface) bool {
+		return n.Flags&net.FlagLoopback != 0
+	})
 }
