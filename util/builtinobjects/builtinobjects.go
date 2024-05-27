@@ -536,7 +536,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 }
 
 func (b *builtinObjects) setupProgress() (process.Progress, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
+	progress := process.NewProgress(&pb.ModelProcessMessageOfImport{})
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}
