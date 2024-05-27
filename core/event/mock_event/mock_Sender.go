@@ -56,6 +56,40 @@ func (_c *MockSender_Broadcast_Call) RunAndReturn(run func(*pb.Event)) *MockSend
 	return _c
 }
 
+// BroadcastExceptSessions provides a mock function with given fields: _a0, exceptTokens
+func (_m *MockSender) BroadcastExceptSessions(_a0 *pb.Event, exceptTokens []string) {
+	_m.Called(_a0, exceptTokens)
+}
+
+// MockSender_BroadcastExceptSessions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BroadcastExceptSessions'
+type MockSender_BroadcastExceptSessions_Call struct {
+	*mock.Call
+}
+
+// BroadcastExceptSessions is a helper method to define mock.On call
+//   - _a0 *pb.Event
+//   - exceptTokens []string
+func (_e *MockSender_Expecter) BroadcastExceptSessions(_a0 interface{}, exceptTokens interface{}) *MockSender_BroadcastExceptSessions_Call {
+	return &MockSender_BroadcastExceptSessions_Call{Call: _e.mock.On("BroadcastExceptSessions", _a0, exceptTokens)}
+}
+
+func (_c *MockSender_BroadcastExceptSessions_Call) Run(run func(_a0 *pb.Event, exceptTokens []string)) *MockSender_BroadcastExceptSessions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*pb.Event), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSender_BroadcastExceptSessions_Call) Return() *MockSender_BroadcastExceptSessions_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockSender_BroadcastExceptSessions_Call) RunAndReturn(run func(*pb.Event, []string)) *MockSender_BroadcastExceptSessions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BroadcastToOtherSessions provides a mock function with given fields: token, e
 func (_m *MockSender) BroadcastToOtherSessions(token string, e *pb.Event) {
 	_m.Called(token, e)
