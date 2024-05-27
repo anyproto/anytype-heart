@@ -718,9 +718,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
-	if err = sb.saveActiveViews(msgs); err != nil {
-		log.With("objectID", sb.Id()).Warnf("failed to update active views: %v", err)
-	}
+	msgs = sb.saveActiveViews(msgs)
 
 	afterPushChangeTime := time.Now()
 	if sendEvent {
@@ -1353,24 +1351,29 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 	return false
 }
 
-func (sb *smartBlock) saveActiveViews(msgs []simple.EventMessage) error {
+func (sb *smartBlock) saveActiveViews(msgs []simple.EventMessage) []simple.EventMessage {
+	i := 0
 	for _, msg := range msgs {
 		ev := msg.Msg.GetBlockDataviewActiveViewIsSet()
 		if ev != nil {
 			err := sb.objectStore.SetActiveView(sb.Id(), ev.BlockId, ev.ViewId)
 			if err != nil {
-				return err
+				log.With("objectID", sb.Id()).Warnf("failed to update active view: %v", err)
 			}
+		} else {
+			msgs[i] = msg
+			i++
 		}
 	}
-	return nil
+	// we exclude BlockDataViewActiveViewIsSet messages, because we do not need to send events on it
+	return msgs[:i]
 }
 
 func (sb *smartBlock) injectActiveViews(s *state.State) {
 	if err := s.Iterate(func(b simple.Block) (isContinue bool) {
 		if d := b.Model().GetDataview(); d != nil {
 			viewId, err := sb.objectStore.GetActiveView(sb.Id(), b.Model().Id)
-			if err != nil {
+			if err == nil {
 				d.ActiveView = viewId
 			} else {
 				log.With("objectId", sb.Id()).With("blockId", b.Model().Id).Warnf("failed to inject active view")

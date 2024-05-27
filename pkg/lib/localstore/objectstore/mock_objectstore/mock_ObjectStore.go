@@ -684,6 +684,63 @@ func (_c *MockObjectStore_GetAccountStatus_Call) RunAndReturn(run func() (*coord
 	return _c
 }
 
+// GetActiveView provides a mock function with given fields: objectId, blockId
+func (_m *MockObjectStore) GetActiveView(objectId string, blockId string) (string, error) {
+	ret := _m.Called(objectId, blockId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetActiveView")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) (string, error)); ok {
+		return rf(objectId, blockId)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) string); ok {
+		r0 = rf(objectId, blockId)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(objectId, blockId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_GetActiveView_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetActiveView'
+type MockObjectStore_GetActiveView_Call struct {
+	*mock.Call
+}
+
+// GetActiveView is a helper method to define mock.On call
+//   - objectId string
+//   - blockId string
+func (_e *MockObjectStore_Expecter) GetActiveView(objectId interface{}, blockId interface{}) *MockObjectStore_GetActiveView_Call {
+	return &MockObjectStore_GetActiveView_Call{Call: _e.mock.On("GetActiveView", objectId, blockId)}
+}
+
+func (_c *MockObjectStore_GetActiveView_Call) Run(run func(objectId string, blockId string)) *MockObjectStore_GetActiveView_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetActiveView_Call) Return(_a0 string, _a1 error) *MockObjectStore_GetActiveView_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectStore_GetActiveView_Call) RunAndReturn(run func(string, string) (string, error)) *MockObjectStore_GetActiveView_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetByIDs provides a mock function with given fields: spaceID, ids
 func (_m *MockObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error) {
 	ret := _m.Called(spaceID, ids)
@@ -2668,6 +2725,54 @@ func (_c *MockObjectStore_SaveVirtualSpace_Call) Return(_a0 error) *MockObjectSt
 }
 
 func (_c *MockObjectStore_SaveVirtualSpace_Call) RunAndReturn(run func(string) error) *MockObjectStore_SaveVirtualSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetActiveView provides a mock function with given fields: objectId, blockId, viewId
+func (_m *MockObjectStore) SetActiveView(objectId string, blockId string, viewId string) error {
+	ret := _m.Called(objectId, blockId, viewId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetActiveView")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
+		r0 = rf(objectId, blockId, viewId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_SetActiveView_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetActiveView'
+type MockObjectStore_SetActiveView_Call struct {
+	*mock.Call
+}
+
+// SetActiveView is a helper method to define mock.On call
+//   - objectId string
+//   - blockId string
+//   - viewId string
+func (_e *MockObjectStore_Expecter) SetActiveView(objectId interface{}, blockId interface{}, viewId interface{}) *MockObjectStore_SetActiveView_Call {
+	return &MockObjectStore_SetActiveView_Call{Call: _e.mock.On("SetActiveView", objectId, blockId, viewId)}
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) Run(run func(objectId string, blockId string, viewId string)) *MockObjectStore_SetActiveView_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) Return(_a0 error) *MockObjectStore_SetActiveView_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) RunAndReturn(run func(string, string, string) error) *MockObjectStore_SetActiveView_Call {
 	_c.Call.Return(run)
 	return _c
 }
