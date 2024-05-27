@@ -42,6 +42,7 @@ func TestSmartBlock_Init(t *testing.T) {
 	}, nil).Maybe()
 	fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 	fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
+	fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
 
 	// when
 	fx.init(t, []*model.Block{{Id: id}})
@@ -60,6 +61,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
+		fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
 		fx.init(t, []*model.Block{{Id: "1"}})
@@ -95,6 +97,7 @@ func TestBasic_SetAlign(t *testing.T) {
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
+		fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
@@ -120,6 +123,7 @@ func TestBasic_SetAlign(t *testing.T) {
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
+		fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
@@ -475,12 +479,8 @@ func TestInjectActiveViews(t *testing.T) {
 		// given
 		fx := newFixture(objId, t)
 		blocksToView := map[string]string{dv1: "view1", dv2: "view2"}
-		fx.store.EXPECT().GetActiveView(objId, mock.Anything).RunAndReturn(func(_ string, blockId string) (string, error) {
-			v, ok := blocksToView[blockId]
-			if !ok {
-				return "", errors.New("not found")
-			}
-			return v, nil
+		fx.store.EXPECT().GetActiveViews(objId).RunAndReturn(func(blockId string) (map[string]string, error) {
+			return blocksToView, nil
 		})
 
 		st := state.NewDoc(objId, map[string]simple.Block{

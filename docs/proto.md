@@ -1408,7 +1408,7 @@
     - [Event.Block](#anytype-Event-Block)
     - [Event.Block.Add](#anytype-Event-Block-Add)
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
-    - [Event.Block.Dataview.ActiveViewIsSet](#anytype-Event-Block-Dataview-ActiveViewIsSet)
+    - [Event.Block.Dataview.ActiveViewSet](#anytype-Event-Block-Dataview-ActiveViewSet)
     - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
     - [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet)
     - [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate)
@@ -22231,9 +22231,9 @@ B. Partial block load
 
 
 
-<a name="anytype-Event-Block-Dataview-ActiveViewIsSet"></a>
+<a name="anytype-Event-Block-Dataview-ActiveViewSet"></a>
 
-### Event.Block.Dataview.ActiveViewIsSet
+### Event.Block.Dataview.ActiveViewSet
 
 
 
@@ -24393,7 +24393,7 @@ Precondition: user A opened a block
 | blockDataviewViewUpdate | [Event.Block.Dataview.ViewUpdate](#anytype-Event-Block-Dataview-ViewUpdate) |  |  |
 | blockDataviewTargetObjectIdSet | [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet) |  |  |
 | blockDataviewIsCollectionSet | [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet) |  |  |
-| blockDataviewActiveViewIsSet | [Event.Block.Dataview.ActiveViewIsSet](#anytype-Event-Block-Dataview-ActiveViewIsSet) |  |  |
+| blockDataviewActiveViewSet | [Event.Block.Dataview.ActiveViewSet](#anytype-Event-Block-Dataview-ActiveViewSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
 | blockDataviewOldRelationSet | [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet) |  | deprecated |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |

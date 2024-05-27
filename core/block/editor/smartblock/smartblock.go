@@ -40,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -1353,35 +1354,53 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 
 func (sb *smartBlock) saveActiveViews(msgs []simple.EventMessage) []simple.EventMessage {
 	i := 0
+	views := make(map[string]string, 0)
 	for _, msg := range msgs {
-		ev := msg.Msg.GetBlockDataviewActiveViewIsSet()
+		ev := msg.Msg.GetBlockDataviewActiveViewSet()
 		if ev != nil {
-			err := sb.objectStore.SetActiveView(sb.Id(), ev.BlockId, ev.ViewId)
-			if err != nil {
-				log.With("objectID", sb.Id()).Warnf("failed to update active view: %v", err)
-			}
+			views[ev.BlockId] = ev.ViewId
+
 		} else {
 			msgs[i] = msg
 			i++
 		}
 	}
+
+	if len(views) == 0 {
+		return msgs
+	}
+
+	err := sb.objectStore.SetActiveViews(sb.Id(), views)
+	if err != nil {
+		log.With("objectID", sb.Id()).Warnf("failed to update active views: %v", err)
+	}
+
 	// we exclude BlockDataViewActiveViewIsSet messages, because we do not need to send events on it
 	return msgs[:i]
 }
 
 func (sb *smartBlock) injectActiveViews(s *state.State) {
-	if err := s.Iterate(func(b simple.Block) (isContinue bool) {
-		if d := b.Model().GetDataview(); d != nil {
-			viewId, err := sb.objectStore.GetActiveView(sb.Id(), b.Model().Id)
-			if err == nil {
-				d.ActiveView = viewId
-			} else {
-				log.With("objectId", sb.Id()).With("blockId", b.Model().Id).Warnf("failed to inject active view")
-			}
+	views, err := sb.objectStore.GetActiveViews(sb.Id())
+	if badgerhelper.IsNotFound(err) {
+		return
+	}
+	if err != nil {
+		log.With("objectId", sb.Id()).Warnf("failed to get list of active views from store: %v", err)
+		return
+	}
+
+	for blockId, viewId := range views {
+		b := s.Pick(blockId)
+		if b == nil {
+			log.With("objectId", sb.Id()).Warnf("failed to get block '%s' to inject active view", blockId)
+			continue
 		}
-		return true
-	}); err != nil {
-		log.With("objectId", sb.Id()).Warnf("failed to inject active view to blocks of smartblock")
+		d := b.Model().GetDataview()
+		if d == nil {
+			log.With("objectId", sb.Id()).Warnf("block '%s' is not dataview, so cannot inject active view", blockId)
+			continue
+		}
+		d.ActiveView = viewId
 	}
 }
 

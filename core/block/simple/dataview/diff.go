@@ -254,8 +254,8 @@ func (d *Dataview) diffActiveView(other *Dataview, msgs []simple.EventMessage) [
 	if other.content.ActiveView != d.content.ActiveView {
 		msgs = append(msgs, simple.EventMessage{
 			Virtual: true,
-			Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewActiveViewIsSet{
-				BlockDataviewActiveViewIsSet: &pb.EventBlockDataviewActiveViewIsSet{
+			Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewActiveViewSet{
+				BlockDataviewActiveViewSet: &pb.EventBlockDataviewActiveViewSet{
 					BlockId: other.Id,
 					ViewId:  other.content.ActiveView,
 				}},

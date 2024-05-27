@@ -5,6 +5,7 @@
 //
 //	mockgen -package testMock -destination objectstore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore ObjectStore
 //
+
 // Package testMock is a generated GoMock package.
 package testMock
 
@@ -232,19 +233,19 @@ func (mr *MockObjectStoreMockRecorder) GetAccountStatus() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountStatus", reflect.TypeOf((*MockObjectStore)(nil).GetAccountStatus))
 }
 
-// GetActiveView mocks base method.
-func (m *MockObjectStore) GetActiveView(arg0, arg1 string) (string, error) {
+// GetActiveViews mocks base method.
+func (m *MockObjectStore) GetActiveViews(arg0 string) (map[string]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetActiveView", arg0, arg1)
-	ret0, _ := ret[0].(string)
+	ret := m.ctrl.Call(m, "GetActiveViews", arg0)
+	ret0, _ := ret[0].(map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetActiveView indicates an expected call of GetActiveView.
-func (mr *MockObjectStoreMockRecorder) GetActiveView(arg0, arg1 any) *gomock.Call {
+// GetActiveViews indicates an expected call of GetActiveViews.
+func (mr *MockObjectStoreMockRecorder) GetActiveViews(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveView", reflect.TypeOf((*MockObjectStore)(nil).GetActiveView), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveViews", reflect.TypeOf((*MockObjectStore)(nil).GetActiveViews), arg0)
 }
 
 // GetByIDs mocks base method.
@@ -781,18 +782,18 @@ func (mr *MockObjectStoreMockRecorder) SaveVirtualSpace(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).SaveVirtualSpace), arg0)
 }
 
-// SetActiveView mocks base method.
-func (m *MockObjectStore) SetActiveView(arg0, arg1, arg2 string) error {
+// SetActiveViews mocks base method.
+func (m *MockObjectStore) SetActiveViews(arg0 string, arg1 map[string]string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetActiveView", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "SetActiveViews", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SetActiveView indicates an expected call of SetActiveView.
-func (mr *MockObjectStoreMockRecorder) SetActiveView(arg0, arg1, arg2 any) *gomock.Call {
+// SetActiveViews indicates an expected call of SetActiveViews.
+func (mr *MockObjectStoreMockRecorder) SetActiveViews(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetActiveView", reflect.TypeOf((*MockObjectStore)(nil).SetActiveView), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetActiveViews", reflect.TypeOf((*MockObjectStore)(nil).SetActiveViews), arg0, arg1)
 }
 
 // SubscribeForAll mocks base method.
