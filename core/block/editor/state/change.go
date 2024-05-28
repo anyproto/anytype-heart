@@ -846,29 +846,29 @@ func (s *State) makeNotificationChanges() []*pb.ChangeContent {
 }
 
 func (s *State) makeDeviceInfoChanges() []*pb.ChangeContent {
-	if s.parent == nil && len(s.parent.ListDevices()) == 0 {
-		return nil
-	}
-	var changes []*pb.ChangeContent
+	changes := make([]*pb.ChangeContent, 0)
 	for id, device := range s.deviceStore {
-		if d := s.parent.GetDevice(id); d != nil {
-			if device.Name != d.Name {
-				changes = append(changes, &pb.ChangeContent{
-					Value: &pb.ChangeContentValueOfDeviceUpdate{
-						DeviceUpdate: &pb.ChangeDeviceUpdate{
-							Id:   device.Id,
-							Name: device.Name,
+		if s.parent != nil {
+			if d := s.parent.GetDevice(id); d != nil {
+				if device.Name != d.Name {
+					changes = append(changes, &pb.ChangeContent{
+						Value: &pb.ChangeContentValueOfDeviceUpdate{
+							DeviceUpdate: &pb.ChangeDeviceUpdate{
+								Id:   device.Id,
+								Name: device.Name,
+							},
 						},
-					},
-				})
+					})
+				}
+				continue
 			}
-		} else {
-			changes = append(changes, &pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfDeviceAdd{
-					DeviceAdd: &pb.ChangeDeviceAdd{Device: device},
-				},
-			})
 		}
+		// if parent is nil or device is absence in parent state
+		changes = append(changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDeviceAdd{
+				DeviceAdd: &pb.ChangeDeviceAdd{Device: device},
+			},
+		})
 	}
 	return changes
 }
