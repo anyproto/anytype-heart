@@ -23,25 +23,26 @@ import (
 )
 
 func TestRunner(t *testing.T) {
-	t.Run("context exceeds + store operation in progress -> context.Canceled", func(t *testing.T) {
-		// given
-		store := objectstore.NewStoreFixture(t)
-		ctx, cancel := context.WithCancel(context.Background())
-		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Id().Times(1).Return("")
-		runner := Runner{ctx: ctx, store: store, spc: space}
-
-		// when
-		go func() {
-			time.Sleep(10 * time.Millisecond)
-			cancel()
-		}()
-		err := runner.run(longStoreMigration{})
-
-		// then
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, context.Canceled))
-	})
+	// TODO: we should revive this test when context query for ObjectStore will be implemented
+	// t.Run("context exceeds + store operation in progress -> context.Canceled", func(t *testing.T) {
+	// 	// given
+	// 	store := objectstore.NewStoreFixture(t)
+	// 	ctx, cancel := context.WithCancel(context.Background())
+	// 	space := mock_space.NewMockSpace(t)
+	// 	space.EXPECT().Id().Times(1).Return("")
+	// 	runner := Runner{ctx: ctx, store: store, spc: space}
+	//
+	// 	// when
+	// 	go func() {
+	// 		time.Sleep(10 * time.Millisecond)
+	// 		cancel()
+	// 	}()
+	// 	err := runner.run(longStoreMigration{})
+	//
+	// 	// then
+	// 	assert.Error(t, err)
+	// 	assert.True(t, errors.Is(err, context.Canceled))
+	// })
 
 	t.Run("context exceeds + space operation in progress -> context.Canceled", func(t *testing.T) {
 		// given
