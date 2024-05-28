@@ -20435,6 +20435,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
 | INVALID_RECEIPT | 6 |  |
+| PURCHASE_REGISTRATION_ERROR | 7 |  |
+| SUBSCRIPTION_RENEW_ERROR | 8 |  |
 
 
 
