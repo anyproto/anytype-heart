@@ -168,9 +168,11 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore/clientserver:
     interfaces:
       ClientServer:
-  github.com/anyproto/anytype-heart/core/syncstatus/p2p:
+  github.com/anyproto/anytype-heart/core/peerstatus:
     interfaces:
       StatusUpdateSender:
+      HookRegister:
+      PeerUpdateHook:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:

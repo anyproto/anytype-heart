@@ -106,6 +106,10 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
+		var hookCalled bool
+		ld.RegisterPeerDiscovered(func() {
+			hookCalled = true
+		})
 
 		go func() {
 			ld.closeWait.Add(1)
@@ -119,6 +123,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		ld.readAnswers(peerUpdate)
 
 		// then
+		assert.True(t, hookCalled)
 	})
 	t.Run("readAnswers - send peer update to notifier", func(t *testing.T) {
 		// given

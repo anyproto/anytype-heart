@@ -28,11 +28,13 @@ const (
 )
 
 type HookRegister interface {
+	app.Component
 	RegisterPeerDiscovered(hook func())
 	RegisterP2PNotPossible(hook func())
 }
 
 type PeerUpdateHook interface {
+	app.Component
 	Register(hook func())
 }
 

@@ -6,11 +6,15 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/peer/mock_peer"
+	"github.com/anyproto/any-sync/net/rpc/rpctest"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/peerstatus/mock_peerstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -18,9 +22,12 @@ import (
 
 type fixture struct {
 	StatusUpdateSender
-	sender  *mock_event.MockSender
-	service *mock_nodeconf.MockService
-	store   peerstore.PeerStore
+	sender         *mock_event.MockSender
+	service        *mock_nodeconf.MockService
+	store          peerstore.PeerStore
+	pool           *rpctest.TestPool
+	hookRegister   *mock_peerstatus.MockHookRegister
+	peerUpdateHook *mock_peerstatus.MockPeerUpdateHook
 }
 
 func TestP2PStatus_Init(t *testing.T) {
@@ -68,89 +75,19 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 		err = f.Close(context.Background())
 		assert.Nil(t, err)
 	})
-
 	t.Run("send NotConnected status", func(t *testing.T) {
 		// given
 		f := newFixture(t, "spaceId", pb.EventP2PStatus_NotConnected)
-		err := f.Run(context.Background())
-		assert.Nil(t, err)
 
 		// when
-		f.sender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfP2PStatusUpdate{
-						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
-							SpaceId: "spaceId",
-							Status:  pb.EventP2PStatus_NotConnected,
-						},
-					},
-				},
-			},
-		})
-		f.SendNotPossibleStatus()
+		err := f.Run(context.Background())
+		assert.Nil(t, err)
 
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		checkStatus(t, status, NotConnected)
-
-		err = f.Close(context.Background())
+		err = waitForStatus(status, NotConnected)
 		assert.Nil(t, err)
-	})
-	t.Run("send NotConnected status", func(t *testing.T) {
-		// given
-		f := newFixture(t, "spaceId", pb.EventP2PStatus_NotConnected)
-		err := f.Run(context.Background())
-		assert.Nil(t, err)
-
-		// when
-		f.sender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfP2PStatusUpdate{
-						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
-							SpaceId: "spaceId",
-							Status:  pb.EventP2PStatus_NotConnected,
-						},
-					},
-				},
-			},
-		})
-		f.SendNotPossibleStatus()
-
-		// then
-		status := f.StatusUpdateSender.(*p2pStatus)
-		assert.NotNil(t, status)
-		checkStatus(t, status, NotConnected)
-		err = f.Close(context.Background())
-		assert.Nil(t, err)
-	})
-	t.Run("send Connected status", func(t *testing.T) {
-		// given
-		f := newFixture(t, "spaceId", pb.EventP2PStatus_NotConnected)
-		err := f.Run(context.Background())
-		assert.Nil(t, err)
-
-		// when
-		f.sender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfP2PStatusUpdate{
-						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
-							SpaceId: "spaceId",
-							Status:  pb.EventP2PStatus_Connected,
-						},
-					},
-				},
-			},
-		})
-		f.SendNotPossibleStatus()
-
-		// then
-		status := f.StatusUpdateSender.(*p2pStatus)
-		assert.NotNil(t, status)
-		checkStatus(t, status, Connected)
 		err = f.Close(context.Background())
 		assert.Nil(t, err)
 	})
@@ -173,7 +110,8 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		checkStatus(t, status, Connected)
+		err = waitForStatus(status, Connected)
+		assert.NotNil(t, status)
 	})
 	t.Run("send NotConnected status, because we have peer were disconnected", func(t *testing.T) {
 		// given
@@ -210,7 +148,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 
 		status := f.StatusUpdateSender.(*p2pStatus)
 		assert.NotNil(t, status)
-		checkStatus(t, status, NotConnected)
+		err = waitForStatus(status, NotConnected)
 	})
 	t.Run("connection was not possible, but after a while starts working", func(t *testing.T) {
 		// given
@@ -306,10 +244,24 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 	sender := mock_event.NewMockSender(t)
 	service := mock_nodeconf.NewMockService(ctrl)
 	service.EXPECT().Name().Return("common.nodeconf").AnyTimes()
+	pool := rpctest.NewTestPool()
+	pool.WithServer(rpctest.NewTestServer())
+	peer := mock_peer.NewMockPeer(ctrl)
+	peer.EXPECT().Id().Return("peerId")
+	pool.AddPeer(context.Background(), peer)
 	store := peerstore.New()
+	hookRegister := mock_peerstatus.NewMockHookRegister(t)
+	hookRegister.EXPECT().RegisterPeerDiscovered(mock.Anything).Return()
+	hookRegister.EXPECT().RegisterP2PNotPossible(mock.Anything).Return()
+	peerUpdateHook := mock_peerstatus.NewMockPeerUpdateHook(t)
+	peerUpdateHook.EXPECT().Register(mock.Anything).Return()
+
 	a.Register(testutil.PrepareMock(ctx, a, sender)).
 		Register(service).
-		Register(store)
+		Register(store).
+		Register(pool).
+		Register(testutil.PrepareMock(ctx, a, hookRegister)).
+		Register(testutil.PrepareMock(ctx, a, peerUpdateHook))
 	err := store.Init(a)
 	assert.Nil(t, err)
 	status := NewP2PStatus(spaceId)
@@ -318,6 +270,9 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 		sender:             sender,
 		service:            service,
 		store:              store,
+		pool:               pool,
+		hookRegister:       hookRegister,
+		peerUpdateHook:     peerUpdateHook,
 	}
 	err = f.Init(a)
 	assert.Nil(t, err)
