@@ -317,7 +317,9 @@ func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipVerifyAppStoreReceiptResponseError_CACHE_ERROR),
-			errToCode(proto.ErrInvalidReceipt, pb.RpcMembershipVerifyAppStoreReceiptResponseError_INVALID_RECEIPT),
+			errToCode(proto.ErrAppleInvalidReceipt, pb.RpcMembershipVerifyAppStoreReceiptResponseError_INVALID_RECEIPT),
+			errToCode(proto.ErrApplePurchaseRegistration, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PURCHASE_REGISTRATION_ERROR),
+			errToCode(proto.ErrAppleSubscriptionRenew, pb.RpcMembershipVerifyAppStoreReceiptResponseError_SUBSCRIPTION_RENEW_ERROR),
 			errToCode(proto.ErrUnknown, pb.RpcMembershipVerifyAppStoreReceiptResponseError_UNKNOWN_ERROR),
 		)
 

@@ -154,6 +154,16 @@ func GetRelation(rk domain.RelationKey) (*model.Relation, error) {
 	return nil, ErrNotFound
 }
 
+// PickRelation returns relation without copy by key, or nil if not found
+// you must NEVER modify it without copying
+func PickRelation(rk domain.RelationKey) (*model.Relation, error) {
+	if v, exists := relations[rk]; exists {
+		return v, nil
+	}
+
+	return nil, ErrNotFound
+}
+
 func GetLayout(lk model.ObjectTypeLayout) (*model.Layout, error) {
 	if v, exists := Layouts[lk]; exists {
 		return pbtypes.CopyLayout(&v), nil
