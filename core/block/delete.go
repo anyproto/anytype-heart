@@ -14,6 +14,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -33,33 +34,11 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 	if err != nil {
 		return
 	}
+
 	switch sbType {
-	case coresb.SmartBlockTypeObjectType,
-		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeRelationOption,
-		coresb.SmartBlockTypeTemplate:
-		var relationKey string
-		err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
-			st := b.NewState()
-			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(true))
-			if sbType == coresb.SmartBlockTypeRelation {
-				relationKey = pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
-			}
-			return b.Apply(st)
-		})
-		if err != nil {
-			return fmt.Errorf("set isUninstalled flag: %w", err)
-		}
-		err = s.OnDelete(id, nil)
-		if err != nil {
-			return fmt.Errorf("on delete: %w", err)
-		}
-		if sbType == coresb.SmartBlockTypeRelation {
-			err := s.deleteRelationOptions(relationKey)
-			if err != nil {
-				return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
-			}
-		}
+	case coresb.SmartBlockTypeObjectType, coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeRelationOption, coresb.SmartBlockTypeTemplate:
+		return s.deleteDerivedObject(id, spc)
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFileObject:
@@ -71,17 +50,42 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 		return spc.DeleteTree(context.Background(), id.ObjectID)
 	default:
 		// this will call DeleteTree asynchronously in the end
-		return spc.DeleteTree(context.Background(), id.ObjectID)
-	}
-	if err != nil {
+		if err = spc.DeleteTree(context.Background(), id.ObjectID); err == nil {
+			sendOnCloseEvent(s.eventSender, id.ObjectID, pb.EventObjectClose_Client)
+		}
 		return
 	}
+}
 
+func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (err error) {
+	var (
+		relationKey string
+		sbType      coresb.SmartBlockType
+	)
+	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(true))
+		if sbType == coresb.SmartBlockTypeRelation {
+			relationKey = pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+		}
+		return b.Apply(st)
+	})
+	if err != nil {
+		return fmt.Errorf("set isUninstalled flag: %w", err)
+	}
+	err = s.OnDelete(id, nil)
+	if err != nil {
+		return fmt.Errorf("on delete: %w", err)
+	}
+	if sbType == coresb.SmartBlockTypeRelation {
+		err := s.deleteRelationOptions(relationKey)
+		if err != nil {
+			return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
+		}
+	}
 	sendOnRemoveEvent(s.eventSender, id.ObjectID)
-	sendOnCloseEvent(s.eventSender, id.ObjectID)
-
-	err = spc.Remove(context.Background(), id.ObjectID)
-	return
+	sendOnCloseEvent(s.eventSender, id.ObjectID, pb.EventObjectClose_Client)
+	return spc.Remove(context.Background(), id.ObjectID)
 }
 
 func (s *Service) deleteRelationOptions(relationKey string) error {
@@ -147,11 +151,6 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 	return nil
 }
 
-func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
-	log.Debug("space deleted", zap.String("spaceID", spaceID))
-	return nil
-}
-
 func sendOnRemoveEvent(eventSender event.Sender, ids ...string) {
 	eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
@@ -166,13 +165,14 @@ func sendOnRemoveEvent(eventSender event.Sender, ids ...string) {
 	})
 }
 
-func sendOnCloseEvent(eventSender event.Sender, id string) {
+func sendOnCloseEvent(eventSender event.Sender, id string, closer pb.EventObjectCloseCloser) {
 	eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfObjectClose{
 					ObjectClose: &pb.EventObjectClose{
-						Id: id,
+						Id:     id,
+						Closer: closer,
 					},
 				},
 			},

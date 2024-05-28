@@ -240,6 +240,12 @@ message Event {
 
         message Close {
             string id = 1;
+            Closer closer = 2;
+
+            enum Closer {
+                Middle = 0;
+                Client = 1;
+            }
         }
     }
     message Block {

@@ -163,7 +163,7 @@ func (s *Service) Run(context.Context) (err error) {
 
 func (s *Service) Close(context.Context) (err error) {
 	for _, obj := range s.GetOpenedObjects() {
-		sendOnCloseEvent(s.eventSender, obj)
+		sendOnCloseEvent(s.eventSender, obj, pb.EventObjectClose_Middle)
 	}
 	return nil
 }
