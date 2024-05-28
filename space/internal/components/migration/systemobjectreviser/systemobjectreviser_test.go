@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,6 +16,7 @@ import (
 
 func TestReviseSystemObject(t *testing.T) {
 	ctx := context.Background()
+	log := logger.NewNamed("tesr")
 	marketObjects := map[string]*types.Struct{
 		"_otnote":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(3)}},
 		"_otpage":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(2)}},
@@ -37,7 +39,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space.EXPECT().Id().Times(1).Return("")
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, objectType, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -55,7 +57,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space.EXPECT().Id().Times(1).Return("")
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, objectType, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -70,7 +72,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, objectType, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -86,7 +88,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, objectType, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -103,7 +105,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, objectType, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, objectType, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -122,7 +124,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space.EXPECT().Id().Times(1).Return("")
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, rel, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -140,7 +142,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space.EXPECT().Id().Times(1).Return("")
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, rel, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -155,7 +157,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, rel, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -172,7 +174,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, rel, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -189,7 +191,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, rel, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
 
 		// then
 		assert.NoError(t, err)
@@ -209,7 +211,7 @@ func TestReviseSystemObject(t *testing.T) {
 		space.EXPECT().Id().Times(1).Return("")
 
 		// when
-		toRevise, err := reviseSystemObject(ctx, space, rel, marketObjects)
+		toRevise, err := reviseSystemObject(ctx, log, space, rel, marketObjects)
 
 		// then
 		assert.NoError(t, err)

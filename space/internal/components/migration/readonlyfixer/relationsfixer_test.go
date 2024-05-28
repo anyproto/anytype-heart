@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/exp/slices"
@@ -63,6 +64,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 	})
 	fixer := &Migration{}
 	ctx := context.Background()
+	log := logger.NewNamed("test")
 
 	t.Run("fix tag and status relations with readonly=true", func(t *testing.T) {
 		// given
@@ -78,7 +80,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		).Times(2)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, store, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store, spc)
 
 		// then
 		assert.NoError(t, err)
@@ -95,7 +97,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, store, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store, spc)
 
 		// then
 		assert.NoError(t, err)
@@ -112,7 +114,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, store, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store, spc)
 
 		// then
 		assert.NoError(t, err)
