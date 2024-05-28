@@ -409,8 +409,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	// because mill result reader doesn't support seek we need to do the mill again
-	res, err = mill.Mill(conf.Reader, conf.Name)
+	_, err = res.File.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err
 	}
@@ -465,6 +464,10 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	fileInfo.MetaHash = metaNode.Cid().String()
 
 	pairNode, err := s.addFilePairNode(ctx, spaceID, fileInfo)
+	err = res.File.Close()
+	if err != nil {
+		log.Warnf("failed to close file: %s", err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("add file pair node: %w", err)
 	}
