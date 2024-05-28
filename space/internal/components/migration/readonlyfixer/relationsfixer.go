@@ -2,10 +2,10 @@ package readonlyfixer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -61,7 +61,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 			return nil
 		})
 		if e != nil {
-			err = multierror.Append(err, fmt.Errorf("failed to set readOnlyValue=true to relation %s in space %s: %w", uk, spaceId, e))
+			err = errors.Join(err, fmt.Errorf("failed to set readOnlyValue=true to relation %s in space %s: %w", uk, spaceId, e))
 		} else {
 			migrated++
 		}

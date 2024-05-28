@@ -2,11 +2,11 @@ package migration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -96,17 +96,17 @@ func (r *Runner) runMigrations() {
 	}
 }
 
-func (r *Runner) run(migrations ...Migration) (mErr error) {
+func (r *Runner) run(migrations ...Migration) (err error) {
 	spaceId := r.spc.Id()
 
 	for _, m := range migrations {
-		if err := r.ctx.Err(); err != nil {
-			mErr = multierror.Append(mErr, err)
+		if e := r.ctx.Err(); e != nil {
+			err = errors.Join(err, e)
 			return
 		}
-		toMigrate, migrated, err := m.Run(r.ctx, log, r.store, r.spc)
-		if err != nil {
-			mErr = multierror.Append(mErr, wrapError(err, m.Name(), spaceId, migrated, toMigrate))
+		toMigrate, migrated, e := m.Run(r.ctx, log, r.store, r.spc)
+		if e != nil {
+			err = errors.Join(err, wrapError(e, m.Name(), spaceId, migrated, toMigrate))
 			continue
 		}
 		log.Debug(fmt.Sprintf("migration '%s' in space '%s' is successful. %d out of %d objects were migrated",

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -15,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/space/internal/components/migration/common"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -135,9 +136,9 @@ func (longStoreMigration) Name() string {
 	return "long migration"
 }
 
-func (longStoreMigration) Run(ctx context.Context, store common.StoreWithCtx, _ common.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (longStoreMigration) Run(ctx context.Context, _ logger.CtxLogger, store dependencies.QueryableStore, _ dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
-		if _, err = store.QueryWithContext(ctx, database.Query{}); err != nil {
+		if _, err = store.Query(database.Query{}); err != nil {
 			return 0, 0, err
 		}
 	}
@@ -149,7 +150,7 @@ func (longSpaceMigration) Name() string {
 	return "long migration"
 }
 
-func (longSpaceMigration) Run(ctx context.Context, _ common.StoreWithCtx, space common.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, _ dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
 		if err = space.DoCtx(ctx, "", func(smartblock.SmartBlock) error {
 			// do smth
@@ -166,6 +167,6 @@ func (instantMigration) Name() string {
 	return "instant migration"
 }
 
-func (instantMigration) Run(_ context.Context, _ common.StoreWithCtx, _ common.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (instantMigration) Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	return 0, 0, nil
 }
