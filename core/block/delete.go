@@ -36,8 +36,10 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 	}
 
 	switch sbType {
-	case coresb.SmartBlockTypeObjectType, coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeRelationOption, coresb.SmartBlockTypeTemplate:
+	case coresb.SmartBlockTypeObjectType,
+		coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeRelationOption,
+		coresb.SmartBlockTypeTemplate:
 		return s.deleteDerivedObject(id, spc)
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
