@@ -9,10 +9,10 @@ import (
 )
 
 func TestViewsMapToString(t *testing.T) {
-	assert.Equal(t, "block1:view1,block2:view2", viewsMapToString(map[string]string{"block1": "view1", "block2": "view2"}))
+	assert.Contains(t, []string{"block1:view1,block2:view2", "block2:view2,block1:view1"}, viewsMapToString(map[string]string{"block1": "view1", "block2": "view2"}))
 	assert.Equal(t, "", viewsMapToString(nil))
 	assert.Equal(t, "", viewsMapToString(map[string]string{}))
-	assert.Equal(t, ":view,block:", viewsMapToString(map[string]string{"": "view", "block": ""}))
+	assert.Contains(t, []string{":view,block:", "block:,:view"}, viewsMapToString(map[string]string{"": "view", "block": ""}))
 }
 
 func TestParseViewsMap(t *testing.T) {
