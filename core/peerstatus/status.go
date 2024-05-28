@@ -52,13 +52,20 @@ type p2pStatus struct {
 	sync.Mutex
 	status Status
 
-	forceCheckSpace     chan struct{}
-	updateStatus        chan Status
+	forceCheckSpace chan struct{}
+	updateStatus    chan Status
+	finish          chan struct{}
+
 	peersConnectionPool pool.Service
 }
 
 func NewP2PStatus(spaceId string) StatusUpdateSender {
-	return &p2pStatus{forceCheckSpace: make(chan struct{}), updateStatus: make(chan Status), spaceId: spaceId}
+	return &p2pStatus{
+		forceCheckSpace: make(chan struct{}, 1),
+		updateStatus:    make(chan Status, 1),
+		spaceId:         spaceId,
+		finish:          make(chan struct{}),
+	}
 }
 
 func (p *p2pStatus) Init(a *app.App) (err error) {
@@ -90,6 +97,7 @@ func (p *p2pStatus) Close(ctx context.Context) (err error) {
 	if p.contextCancel != nil {
 		p.contextCancel()
 	}
+	<-p.finish
 	return
 }
 
@@ -102,7 +110,8 @@ func (p *p2pStatus) SendNotPossibleStatus() {
 }
 
 func (p *p2pStatus) checkP2PDevices() {
-	timer := time.NewTimer(20 * time.Second)
+	defer close(p.finish)
+	timer := time.NewTicker(20 * time.Second)
 	defer timer.Stop()
 	p.updateSpaceP2PStatus()
 	for {
