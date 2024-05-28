@@ -42,7 +42,7 @@ func GetInterfacesAddrs() (iAddrs InterfacesAddrs, err error) {
 }
 
 func IsLoopBack(interfaces []net.Interface) bool {
-	return slices.ContainsFunc(interfaces, func(n net.Interface) bool {
+	return len(interfaces) == 1 && slices.ContainsFunc(interfaces, func(n net.Interface) bool {
 		return n.Flags&net.FlagLoopback != 0
 	})
 }

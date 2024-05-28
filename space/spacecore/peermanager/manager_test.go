@@ -15,8 +15,6 @@ import (
 	"go.uber.org/mock/gomock"
 	"storj.io/drpc"
 
-	"github.com/anyproto/anytype-heart/core/syncstatus/p2p"
-	"github.com/anyproto/anytype-heart/core/syncstatus/p2p/mock_p2p"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
@@ -97,7 +95,6 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.cm.fetchResponsiblePeers()
 
 		// then
-		f.p2pStatusSender.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peers connected", func(t *testing.T) {
 		// given
@@ -110,7 +107,6 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.cm.fetchResponsiblePeers()
 
 		// then
-		f.p2pStatusSender.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peer not connected", func(t *testing.T) {
 		// given
@@ -120,11 +116,9 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		// when
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
-		f.p2pStatusSender.EXPECT().SendPeerUpdate().Return()
 		f.cm.fetchResponsiblePeers()
 
 		// then
-		f.p2pStatusSender.AssertCalled(t, "CheckPeerStatus")
 	})
 }
 
@@ -142,7 +136,6 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 1)
-		f.p2pStatusSender.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peers connected", func(t *testing.T) {
 		// given
@@ -158,7 +151,6 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 2)
-		f.p2pStatusSender.AssertNotCalled(t, "CheckPeerStatus")
 	})
 	t.Run("local peer not connected", func(t *testing.T) {
 		// given
@@ -169,13 +161,11 @@ func Test_getStreamResponsiblePeers(t *testing.T) {
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
 		f.pool.EXPECT().Get(f.cm.ctx, "id").Return(newTestPeer("id"), nil)
-		f.p2pStatusSender.EXPECT().SendPeerUpdate().Return()
 		peers, err := f.cm.getStreamResponsiblePeers(context.Background())
 
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, peers, 1)
-		f.p2pStatusSender.AssertCalled(t, "CheckPeerStatus")
 	})
 }
 
@@ -256,10 +246,9 @@ func (t *testPeer) CloseChan() <-chan struct{} {
 }
 
 type fixture struct {
-	cm              *clientPeerManager
-	pool            *mock_pool.MockPool
-	p2pStatusSender *mock_p2p.MockStatusUpdateSender
-	store           peerstore.PeerStore
+	cm    *clientPeerManager
+	pool  *mock_pool.MockPool
+	store peerstore.PeerStore
 }
 
 func newFixtureManager(t *testing.T, spaceId string) *fixture {
@@ -267,21 +256,16 @@ func newFixtureManager(t *testing.T, spaceId string) *fixture {
 	pool := mock_pool.NewMockPool(ctrl)
 	provider := &provider{pool: pool}
 	store := peerstore.New()
-	observers := p2p.NewObservers()
-	p2pStatusSender := mock_p2p.NewMockStatusUpdateSender(t)
-	observers.AddObserver(spaceId, p2pStatusSender)
 	cm := &clientPeerManager{
-		p:                        provider,
-		spaceId:                  spaceId,
-		peerStore:                store,
-		peerToPeerStatusObserver: observers,
-		watchingPeers:            map[string]struct{}{},
-		ctx:                      context.Background(),
+		p:             provider,
+		spaceId:       spaceId,
+		peerStore:     store,
+		watchingPeers: map[string]struct{}{},
+		ctx:           context.Background(),
 	}
 	return &fixture{
-		cm:              cm,
-		pool:            pool,
-		p2pStatusSender: p2pStatusSender,
-		store:           store,
+		cm:    cm,
+		pool:  pool,
+		store: store,
 	}
 }

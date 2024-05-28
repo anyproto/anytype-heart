@@ -49,12 +49,11 @@ type localDiscovery struct {
 	peerId string
 	port   int
 
-	peerToPeerStatusUpdater StatusUpdater
-	notifier                Notifier
-	drpcServer              clientserver.ClientServer
-	manualStart             bool
-	m                       sync.Mutex
-	hooks                   map[Hook]HookCallback
+	notifier    Notifier
+	drpcServer  clientserver.ClientServer
+	manualStart bool
+	m           sync.Mutex
+	hooks       map[Hook][]HookCallback
 }
 
 func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
@@ -87,7 +86,7 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 }
 
 func New() LocalDiscovery {
-	return &localDiscovery{hooks: make(map[Hook]HookCallback, 0)}
+	return &localDiscovery{hooks: make(map[Hook][]HookCallback, 0)}
 }
 
 func (l *localDiscovery) SetNotifier(notifier Notifier) {
@@ -128,12 +127,12 @@ func (l *localDiscovery) Name() (name string) {
 	return CName
 }
 
-func (l *localDiscovery) RegisterPeerDiscoveredHook(hook func()) {
-	l.hooks[PeerDiscovered] = hook
+func (l *localDiscovery) RegisterPeerDiscovered(hook func()) {
+	l.hooks[PeerDiscovered] = append(l.hooks[PeerDiscovered], hook)
 }
 
-func (l *localDiscovery) RegisterPeerToPeerImpossibleHook(hook func()) {
-	l.hooks[PeerToPeerImpossible] = hook
+func (l *localDiscovery) RegisterP2PNotPossible(hook func()) {
+	l.hooks[PeerToPeerImpossible] = append(l.hooks[PeerToPeerImpossible], hook)
 }
 
 func (l *localDiscovery) Close(ctx context.Context) (err error) {

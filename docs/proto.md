@@ -1575,6 +1575,8 @@
     - [Event.Object.Subscription.Groups](#anytype-Event-Object-Subscription-Groups)
     - [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position)
     - [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove)
+    - [Event.P2PStatus](#anytype-Event-P2PStatus)
+    - [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update)
     - [Event.Payload](#anytype-Event-Payload)
     - [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast)
     - [Event.Ping](#anytype-Event-Ping)
@@ -1604,6 +1606,7 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
     - [Event.Space.Network](#anytype-Event-Space-Network)
     - [Event.Space.Status](#anytype-Event-Space-Status)
     - [Event.Space.SyncError](#anytype-Event-Space-SyncError)
@@ -24598,6 +24601,7 @@ Precondition: user A opened a block
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
 | spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
+| p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
 
 
 
@@ -24903,6 +24907,32 @@ Removes document from subscription
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | subId | [string](#string) |  | subscription id |
+
+
+
+
+
+
+<a name="anytype-Event-P2PStatus"></a>
+
+### Event.P2PStatus
+
+
+
+
+
+
+
+<a name="anytype-Event-P2PStatus-Update"></a>
+
+### Event.P2PStatus.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| status | [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status) |  |  |
 
 
 
@@ -25331,6 +25361,19 @@ Precondition: user A and user B opened the same block
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
 | SliceOperationReplace | 4 |  |
+
+
+
+<a name="anytype-Event-P2PStatus-Status"></a>
+
+### Event.P2PStatus.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Connected | 0 |  |
+| NotPossible | 1 |  |
+| NotConnected | 2 |  |
 
 
 

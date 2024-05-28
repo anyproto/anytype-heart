@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/core/syncstatus/p2p"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
@@ -38,8 +37,7 @@ type Params struct {
 
 func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
-	child.Register(p2p.NewP2PStatus(params.SpaceId)).
-		Register(aclindexcleaner.New()).
+	child.Register(aclindexcleaner.New()).
 		Register(builder.New()).
 		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).

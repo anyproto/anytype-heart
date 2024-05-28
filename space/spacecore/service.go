@@ -28,6 +28,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
+	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
@@ -238,7 +239,7 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
 	statusService := objectsyncstatus.NewSyncStatusService()
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), SyncStatus: statusService})
+	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), SyncStatus: statusService, PeerStatus: peerstatus.NewP2PStatus(id)})
 	if err != nil {
 		return
 	}

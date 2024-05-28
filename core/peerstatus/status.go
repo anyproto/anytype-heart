@@ -1,4 +1,4 @@
-package p2p
+package peerstatus
 
 import (
 	"context"
@@ -6,14 +6,17 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/net/pool"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 const CName = "core.syncstatus.p2p"
+
+var log = logging.Logger(CName)
 
 type Status int32
 
@@ -36,7 +39,7 @@ type PeerUpdateHook interface {
 type StatusUpdateSender interface {
 	app.ComponentRunnable
 	CheckPeerStatus()
-	P2PNotPossible()
+	SendNotPossibleStatus()
 }
 
 type p2pStatus struct {
@@ -44,6 +47,7 @@ type p2pStatus struct {
 	eventSender   event.Sender
 	contextCancel context.CancelFunc
 	ctx           context.Context
+	peerStore     peerstore.PeerStore
 
 	sync.Mutex
 	status Status
@@ -60,10 +64,11 @@ func NewP2PStatus(spaceId string) StatusUpdateSender {
 func (p *p2pStatus) Init(a *app.App) (err error) {
 	p.eventSender = app.MustComponent[event.Sender](a)
 	p.peersConnectionPool = app.MustComponent[pool.Service](a)
+	p.peerStore = app.MustComponent[peerstore.PeerStore](a)
 
 	hookRegister := app.MustComponent[HookRegister](a)
 
-	hookRegister.RegisterP2PNotPossible(p.P2PNotPossible)
+	hookRegister.RegisterP2PNotPossible(p.SendNotPossibleStatus)
 	hookRegister.RegisterPeerDiscovered(p.CheckPeerStatus)
 
 	peerManager := app.MustComponent[PeerUpdateHook](a)
@@ -92,7 +97,7 @@ func (p *p2pStatus) CheckPeerStatus() {
 	p.forceCheckSpace <- struct{}{}
 }
 
-func (p *p2pStatus) P2PNotPossible() {
+func (p *p2pStatus) SendNotPossibleStatus() {
 	p.updateStatus <- NotPossible
 }
 
@@ -117,17 +122,32 @@ func (p *p2pStatus) checkP2PDevices() {
 func (p *p2pStatus) updateSpaceP2PStatus() {
 	p.Lock()
 	defer p.Unlock()
-	var connectionCount int64
-	p.peersConnectionPool.ForEach(func(v ocache.Object) bool {
-		connectionCount++
-		return true
-	})
+	connectionCount, err := p.countOpenConnections()
+	if err != nil {
+		log.Errorf("failed to get pick peer %s", err)
+		return
+	}
 	if p.status != Unknown {
 		// avoiding sending of redundant event
 		p.handleNonUnknownStatus(connectionCount)
 	} else {
 		p.handleUnknownStatus(connectionCount)
 	}
+}
+
+func (p *p2pStatus) countOpenConnections() (int64, error) {
+	var connectionCount int64
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*20)
+	defer cancelFunc()
+	peerIds := p.peerStore.LocalPeerIds(p.spaceId)
+	for _, peerId := range peerIds {
+		_, err := p.peersConnectionPool.Pick(ctx, peerId)
+		if err != nil {
+			return 0, err
+		}
+		connectionCount++
+	}
+	return connectionCount, nil
 }
 
 func (p *p2pStatus) handleUnknownStatus(connectionCount int64) {

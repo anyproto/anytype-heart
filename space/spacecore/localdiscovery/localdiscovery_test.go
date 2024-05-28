@@ -15,19 +15,16 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/syncstatus/p2p"
-	"github.com/anyproto/anytype-heart/core/syncstatus/p2p/mock_p2p"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver/mock_clientserver"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 type fixture struct {
 	LocalDiscovery
-	nodeConf                *mock_nodeconf.MockService
-	eventSender             *mock_event.MockSender
-	peerToPeerStatusUpdater *p2p.Observers
-	clientServer            *mock_clientserver.MockClientServer
-	account                 *mock_accountservice.MockService
+	nodeConf     *mock_nodeconf.MockService
+	eventSender  *mock_event.MockSender
+	clientServer *mock_clientserver.MockClientServer
+	account      *mock_accountservice.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -35,7 +32,6 @@ func newFixture(t *testing.T) *fixture {
 	c := &config.Config{}
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
 	eventSender := mock_event.NewMockSender(t)
-	peerToPeerStatusUpdater := p2p.NewObservers()
 
 	clientServer := mock_clientserver.NewMockClientServer(t)
 	accountKeys, err := accountdata.NewRandom()
@@ -47,7 +43,6 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(c).
 		Register(testutil.PrepareMock(ctx, a, nodeConf)).
 		Register(testutil.PrepareMock(ctx, a, eventSender)).
-		Register(peerToPeerStatusUpdater).
 		Register(account).
 		Register(testutil.PrepareMock(ctx, a, clientServer))
 
@@ -56,12 +51,11 @@ func newFixture(t *testing.T) *fixture {
 	assert.Nil(t, err)
 
 	f := &fixture{
-		LocalDiscovery:          discovery,
-		nodeConf:                nodeConf,
-		eventSender:             eventSender,
-		peerToPeerStatusUpdater: peerToPeerStatusUpdater,
-		clientServer:            clientServer,
-		account:                 account,
+		LocalDiscovery: discovery,
+		nodeConf:       nodeConf,
+		eventSender:    eventSender,
+		clientServer:   clientServer,
+		account:        account,
 	}
 	return f
 }
@@ -109,13 +103,9 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		err := f.Run(context.Background())
 		assert.Nil(t, err)
 
-		status := mock_p2p.NewMockStatusUpdateSender(t)
-		f.peerToPeerStatusUpdater.AddObserver("spaceId", status)
-
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
-		status.EXPECT().SendPeerUpdate().Return()
 
 		go func() {
 			ld.closeWait.Add(1)
@@ -129,7 +119,6 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		ld.readAnswers(peerUpdate)
 
 		// then
-		status.AssertCalled(t, "CheckPeerStatus")
 	})
 	t.Run("readAnswers - send peer update to notifier", func(t *testing.T) {
 		// given

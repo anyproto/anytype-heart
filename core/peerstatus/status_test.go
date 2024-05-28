@@ -1,4 +1,4 @@
-package p2p
+package peerstatus
 
 import (
 	"context"
@@ -58,7 +58,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 				},
 			},
 		})
-		f.P2PNotPossible()
+		f.SendNotPossibleStatus()
 
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
@@ -88,7 +88,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 				},
 			},
 		})
-		f.P2PNotPossible()
+		f.SendNotPossibleStatus()
 
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
@@ -117,7 +117,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 				},
 			},
 		})
-		f.P2PNotPossible()
+		f.SendNotPossibleStatus()
 
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
@@ -145,7 +145,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 				},
 			},
 		})
-		f.P2PNotPossible()
+		f.SendNotPossibleStatus()
 
 		// then
 		status := f.StatusUpdateSender.(*p2pStatus)
@@ -232,7 +232,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				},
 			},
 		})
-		f.P2PNotPossible()
+		f.SendNotPossibleStatus()
 		err = waitForStatus(f.StatusUpdateSender.(*p2pStatus), NotPossible)
 		assert.Nil(t, err)
 
@@ -309,7 +309,6 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 	store := peerstore.New()
 	a.Register(testutil.PrepareMock(ctx, a, sender)).
 		Register(service).
-		Register(NewObservers()).
 		Register(store)
 	err := store.Init(a)
 	assert.Nil(t, err)
