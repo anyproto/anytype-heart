@@ -6878,6 +6878,8 @@ message Rpc {
                         PAYMENT_NODE_ERROR = 4;
                         CACHE_ERROR = 5;
                         INVALID_RECEIPT = 6;
+                        PURCHASE_REGISTRATION_ERROR = 7;
+                        SUBSCRIPTION_RENEW_ERROR = 8;
                     }
                 }
             }
