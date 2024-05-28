@@ -14,30 +14,22 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
 type FileSyncer struct {
 	service           *block.Service
-	objectStore       objectstore.ObjectStore
-	fileStore         filestore.FileStore
 	fileObjectService fileobject.Service
 }
 
 func NewFileSyncer(
 	service *block.Service,
-	fileStore filestore.FileStore,
 	fileObjectService fileobject.Service,
-	objectStore objectstore.ObjectStore,
 ) *FileSyncer {
 	return &FileSyncer{
 		service:           service,
-		fileStore:         fileStore,
 		fileObjectService: fileObjectService,
-		objectStore:       objectStore,
 	}
 }
 

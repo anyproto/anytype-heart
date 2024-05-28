@@ -2,6 +2,7 @@ package treesyncer
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -12,7 +13,10 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -53,18 +57,31 @@ func (e *executor) close() {
 	e.pool.Close()
 }
 
+type Updater interface {
+	app.ComponentRunnable
+	SendUpdate(spaceSync *domain.SpaceSync)
+}
+
+type PeerStatusChecker interface {
+	app.Component
+	IsPeerOffline(peerId string) bool
+}
+
 type treeSyncer struct {
 	sync.Mutex
-	mainCtx      context.Context
-	cancel       context.CancelFunc
-	requests     int
-	spaceId      string
-	timeout      time.Duration
-	requestPools map[string]*executor
-	headPools    map[string]*executor
-	treeManager  treemanager.TreeManager
-	isRunning    bool
-	isSyncing    bool
+	mainCtx         context.Context
+	cancel          context.CancelFunc
+	requests        int
+	spaceId         string
+	timeout         time.Duration
+	requestPools    map[string]*executor
+	headPools       map[string]*executor
+	treeManager     treemanager.TreeManager
+	isRunning       bool
+	isSyncing       bool
+	spaceSyncStatus Updater
+	peerManager     PeerStatusChecker
+	nodeConf        nodeconf.NodeConf
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -83,6 +100,9 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
+	t.spaceSyncStatus = app.MustComponent[Updater](a)
+	t.peerManager = app.MustComponent[PeerStatusChecker](a)
+	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	return nil
 }
 
@@ -137,6 +157,10 @@ func (t *treeSyncer) ShouldSync(peerId string) bool {
 func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) error {
 	t.Lock()
 	defer t.Unlock()
+	var err error
+	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
+	defer t.sendResultEvent(err, isResponsible, peerId)
+	t.sendSyncingEvent(peerId, existing, missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
@@ -155,7 +179,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	}
 	for _, id := range existing {
 		idCopy := id
-		err := headExec.tryAdd(idCopy, func() {
+		err = headExec.tryAdd(idCopy, func() {
 			t.updateTree(peerId, idCopy)
 		})
 		if err != nil {
@@ -164,7 +188,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	}
 	for _, id := range missing {
 		idCopy := id
-		err := reqExec.tryAdd(idCopy, func() {
+		err = reqExec.tryAdd(idCopy, func() {
 			t.requestTree(peerId, idCopy)
 		})
 		if err != nil {
@@ -172,6 +196,29 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 		}
 	}
 	return nil
+}
+
+func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing []string, nodePeer bool) {
+	if !nodePeer {
+		return
+	}
+	if t.peerManager.IsPeerOffline(peerId) {
+		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Offline, 0, domain.Null, domain.Objects))
+		return
+	}
+	if len(existing) != 0 || len(missing) != 0 {
+		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Syncing, len(existing)+len(missing), domain.Null, domain.Objects))
+	}
+}
+
+func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string) {
+	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
+		if err != nil {
+			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Error, 0, domain.NetworkError, domain.Objects))
+		} else {
+			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Synced, 0, domain.Null, domain.Objects))
+		}
+	}
 }
 
 func (t *treeSyncer) requestTree(peerId, id string) {

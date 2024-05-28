@@ -201,3 +201,24 @@ func CopyNotification(in *model.Notification) (out *model.Notification) {
 	bytesPool.Put(buf)
 	return
 }
+
+func CopyDevice(in *model.DeviceInfo) (out *model.DeviceInfo) {
+	var err error
+	buf := bytesPool.Get().([]byte)
+	size := in.Size()
+	if cap(buf) < size {
+		buf = make([]byte, 0, size)
+	}
+	// nolint:errcheck
+	size, err = in.MarshalToSizedBuffer(buf[:size])
+	if err != nil {
+		log.Debugf("failed to marshal size buffer: %s", err)
+	}
+	out = &model.DeviceInfo{}
+	err = out.Unmarshal(buf[:size])
+	if err != nil {
+		log.Debugf("failed to unmarshal deviceInfo: %s", err)
+	}
+	bytesPool.Put(buf)
+	return
+}

@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -58,10 +57,8 @@ type service struct {
 	objectStore       objectstore.ObjectStore
 	collectionService CollectionService
 	bookmarkService   bookmarkService
-	app               *app.App
 	spaceService      space.Service
 	templateService   TemplateService
-	fileService       files.Service
 }
 
 func NewCreator() Service {
@@ -74,8 +71,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
-	s.fileService = app.MustComponent[files.Service](a)
-	s.app = a
 	return nil
 }
 

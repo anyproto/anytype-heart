@@ -22,8 +22,6 @@ import (
 var emptyMarks [][]*model.BlockContentTextMark
 
 var bold = model.BlockContentTextMark_Bold
-var italic = model.BlockContentTextMark_Italic
-var fontRed = model.BlockContentTextMark_TextColor
 
 func page(blocks ...*model.Block) (sb *smarttest.SmartTest) {
 	sb = smarttest.New("test")
@@ -116,23 +114,6 @@ func shouldBe(sb *smarttest.SmartTest, t *testing.T, shouldBeBLocks ...*model.Bl
 	}
 }
 
-func shouldBeDebug(sb *smarttest.SmartTest, t *testing.T, shouldBeBLocks ...*model.Block) {
-	realBlocks := []*model.Block{}
-	cIds := sb.Pick("test").Model().ChildrenIds
-	for _, cId := range cIds {
-		realBlocks = append(realBlocks, sb.Pick(cId).Model())
-	}
-	fmt.Println(len(realBlocks), len(shouldBeBLocks))
-
-	for i, realBlock := range realBlocks {
-		fmt.Println("Real ", i, realBlock)
-	}
-
-	for i, b := range shouldBeBLocks {
-		fmt.Println("Should ", i, b)
-	}
-}
-
 func createBlocks(idsArr []string, textArr []string, marksArr [][]*model.BlockContentTextMark) []*model.Block {
 	blocks := []*model.Block{}
 	for i := 0; i < len(textArr); i++ {
@@ -197,18 +178,6 @@ func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
 	textArr2 := getChildrenText(sb, cIds)
 
 	assert.Equal(t, textArr, textArr2)
-}
-
-func checkBlockTextDebug(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
-	for i, _ := range textArr {
-		fmt.Println(textArr[i])
-	}
-
-	fmt.Println("--------")
-	cIds := sb.Pick("test").Model().ChildrenIds
-	for _, c := range cIds {
-		fmt.Println("ID:", sb.Pick(c).Model().Id, "cId:", c, "Text:", sb.Pick(c).Model().GetText())
-	}
 }
 
 func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark) {

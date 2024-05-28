@@ -16,6 +16,8 @@
     - [Change.Content](#anytype-Change-Content)
     - [Change.DetailsSet](#anytype-Change-DetailsSet)
     - [Change.DetailsUnset](#anytype-Change-DetailsUnset)
+    - [Change.DeviceAdd](#anytype-Change-DeviceAdd)
+    - [Change.DeviceUpdate](#anytype-Change-DeviceUpdate)
     - [Change.FileKeys](#anytype-Change-FileKeys)
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
     - [Change.NotificationCreate](#anytype-Change-NotificationCreate)
@@ -562,6 +564,15 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
+    - [Rpc.Device](#anytype-Rpc-Device)
+    - [Rpc.Device.List](#anytype-Rpc-Device-List)
+    - [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request)
+    - [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response)
+    - [Rpc.Device.List.Response.Error](#anytype-Rpc-Device-List-Response-Error)
+    - [Rpc.Device.SetName](#anytype-Rpc-Device-SetName)
+    - [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request)
+    - [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response)
+    - [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -855,6 +866,10 @@
     - [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request)
     - [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response)
     - [Rpc.Object.SearchUnsubscribe.Response.Error](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error)
+    - [Rpc.Object.SearchWithMeta](#anytype-Rpc-Object-SearchWithMeta)
+    - [Rpc.Object.SearchWithMeta.Request](#anytype-Rpc-Object-SearchWithMeta-Request)
+    - [Rpc.Object.SearchWithMeta.Response](#anytype-Rpc-Object-SearchWithMeta-Response)
+    - [Rpc.Object.SearchWithMeta.Response.Error](#anytype-Rpc-Object-SearchWithMeta-Response-Error)
     - [Rpc.Object.SetBreadcrumbs](#anytype-Rpc-Object-SetBreadcrumbs)
     - [Rpc.Object.SetBreadcrumbs.Request](#anytype-Rpc-Object-SetBreadcrumbs-Request)
     - [Rpc.Object.SetBreadcrumbs.Response](#anytype-Rpc-Object-SetBreadcrumbs-Response)
@@ -1249,6 +1264,8 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
+    - [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code)
+    - [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1324,6 +1341,7 @@
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
+    - [Rpc.Object.SearchWithMeta.Response.Error.Code](#anytype-Rpc-Object-SearchWithMeta-Response-Error-Code)
     - [Rpc.Object.SetBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-SetBreadcrumbs-Response-Error-Code)
     - [Rpc.Object.SetDetails.Response.Error.Code](#anytype-Rpc-Object-SetDetails-Response-Error-Code)
     - [Rpc.Object.SetInternalFlags.Response.Error.Code](#anytype-Rpc-Object-SetInternalFlags-Response-Error-Code)
@@ -1557,8 +1575,6 @@
     - [Event.Object.Subscription.Groups](#anytype-Event-Object-Subscription-Groups)
     - [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position)
     - [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove)
-    - [Event.P2PStatus](#anytype-Event-P2PStatus)
-    - [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update)
     - [Event.Payload](#anytype-Event-Payload)
     - [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast)
     - [Event.Ping](#anytype-Event-Ping)
@@ -1566,6 +1582,9 @@
     - [Event.Process.Done](#anytype-Event-Process-Done)
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
+    - [Event.Space](#anytype-Event-Space)
+    - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
+    - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
     - [Event.Status](#anytype-Event-Status)
     - [Event.Status.Thread](#anytype-Event-Status-Thread)
     - [Event.Status.Thread.Account](#anytype-Event-Status-Thread-Account)
@@ -1585,7 +1604,9 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
-    - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
+    - [Event.Space.Network](#anytype-Event-Space-Network)
+    - [Event.Space.Status](#anytype-Event-Space-Status)
+    - [Event.Space.SyncError](#anytype-Event-Space-SyncError)
     - [Event.Status.Thread.SyncStatus](#anytype-Event-Status-Thread-SyncStatus)
     - [Model.Process.State](#anytype-Model-Process-State)
     - [Model.Process.Type](#anytype-Model-Process-Type)
@@ -1646,6 +1667,7 @@
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [Detail](#anytype-model-Detail)
+    - [DeviceInfo](#anytype-model-DeviceInfo)
     - [Export](#anytype-model-Export)
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
@@ -1690,6 +1712,9 @@
     - [Relations](#anytype-model-Relations)
     - [Restrictions](#anytype-model-Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype-model-Restrictions-DataviewRestrictions)
+    - [Search](#anytype-model-Search)
+    - [Search.Meta](#anytype-model-Search-Meta)
+    - [Search.Result](#anytype-model-Search-Result)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
@@ -1827,6 +1852,7 @@
 | ObjectCreateSet | [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request) | [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response) | ObjectCreateSet just creates the new set, without adding the link to it from some other page |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
+| ObjectSearchWithMeta | [Rpc.Object.SearchWithMeta.Request](#anytype-Rpc-Object-SearchWithMeta-Request) | [Rpc.Object.SearchWithMeta.Response](#anytype-Rpc-Object-SearchWithMeta-Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
 | ObjectGroupsSubscribe | [Rpc.Object.GroupsSubscribe.Request](#anytype-Rpc-Object-GroupsSubscribe-Request) | [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response) |  |
@@ -2016,6 +2042,8 @@
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
+| DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
+| DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
 
  
 
@@ -2157,6 +2185,8 @@ the element of change tree used to store and internal apply smartBlock history
 | setFileInfo | [Change.SetFileInfo](#anytype-Change-SetFileInfo) |  |  |
 | notificationCreate | [Change.NotificationCreate](#anytype-Change-NotificationCreate) |  |  |
 | notificationUpdate | [Change.NotificationUpdate](#anytype-Change-NotificationUpdate) |  |  |
+| deviceAdd | [Change.DeviceAdd](#anytype-Change-DeviceAdd) |  |  |
+| deviceUpdate | [Change.DeviceUpdate](#anytype-Change-DeviceUpdate) |  |  |
 
 
 
@@ -2188,6 +2218,37 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-DeviceAdd"></a>
+
+### Change.DeviceAdd
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| device | [model.DeviceInfo](#anytype-model-DeviceInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-DeviceUpdate"></a>
+
+### Change.DeviceUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 
 
 
@@ -5007,6 +5068,7 @@ Makes blocks copy by given ids and paste it to shown place
 | blockId | [string](#string) |  |  |
 | filePath | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| bytes | [bytes](#bytes) |  |  |
 
 
 
@@ -10142,6 +10204,125 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Device"></a>
+
+### Rpc.Device
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List"></a>
+
+### Rpc.Device.List
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Request"></a>
+
+### Rpc.Device.List.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Response"></a>
+
+### Rpc.Device.List.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Device.List.Response.Error](#anytype-Rpc-Device-List-Response-Error) |  |  |
+| devices | [model.DeviceInfo](#anytype-model-DeviceInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Response-Error"></a>
+
+### Rpc.Device.List.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName"></a>
+
+### Rpc.Device.SetName
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Request"></a>
+
+### Rpc.Device.SetName.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deviceId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response"></a>
+
+### Rpc.Device.SetName.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response-Error"></a>
+
+### Rpc.Device.SetName.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File"></a>
 
 ### Rpc.File
@@ -14255,7 +14436,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 <a name="anytype-Rpc-Object-Search"></a>
 
 ### Rpc.Object.Search
-
+deprecated in favor of SearchWithMeta
 
 
 
@@ -14437,6 +14618,74 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta"></a>
+
+### Rpc.Object.SearchWithMeta
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta-Request"></a>
+
+### Rpc.Object.SearchWithMeta.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
+| fullText | [string](#string) |  |  |
+| offset | [int32](#int32) |  |  |
+| limit | [int32](#int32) |  |  |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
+
+DEPRECATED, GO-1926 |
+| keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
+| returnMeta | [bool](#bool) |  | add ResultMeta to each result |
+| returnMetaRelationDetails | [bool](#bool) |  | add relation option details to meta |
+| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta-Response"></a>
+
+### Rpc.Object.SearchWithMeta.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SearchWithMeta.Response.Error](#anytype-Rpc-Object-SearchWithMeta-Response-Error) |  |  |
+| results | [model.Search.Result](#anytype-model-Search-Result) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta-Response-Error"></a>
+
+### Rpc.Object.SearchWithMeta.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SearchWithMeta.Response.Error.Code](#anytype-Rpc-Object-SearchWithMeta-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19959,6 +20208,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Device-List-Response-Error-Code"></a>
+
+### Rpc.Device.List.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response-Error-Code"></a>
+
+### Rpc.Device.SetName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -20360,6 +20635,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
 | INVALID_RECEIPT | 6 |  |
+| PURCHASE_REGISTRATION_ERROR | 7 |  |
+| SUBSCRIPTION_RENEW_ERROR | 8 |  |
 
 
 
@@ -21034,6 +21311,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta-Response-Error-Code"></a>
+
+### Rpc.Object.SearchWithMeta.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -24307,7 +24597,7 @@ Precondition: user A opened a block
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
-| p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
+| spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
 
 
 
@@ -24619,32 +24909,6 @@ Removes document from subscription
 
 
 
-<a name="anytype-Event-P2PStatus"></a>
-
-### Event.P2PStatus
-
-
-
-
-
-
-
-<a name="anytype-Event-P2PStatus-Update"></a>
-
-### Event.P2PStatus.Update
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-| status | [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status) |  |  |
-
-
-
-
-
-
 <a name="anytype-Event-Payload"></a>
 
 ### Event.Payload
@@ -24734,6 +24998,45 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | process | [Model.Process](#anytype-Model-Process) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Space"></a>
+
+### Event.Space
+
+
+
+
+
+
+
+<a name="anytype-Event-Space-SyncStatus"></a>
+
+### Event.Space.SyncStatus
+
+
+
+
+
+
+
+<a name="anytype-Event-Space-SyncStatus-Update"></a>
+
+### Event.Space.SyncStatus.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [Event.Space.Status](#anytype-Event-Space-Status) |  |  |
+| network | [Event.Space.Network](#anytype-Event-Space-Network) |  |  |
+| error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
+| syncingObjectsCounter | [int64](#int64) |  |  |
 
 
 
@@ -25031,16 +25334,44 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="anytype-Event-P2PStatus-Status"></a>
+<a name="anytype-Event-Space-Network"></a>
 
-### Event.P2PStatus.Status
+### Event.Space.Network
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Connected | 0 |  |
-| NotPossible | 1 |  |
-| NotConnected | 2 |  |
+| Anytype | 0 |  |
+| SelfHost | 1 |  |
+| LocalOnly | 2 |  |
+
+
+
+<a name="anytype-Event-Space-Status"></a>
+
+### Event.Space.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Synced | 0 |  |
+| Syncing | 1 |  |
+| Error | 2 |  |
+| Offline | 3 |  |
+
+
+
+<a name="anytype-Event-Space-SyncError"></a>
+
+### Event.Space.SyncError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Null | 0 |  |
+| StorageLimitExceed | 1 |  |
+| IncompatibleVersion | 2 |  |
+| NetworkError | 3 |  |
 
 
 
@@ -25296,6 +25627,7 @@ Precondition: user A and user B opened the same block
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
 | areOldFilesRemoved | [bool](#bool) |  |  |
 | areDeletedObjectsReindexed | [bool](#bool) |  |  |
+| linksErase | [int32](#int32) |  |  |
 
 
 
@@ -26029,6 +26361,25 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [google.protobuf.Value](#google-protobuf-Value) |  | NUll - removes key |
+
+
+
+
+
+
+<a name="anytype-model-DeviceInfo"></a>
+
+### DeviceInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| addDate | [int64](#int64) |  |  |
+| archived | [bool](#bool) |  |  |
+| isConnected | [bool](#bool) |  |  |
 
 
 
@@ -26821,6 +27172,52 @@ stored |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
 | restrictions | [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Search"></a>
+
+### Search
+
+
+
+
+
+
+
+<a name="anytype-model-Search-Meta"></a>
+
+### Search.Meta
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| highlight | [string](#string) |  | truncated text with highlights |
+| highlightRanges | [Range](#anytype-model-Range) | repeated | ranges of the highlight in the text (using utf-16 runes) |
+| blockId | [string](#string) |  | block id where the highlight has been found |
+| relationKey | [string](#string) |  | relation key of the block where the highlight has been found |
+| relationDetails | [google.protobuf.Struct](#google-protobuf-Struct) |  | contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails |
+
+
+
+
+
+
+<a name="anytype-model-Search-Result"></a>
+
+### Search.Result
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| meta | [Search.Meta](#anytype-model-Search-Meta) | repeated | meta information about the search result |
 
 
 

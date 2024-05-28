@@ -348,7 +348,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	ctx.State.AddBundledRelations(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
-		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(ctx.State)
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(ctx.State)
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
@@ -754,7 +754,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(s)
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -1196,14 +1196,6 @@ func (sb *smartBlock) AddHookOnce(id string, f HookCallback, events ...Hook) {
 	}
 }
 
-func (sb *smartBlock) baseRelations() []*model.Relation {
-	rels := []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji), bundle.MustGetRelation(bundle.RelationKeyName)}
-	for _, rel := range rels {
-		rel.Scope = model.Relation_object
-	}
-	return rels
-}
-
 // deprecated, use RelationLinks instead
 func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	var links []*model.RelationLink
@@ -1328,19 +1320,21 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 
 func hasChanges(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if isStoreOrNotificationChanges(ch) {
+		if isSuitableChanges(ch) {
 			return true
 		}
 	}
 	return false
 }
 
-func isStoreOrNotificationChanges(ch *pb.ChangeContent) bool {
+func isSuitableChanges(ch *pb.ChangeContent) bool {
 	return ch.GetStoreKeySet() != nil ||
 		ch.GetStoreKeyUnset() != nil ||
 		ch.GetStoreSliceUpdate() != nil ||
 		ch.GetNotificationCreate() != nil ||
-		ch.GetNotificationUpdate() != nil
+		ch.GetNotificationUpdate() != nil ||
+		ch.GetDeviceUpdate() != nil ||
+		ch.GetDeviceAdd() != nil
 }
 
 func hasDetailsMsgs(msgs []simple.EventMessage) bool {

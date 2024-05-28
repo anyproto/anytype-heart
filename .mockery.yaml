@@ -178,3 +178,14 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+  github.com/anyproto/anytype-heart/core/block/object/treesyncer:
+    interfaces:
+      Updater:
+      PeerStatusChecker:
+  github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
+    interfaces:
+      UpdateReceiver:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true

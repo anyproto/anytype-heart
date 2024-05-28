@@ -128,12 +128,8 @@ func (c *collectionObserver) String() string {
 }
 
 type collectionSub struct {
-	id           string
-	collectionID string
-
-	sortedSub         *sortedSub
-	observer          *collectionObserver
-	collectionService CollectionService
+	sortedSub *sortedSub
+	observer  *collectionObserver
 }
 
 func (c *collectionSub) init(entries []*entry) (err error) {
@@ -181,12 +177,8 @@ func (s *service) newCollectionSub(
 	}
 
 	sub := &collectionSub{
-		id:           id,
-		collectionID: collectionID,
-
-		sortedSub:         ssub,
-		observer:          obs,
-		collectionService: s.collectionService,
+		sortedSub: ssub,
+		observer:  obs,
 	}
 
 	entries := obs.listEntries()

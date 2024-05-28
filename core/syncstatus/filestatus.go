@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -26,7 +27,9 @@ func (s *service) OnFileLimited(objectId string) error {
 }
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
+	var spaceId string
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
+		spaceId = sb.SpaceID()
 		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
 		newStatus := int64(status)
 		if prevStatus == newStatus {
@@ -51,5 +54,29 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 	if err != nil {
 		return fmt.Errorf("update tree: %w", err)
 	}
+
+	s.sendSpaceStatusUpdate(status, spaceId)
 	return nil
+}
+
+func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string) {
+	var (
+		spaceStatus domain.SpaceSyncStatus
+		spaceError  domain.SpaceSyncError
+	)
+	switch status {
+	case filesyncstatus.Synced:
+		spaceStatus = domain.Synced
+	case filesyncstatus.Syncing:
+		spaceStatus = domain.Syncing
+	case filesyncstatus.Limited:
+		spaceStatus = domain.Error
+		spaceError = domain.StorageLimitExceed
+	case filesyncstatus.Unknown:
+		spaceStatus = domain.Error
+		spaceError = domain.NetworkError
+	}
+
+	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, 0, spaceError, domain.Files)
+	s.spaceSyncStatus.SendUpdate(syncStatus)
 }

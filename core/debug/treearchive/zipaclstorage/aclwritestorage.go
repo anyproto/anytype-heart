@@ -10,16 +10,14 @@ import (
 )
 
 type zipACLWriteStorage struct {
-	id   string
-	head string
-	zw   *zip.Writer
+	id string
+	zw *zip.Writer
 }
 
 func NewACLWriteStorage(root *consensusproto.RawRecordWithId, zw *zip.Writer) (ls liststorage.ListStorage, err error) {
 	ls = &zipACLWriteStorage{
-		id:   root.Id,
-		head: root.Id,
-		zw:   zw,
+		id: root.Id,
+		zw: zw,
 	}
 	err = ls.AddRawRecord(context.Background(), root)
 	return

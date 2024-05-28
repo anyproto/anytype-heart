@@ -78,6 +78,7 @@ service ClientCommands {
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
     rpc ObjectGraph (anytype.Rpc.Object.Graph.Request) returns (anytype.Rpc.Object.Graph.Response);
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
+    rpc ObjectSearchWithMeta (anytype.Rpc.Object.SearchWithMeta.Request) returns (anytype.Rpc.Object.SearchWithMeta.Response);
     rpc ObjectSearchSubscribe (anytype.Rpc.Object.SearchSubscribe.Request) returns (anytype.Rpc.Object.SearchSubscribe.Response);
     rpc ObjectSubscribeIds (anytype.Rpc.Object.SubscribeIds.Request) returns (anytype.Rpc.Object.SubscribeIds.Response);
     rpc ObjectGroupsSubscribe (anytype.Rpc.Object.GroupsSubscribe.Request) returns (anytype.Rpc.Object.GroupsSubscribe.Response);
@@ -348,4 +349,7 @@ service ClientCommands {
     rpc NameServiceResolveAnyId( anytype.Rpc.NameService.ResolveAnyId.Request ) returns (anytype.Rpc.NameService.ResolveAnyId.Response);
     
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
+
+    rpc DeviceSetName (anytype.Rpc.Device.SetName.Request) returns (anytype.Rpc.Device.SetName.Response);
+    rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
 }

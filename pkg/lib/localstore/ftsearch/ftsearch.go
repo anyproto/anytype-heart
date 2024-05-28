@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
-	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/blevesearch/bleve/v2/search/query"
@@ -21,6 +20,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/analyzers"
+	_ "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/jsonhighlighter"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -59,24 +60,22 @@ type FTSearch interface {
 	Index(d SearchDoc) (err error)
 	BatchIndex(ctx context.Context, docs []SearchDoc) (err error)
 	BatchDelete(ids []string) (err error)
-	Search(spaceID, query string) (results search.DocumentMatchCollection, err error)
+	Search(spaceID string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error)
 	Has(id string) (exists bool, err error)
 	Delete(id string) error
 	DocCount() (uint64, error)
 }
 
 type ftSearch struct {
-	rootPath       string
-	ftsPath        string
-	index          bleve.Index
-	enStopWordsMap map[string]bool
+	rootPath string
+	ftsPath  string
+	index    bleve.Index
 }
 
 func (f *ftSearch) Init(a *app.App) (err error) {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir, ftsVer)
-	f.enStopWordsMap, err = en.TokenMapConstructor(nil, nil)
 	return err
 }
 
@@ -176,7 +175,15 @@ func (f *ftSearch) BatchDelete(ids []string) (err error) {
 	return f.index.Batch(batch)
 }
 
-func (f *ftSearch) Search(spaceID, qry string) (results search.DocumentMatchCollection, err error) {
+type HighlightFormatter string
+
+const (
+	HtmlHighlightFormatter    HighlightFormatter = "html"
+	JSONHighlightFormatter    HighlightFormatter = "json"
+	DefaultHighlightFormatter                    = JSONHighlightFormatter
+)
+
+func (f *ftSearch) Search(spaceID string, highlightFormatter HighlightFormatter, qry string) (results search.DocumentMatchCollection, err error) {
 	qry = strings.ToLower(qry)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
@@ -194,7 +201,7 @@ func (f *ftSearch) Search(spaceID, qry string) (results search.DocumentMatchColl
 		)
 	}
 
-	return f.doSearch(spaceID, queries)
+	return f.doSearch(spaceID, highlightFormatter, queries)
 }
 
 func (f *ftSearch) getTerms(qry string) []string {
@@ -211,7 +218,7 @@ func (f *ftSearch) getTerms(qry string) []string {
 	return terms
 }
 
-func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results search.DocumentMatchCollection, err error) {
+func (f *ftSearch) doSearch(spaceID string, highlightFormatter HighlightFormatter, queries []query.Query) (results search.DocumentMatchCollection, err error) {
 	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
 	if spaceID != "" {
 		spaceQuery := bleve.NewMatchQuery(spaceID)
@@ -220,6 +227,9 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results sear
 	}
 
 	searchRequest := bleve.NewSearchRequest(rootQuery)
+	searchRequest.Highlight = bleve.NewHighlightWithStyle(string(highlightFormatter))
+	searchRequest.Highlight.Fields = []string{fieldText}
+
 	searchRequest.Size = 100
 	searchRequest.Explain = true
 	searchResult, err := f.index.Search(searchRequest)
