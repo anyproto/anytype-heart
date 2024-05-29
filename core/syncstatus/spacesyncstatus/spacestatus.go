@@ -22,6 +22,10 @@ type Updater interface {
 	SendUpdate(spaceSync *domain.SpaceSync)
 }
 
+type TechSpaceIdGetter interface {
+	TechSpaceId() string
+}
+
 type State interface {
 	SetObjectsNumber(status *domain.SpaceSync)
 	SetSyncStatus(status *domain.SpaceSync)
@@ -42,8 +46,9 @@ type spaceSyncStatus struct {
 	filesState   State
 	objectsState State
 
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	ctx               context.Context
+	ctxCancel         context.CancelFunc
+	techSpaceIdGetter TechSpaceIdGetter
 
 	finish chan struct{}
 }
@@ -58,6 +63,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	s.filesState = NewFileState(store)
 	s.objectsState = NewObjectState()
+	s.techSpaceIdGetter = app.MustComponent[TechSpaceIdGetter](a)
 	return
 }
 
@@ -103,6 +109,9 @@ func (s *spaceSyncStatus) processEvents() {
 		if err != nil {
 			log.Errorf("failed to get event from batcher: %s", err)
 			return
+		}
+		if status.SpaceId == s.techSpaceIdGetter.TechSpaceId() {
+			continue
 		}
 		s.updateSpaceSyncStatus(status)
 	}
