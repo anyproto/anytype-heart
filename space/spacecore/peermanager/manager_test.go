@@ -17,7 +17,9 @@ import (
 	"go.uber.org/mock/gomock"
 	"storj.io/drpc"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager/mock_peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
@@ -89,6 +91,19 @@ func TestClientPeerManager_GetResponsiblePeers_Deadline(t *testing.T) {
 
 func Test_fetchResponsiblePeers(t *testing.T) {
 	spaceId := "spaceId"
+	t.Run("node offline", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+
+		// when
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("failed"))
+		status := domain.MakeSyncStatus(f.cm.spaceId, domain.Offline, 0, domain.Null, domain.Objects)
+		f.updater.EXPECT().SendUpdate(status)
+		f.cm.fetchResponsiblePeers()
+
+		// then
+		f.updater.AssertCalled(t, "SendUpdate", status)
+	})
 	t.Run("no local peers", func(t *testing.T) {
 		// given
 		f := newFixtureManager(t, spaceId)
@@ -283,10 +298,11 @@ func (t *testPeer) CloseChan() <-chan struct{} {
 }
 
 type fixture struct {
-	cm    *clientPeerManager
-	pool  *mock_pool.MockPool
-	store peerstore.PeerStore
-	conf  *mock_nodeconf.MockService
+	cm      *clientPeerManager
+	pool    *mock_pool.MockPool
+	store   peerstore.PeerStore
+	conf    *mock_nodeconf.MockService
+	updater *mock_peermanager.MockUpdater
 }
 
 func newFixtureManager(t *testing.T, spaceId string) *fixture {
@@ -300,18 +316,21 @@ func newFixtureManager(t *testing.T, spaceId string) *fixture {
 	err := ns.Init(a)
 	assert.Nil(t, err)
 	store := peerstore.New()
+	updater := mock_peermanager.NewMockUpdater(t)
 	cm := &clientPeerManager{
-		p:             provider,
-		spaceId:       spaceId,
-		peerStore:     store,
-		watchingPeers: map[string]struct{}{},
-		ctx:           context.Background(),
-		nodeStatus:    ns,
+		p:                provider,
+		spaceId:          spaceId,
+		peerStore:        store,
+		watchingPeers:    map[string]struct{}{},
+		ctx:              context.Background(),
+		nodeStatus:       ns,
+		spaceSyncService: updater,
 	}
 	return &fixture{
-		cm:    cm,
-		pool:  pool,
-		store: store,
-		conf:  conf,
+		cm:      cm,
+		pool:    pool,
+		store:   store,
+		conf:    conf,
+		updater: updater,
 	}
 }
