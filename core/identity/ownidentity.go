@@ -133,7 +133,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		s.handleOwnProfileDetails(records[0].Details)
 	}
 
-	s.fetchGlobalName()
+	go s.fetchGlobalName(s.componentCtx, s.namingService)
 
 	go func() {
 		for {
@@ -205,8 +205,12 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 	s.enqueuePush()
 }
 
-func (s *ownProfileSubscription) fetchGlobalName() {
-	response, err := s.namingService.GetNameByAnyId(context.Background(), &nameserviceproto.NameByAnyIdRequest{AnyAddress: s.myIdentity})
+func (s *ownProfileSubscription) fetchGlobalName(ctx context.Context, ns nameserviceclient.AnyNsClientService) {
+	if ctx == nil || ns == nil {
+		log.Error("error fetching global name of our own identity from Naming Service as the service is not initialized")
+		return
+	}
+	response, err := ns.GetNameByAnyId(ctx, &nameserviceproto.NameByAnyIdRequest{AnyAddress: s.myIdentity})
 	if err != nil || response == nil {
 		log.Error("error fetching global name of our own identity from Naming Service", zap.Error(err))
 		return
