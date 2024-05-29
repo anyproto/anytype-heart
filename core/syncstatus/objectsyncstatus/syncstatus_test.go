@@ -215,6 +215,69 @@ func TestSyncStatusService_Run(t *testing.T) {
 	})
 }
 
+func TestSyncStatusService_RemoveAllExcept(t *testing.T) {
+	t.Run("no existing id", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.treeHeads["heads"] = treeHeadsEntry{syncStatus: StatusNotSynced}
+
+		// when
+		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
+		f.RemoveAllExcept("peerId", nil)
+
+		// then
+		assert.Equal(t, StatusSynced, f.treeHeads["heads"].syncStatus)
+	})
+	t.Run("same ids", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.treeHeads["heads1"] = treeHeadsEntry{syncStatus: StatusNotSynced}
+
+		// when
+		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{"peerId"})
+		f.RemoveAllExcept("peerId", []string{"heads", "heads"})
+
+		// then
+		assert.Equal(t, StatusSynced, f.treeHeads["heads1"].syncStatus)
+	})
+	t.Run("sender not responsible", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.treeHeads["heads1"] = treeHeadsEntry{syncStatus: StatusNotSynced}
+
+		// when
+		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{})
+		f.RemoveAllExcept("peerId", []string{"heads"})
+
+		// then
+		assert.Equal(t, StatusNotSynced, f.treeHeads["heads1"].syncStatus)
+	})
+	t.Run("current state is outdated", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.treeHeads["heads1"] = treeHeadsEntry{syncStatus: StatusNotSynced, stateCounter: 1}
+
+		// when
+		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{})
+		f.RemoveAllExcept("peerId", []string{"heads"})
+
+		// then
+		assert.Equal(t, StatusNotSynced, f.treeHeads["heads1"].syncStatus)
+	})
+	t.Run("tree is not synced", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		f.treeHeads["heads"] = treeHeadsEntry{syncStatus: StatusNotSynced}
+
+		// when
+		f.service.EXPECT().NodeIds(f.spaceId).Return([]string{})
+		f.RemoveAllExcept("peerId", []string{"heads"})
+
+		// then
+		assert.Equal(t, StatusNotSynced, f.treeHeads["heads"].syncStatus)
+	})
+}
+
 type fixture struct {
 	*syncStatusService
 	service *mock_nodeconf.MockService

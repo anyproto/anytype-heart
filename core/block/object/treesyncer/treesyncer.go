@@ -62,6 +62,11 @@ type Updater interface {
 	SendUpdate(spaceSync *domain.SpaceSync)
 }
 
+type SyncedTreeRemover interface {
+	app.ComponentRunnable
+	RemoveAllExcept(senderId string, differentRemoteIds []string)
+}
+
 type PeerStatusChecker interface {
 	app.Component
 	IsPeerOffline(peerId string) bool
@@ -69,19 +74,20 @@ type PeerStatusChecker interface {
 
 type treeSyncer struct {
 	sync.Mutex
-	mainCtx         context.Context
-	cancel          context.CancelFunc
-	requests        int
-	spaceId         string
-	timeout         time.Duration
-	requestPools    map[string]*executor
-	headPools       map[string]*executor
-	treeManager     treemanager.TreeManager
-	isRunning       bool
-	isSyncing       bool
-	spaceSyncStatus Updater
-	peerManager     PeerStatusChecker
-	nodeConf        nodeconf.NodeConf
+	mainCtx           context.Context
+	cancel            context.CancelFunc
+	requests          int
+	spaceId           string
+	timeout           time.Duration
+	requestPools      map[string]*executor
+	headPools         map[string]*executor
+	treeManager       treemanager.TreeManager
+	isRunning         bool
+	isSyncing         bool
+	spaceSyncStatus   Updater
+	peerManager       PeerStatusChecker
+	nodeConf          nodeconf.NodeConf
+	syncedTreeRemover SyncedTreeRemover
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -103,6 +109,7 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.spaceSyncStatus = app.MustComponent[Updater](a)
 	t.peerManager = app.MustComponent[PeerStatusChecker](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
+	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
 	return nil
 }
 
@@ -195,6 +202,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 			log.Error("failed to add to request queue", zap.Error(err))
 		}
 	}
+	t.syncedTreeRemover.RemoveAllExcept(peerId, existing)
 	return nil
 }
 
