@@ -28,6 +28,7 @@ type updateReceiver struct {
 	objectStore       objectstore.ObjectStore
 	nodeStatus        nodestatus.NodeStatus
 	syncStatusUpdater Updater
+	spaceId       string
 }
 
 func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender, objectStore objectstore.ObjectStore, nodeStatus nodestatus.NodeStatus, syncStatusUpdater Updater) *updateReceiver {
@@ -131,7 +132,7 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 func (r *updateReceiver) UpdateNodeStatus(status ConnectionStatus) {
 	r.Lock()
 	defer r.Unlock()
-	r.nodeConnected = status == Online
+	r.nodeConnected = r.nodeStatus.GetNodeStatus(r.spaceId) == nodestatus.Online
 }
 
 func (r *updateReceiver) notify(

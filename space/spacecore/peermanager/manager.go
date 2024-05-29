@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
@@ -25,6 +26,17 @@ var (
 	ContextPeerFindDeadlineKey  contextKey = "peerFindDeadline"
 	ErrPeerFindDeadlineExceeded            = errors.New("peer find deadline exceeded")
 )
+
+type NodeStatus interface {
+	app.Component
+	SetNodesStatus(spaceId string, senderId string, status nodestatus.ConnectionStatus)
+	GetNodeStatus(string) nodestatus.ConnectionStatus
+}
+
+type Updater interface {
+	app.ComponentRunnable
+	SendUpdate(spaceSync *domain.SpaceSync)
+}
 
 type clientPeerManager struct {
 	spaceId            string
@@ -37,6 +49,7 @@ type clientPeerManager struct {
 	rebuildResponsiblePeers   chan struct{}
 	availableResponsiblePeers chan struct{}
 	nodeStatus                syncstatus.NodeStatus
+	spaceSyncService          Updater
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -50,6 +63,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
 	n.nodeStatus = app.MustComponent[syncstatus.NodeStatus](a)
+	n.spaceSyncService = app.MustComponent[Updater](a)
 	return
 }
 
@@ -185,6 +199,7 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		for _, p := range n.responsiblePeers {
 			n.nodeStatus.SetNodesStatus(p.Id(), syncstatus.ConnectionError)
 		}
+		n.spaceSyncService.SendUpdate(domain.MakeSyncStatus(n.spaceId, domain.Offline, 0, domain.Null, domain.Objects))
 	}
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
@@ -241,5 +256,5 @@ func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 }
 
 func (n *clientPeerManager) IsPeerOffline(senderId string) bool {
-	return n.nodeStatus.GetNodeStatus(senderId) != syncstatus.Online
+	return n.nodeStatus.GetNodeStatus(n.spaceId) != nodestatus.Online
 }

@@ -94,9 +94,9 @@ func (s *service) RegisterSpace(space commonspace.Space) {
 	s.objectWatchersLock.Lock()
 	defer s.objectWatchersLock.Unlock()
 
-	watcher := space.SyncStatus().(syncstatus.StatusUpdater)
-	watcher.SetUpdateReceiver(s.updateReceiver)
-	s.objectWatchers[space.Id()] = watcher
+	sw.SetUpdateReceiver(s.updateReceiver)
+	s.objectWatchers[space.Id()] = sw
+	s.updateReceiver.spaceId = space.Id()
 }
 
 func (s *service) UnregisterSpace(space commonspace.Space) {

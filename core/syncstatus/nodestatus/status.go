@@ -13,7 +13,7 @@ const CName = "core.syncstatus.nodestatus"
 type nodeStatus struct {
 	sync.Mutex
 	configuration nodeconf.NodeConf
-	nodeStatus    ConnectionStatus
+	nodeStatus    map[string]ConnectionStatus
 }
 
 type ConnectionStatus int
@@ -27,11 +27,11 @@ const (
 type NodeStatus interface {
 	app.Component
 	SetNodesStatus(spaceId string, senderId string, status ConnectionStatus)
-	GetNodeStatus() ConnectionStatus
+	GetNodeStatus(spaceId string) ConnectionStatus
 }
 
 func NewNodeStatus() NodeStatus {
-	return &nodeStatus{}
+	return &nodeStatus{nodeStatus: make(map[string]ConnectionStatus, 0)}
 }
 
 func (n *nodeStatus) Init(a *app.App) (err error) {
@@ -43,10 +43,10 @@ func (n *nodeStatus) Name() (name string) {
 	return CName
 }
 
-func (n *nodeStatus) GetNodeStatus() ConnectionStatus {
+func (n *nodeStatus) GetNodeStatus(spaceId string) ConnectionStatus {
 	n.Lock()
 	defer n.Unlock()
-	return n.nodeStatus
+	return n.nodeStatus[spaceId]
 }
 
 func (n *nodeStatus) SetNodesStatus(spaceId string, senderId string, status ConnectionStatus) {
@@ -57,7 +57,7 @@ func (n *nodeStatus) SetNodesStatus(spaceId string, senderId string, status Conn
 	n.Lock()
 	defer n.Unlock()
 
-	n.nodeStatus = status
+	n.nodeStatus[spaceId] = status
 }
 
 func (n *nodeStatus) isSenderResponsible(senderId string, spaceId string) bool {

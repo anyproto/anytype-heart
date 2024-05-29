@@ -24,7 +24,7 @@ func TestNodeStatus_SetNodesStatus(t *testing.T) {
 		f.SetNodesStatus("spaceId", "peerId", Online)
 
 		// then
-		assert.Equal(t, Online, f.nodeStatus.nodeStatus)
+		assert.Equal(t, Online, f.nodeStatus.nodeStatus["spaceId"])
 	})
 	t.Run("peer is not responsible", func(t *testing.T) {
 		// given
@@ -35,7 +35,7 @@ func TestNodeStatus_SetNodesStatus(t *testing.T) {
 		f.SetNodesStatus("spaceId", "peerId", ConnectionError)
 
 		// then
-		assert.NotEqual(t, ConnectionError, f.nodeStatus.nodeStatus)
+		assert.NotEqual(t, ConnectionError, f.nodeStatus.nodeStatus["spaceId"])
 	})
 }
 
@@ -45,7 +45,7 @@ func TestNodeStatus_GetNodeStatus(t *testing.T) {
 		f := newFixture(t)
 
 		// when
-		status := f.GetNodeStatus()
+		status := f.GetNodeStatus("")
 
 		// then
 		assert.Equal(t, Online, status)
@@ -57,7 +57,7 @@ func TestNodeStatus_GetNodeStatus(t *testing.T) {
 
 		// when
 		f.SetNodesStatus("spaceId", "peerId", ConnectionError)
-		status := f.GetNodeStatus()
+		status := f.GetNodeStatus("spaceId")
 
 		// then
 		assert.Equal(t, ConnectionError, status)
@@ -67,7 +67,9 @@ func TestNodeStatus_GetNodeStatus(t *testing.T) {
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
-	nodeStatus := &nodeStatus{}
+	nodeStatus := &nodeStatus{
+		nodeStatus: map[string]ConnectionStatus{},
+	}
 	a := &app.App{}
 	a.Register(nodeConf)
 	err := nodeStatus.Init(a)
