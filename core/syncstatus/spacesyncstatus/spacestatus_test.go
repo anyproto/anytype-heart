@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -27,9 +28,11 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 
 		a := new(app.App)
 		eventSender := mock_event.NewMockSender(t)
-		a.Register(testutil.PrepareMock(ctx, a, eventSender))
-		a.Register(objectstore.NewStoreFixture(t))
-		a.Register(&config.Config{NetworkMode: pb.RpcAccount_DefaultConfig})
+		space := mock_space.NewMockService(t)
+		a.Register(testutil.PrepareMock(ctx, a, eventSender)).
+			Register(objectstore.NewStoreFixture(t)).
+			Register(&config.Config{NetworkMode: pb.RpcAccount_DefaultConfig}).
+			Register(testutil.PrepareMock(ctx, a, space))
 
 		// when
 		err := status.Init(a)
@@ -58,9 +61,12 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 				},
 			}},
 		})
-		a.Register(testutil.PrepareMock(ctx, a, eventSender))
-		a.Register(objectstore.NewStoreFixture(t))
-		a.Register(&config.Config{NetworkMode: pb.RpcAccount_LocalOnly})
+		space := mock_space.NewMockService(t)
+
+		a.Register(testutil.PrepareMock(ctx, a, eventSender)).
+			Register(objectstore.NewStoreFixture(t)).
+			Register(&config.Config{NetworkMode: pb.RpcAccount_LocalOnly}).
+			Register(testutil.PrepareMock(ctx, a, space))
 
 		// when
 		err := status.Init(a)
