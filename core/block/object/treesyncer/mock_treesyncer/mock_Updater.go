@@ -7,7 +7,7 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
-	helpers "github.com/anyproto/anytype-heart/core/syncstatus/helpers"
+	domain "github.com/anyproto/anytype-heart/core/domain"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -209,7 +209,7 @@ func (_c *MockUpdater_Run_Call) RunAndReturn(run func(context.Context) error) *M
 }
 
 // SendUpdate provides a mock function with given fields: spaceSync
-func (_m *MockUpdater) SendUpdate(spaceSync *helpers.SpaceSync) {
+func (_m *MockUpdater) SendUpdate(spaceSync *domain.SpaceSync) {
 	_m.Called(spaceSync)
 }
 
@@ -219,14 +219,14 @@ type MockUpdater_SendUpdate_Call struct {
 }
 
 // SendUpdate is a helper method to define mock.On call
-//   - spaceSync *helpers.SpaceSync
+//   - spaceSync *domain.SpaceSync
 func (_e *MockUpdater_Expecter) SendUpdate(spaceSync interface{}) *MockUpdater_SendUpdate_Call {
 	return &MockUpdater_SendUpdate_Call{Call: _e.mock.On("SendUpdate", spaceSync)}
 }
 
-func (_c *MockUpdater_SendUpdate_Call) Run(run func(spaceSync *helpers.SpaceSync)) *MockUpdater_SendUpdate_Call {
+func (_c *MockUpdater_SendUpdate_Call) Run(run func(spaceSync *domain.SpaceSync)) *MockUpdater_SendUpdate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*helpers.SpaceSync))
+		run(args[0].(*domain.SpaceSync))
 	})
 	return _c
 }
@@ -236,7 +236,7 @@ func (_c *MockUpdater_SendUpdate_Call) Return() *MockUpdater_SendUpdate_Call {
 	return _c
 }
 
-func (_c *MockUpdater_SendUpdate_Call) RunAndReturn(run func(*helpers.SpaceSync)) *MockUpdater_SendUpdate_Call {
+func (_c *MockUpdater_SendUpdate_Call) RunAndReturn(run func(*domain.SpaceSync)) *MockUpdater_SendUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }

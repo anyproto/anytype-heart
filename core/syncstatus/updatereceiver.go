@@ -23,10 +23,11 @@ type updateReceiver struct {
 
 	nodeConfService nodeconf.Service
 	sync.Mutex
-	nodeConnected     bool
-	lastStatus        map[string]pb.EventStatusThreadSyncStatus
-	objectStore       objectstore.ObjectStore
-	nodeStatus        nodestatus.NodeStatus
+	nodeConnected bool
+	lastStatus    map[string]pb.EventStatusThreadSyncStatus
+	objectStore   objectstore.ObjectStore
+	nodeStatus    nodestatus.NodeStatus
+	spaceId       string
 	syncStatusUpdater Updater
 }
 
@@ -131,7 +132,7 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 func (r *updateReceiver) UpdateNodeStatus() {
 	r.Lock()
 	defer r.Unlock()
-	r.nodeConnected = r.nodeStatus.GetNodeStatus() == nodestatus.Online
+	r.nodeConnected = r.nodeStatus.GetNodeStatus(r.spaceId) == nodestatus.Online
 }
 
 func (r *updateReceiver) notify(

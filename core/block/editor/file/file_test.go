@@ -1,13 +1,17 @@
 package file
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
@@ -100,4 +104,19 @@ func TestFile(t *testing.T) {
 			require.Equal(t, model.BlockContentFile_Done, file.State)
 		})
 	}
+}
+
+func TestDropFiles(t *testing.T) {
+	t.Run("do not drop files to object with Blocks restriction", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.sb.SetRestrictions(restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks}})
+
+		// when
+		err := fx.sfile.DropFiles(pb.RpcFileDropRequest{})
+
+		// then
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, restriction.ErrRestricted))
+	})
 }

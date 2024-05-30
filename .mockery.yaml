@@ -172,3 +172,11 @@ packages:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/updater:
     interfaces:
       Updater:
+      UpdateReceiver:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
+  github.com/anyproto/anytype-heart/space/spacecore/peermanager:
+    interfaces:
+      Updater:

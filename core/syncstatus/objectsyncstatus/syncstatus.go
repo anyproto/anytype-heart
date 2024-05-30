@@ -42,6 +42,7 @@ const (
 type StatusUpdater interface {
 	HeadsChange(treeId string, heads []string)
 	HeadsReceive(senderId, treeId string, heads []string)
+	RemoveAllExcept(senderId string, differentRemoteIds []string)
 }
 
 type StatusWatcher interface {
@@ -97,8 +98,8 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.updateIntervalSecs = syncUpdateInterval
 	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
-	s.configuration = a.MustComponent(nodeconf.CName).(nodeconf.NodeConf)
-	s.storage = a.MustComponent(spacestorage.CName).(spacestorage.SpaceStorage)
+	s.configuration = app.MustComponent[nodeconf.NodeConf](a)
+	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
@@ -229,18 +230,10 @@ func (s *syncStatusService) Watch(treeId string) (err error) {
 func (s *syncStatusService) Unwatch(treeId string) {
 	s.Lock()
 	defer s.Unlock()
-
 	delete(s.watchers, treeId)
 }
 
-func (s *syncStatusService) StateCounter() uint64 {
-	s.Lock()
-	defer s.Unlock()
-
-	return s.stateCounter
-}
-
-func (s *syncStatusService) RemoveAllExcept(senderId string, differentRemoteIds []string, stateCounter uint64) {
+func (s *syncStatusService) RemoveAllExcept(senderId string, differentRemoteIds []string) {
 	// if sender is not a responsible node, then this should have no effect
 	if !s.isSenderResponsible(senderId) {
 		return
@@ -252,7 +245,7 @@ func (s *syncStatusService) RemoveAllExcept(senderId string, differentRemoteIds 
 	slices.Sort(differentRemoteIds)
 	for treeId, entry := range s.treeHeads {
 		// if the current update is outdated
-		if entry.stateCounter > stateCounter {
+		if entry.stateCounter > s.stateCounter {
 			continue
 		}
 		// if we didn't find our treeId in heads ids which are different from us and node
@@ -267,7 +260,6 @@ func (s *syncStatusService) Close(ctx context.Context) error {
 	s.periodicSync.Close()
 	return nil
 }
-
 func (s *syncStatusService) isSenderResponsible(senderId string) bool {
 	return slices.Contains(s.configuration.NodeIds(s.spaceId), senderId)
 }

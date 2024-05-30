@@ -16,7 +16,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer/mock_treesyncer"
-	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -29,6 +29,7 @@ type fixture struct {
 	updater      *mock_treesyncer.MockUpdater
 	checker      *mock_treesyncer.MockPeerStatusChecker
 	nodeConf     *mock_nodeconf.MockService
+	syncStatus   *mock_treesyncer.MockSyncedTreeRemover
 }
 
 func newFixture(t *testing.T, spaceId string) *fixture {
@@ -42,11 +43,13 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	checker.EXPECT().Name().Return("checker").Maybe()
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
 	nodeConf.EXPECT().Name().Return("nodeConf").AnyTimes()
+	syncStatus := mock_treesyncer.NewMockSyncedTreeRemover(t)
 
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, treeManager)).
 		Register(testutil.PrepareMock(context.Background(), a, updater)).
 		Register(testutil.PrepareMock(context.Background(), a, checker)).
+		Register(testutil.PrepareMock(context.Background(), a, syncStatus)).
 		Register(testutil.PrepareMock(context.Background(), a, nodeConf))
 	syncer := NewTreeSyncer(spaceId)
 	err := syncer.Init(a)
@@ -60,6 +63,7 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 		updater:      updater,
 		checker:      checker,
 		nodeConf:     nodeConf,
+		syncStatus:   syncStatus,
 	}
 }
 
@@ -77,6 +81,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
 		require.NoError(t, err)
 		require.NotNil(t, fx.requestPools[peerId])
@@ -94,6 +99,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
@@ -112,6 +118,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId, existingId}).Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId, existingId}, []string{missingId, missingId, missingId})
@@ -138,6 +145,7 @@ func TestTreeSyncer(t *testing.T) {
 			return fx.missingMock, nil
 		})
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId + "1", missingId + "2"})
@@ -164,9 +172,11 @@ func TestTreeSyncer(t *testing.T) {
 			return fx.missingMock, nil
 		})
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
+		var existing []string
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, existing).Return()
 
 		fx.StartSync()
-		err := fx.SyncAll(context.Background(), peerId, nil, []string{missingId})
+		err := fx.SyncAll(context.Background(), peerId, existing, []string{missingId})
 		require.NoError(t, err)
 		require.NotNil(t, fx.requestPools[peerId])
 		require.NotNil(t, fx.headPools[peerId])
@@ -188,7 +198,8 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(true)
-		fx.updater.EXPECT().SendUpdate(helpers.MakeSyncStatus(spaceId, helpers.Offline, 0, helpers.Null, helpers.Objects))
+		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Offline, 0, domain.Null, domain.Objects))
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
@@ -207,8 +218,9 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(false)
-		fx.updater.EXPECT().SendUpdate(helpers.MakeSyncStatus(spaceId, helpers.Syncing, 2, helpers.Null, helpers.Objects))
-		fx.updater.EXPECT().SendUpdate(helpers.MakeSyncStatus(spaceId, helpers.Synced, 0, helpers.Null, helpers.Objects))
+		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Syncing, 2, domain.Null, domain.Objects))
+		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Synced, 0, domain.Null, domain.Objects))
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})

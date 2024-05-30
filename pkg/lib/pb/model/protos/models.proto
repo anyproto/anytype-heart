@@ -52,6 +52,22 @@ enum SmartBlockType {
     NotificationObject = 0x217;
 }
 
+message Search {
+    message Result {
+        string objectId = 1;
+        google.protobuf.Struct details = 2; //
+        repeated Meta meta = 3; // meta information about the search result
+    }
+
+    message Meta {
+        string highlight = 1; // truncated text with highlights
+        repeated Range highlightRanges = 2; // ranges of the highlight in the text (using utf-16 runes)
+        string blockId = 3; // block id where the highlight has been found
+        string relationKey = 4; // relation key of the block where the highlight has been found
+        google.protobuf.Struct relationDetails = 5; // contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails
+    }
+}
+
 message Block {
     string id = 1;
     google.protobuf.Struct fields = 2;
@@ -1177,7 +1193,7 @@ enum NameserviceNameType {
 }
 
 
-message Membership {    
+message Membership {
     enum Status {
         StatusUnknown = 0;
         // please wait a bit more, we are still processing your request
@@ -1194,7 +1210,7 @@ message Membership {
         // in this case please call Finalize to finish the process
         StatusPendingRequiresFinalization = 3;
     }
-    
+
     enum PaymentMethod {
         MethodNone = 0;
         MethodStripe = 1;
@@ -1236,7 +1252,7 @@ message MembershipTierData {
         PeriodTypeDays = 2;
         PeriodTypeWeeks = 3;
         PeriodTypeMonths = 4;
-        PeriodTypeYears = 5;  
+        PeriodTypeYears = 5;
     }
 
     // this is a unique Payment Node ID of the tier
@@ -1247,14 +1263,14 @@ message MembershipTierData {
     // just a short technical description
     string description = 3;
     // is this tier for testing and debugging only?
-    bool isTest = 4;    
+    bool isTest = 4;
     // how long is the period of the subscription
     PeriodType periodType = 5;
     // i.e. "5 days" or "3 years"
     uint32 periodValue = 6;
     // this one is a price we use ONLY on Stripe platform
     uint32 priceStripeUsdCents = 7;
-    // number of ANY NS names that this tier includes 
+    // number of ANY NS names that this tier includes
     // also in the "features" list (see below)
     uint32 anyNamesCountIncluded = 8;
     // somename.any - is of len 8
@@ -1280,4 +1296,12 @@ message MembershipTierData {
 message Detail {
     string key = 1;
     google.protobuf.Value value = 2; // NUll - removes key
+}
+
+message DeviceInfo {
+    string id = 1;
+    string name = 2;
+    int64 addDate = 3;
+    bool archived = 4;
+    bool isConnected = 5;
 }
