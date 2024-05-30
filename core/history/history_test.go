@@ -271,31 +271,7 @@ func TestHistory_GetBlocksParticipants(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, blocksParticipants, 5)
-	})
-	t.Run("object with moved block changes by 1 participant", func(t *testing.T) {
-		// given
-		bl := &model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}
-		keys, _ := accountdata.NewRandom()
-		account := keys.SignKey.GetPublic()
-		expectedChanges := []*objecttree.Change{
-			provideBlockCreateChange(bl, account),
-			provideBlockMoveChange(bl, account),
-		}
-
-		// when
-		history := newFixture(t, expectedChanges, objectId, spaceID, versionId)
-		participantId := domain.NewParticipantId(spaceID, keys.SignKey.GetPublic().Account())
-		blocksParticipants, err := history.GetBlocksParticipants(domain.FullID{
-			ObjectID: objectId,
-			SpaceID:  spaceID,
-		}, versionId, []*model.Block{bl})
-
-		// then
-		assert.Nil(t, err)
-		assert.Len(t, blocksParticipants, 1)
-		assert.Equal(t, bl.Id, blocksParticipants[0].BlockId)
-		assert.Equal(t, participantId, blocksParticipants[0].ParticipantId)
+		assert.Len(t, blocksParticipants, 4)
 	})
 	t.Run("object block was deleted, don't add it in response", func(t *testing.T) {
 		bl := &model.Block{Id: blockId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}
@@ -1158,23 +1134,6 @@ func provideBlockFieldChange(block *model.Block, account crypto.PubKey) *objectt
 									},
 								},
 							},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func provideBlockMoveChange(block *model.Block, account crypto.PubKey) *objecttree.Change {
-	return &objecttree.Change{
-		Identity: account,
-		Model: &pb.Change{
-			Content: []*pb.ChangeContent{
-				{
-					Value: &pb.ChangeContentValueOfBlockMove{
-						BlockMove: &pb.ChangeBlockMove{
-							Ids: []string{block.Id},
 						},
 					},
 				},

@@ -353,9 +353,6 @@ func (h *history) getChangedBlockIds(changeList []*pb.ChangeContent) []string {
 				blocksIds = append(blocksIds, bl.Id)
 			}
 		}
-		if c := content.GetBlockMove(); c != nil {
-			blocksIds = append(blocksIds, c.Ids...)
-		}
 		if c := content.GetBlockUpdate(); c != nil {
 			for _, event := range c.Events {
 				blocksIds = h.handleAddEvent(event, blocksIds)
@@ -382,9 +379,6 @@ func (h *history) handleBlockSettingsEvents(event *pb.EventMessage, blockId []st
 	}
 	if setAlign := event.GetBlockSetAlign(); setAlign != nil {
 		blockId = append(blockId, setAlign.Id)
-	}
-	if setChildrenIds := event.GetBlockSetChildrenIds(); setChildrenIds != nil {
-		blockId = append(blockId, setChildrenIds.Id)
 	}
 	if setBackgroundColor := event.GetBlockSetBackgroundColor(); setBackgroundColor != nil {
 		blockId = append(blockId, setBackgroundColor.Id)
