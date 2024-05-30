@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "4d266eb57da69264547b22319107954a26a01327aef210b1a23d301ce6ead028"
+const RelationChecksum = "e7b7dc1196702d61efece57fd1db120838fb3d3f40ca3ca5670092f609d56538"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -2254,7 +2254,7 @@ var (
 		},
 		RelationKeySyncDate: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_local,
 			Description:      "Object sync date",
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
@@ -2268,7 +2268,7 @@ var (
 		},
 		RelationKeySyncError: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_local,
 			Description:      "Object sync error",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
@@ -2282,7 +2282,7 @@ var (
 		},
 		RelationKeySyncStatus: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_local,
 			Description:      "Object sync status",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,

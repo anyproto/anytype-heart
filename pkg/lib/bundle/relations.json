@@ -1737,7 +1737,7 @@
     "maxCount": 1,
     "name": "Sync status",
     "readonly": true,
-    "source": "details"
+    "source": "local"
   },
   {
     "description": "Object sync date",
@@ -1747,7 +1747,7 @@
     "maxCount": 1,
     "name": "Sync date",
     "readonly": true,
-    "source": "details"
+    "source": "local"
   },
   {
     "description": "Object sync error",
@@ -1757,6 +1757,6 @@
     "maxCount": 1,
     "name": "Sync error",
     "readonly": true,
-    "source": "details"
+    "source": "local"
   }
 ]
