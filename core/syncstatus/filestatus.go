@@ -3,6 +3,7 @@ package syncstatus
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -39,12 +40,8 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 		if !ok {
 			return fmt.Errorf("setting of details is not supported for %T", sb)
 		}
-		return detailsSetter.SetDetails(nil, []*model.Detail{
-			{
-				Key:   bundle.RelationKeyFileBackupStatus.String(),
-				Value: pbtypes.Int64(newStatus),
-			},
-		}, true)
+		details := provideFileStatusDetails(status, newStatus)
+		return detailsSetter.SetDetails(nil, details, true)
 	})
 	if err != nil {
 		return fmt.Errorf("get object: %w", err)
@@ -59,7 +56,35 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 	return nil
 }
 
+func provideFileStatusDetails(status filesyncstatus.Status, newStatus int64) []*model.Detail {
+	syncStatus, syncError := getSyncStatus(status)
+	details := make([]*model.Detail, 0, 4)
+	details = append(details, &model.Detail{
+		Key:   bundle.RelationKeySyncStatus.String(),
+		Value: pbtypes.Int64(int64(syncStatus)),
+	})
+	details = append(details, &model.Detail{
+		Key:   bundle.RelationKeySyncError.String(),
+		Value: pbtypes.Int64(int64(syncError)),
+	})
+	details = append(details, &model.Detail{
+		Key:   bundle.RelationKeySyncDate.String(),
+		Value: pbtypes.Int64(time.Now().Unix()),
+	})
+	details = append(details, &model.Detail{
+		Key:   bundle.RelationKeyFileBackupStatus.String(),
+		Value: pbtypes.Int64(newStatus),
+	})
+	return details
+}
+
 func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string) {
+	spaceStatus, spaceError := getSyncStatus(status)
+	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, 0, spaceError, domain.Files)
+	s.spaceSyncStatus.SendUpdate(syncStatus)
+}
+
+func getSyncStatus(status filesyncstatus.Status) (domain.SyncStatus, domain.SyncError) {
 	var (
 		spaceStatus domain.SpaceSyncStatus
 		spaceError  domain.SpaceSyncError
@@ -76,7 +101,5 @@ func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId st
 		spaceStatus = domain.Error
 		spaceError = domain.NetworkError
 	}
-
-	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, 0, spaceError, domain.Files)
-	s.spaceSyncStatus.SendUpdate(syncStatus)
+	return spaceStatus, spaceError
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -17,7 +17,7 @@ const CName = "core.syncstatus.objectsyncstatus.updater"
 
 type Updater interface {
 	app.Component
-	UpdateDetails(objectId string, status helpers.SyncStatus, syncError helpers.SyncError) error
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError) error
 }
 
 type syncStatusUpdater struct {
@@ -37,7 +37,7 @@ func NewUpdater() Updater {
 	return &syncStatusUpdater{}
 }
 
-func (u *syncStatusUpdater) UpdateDetails(objectId string, status helpers.SyncStatus, syncError helpers.SyncError) error {
+func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError) error {
 	return cache.Do(u.objectGetter, objectId, func(sb basic.DetailsSettable) error {
 		syncStatusDetails := []*model.Detail{
 			{
@@ -45,12 +45,10 @@ func (u *syncStatusUpdater) UpdateDetails(objectId string, status helpers.SyncSt
 				Value: pbtypes.Int64(int64(status)),
 			},
 		}
-		if syncError != helpers.Null {
-			syncStatusDetails = append(syncStatusDetails, &model.Detail{
-				Key:   bundle.RelationKeySyncError.String(),
-				Value: pbtypes.Int64(int64(syncError)),
-			})
-		}
+		syncStatusDetails = append(syncStatusDetails, &model.Detail{
+			Key:   bundle.RelationKeySyncError.String(),
+			Value: pbtypes.Int64(int64(syncError)),
+		})
 		syncStatusDetails = append(syncStatusDetails, &model.Detail{
 			Key:   bundle.RelationKeySyncDate.String(),
 			Value: pbtypes.Int64(time.Now().Unix()),

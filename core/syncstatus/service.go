@@ -11,9 +11,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
@@ -34,7 +34,7 @@ type Service interface {
 }
 
 type Updater interface {
-	UpdateDetails(objectId string, status helpers.SyncStatus, syncError helpers.SyncError) error
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError) error
 }
 
 var _ Service = (*service)(nil)
