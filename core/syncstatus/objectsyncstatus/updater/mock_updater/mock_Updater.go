@@ -4,7 +4,7 @@ package mock_updater
 
 import (
 	app "github.com/anyproto/any-sync/app"
-	helpers "github.com/anyproto/anytype-heart/core/syncstatus/helpers"
+	domain "github.com/anyproto/anytype-heart/core/domain"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -113,7 +113,7 @@ func (_c *MockUpdater_Name_Call) RunAndReturn(run func() string) *MockUpdater_Na
 }
 
 // UpdateDetails provides a mock function with given fields: objectId, status, syncError
-func (_m *MockUpdater) UpdateDetails(objectId string, status helpers.SyncStatus, syncError helpers.SyncError) error {
+func (_m *MockUpdater) UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError) error {
 	ret := _m.Called(objectId, status, syncError)
 
 	if len(ret) == 0 {
@@ -121,7 +121,7 @@ func (_m *MockUpdater) UpdateDetails(objectId string, status helpers.SyncStatus,
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, helpers.SyncStatus, helpers.SyncError) error); ok {
+	if rf, ok := ret.Get(0).(func(string, domain.SyncStatus, domain.SyncError) error); ok {
 		r0 = rf(objectId, status, syncError)
 	} else {
 		r0 = ret.Error(0)
@@ -137,15 +137,15 @@ type MockUpdater_UpdateDetails_Call struct {
 
 // UpdateDetails is a helper method to define mock.On call
 //   - objectId string
-//   - status helpers.SyncStatus
-//   - syncError helpers.SyncError
+//   - status domain.SyncStatus
+//   - syncError domain.SyncError
 func (_e *MockUpdater_Expecter) UpdateDetails(objectId interface{}, status interface{}, syncError interface{}) *MockUpdater_UpdateDetails_Call {
 	return &MockUpdater_UpdateDetails_Call{Call: _e.mock.On("UpdateDetails", objectId, status, syncError)}
 }
 
-func (_c *MockUpdater_UpdateDetails_Call) Run(run func(objectId string, status helpers.SyncStatus, syncError helpers.SyncError)) *MockUpdater_UpdateDetails_Call {
+func (_c *MockUpdater_UpdateDetails_Call) Run(run func(objectId string, status domain.SyncStatus, syncError domain.SyncError)) *MockUpdater_UpdateDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(helpers.SyncStatus), args[2].(helpers.SyncError))
+		run(args[0].(string), args[1].(domain.SyncStatus), args[2].(domain.SyncError))
 	})
 	return _c
 }
@@ -155,7 +155,7 @@ func (_c *MockUpdater_UpdateDetails_Call) Return(_a0 error) *MockUpdater_UpdateD
 	return _c
 }
 
-func (_c *MockUpdater_UpdateDetails_Call) RunAndReturn(run func(string, helpers.SyncStatus, helpers.SyncError) error) *MockUpdater_UpdateDetails_Call {
+func (_c *MockUpdater_UpdateDetails_Call) RunAndReturn(run func(string, domain.SyncStatus, domain.SyncError) error) *MockUpdater_UpdateDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
