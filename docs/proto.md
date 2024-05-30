@@ -1408,7 +1408,6 @@
     - [Event.Block](#anytype-Event-Block)
     - [Event.Block.Add](#anytype-Event-Block-Add)
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
-    - [Event.Block.Dataview.ActiveViewSet](#anytype-Event-Block-Dataview-ActiveViewSet)
     - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
     - [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet)
     - [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate)
@@ -6395,7 +6394,7 @@ Makes blocks copy by given ids and paste it to shown place
 <a name="anytype-Rpc-BlockDataview-View-SetActive"></a>
 
 ### Rpc.BlockDataview.View.SetActive
-set the current active view (persisted only within a session)
+set the current active view locally
 
 
 
@@ -6413,8 +6412,6 @@ set the current active view (persisted only within a session)
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block |
 | viewId | [string](#string) |  | id of active view |
-| offset | [uint32](#uint32) |  |  |
-| limit | [uint32](#uint32) |  |  |
 
 
 
@@ -19250,7 +19247,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -22231,22 +22228,6 @@ B. Partial block load
 
 
 
-<a name="anytype-Event-Block-Dataview-ActiveViewSet"></a>
-
-### Event.Block.Dataview.ActiveViewSet
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  | dataview block&#39;s id |
-| viewId | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Event-Block-Dataview-GroupOrderUpdate"></a>
 
 ### Event.Block.Dataview.GroupOrderUpdate
@@ -24393,7 +24374,6 @@ Precondition: user A opened a block
 | blockDataviewViewUpdate | [Event.Block.Dataview.ViewUpdate](#anytype-Event-Block-Dataview-ViewUpdate) |  |  |
 | blockDataviewTargetObjectIdSet | [Event.Block.Dataview.TargetObjectIdSet](#anytype-Event-Block-Dataview-TargetObjectIdSet) |  |  |
 | blockDataviewIsCollectionSet | [Event.Block.Dataview.IsCollectionSet](#anytype-Event-Block-Dataview-IsCollectionSet) |  |  |
-| blockDataviewActiveViewSet | [Event.Block.Dataview.ActiveViewSet](#anytype-Event-Block-Dataview-ActiveViewSet) |  |  |
 | blockDataviewOldRelationDelete | [Event.Block.Dataview.OldRelationDelete](#anytype-Event-Block-Dataview-OldRelationDelete) |  | deprecated |
 | blockDataviewOldRelationSet | [Event.Block.Dataview.OldRelationSet](#anytype-Event-Block-Dataview-OldRelationSet) |  | deprecated |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |

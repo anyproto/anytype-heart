@@ -146,6 +146,7 @@ type ObjectStore interface {
 	GetOutboundLinksByID(id string) ([]string, error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 
+	SetActiveView(objectId, blockId, viewId string) error
 	SetActiveViews(objectId string, views map[string]string) error
 	GetActiveViews(objectId string) (map[string]string, error)
 

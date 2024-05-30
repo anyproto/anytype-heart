@@ -14,9 +14,22 @@ const (
 
 var ErrParseView = errors.New("failed to parse view")
 
-// SetActiveViews accepts map of activeViews by blocks, as objects can handle multiple dataview blocks
+// SetActiveViews accepts map of active views by blocks, as objects can handle multiple dataview blocks
 func (s *dsObjectStore) SetActiveViews(objectId string, views map[string]string) error {
 	return badgerhelper.SetValue(s.db, pagesActiveViewBase.ChildString(objectId).Bytes(), viewsMapToString(views))
+}
+
+func (s *dsObjectStore) SetActiveView(objectId, blockId, viewId string) error {
+	views, err := s.GetActiveViews(objectId)
+	// if active views are not found in BD, or we could not parse them, then we need to rewrite them
+	if err != nil && !badgerhelper.IsNotFound(err) && !errors.Is(err, ErrParseView) {
+		return err
+	}
+	if views == nil {
+		views = make(map[string]string, 1)
+	}
+	views[blockId] = viewId
+	return s.SetActiveViews(objectId, views)
 }
 
 // GetActiveViews returns a map of activeViews by block ids

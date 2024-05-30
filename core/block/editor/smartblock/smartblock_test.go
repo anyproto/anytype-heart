@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/link"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -467,46 +466,6 @@ func TestInjectLocalDetails(t *testing.T) {
 	})
 
 	// TODO More tests
-}
-
-func TestInjectActiveViews(t *testing.T) {
-	objId := "object"
-	dv1 := "dataview1"
-	dv2 := "dataview2"
-	dv3 := "dataview3"
-
-	t.Run("active views are injected to dataview blocks", func(t *testing.T) {
-		// given
-		fx := newFixture(objId, t)
-		blocksToView := map[string]string{dv1: "view1", dv2: "view2"}
-		fx.store.EXPECT().GetActiveViews(objId).RunAndReturn(func(blockId string) (map[string]string, error) {
-			return blocksToView, nil
-		})
-
-		st := state.NewDoc(objId, map[string]simple.Block{
-			objId: simple.New(&model.Block{Id: objId, ChildrenIds: []string{dv1, dv2, dv3}}),
-			dv1: dataview.NewDataview(&model.Block{
-				Id:      dv1,
-				Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{}},
-			}),
-			dv2: dataview.NewDataview(&model.Block{
-				Id:      dv2,
-				Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{}},
-			}),
-			dv3: dataview.NewDataview(&model.Block{
-				Id:      dv3,
-				Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{}},
-			}),
-		}).(*state.State)
-
-		// when
-		fx.injectActiveViews(st)
-
-		// then
-		assert.Equal(t, blocksToView[dv1], st.Pick(dv1).Model().GetDataview().ActiveView)
-		assert.Equal(t, blocksToView[dv2], st.Pick(dv2).Model().GetDataview().ActiveView)
-		assert.Empty(t, st.Pick(dv3).Model().GetDataview().ActiveView)
-	})
 }
 
 type fixture struct {

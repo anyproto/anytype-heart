@@ -71,7 +71,6 @@ message Event {
             Block.Dataview.ViewUpdate blockDataviewViewUpdate = 125;
             Block.Dataview.TargetObjectIdSet blockDataviewTargetObjectIdSet = 126;
             Block.Dataview.IsCollectionSet blockDataviewIsCollectionSet = 127;
-            Block.Dataview.ActiveViewSet blockDataviewActiveViewSet = 128;
 
             // deprecated
             Block.Dataview.OldRelationDelete blockDataviewOldRelationDelete = 24;
@@ -902,11 +901,6 @@ message Event {
             message IsCollectionSet {
                 string id = 1; // dataview block's id
                 bool value = 2;
-            }
-
-            message ActiveViewSet {
-                string blockId = 1; // dataview block's id
-                string viewId = 2;
             }
         }
     }

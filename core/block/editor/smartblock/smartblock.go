@@ -40,7 +40,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -356,7 +355,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
-	sb.injectActiveViews(ctx.State)
 	return
 }
 
@@ -719,8 +717,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
-	msgs = sb.saveActiveViews(msgs)
-
 	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
@@ -763,7 +759,6 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
-	sb.injectActiveViews(s)
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -1010,7 +1005,6 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
-	sb.injectActiveViews(d.(*state.State))
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1350,58 +1344,6 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 		}
 	}
 	return false
-}
-
-func (sb *smartBlock) saveActiveViews(msgs []simple.EventMessage) []simple.EventMessage {
-	i := 0
-	views := make(map[string]string, 0)
-	for _, msg := range msgs {
-		ev := msg.Msg.GetBlockDataviewActiveViewSet()
-		if ev != nil {
-			views[ev.BlockId] = ev.ViewId
-
-		} else {
-			msgs[i] = msg
-			i++
-		}
-	}
-
-	if len(views) == 0 {
-		return msgs
-	}
-
-	err := sb.objectStore.SetActiveViews(sb.Id(), views)
-	if err != nil {
-		log.With("objectID", sb.Id()).Warnf("failed to update active views: %v", err)
-	}
-
-	// we exclude BlockDataViewActiveViewIsSet messages, because we do not need to send events on it
-	return msgs[:i]
-}
-
-func (sb *smartBlock) injectActiveViews(s *state.State) {
-	views, err := sb.objectStore.GetActiveViews(sb.Id())
-	if badgerhelper.IsNotFound(err) {
-		return
-	}
-	if err != nil {
-		log.With("objectId", sb.Id()).Warnf("failed to get list of active views from store: %v", err)
-		return
-	}
-
-	for blockId, viewId := range views {
-		b := s.Pick(blockId)
-		if b == nil {
-			log.With("objectId", sb.Id()).Warnf("failed to get block '%s' to inject active view", blockId)
-			continue
-		}
-		d := b.Model().GetDataview()
-		if d == nil {
-			log.With("objectId", sb.Id()).Warnf("block '%s' is not dataview, so cannot inject active view", blockId)
-			continue
-		}
-		d.ActiveView = viewId
-	}
 }
 
 type IndexOptions struct {

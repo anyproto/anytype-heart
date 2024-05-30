@@ -782,6 +782,20 @@ func (mr *MockObjectStoreMockRecorder) SaveVirtualSpace(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).SaveVirtualSpace), arg0)
 }
 
+// SetActiveView mocks base method.
+func (m *MockObjectStore) SetActiveView(arg0, arg1, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetActiveView", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetActiveView indicates an expected call of SetActiveView.
+func (mr *MockObjectStoreMockRecorder) SetActiveView(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetActiveView", reflect.TypeOf((*MockObjectStore)(nil).SetActiveView), arg0, arg1, arg2)
+}
+
 // SetActiveViews mocks base method.
 func (m *MockObjectStore) SetActiveViews(arg0 string, arg1 map[string]string) error {
 	m.ctrl.T.Helper()

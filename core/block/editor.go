@@ -239,7 +239,7 @@ func (s *Service) DeleteDataviewView(ctx session.Context, req pb.RpcBlockDatavie
 
 func (s *Service) SetDataviewActiveView(ctx session.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error {
 	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.SetActiveView(ctx, req.BlockId, req.ViewId, int(req.Limit), int(req.Offset))
+		return b.SetActiveView(ctx, req.BlockId, req.ViewId)
 	})
 }
 
