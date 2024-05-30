@@ -9,7 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -21,13 +21,13 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fixture := newFixture(t)
 
 		// when
-		err := fixture.UpdateDetails("id", helpers.Synced, helpers.Null)
+		err := fixture.UpdateDetails("id", domain.Synced, domain.Null)
 		assert.Nil(t, err)
 
 		// then
 		details := fixture.sb.NewState().CombinedDetails().GetFields()
 		assert.NotNil(t, details)
-		assert.Equal(t, pbtypes.Int64(int64(helpers.Synced)), details[bundle.RelationKeySyncStatus.String()])
+		assert.Equal(t, pbtypes.Int64(int64(domain.Synced)), details[bundle.RelationKeySyncStatus.String()])
 		assert.NotNil(t, details[bundle.RelationKeySyncDate.String()])
 	})
 	t.Run("update sync status, error and date", func(t *testing.T) {
@@ -35,14 +35,14 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fixture := newFixture(t)
 
 		// when
-		err := fixture.UpdateDetails("id", helpers.Error, helpers.NetworkError)
+		err := fixture.UpdateDetails("id", domain.Error, domain.NetworkError)
 		assert.Nil(t, err)
 
 		// then
 		details := fixture.sb.NewState().CombinedDetails().GetFields()
 		assert.NotNil(t, details)
-		assert.Equal(t, pbtypes.Int64(int64(helpers.Error)), details[bundle.RelationKeySyncStatus.String()])
-		assert.Equal(t, pbtypes.Int64(int64(helpers.NetworkError)), details[bundle.RelationKeySyncError.String()])
+		assert.Equal(t, pbtypes.Int64(int64(domain.Error)), details[bundle.RelationKeySyncStatus.String()])
+		assert.Equal(t, pbtypes.Int64(int64(domain.NetworkError)), details[bundle.RelationKeySyncError.String()])
 		assert.NotNil(t, details[bundle.RelationKeySyncDate.String()])
 	})
 }

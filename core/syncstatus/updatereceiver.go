@@ -8,9 +8,9 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/helpers"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
@@ -23,11 +23,11 @@ type updateReceiver struct {
 
 	nodeConfService nodeconf.Service
 	sync.Mutex
-	nodeConnected bool
-	lastStatus    map[string]pb.EventStatusThreadSyncStatus
-	objectStore   objectstore.ObjectStore
-	nodeStatus    nodestatus.NodeStatus
-	spaceId       string
+	nodeConnected     bool
+	lastStatus        map[string]pb.EventStatusThreadSyncStatus
+	objectStore       objectstore.ObjectStore
+	nodeStatus        nodestatus.NodeStatus
+	spaceId           string
 	syncStatusUpdater Updater
 }
 
@@ -81,25 +81,25 @@ func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, er
 	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
-func (r *updateReceiver) getObjectSyncStatusAndError(objectId string, status objectsyncstatus.SyncStatus) (pb.EventStatusThreadSyncStatus, helpers.SyncError) {
+func (r *updateReceiver) getObjectSyncStatusAndError(objectId string, status objectsyncstatus.SyncStatus) (pb.EventStatusThreadSyncStatus, domain.SyncError) {
 	fileStatus, err := r.getFileStatus(objectId)
-	var syncError helpers.SyncError
+	var syncError domain.SyncError
 	if err == nil {
 		// Prefer file backup status
 		if fileStatus != filesyncstatus.Synced {
 			status = fileStatus.ToSyncStatus()
 		}
 		if fileStatus == filesyncstatus.Limited {
-			syncError = helpers.StorageLimitExceed
+			syncError = domain.StorageLimitExceed
 		}
 	}
 
 	if r.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
-		return pb.EventStatusThread_IncompatibleVersion, helpers.IncompatibleVersion
+		return pb.EventStatusThread_IncompatibleVersion, domain.IncompatibleVersion
 	}
 
 	if !r.isNodeConnected() {
-		return pb.EventStatusThread_Offline, helpers.NetworkError
+		return pb.EventStatusThread_Offline, domain.NetworkError
 	}
 
 	switch status {
@@ -158,13 +158,13 @@ func (r *updateReceiver) sendEvent(ctx string, event pb.IsEventMessageValue) {
 	})
 }
 
-func mapEventToSyncStatus(status pb.EventStatusThreadSyncStatus) helpers.SyncStatus {
+func mapEventToSyncStatus(status pb.EventStatusThreadSyncStatus) domain.SyncStatus {
 	switch status {
 	case pb.EventStatusThread_Syncing:
-		return helpers.Syncing
+		return domain.Syncing
 	case pb.EventStatusThread_Offline, pb.EventStatusThread_Unknown, pb.EventStatusThread_IncompatibleVersion, pb.EventStatusThread_Failed:
-		return helpers.Error
+		return domain.Error
 	default:
-		return helpers.Synced
+		return domain.Synced
 	}
 }
