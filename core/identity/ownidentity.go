@@ -206,7 +206,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 }
 
 func (s *ownProfileSubscription) fetchGlobalName(ctx context.Context, ns nameserviceclient.AnyNsClientService) {
-	if ctx == nil || ns == nil {
+	if ns == nil {
 		log.Error("error fetching global name of our own identity from Naming Service as the service is not initialized")
 		return
 	}
@@ -219,7 +219,12 @@ func (s *ownProfileSubscription) fetchGlobalName(ctx context.Context, ns nameser
 		log.Debug("globalName was not found for our own identity in Naming Service")
 		return
 	}
-	s.handleGlobalNameUpdate(response.Name)
+	// getting name from NS could be a long operation, so we need to check if component is still opened
+	if err = ctx.Err(); err != nil {
+		log.Error("failed to update global name of our own identity, as component context exceeded")
+		return
+	}
+	s.updateGlobalName(response.Name)
 }
 
 func (s *ownProfileSubscription) updateGlobalName(globalName string) {
