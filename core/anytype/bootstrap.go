@@ -74,8 +74,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
-	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/updater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -256,7 +256,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).
-		Register(updater.NewUpdater()).
+		Register(detailsupdater.NewUpdater()).
 		Register(spacesyncstatus.NewSpaceSyncStatus()).
 		Register(nodestatus.NewNodeStatus()).
 		Register(syncstatus.New()).

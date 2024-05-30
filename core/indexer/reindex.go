@@ -10,11 +10,13 @@ import (
 	"github.com/anyproto/any-sync/util/slice"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -202,7 +204,31 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
+	err = i.addSyncDetails(space)
+	if err != nil {
+		log.Error("failed to add sync status relations", zap.Error(err))
+	}
 	return i.saveLatestChecksums(space.Id())
+}
+
+func (i *indexer) addSyncDetails(space clientspace.Space) error {
+	typesForSyncRelations := helper.SyncRelationsSmartblockTypes()
+	ids, err := i.getIdsForTypes(space.Id(), typesForSyncRelations...)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		err := space.DoLockedIfNotExists(id, func() error {
+			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
+				helper.InjectsSyncDetails(details)
+				return details, nil
+			})
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
