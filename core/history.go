@@ -42,10 +42,11 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 		if err != nil {
 			return fmt.Errorf("resolve spaceID: %w", err)
 		}
-		obj, ver, err = hs.Show(domain.FullID{
+		id := domain.FullID{
 			SpaceID:  spaceID,
 			ObjectID: req.ObjectId,
-		}, req.VersionId)
+		}
+		obj, ver, err = hs.Show(id, req.VersionId)
 		return
 	}); err != nil {
 		return response(nil, nil, err)
@@ -118,4 +119,28 @@ func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistory
 			ObjectID: req.ObjectId,
 		}, req.VersionId)
 	}))
+}
+
+func (mw *Middleware) HistoryDiffVersions(cctx context.Context, req *pb.RpcHistoryDiffVersionsRequest) *pb.RpcHistoryDiffVersionsResponse {
+	response := func(historyEvents []*pb.EventMessage, objectView *model.ObjectView, err error) (res *pb.RpcHistoryDiffVersionsResponse) {
+		res = &pb.RpcHistoryDiffVersionsResponse{
+			Error: &pb.RpcHistoryDiffVersionsResponseError{
+				Code: pb.RpcHistoryDiffVersionsResponseError_NULL,
+			},
+			ObjectView:    objectView,
+			HistoryEvents: historyEvents,
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcHistoryDiffVersionsResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+			return
+		}
+		return
+	}
+	hs := mw.applicationService.GetApp().MustComponent(history.CName).(history.History)
+	versionDiff, objectView, err := hs.DiffVersions(req)
+	if err != nil {
+		return response(nil, nil, err)
+	}
+	return response(versionDiff, objectView, nil)
 }
