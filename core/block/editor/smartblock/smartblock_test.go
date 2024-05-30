@@ -41,7 +41,6 @@ func TestSmartBlock_Init(t *testing.T) {
 	}, nil).Maybe()
 	fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 	fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
-	fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
 
 	// when
 	fx.init(t, []*model.Block{{Id: id}})
@@ -60,7 +59,6 @@ func TestSmartBlock_Apply(t *testing.T) {
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
-		fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
 		fx.init(t, []*model.Block{{Id: "1"}})
@@ -96,7 +94,6 @@ func TestBasic_SetAlign(t *testing.T) {
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
-		fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
@@ -122,7 +119,6 @@ func TestBasic_SetAlign(t *testing.T) {
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(mock.Anything).Return(nil, nil).Maybe()
 		fx.store.EXPECT().UpdatePendingLocalDetails(mock.Anything, mock.Anything).Return(nil).Maybe()
-		fx.store.EXPECT().GetActiveViews(mock.Anything).Return(nil, nil).Maybe()
 		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
