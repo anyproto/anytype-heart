@@ -82,15 +82,14 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 		return m
 	}
 
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id := domain.FullID{
-			SpaceID:  req.SpaceId,
-			ObjectID: req.ObjectId,
-		}
 		obj, err = bs.OpenBlock(ctx, id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
-
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectOpenResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE),
@@ -111,15 +110,14 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 		return m
 	}
 
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id := domain.FullID{
-			SpaceID:  req.SpaceId,
-			ObjectID: req.ObjectId,
-		}
 		obj, err = bs.ShowBlock(id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
-
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectShowResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE),

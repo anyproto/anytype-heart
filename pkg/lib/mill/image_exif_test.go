@@ -2,8 +2,11 @@ package mill
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/testdata"
 )
@@ -17,7 +20,7 @@ func TestImageExif_Mill(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		res, err := m.Mill(file, "test")
+		res, err := m.Mill(file, "test", "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -38,4 +41,27 @@ func TestImageExif_Mill(t *testing.T) {
 			t.Errorf("wrong format")
 		}
 	}
+}
+
+func TestImageExif_Mill_Checksum(t *testing.T) {
+	m := &ImageExif{}
+
+	file, err := os.Open("testdata/Landscape_8.jpg")
+	require.NoError(t, err)
+	defer file.Close()
+
+	res, err := m.Mill(file, "test", "FOO")
+	require.NoError(t, err)
+
+	raw1, err := io.ReadAll(res.File)
+	require.NoError(t, err)
+
+	res, err = m.Mill(file, "test", "BAR")
+	require.NoError(t, err)
+
+	raw2, err := io.ReadAll(res.File)
+	require.NoError(t, err)
+
+	// Different checksums produce different results
+	require.NotEqual(t, raw1, raw2)
 }
