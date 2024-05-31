@@ -115,14 +115,25 @@ func (p *p2pStatus) updateSpaceP2PStatus() {
 		log.Errorf("failed to get pick peer %s", err)
 		return
 	}
-	if p.status != Unknown {
-		// avoiding sending of redundant event
-		p.handleNonUnknownStatus(connectionCount)
+	var (
+		newStatus Status
+		event     pb.EventP2PStatusStatus
+	)
+	if p.status == NotPossible && connectionCount == 0 {
+		return
+	}
+	if connectionCount == 0 {
+		event = pb.EventP2PStatus_NotConnected
+		newStatus = NotConnected
 	} else {
-		p.handleUnknownStatus(connectionCount)
+		event = pb.EventP2PStatus_Connected
+		newStatus = Connected
+	}
+	if p.status != newStatus {
+		p.sendEvent(p.spaceId, event)
+		p.status = newStatus
 	}
 }
-
 func (p *p2pStatus) countOpenConnections() (int64, error) {
 	var connectionCount int64
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*20)
@@ -136,27 +147,6 @@ func (p *p2pStatus) countOpenConnections() (int64, error) {
 		connectionCount++
 	}
 	return connectionCount, nil
-}
-
-func (p *p2pStatus) handleUnknownStatus(connectionCount int64) {
-	if connectionCount > 0 {
-		p.sendEvent(p.spaceId, pb.EventP2PStatus_Connected)
-		p.status = Connected
-	} else {
-		p.sendEvent(p.spaceId, pb.EventP2PStatus_NotConnected)
-		p.status = NotConnected
-	}
-}
-
-func (p *p2pStatus) handleNonUnknownStatus(connectionCount int64) {
-	if p.status == Connected && connectionCount == 0 {
-		p.sendEvent(p.spaceId, pb.EventP2PStatus_NotConnected)
-		p.status = NotConnected
-	}
-	if (p.status == NotConnected || p.status == NotPossible) && connectionCount > 0 {
-		p.sendEvent(p.spaceId, pb.EventP2PStatus_Connected)
-		p.status = Connected
-	}
 }
 
 func (p *p2pStatus) sendNewStatus(status Status) {
