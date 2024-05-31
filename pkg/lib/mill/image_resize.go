@@ -98,7 +98,7 @@ func (m *ImageResize) Options(add map[string]interface{}) (string, error) {
 	return hashOpts(m.Opts, add)
 }
 
-func (m *ImageResize) Mill(r io.ReadSeeker, name string, sourceChecksum string) (*Result, error) {
+func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	imgConfig, formatStr, err := image.DecodeConfig(r)
 	if err != nil {
 		return nil, err

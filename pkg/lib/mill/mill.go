@@ -28,7 +28,7 @@ type Mill interface {
 	Pin() bool // pin by default
 	AcceptMedia(media string) error
 	Options(add map[string]interface{}) (string, error)
-	Mill(r io.ReadSeeker, name string, sourceChecksum string) (*Result, error)
+	Mill(r io.ReadSeeker, name string) (*Result, error)
 }
 
 func accepts(list []string, media string) error {
