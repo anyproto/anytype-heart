@@ -223,11 +223,12 @@ func (s *ownProfileSubscription) fetchGlobalName(ctx context.Context, ns nameser
 }
 
 func (s *ownProfileSubscription) updateGlobalName(globalName string) {
-	if err := s.componentCtx.Err(); err != nil {
-		log.Error("failed to update global name of our own identity, as component context exceeded")
+	select {
+	case <-s.componentCtx.Done():
+		return
+	case s.globalNameUpdatedCh <- globalName:
 		return
 	}
-	s.globalNameUpdatedCh <- globalName
 }
 
 func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
