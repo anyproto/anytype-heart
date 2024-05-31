@@ -41,7 +41,7 @@ const (
 var log = logging.Logger("link-preview")
 
 type LinkPreview interface {
-	Fetch(ctx context.Context, url string) (model.LinkPreview, []byte, bool, error)
+	Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
 	app.Component
 }
 
@@ -58,14 +58,14 @@ func (l *linkPreview) Name() (name string) {
 	return CName
 }
 
-func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, []byte, bool, error) {
+func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
 	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
 	client := &http.Client{Transport: rt}
 	og := opengraph.New(fetchUrl)
 	og.URL = fetchUrl
 	og.Intent.Context = ctx
 	og.Intent.HTTPClient = client
-	err := og.Fetch()
+	err = og.Fetch()
 	if err != nil {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
 			preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
