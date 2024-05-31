@@ -135,6 +135,8 @@ func TestOwnProfileSubscription(t *testing.T) {
 		err := fx.run(context.Background())
 		require.NoError(t, err)
 
+		time.Sleep(testBatchTimeout / 4)
+
 		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
@@ -201,6 +203,8 @@ func TestOwnProfileSubscription(t *testing.T) {
 		err := fx.run(context.Background())
 		require.NoError(t, err)
 
+		time.Sleep(testBatchTimeout / 4)
+
 		fx.updateGlobalName(newName)
 
 		time.Sleep(2 * testBatchTimeout)
@@ -253,6 +257,8 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		err := fx.run(context.Background())
 		require.NoError(t, err)
+
+		time.Sleep(testBatchTimeout / 4)
 
 		fx.objectStoreFixture.AddObjects(t, []objectstore.TestObject{
 			{
