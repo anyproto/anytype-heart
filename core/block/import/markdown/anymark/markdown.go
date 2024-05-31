@@ -192,11 +192,8 @@ func getCustomHTMLRules() []html2md.Rule {
 	img := html2md.Rule{
 		Filter: []string{"img"},
 		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
-			var (
-				src, title string
-				ok         bool
-			)
-			if src = extractImageSource(src, ok, selec); src == "" {
+			var src, title string
+			if src = extractImageSource(selec); src == "" {
 				return nil
 			}
 
@@ -233,7 +230,11 @@ func getCustomHTMLRules() []html2md.Rule {
 		simpleText, blockquote, italic, code, bdo, div, img, table}
 }
 
-func extractImageSource(src string, ok bool, selec *goquery.Selection) string {
+func extractImageSource(selec *goquery.Selection) string {
+	var (
+		src string
+		ok  bool
+	)
 	if src, ok = selec.Attr("src"); !ok || src == "" {
 		if src, ok = selec.Attr("data-src"); !ok || src == "" {
 			return ""
