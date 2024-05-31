@@ -97,25 +97,17 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 	t.Run("readAnswers - send peer update for itself", func(t *testing.T) {
 		// given
 		f := newFixture(t)
-		f.clientServer.EXPECT().ServerStarted().Return(true)
-		f.clientServer.EXPECT().Port().Return(6789)
-
-		err := f.Run(context.Background())
-		assert.Nil(t, err)
+		notifier := NewMockNotifier(t)
+		f.LocalDiscovery.SetNotifier(notifier)
 
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
-		var hookCalled bool
-		ld.RegisterPeerDiscovered(func() {
-			hookCalled = true
-		})
-
 		go func() {
 			ld.closeWait.Add(1)
 			peerUpdate <- &zeroconf.ServiceEntry{
 				ServiceRecord: zeroconf.ServiceRecord{
-					Instance: f.account.Account().PeerId,
+					Instance: ld.peerId,
 				},
 			}
 			close(peerUpdate)
@@ -123,7 +115,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		ld.readAnswers(peerUpdate)
 
 		// then
-		assert.True(t, hookCalled)
+		notifier.AssertNotCalled(t, "PeerDiscovered")
 	})
 	t.Run("readAnswers - send peer update to notifier", func(t *testing.T) {
 		// given

@@ -37,6 +37,8 @@ type PeerUpdateHook interface {
 type PeerToPeerStatus interface {
 	Run()
 	Close()
+	SendNotPossibleStatus()
+	CheckPeerStatus()
 }
 
 type p2pStatus struct {
