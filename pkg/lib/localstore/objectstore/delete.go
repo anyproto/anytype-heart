@@ -82,7 +82,7 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 			if err != nil {
 				log.Errorf("error removing %s from index queue: %s", id, err)
 			}
-			if err := s.fts.Delete(id.ObjectID); err != nil {
+			if err := s.fts.DeleteObject(id.ObjectID); err != nil {
 				return err
 			}
 		}
