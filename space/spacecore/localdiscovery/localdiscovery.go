@@ -29,8 +29,7 @@ var interfacesSortPriority = []string{"en", "wlan", "wl", "eth", "lo"}
 type Hook int
 
 const (
-	PeerDiscovered       Hook = 0
-	PeerToPeerImpossible Hook = 1
+	PeerToPeerImpossible Hook = 0
 )
 
 type HookCallback func()
@@ -55,7 +54,9 @@ type localDiscovery struct {
 	notifier    Notifier
 	m           sync.Mutex
 	eventSender event.Sender
-	hooks       map[Hook][]HookCallback
+
+	hookMu sync.Mutex
+	hooks  map[Hook][]HookCallback
 }
 
 func New() LocalDiscovery {
@@ -143,17 +144,15 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (l *localDiscovery) RegisterPeerDiscovered(hook func()) {
-	l.hooks[PeerDiscovered] = append(l.hooks[PeerDiscovered], hook)
-}
-
 func (l *localDiscovery) RegisterP2PNotPossible(hook func()) {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
 	l.hooks[PeerToPeerImpossible] = append(l.hooks[PeerToPeerImpossible], hook)
 }
 
 func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	if len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces) {
+	if l.notifyP2PNotPossible(newAddrs) {
 		l.executeHook(PeerToPeerImpossible)
 	}
 
@@ -178,6 +177,10 @@ func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	}
 	l.startQuerying(l.ctx)
 	return
+}
+
+func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
+	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
 }
 
 func (l *localDiscovery) startServer() (err error) {
@@ -220,7 +223,6 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 	for entry := range ch {
 		if entry.Instance == l.peerId {
 			log.Debug("discovered self")
-			l.executeHook(PeerDiscovered)
 			continue
 		}
 		var portAddrs []string
@@ -237,7 +239,6 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 				Addrs: l.ipv4,
 				Port:  l.port,
 			})
-			l.executeHook(PeerDiscovered)
 		}
 	}
 }
@@ -249,7 +250,7 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 		newAddrs addrs.InterfacesAddrs
 	)
 	newAddrs, err = addrs.GetInterfacesAddrs()
-	if len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces) {
+	if l.notifyP2PNotPossible(newAddrs) {
 		l.executeHook(PeerToPeerImpossible)
 	}
 
@@ -266,11 +267,21 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 }
 
 func (l *localDiscovery) executeHook(hook Hook) {
-	if hooks, ok := l.hooks[hook]; ok {
-		for _, callback := range hooks {
-			if callback != nil {
-				callback()
-			}
-		}
+	hooks := l.getHooks(hook)
+	for _, callback := range hooks {
+		callback()
 	}
+}
+
+func (l *localDiscovery) getHooks(hook Hook) []HookCallback {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
+	if hooks, ok := l.hooks[hook]; ok {
+		callback := make([]HookCallback, 0, len(hooks))
+		for _, hookCallback := range hooks {
+			callback = append(callback, hookCallback)
+		}
+		return callback
+	}
+	return nil
 }

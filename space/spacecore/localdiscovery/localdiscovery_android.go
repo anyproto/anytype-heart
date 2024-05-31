@@ -21,8 +21,7 @@ var proxyLock = sync.Mutex{}
 type Hook int
 
 const (
-	PeerDiscovered       Hook = 0
-	PeerToPeerImpossible Hook = 1
+	PeerToPeerImpossible Hook = 0
 )
 
 type HookCallback func()
@@ -54,6 +53,7 @@ type localDiscovery struct {
 	manualStart bool
 	m           sync.Mutex
 	hooks       map[Hook][]HookCallback
+	hookMu      sync.Mutex
 }
 
 func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
@@ -63,7 +63,7 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 	}
 	// TODO: move this to android side
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	if len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces) {
+	if l.notifyP2PNotPossible(newAddrs) {
 		l.executeHook(PeerToPeerImpossible)
 	}
 
@@ -127,11 +127,9 @@ func (l *localDiscovery) Name() (name string) {
 	return CName
 }
 
-func (l *localDiscovery) RegisterPeerDiscovered(hook func()) {
-	l.hooks[PeerDiscovered] = append(l.hooks[PeerDiscovered], hook)
-}
-
 func (l *localDiscovery) RegisterP2PNotPossible(hook func()) {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
 	l.hooks[PeerToPeerImpossible] = append(l.hooks[PeerToPeerImpossible], hook)
 }
 
@@ -148,7 +146,25 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 }
 
 func (l *localDiscovery) executeHook(hook Hook) {
-	if h, ok := l.hooks[hook]; ok {
-		h()
+	hooks := l.getHooks(hook)
+	for _, callback := range hooks {
+		callback()
 	}
+}
+
+func (l *localDiscovery) getHooks(hook Hook) []HookCallback {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
+	if hooks, ok := l.hooks[hook]; ok {
+		callback := make([]HookCallback, 0, len(hooks))
+		for _, hookCallback := range hooks {
+			callback = append(callback, hookCallback)
+		}
+		return callback
+	}
+	return nil
+}
+
+func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
+	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
 }

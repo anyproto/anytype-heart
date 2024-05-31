@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/pool"
 
 	"github.com/anyproto/anytype-heart/core/event"
@@ -28,20 +27,16 @@ const (
 )
 
 type HookRegister interface {
-	app.Component
-	RegisterPeerDiscovered(hook func())
 	RegisterP2PNotPossible(hook func())
 }
 
 type PeerUpdateHook interface {
-	app.Component
 	Register(hook func())
 }
 
-type StatusUpdateSender interface {
-	app.ComponentRunnable
-	CheckPeerStatus()
-	SendNotPossibleStatus()
+type PeerToPeerStatus interface {
+	Run()
+	Close()
 }
 
 type p2pStatus struct {
@@ -58,49 +53,41 @@ type p2pStatus struct {
 	updateStatus    chan Status
 	finish          chan struct{}
 
-	peersConnectionPool pool.Service
+	peersConnectionPool pool.Pool
 }
 
-func NewP2PStatus(spaceId string) StatusUpdateSender {
-	return &p2pStatus{
-		forceCheckSpace: make(chan struct{}, 1),
-		updateStatus:    make(chan Status, 1),
-		spaceId:         spaceId,
-		finish:          make(chan struct{}),
+func NewP2PStatus(
+	spaceId string,
+	eventSender event.Sender,
+	peersConnectionPool pool.Pool,
+	hookRegister HookRegister,
+	peerManager PeerUpdateHook,
+	peerStore peerstore.PeerStore,
+) PeerToPeerStatus {
+	p2pStatusService := &p2pStatus{
+		eventSender:         eventSender,
+		peersConnectionPool: peersConnectionPool,
+		forceCheckSpace:     make(chan struct{}, 1),
+		updateStatus:        make(chan Status, 1),
+		spaceId:             spaceId,
+		finish:              make(chan struct{}),
+		peerStore:           peerStore,
 	}
+	hookRegister.RegisterP2PNotPossible(p2pStatusService.SendNotPossibleStatus)
+	peerManager.Register(p2pStatusService.CheckPeerStatus)
+	return p2pStatusService
 }
 
-func (p *p2pStatus) Init(a *app.App) (err error) {
-	p.eventSender = app.MustComponent[event.Sender](a)
-	p.peersConnectionPool = app.MustComponent[pool.Service](a)
-	p.peerStore = app.MustComponent[peerstore.PeerStore](a)
-
-	hookRegister := app.MustComponent[HookRegister](a)
-
-	hookRegister.RegisterP2PNotPossible(p.SendNotPossibleStatus)
-	hookRegister.RegisterPeerDiscovered(p.CheckPeerStatus)
-
-	peerManager := app.MustComponent[PeerUpdateHook](a)
-	peerManager.Register(p.CheckPeerStatus)
-	return
-}
-
-func (p *p2pStatus) Name() (name string) {
-	return CName
-}
-
-func (p *p2pStatus) Run(ctx context.Context) (err error) {
+func (p *p2pStatus) Run() {
 	p.ctx, p.contextCancel = context.WithCancel(context.Background())
 	go p.checkP2PDevices()
-	return nil
 }
 
-func (p *p2pStatus) Close(ctx context.Context) (err error) {
+func (p *p2pStatus) Close() {
 	if p.contextCancel != nil {
 		p.contextCancel()
 	}
 	<-p.finish
-	return
 }
 
 func (p *p2pStatus) CheckPeerStatus() {
