@@ -22,6 +22,6 @@ func (m *Blob) Options(add map[string]interface{}) (string, error) {
 	return hashOpts(make(map[string]string), add)
 }
 
-func (m *Blob) Mill(r io.ReadSeeker, name string) (*Result, error) {
+func (m *Blob) Mill(r io.ReadSeeker, name string, sourceChecksum string) (*Result, error) {
 	return &Result{File: noopCloser(r)}, nil
 }
