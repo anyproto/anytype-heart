@@ -401,7 +401,12 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	if variant, err := s.fileStore.GetFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
-		return newExistingFileResult(variant)
+		if variant.Source == conf.checksum {
+			// we may have same variant checksum for different files
+			// e.g. empty image exif with the same resolution
+			// reuse the whole file only in case the checksum of the original file is the same
+			return newExistingFileResult(variant)
+		}
 	}
 
 	_, err = conf.Reader.Seek(0, io.SeekStart)
