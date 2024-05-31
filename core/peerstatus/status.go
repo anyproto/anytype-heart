@@ -30,10 +30,6 @@ type HookRegister interface {
 	RegisterP2PNotPossible(hook func())
 }
 
-type PeerUpdateHook interface {
-	Register(hook func())
-}
-
 type PeerToPeerStatus interface {
 	Run()
 	Close()
@@ -58,14 +54,7 @@ type p2pStatus struct {
 	peersConnectionPool pool.Pool
 }
 
-func NewP2PStatus(
-	spaceId string,
-	eventSender event.Sender,
-	peersConnectionPool pool.Pool,
-	hookRegister HookRegister,
-	peerManager PeerUpdateHook,
-	peerStore peerstore.PeerStore,
-) PeerToPeerStatus {
+func NewP2PStatus(spaceId string, eventSender event.Sender, peersConnectionPool pool.Pool, hookRegister HookRegister, peerStore peerstore.PeerStore) PeerToPeerStatus {
 	p2pStatusService := &p2pStatus{
 		eventSender:         eventSender,
 		peersConnectionPool: peersConnectionPool,
@@ -76,7 +65,6 @@ func NewP2PStatus(
 		peerStore:           peerStore,
 	}
 	hookRegister.RegisterP2PNotPossible(p2pStatusService.SendNotPossibleStatus)
-	peerManager.Register(p2pStatusService.CheckPeerStatus)
 	return p2pStatusService
 }
 

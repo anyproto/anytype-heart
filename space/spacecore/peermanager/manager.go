@@ -43,6 +43,7 @@ type Updater interface {
 type PeerToPeerStatus interface {
 	Run()
 	Close()
+	CheckPeerStatus()
 }
 
 type LocalDiscoveryHook interface {
@@ -66,8 +67,7 @@ type clientPeerManager struct {
 	ctxCancel context.CancelFunc
 	sync.Mutex
 
-	peerUpdateHook   func()
-	p2pStatusService PeerToPeerStatus
+	peerToPeerStatus PeerToPeerStatus
 }
 
 func (n *clientPeerManager) Init(a *app.App) (err error) {
@@ -80,7 +80,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	eventSender := app.MustComponent[event.Sender](a)
 	localDiscoveryHook := app.MustComponent[LocalDiscoveryHook](a)
-	n.p2pStatusService = peerstatus.NewP2PStatus(n.spaceId, eventSender, n.p.pool, localDiscoveryHook, n, n.peerStore)
+	n.peerToPeerStatus = peerstatus.NewP2PStatus(n.spaceId, eventSender, n.p.pool, localDiscoveryHook, n.peerStore)
 	return
 }
 
@@ -89,7 +89,7 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
-	go n.p2pStatusService.Run()
+	go n.peerToPeerStatus.Run()
 	go n.manageResponsiblePeers()
 	return
 }
@@ -160,10 +160,6 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 	return
 }
 
-func (n *clientPeerManager) Register(hook func()) {
-	n.peerUpdateHook = hook
-}
-
 func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (peers []peer.Peer, err error) {
 	p, err := n.p.pool.Get(ctx, peerId)
 	if err != nil {
@@ -194,7 +190,7 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 		peers = append(peers, p)
 	}
 	if needUpdate {
-		n.peerUpdateHook()
+		n.peerToPeerStatus.CheckPeerStatus()
 	}
 	// set node error if no local peers
 	if len(peers) == 0 {
@@ -242,7 +238,7 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		peers = append(peers, p)
 	}
 	if needUpdate {
-		n.peerUpdateHook()
+		n.peerToPeerStatus.CheckPeerStatus()
 	}
 
 	n.Lock()
@@ -284,7 +280,7 @@ func (n *clientPeerManager) watchPeer(p peer.Peer) {
 
 func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 	n.ctxCancel()
-	n.p2pStatusService.Close()
+	n.peerToPeerStatus.Close()
 	return
 }
 

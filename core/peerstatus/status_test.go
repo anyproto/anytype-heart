@@ -20,12 +20,11 @@ import (
 
 type fixture struct {
 	PeerToPeerStatus
-	sender         *mock_event.MockSender
-	service        *mock_nodeconf.MockService
-	store          peerstore.PeerStore
-	pool           *rpctest.TestPool
-	hookRegister   *mock_peerstatus.MockHookRegister
-	peerUpdateHook *mock_peerstatus.MockPeerUpdateHook
+	sender       *mock_event.MockSender
+	service      *mock_nodeconf.MockService
+	store        peerstore.PeerStore
+	pool         *rpctest.TestPool
+	hookRegister *mock_peerstatus.MockHookRegister
 }
 
 func TestP2PStatus_Init(t *testing.T) {
@@ -236,10 +235,8 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 	store := peerstore.New()
 	hookRegister := mock_peerstatus.NewMockHookRegister(t)
 	hookRegister.EXPECT().RegisterP2PNotPossible(mock.Anything).Return()
-	peerUpdateHook := mock_peerstatus.NewMockPeerUpdateHook(t)
-	peerUpdateHook.EXPECT().Register(mock.Anything).Return()
 
-	status := NewP2PStatus(spaceId, sender, pool, hookRegister, peerUpdateHook, store)
+	status := NewP2PStatus(spaceId, sender, pool, hookRegister, store)
 	f := &fixture{
 		PeerToPeerStatus: status,
 		sender:           sender,
@@ -247,7 +244,6 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 		store:            store,
 		pool:             pool,
 		hookRegister:     hookRegister,
-		peerUpdateHook:   peerUpdateHook,
 	}
 	f.sender.EXPECT().Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{

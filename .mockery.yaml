@@ -172,7 +172,6 @@ packages:
     interfaces:
       StatusUpdateSender:
       HookRegister:
-      PeerUpdateHook:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:
@@ -195,3 +194,4 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore/peermanager:
     interfaces:
       Updater:
+      PeerToPeerStatus:

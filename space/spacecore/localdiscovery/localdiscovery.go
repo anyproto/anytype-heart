@@ -245,11 +245,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
-	var (
-		err      error
-		newAddrs addrs.InterfacesAddrs
-	)
-	newAddrs, err = addrs.GetInterfacesAddrs()
+	newAddrs, err := addrs.GetInterfacesAddrs()
 	if l.notifyP2PNotPossible(newAddrs) {
 		l.executeHook(PeerToPeerImpossible)
 	}
