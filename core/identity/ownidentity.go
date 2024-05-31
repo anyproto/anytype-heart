@@ -219,15 +219,14 @@ func (s *ownProfileSubscription) fetchGlobalName(ctx context.Context, ns nameser
 		log.Debug("globalName was not found for our own identity in Naming Service")
 		return
 	}
-	// getting name from NS could be a long operation, so we need to check if component is still opened
-	if err = ctx.Err(); err != nil {
-		log.Error("failed to update global name of our own identity, as component context exceeded")
-		return
-	}
 	s.updateGlobalName(response.Name)
 }
 
 func (s *ownProfileSubscription) updateGlobalName(globalName string) {
+	if err := s.componentCtx.Err(); err != nil {
+		log.Error("failed to update global name of our own identity, as component context exceeded")
+		return
+	}
 	s.globalNameUpdatedCh <- globalName
 }
 
