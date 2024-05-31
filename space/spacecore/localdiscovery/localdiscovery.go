@@ -274,9 +274,7 @@ func (l *localDiscovery) getHooks(hook Hook) []HookCallback {
 	defer l.hookMu.Unlock()
 	if hooks, ok := l.hooks[hook]; ok {
 		callback := make([]HookCallback, 0, len(hooks))
-		for _, hookCallback := range hooks {
-			callback = append(callback, hookCallback)
-		}
+		callback = append(callback, hooks...)
 		return callback
 	}
 	return nil
