@@ -28,6 +28,7 @@ const (
 
 type HookRegister interface {
 	RegisterP2PNotPossible(hook func())
+	RegisterResetNotPossible(hook func())
 }
 
 type PeerToPeerStatus interface {
@@ -35,6 +36,7 @@ type PeerToPeerStatus interface {
 	Close()
 	SendNotPossibleStatus()
 	CheckPeerStatus()
+	ResetNotPossibleStatus()
 }
 
 type p2pStatus struct {
@@ -47,24 +49,27 @@ type p2pStatus struct {
 	sync.Mutex
 	status Status
 
-	forceCheckSpace chan struct{}
-	updateStatus    chan Status
-	finish          chan struct{}
+	forceCheckSpace        chan struct{}
+	updateStatus           chan Status
+	resetNotPossibleStatus chan struct{}
+	finish                 chan struct{}
 
 	peersConnectionPool pool.Pool
 }
 
 func NewP2PStatus(spaceId string, eventSender event.Sender, peersConnectionPool pool.Pool, hookRegister HookRegister, peerStore peerstore.PeerStore) PeerToPeerStatus {
 	p2pStatusService := &p2pStatus{
-		eventSender:         eventSender,
-		peersConnectionPool: peersConnectionPool,
-		forceCheckSpace:     make(chan struct{}, 1),
-		updateStatus:        make(chan Status, 1),
-		spaceId:             spaceId,
-		finish:              make(chan struct{}),
-		peerStore:           peerStore,
+		eventSender:            eventSender,
+		peersConnectionPool:    peersConnectionPool,
+		forceCheckSpace:        make(chan struct{}, 1),
+		updateStatus:           make(chan Status, 1),
+		resetNotPossibleStatus: make(chan struct{}, 1),
+		spaceId:                spaceId,
+		finish:                 make(chan struct{}),
+		peerStore:              peerStore,
 	}
 	hookRegister.RegisterP2PNotPossible(p2pStatusService.SendNotPossibleStatus)
+	hookRegister.RegisterResetNotPossible(p2pStatusService.ResetNotPossibleStatus)
 	return p2pStatusService
 }
 
@@ -88,6 +93,10 @@ func (p *p2pStatus) SendNotPossibleStatus() {
 	p.updateStatus <- NotPossible
 }
 
+func (p *p2pStatus) ResetNotPossibleStatus() {
+	p.resetNotPossibleStatus <- struct{}{}
+}
+
 func (p *p2pStatus) checkP2PDevices() {
 	defer close(p.finish)
 	timer := time.NewTicker(20 * time.Second)
@@ -103,6 +112,8 @@ func (p *p2pStatus) checkP2PDevices() {
 			p.updateSpaceP2PStatus()
 		case newStatus := <-p.updateStatus:
 			p.sendNewStatus(newStatus)
+		case <-p.resetNotPossibleStatus:
+			p.resetNotPossible()
 		}
 	}
 }
@@ -178,4 +189,12 @@ func (p *p2pStatus) sendEvent(spaceId string, status pb.EventP2PStatusStatus) {
 			},
 		},
 	})
+}
+
+func (p *p2pStatus) resetNotPossible() {
+	p.Lock()
+	defer p.Unlock()
+	if p.status == NotPossible {
+		p.status = NotConnected
+	}
 }

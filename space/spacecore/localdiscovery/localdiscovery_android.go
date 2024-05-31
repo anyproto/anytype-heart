@@ -22,6 +22,7 @@ type Hook int
 
 const (
 	PeerToPeerImpossible Hook = 0
+	PeerToPeerPossible   Hook = 1
 )
 
 type HookCallback func()
@@ -63,9 +64,7 @@ func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
 	}
 	// TODO: move this to android side
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	if l.notifyP2PNotPossible(newAddrs) {
-		l.executeHook(PeerToPeerImpossible)
-	}
+	l.notifyPeerToPeerStatus(newAddrs)
 
 	if err != nil {
 		return
@@ -133,6 +132,12 @@ func (l *localDiscovery) RegisterP2PNotPossible(hook func()) {
 	l.hooks[PeerToPeerImpossible] = append(l.hooks[PeerToPeerImpossible], hook)
 }
 
+func (l *localDiscovery) RegisterResetNotPossible(hook func()) {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
+	l.hooks[PeerToPeerPossible] = append(l.hooks[PeerToPeerPossible], hook)
+}
+
 func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	if !l.drpcServer.ServerStarted() {
 		return
@@ -143,6 +148,17 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	}
 	provider.Remove()
 	return nil
+}
+func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) {
+	if l.notifyP2PNotPossible(newAddrs) {
+		l.executeHook(PeerToPeerImpossible)
+	} else {
+		l.executeHook(PeerToPeerPossible)
+	}
+}
+
+func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
+	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
 }
 
 func (l *localDiscovery) executeHook(hook Hook) {
@@ -157,14 +173,8 @@ func (l *localDiscovery) getHooks(hook Hook) []HookCallback {
 	defer l.hookMu.Unlock()
 	if hooks, ok := l.hooks[hook]; ok {
 		callback := make([]HookCallback, 0, len(hooks))
-		for _, hookCallback := range hooks {
-			callback = append(callback, hookCallback)
-		}
+		callback = append(callback, hooks...)
 		return callback
 	}
 	return nil
-}
-
-func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
 }

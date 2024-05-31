@@ -91,6 +91,23 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 	})
+	t.Run("checkAddrs - server run successfully and send update to peer to peer status hook", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+
+		// when
+		ld := f.LocalDiscovery.(*localDiscovery)
+		var hookCalled bool
+		ld.RegisterResetNotPossible(func() {
+			hookCalled = true
+		})
+		ld.port = 6789
+		err := ld.checkAddrs(context.Background())
+
+		// then
+		assert.Nil(t, err)
+		assert.True(t, hookCalled)
+	})
 }
 
 func TestLocalDiscovery_readAnswers(t *testing.T) {

@@ -50,6 +50,39 @@ func (_c *MockHookRegister_RegisterP2PNotPossible_Call) RunAndReturn(run func(fu
 	return _c
 }
 
+// RegisterResetNotPossible provides a mock function with given fields: hook
+func (_m *MockHookRegister) RegisterResetNotPossible(hook func()) {
+	_m.Called(hook)
+}
+
+// MockHookRegister_RegisterResetNotPossible_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterResetNotPossible'
+type MockHookRegister_RegisterResetNotPossible_Call struct {
+	*mock.Call
+}
+
+// RegisterResetNotPossible is a helper method to define mock.On call
+//   - hook func()
+func (_e *MockHookRegister_Expecter) RegisterResetNotPossible(hook interface{}) *MockHookRegister_RegisterResetNotPossible_Call {
+	return &MockHookRegister_RegisterResetNotPossible_Call{Call: _e.mock.On("RegisterResetNotPossible", hook)}
+}
+
+func (_c *MockHookRegister_RegisterResetNotPossible_Call) Run(run func(hook func())) *MockHookRegister_RegisterResetNotPossible_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func()))
+	})
+	return _c
+}
+
+func (_c *MockHookRegister_RegisterResetNotPossible_Call) Return() *MockHookRegister_RegisterResetNotPossible_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockHookRegister_RegisterResetNotPossible_Call) RunAndReturn(run func(func())) *MockHookRegister_RegisterResetNotPossible_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockHookRegister creates a new instance of MockHookRegister. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockHookRegister(t interface {

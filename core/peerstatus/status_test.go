@@ -220,6 +220,68 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 		assert.NotNil(t, status)
 		checkStatus(t, status, Connected)
 	})
+	t.Run("reset not possible status", func(t *testing.T) {
+		// given
+		f := newFixture(t, "spaceId", pb.EventP2PStatus_NotConnected)
+
+		// when
+		f.Run()
+
+		f.sender.EXPECT().Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfP2PStatusUpdate{
+						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId: "spaceId",
+							Status:  pb.EventP2PStatus_NotPossible,
+						},
+					},
+				},
+			},
+		})
+		f.SendNotPossibleStatus()
+		status := f.PeerToPeerStatus.(*p2pStatus)
+		assert.NotNil(t, status)
+		err := waitForStatus(status, NotPossible)
+		f.sender.EXPECT().Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfP2PStatusUpdate{
+						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId: "spaceId",
+							Status:  pb.EventP2PStatus_NotConnected,
+						},
+					},
+				},
+			},
+		})
+		f.ResetNotPossibleStatus()
+		err = waitForStatus(status, NotConnected)
+		assert.Nil(t, err)
+
+		// then
+		f.Close()
+		assert.Nil(t, err)
+		checkStatus(t, status, NotConnected)
+	})
+	t.Run("don't reset not possible status, because status != NotPossible", func(t *testing.T) {
+		// given
+		f := newFixture(t, "spaceId", pb.EventP2PStatus_NotConnected)
+
+		// when
+		f.Run()
+
+		status := f.PeerToPeerStatus.(*p2pStatus)
+
+		err := waitForStatus(status, NotConnected)
+		f.ResetNotPossibleStatus()
+		err = waitForStatus(status, NotConnected)
+
+		// then
+		f.Close()
+		assert.Nil(t, err)
+		checkStatus(t, status, NotConnected)
+	})
 }
 
 func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusStatus) *fixture {
@@ -235,6 +297,7 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 	store := peerstore.New()
 	hookRegister := mock_peerstatus.NewMockHookRegister(t)
 	hookRegister.EXPECT().RegisterP2PNotPossible(mock.Anything).Return()
+	hookRegister.EXPECT().RegisterResetNotPossible(mock.Anything).Return()
 
 	status := NewP2PStatus(spaceId, sender, pool, hookRegister, store)
 	f := &fixture{

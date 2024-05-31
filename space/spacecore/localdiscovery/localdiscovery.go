@@ -30,6 +30,7 @@ type Hook int
 
 const (
 	PeerToPeerImpossible Hook = 0
+	PeerToPeerPossible   Hook = 1
 )
 
 type HookCallback func()
@@ -150,12 +151,15 @@ func (l *localDiscovery) RegisterP2PNotPossible(hook func()) {
 	l.hooks[PeerToPeerImpossible] = append(l.hooks[PeerToPeerImpossible], hook)
 }
 
+func (l *localDiscovery) RegisterResetNotPossible(hook func()) {
+	l.hookMu.Lock()
+	defer l.hookMu.Unlock()
+	l.hooks[PeerToPeerPossible] = append(l.hooks[PeerToPeerPossible], hook)
+}
+
 func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	if l.notifyP2PNotPossible(newAddrs) {
-		l.executeHook(PeerToPeerImpossible)
-	}
-
+	l.notifyPeerToPeerStatus(newAddrs)
 	if err != nil {
 		return
 	}
@@ -177,10 +181,6 @@ func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	}
 	l.startQuerying(l.ctx)
 	return
-}
-
-func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
 }
 
 func (l *localDiscovery) startServer() (err error) {
@@ -246,9 +246,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
 	defer l.closeWait.Done()
 	newAddrs, err := addrs.GetInterfacesAddrs()
-	if l.notifyP2PNotPossible(newAddrs) {
-		l.executeHook(PeerToPeerImpossible)
-	}
+	l.notifyPeerToPeerStatus(newAddrs)
 
 	if err != nil {
 		return
@@ -260,6 +258,18 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
+}
+
+func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) {
+	if l.notifyP2PNotPossible(newAddrs) {
+		l.executeHook(PeerToPeerImpossible)
+	} else {
+		l.executeHook(PeerToPeerPossible)
+	}
+}
+
+func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
+	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
 }
 
 func (l *localDiscovery) executeHook(hook Hook) {

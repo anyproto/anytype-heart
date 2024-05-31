@@ -48,6 +48,7 @@ type PeerToPeerStatus interface {
 
 type LocalDiscoveryHook interface {
 	RegisterP2PNotPossible(hook func())
+	RegisterResetNotPossible(hook func())
 }
 
 type clientPeerManager struct {
