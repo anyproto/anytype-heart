@@ -27,7 +27,10 @@ func (s *service) initMarketplaceSpace(ctx context.Context) error {
 }
 
 func (s *service) initTechSpace(ctx context.Context) (err error) {
-	s.techSpace, err = s.factory.CreateAndSetTechSpace(ctx)
+	if s.techSpace, err = s.factory.CreateAndSetTechSpace(ctx); err != nil {
+		return err
+	}
+	close(s.techSpaceReady)
 	return
 }
 
