@@ -285,6 +285,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	if err != nil {
 		return err
 	}
+	flags.eraseLinks = false
 	err = i.removeCommonIndexes(space.Id(), flags)
 	if err != nil {
 		return fmt.Errorf("remove common indexes: %w", err)
