@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -880,7 +879,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	if err != nil {
 		log.With("objectID", sb.Id()).With("sbtype", sb.Type().String()).Errorf("failed to inject creation info: %s", err.Error())
 	}
-	sb.injectSyncDetails(s)
 	return nil
 }
 
@@ -1448,13 +1446,6 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	sb.updateBackLinks(s)
-}
-
-func (sb *smartBlock) injectSyncDetails(s *state.State) {
-	if helper.IsSyncRelationRequired(sb.Type()) {
-		details := s.LocalDetails()
-		helper.InjectsSyncDetails(details, domain.Synced)
-	}
 }
 
 type InitFunc = func(id string) *InitContext

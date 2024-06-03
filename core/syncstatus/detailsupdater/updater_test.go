@@ -5,12 +5,14 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -21,7 +23,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fixture := newFixture(t)
 
 		// when
-		err := fixture.UpdateDetails("id", domain.Synced, domain.Null)
+		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null})
 		assert.Nil(t, err)
 
 		// then
@@ -35,7 +37,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fixture := newFixture(t)
 
 		// when
-		err := fixture.UpdateDetails("id", domain.Error, domain.NetworkError)
+		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Error, domain.NetworkError})
 		assert.Nil(t, err)
 
 		// then
@@ -51,18 +53,19 @@ func newFixture(t *testing.T) *fixture {
 	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
 	smartTest := smarttest.New("id")
 	objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartTest, nil)
-	updater := NewUpdater()
+	storeFixture := objectstore.NewStoreFixture(t)
+	updater := &syncStatusUpdater{batcher: mb.New[*syncStatusDetails](0), finish: make(chan struct{})}
 	a := &app.App{}
-	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter))
+	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter)).Register(storeFixture)
 	err := updater.Init(a)
 	assert.Nil(t, err)
 	return &fixture{
-		Updater: updater,
+		updater: updater,
 		sb:      smartTest,
 	}
 }
 
 type fixture struct {
-	Updater
-	sb *smarttest.SmartTest
+	sb      *smarttest.SmartTest
+	updater *syncStatusUpdater
 }

@@ -4,18 +4,12 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func IsSyncRelationRequired(sbType smartblock.SmartBlockType) bool {
-	smartblockTypes := SyncRelationsSmartblockTypes()
-	return slices.Contains(smartblockTypes, sbType)
-}
 
 func InjectsSyncDetails(details *types.Struct, status domain.SyncStatus) {
 	if details == nil || details.Fields == nil {

@@ -16,6 +16,9 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/anyproto/any-sync/util/slice"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 const (
@@ -63,6 +66,11 @@ type treeStatus struct {
 	status SyncStatus
 }
 
+type Updater interface {
+	app.Component
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError)
+}
+
 type syncStatusService struct {
 	sync.Mutex
 	configuration  nodeconf.NodeConf
@@ -80,6 +88,9 @@ type syncStatusService struct {
 
 	updateIntervalSecs int
 	updateTimeout      time.Duration
+
+	syncDetailsUpdater Updater
+	config             *config.Config
 }
 
 func NewSyncStatusService() StatusService {
@@ -101,6 +112,8 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 		s.updateTimeout,
 		s.update,
 		log)
+	s.syncDetailsUpdater = app.MustComponent[Updater](a)
+	s.config = app.MustComponent[*config.Config](a)
 	return
 }
 
@@ -133,6 +146,15 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 		syncStatus:   StatusNotSynced,
 	}
 	s.stateCounter++
+	s.sendSyncDetailsUpdate(treeId)
+}
+
+func (s *syncStatusService) sendSyncDetailsUpdate(treeId string) {
+	status := domain.Syncing
+	if s.config.IsLocalOnlyMode() {
+		status = domain.Offline
+	}
+	s.syncDetailsUpdater.UpdateDetails(treeId, status, domain.Null)
 }
 
 func (s *syncStatusService) SetNodesStatus(senderId string, status ConnectionStatus) {
@@ -201,6 +223,7 @@ func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string
 	})
 	if len(curTreeHeads.heads) == 0 {
 		curTreeHeads.syncStatus = StatusSynced
+		s.syncDetailsUpdater.UpdateDetails(treeId, domain.Synced, domain.Null)
 	}
 	s.treeHeads[treeId] = curTreeHeads
 }
