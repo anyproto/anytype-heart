@@ -144,5 +144,5 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		return nil, err
 	}
 
-	return &Result{File: bytes.NewReader(b)}, nil
+	return &Result{File: noopCloser(bytes.NewReader(b))}, nil
 }
