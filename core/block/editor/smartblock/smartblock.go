@@ -1453,7 +1453,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 func (sb *smartBlock) injectSyncDetails(s *state.State) {
 	if helper.IsSyncRelationRequired(sb.Type()) {
 		details := s.LocalDetails()
-		helper.InjectsSyncDetails(details)
+		helper.InjectsSyncDetails(details, domain.Synced)
 	}
 }
 

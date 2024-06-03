@@ -46,6 +46,9 @@ const (
 
 	// ForceLinksReindexCounter forces to erase links from store and reindex them
 	ForceLinksReindexCounter int32 = 1
+
+	// ForceSyncStatusReindexCounter forces to add sync relations to objects
+	ForceSyncStatusReindexCounter int32 = 1
 )
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
@@ -74,6 +77,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 				BundledObjects:             ForceBundledObjectsReindexCounter,
 				AreOldFilesRemoved:         true,
 				AreDeletedObjectsReindexed: true,
+				ForceSyncRelationsReindex:  ForceSyncStatusReindexCounter,
 			}
 		}
 	}
@@ -111,6 +115,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
 		flags.eraseLinks = true
+	}
+	if checksums.ForceSyncRelationsReindex != ForceSyncStatusReindexCounter {
+		flags.addSyncRelations = true
 	}
 	return flags, nil
 }
@@ -204,15 +211,21 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
-	err = i.addSyncDetails(space)
-	if err != nil {
-		log.Error("failed to add sync status relations", zap.Error(err))
+	if flags.addSyncRelations {
+		err = i.addSyncDetails(space)
+		if err != nil {
+			log.Error("failed to add sync status relations", zap.Error(err))
+		}
 	}
 	return i.saveLatestChecksums(space.Id())
 }
 
 func (i *indexer) addSyncDetails(space clientspace.Space) error {
 	typesForSyncRelations := helper.SyncRelationsSmartblockTypes()
+	syncStatus := domain.Synced
+	if i.config.IsLocalOnlyMode() {
+		syncStatus = domain.Offline
+	}
 	ids, err := i.getIdsForTypes(space.Id(), typesForSyncRelations...)
 	if err != nil {
 		return err
@@ -220,7 +233,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) error {
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
 			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
-				helper.InjectsSyncDetails(details)
+				helper.InjectsSyncDetails(details, syncStatus)
 				return details, nil
 			})
 		})
@@ -539,6 +552,7 @@ func (i *indexer) getLatestChecksums() model.ObjectStoreChecksums {
 		AreOldFilesRemoved:               true,
 		AreDeletedObjectsReindexed:       true,
 		LinksErase:                       ForceLinksReindexCounter,
+		ForceSyncRelationsReindex:        ForceSyncStatusReindexCounter,
 	}
 }
 
