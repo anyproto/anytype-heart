@@ -33,7 +33,7 @@ type Service interface {
 }
 
 type Updater interface {
-	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError) error
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError)
 }
 
 var _ Service = (*service)(nil)
