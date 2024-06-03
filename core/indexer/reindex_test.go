@@ -60,61 +60,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, details)
 	})
-
-	t.Run("do not erase links for marketplace", func(t *testing.T) {
-		// given
-		indexerFx := NewIndexerFixture(t)
-		checksums := indexerFx.getLatestChecksums()
-		checksums.LinksErase = checksums.LinksErase + 1
-		err := indexerFx.store.SaveChecksums("spaceId", &checksums)
-		assert.Nil(t, err)
-
-		virtualSpace := clientspace.NewVirtualSpace("spaceId", clientspace.VirtualSpaceDeps{
-			Indexer: indexerFx,
-		})
-		mockCache := mock_objectcache.NewMockCache(t)
-		smartTest := smarttest.New(addr.MissingObject)
-		smartTest.SetSpace(virtualSpace)
-
-		smartTest.SetType(coresb.SmartBlockTypePage)
-		smartTest.SetSpaceId("spaceId")
-		mockCache.EXPECT().GetObject(context.Background(), addr.MissingObject).Return(editor.NewMissingObject(smartTest), nil)
-		mockCache.EXPECT().GetObject(context.Background(), addr.AnytypeProfileId).Return(smartTest, nil)
-		virtualSpace.Cache = mockCache
-
-		favs := []string{"fav1", "fav2"}
-		trash := []string{"trash1", "trash2"}
-		err = indexerFx.store.UpdateObjectLinks("home", favs)
-		require.NoError(t, err)
-		err = indexerFx.store.UpdateObjectLinks("bin", trash)
-		require.NoError(t, err)
-
-		homeLinks, err := indexerFx.store.GetOutboundLinksByID("home")
-		require.Equal(t, favs, homeLinks)
-
-		archiveLinks, err := indexerFx.store.GetOutboundLinksByID("bin")
-		require.Equal(t, trash, archiveLinks)
-
-		storage := mock_storage.NewMockClientStorage(t)
-		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
-		indexerFx.storageService = storage
-
-		// when
-		err = indexerFx.ReindexMarketplaceSpace(virtualSpace)
-		assert.NoError(t, err)
-
-		// then
-		storeChecksums, err := indexerFx.store.GetChecksums(virtualSpace.Id())
-		assert.Equal(t, ForceLinksReindexCounter, storeChecksums.LinksErase)
-		// then
-		homeLinks, err = indexerFx.store.GetOutboundLinksByID("home")
-		assert.NoError(t, err)
-		assert.Equal(t, favs, homeLinks)
-
-		archiveLinks, err = indexerFx.store.GetOutboundLinksByID("bin")
-		assert.NoError(t, err)
-		assert.Equal(t, trash, archiveLinks)
-	})
 }
 
 func TestReindexDeletedObjects(t *testing.T) {

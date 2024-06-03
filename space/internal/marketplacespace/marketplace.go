@@ -30,8 +30,7 @@ type spaceController struct {
 	vs              clientspace.Space
 }
 
-func (s *spaceController) Start(ctx context.Context) (err error) {
-	indexer := app.MustComponent[dependencies.SpaceIndexer](s.app)
+func (s *spaceController) Start(context.Context) (err error) {
 	s.vs = clientspace.NewVirtualSpace(
 		addr.AnytypeMarketplaceWorkspace,
 		clientspace.VirtualSpaceDeps{
@@ -52,10 +51,6 @@ func (s *spaceController) Start(ctx context.Context) (err error) {
 	err = bsService.RegisterBuiltinTemplates(s.vs)
 	if err != nil {
 		return fmt.Errorf("register builtin templates: %w", err)
-	}
-	err = indexer.ReindexMarketplaceSpace(s.vs)
-	if err != nil {
-		return fmt.Errorf("reindex marketplace space: %w", err)
 	}
 	return err
 }
