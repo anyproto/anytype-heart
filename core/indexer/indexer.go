@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -63,6 +64,7 @@ type indexer struct {
 
 	quit            chan struct{}
 	ftQueueFinished chan struct{}
+	config          *config.Config
 
 	btHash  Hasher
 	forceFt chan struct{}
@@ -81,6 +83,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.quit = make(chan struct{})
 	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})
+	i.config = app.MustComponent[*config.Config](a)
 	return
 }
 

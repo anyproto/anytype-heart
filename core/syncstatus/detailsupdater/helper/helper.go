@@ -17,12 +17,12 @@ func IsSyncRelationRequired(sbType smartblock.SmartBlockType) bool {
 	return slices.Contains(smartblockTypes, sbType)
 }
 
-func InjectsSyncDetails(details *types.Struct) {
+func InjectsSyncDetails(details *types.Struct, status domain.SyncStatus) {
 	if details == nil || details.Fields == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 	if pbtypes.Get(details, bundle.RelationKeySyncStatus.String()) == nil {
-		details.Fields[bundle.RelationKeySyncStatus.String()] = pbtypes.Int64(int64(domain.Synced))
+		details.Fields[bundle.RelationKeySyncStatus.String()] = pbtypes.Int64(int64(status))
 	}
 	if pbtypes.Get(details, bundle.RelationKeySyncDate.String()) == nil {
 		details.Fields[bundle.RelationKeySyncDate.String()] = pbtypes.Int64(time.Now().Unix())
