@@ -160,7 +160,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 				return nil, nil
 			}
 		},
-	).Times(3)
+	)
 
 	fx.objectStore.AddObjects(t, []objectstore.TestObject{
 		{
