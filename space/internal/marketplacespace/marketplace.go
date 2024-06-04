@@ -3,6 +3,7 @@ package marketplacespace
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -21,6 +22,7 @@ func NewSpaceController(a *app.App, personalSpaceId string) spacecontroller.Spac
 	return &spaceController{
 		app:             a,
 		personalSpaceId: personalSpaceId,
+		indexer:         app.MustComponent[dependencies.SpaceIndexer](a),
 	}
 }
 
@@ -28,6 +30,8 @@ type spaceController struct {
 	app             *app.App
 	personalSpaceId string
 	vs              clientspace.Space
+	reindexOnce     sync.Once
+	indexer         dependencies.SpaceIndexer
 }
 
 func (s *spaceController) Start(context.Context) (err error) {
@@ -37,7 +41,7 @@ func (s *spaceController) Start(context.Context) (err error) {
 			ObjectFactory:   app.MustComponent[objectcache.ObjectFactory](s.app),
 			AccountService:  app.MustComponent[accountservice.Service](s.app),
 			PersonalSpaceId: s.personalSpaceId,
-			Indexer:         app.MustComponent[dependencies.SpaceIndexer](s.app),
+			Indexer:         s.indexer,
 			Installer:       app.MustComponent[dependencies.BundledObjectsInstaller](s.app),
 			TypePrefix:      addr.BundledObjectTypeURLPrefix,
 			RelationPrefix:  addr.BundledRelationURLPrefix,
@@ -59,7 +63,14 @@ func (s *spaceController) Mode() mode.Mode {
 	return mode.ModeLoading
 }
 
-func (s *spaceController) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
+func (s *spaceController) WaitLoad(context.Context) (sp clientspace.Space, err error) {
+	s.reindexOnce.Do(func() {
+		// TODO: GO-3557 Need to confirm moving ReindexMarketplaceSpace from Start to WaitLoad with mcrakhman
+		err = s.indexer.ReindexMarketplaceSpace(s.vs)
+	})
+	if err != nil {
+		return nil, err
+	}
 	return s.vs, nil
 }
 
