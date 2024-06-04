@@ -73,7 +73,7 @@ type treeStatus struct {
 
 type Updater interface {
 	app.Component
-	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError)
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 type syncStatusService struct {
@@ -158,7 +158,7 @@ func (s *syncStatusService) sendSyncDetailsUpdate(treeId string) {
 	if s.config.IsLocalOnlyMode() {
 		status = domain.Offline
 	}
-	s.syncDetailsUpdater.UpdateDetails(treeId, status, domain.Null)
+	s.syncDetailsUpdater.UpdateDetails(treeId, status, domain.Null, s.spaceId)
 }
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
@@ -215,7 +215,7 @@ func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string
 	})
 	if len(curTreeHeads.heads) == 0 {
 		curTreeHeads.syncStatus = StatusSynced
-		s.syncDetailsUpdater.UpdateDetails(treeId, domain.Synced, domain.Null)
+		s.syncDetailsUpdater.UpdateDetails(treeId, domain.Synced, domain.Null, s.spaceId)
 	}
 	s.treeHeads[treeId] = curTreeHeads
 }

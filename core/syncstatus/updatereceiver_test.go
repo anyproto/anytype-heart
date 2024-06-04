@@ -11,10 +11,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/mock_updater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/mock_objectsyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -27,7 +27,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = true
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null).Return(nil)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "").Return()
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Synced},
@@ -50,7 +50,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = true
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusIncompatible)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Error, domain.IncompatibleVersion).Return(nil)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Error, domain.IncompatibleVersion, "").Return()
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_IncompatibleVersion},
@@ -73,7 +73,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = true
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Syncing, domain.StorageLimitExceed).Return(nil)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Syncing, domain.StorageLimitExceed, "").Return()
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Syncing},
@@ -103,7 +103,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = true
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null).Return(nil)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "").Return()
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Syncing},
@@ -126,7 +126,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = true
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Error, domain.Null).Return(nil)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Error, domain.Null, "").Return()
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Unknown},
@@ -149,7 +149,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = false
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Error, domain.NetworkError).Return(nil)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Error, domain.NetworkError, "").Return()
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Offline},
@@ -172,7 +172,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = true
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null).Return(nil)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "").Return()
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Synced},
@@ -202,7 +202,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = true
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null).Return(nil)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "").Return()
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Syncing},
@@ -232,7 +232,7 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		receiver := newFixture(t)
 		receiver.nodeConnected = true
 		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
-		receiver.updater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null).Return(nil).Times(1)
+		receiver.updater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "").Return().Times(2)
 		receiver.sender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Synced},
@@ -264,7 +264,7 @@ func newFixture(t *testing.T) *fixture {
 	storeFixture := objectstore.NewStoreFixture(t)
 	status := nodestatus.NewNodeStatus()
 
-	updater := mock_updater.NewMockUpdater(t)
+	updater := mock_objectsyncstatus.NewMockUpdater(t)
 	receiver := newUpdateReceiver(nodeConf, conf, sender, storeFixture, status, updater)
 	return &fixture{
 		updateReceiver: receiver,
@@ -279,6 +279,6 @@ type fixture struct {
 	*updateReceiver
 	sender   *mock_event.MockSender
 	nodeConf *mock_nodeconf.MockService
-	updater  *mock_updater.MockUpdater
+	updater  *mock_objectsyncstatus.MockUpdater
 	store    *objectstore.StoreFixture
 }

@@ -15,13 +15,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/mock_objectsyncstatus"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 func Test_HeadsChange(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
 		// given
-		s := &syncStatusService{treeHeads: map[string]treeHeadsEntry{}}
+		s := newFixture(t)
+		s.config.NetworkMode = pb.RpcAccount_LocalOnly
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Offline, domain.Null, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -32,7 +38,9 @@ func Test_HeadsChange(t *testing.T) {
 	})
 	t.Run("HeadsChange: update existing object", func(t *testing.T) {
 		// given
-		s := &syncStatusService{treeHeads: map[string]treeHeadsEntry{}}
+		s := newFixture(t)
+		s.config.NetworkMode = pb.RpcAccount_DefaultConfig
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -74,6 +82,7 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId2"})
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1"})
@@ -87,6 +96,8 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId"})
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1"})
@@ -104,6 +115,7 @@ func TestSyncStatusService_Watch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 
@@ -150,6 +162,7 @@ func TestSyncStatusService_Unwatch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -172,6 +185,7 @@ func TestSyncStatusService_update(t *testing.T) {
 		s.SetUpdateReceiver(updateReceiver)
 
 		// when
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -188,6 +202,7 @@ func TestSyncStatusService_update(t *testing.T) {
 		s.SetUpdateReceiver(updateReceiver)
 
 		// when
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -280,8 +295,10 @@ func TestSyncStatusService_RemoveAllExcept(t *testing.T) {
 
 type fixture struct {
 	*syncStatusService
-	service *mock_nodeconf.MockService
-	storage *mock_spacestorage.MockSpaceStorage
+	service        *mock_nodeconf.MockService
+	storage        *mock_spacestorage.MockSpaceStorage
+	config         *config.Config
+	detailsUpdater *mock_objectsyncstatus.MockUpdater
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -289,10 +306,14 @@ func newFixture(t *testing.T) *fixture {
 	service := mock_nodeconf.NewMockService(ctrl)
 	storage := mock_spacestorage.NewMockSpaceStorage(ctrl)
 	spaceState := &spacestate.SpaceState{SpaceId: "spaceId"}
+	config := &config.Config{}
+	detailsUpdater := mock_objectsyncstatus.NewMockUpdater(t)
 
 	a := &app.App{}
 	a.Register(testutil.PrepareMock(context.Background(), a, service)).
 		Register(testutil.PrepareMock(context.Background(), a, storage)).
+		Register(testutil.PrepareMock(context.Background(), a, detailsUpdater)).
+		Register(config).
 		Register(spaceState)
 
 	syncStatusService := &syncStatusService{
@@ -305,5 +326,7 @@ func newFixture(t *testing.T) *fixture {
 		syncStatusService: syncStatusService,
 		service:           service,
 		storage:           storage,
+		config:            config,
+		detailsUpdater:    detailsUpdater,
 	}
 }
