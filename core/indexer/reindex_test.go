@@ -274,8 +274,6 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
-		// store := mock_objectstore.NewMockObjectStore(t)
-		// store.EXPECT().ListIds().Return([]string{}, nil).Times(8)
 
 		// when
 		err = fx.ReindexSpace(space1)
