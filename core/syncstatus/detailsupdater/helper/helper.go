@@ -35,7 +35,6 @@ func SyncRelationsSmartblockTypes() []smartblock.SmartBlockType {
 
 		smartblock.SmartBlockTypePage,
 		smartblock.SmartBlockTypeTemplate,
-		smartblock.SmartBlockTypeSpaceView,
 		smartblock.SmartBlockTypeProfilePage,
 	}
 }

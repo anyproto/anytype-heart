@@ -229,7 +229,6 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 			log.Error("failed to add sync status relations", zap.Error(err))
 		}
 	}
-	return
 }
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {

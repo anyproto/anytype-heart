@@ -34,7 +34,7 @@ type Service interface {
 }
 
 type Updater interface {
-	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError)
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 var _ Service = (*service)(nil)

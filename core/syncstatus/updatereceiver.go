@@ -49,7 +49,7 @@ func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eve
 func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status SyncStatus) error {
 	objStatusEvent, syncError := r.getObjectSyncStatusAndError(objId, status)
 	syncStatus := mapEventToSyncStatus(objStatusEvent)
-	defer r.syncStatusUpdater.UpdateDetails(objId, syncStatus, syncError)
+	defer r.syncStatusUpdater.UpdateDetails(objId, syncStatus, syncError, r.spaceId)
 	if !r.isStatusUpdated(objId, objStatusEvent) {
 		return nil
 	}
