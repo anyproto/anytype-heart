@@ -1,8 +1,14 @@
-package objectcreator
+package systemobjectreviser
 
 import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -12,26 +18,52 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const MName = "SystemObjectReviser"
+
 var revisionKey = bundle.RelationKeyRevision.String()
 
-func (s *service) reviseSystemObjects(space clientspace.Space, objects map[string]*types.Struct) {
-	marketObjects, err := s.listAllTypesAndRelations(addr.AnytypeMarketplaceWorkspace)
-	if err != nil {
-		log.Errorf("failed to get relations from marketplace space: %v", err)
-		return
-	}
+// Migration SystemObjectReviser performs revision of all system object types and relations, so after Migration
+// objects installed in space should correspond to bundled objects from library.
+// To modify relations of system objects relation revision should be incremented in types.json or relations.json
+// For more info see 'System Objects Update' section of docs/Flow.md
+type Migration struct{}
 
-	for _, details := range objects {
-		reviseSystemObject(space, details, marketObjects)
-	}
+func (Migration) Name() string {
+	return MName
 }
 
-func (s *service) listAllTypesAndRelations(spaceId string) (map[string]*types.Struct, error) {
-	records, err := s.objectStore.Query(database.Query{
+func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+	spaceObjects, err := listAllTypesAndRelations(store, space.Id())
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
+	}
+
+	marketObjects, err := listAllTypesAndRelations(store, addr.AnytypeMarketplaceWorkspace)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
+	}
+
+	for _, details := range spaceObjects {
+		shouldBeRevised, e := reviseSystemObject(ctx, log, space, details, marketObjects)
+		if !shouldBeRevised {
+			continue
+		}
+		toMigrate++
+		if e != nil {
+			err = errors.Join(err, fmt.Errorf("failed to revise object: %w", e))
+		} else {
+			migrated++
+		}
+	}
+	return
+}
+
+func listAllTypesAndRelations(store dependencies.QueryableStore, spaceId string) (map[string]*types.Struct, error) {
+	records, err := store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyLayout.String(),
@@ -50,30 +82,32 @@ func (s *service) listAllTypesAndRelations(spaceId string) (map[string]*types.St
 	}
 
 	details := make(map[string]*types.Struct, len(records))
-	for _, rec := range records {
-		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		details[id] = rec.Details
+	for _, record := range records {
+		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		details[id] = record.Details
 	}
 	return details, nil
 }
 
-func reviseSystemObject(space clientspace.Space, localObject *types.Struct, marketObjects map[string]*types.Struct) {
+func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *types.Struct, marketObjects map[string]*types.Struct) (toRevise bool, err error) {
 	source := pbtypes.GetString(localObject, bundle.RelationKeySourceObject.String())
 	marketObject, found := marketObjects[source]
 	if !found || !isSystemObject(localObject) || pbtypes.GetInt64(marketObject, revisionKey) <= pbtypes.GetInt64(localObject, revisionKey) {
-		return
+		return false, nil
 	}
 	details := buildDiffDetails(marketObject, localObject)
 	if len(details) != 0 {
-		if err := space.Do(pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
+		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
+		if err := space.DoCtx(ctx, pbtypes.GetString(localObject, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(basic.DetailsSettable); ok {
 				return ds.SetDetails(nil, details, false)
 			}
 			return nil
 		}); err != nil {
-			log.Errorf("failed to update system object %s in space %s: %v", source, space.Id(), err)
+			return true, fmt.Errorf("failed to update system object %s in space %s: %w", source, space.Id(), err)
 		}
 	}
+	return true, nil
 }
 
 func isSystemObject(details *types.Struct) bool {
