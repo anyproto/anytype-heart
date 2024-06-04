@@ -710,13 +710,11 @@ func (e *export) getRelatedDerivedObjects(objects map[string]*types.Struct) ([]d
 	return derivedObjects, nil
 }
 
-func (e *export) iterateObjects(objects map[string]*types.Struct) ([]database.Record, []database.Record, error) {
-	var (
-		allObjects, typesAndTemplates []database.Record
-		relations                     []string
-	)
+func (e *export) iterateObjects(objects map[string]*types.Struct,
+) (allObjects []database.Record, typesAndTemplates []database.Record, err error) {
+	var relations []string
 	for id, object := range objects {
-		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
+		err = cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState()
 			relations = e.getObjectRelations(state, relations)
 			details := state.Details()
