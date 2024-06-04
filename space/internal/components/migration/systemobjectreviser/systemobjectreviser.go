@@ -2,11 +2,11 @@ package systemobjectreviser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -54,7 +54,7 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store dependenci
 		}
 		toMigrate++
 		if e != nil {
-			err = multierror.Append(err, fmt.Errorf("failed to revise object: %w", e))
+			err = errors.Join(err, fmt.Errorf("failed to revise object: %w", e))
 		} else {
 			migrated++
 		}
