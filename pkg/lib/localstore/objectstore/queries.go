@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// minFulltextScore trim fulltext results with score lower than this value
+	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
 	minFulltextScore = 0.02
 )
 
@@ -316,9 +316,6 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 
 	var resultsByObjectId = make(map[string][]*search.DocumentMatch)
 	for _, result := range bleveResults {
-		if result.Score < minFulltextScore {
-			continue
-		}
 		path, err := domain.NewFromPath(result.ID)
 		if err != nil {
 			return nil, fmt.Errorf("fullText search: %w", err)
@@ -381,6 +378,9 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 		}
 		if highlightFormatter == ftsearch.JSONHighlightFormatter {
 			res.Highlight, res.HighlightRanges = jsonHighlightToRanges(highlight)
+		}
+		if result.Score < minFulltextScore && len(res.HighlightRanges) == 0 {
+			continue
 		}
 		results = append(results, res)
 
