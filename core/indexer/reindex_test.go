@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -106,6 +107,10 @@ func TestReindexDeletedObjects(t *testing.T) {
 		space1.EXPECT().Storage().Return(storage1)
 		space1.EXPECT().StoredIds().Return([]string{})
 
+		store := mock_objectstore.NewMockObjectStore(t)
+		store.EXPECT().ListIds().Return([]string{}, nil).Times(8)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(store, nil).Times(8)
+
 		err = fx.ReindexSpace(space1)
 		require.NoError(t, err)
 
@@ -122,6 +127,9 @@ func TestReindexDeletedObjects(t *testing.T) {
 		space2.EXPECT().Id().Return(spaceId2)
 		space2.EXPECT().Storage().Return(storage2)
 		space2.EXPECT().StoredIds().Return([]string{})
+		store := mock_objectstore.NewMockObjectStore(t)
+		store.EXPECT().ListIds().Return([]string{}, nil).Times(8)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(store, nil).Times(8)
 
 		err = fx.ReindexSpace(space2)
 		require.NoError(t, err)
@@ -157,7 +165,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 			case coresb.SmartBlockTypeArchive:
 				return idsLister{Ids: []string{"bin"}}, nil
 			default:
-				return nil, nil
+				return idsLister{Ids: []string{}}, nil
 			}
 		},
 	)
@@ -219,6 +227,8 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
+		// store := mock_objectstore.NewMockObjectStore(t)
+		// store.EXPECT().ListIds().Return([]string{}, nil).Times(8)
 
 		// when
 		err = fx.ReindexSpace(space1)
