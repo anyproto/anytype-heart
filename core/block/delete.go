@@ -52,10 +52,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 		return spc.DeleteTree(context.Background(), id.ObjectID)
 	default:
 		// this will call DeleteTree asynchronously in the end
-		if err = spc.DeleteTree(context.Background(), id.ObjectID); err == nil {
-			sendOnCloseEvent(s.eventSender, id.ObjectID, pb.EventObjectClose_Client)
-		}
-		return
+		return spc.DeleteTree(context.Background(), id.ObjectID)
 	}
 }
 
@@ -86,7 +83,6 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 		}
 	}
 	sendOnRemoveEvent(s.eventSender, id.ObjectID)
-	sendOnCloseEvent(s.eventSender, id.ObjectID, pb.EventObjectClose_Client)
 	return spc.Remove(context.Background(), id.ObjectID)
 }
 
