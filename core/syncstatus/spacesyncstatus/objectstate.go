@@ -36,12 +36,3 @@ func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
 func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
 	return o.objectSyncCountBySpace[spaceId]
 }
-
-func (o *ObjectState) IsSyncFinished(spaceId string) bool {
-	if _, ok := o.objectSyncStatusBySpace[spaceId]; !ok {
-		return false
-	}
-	status := o.objectSyncStatusBySpace[spaceId]
-	count := o.objectSyncCountBySpace[spaceId]
-	return count == 0 && status == domain.Synced
-}
