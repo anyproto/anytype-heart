@@ -31,9 +31,11 @@ var (
 
 // once you change the cache format, you need to update this variable
 // it will cause cache to be dropped and recreated
-const LAST_CACHE_VERSION = 6
+const cacheLastVersion = 6
 
-var dbKey = "payments/subscription/v" + strconv.Itoa(LAST_CACHE_VERSION)
+const cacheLifetimeDur = 24 * time.Hour
+
+var dbKey = "payments/subscription/v" + strconv.Itoa(cacheLastVersion)
 
 type StorageStruct struct {
 	// not to migrate old storage to new format, but just to check the validity of the cache
@@ -44,7 +46,7 @@ type StorageStruct struct {
 	// this variable is just for info
 	LastUpdated time.Time
 
-	// depending on the type of the subscription the cache will have different lifetime
+	// depending on the type of the membership the cache will have different lifetime
 	// if current time is >= ExpireTime -> cache is expired
 	ExpireTime time.Time
 
@@ -58,7 +60,7 @@ type StorageStruct struct {
 
 func newStorageStruct() *StorageStruct {
 	return &StorageStruct{
-		CurrentVersion:   LAST_CACHE_VERSION,
+		CurrentVersion:   cacheLastVersion,
 		LastUpdated:      time.Now().UTC(),
 		ExpireTime:       time.Time{},
 		DisableUntilTime: time.Time{},
@@ -79,7 +81,7 @@ type CacheService interface {
 	// if cache is disabled -> will return no error
 	// if cache is expired -> will return no error
 	// status or tiers can be nil depending on what you want to update
-	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, ExpireTime time.Time) (err error)
+	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, subscriptionEnds time.Time) (err error)
 
 	IsCacheEnabled() (enabled bool)
 
@@ -134,11 +136,11 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	// 1 - check in storage
 	ss, err := s.get()
 	if err != nil {
-		log.Error("can not get subscription status from cache", zap.Error(err))
+		log.Error("can not get membership status from cache", zap.Error(err))
 		return nil, nil, ErrCacheDbError
 	}
 
-	if ss.CurrentVersion != LAST_CACHE_VERSION {
+	if ss.CurrentVersion != cacheLastVersion {
 		// currently we have only one version, but in future we can have more
 		// this error can happen if you "downgrade" the app
 		log.Error("unsupported cache version", zap.Uint16("version", ss.CurrentVersion))
@@ -161,7 +163,31 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	return &ss.SubscriptionStatus, &ss.TiersData, nil
 }
 
-func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expireTime time.Time) (err error) {
+func getCacheExpireTime(dateEnds time.Time) time.Time {
+	// dateEnds can be 0
+	isExpired := time.Now().UTC().After(dateEnds)
+
+	timeNow := time.Now().UTC()
+	timeNext := timeNow.Add(cacheLifetimeDur)
+
+	// sub end < now OR no sub end provided (unlimited)
+	if isExpired {
+		log.Debug("incrementing cache lifetime because membership is isExpired")
+		return timeNext
+	}
+
+	// sub end >= now
+	// return min(sub end, now + 24h)
+	if dateEnds.Before(timeNext) {
+		log.Debug("incrementing cache lifetime because membership ends soon")
+		return dateEnds
+	}
+	return timeNext
+}
+
+func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, subscriptionEnds time.Time) (err error) {
+	expireTime := getCacheExpireTime(subscriptionEnds)
+
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {
