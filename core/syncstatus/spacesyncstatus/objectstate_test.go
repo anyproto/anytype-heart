@@ -81,43 +81,6 @@ func TestObjectState_SetObjectsNumber(t *testing.T) {
 	})
 }
 
-func TestObjectState_IsSyncFinished(t *testing.T) {
-	t.Run("IsSyncFinished, sync is not finished", func(t *testing.T) {
-		// given
-		objectState := NewObjectState()
-
-		// when
-		finished := objectState.IsSyncFinished("spaceId")
-
-		// then
-		assert.False(t, finished)
-	})
-	t.Run("IsSyncFinished, sync is finished", func(t *testing.T) {
-		// given
-		objectState := NewObjectState()
-
-		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Objects)
-		objectState.SetSyncStatus(syncStatus)
-		finished := objectState.IsSyncFinished("spaceId")
-
-		// then
-		assert.True(t, finished)
-	})
-	t.Run("IsSyncFinished, sync is not finished", func(t *testing.T) {
-		// given
-		objectState := NewObjectState()
-
-		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, 3, domain.Null, domain.Objects)
-		objectState.SetSyncStatus(syncStatus)
-		finished := objectState.IsSyncFinished("spaceId")
-
-		// then
-		assert.False(t, finished)
-	})
-}
-
 func TestObjectState_SetSyncStatus(t *testing.T) {
 	t.Run("SetSyncStatus, status synced", func(t *testing.T) {
 		// given
