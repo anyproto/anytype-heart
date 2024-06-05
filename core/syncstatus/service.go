@@ -77,6 +77,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnUploaded(s.onFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
 	s.fileSyncService.OnLimited(s.onFileLimited)
+	s.fileSyncService.OnDelete(s.OnFileDelete)
 
 	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
 	return nil

@@ -104,47 +104,10 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 	})
 }
 
-func TestFileState_IsSyncFinished(t *testing.T) {
-	t.Run("IsSyncFinished, sync is not finished", func(t *testing.T) {
-		// given
-		fileState := NewFileState(nil)
-
-		// when
-		finished := fileState.IsSyncFinished("spaceId")
-
-		// then
-		assert.False(t, finished)
-	})
-	t.Run("IsSyncFinished, sync is finished", func(t *testing.T) {
-		// given
-		fileState := NewFileState(nil)
-
-		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
-		fileState.SetSyncStatus(syncStatus)
-		finished := fileState.IsSyncFinished("spaceId")
-
-		// then
-		assert.True(t, finished)
-	})
-	t.Run("IsSyncFinished, sync is not finished", func(t *testing.T) {
-		// given
-		fileState := NewFileState(nil)
-
-		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, 3, domain.Null, domain.Files)
-		fileState.SetSyncStatus(syncStatus)
-		finished := fileState.IsSyncFinished("spaceId")
-
-		// then
-		assert.False(t, finished)
-	})
-}
-
 func TestFileState_SetSyncStatus(t *testing.T) {
 	t.Run("SetSyncStatus, status synced", func(t *testing.T) {
 		// given
-		fileState := NewFileState(nil)
+		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
@@ -185,7 +148,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 	})
 	t.Run("SetSyncStatus, sync in progress", func(t *testing.T) {
 		// given
-		fileState := NewFileState(nil)
+		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 0, domain.Null, domain.Files)
@@ -196,7 +159,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 	})
 	t.Run("SetSyncStatus, sync is finished with error", func(t *testing.T) {
 		// given
-		fileState := NewFileState(nil)
+		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, 3, domain.Null, domain.Files)
@@ -207,7 +170,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 	})
 	t.Run("SetSyncStatus, offline", func(t *testing.T) {
 		// given
-		fileState := NewFileState(nil)
+		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, 3, domain.Null, domain.Files)
