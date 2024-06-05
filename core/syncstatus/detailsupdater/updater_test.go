@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -116,7 +117,19 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 		fixture := newFixture(t)
 
 		// when
-		err := fixture.updater.setSyncDetails(editor.NewMissingObject(nil), domain.Error, domain.NetworkError)
+		fixture.sb.SetType(coresb.SmartBlockTypePage)
+		err := fixture.updater.setSyncDetails(editor.NewMissingObject(fixture.sb), domain.Error, domain.NetworkError)
+
+		// then
+		assert.Nil(t, err)
+	})
+	t.Run("not set smartblock details, because it doesn't need details", func(t *testing.T) {
+		// given
+		fixture := newFixture(t)
+
+		// when
+		fixture.sb.SetType(coresb.SmartBlockTypeHome)
+		err := fixture.updater.setSyncDetails(fixture.sb, domain.Error, domain.NetworkError)
 
 		// then
 		assert.Nil(t, err)

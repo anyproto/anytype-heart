@@ -3,6 +3,7 @@ package detailsupdater
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -14,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -130,6 +132,9 @@ func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) 
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.SyncStatus, syncError domain.SyncError) error {
+	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
+		return nil
+	}
 	if d, ok := sb.(basic.DetailsSettable); ok {
 		syncStatusDetails := []*model.Detail{
 			{
