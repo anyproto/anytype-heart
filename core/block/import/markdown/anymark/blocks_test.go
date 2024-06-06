@@ -7,6 +7,8 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/text"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -233,5 +235,56 @@ func TestCloseTextBlock(t *testing.T) {
 		assert.Equal(t, "1. Level 1", renderer.blocks[1].GetText().Text)
 		assert.Len(t, renderer.blocks[1].ChildrenIds, 1)
 		assert.Equal(t, "id2", renderer.blocks[1].ChildrenIds[0])
+	})
+}
+
+func Test_renderCodeBloc(t *testing.T) {
+	t.Run("simple case", func(t *testing.T) {
+		// given
+		r := NewRenderer(newBlocksRenderer("", nil, false))
+		node := ast.NewCodeBlock()
+		segments := text.NewSegments()
+		segments.Append(text.Segment{
+			Start: 0,
+			Stop:  4,
+		})
+		node.SetLines(segments)
+
+		// when
+		_, err := r.renderCodeBlock(nil, []byte("test"), node, true)
+		assert.Nil(t, err)
+		_, err = r.renderCodeBlock(nil, []byte("test"), node, false)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, r.blocks, 1)
+		assert.Equal(t, "test", r.blocks[0].GetText().GetText())
+		assert.Equal(t, r.blocks[0].GetText().GetStyle(), model.BlockContentText_Code)
+	})
+	t.Run("2 lines", func(t *testing.T) {
+		// given
+		r := NewRenderer(newBlocksRenderer("", nil, false))
+		node := ast.NewCodeBlock()
+		segments := text.NewSegments()
+		segments.Append(text.Segment{
+			Start: 0,
+			Stop:  5,
+		})
+		segments.Append(text.Segment{
+			Start: 5,
+			Stop:  8,
+		})
+		node.SetLines(segments)
+
+		// when
+		_, err := r.renderCodeBlock(nil, []byte("testtest"), node, true)
+		assert.Nil(t, err)
+		_, err = r.renderCodeBlock(nil, []byte("testtest"), node, false)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, r.blocks, 1)
+		assert.Equal(t, "testtest", r.blocks[0].GetText().GetText())
+		assert.Equal(t, model.BlockContentText_Code, r.blocks[0].GetText().GetStyle())
 	})
 }
