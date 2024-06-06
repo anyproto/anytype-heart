@@ -26,9 +26,8 @@ func (s *service) OnFileLimited(objectId string) error {
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Limited)
 }
 
-func (s *service) OnFileDelete(fileId domain.FullFileId) error {
+func (s *service) OnFileDelete(fileId domain.FullFileId) {
 	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId)
-	return nil
 }
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
