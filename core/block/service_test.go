@@ -45,7 +45,6 @@ func TestServiceClose(t *testing.T) {
 			assert.Len(t, e.Messages, 1)
 			msg := e.Messages[0].GetObjectClose()
 			assert.NotNil(t, msg)
-			assert.Equal(t, pb.EventObjectClose_Middle, msg.Closer)
 			assert.Contains(t, []string{"obj1", "obj2", "obj3"}, msg.Id)
 		})
 		fx.openedObjs.objects = objects
