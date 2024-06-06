@@ -355,7 +355,22 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+
+	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
+}
+
+func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
+	sb.sendEvent(&pb.Event{
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfObjectClose{
+				ObjectClose: &pb.EventObjectClose{
+					Id: sb.Id(),
+				},
+			},
+		}},
+	})
+	return nil
 }
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
@@ -1039,29 +1054,12 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 
 func (sb *smartBlock) ObjectClose(ctx session.Context) {
 	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
-	sendOnCloseEvent(sb.eventSender, sb.Id(), pb.EventObjectClose_Client)
 	delete(sb.sessions, ctx.ID())
 }
 
 func (sb *smartBlock) ObjectCloseAllSessions() {
 	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
-	sendOnCloseEvent(sb.eventSender, sb.Id(), pb.EventObjectClose_Middle)
 	sb.sessions = make(map[string]session.Context)
-}
-
-func sendOnCloseEvent(eventSender event.Sender, id string, closer pb.EventObjectCloseCloser) {
-	eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectClose{
-					ObjectClose: &pb.EventObjectClose{
-						Id:     id,
-						Closer: closer,
-					},
-				},
-			},
-		},
-	})
 }
 
 func (sb *smartBlock) TryClose(objectTTL time.Duration) (res bool, err error) {
@@ -1076,7 +1074,6 @@ func (sb *smartBlock) TryClose(objectTTL time.Duration) (res bool, err error) {
 }
 
 func (sb *smartBlock) Close() (err error) {
-	sb.ObjectCloseAllSessions()
 	sb.Lock()
 	return sb.closeLocked()
 }

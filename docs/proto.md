@@ -1584,7 +1584,6 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
-    - [Event.Object.Close.Closer](#anytype-Event-Object-Close-Closer)
     - [Event.Status.Thread.SyncStatus](#anytype-Event-Status-Thread-SyncStatus)
     - [Model.Process.State](#anytype-Model-Process-State)
     - [Model.Process.Type](#anytype-Model-Process-Type)
@@ -24372,7 +24371,6 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| closer | [Event.Object.Close.Closer](#anytype-Event-Object-Close-Closer) |  |  |
 
 
 
@@ -25017,18 +25015,6 @@ Precondition: user A and user B opened the same block
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
 | SliceOperationReplace | 4 |  |
-
-
-
-<a name="anytype-Event-Object-Close-Closer"></a>
-
-### Event.Object.Close.Closer
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Middle | 0 |  |
-| Client | 1 |  |
 
 
 
