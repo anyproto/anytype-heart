@@ -31,7 +31,6 @@ type State interface {
 	SetSyncStatus(status *domain.SpaceSync)
 	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
-	IsSyncFinished(spaceId string) bool
 }
 
 type NetworkConfig interface {
@@ -118,11 +117,6 @@ func (s *spaceSyncStatus) processEvents() {
 }
 
 func (s *spaceSyncStatus) updateSpaceSyncStatus(status *domain.SpaceSync) {
-	// don't send unnecessary event
-	if s.isSyncFinished(status) {
-		return
-	}
-
 	state := s.getCurrentState(status)
 	state.SetObjectsNumber(status)
 	state.SetSyncStatus(status)
@@ -154,10 +148,6 @@ func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	}
 	<-s.finish
 	return s.batcher.Close()
-}
-
-func (s *spaceSyncStatus) isSyncFinished(status *domain.SpaceSync) bool {
-	return status.Status == domain.Synced && s.filesState.IsSyncFinished(status.SpaceId) && s.objectsState.IsSyncFinished(status.SpaceId)
 }
 
 func (s *spaceSyncStatus) makeSpaceSyncEvent(status *domain.SpaceSync) *pb.EventSpaceSyncStatusUpdate {
