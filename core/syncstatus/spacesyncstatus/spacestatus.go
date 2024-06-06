@@ -122,9 +122,9 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(status *domain.SpaceSync) {
 	state.SetSyncStatus(status)
 
 	// send synced event only if files and objects are all synced
-	// if !s.needToSendEvent(status) {
-	// 	return
-	// }
+	if !s.needToSendEvent(status) {
+		return
+	}
 
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
