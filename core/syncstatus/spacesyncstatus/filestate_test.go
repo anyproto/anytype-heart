@@ -82,7 +82,7 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 			},
 		})
 		fileState := NewFileState(storeFixture)
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 
 		// when
 		fileState.SetObjectsNumber(syncStatus)
@@ -94,7 +94,7 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
 		fileState := NewFileState(storeFixture)
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 
 		// when
 		fileState.SetObjectsNumber(syncStatus)
@@ -110,7 +110,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then
@@ -139,7 +139,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(storeFixture)
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 		fileState.SetObjectsNumber(syncStatus)
 		fileState.SetSyncStatusAndErr(syncStatus)
 
@@ -151,7 +151,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)
 		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then
@@ -162,7 +162,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, 3, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.Null, domain.Files)
 		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then
@@ -173,7 +173,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, 3, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Files)
 		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then

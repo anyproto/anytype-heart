@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
@@ -22,39 +23,43 @@ type updateReceiver struct {
 
 	nodeConfService nodeconf.Service
 	sync.Mutex
-	nodeConnected bool
-	lastStatus    map[string]pb.EventStatusThreadSyncStatus
-	objectStore   objectstore.ObjectStore
-	nodeStatus    nodestatus.NodeStatus
-	spaceId       string
+	nodeConnected     bool
+	lastStatus        map[string]pb.EventStatusThreadSyncStatus
+	objectStore       objectstore.ObjectStore
+	nodeStatus        nodestatus.NodeStatus
+	spaceId           string
+	syncStatusUpdater Updater
 }
 
-func newUpdateReceiver(nodeConfService nodeconf.Service,
+func newUpdateReceiver(
+	nodeConfService nodeconf.Service,
 	cfg *config.Config,
 	eventSender event.Sender,
 	objectStore objectstore.ObjectStore,
 	nodeStatus nodestatus.NodeStatus,
+	syncStatusUpdater Updater,
 ) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		eventSender = nil
 	}
 	return &updateReceiver{
-		nodeConfService: nodeConfService,
-		lastStatus:      make(map[string]pb.EventStatusThreadSyncStatus),
-		eventSender:     eventSender,
-		objectStore:     objectStore,
-		nodeStatus:      nodeStatus,
+		nodeConfService:   nodeConfService,
+		lastStatus:        make(map[string]pb.EventStatusThreadSyncStatus),
+		eventSender:       eventSender,
+		objectStore:       objectStore,
+		nodeStatus:        nodeStatus,
+		syncStatusUpdater: syncStatusUpdater,
 	}
 }
 
 func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status objectsyncstatus.SyncStatus) error {
-	objStatus := r.getObjectStatus(objId, status)
-
-	if !r.isStatusUpdated(objId, objStatus) {
+	objStatusEvent, syncError := r.getObjectSyncStatusAndError(objId, status)
+	syncStatus := mapEventToSyncStatus(objStatusEvent)
+	defer r.syncStatusUpdater.UpdateDetails(objId, syncStatus, syncError, r.spaceId)
+	if !r.isStatusUpdated(objId, objStatusEvent) {
 		return nil
 	}
-	r.notify(objId, objStatus)
-
+	r.notify(objId, objStatusEvent)
 	return nil
 }
 
@@ -79,30 +84,34 @@ func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, er
 	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
-func (r *updateReceiver) getObjectStatus(objectId string, status objectsyncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) getObjectSyncStatusAndError(objectId string, status objectsyncstatus.SyncStatus) (pb.EventStatusThreadSyncStatus, domain.SyncError) {
 	fileStatus, err := r.getFileStatus(objectId)
+	var syncError domain.SyncError
 	if err == nil {
 		// Prefer file backup status
 		if fileStatus != filesyncstatus.Synced {
 			status = fileStatus.ToSyncStatus()
 		}
+		if fileStatus == filesyncstatus.Limited {
+			syncError = domain.StorageLimitExceed
+		}
 	}
 
 	if r.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
-		return pb.EventStatusThread_IncompatibleVersion
+		return pb.EventStatusThread_IncompatibleVersion, domain.IncompatibleVersion
 	}
 
 	if !r.isNodeConnected() {
-		return pb.EventStatusThread_Offline
+		return pb.EventStatusThread_Offline, domain.NetworkError
 	}
 
 	switch status {
 	case objectsyncstatus.StatusUnknown:
-		return pb.EventStatusThread_Unknown
+		return pb.EventStatusThread_Unknown, syncError
 	case objectsyncstatus.StatusSynced:
-		return pb.EventStatusThread_Synced
+		return pb.EventStatusThread_Synced, syncError
 	}
-	return pb.EventStatusThread_Syncing
+	return pb.EventStatusThread_Syncing, syncError
 }
 
 func (r *updateReceiver) ClearLastObjectStatus(objectID string) {
@@ -150,4 +159,15 @@ func (r *updateReceiver) sendEvent(ctx string, event pb.IsEventMessageValue) {
 		Messages:  []*pb.EventMessage{{Value: event}},
 		ContextId: ctx,
 	})
+}
+
+func mapEventToSyncStatus(status pb.EventStatusThreadSyncStatus) domain.SyncStatus {
+	switch status {
+	case pb.EventStatusThread_Syncing:
+		return domain.Syncing
+	case pb.EventStatusThread_Offline, pb.EventStatusThread_Unknown, pb.EventStatusThread_IncompatibleVersion, pb.EventStatusThread_Failed:
+		return domain.Error
+	default:
+		return domain.Synced
+	}
 }

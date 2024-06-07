@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
@@ -29,6 +30,10 @@ type Service interface {
 	RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher)
 
 	app.ComponentRunnable
+}
+
+type Updater interface {
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 var _ Service = (*service)(nil)
@@ -59,9 +64,12 @@ func (s *service) Init(a *app.App) (err error) {
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	cfg := app.MustComponent[*config.Config](a)
 	eventSender := app.MustComponent[event.Sender](a)
+
 	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
-	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
+	objectSyncStatusUpdater := app.MustComponent[Updater](a)
+	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus, objectSyncStatusUpdater)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
 	s.fileSyncService.OnUploaded(s.OnFileUploaded)
@@ -69,7 +77,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnLimited(s.OnFileLimited)
 	s.fileSyncService.OnDelete(s.OnFileDelete)
 
-	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
 	return nil
 }
 

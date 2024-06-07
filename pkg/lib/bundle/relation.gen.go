@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b549826bf25e72ff31a5bad9159fdd67388a5c4d2492eba3fab64f81477fbb31"
+const RelationChecksum = "e7b7dc1196702d61efece57fd1db120838fb3d3f40ca3ca5670092f609d56538"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -184,6 +184,9 @@ const (
 	RelationKeyImageKind                 domain.RelationKey = "imageKind"
 	RelationKeyImportType                domain.RelationKey = "importType"
 	RelationKeyGlobalName                domain.RelationKey = "globalName"
+	RelationKeySyncStatus                domain.RelationKey = "syncStatus"
+	RelationKeySyncDate                  domain.RelationKey = "syncDate"
+	RelationKeySyncError                 domain.RelationKey = "syncError"
 )
 
 var (
@@ -2246,6 +2249,48 @@ var (
 			MaxCount:         1,
 			Name:             "Status",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySyncDate: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Object sync date",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brsyncDate",
+			Key:              "syncDate",
+			MaxCount:         1,
+			Name:             "Sync date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySyncError: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Object sync error",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brsyncError",
+			Key:              "syncError",
+			MaxCount:         1,
+			Name:             "Sync error",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySyncStatus: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Object sync status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brsyncStatus",
+			Key:              "syncStatus",
+			MaxCount:         1,
+			Name:             "Sync status",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

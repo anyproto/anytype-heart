@@ -18,7 +18,9 @@ import (
 	"github.com/anyproto/any-sync/util/slice"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 )
 
 const (
@@ -27,11 +29,6 @@ const (
 )
 
 var log = logger.NewNamed(syncstatus.CName)
-
-type SpaceStatusUpdater interface {
-	app.ComponentRunnable
-	SendUpdate(spaceSync *domain.SpaceSync)
-}
 
 type UpdateReceiver interface {
 	UpdateTree(ctx context.Context, treeId string, status SyncStatus) (err error)
@@ -75,6 +72,11 @@ type treeStatus struct {
 	status SyncStatus
 }
 
+type Updater interface {
+	app.Component
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+}
+
 type syncStatusService struct {
 	sync.Mutex
 	configuration  nodeconf.NodeConf
@@ -92,7 +94,9 @@ type syncStatusService struct {
 	updateIntervalSecs int
 	updateTimeout      time.Duration
 
-	spaceSyncStatus SpaceStatusUpdater
+	syncDetailsUpdater Updater
+	nodeStatus         nodestatus.NodeStatus
+	config             *config.Config
 }
 
 func NewSyncStatusService() StatusService {
@@ -109,12 +113,14 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.spaceId = sharedState.SpaceId
 	s.configuration = app.MustComponent[nodeconf.NodeConf](a)
 	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
-	s.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
 		s.update,
 		log)
+	s.syncDetailsUpdater = app.MustComponent[Updater](a)
+	s.config = app.MustComponent[*config.Config](a)
+	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	return
 }
 
@@ -147,7 +153,7 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 		syncStatus:   StatusNotSynced,
 	}
 	s.stateCounter++
-	s.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects))
+	s.updateDetails(treeId, domain.Syncing)
 }
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
@@ -204,6 +210,7 @@ func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string
 	})
 	if len(curTreeHeads.heads) == 0 {
 		curTreeHeads.syncStatus = StatusSynced
+		s.updateDetails(treeId, domain.Synced)
 	}
 	s.treeHeads[treeId] = curTreeHeads
 }
@@ -271,6 +278,20 @@ func (s *syncStatusService) Close(ctx context.Context) error {
 	s.periodicSync.Close()
 	return nil
 }
+
 func (s *syncStatusService) isSenderResponsible(senderId string) bool {
 	return slices.Contains(s.configuration.NodeIds(s.spaceId), senderId)
+}
+
+func (s *syncStatusService) updateDetails(treeId string, status domain.SyncStatus) {
+	var syncErr domain.SyncError
+	if s.nodeStatus.GetNodeStatus(s.spaceId) != nodestatus.Online {
+		syncErr = domain.NetworkError
+		status = domain.Error
+	}
+	if s.config.IsLocalOnlyMode() {
+		syncErr = domain.Null
+		status = domain.Offline
+	}
+	s.syncDetailsUpdater.UpdateDetails(treeId, status, syncErr, s.spaceId)
 }

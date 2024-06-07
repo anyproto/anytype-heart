@@ -29,9 +29,9 @@ type TechSpaceIdGetter interface {
 type State interface {
 	SetObjectsNumber(status *domain.SpaceSync)
 	SetSyncStatusAndErr(status *domain.SpaceSync)
-	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
+	GetSyncStatus(spaceId string) domain.SyncStatus
 	GetSyncObjectCount(spaceId string) int
-	GetSyncErr(spaceId string) domain.SpaceSyncError
+	GetSyncErr(spaceId string) domain.SyncError
 }
 
 type NetworkConfig interface {
@@ -62,7 +62,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.networkConfig = app.MustComponent[NetworkConfig](a)
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	s.filesState = NewFileState(store)
-	s.objectsState = NewObjectState()
+	s.objectsState = NewObjectState(store)
 	s.techSpaceIdGetter = app.MustComponent[TechSpaceIdGetter](a)
 	return
 }
@@ -161,7 +161,7 @@ func (s *spaceSyncStatus) makeSpaceSyncEvent(status *domain.SpaceSync) *pb.Event
 	}
 }
 
-func (s *spaceSyncStatus) getSpaceSyncStatus(status *domain.SpaceSync) domain.SpaceSyncStatus {
+func (s *spaceSyncStatus) getSpaceSyncStatus(status *domain.SpaceSync) domain.SyncStatus {
 	filesStatus := s.filesState.GetSyncStatus(status.SpaceId)
 	objectsStatus := s.objectsState.GetSyncStatus(status.SpaceId)
 
@@ -183,19 +183,19 @@ func (s *spaceSyncStatus) getSpaceSyncStatus(status *domain.SpaceSync) domain.Sp
 	return domain.Synced
 }
 
-func (s *spaceSyncStatus) isSyncingStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
+func (s *spaceSyncStatus) isSyncingStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
 	return filesStatus == domain.Syncing || objectsStatus == domain.Syncing
 }
 
-func (s *spaceSyncStatus) isErrorStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
+func (s *spaceSyncStatus) isErrorStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
 	return filesStatus == domain.Error || objectsStatus == domain.Error
 }
 
-func (s *spaceSyncStatus) isSyncedStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
+func (s *spaceSyncStatus) isSyncedStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
 	return filesStatus == domain.Synced && objectsStatus == domain.Synced
 }
 
-func (s *spaceSyncStatus) isOfflineStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
+func (s *spaceSyncStatus) isOfflineStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
 	return filesStatus == domain.Offline || objectsStatus == domain.Offline
 }
 
@@ -231,7 +231,7 @@ func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 	}
 }
 
-func mapStatus(status domain.SpaceSyncStatus) pb.EventSpaceStatus {
+func mapStatus(status domain.SyncStatus) pb.EventSpaceStatus {
 	switch status {
 	case domain.Syncing:
 		return pb.EventSpace_Syncing
@@ -244,7 +244,7 @@ func mapStatus(status domain.SpaceSyncStatus) pb.EventSpaceStatus {
 	}
 }
 
-func mapError(err domain.SpaceSyncError) pb.EventSpaceSyncError {
+func mapError(err domain.SyncError) pb.EventSpaceSyncError {
 	switch err {
 	case domain.NetworkError:
 		return pb.EventSpace_NetworkError

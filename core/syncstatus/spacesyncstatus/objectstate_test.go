@@ -6,12 +6,15 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestObjectState_GetSyncObjectCount(t *testing.T) {
 	t.Run("GetSyncObjectCount", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
 		objectState.objectSyncCountBySpace["spaceId"] = 1
@@ -22,7 +25,7 @@ func TestObjectState_GetSyncObjectCount(t *testing.T) {
 	})
 	t.Run("GetSyncObjectCount: zero value", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
 		objectCount := objectState.GetSyncObjectCount("spaceId")
@@ -35,7 +38,7 @@ func TestObjectState_GetSyncObjectCount(t *testing.T) {
 func TestObjectState_GetSyncStatus(t *testing.T) {
 	t.Run("GetSyncStatus", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
 		objectState.objectSyncStatusBySpace["spaceId"] = domain.Syncing
@@ -46,7 +49,7 @@ func TestObjectState_GetSyncStatus(t *testing.T) {
 	})
 	t.Run("GetSyncStatus: zero value", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := objectState.GetSyncStatus("spaceId")
@@ -59,8 +62,21 @@ func TestObjectState_GetSyncStatus(t *testing.T) {
 func TestObjectState_SetObjectsNumber(t *testing.T) {
 	t.Run("SetObjectsNumber", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 2, domain.Null, domain.Objects)
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectState := NewObjectState(storeFixture)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:         pbtypes.String("id1"),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
+			},
+			{
+				bundle.RelationKeyId:         pbtypes.String("id2"),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
+			},
+		})
 
 		// when
 		objectState.SetObjectsNumber(syncStatus)
@@ -70,8 +86,8 @@ func TestObjectState_SetObjectsNumber(t *testing.T) {
 	})
 	t.Run("SetObjectsNumber: no object", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Objects)
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
 
 		// when
 		objectState.SetObjectsNumber(syncStatus)
@@ -84,21 +100,45 @@ func TestObjectState_SetObjectsNumber(t *testing.T) {
 func TestObjectState_SetSyncStatus(t *testing.T) {
 	t.Run("SetSyncStatusAndErr, status synced", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
 		objectState.SetSyncStatusAndErr(syncStatus)
 
 		// then
 		assert.Equal(t, domain.Synced, objectState.GetSyncStatus("spaceId"))
 	})
+	t.Run("SetSyncStatusAndErr, status synced for object, but there are still some syncing", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectState := NewObjectState(storeFixture)
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:         pbtypes.String("id1"),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
+			},
+			{
+				bundle.RelationKeyId:         pbtypes.String("id2"),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
+			},
+		})
+		// when
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
+		objectState.SetObjectsNumber(syncStatus)
+		objectState.SetSyncStatusAndErr(syncStatus)
+
+		// then
+		assert.Equal(t, domain.Syncing, objectState.GetSyncStatus("spaceId"))
+	})
 	t.Run("SetSyncStatusAndErr, sync in progress", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 1, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
 		objectState.SetSyncStatusAndErr(syncStatus)
 
 		// then
@@ -106,10 +146,10 @@ func TestObjectState_SetSyncStatus(t *testing.T) {
 	})
 	t.Run("SetSyncStatusAndErr, sync is finished with error", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, 3, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.Null, domain.Objects)
 		objectState.SetSyncStatusAndErr(syncStatus)
 
 		// then
@@ -117,10 +157,10 @@ func TestObjectState_SetSyncStatus(t *testing.T) {
 	})
 	t.Run("SetSyncStatusAndErr, offline", func(t *testing.T) {
 		// given
-		objectState := NewObjectState()
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, 3, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Objects)
 		objectState.SetSyncStatusAndErr(syncStatus)
 
 		// then
