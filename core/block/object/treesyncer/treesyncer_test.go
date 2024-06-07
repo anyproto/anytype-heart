@@ -26,7 +26,6 @@ type fixture struct {
 	missingMock        *mock_objecttree.MockObjectTree
 	existingMock       *mock_synctree.MockSyncTree
 	treeManager        *mock_treemanager.MockTreeManager
-	updater            *mock_treesyncer.MockUpdater
 	checker            *mock_treesyncer.MockPeerStatusChecker
 	nodeConf           *mock_nodeconf.MockService
 	syncStatus         *mock_treesyncer.MockSyncedTreeRemover
@@ -38,8 +37,6 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	treeManager := mock_treemanager.NewMockTreeManager(ctrl)
 	missingMock := mock_objecttree.NewMockObjectTree(ctrl)
 	existingMock := mock_synctree.NewMockSyncTree(ctrl)
-	updater := mock_treesyncer.NewMockUpdater(t)
-	updater.EXPECT().Name().Return("updater").Maybe()
 	checker := mock_treesyncer.NewMockPeerStatusChecker(t)
 	checker.EXPECT().Name().Return("checker").Maybe()
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
@@ -49,7 +46,6 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, treeManager)).
-		Register(testutil.PrepareMock(context.Background(), a, updater)).
 		Register(testutil.PrepareMock(context.Background(), a, checker)).
 		Register(testutil.PrepareMock(context.Background(), a, syncStatus)).
 		Register(testutil.PrepareMock(context.Background(), a, nodeConf)).
@@ -63,7 +59,6 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 		missingMock:        missingMock,
 		existingMock:       existingMock,
 		treeManager:        treeManager,
-		updater:            updater,
 		checker:            checker,
 		nodeConf:           nodeConf,
 		syncStatus:         syncStatus,
@@ -202,7 +197,6 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(true)
-		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Offline, 0, domain.Null, domain.Objects))
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 		fx.syncDetailsUpdater.EXPECT().UpdateDetails("existing", domain.Offline, domain.Null, "spaceId").Return()
 
@@ -223,8 +217,6 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(false)
-		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Syncing, 2, domain.Null, domain.Objects))
-		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Synced, 0, domain.Null, domain.Objects))
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 		fx.syncDetailsUpdater.EXPECT().UpdateDetails("existing", domain.Synced, domain.Null, "spaceId").Return()
 		fx.syncDetailsUpdater.EXPECT().UpdateDetails("existing", domain.Syncing, domain.Null, "spaceId").Return()

@@ -41,13 +41,19 @@ type Updater interface {
 	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
+type SpaceStatusUpdater interface {
+	app.Component
+	SendUpdate(status *domain.SpaceSync)
+}
+
 type syncStatusUpdater struct {
-	objectGetter cache.ObjectGetter
-	objectStore  objectstore.ObjectStore
-	ctx          context.Context
-	ctxCancel    context.CancelFunc
-	batcher      *mb.MB[*syncStatusDetails]
-	spaceService space.Service
+	objectGetter    cache.ObjectGetter
+	objectStore     objectstore.ObjectStore
+	ctx             context.Context
+	ctxCancel       context.CancelFunc
+	batcher         *mb.MB[*syncStatusDetails]
+	spaceService    space.Service
+	spaceSyncStatus SpaceStatusUpdater
 
 	finish chan struct{}
 }
@@ -74,7 +80,7 @@ func (u *syncStatusUpdater) Init(a *app.App) (err error) {
 	u.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	u.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	u.spaceService = app.MustComponent[space.Service](a)
-
+	u.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
 	return nil
 }
 
@@ -113,6 +119,7 @@ func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) 
 	if err != nil {
 		return err
 	}
+	defer u.sendStatusUpdate(err, syncStatusDetails, status, syncError)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
 		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, error) {
 			if details == nil || details.Fields == nil {
@@ -133,6 +140,12 @@ func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) 
 	return spc.Do(objectId, func(sb smartblock.SmartBlock) error {
 		return u.setSyncDetails(sb, status, syncError)
 	})
+}
+
+func (u *syncStatusUpdater) sendStatusUpdate(err error, syncStatusDetails *syncStatusDetails, status domain.SyncStatus, syncError domain.SyncError) {
+	if err == nil {
+		u.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(syncStatusDetails.spaceId, status, syncError, domain.Objects))
+	}
 }
 
 func mapFileStatus(status filesyncstatus.Status) (domain.SyncStatus, domain.SyncError) {

@@ -32,7 +32,14 @@ type updateReceiver struct {
 	spaceId       string
 }
 
-func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender, objectStore objectstore.ObjectStore, nodeStatus nodestatus.NodeStatus, syncStatusUpdater Updater) *updateReceiver {
+func newUpdateReceiver(
+	nodeConfService nodeconf.Service,
+	cfg *config.Config,
+	eventSender event.Sender,
+	objectStore objectstore.ObjectStore,
+	nodeStatus nodestatus.NodeStatus,
+	syncStatusUpdater Updater,
+) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		eventSender = nil
 	}

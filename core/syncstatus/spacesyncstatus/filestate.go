@@ -53,14 +53,15 @@ func (f *FileState) SetSyncStatusAndErr(status *domain.SpaceSync) {
 	switch status.Status {
 	case domain.Synced:
 		f.fileSyncStatusBySpace[status.SpaceId] = domain.Synced
+		f.setError(status.SpaceId, domain.Null)
 		if number := f.fileSyncCountBySpace[status.SpaceId]; number > 0 {
 			f.fileSyncStatusBySpace[status.SpaceId] = domain.Syncing
-			f.setError(status.SpaceId, status.SyncError)
 			return
 		}
 		if fileLimitedCount := f.getFileLimitedCount(status.SpaceId); fileLimitedCount > 0 {
 			f.fileSyncStatusBySpace[status.SpaceId] = domain.Error
 			f.setError(status.SpaceId, domain.StorageLimitExceed)
+			return
 		}
 	case domain.Error, domain.Syncing, domain.Offline:
 		f.fileSyncStatusBySpace[status.SpaceId] = status.Status

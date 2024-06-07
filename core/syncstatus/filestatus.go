@@ -84,7 +84,7 @@ func provideFileStatusDetails(status filesyncstatus.Status, newStatus int64) []*
 
 func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string) {
 	spaceStatus, spaceError := getSyncStatus(status)
-	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, 0, spaceError, domain.Files)
+	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, spaceError, domain.Files)
 	s.spaceSyncStatus.SendUpdate(syncStatus)
 }
 

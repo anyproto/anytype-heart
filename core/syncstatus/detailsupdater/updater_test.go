@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/mock_detailsupdater"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -56,6 +57,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
 		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
 		assert.Nil(t, err)
 
@@ -77,6 +79,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
 		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
 		assert.Nil(t, err)
 
@@ -92,6 +95,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().Do("id", mock.Anything).Return(nil)
 
 		// when
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
 		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
 		assert.Nil(t, err)
 
@@ -113,6 +117,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
+		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects))
 		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
 		assert.Nil(t, err)
 
@@ -183,23 +188,27 @@ func newFixture(t *testing.T) *fixture {
 	storeFixture := objectstore.NewStoreFixture(t)
 	service := mock_space.NewMockService(t)
 	updater := &syncStatusUpdater{batcher: mb.New[*syncStatusDetails](0), finish: make(chan struct{})}
+	statusUpdater := mock_detailsupdater.NewMockSpaceStatusUpdater(t)
 	a := &app.App{}
 	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter)).
 		Register(storeFixture).
-		Register(testutil.PrepareMock(context.Background(), a, service))
+		Register(testutil.PrepareMock(context.Background(), a, service)).
+		Register(testutil.PrepareMock(context.Background(), a, statusUpdater))
 	err := updater.Init(a)
 	assert.Nil(t, err)
 	return &fixture{
-		updater:      updater,
-		sb:           smartTest,
-		storeFixture: storeFixture,
-		service:      service,
+		updater:       updater,
+		sb:            smartTest,
+		storeFixture:  storeFixture,
+		service:       service,
+		statusUpdater: statusUpdater,
 	}
 }
 
 type fixture struct {
-	sb           *smarttest.SmartTest
-	updater      *syncStatusUpdater
-	storeFixture *objectstore.StoreFixture
-	service      *mock_space.MockService
+	sb            *smarttest.SmartTest
+	updater       *syncStatusUpdater
+	storeFixture  *objectstore.StoreFixture
+	service       *mock_space.MockService
+	statusUpdater *mock_detailsupdater.MockSpaceStatusUpdater
 }

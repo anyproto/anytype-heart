@@ -27,6 +27,18 @@ func Test_HeadsChange(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
 		// given
 		s := newFixture(t)
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+
+		// when
+		s.HeadsChange("id", []string{"head1", "head2"})
+
+		// then
+		assert.NotNil(t, s.treeHeads["id"])
+		assert.Equal(t, []string{"head1", "head2"}, s.treeHeads["id"].heads)
+	})
+	t.Run("local only", func(t *testing.T) {
+		// given
+		s := newFixture(t)
 		s.config.NetworkMode = pb.RpcAccount_LocalOnly
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Offline, domain.Null, "spaceId")
 
@@ -101,7 +113,6 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 
 		// when
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		s.HeadsReceive("peerId", "id", []string{"head2"})
 
@@ -113,12 +124,11 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId"})
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "spaceId")
 
 		// when
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "spaceId")
 		s.HeadsReceive("peerId", "id", []string{"head1"})
 
 		// then
