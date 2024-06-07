@@ -53,9 +53,10 @@ type TechSpaceIdGetter interface {
 
 type State interface {
 	SetObjectsNumber(status *domain.SpaceSync)
-	SetSyncStatus(status *domain.SpaceSync)
+	SetSyncStatusAndErr(status *domain.SpaceSync)
 	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
+	GetSyncErr(spaceId string) domain.SpaceSyncError
 }
 
 type NetworkConfig interface {
@@ -144,7 +145,7 @@ func (s *spaceSyncStatus) processEvents() {
 func (s *spaceSyncStatus) updateSpaceSyncStatus(status *domain.SpaceSync) {
 	state := s.getCurrentState(status)
 	state.SetObjectsNumber(status)
-	state.SetSyncStatus(status)
+	state.SetSyncStatusAndErr(status)
 
 	// send synced event only if files and objects are all synced
 	if !s.needToSendEvent(status) {
@@ -180,7 +181,7 @@ func (s *spaceSyncStatus) makeSpaceSyncEvent(status *domain.SpaceSync) *pb.Event
 		Id:                    status.SpaceId,
 		Status:                mapStatus(s.getSpaceSyncStatus(status)),
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
-		Error:                 mapError(status.SyncError),
+		Error:                 s.getError(status.SpaceId),
 		SyncingObjectsCounter: int64(s.filesState.GetSyncObjectCount(status.SpaceId) + s.objectsState.GetSyncObjectCount(status.SpaceId)),
 	}
 }
@@ -228,6 +229,20 @@ func (s *spaceSyncStatus) getCurrentState(status *domain.SpaceSync) State {
 		return s.filesState
 	}
 	return s.objectsState
+}
+
+func (s *spaceSyncStatus) getError(spaceId string) pb.EventSpaceSyncError {
+	syncErr := s.filesState.GetSyncErr(spaceId)
+	if syncErr != domain.Null {
+		return mapError(syncErr)
+	}
+
+	syncErr = s.objectsState.GetSyncErr(spaceId)
+	if syncErr != domain.Null {
+		return mapError(syncErr)
+	}
+
+	return pb.EventSpace_Null
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
