@@ -15,13 +15,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/mock_objectsyncstatus"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 func Test_HeadsChange(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
 		// given
-		s := &syncStatusService{treeHeads: map[string]treeHeadsEntry{}}
+		s := newFixture(t)
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -32,7 +35,8 @@ func Test_HeadsChange(t *testing.T) {
 	})
 	t.Run("HeadsChange: update existing object", func(t *testing.T) {
 		// given
-		s := &syncStatusService{treeHeads: map[string]treeHeadsEntry{}}
+		s := newFixture(t)
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -76,6 +80,7 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId2"})
 
 		// when
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		s.HeadsReceive("peerId", "id", []string{"head2"})
 
@@ -89,6 +94,7 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId"})
 
 		// when
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		s.HeadsReceive("peerId", "id", []string{"head1"})
 
@@ -104,6 +110,7 @@ func TestSyncStatusService_Watch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 
@@ -150,6 +157,7 @@ func TestSyncStatusService_Unwatch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -172,6 +180,7 @@ func TestSyncStatusService_update(t *testing.T) {
 		s.SetUpdateReceiver(updateReceiver)
 
 		// when
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -188,6 +197,7 @@ func TestSyncStatusService_update(t *testing.T) {
 		s.SetUpdateReceiver(updateReceiver)
 
 		// when
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -280,8 +290,9 @@ func TestSyncStatusService_RemoveAllExcept(t *testing.T) {
 
 type fixture struct {
 	*syncStatusService
-	service *mock_nodeconf.MockService
-	storage *mock_spacestorage.MockSpaceStorage
+	service            *mock_nodeconf.MockService
+	storage            *mock_spacestorage.MockSpaceStorage
+	spaceStatusUpdater *mock_objectsyncstatus.MockSpaceStatusUpdater
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -289,10 +300,11 @@ func newFixture(t *testing.T) *fixture {
 	service := mock_nodeconf.NewMockService(ctrl)
 	storage := mock_spacestorage.NewMockSpaceStorage(ctrl)
 	spaceState := &spacestate.SpaceState{SpaceId: "spaceId"}
-
+	spaceStatusUpdater := mock_objectsyncstatus.NewMockSpaceStatusUpdater(t)
 	a := &app.App{}
 	a.Register(testutil.PrepareMock(context.Background(), a, service)).
 		Register(testutil.PrepareMock(context.Background(), a, storage)).
+		Register(testutil.PrepareMock(context.Background(), a, spaceStatusUpdater)).
 		Register(spaceState)
 
 	syncStatusService := &syncStatusService{
@@ -302,8 +314,9 @@ func newFixture(t *testing.T) *fixture {
 	err := syncStatusService.Init(a)
 	assert.Nil(t, err)
 	return &fixture{
-		syncStatusService: syncStatusService,
-		service:           service,
-		storage:           storage,
+		syncStatusService:  syncStatusService,
+		service:            service,
+		storage:            storage,
+		spaceStatusUpdater: spaceStatusUpdater,
 	}
 }

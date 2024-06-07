@@ -17,6 +17,8 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/anyproto/any-sync/util/slice"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 const (
@@ -25,6 +27,11 @@ const (
 )
 
 var log = logger.NewNamed(syncstatus.CName)
+
+type SpaceStatusUpdater interface {
+	app.ComponentRunnable
+	SendUpdate(spaceSync *domain.SpaceSync)
+}
 
 type UpdateReceiver interface {
 	UpdateTree(ctx context.Context, treeId string, status SyncStatus) (err error)
@@ -84,6 +91,8 @@ type syncStatusService struct {
 
 	updateIntervalSecs int
 	updateTimeout      time.Duration
+
+	spaceSyncStatus SpaceStatusUpdater
 }
 
 func NewSyncStatusService() StatusService {
@@ -100,6 +109,7 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.spaceId = sharedState.SpaceId
 	s.configuration = app.MustComponent[nodeconf.NodeConf](a)
 	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
+	s.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
@@ -137,6 +147,7 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 		syncStatus:   StatusNotSynced,
 	}
 	s.stateCounter++
+	s.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects))
 }
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {

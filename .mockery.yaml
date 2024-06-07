@@ -175,6 +175,7 @@ packages:
       SyncedTreeRemover:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
     interfaces:
+      SpaceStatusUpdater:
       UpdateReceiver:
         config:
           dir: "{{.InterfaceDir}}"
