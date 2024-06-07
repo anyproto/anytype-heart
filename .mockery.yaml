@@ -169,6 +169,7 @@ packages:
     interfaces:
       Updater:
       PeerStatusChecker:
+      SyncDetailsUpdater:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
     interfaces:
       Updater:

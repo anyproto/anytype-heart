@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -100,6 +101,9 @@ func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) 
 		return err
 	}
 	status := syncStatusDetails.status
+	if fileStatus, ok := record.GetDetails().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+		status, _ = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+	}
 	syncError := syncStatusDetails.syncError
 	changed := u.hasRelationsChange(record, status, syncError)
 	if !changed {
@@ -131,6 +135,22 @@ func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) 
 	})
 }
 
+func mapFileStatus(status filesyncstatus.Status) (domain.SyncStatus, domain.SyncError) {
+	var syncError domain.SyncError
+	switch status {
+	case filesyncstatus.Syncing:
+		return domain.Syncing, 0
+	case filesyncstatus.Limited:
+		syncError = domain.StorageLimitExceed
+		return domain.Error, syncError
+	case filesyncstatus.Unknown:
+		syncError = domain.NetworkError
+		return domain.Error, syncError
+	default:
+		return domain.Synced, 0
+	}
+}
+
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.SyncStatus, syncError domain.SyncError) error {
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		return nil
@@ -158,6 +178,10 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 func (u *syncStatusUpdater) hasRelationsChange(record *model.ObjectDetails, status domain.SyncStatus, syncError domain.SyncError) bool {
 	var changed bool
 	if record == nil || record.Details == nil || len(record.Details.GetFields()) == 0 {
+		changed = true
+	}
+	if pbtypes.Get(record.Details, bundle.RelationKeySyncStatus.String()) == nil ||
+		pbtypes.Get(record.Details, bundle.RelationKeySyncError.String()) == nil {
 		changed = true
 	}
 	if pbtypes.GetInt64(record.Details, bundle.RelationKeySyncStatus.String()) != int64(status) {

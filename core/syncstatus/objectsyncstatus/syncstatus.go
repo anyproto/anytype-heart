@@ -20,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 )
 
 const (
@@ -94,6 +95,7 @@ type syncStatusService struct {
 	updateTimeout      time.Duration
 
 	syncDetailsUpdater Updater
+	nodeStatus         nodestatus.NodeStatus
 	config             *config.Config
 }
 
@@ -118,6 +120,7 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 		log)
 	s.syncDetailsUpdater = app.MustComponent[Updater](a)
 	s.config = app.MustComponent[*config.Config](a)
+	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	return
 }
 
@@ -150,15 +153,7 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 		syncStatus:   StatusNotSynced,
 	}
 	s.stateCounter++
-	s.sendSyncDetailsUpdate(treeId)
-}
-
-func (s *syncStatusService) sendSyncDetailsUpdate(treeId string) {
-	status := domain.Syncing
-	if s.config.IsLocalOnlyMode() {
-		status = domain.Offline
-	}
-	s.syncDetailsUpdater.UpdateDetails(treeId, status, domain.Null, s.spaceId)
+	s.updateDetails(treeId, domain.Syncing)
 }
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
@@ -215,7 +210,7 @@ func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string
 	})
 	if len(curTreeHeads.heads) == 0 {
 		curTreeHeads.syncStatus = StatusSynced
-		s.syncDetailsUpdater.UpdateDetails(treeId, domain.Synced, domain.Null, s.spaceId)
+		s.updateDetails(treeId, domain.Synced)
 	}
 	s.treeHeads[treeId] = curTreeHeads
 }
@@ -283,6 +278,20 @@ func (s *syncStatusService) Close(ctx context.Context) error {
 	s.periodicSync.Close()
 	return nil
 }
+
 func (s *syncStatusService) isSenderResponsible(senderId string) bool {
 	return slices.Contains(s.configuration.NodeIds(s.spaceId), senderId)
+}
+
+func (s *syncStatusService) updateDetails(treeId string, status domain.SyncStatus) {
+	var syncErr domain.SyncError
+	if s.nodeStatus.GetNodeStatus(s.spaceId) != nodestatus.Online {
+		syncErr = domain.NetworkError
+		status = domain.Error
+	}
+	if s.config.IsLocalOnlyMode() {
+		syncErr = domain.Null
+		status = domain.Offline
+	}
+	s.syncDetailsUpdater.UpdateDetails(treeId, status, syncErr, s.spaceId)
 }

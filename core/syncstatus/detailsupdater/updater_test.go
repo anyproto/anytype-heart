@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -41,6 +42,25 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 
 		// then
 		fixture.service.AssertNotCalled(t, "Get")
+	})
+	t.Run("update sync status and date - details exist in store", func(t *testing.T) {
+		// given
+		fixture := newFixture(t)
+		space := mock_clientspace.NewMockSpace(t)
+		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId: pbtypes.String("id"),
+			},
+		})
+		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
+
+		// when
+		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
+		assert.Nil(t, err)
+
+		// then
+		assert.Nil(t, err)
 	})
 	t.Run("update sync status and date - object not exist in cache", func(t *testing.T) {
 		// given
@@ -70,6 +90,27 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(ocache.ErrExists)
 		space.EXPECT().Do("id", mock.Anything).Return(nil)
+
+		// when
+		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
+		assert.Nil(t, err)
+
+		// then
+		assert.Nil(t, err)
+	})
+
+	t.Run("update sync status and date - file status", func(t *testing.T) {
+		// given
+		fixture := newFixture(t)
+		space := mock_clientspace.NewMockSpace(t)
+		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               pbtypes.String("id"),
+				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Syncing)),
+			},
+		})
+		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
 		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
