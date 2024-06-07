@@ -101,6 +101,7 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 
 		// when
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		s.HeadsReceive("peerId", "id", []string{"head2"})
 
@@ -116,6 +117,7 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "spaceId")
 
 		// when
+		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		s.HeadsReceive("peerId", "id", []string{"head1"})
 

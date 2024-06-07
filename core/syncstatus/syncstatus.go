@@ -27,6 +27,13 @@ const (
 	syncTimeout        = time.Second
 )
 
+var log = logger.NewNamed(syncstatus.CName)
+
+type SpaceStatusUpdater interface {
+	app.ComponentRunnable
+	SendUpdate(spaceSync *domain.SpaceSync)
+}
+
 type UpdateReceiver interface {
 	UpdateTree(ctx context.Context, treeId string, status SyncStatus) (err error)
 	UpdateNodeStatus(status ConnectionStatus)
@@ -109,6 +116,7 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.spaceId = sharedState.SpaceId
 	s.configuration = app.MustComponent[nodeconf.NodeConf](a)
 	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
+	s.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
@@ -150,17 +158,6 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	}
 	s.stateCounter++
 	s.updateDetails(treeId, domain.Syncing)
-}
-
-func (s *syncStatusService) SetNodesStatus(senderId string, status ConnectionStatus) {
-	if !s.isSenderResponsible(senderId) {
-		return
-	}
-
-	s.Lock()
-	defer s.Unlock()
-
-	s.nodeStatus = status
 }
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
