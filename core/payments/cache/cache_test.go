@@ -381,6 +381,6 @@ func TestPayments_CacheSetSubscriptionStatus(t *testing.T) {
 		require.Equal(t, nil, err)
 
 		_, _, err = fx.CacheGet()
-		require.Equal(t, ErrCacheExpired, err)
+		require.Equal(t, nil, err)
 	})
 }
