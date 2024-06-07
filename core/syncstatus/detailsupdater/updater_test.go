@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -183,15 +182,13 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 }
 
 func newFixture(t *testing.T) *fixture {
-	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
 	smartTest := smarttest.New("id")
 	storeFixture := objectstore.NewStoreFixture(t)
 	service := mock_space.NewMockService(t)
 	updater := &syncStatusUpdater{batcher: mb.New[*syncStatusDetails](0), finish: make(chan struct{})}
 	statusUpdater := mock_detailsupdater.NewMockSpaceStatusUpdater(t)
 	a := &app.App{}
-	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter)).
-		Register(storeFixture).
+	a.Register(storeFixture).
 		Register(testutil.PrepareMock(context.Background(), a, service)).
 		Register(testutil.PrepareMock(context.Background(), a, statusUpdater))
 	err := updater.Init(a)

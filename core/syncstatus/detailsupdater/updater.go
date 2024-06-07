@@ -11,7 +11,6 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -47,7 +46,6 @@ type SpaceStatusUpdater interface {
 }
 
 type syncStatusUpdater struct {
-	objectGetter    cache.ObjectGetter
 	objectStore     objectstore.ObjectStore
 	ctx             context.Context
 	ctxCancel       context.CancelFunc
@@ -77,7 +75,6 @@ func (u *syncStatusUpdater) Close(ctx context.Context) (err error) {
 }
 
 func (u *syncStatusUpdater) Init(a *app.App) (err error) {
-	u.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	u.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	u.spaceService = app.MustComponent[space.Service](a)
 	u.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
