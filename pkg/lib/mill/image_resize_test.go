@@ -56,7 +56,7 @@ func TestImageResize_Mill_ShouldRotateAndRemoveExif(t *testing.T) {
 
 		file.Seek(0, io.SeekStart)
 
-		res, err := cfg.Mill(file, "test", "")
+		res, err := cfg.Mill(file, "test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -118,7 +118,7 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 
 		file.Seek(0, io.SeekStart)
 
-		res, err := cfg.Mill(file, "test", "")
+		res, err := cfg.Mill(file, "test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,6 +127,9 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		err = res.File.Close()
+		require.NoError(t, err)
 
 		img, err := jpeg.Decode(bytes.NewReader(b))
 		require.NoError(t, err)
@@ -154,7 +157,7 @@ func TestImageResize_Mill(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		res, err := m.Mill(file, "test", "")
+		res, err := m.Mill(file, "test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -169,6 +172,8 @@ func TestImageResize_Mill(t *testing.T) {
 			t.Errorf("exif data was not removed")
 		}
 		file.Close()
+		err = res.File.Close()
+		require.NoError(t, err)
 	}
 }
 
