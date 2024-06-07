@@ -180,6 +180,7 @@ packages:
       Updater:
       PeerStatusChecker:
       SyncedTreeRemover:
+      SyncDetailsUpdater:
   github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus:
     interfaces:
       UpdateReceiver:

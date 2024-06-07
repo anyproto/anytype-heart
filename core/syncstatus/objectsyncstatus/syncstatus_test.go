@@ -17,6 +17,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/mock_objectsyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -41,6 +42,21 @@ func Test_HeadsChange(t *testing.T) {
 		s := newFixture(t)
 		s.config.NetworkMode = pb.RpcAccount_DefaultConfig
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+
+		// when
+		s.HeadsChange("id", []string{"head1", "head2"})
+		s.HeadsChange("id", []string{"head3"})
+
+		// then
+		assert.NotNil(t, s.treeHeads["id"])
+		assert.Equal(t, []string{"head3"}, s.treeHeads["id"].heads)
+	})
+	t.Run("HeadsChange: node offline", func(t *testing.T) {
+		// given
+		s := newFixture(t)
+		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
+		s.nodeStatus.SetNodesStatus("spaceId", "peerId", nodestatus.ConnectionError)
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Error, domain.NetworkError, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -299,6 +315,7 @@ type fixture struct {
 	storage        *mock_spacestorage.MockSpaceStorage
 	config         *config.Config
 	detailsUpdater *mock_objectsyncstatus.MockUpdater
+	nodeStatus     nodestatus.NodeStatus
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -308,19 +325,24 @@ func newFixture(t *testing.T) *fixture {
 	spaceState := &spacestate.SpaceState{SpaceId: "spaceId"}
 	config := &config.Config{}
 	detailsUpdater := mock_objectsyncstatus.NewMockUpdater(t)
-
+	nodeStatus := nodestatus.NewNodeStatus()
 	a := &app.App{}
+
 	a.Register(testutil.PrepareMock(context.Background(), a, service)).
 		Register(testutil.PrepareMock(context.Background(), a, storage)).
 		Register(testutil.PrepareMock(context.Background(), a, detailsUpdater)).
+		Register(nodeStatus).
 		Register(config).
 		Register(spaceState)
+
+	err := nodeStatus.Init(a)
+	assert.Nil(t, err)
 
 	syncStatusService := &syncStatusService{
 		treeHeads: map[string]treeHeadsEntry{},
 		watchers:  map[string]struct{}{},
 	}
-	err := syncStatusService.Init(a)
+	err = syncStatusService.Init(a)
 	assert.Nil(t, err)
 	return &fixture{
 		syncStatusService: syncStatusService,
@@ -328,5 +350,6 @@ func newFixture(t *testing.T) *fixture {
 		storage:           storage,
 		config:            config,
 		detailsUpdater:    detailsUpdater,
+		nodeStatus:        nodeStatus,
 	}
 }

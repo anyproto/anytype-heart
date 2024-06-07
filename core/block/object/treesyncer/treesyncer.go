@@ -72,22 +72,28 @@ type PeerStatusChecker interface {
 	IsPeerOffline(peerId string) bool
 }
 
+type SyncDetailsUpdater interface {
+	app.Component
+	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+}
+
 type treeSyncer struct {
 	sync.Mutex
-	mainCtx           context.Context
-	cancel            context.CancelFunc
-	requests          int
-	spaceId           string
-	timeout           time.Duration
-	requestPools      map[string]*executor
-	headPools         map[string]*executor
-	treeManager       treemanager.TreeManager
-	isRunning         bool
-	isSyncing         bool
-	spaceSyncStatus   spacesyncstatus.Updater
-	peerManager       PeerStatusChecker
-	nodeConf          nodeconf.NodeConf
-	syncedTreeRemover SyncedTreeRemover
+	mainCtx            context.Context
+	cancel             context.CancelFunc
+	requests           int
+	spaceId            string
+	timeout            time.Duration
+	requestPools       map[string]*executor
+	headPools          map[string]*executor
+	treeManager        treemanager.TreeManager
+	isRunning          bool
+	isSyncing          bool
+	spaceSyncStatus    spacesyncstatus.Updater
+	peerManager        PeerStatusChecker
+	nodeConf           nodeconf.NodeConf
+	syncedTreeRemover  SyncedTreeRemover
+	syncDetailsUpdater SyncDetailsUpdater
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -110,6 +116,7 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.peerManager = app.MustComponent[PeerStatusChecker](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
+	t.syncDetailsUpdater = app.MustComponent[SyncDetailsUpdater](a)
 	return nil
 }
 
@@ -166,7 +173,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	defer t.Unlock()
 	var err error
 	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
-	defer t.sendResultEvent(err, isResponsible, peerId)
+	defer t.sendResultEvent(err, isResponsible, peerId, existing)
 	t.sendSyncingEvent(peerId, existing, missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
@@ -209,20 +216,30 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing []string, nodePeer bool) {
 	if t.peerManager.IsPeerOffline(peerId) {
 		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Offline, 0, domain.Null, domain.Objects))
+		t.sendDetailsUpdates(existing, domain.Offline, domain.Null)
 		return
 	}
 	if len(existing) != 0 || len(missing) != 0 {
 		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Syncing, len(existing)+len(missing), domain.Null, domain.Objects))
+		t.sendDetailsUpdates(existing, domain.Syncing, domain.Null)
 	}
 }
 
-func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string) {
+func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string, existing []string) {
 	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
 		if err != nil {
 			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Error, 0, domain.NetworkError, domain.Objects))
+			t.sendDetailsUpdates(existing, domain.Error, domain.NetworkError)
 		} else {
 			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Synced, 0, domain.Null, domain.Objects))
+			t.sendDetailsUpdates(existing, domain.Synced, domain.Null)
 		}
+	}
+}
+
+func (t *treeSyncer) sendDetailsUpdates(existing []string, status domain.SyncStatus, syncError domain.SyncError) {
+	for _, objectId := range existing {
+		t.syncDetailsUpdater.UpdateDetails(objectId, status, syncError, t.spaceId)
 	}
 }
 
