@@ -68,6 +68,7 @@ func (s *service) Init(a *app.App) (err error) {
 	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
 	objectSyncStatusUpdater := app.MustComponent[Updater](a)
+	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
 	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus, objectSyncStatusUpdater)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
@@ -76,7 +77,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnLimited(s.OnFileLimited)
 	s.fileSyncService.OnDelete(s.OnFileDelete)
 
-	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
 	return nil
 }
 

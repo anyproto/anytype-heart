@@ -62,7 +62,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.networkConfig = app.MustComponent[NetworkConfig](a)
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	s.filesState = NewFileState(store)
-	s.objectsState = NewObjectState()
+	s.objectsState = NewObjectState(store)
 	s.techSpaceIdGetter = app.MustComponent[TechSpaceIdGetter](a)
 	return
 }

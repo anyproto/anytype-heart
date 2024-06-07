@@ -20,8 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/mock_objectsyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus/mock_objectsyncstatus"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -29,7 +27,19 @@ func Test_HeadsChange(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
 		// given
 		s := newFixture(t)
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+
+		// when
+		s.HeadsChange("id", []string{"head1", "head2"})
+
+		// then
+		assert.NotNil(t, s.treeHeads["id"])
+		assert.Equal(t, []string{"head1", "head2"}, s.treeHeads["id"].heads)
+	})
+	t.Run("local only", func(t *testing.T) {
+		// given
+		s := newFixture(t)
+		s.config.NetworkMode = pb.RpcAccount_LocalOnly
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Offline, domain.Null, "spaceId")
 
 		// when
@@ -42,7 +52,6 @@ func Test_HeadsChange(t *testing.T) {
 	t.Run("HeadsChange: update existing object", func(t *testing.T) {
 		// given
 		s := newFixture(t)
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.config.NetworkMode = pb.RpcAccount_DefaultConfig
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 
@@ -104,7 +113,6 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 
 		// when
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		s.HeadsReceive("peerId", "id", []string{"head2"})
 
@@ -116,12 +124,11 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId"})
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "spaceId")
 
 		// when
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
+		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "spaceId")
 		s.HeadsReceive("peerId", "id", []string{"head1"})
 
 		// then
@@ -136,7 +143,6 @@ func TestSyncStatusService_Watch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
@@ -185,7 +191,6 @@ func TestSyncStatusService_Unwatch(t *testing.T) {
 
 		// when
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -209,7 +214,6 @@ func TestSyncStatusService_update(t *testing.T) {
 
 		// when
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -227,7 +231,6 @@ func TestSyncStatusService_update(t *testing.T) {
 
 		// when
 		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
-		s.spaceStatusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects)).Return()
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -325,7 +328,6 @@ type fixture struct {
 	config         *config.Config
 	detailsUpdater *mock_objectsyncstatus.MockUpdater
 	nodeStatus     nodestatus.NodeStatus
-	spaceStatusUpdater *mock_objectsyncstatus.MockSpaceStatusUpdater
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -336,7 +338,6 @@ func newFixture(t *testing.T) *fixture {
 	config := &config.Config{}
 	detailsUpdater := mock_objectsyncstatus.NewMockUpdater(t)
 	nodeStatus := nodestatus.NewNodeStatus()
-	spaceStatusUpdater := mock_objectsyncstatus.NewMockSpaceStatusUpdater(t)
 	a := &app.App{}
 
 	a.Register(testutil.PrepareMock(context.Background(), a, service)).
@@ -362,6 +363,5 @@ func newFixture(t *testing.T) *fixture {
 		config:            config,
 		detailsUpdater:    detailsUpdater,
 		nodeStatus:        nodeStatus,
-		spaceStatusUpdater: spaceStatusUpdater,
 	}
 }

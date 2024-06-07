@@ -26,19 +26,17 @@ const (
 )
 
 type SpaceSync struct {
-	SpaceId       string
-	Status        SyncStatus
-	ObjectsNumber int
-	SyncError     SyncError
-	SyncType      SyncType
+	SpaceId   string
+	Status    SyncStatus
+	SyncError SyncError
+	SyncType  SyncType
 }
 
-func MakeSyncStatus(spaceId string, status SyncStatus, objectsNumber int, syncError SyncError, syncType SyncType) *SpaceSync {
+func MakeSyncStatus(spaceId string, status SyncStatus, syncError SyncError, syncType SyncType) *SpaceSync {
 	return &SpaceSync{
-		SpaceId:       spaceId,
-		Status:        status,
-		ObjectsNumber: objectsNumber,
-		SyncError:     syncError,
-		SyncType:      syncType,
+		SpaceId:   spaceId,
+		Status:    status,
+		SyncError: syncError,
+		SyncType:  syncType,
 	}
 }

@@ -97,14 +97,27 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 				},
 			}},
 		})
+		storeFixture := objectstore.NewStoreFixture(t)
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:         pbtypes.String("id1"),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
+			},
+			{
+				bundle.RelationKeyId:         pbtypes.String("id2"),
+				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
+				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
+			},
+		})
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
 			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(),
+			filesState:    NewFileState(storeFixture),
+			objectsState:  NewObjectState(storeFixture),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 2, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
@@ -154,9 +167,9 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
 			batcher:       mb.New[*domain.SpaceSync](0),
 			filesState:    NewFileState(storeFixture),
-			objectsState:  NewObjectState(),
+			objectsState:  NewObjectState(storeFixture),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
@@ -174,13 +187,13 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
 			batcher:       mb.New[*domain.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		objectsSyncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 2, domain.Null, domain.Objects)
+		objectsSyncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
 		status.objectsState.SetSyncStatusAndErr(objectsSyncStatus)
 
 		// then
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
@@ -207,9 +220,9 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
 			batcher:       mb.New[*domain.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, 0, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.Null, domain.Objects)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
@@ -240,9 +253,9 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
 			batcher:       mb.New[*domain.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, 0, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Objects)
 
 		// then
 		status.updateSpaceSyncStatus(syncStatus)
@@ -273,14 +286,14 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
 			batcher:       mb.New[*domain.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 2, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
 		status.objectsState.SetObjectsNumber(syncStatus)
 		status.objectsState.SetSyncStatusAndErr(syncStatus)
 
 		// then
-		syncStatus = domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Objects)
+		syncStatus = domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
@@ -301,9 +314,9 @@ func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
 			batcher:       mb.New[*domain.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 
 		// then
 		spaceStatus.SendUpdate(syncStatus)

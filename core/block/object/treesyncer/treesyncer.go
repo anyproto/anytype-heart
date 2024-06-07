@@ -57,11 +57,6 @@ func (e *executor) close() {
 	e.pool.Close()
 }
 
-type Updater interface {
-	app.ComponentRunnable
-	SendUpdate(spaceSync *domain.SpaceSync)
-}
-
 type SyncedTreeRemover interface {
 	app.ComponentRunnable
 	RemoveAllExcept(senderId string, differentRemoteIds []string)
@@ -89,7 +84,6 @@ type treeSyncer struct {
 	treeManager        treemanager.TreeManager
 	isRunning          bool
 	isSyncing          bool
-	spaceSyncStatus    Updater
 	peerManager        PeerStatusChecker
 	nodeConf           nodeconf.NodeConf
 	syncedTreeRemover  SyncedTreeRemover
@@ -112,7 +106,6 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
-	t.spaceSyncStatus = app.MustComponent[Updater](a)
 	t.peerManager = app.MustComponent[PeerStatusChecker](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
@@ -218,12 +211,10 @@ func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing 
 		return
 	}
 	if t.peerManager.IsPeerOffline(peerId) {
-		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Offline, 0, domain.Null, domain.Objects))
 		t.sendDetailsUpdates(existing, domain.Offline, domain.Null)
 		return
 	}
 	if len(existing) != 0 || len(missing) != 0 {
-		t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Syncing, len(existing)+len(missing), domain.Null, domain.Objects))
 		t.sendDetailsUpdates(existing, domain.Syncing, domain.Null)
 	}
 }
@@ -231,10 +222,8 @@ func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing 
 func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string, existing []string) {
 	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
 		if err != nil {
-			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Error, 0, domain.NetworkError, domain.Objects))
 			t.sendDetailsUpdates(existing, domain.Error, domain.NetworkError)
 		} else {
-			t.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(t.spaceId, domain.Synced, 0, domain.Null, domain.Objects))
 			t.sendDetailsUpdates(existing, domain.Synced, domain.Null)
 		}
 	}
