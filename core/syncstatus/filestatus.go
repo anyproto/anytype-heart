@@ -27,6 +27,10 @@ func (s *service) OnFileLimited(objectId string) error {
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Limited)
 }
 
+func (s *service) OnFileDelete(fileId domain.FullFileId) {
+	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId)
+}
+
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
 	var spaceId string
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {

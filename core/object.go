@@ -181,6 +181,7 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 			rec.Details = pbtypes.StructFilterKeys(rec.Details, req.Keys)
 		}
 		resultsModels = append(resultsModels, &model.SearchResult{
+
 			ObjectId: pbtypes.GetString(rec.Details, database.RecordIDField),
 			Details:  rec.Details,
 			Meta:     []*model.SearchMeta{&(results[i].Meta)},

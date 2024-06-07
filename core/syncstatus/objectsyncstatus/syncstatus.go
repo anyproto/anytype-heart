@@ -30,6 +30,11 @@ const (
 
 var log = logger.NewNamed(syncstatus.CName)
 
+type SpaceStatusUpdater interface {
+	app.ComponentRunnable
+	SendUpdate(spaceSync *domain.SpaceSync)
+}
+
 type UpdateReceiver interface {
 	UpdateTree(ctx context.Context, treeId string, status SyncStatus) (err error)
 	UpdateNodeStatus()
@@ -97,6 +102,7 @@ type syncStatusService struct {
 	syncDetailsUpdater Updater
 	nodeStatus         nodestatus.NodeStatus
 	config             *config.Config
+	spaceSyncStatus SpaceStatusUpdater
 }
 
 func NewSyncStatusService() StatusService {
@@ -113,6 +119,7 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.spaceId = sharedState.SpaceId
 	s.configuration = app.MustComponent[nodeconf.NodeConf](a)
 	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
+	s.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
@@ -154,6 +161,7 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	}
 	s.stateCounter++
 	s.updateDetails(treeId, domain.Syncing)
+	s.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(s.spaceId, domain.Syncing, 1, domain.Null, domain.Objects))
 }
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
