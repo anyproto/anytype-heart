@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -27,7 +28,8 @@ func Test_HeadsChange(t *testing.T) {
 	t.Run("HeadsChange: new object", func(t *testing.T) {
 		// given
 		s := newFixture(t)
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -40,7 +42,8 @@ func Test_HeadsChange(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.config.NetworkMode = pb.RpcAccount_LocalOnly
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Offline, domain.Null, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Offline, domain.Null, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -53,7 +56,8 @@ func Test_HeadsChange(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.config.NetworkMode = pb.RpcAccount_DefaultConfig
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -68,10 +72,24 @@ func Test_HeadsChange(t *testing.T) {
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
 		s.nodeStatus.SetNodesStatus("spaceId", "peerId", nodestatus.ConnectionError)
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Error, domain.NetworkError, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Error, domain.NetworkError, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
+		s.HeadsChange("id", []string{"head3"})
+
+		// then
+		assert.NotNil(t, s.treeHeads["id"])
+		assert.Equal(t, []string{"head3"}, s.treeHeads["id"].heads)
+	})
+	t.Run("HeadsChange: network incompatible", func(t *testing.T) {
+		// given
+		s := newFixture(t)
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Error, domain.IncompatibleVersion, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusIncompatible).Times(1)
+
+		// when
 		s.HeadsChange("id", []string{"head3"})
 
 		// then
@@ -110,7 +128,8 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId2"})
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 
 		// when
 		s.HeadsChange("id", []string{"head1"})
@@ -124,11 +143,11 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId"})
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Synced, domain.Null, "spaceId")
 		s.HeadsReceive("peerId", "id", []string{"head1"})
 
 		// then
@@ -143,7 +162,8 @@ func TestSyncStatusService_Watch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 
@@ -190,7 +210,8 @@ func TestSyncStatusService_Unwatch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -213,7 +234,8 @@ func TestSyncStatusService_update(t *testing.T) {
 		s.SetUpdateReceiver(updateReceiver)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -230,7 +252,9 @@ func TestSyncStatusService_update(t *testing.T) {
 		s.SetUpdateReceiver(updateReceiver)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails("id", domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)

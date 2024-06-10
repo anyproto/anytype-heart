@@ -179,4 +179,29 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		// then
 		assert.Equal(t, domain.Offline, fileState.GetSyncStatus("spaceId"))
 	})
+	t.Run("SetSyncStatusAndErr, storage limit error", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		fileState := NewFileState(storeFixture)
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               pbtypes.String("id1"),
+				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
+				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
+			},
+			{
+				bundle.RelationKeyId:               pbtypes.String("id2"),
+				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
+				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
+			},
+		})
+
+		// when
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
+		fileState.SetSyncStatusAndErr(syncStatus)
+
+		// then
+		assert.Equal(t, domain.Error, fileState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.StorageLimitExceed, fileState.GetSyncErr("spaceId"))
+	})
 }
