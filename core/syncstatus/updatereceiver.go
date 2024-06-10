@@ -164,9 +164,9 @@ func (r *updateReceiver) sendEvent(ctx string, event pb.IsEventMessageValue) {
 
 func mapEventToSyncStatus(status pb.EventStatusThreadSyncStatus) domain.SyncStatus {
 	switch status {
-	case pb.EventStatusThread_Syncing:
+	case pb.EventStatusThread_Syncing, pb.EventStatusThread_Unknown:
 		return domain.Syncing
-	case pb.EventStatusThread_Offline, pb.EventStatusThread_Unknown, pb.EventStatusThread_IncompatibleVersion, pb.EventStatusThread_Failed:
+	case pb.EventStatusThread_Offline, pb.EventStatusThread_IncompatibleVersion, pb.EventStatusThread_Failed:
 		return domain.Error
 	default:
 		return domain.Synced
