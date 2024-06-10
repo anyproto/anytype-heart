@@ -69,7 +69,7 @@ type PeerStatusChecker interface {
 
 type SyncDetailsUpdater interface {
 	app.Component
-	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 type treeSyncer struct {
@@ -230,9 +230,7 @@ func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string, ex
 }
 
 func (t *treeSyncer) sendDetailsUpdates(existing []string, status domain.SyncStatus, syncError domain.SyncError) {
-	for _, objectId := range existing {
-		t.syncDetailsUpdater.UpdateDetails(objectId, status, syncError, t.spaceId)
-	}
+	t.syncDetailsUpdater.UpdateDetails(existing, status, syncError, t.spaceId)
 }
 
 func (t *treeSyncer) requestTree(peerId, id string) {

@@ -34,7 +34,7 @@ type Service interface {
 }
 
 type Updater interface {
-	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 var _ Service = (*service)(nil)
@@ -70,9 +70,8 @@ func (s *service) Init(a *app.App) (err error) {
 
 	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
-	objectSyncStatusUpdater := app.MustComponent[Updater](a)
 	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
-	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus, objectSyncStatusUpdater)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
 	s.fileSyncService.OnUploaded(s.onFileUploaded)

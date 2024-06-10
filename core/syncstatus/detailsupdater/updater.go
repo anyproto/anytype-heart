@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -29,7 +30,7 @@ var log = logging.Logger(CName)
 const CName = "core.syncstatus.objectsyncstatus.updater"
 
 type syncStatusDetails struct {
-	objectId  string
+	objectIds []string
 	status    domain.SyncStatus
 	syncError domain.SyncError
 	spaceId   string
@@ -37,7 +38,7 @@ type syncStatusDetails struct {
 
 type Updater interface {
 	app.ComponentRunnable
-	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 type SpaceStatusUpdater interface {
@@ -85,9 +86,9 @@ func (u *syncStatusUpdater) Name() (name string) {
 	return CName
 }
 
-func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string) {
+func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string) {
 	err := u.batcher.Add(context.Background(), &syncStatusDetails{
-		objectId:  objectId,
+		objectIds: objectId,
 		status:    status,
 		syncError: syncError,
 		spaceId:   spaceId,
@@ -97,17 +98,63 @@ func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.SyncSta
 	}
 }
 
-func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) error {
-	objectId := syncStatusDetails.objectId
+func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) {
+	if len(syncStatusDetails.objectIds) == 0 {
+		details := u.extractObjectDetails(syncStatusDetails)
+		for _, detail := range details {
+			id := pbtypes.GetString(detail.Details, bundle.RelationKeyId.String())
+			err := u.setObjectDetails(syncStatusDetails, detail.Details, id)
+			if err != nil {
+				log.Errorf("failed to update object details %s", err)
+			}
+		}
+	}
+	for _, objectId := range syncStatusDetails.objectIds {
+		err := u.updateObjectDetails(syncStatusDetails, objectId)
+		if err != nil {
+			log.Errorf("failed to update object details %s", err)
+		}
+	}
+}
+
+func (u *syncStatusUpdater) extractObjectDetails(syncStatusDetails *syncStatusDetails) []database.Record {
+	details, err := u.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySyncStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Int64(int64(syncStatusDetails.status)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(syncStatusDetails.spaceId),
+			},
+		},
+	})
+	if err != nil {
+		log.Errorf("failed to update object details %s", err)
+	}
+	return details
+}
+
+func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDetails, objectId string) error {
 	record, err := u.objectStore.GetDetails(objectId)
 	if err != nil {
 		return err
 	}
-	status := syncStatusDetails.status
-	if fileStatus, ok := record.GetDetails().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		status, _ = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+	if record == nil {
+		return nil
 	}
+	return u.setObjectDetails(syncStatusDetails, record.Details, objectId)
+}
+
+func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetails, record *types.Struct, objectId string) error {
+	status := syncStatusDetails.status
 	syncError := syncStatusDetails.syncError
+	if fileStatus, ok := record.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+		status, syncError = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+	}
 	changed := u.hasRelationsChange(record, status, syncError)
 	if !changed {
 		return nil
@@ -185,19 +232,19 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	return nil
 }
 
-func (u *syncStatusUpdater) hasRelationsChange(record *model.ObjectDetails, status domain.SyncStatus, syncError domain.SyncError) bool {
+func (u *syncStatusUpdater) hasRelationsChange(record *types.Struct, status domain.SyncStatus, syncError domain.SyncError) bool {
 	var changed bool
-	if record == nil || record.Details == nil || len(record.Details.GetFields()) == 0 {
+	if record == nil || len(record.GetFields()) == 0 {
 		changed = true
 	}
-	if pbtypes.Get(record.Details, bundle.RelationKeySyncStatus.String()) == nil ||
-		pbtypes.Get(record.Details, bundle.RelationKeySyncError.String()) == nil {
+	if pbtypes.Get(record, bundle.RelationKeySyncStatus.String()) == nil ||
+		pbtypes.Get(record, bundle.RelationKeySyncError.String()) == nil {
 		changed = true
 	}
-	if pbtypes.GetInt64(record.Details, bundle.RelationKeySyncStatus.String()) != int64(status) {
+	if pbtypes.GetInt64(record, bundle.RelationKeySyncStatus.String()) != int64(status) {
 		changed = true
 	}
-	if pbtypes.GetInt64(record.Details, bundle.RelationKeySyncError.String()) != int64(syncError) {
+	if pbtypes.GetInt64(record, bundle.RelationKeySyncError.String()) != int64(syncError) {
 		changed = true
 	}
 	return changed
@@ -210,10 +257,6 @@ func (u *syncStatusUpdater) processEvents() {
 		if err != nil {
 			return
 		}
-		err = u.updateDetails(status)
-		if err != nil {
-			log.Errorf("failed to update sync details %s", err)
-			continue
-		}
+		u.updateDetails(status)
 	}
 }
