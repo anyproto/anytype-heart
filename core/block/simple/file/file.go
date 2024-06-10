@@ -245,7 +245,6 @@ func (f *File) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
 	if f.content.TargetObjectId != "" {
 		f.content.TargetObjectId = replacer(f.content.TargetObjectId)
 	}
-	return
 }
 
 func (f *File) IsEmpty() bool {
