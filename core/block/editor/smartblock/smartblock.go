@@ -355,7 +355,22 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+
+	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
+}
+
+func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
+	sb.sendEvent(&pb.Event{
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfObjectClose{
+				ObjectClose: &pb.EventObjectClose{
+					Id: sb.Id(),
+				},
+			},
+		}},
+	})
+	return nil
 }
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
