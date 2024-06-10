@@ -123,7 +123,7 @@ type MockUpdater_UpdateDetails_Call struct {
 }
 
 // UpdateDetails is a helper method to define mock.On call
-//   - objectId string
+//   - objectId []string
 //   - status domain.SyncStatus
 //   - syncError domain.SyncError
 //   - spaceId string
@@ -131,9 +131,9 @@ func (_e *MockUpdater_Expecter) UpdateDetails(objectId interface{}, status inter
 	return &MockUpdater_UpdateDetails_Call{Call: _e.mock.On("UpdateDetails", objectId, status, syncError, spaceId)}
 }
 
-func (_c *MockUpdater_UpdateDetails_Call) Run(run func(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)) *MockUpdater_UpdateDetails_Call {
+func (_c *MockUpdater_UpdateDetails_Call) Run(run func(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)) *MockUpdater_UpdateDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.SyncStatus), args[2].(domain.SyncError), args[3].(string))
+		run(args[0].([]string), args[1].(domain.SyncStatus), args[2].(domain.SyncError), args[3].(string))
 	})
 	return _c
 }
@@ -143,7 +143,7 @@ func (_c *MockUpdater_UpdateDetails_Call) Return() *MockUpdater_UpdateDetails_Ca
 	return _c
 }
 
-func (_c *MockUpdater_UpdateDetails_Call) RunAndReturn(run func(string, domain.SyncStatus, domain.SyncError, string)) *MockUpdater_UpdateDetails_Call {
+func (_c *MockUpdater_UpdateDetails_Call) RunAndReturn(run func([]string, domain.SyncStatus, domain.SyncError, string)) *MockUpdater_UpdateDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

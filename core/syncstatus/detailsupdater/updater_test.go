@@ -37,8 +37,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		})
 
 		// when
-		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
-		assert.Nil(t, err)
+		fixture.updater.updateDetails(&syncStatusDetails{[]string{"id"}, domain.Synced, domain.Null, "spaceId"})
 
 		// then
 		fixture.service.AssertNotCalled(t, "Get")
@@ -57,11 +56,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 
 		// when
 		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
-		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
-		assert.Nil(t, err)
-
-		// then
-		assert.Nil(t, err)
+		fixture.updater.updateDetails(&syncStatusDetails{[]string{"id"}, domain.Synced, domain.Null, "spaceId"})
 	})
 	t.Run("update sync status and date - object not exist in cache", func(t *testing.T) {
 		// given
@@ -79,11 +74,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 
 		// when
 		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
-		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
-		assert.Nil(t, err)
-
-		// then
-		assert.Nil(t, err)
+		fixture.updater.updateDetails(&syncStatusDetails{[]string{"id"}, domain.Synced, domain.Null, "spaceId"})
 	})
 	t.Run("update sync status and date - object exist in cache", func(t *testing.T) {
 		// given
@@ -95,11 +86,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 
 		// when
 		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
-		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
-		assert.Nil(t, err)
-
-		// then
-		assert.Nil(t, err)
+		fixture.updater.updateDetails(&syncStatusDetails{[]string{"id"}, domain.Synced, domain.Null, "spaceId"})
 	})
 
 	t.Run("update sync status and date - file status", func(t *testing.T) {
@@ -117,11 +104,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 
 		// when
 		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects))
-		err := fixture.updater.updateDetails(&syncStatusDetails{"id", domain.Synced, domain.Null, "spaceId"})
-		assert.Nil(t, err)
-
-		// then
-		assert.Nil(t, err)
+		fixture.updater.updateDetails(&syncStatusDetails{[]string{"id"}, domain.Synced, domain.Null, "spaceId"})
 	})
 }
 
@@ -133,7 +116,7 @@ func TestSyncStatusUpdater_Run(t *testing.T) {
 		// when
 		err := fixture.updater.Run(context.Background())
 		assert.Nil(t, err)
-		fixture.updater.UpdateDetails("id", domain.Synced, domain.Null, "spaceId")
+		fixture.updater.UpdateDetails([]string{"id"}, domain.Synced, domain.Null, "spaceId")
 
 		// then
 		err = fixture.updater.Close(context.Background())
