@@ -118,19 +118,23 @@ func (d *devices) loadDevices(ctx context.Context) {
 		log.Errorf("failed to get hostname: %v", err)
 		return
 	}
-	st := deviceObject.NewState()
-	deviceId := d.wallet.GetDevicePrivkey().GetPublic().PeerId()
-	st.AddDevice(&model.DeviceInfo{
-		Id:          deviceId,
-		Name:        hostname,
-		AddDate:     time.Now().Unix(),
-		IsConnected: true,
+	var devices map[string]*model.DeviceInfo
+	err = techSpace.Do(deviceObject.Id(), func(sb smartblock.SmartBlock) error {
+		st := deviceObject.NewState()
+		deviceId := d.wallet.GetDevicePrivkey().GetPublic().PeerId()
+		st.AddDevice(&model.DeviceInfo{
+			Id:          deviceId,
+			Name:        hostname,
+			AddDate:     time.Now().Unix(),
+			IsConnected: true,
+		})
+		devices = st.ListDevices()
+		return deviceObject.Apply(st)
 	})
-	err = deviceObject.Apply(st)
 	if err != nil {
 		log.Errorf("failed to apply device state: %v", err)
 	}
-	for _, info := range st.ListDevices() {
+	for _, info := range devices {
 		err := d.store.SaveDevice(info)
 		if err != nil {
 			log.Errorf("failed to save device: %v", err)
