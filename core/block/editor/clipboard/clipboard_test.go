@@ -347,6 +347,47 @@ func TestCommonSmart_pasteAny_marks(t *testing.T) {
 			}},
 		})
 	})
+
+	t.Run("should subsctitute link ids with shorter ones", func(t *testing.T) {
+		spaceId := "space1"
+		pasteMarksArr := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From: 1, To: 2},
+				Param: "object/spaceId=space1&objectId=obj1",
+				Type:  model.BlockContentTextMark_Mention,
+			}, {
+				Range: &model.Range{From: 4, To: 5},
+				Param: "object/spaceId=OTHERSPACE&objectId=obj3",
+				Type:  model.BlockContentTextMark_Object,
+			}},
+			{{
+				Range: &model.Range{From: 0, To: 4},
+				Param: "localobject",
+				Type:  model.BlockContentTextMark_Object,
+			}},
+		}
+
+		sb := createPage(t, createBlocks([]string{}, []string{"11111"}, emptyMarks))
+		sb.SetSpaceId(spaceId)
+		pasteAny(t, sb, "", model.Range{From: 0, To: 0}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"99999", "00000"}, pasteMarksArr))
+		checkBlockMarks(t, sb, [][]*model.BlockContentTextMark{
+			{{}},
+			{{
+				Range: &model.Range{From: 1, To: 2},
+				Param: "obj1",
+				Type:  model.BlockContentTextMark_Mention,
+			}, {
+				Range: &model.Range{From: 4, To: 5},
+				Param: "object/spaceId=OTHERSPACE&objectId=obj3",
+				Type:  model.BlockContentTextMark_Object,
+			}},
+			{{
+				Range: &model.Range{From: 0, To: 4},
+				Param: "localobject",
+				Type:  model.BlockContentTextMark_Object,
+			}},
+		})
+	})
 }
 
 func TestCommonSmart_RangeSplit(t *testing.T) {
@@ -1553,6 +1594,68 @@ func Test_CopyAndCutText(t *testing.T) {
 		assert.Len(t, sb.Blocks(), 1)
 		assert.Len(t, anySlotCopy, 1)
 		assert.Len(t, anySlotCut, 1)
+	})
+
+	t.Run("cut/copy - all dependent object ids are converted into mult-space links", func(t *testing.T) {
+		// given
+		spaceId := "space1"
+		dv := blockbuilder.Dataview("tasks", blockbuilder.ID("dataview"))
+		link1 := blockbuilder.Link("object1", blockbuilder.ID("link"))
+		link2 := blockbuilder.Link("object/spaceId=1&objectId=2", blockbuilder.ID("space-link"))
+		file := blockbuilder.File("image", blockbuilder.ID("file"))
+		txt := blockbuilder.Text("mention", blockbuilder.ID("text"), blockbuilder.TextMarks(model.BlockContentTextMarks{
+			Marks: []*model.BlockContentTextMark{{
+				Type:  model.BlockContentTextMark_Mention,
+				Range: &model.Range{From: 0, To: 4},
+				Param: "object2",
+			}},
+		}))
+		expected := map[string]string{
+			"dataview":   "object/spaceId=space1&objectId=tasks",
+			"link":       "object/spaceId=space1&objectId=object1",
+			"space-link": "object/spaceId=1&objectId=2",
+			"file":       "object/spaceId=space1&objectId=image",
+			"text":       "object/spaceId=space1&objectId=object2",
+		}
+
+		sb := smarttest.New("text")
+		sb.SetSpaceId(spaceId)
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(dv, link1, link2, file, txt),
+		))
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			Blocks:            []*model.Block{dv.Block(), link1.Block(), link2.Block(), file.Block(), txt.Block()},
+		})
+		require.NoError(t, err)
+		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			Blocks:            []*model.Block{dv.Block(), link1.Block(), link2.Block(), file.Block(), txt.Block()},
+		})
+		require.NoError(t, err)
+
+		// then
+		for _, bl := range append(anySlotCopy, anySlotCut...) {
+			smpl := simple.New(bl)
+			collector, ok := smpl.(simple.ObjectLinkReplacer)
+			require.True(t, ok)
+
+			var links []string
+			collector.ReplaceLinkIds(func(id string) string {
+				links = append(links, id)
+				return id
+			})
+
+			assert.Len(t, links, 1)
+			link, found := expected[bl.Id]
+			assert.True(t, found)
+			assert.Equal(t, link, links[0])
+		}
 	})
 }
 

@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/linkresolver"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -435,7 +436,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
-	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.depIds, sb.recordsSub)
+	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(linkresolver.ShortenObjectLinks(sb.depIds), sb.recordsSub)
 	if err != nil {
 		// datastore unavailable, cancel the subscription
 		sb.recordsSub.Close()
@@ -453,7 +454,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 
 	for _, rec := range records {
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
+			Id:      linkresolver.GetObjectId(sb.SpaceID(), rec.Details),
 			Details: rec.Details,
 		})
 	}
@@ -485,7 +486,8 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 	if details == nil {
 		return
 	}
-	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
+
+	id := linkresolver.GetObjectId(sb.SpaceID(), details)
 	msgs := []*pb.EventMessage{}
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff := pbtypes.StructDiff(v.Details, details)
@@ -775,7 +777,7 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	if sb.recordsSub == nil {
 		return true
 	}
-	newIDs := sb.recordsSub.Subscribe(sb.depIds)
+	newIDs := sb.recordsSub.Subscribe(linkresolver.ShortenObjectLinks(sb.depIds))
 	records, err := sb.objectStore.QueryByID(newIDs)
 	if err != nil {
 		log.Errorf("queryById error: %v", err)

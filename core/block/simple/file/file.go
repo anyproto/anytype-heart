@@ -241,6 +241,13 @@ func (f *File) HasSmartIds() bool {
 	return f.content.TargetObjectId != ""
 }
 
+func (f *File) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
+	if f.content.TargetObjectId != "" {
+		f.content.TargetObjectId = replacer(f.content.TargetObjectId)
+	}
+	return
+}
+
 func (f *File) IsEmpty() bool {
 	return f.content.TargetObjectId == "" && f.content.Hash == ""
 }
