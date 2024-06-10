@@ -118,6 +118,7 @@ func (d *devices) loadDevices(ctx context.Context) {
 		log.Errorf("failed to get hostname: %v", err)
 		return
 	}
+	deviceObject.Lock()
 	st := deviceObject.NewState()
 	deviceId := d.wallet.GetDevicePrivkey().GetPublic().PeerId()
 	st.AddDevice(&model.DeviceInfo{
@@ -130,6 +131,7 @@ func (d *devices) loadDevices(ctx context.Context) {
 	if err != nil {
 		log.Errorf("failed to apply device state: %v", err)
 	}
+	deviceObject.Unlock()
 	for _, info := range st.ListDevices() {
 		err := d.store.SaveDevice(info)
 		if err != nil {
