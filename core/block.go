@@ -149,7 +149,6 @@ func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRe
 	}
 	return response(pb.RpcObjectCloseResponseError_NULL, nil)
 }
-
 func (mw *Middleware) BlockCopy(cctx context.Context, req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockCopyResponseErrorCode, textSlot string, htmlSlot string, anySlot []*model.Block, err error) *pb.RpcBlockCopyResponse {
