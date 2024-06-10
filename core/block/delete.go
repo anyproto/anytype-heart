@@ -162,15 +162,3 @@ func sendOnRemoveEvent(eventSender event.Sender, ids ...string) {
 		},
 	})
 }
-
-func sendOnCloseEvent(eventSender event.Sender, id string) {
-	eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectClose{
-				ObjectClose: &pb.EventObjectClose{
-					Id: id,
-				},
-			},
-		}},
-	})
-}
