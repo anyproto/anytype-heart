@@ -22,8 +22,9 @@ type Updater interface {
 	SendUpdate(spaceSync *domain.SpaceSync)
 }
 
-type TechSpaceIdGetter interface {
+type SpaceIdGetter interface {
 	TechSpaceId() string
+	PersonalSpaceId() string
 }
 
 type State interface {
@@ -46,9 +47,9 @@ type spaceSyncStatus struct {
 	filesState   State
 	objectsState State
 
-	ctx               context.Context
-	ctxCancel         context.CancelFunc
-	techSpaceIdGetter TechSpaceIdGetter
+	ctx           context.Context
+	ctxCancel     context.CancelFunc
+	spaceIdGetter SpaceIdGetter
 
 	finish chan struct{}
 }
@@ -63,7 +64,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	s.filesState = NewFileState(store)
 	s.objectsState = NewObjectState(store)
-	s.techSpaceIdGetter = app.MustComponent[TechSpaceIdGetter](a)
+	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
 	return
 }
 
@@ -76,10 +77,22 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 		s.sendLocalOnlyEvent()
 		close(s.finish)
 		return
+	} else {
+		s.sendStartEvent()
 	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go s.processEvents()
 	return
+}
+
+func (s *spaceSyncStatus) sendStartEvent() {
+	s.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(s.spaceIdGetter.PersonalSpaceId()),
+			},
+		}},
+	})
 }
 
 func (s *spaceSyncStatus) sendLocalOnlyEvent() {
@@ -110,7 +123,7 @@ func (s *spaceSyncStatus) processEvents() {
 			log.Errorf("failed to get event from batcher: %s", err)
 			return
 		}
-		if status.SpaceId == s.techSpaceIdGetter.TechSpaceId() {
+		if status.SpaceId == s.spaceIdGetter.TechSpaceId() {
 			continue
 		}
 		s.updateSpaceSyncStatus(status)
@@ -130,7 +143,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(status *domain.SpaceSync) {
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(status),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(status.SpaceId),
 			},
 		}},
 	})
@@ -140,7 +153,7 @@ func (s *spaceSyncStatus) needToSendEvent(status *domain.SpaceSync) bool {
 	if status.Status != domain.Synced {
 		return true
 	}
-	return s.getSpaceSyncStatus(status) == domain.Synced && status.Status == domain.Synced
+	return s.getSpaceSyncStatus(status.SpaceId) == domain.Synced && status.Status == domain.Synced
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
@@ -151,19 +164,19 @@ func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	return s.batcher.Close()
 }
 
-func (s *spaceSyncStatus) makeSpaceSyncEvent(status *domain.SpaceSync) *pb.EventSpaceSyncStatusUpdate {
+func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string) *pb.EventSpaceSyncStatusUpdate {
 	return &pb.EventSpaceSyncStatusUpdate{
-		Id:                    status.SpaceId,
-		Status:                mapStatus(s.getSpaceSyncStatus(status)),
+		Id:                    spaceId,
+		Status:                mapStatus(s.getSpaceSyncStatus(spaceId)),
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
-		Error:                 s.getError(status.SpaceId),
-		SyncingObjectsCounter: int64(s.filesState.GetSyncObjectCount(status.SpaceId) + s.objectsState.GetSyncObjectCount(status.SpaceId)),
+		Error:                 s.getError(spaceId),
+		SyncingObjectsCounter: int64(s.filesState.GetSyncObjectCount(spaceId) + s.objectsState.GetSyncObjectCount(spaceId)),
 	}
 }
 
-func (s *spaceSyncStatus) getSpaceSyncStatus(status *domain.SpaceSync) domain.SyncStatus {
-	filesStatus := s.filesState.GetSyncStatus(status.SpaceId)
-	objectsStatus := s.objectsState.GetSyncStatus(status.SpaceId)
+func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SyncStatus {
+	filesStatus := s.filesState.GetSyncStatus(spaceId)
+	objectsStatus := s.objectsState.GetSyncStatus(spaceId)
 
 	if s.isOfflineStatus(filesStatus, objectsStatus) {
 		return domain.Offline

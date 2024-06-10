@@ -360,6 +360,10 @@ func (s *service) TechSpaceId() string {
 	return s.techSpaceId
 }
 
+func (s *service) PersonalSpaceId() string {
+	return s.personalSpaceId
+}
+
 func (s *service) getTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {
 	select {
 	case <-s.techSpaceReady:
