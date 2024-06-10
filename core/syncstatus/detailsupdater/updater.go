@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -54,11 +55,18 @@ type syncStatusUpdater struct {
 	spaceService    space.Service
 	spaceSyncStatus SpaceStatusUpdater
 
+	entries map[string]*syncStatusDetails
+	mx      sync.Mutex
+
 	finish chan struct{}
 }
 
 func NewUpdater() Updater {
-	return &syncStatusUpdater{batcher: mb.New[*syncStatusDetails](0), finish: make(chan struct{})}
+	return &syncStatusUpdater{
+		batcher: mb.New[*syncStatusDetails](0),
+		finish:  make(chan struct{}),
+		entries: make(map[string]*syncStatusDetails, 0),
+	}
 }
 
 func (u *syncStatusUpdater) Run(ctx context.Context) (err error) {
@@ -87,7 +95,16 @@ func (u *syncStatusUpdater) Name() (name string) {
 }
 
 func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string) {
-	err := u.batcher.Add(context.Background(), &syncStatusDetails{
+	for _, id := range objectId {
+		u.mx.Lock()
+		u.entries[id] = &syncStatusDetails{
+			status:    status,
+			syncError: syncError,
+			spaceId:   spaceId,
+		}
+		u.mx.Unlock()
+	}
+	err := u.batcher.TryAdd(&syncStatusDetails{
 		objectIds: objectId,
 		status:    status,
 		syncError: syncError,
@@ -99,18 +116,10 @@ func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.SyncS
 }
 
 func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) {
-	if len(syncStatusDetails.objectIds) == 0 {
-		details := u.extractObjectDetails(syncStatusDetails)
-		for _, detail := range details {
-			id := pbtypes.GetString(detail.Details, bundle.RelationKeyId.String())
-			err := u.setObjectDetails(syncStatusDetails, detail.Details, id)
-			if err != nil {
-				log.Errorf("failed to update object details %s", err)
-			}
-		}
-	}
-	for _, objectId := range syncStatusDetails.objectIds {
-		err := u.updateObjectDetails(syncStatusDetails, objectId)
+	details := u.extractObjectDetails(syncStatusDetails)
+	for _, detail := range details {
+		id := pbtypes.GetString(detail.Details, bundle.RelationKeyId.String())
+		err := u.setObjectDetails(syncStatusDetails, detail.Details, id)
 		if err != nil {
 			log.Errorf("failed to update object details %s", err)
 		}
@@ -257,6 +266,20 @@ func (u *syncStatusUpdater) processEvents() {
 		if err != nil {
 			return
 		}
-		u.updateDetails(status)
+		for _, id := range status.objectIds {
+			u.mx.Lock()
+			objectStatus := u.entries[id]
+			delete(u.entries, id)
+			u.mx.Unlock()
+			if objectStatus != nil {
+				err := u.updateObjectDetails(objectStatus, id)
+				if err != nil {
+					log.Errorf("failed to update details %s", err)
+				}
+			}
+		}
+		if len(status.objectIds) == 0 {
+			u.updateDetails(status)
+		}
 	}
 }
