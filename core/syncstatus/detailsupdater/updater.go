@@ -152,9 +152,6 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 	if err != nil {
 		return err
 	}
-	if record == nil {
-		return nil
-	}
 	return u.setObjectDetails(syncStatusDetails, record.Details, objectId)
 }
 

@@ -23,6 +23,7 @@ type Updater interface {
 }
 
 type SpaceIdGetter interface {
+	app.Component
 	TechSpaceId() string
 	PersonalSpaceId() string
 }

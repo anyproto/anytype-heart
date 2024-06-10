@@ -227,9 +227,9 @@ func (_c *MockCacheService_CacheGet_Call) RunAndReturn(run func() (*pb.RpcMember
 	return _c
 }
 
-// CacheSet provides a mock function with given fields: status, tiers, ExpireTime
-func (_m *MockCacheService) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, ExpireTime time.Time) error {
-	ret := _m.Called(status, tiers, ExpireTime)
+// CacheSet provides a mock function with given fields: status, tiers, subscriptionEnds
+func (_m *MockCacheService) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, subscriptionEnds time.Time) error {
+	ret := _m.Called(status, tiers, subscriptionEnds)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CacheSet")
@@ -237,7 +237,7 @@ func (_m *MockCacheService) CacheSet(status *pb.RpcMembershipGetStatusResponse, 
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*pb.RpcMembershipGetStatusResponse, *pb.RpcMembershipGetTiersResponse, time.Time) error); ok {
-		r0 = rf(status, tiers, ExpireTime)
+		r0 = rf(status, tiers, subscriptionEnds)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -253,12 +253,12 @@ type MockCacheService_CacheSet_Call struct {
 // CacheSet is a helper method to define mock.On call
 //   - status *pb.RpcMembershipGetStatusResponse
 //   - tiers *pb.RpcMembershipGetTiersResponse
-//   - ExpireTime time.Time
-func (_e *MockCacheService_Expecter) CacheSet(status interface{}, tiers interface{}, ExpireTime interface{}) *MockCacheService_CacheSet_Call {
-	return &MockCacheService_CacheSet_Call{Call: _e.mock.On("CacheSet", status, tiers, ExpireTime)}
+//   - subscriptionEnds time.Time
+func (_e *MockCacheService_Expecter) CacheSet(status interface{}, tiers interface{}, subscriptionEnds interface{}) *MockCacheService_CacheSet_Call {
+	return &MockCacheService_CacheSet_Call{Call: _e.mock.On("CacheSet", status, tiers, subscriptionEnds)}
 }
 
-func (_c *MockCacheService_CacheSet_Call) Run(run func(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, ExpireTime time.Time)) *MockCacheService_CacheSet_Call {
+func (_c *MockCacheService_CacheSet_Call) Run(run func(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, subscriptionEnds time.Time)) *MockCacheService_CacheSet_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(*pb.RpcMembershipGetStatusResponse), args[1].(*pb.RpcMembershipGetTiersResponse), args[2].(time.Time))
 	})

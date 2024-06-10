@@ -180,7 +180,7 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 	for {
 		n.fetchResponsiblePeers()
 		select {
-		case <-time.After(time.Minute):
+		case <-time.After(time.Second * 20):
 		case <-n.rebuildResponsiblePeers:
 		case <-n.ctx.Done():
 			return
