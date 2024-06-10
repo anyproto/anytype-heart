@@ -11,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -43,10 +42,9 @@ type Reconciler interface {
 }
 
 type reconciler struct {
-	objectStore  objectstore.ObjectStore
-	fileSync     filesync.FileSync
-	fileStorage  filestorage.FileStorage
-	objectGetter cache.ObjectGetter
+	objectStore objectstore.ObjectStore
+	fileSync    filesync.FileSync
+	fileStorage filestorage.FileStorage
 
 	lock      sync.Mutex
 	isStarted bool
@@ -77,7 +75,6 @@ func (r *reconciler) Init(a *app.App) error {
 	r.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	r.fileSync = app.MustComponent[filesync.FileSync](a)
 	r.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	r.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
 	r.fileSync.OnUploaded(r.markAsReconciled)
 

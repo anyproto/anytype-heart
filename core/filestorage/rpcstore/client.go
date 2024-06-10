@@ -110,7 +110,7 @@ func (c *client) iterateFiles(ctx context.Context, iterFunc func(fileId domain.F
 	if err != nil {
 		return err
 	}
-	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
 		cl := fileproto.NewDRPCFileClient(conn)
 
 		resp, err := cl.AccountInfo(ctx, &fileproto.AccountInfoRequest{})
@@ -125,7 +125,6 @@ func (c *client) iterateFiles(ctx context.Context, iterFunc func(fileId domain.F
 		}
 		return nil
 	})
-	return nil
 }
 
 func iterateSpaceFiles(ctx context.Context, client fileproto.DRPCFileClient, spaceId string, iterFunc func(fileId domain.FullFileId)) error {
