@@ -184,9 +184,8 @@ func (s *service) observeIdentitiesLoop() {
 	ticker := time.NewTicker(s.identityObservePeriod)
 	defer ticker.Stop()
 
-	ctx := context.Background()
 	observe := func() {
-		err := s.observeIdentities(ctx)
+		err := s.observeIdentities(s.componentCtx)
 		if err != nil {
 			log.Error("error observing identities", zap.Error(err))
 		}
@@ -374,7 +373,7 @@ func (s *service) fetchGlobalNames(identities []string) error {
 	}
 	s.lock.Unlock()
 
-	response, err := s.namingService.BatchGetNameByAnyId(context.Background(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
+	response, err := s.namingService.BatchGetNameByAnyId(s.componentCtx, &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
 	if err != nil {
 		return err
 	}

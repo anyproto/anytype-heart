@@ -37,11 +37,12 @@ const (
 )
 
 var (
-	ErrCanNotSign   = errors.New("can not sign")
-	ErrCacheProblem = errors.New("cache problem")
-	ErrNoConnection = errors.New("can not connect to payment node")
-	ErrNoTiers      = errors.New("can not get tiers")
-	ErrNoTierFound  = errors.New("can not find requested tier")
+	ErrCanNotSign            = errors.New("can not sign")
+	ErrCacheProblem          = errors.New("cache problem")
+	ErrNoConnection          = errors.New("can not connect to payment node")
+	ErrNoTiers               = errors.New("can not get tiers")
+	ErrNoTierFound           = errors.New("can not find requested tier")
+	ErrNameIsAlreadyReserved = errors.New("name is already reserved")
 )
 
 type globalNamesUpdater interface {
@@ -129,6 +130,7 @@ type service struct {
 	periodicGetStatus periodicsync.PeriodicSync
 	eventSender       event.Sender
 	profileUpdater    globalNamesUpdater
+	ns                nameservice.Service
 
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
@@ -142,6 +144,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
+	s.ns = app.MustComponent[nameservice.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
@@ -167,8 +170,8 @@ func (s *service) Close(_ context.Context) (err error) {
 }
 
 func (s *service) getPeriodicStatus(ctx context.Context) error {
-	// get subscription status (from cache or from PP node)
-	// if status is changed -> it will send an event
+	// get subscription status (from cache or from the PP node)
+	// if status has changed -> it will send an event
 	log.Debug("periodic: getting subscription status from cache/PP node")
 
 	_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -189,6 +192,18 @@ func (s *service) sendEvent(status *pb.RpcMembershipGetStatusResponse) {
 	})
 }
 
+// Logic:
+//
+// 1. Check in cache. if req.NoCache -> do not check in cache.
+// 2. If found in cache -> return it
+// 3. Ask PP node
+// 4a. If PP node didn't answer and we have membership -> return it
+// 4b. If PP node didn't answer -> create empty response
+// 5. Save to cache. Lifetime - min(subscription ends, 24h)
+// 6. If tier or status has changed -> send event
+// 7. If name has changed -> update global name
+// 8. UpdateLimits
+// 9. Enable cache again if status is active
 func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
@@ -197,16 +212,18 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	privKey := s.wallet.GetAccountPrivkey()
 
 	// 1 - check in cache
-	// tiers var. is unused here
+	// if cache is disabled -> will return objects and ErrCacheDisabled
+	// if cache is expired -> will return objects and ErrCacheExpired
 	cachedStatus, _, err := s.cache.CacheGet()
 
-	// if NoCache -> skip returning from cache
+	// if NoCache flag -> skip returning from cache
 	if !req.NoCache && (err == nil) && (cachedStatus != nil) && (cachedStatus.Data != nil) {
+		// 2. If found in cache -> return it
 		log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
 		return cachedStatus, nil
 	}
 
-	// 2 - send request to PP node
+	// 3 - send request to PP node
 	gsr := proto.GetSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: ownerID,
@@ -233,7 +250,14 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	status, err := s.ppclient.GetSubscriptionStatus(ctx, &reqSigned)
 	if err != nil {
-		log.Info("creating empty subscription in cache because can not get subscription status from payment node")
+		// 4a. try reading from cache again
+		if (cachedStatus != nil) && (cachedStatus.Data != nil) {
+			log.Debug("returning subscription status from cache again", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
+			return cachedStatus, nil
+		}
+
+		// 4b. If PP node didn't answer -> create empty response
+		log.Info("creating empty subscription in cache because can not get subscription status from the payment node")
 
 		// eat error and create empty status ("no tier") so that we will then save it to the cache
 		status = &proto.GetSubscriptionResponse{
@@ -259,22 +283,10 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	out.Data.UserEmail = status.UserEmail
 	out.Data.SubscribeToNewsletter = status.SubscribeToNewsletter
 
-	// 3 - save into cache
-	// truncate nseconds here
-	var cacheExpireTime time.Time = time.Unix(int64(status.DateEnds), 0)
-	isExpired := time.Now().UTC().After(cacheExpireTime)
-
-	// if subscription DateEns is null - then default expire time is in 10 days
-	// or until user clicks on a “Pay by card/crypto” or “Manage” button
-	if status.DateEnds == 0 || isExpired {
-		log.Debug("setting cache to +1 day because subscription is isExpired")
-
-		timeNow := time.Now().UTC()
-		cacheExpireTime = timeNow.Add(1 * 24 * time.Hour)
-	}
-
+	// 5. Save to cache. Lifetime - min(subscription ends, now + 24h)
 	// update only status, not tiers
-	err = s.cache.CacheSet(&out, nil, cacheExpireTime)
+	// truncate nseconds here
+	err = s.cache.CacheSet(&out, nil, time.Unix(int64(status.DateEnds), 0))
 	if err != nil {
 		log.Error("can not save subscription status to cache", zap.Error(err))
 		return nil, ErrCacheProblem
@@ -286,7 +298,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus), zap.Bool("isEmailDiff", isEmailDiff))
 
-	// 4 - return, if cache was enabled and nothing is changed
+	// 6. If tier or status has changed -> send event
 	if cachedStatus != nil && !isDiffTier && !isDiffStatus && !isEmailDiff {
 		log.Debug("subscription status has NOT changed",
 			zap.Bool("cache was empty", cachedStatus == nil),
@@ -302,11 +314,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		zap.Bool("isDiffStatus", isDiffStatus),
 		zap.Bool("isEmailDiff", isEmailDiff),
 	)
-
-	// 4.1 - send the event
 	s.sendEvent(&out)
 
-	// 4.2 - update globalName of our own identity
+	// 7. If name has changed -> update global name or own identity
 	if status.RequestedAnyName != "" {
 		log.Debug("update global name",
 			zap.String("requestedAnyName", status.RequestedAnyName),
@@ -315,14 +325,14 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		s.profileUpdater.UpdateOwnGlobalName(status.RequestedAnyName)
 	}
 
+	// 8. UpdateLimits
 	err = s.updateLimits(ctx)
 	if err != nil {
 		log.Error("update limits", zap.Error(err))
 	}
 
-	// 4.3 - enable cache again (only when status is active)
+	// 9. Enable cache again if status is active
 	isFinished := status.Status == proto.SubscriptionStatus_StatusActive
-
 	if isFinished {
 		log.Info("enabling cache again")
 
@@ -365,56 +375,20 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 	}
 
 	if resp.Code == proto.IsNameValidResponse_Valid {
-		// no error
-		return &out, nil
+		// no error, now check if vacant in NS
+		return s.checkIfNameAvailInNS(ctx, req)
 	}
 
 	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
 	code = resp.Code
 	desc = resp.Description
 
-	// this LOCAL code is switched off because we need more info on the PP node side
-	// so instead we call it (see above ^)
-	/*
-		// 1 - get all tiers from cache or PP node
-		// use getAllTiers instead of GetTiers because we don't care about extra logics with Explorer here
-		// and first is much simpler/faster
-		tiers, err := s.getAllTiers(ctx, &pb.RpcMembershipGetTiersRequest{
-			NoCache: false,
-			// TODO: warning! no locale and payment method are passed here!
-			// Locale:        "",
-			// PaymentMethod: pb.RpcMembershipPaymentMethod_PAYMENT_METHOD_UNKNOWN,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if tiers.Tiers == nil {
-			return nil, ErrNoTiers
-		}
-
-		// find req.RequestedTier
-		var tier *model.MembershipTierData
-		for _, t := range tiers.Tiers {
-			if t.Id == req.RequestedTier {
-				tier = t
-				break
-			}
-		}
-		if tier == nil {
-			return nil, ErrNoTierFound
-		}
-
-		code = s.validateAnyName(*tier, nameservice.NsNameToFullName(req.NsName, req.NsNameType))
-	*/
-
 	if code == proto.IsNameValidResponse_Valid {
-		// valid
-		return &out, nil
+		// no error, now check if vacant in NS
+		return s.checkIfNameAvailInNS(ctx, req)
 	}
 
 	// 2 - convert code to error
-	out.Error = &pb.RpcMembershipIsNameValidResponseError{}
-
 	switch code {
 	case proto.IsNameValidResponse_NoDotAny:
 		out.Error.Code = pb.RpcMembershipIsNameValidResponseError_BAD_INPUT
@@ -441,6 +415,43 @@ func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameVa
 
 	out.Error.Description = desc
 	return &out, nil
+}
+
+func (s *service) checkIfNameAvailInNS(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
+	// special backward compatibility logic for some clients
+	// if name is empty -> return "it's OK"
+	// because if you don't pass a name to MembershipIsNameValid() - means you don't want to reserve or change it
+	// so ps.IsNameValid() returned no error for empty string
+	//
+	// and we should preserve that behavior also here
+	if req.NsName == "" {
+		return &pb.RpcMembershipIsNameValidResponse{
+			Error: &pb.RpcMembershipIsNameValidResponseError{
+				Code:        pb.RpcMembershipIsNameValidResponseError_NULL,
+				Description: "",
+			},
+		}, nil
+	}
+
+	// check in the NameService if name is vacant (remote call #2)
+	nsreq := pb.RpcNameServiceResolveNameRequest{
+		NsName:     req.NsName,
+		NsNameType: req.NsNameType,
+	}
+	nsout, err := s.ns.NameServiceResolveName(ctx, &nsreq)
+	if err != nil {
+		return nil, err
+	}
+	if !nsout.Available {
+		return nil, ErrNameIsAlreadyReserved
+	}
+
+	return &pb.RpcMembershipIsNameValidResponse{
+		Error: &pb.RpcMembershipIsNameValidResponseError{
+			Code:        pb.RpcMembershipIsNameValidResponseError_NULL,
+			Description: "",
+		},
+	}, nil
 }
 
 func (s *service) validateAnyName(tier model.MembershipTierData, name string) proto.IsNameValidResponse_Code {
@@ -493,6 +504,8 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		PaymentMethod: PaymentMethodToProto(req.PaymentMethod),
 
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+
+		UserEmail: req.UserEmail,
 	}
 
 	payload, err := bsr.Marshal()
@@ -843,17 +856,12 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 	}
 
 	// 3 - update tiers, not status
-	var cacheExpireTime time.Time
+	var ends time.Time = time.Unix(0, 0)
 	if (cachedStatus != nil) && (cachedStatus.Data != nil) {
-		cacheExpireTime = time.Unix(int64(cachedStatus.Data.DateEnds), 0)
-	} else {
-		log.Debug("setting tiers cache to +1 day")
-
-		timeNow := time.Now().UTC()
-		cacheExpireTime = timeNow.Add(1 * 24 * time.Hour)
+		ends = time.Unix(int64(cachedStatus.Data.DateEnds), 0)
 	}
 
-	err = s.cache.CacheSet(nil, &out, cacheExpireTime)
+	err = s.cache.CacheSet(nil, &out, ends)
 	if err != nil {
 		log.Error("can not save tiers to cache", zap.Error(err))
 		return nil, ErrCacheProblem
@@ -866,7 +874,6 @@ func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembersh
 	verifyReq := proto.VerifyAppStoreReceiptRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
-		BillingID:  req.BillingId,
 		Receipt:    req.Receipt,
 	}
 

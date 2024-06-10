@@ -12,6 +12,13 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+// Semantics in case of NO INTERNET:
+//
+// If called with req.NoCache -> returns error
+// If called without req.NoCache:
+//
+//	has no fresh data -> returns error
+//	has fresh data -> returns data
 func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse {
 	log.Info("payments - client asked to get a subscription status", zap.Any("req", req))
 
@@ -52,6 +59,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 	ps := getService[payments.Service](mw)
 	out, err := ps.IsNameValid(ctx, req)
 
+	// 1 - check the validity first (remote call #1)
 	// out will already contain validation Error
 	// but if something bad has happened we need to process other errors here too:
 	if err != nil {
@@ -60,6 +68,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipIsNameValidResponseError_NOT_LOGGED_IN),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipIsNameValidResponseError_CACHE_ERROR),
+			errToCode(payments.ErrNameIsAlreadyReserved, pb.RpcMembershipIsNameValidResponseError_NAME_IS_RESERVED),
 
 			errToCode(payments.ErrNoTiers, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
 			errToCode(payments.ErrNoTierFound, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
@@ -81,7 +90,6 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 		}
 	}
 
-	// out.Error will contain validation error if something is wrong with the name
 	return out
 }
 
@@ -101,6 +109,7 @@ func (mw *Middleware) MembershipRegisterPaymentRequest(ctx context.Context, req 
 			errToCode(proto.ErrPaymentMethodWrong, pb.RpcMembershipRegisterPaymentRequestResponseError_PAYMENT_METHOD_INVALID),
 			errToCode(proto.ErrBadAnyName, pb.RpcMembershipRegisterPaymentRequestResponseError_BAD_ANYNAME),
 			errToCode(proto.ErrSubsAlreadyActive, pb.RpcMembershipRegisterPaymentRequestResponseError_MEMBERSHIP_ALREADY_EXISTS),
+			errToCode(proto.ErrEmailWrongFormat, pb.RpcMembershipRegisterPaymentRequestResponseError_EMAIL_WRONG_FORMAT),
 
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipRegisterPaymentRequestResponseError_CAN_NOT_CONNECT),
 		)
@@ -315,7 +324,9 @@ func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PAYMENT_NODE_ERROR),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipVerifyAppStoreReceiptResponseError_CACHE_ERROR),
-			errToCode(proto.ErrInvalidReceipt, pb.RpcMembershipVerifyAppStoreReceiptResponseError_INVALID_RECEIPT),
+			errToCode(proto.ErrAppleInvalidReceipt, pb.RpcMembershipVerifyAppStoreReceiptResponseError_INVALID_RECEIPT),
+			errToCode(proto.ErrApplePurchaseRegistration, pb.RpcMembershipVerifyAppStoreReceiptResponseError_PURCHASE_REGISTRATION_ERROR),
+			errToCode(proto.ErrAppleSubscriptionRenew, pb.RpcMembershipVerifyAppStoreReceiptResponseError_SUBSCRIPTION_RENEW_ERROR),
 			errToCode(proto.ErrUnknown, pb.RpcMembershipVerifyAppStoreReceiptResponseError_UNKNOWN_ERROR),
 		)
 

@@ -25,7 +25,6 @@ import (
 type subObjectsAndProfileLinksMigration struct {
 	profileID        string
 	identityObjectID string
-	personalSpaceId  string
 	sbType           smartblock.SmartBlockType
 	space            Space
 	objectStore      objectstore.ObjectStore
@@ -35,13 +34,11 @@ func NewSubObjectsAndProfileLinksMigration(
 	sbType smartblock.SmartBlockType,
 	space Space,
 	identityObjectID string,
-	personalSpaceId string,
 	objectStore objectstore.ObjectStore,
 ) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
-		personalSpaceId:  personalSpaceId,
 		sbType:           sbType,
 		objectStore:      objectStore,
 	}

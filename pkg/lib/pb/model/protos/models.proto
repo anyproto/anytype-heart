@@ -52,6 +52,22 @@ enum SmartBlockType {
     NotificationObject = 0x217;
 }
 
+message Search {
+    message Result {
+        string objectId = 1;
+        google.protobuf.Struct details = 2; //
+        repeated Meta meta = 3; // meta information about the search result
+    }
+
+    message Meta {
+        string highlight = 1; // truncated text with highlights
+        repeated Range highlightRanges = 2; // ranges of the highlight in the text (using utf-16 runes)
+        string blockId = 3; // block id where the highlight has been found
+        string relationKey = 4; // relation key of the block where the highlight has been found
+        google.protobuf.Struct relationDetails = 5; // contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails
+    }
+}
+
 message Block {
     string id = 1;
     google.protobuf.Struct fields = 2;
@@ -317,9 +333,9 @@ message Block {
         message Dataview {
             repeated string source = 1;
             repeated View views = 2;
+            string activeView = 3; // do not generate changes for this field
             // deprecated
             repeated model.Relation relations = 4;
-            string activeView = 3; // saved within a session
             repeated GroupOrder groupOrders = 12;
             repeated ObjectOrder objectOrders = 13;
             repeated anytype.model.RelationLink relationLinks = 5;
@@ -899,6 +915,12 @@ message ObjectView {
     message HistorySize {
         int32 undo = 1;
         int32 redo = 2;
+    }
+
+    repeated BlockParticipant blockParticipants = 11;
+    message BlockParticipant {
+        string blockId = 1;
+        string participantId = 2;
     }
 }
 

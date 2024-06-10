@@ -10,6 +10,9 @@ packages:
   github.com/anyproto/anytype-heart/core/wallet:
     interfaces:
       Wallet:
+  github.com/anyproto/anytype-heart/core/nameservice:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/core/event:
     interfaces:
       Sender:
@@ -169,3 +172,6 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage:
     interfaces:
       FileStorage:
+  github.com/anyproto/anytype-heart/util/linkpreview:
+    interfaces:
+      LinkPreview:

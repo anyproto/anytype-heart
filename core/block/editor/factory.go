@@ -123,8 +123,10 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		sb.SetLocker(ot)
 	}
 
-	// we probably don't need any locks here, because the object is initialized synchronously
 	initCtx.Source = sc
+	// adding locks as a temporary measure to find the place where we have races in our code
+	sb.Lock()
+	defer sb.Unlock()
 	err = sb.Init(initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)
@@ -176,7 +178,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, f.objectStore, f.layoutConverter, f.accountService), nil
+		return NewWidgetObject(sb, f.objectStore, f.layoutConverter), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:

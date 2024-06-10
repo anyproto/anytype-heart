@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
@@ -51,7 +50,6 @@ type fileStorage struct {
 	cfg        *config.Config
 	flatfsPath string
 
-	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
 	spaceStorage storage.ClientStorage
 	eventSender  event.Sender

@@ -684,6 +684,64 @@ func (_c *MockObjectStore_GetAccountStatus_Call) RunAndReturn(run func() (*coord
 	return _c
 }
 
+// GetActiveViews provides a mock function with given fields: objectId
+func (_m *MockObjectStore) GetActiveViews(objectId string) (map[string]string, error) {
+	ret := _m.Called(objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetActiveViews")
+	}
+
+	var r0 map[string]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (map[string]string, error)); ok {
+		return rf(objectId)
+	}
+	if rf, ok := ret.Get(0).(func(string) map[string]string); ok {
+		r0 = rf(objectId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(objectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_GetActiveViews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetActiveViews'
+type MockObjectStore_GetActiveViews_Call struct {
+	*mock.Call
+}
+
+// GetActiveViews is a helper method to define mock.On call
+//   - objectId string
+func (_e *MockObjectStore_Expecter) GetActiveViews(objectId interface{}) *MockObjectStore_GetActiveViews_Call {
+	return &MockObjectStore_GetActiveViews_Call{Call: _e.mock.On("GetActiveViews", objectId)}
+}
+
+func (_c *MockObjectStore_GetActiveViews_Call) Run(run func(objectId string)) *MockObjectStore_GetActiveViews_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetActiveViews_Call) Return(_a0 map[string]string, _a1 error) *MockObjectStore_GetActiveViews_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectStore_GetActiveViews_Call) RunAndReturn(run func(string) (map[string]string, error)) *MockObjectStore_GetActiveViews_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetByIDs provides a mock function with given fields: spaceID, ids
 func (_m *MockObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error) {
 	ret := _m.Called(spaceID, ids)
@@ -2668,6 +2726,101 @@ func (_c *MockObjectStore_SaveVirtualSpace_Call) Return(_a0 error) *MockObjectSt
 }
 
 func (_c *MockObjectStore_SaveVirtualSpace_Call) RunAndReturn(run func(string) error) *MockObjectStore_SaveVirtualSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetActiveView provides a mock function with given fields: objectId, blockId, viewId
+func (_m *MockObjectStore) SetActiveView(objectId string, blockId string, viewId string) error {
+	ret := _m.Called(objectId, blockId, viewId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetActiveView")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
+		r0 = rf(objectId, blockId, viewId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_SetActiveView_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetActiveView'
+type MockObjectStore_SetActiveView_Call struct {
+	*mock.Call
+}
+
+// SetActiveView is a helper method to define mock.On call
+//   - objectId string
+//   - blockId string
+//   - viewId string
+func (_e *MockObjectStore_Expecter) SetActiveView(objectId interface{}, blockId interface{}, viewId interface{}) *MockObjectStore_SetActiveView_Call {
+	return &MockObjectStore_SetActiveView_Call{Call: _e.mock.On("SetActiveView", objectId, blockId, viewId)}
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) Run(run func(objectId string, blockId string, viewId string)) *MockObjectStore_SetActiveView_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) Return(_a0 error) *MockObjectStore_SetActiveView_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) RunAndReturn(run func(string, string, string) error) *MockObjectStore_SetActiveView_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetActiveViews provides a mock function with given fields: objectId, views
+func (_m *MockObjectStore) SetActiveViews(objectId string, views map[string]string) error {
+	ret := _m.Called(objectId, views)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetActiveViews")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, map[string]string) error); ok {
+		r0 = rf(objectId, views)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_SetActiveViews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetActiveViews'
+type MockObjectStore_SetActiveViews_Call struct {
+	*mock.Call
+}
+
+// SetActiveViews is a helper method to define mock.On call
+//   - objectId string
+//   - views map[string]string
+func (_e *MockObjectStore_Expecter) SetActiveViews(objectId interface{}, views interface{}) *MockObjectStore_SetActiveViews_Call {
+	return &MockObjectStore_SetActiveViews_Call{Call: _e.mock.On("SetActiveViews", objectId, views)}
+}
+
+func (_c *MockObjectStore_SetActiveViews_Call) Run(run func(objectId string, views map[string]string)) *MockObjectStore_SetActiveViews_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(map[string]string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveViews_Call) Return(_a0 error) *MockObjectStore_SetActiveViews_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveViews_Call) RunAndReturn(run func(string, map[string]string) error) *MockObjectStore_SetActiveViews_Call {
 	_c.Call.Return(run)
 	return _c
 }

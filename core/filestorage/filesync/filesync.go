@@ -69,8 +69,6 @@ type fileSync struct {
 	rpcStore        rpcstore.RpcStore
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
-	uploadPingCh    chan struct{}
-	removePingCh    chan struct{}
 	dagService      ipld.DAGService
 	fileStore       filestore.FileStore
 	eventSender     event.Sender
@@ -97,8 +95,6 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
-	s.removePingCh = make(chan struct{})
-	s.uploadPingCh = make(chan struct{})
 	db, err := s.dbProvider.LocalStorage()
 	if err != nil {
 		return

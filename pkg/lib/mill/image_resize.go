@@ -1,7 +1,6 @@
 package mill
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"image"
@@ -59,6 +58,7 @@ func isImageFormatSupported(format Format) bool {
 }
 
 var ErrFormatSupportNotEnabled = errors.New("this image format support is not enabled in this build")
+var ErrProcessing = fmt.Errorf("failed to process")
 
 type ImageSize struct {
 	Width  int
@@ -104,7 +104,6 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		return nil, err
 	}
 	format := Format(formatStr)
-
 	_, err = r.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err
@@ -178,7 +177,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	}
 
 	if orientation <= 1 && width == imgConfig.Width {
-		var r2 io.Reader
+		var r2 io.ReadSeekCloser
 		r2, err = patchReaderRemoveExif(r)
 		if err != nil {
 			return nil, err
@@ -186,7 +185,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 		// here is an optimization
 		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
-			File: r2,
+			File: noopCloser(r2),
 			Meta: map[string]interface{}{
 				"width":  imgConfig.Width,
 				"height": imgConfig.Height,
@@ -203,13 +202,21 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
 	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
-	buff := &bytes.Buffer{}
+	buff := pool.Get()
+	defer func() {
+		_ = buff.Close()
+	}()
 	if err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}); err != nil {
 		return nil, err
 	}
 
+	readCloser, err := buff.GetReadSeekCloser()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Result{
-		File: buff,
+		File: readCloser,
 		Meta: map[string]interface{}{
 			"width":  width,
 			"height": height,
@@ -233,7 +240,7 @@ func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 		// here is an optimization
 		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
-			File: r,
+			File: noopCloser(r),
 			Meta: map[string]interface{}{
 				"width":  imgConfig.Width,
 				"height": imgConfig.Height,
@@ -249,13 +256,20 @@ func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
 	width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
-	buff := &bytes.Buffer{}
-	if err = png.Encode(buff, resized); err != nil {
+	buf := pool.Get()
+	defer func() {
+		_ = buf.Close()
+	}()
+	if err = png.Encode(buf, resized); err != nil {
 		return nil, err
 	}
 
+	readSeekCloser, err := buf.GetReadSeekCloser()
+	if err != nil {
+		return nil, err
+	}
 	return &Result{
-		File: buff,
+		File: readSeekCloser,
 		Meta: map[string]interface{}{
 			"width":  width,
 			"height": height,
@@ -278,7 +292,7 @@ func (m *ImageResize) resizeGIF(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 		// here is an optimization
 		// lets return the original picture in case it has not been resized or normalized
 		return &Result{
-			File: r,
+			File: noopCloser(r),
 			Meta: map[string]interface{}{
 				"width":  imgConfig.Width,
 				"height": imgConfig.Height,
@@ -301,13 +315,20 @@ func (m *ImageResize) resizeGIF(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 	}
 	gifImg.Config.Width, gifImg.Config.Height = gifImg.Image[0].Bounds().Dx(), gifImg.Image[0].Bounds().Dy()
 
-	buff := bytes.NewBuffer(make([]byte, 0))
-	if err = gif.EncodeAll(buff, gifImg); err != nil {
+	buf := pool.Get()
+	defer func() {
+		_ = buf.Close()
+	}()
+	if err = gif.EncodeAll(buf, gifImg); err != nil {
 		return nil, err
 	}
 
+	readSeekCloser, err := buf.GetReadSeekCloser()
+	if err != nil {
+		return nil, err
+	}
 	return &Result{
-		File: buff,
+		File: readSeekCloser,
 		Meta: map[string]interface{}{
 			"width":  gifImg.Config.Width,
 			"height": gifImg.Config.Height,
@@ -378,7 +399,7 @@ func imageToPaletted(img image.Image) *image.Paletted {
 	return pm
 }
 
-func patchReaderRemoveExif(r io.ReadSeeker) (io.Reader, error) {
+func patchReaderRemoveExif(r io.ReadSeeker) (io.ReadSeekCloser, error) {
 	jmp := jpegstructure.NewJpegMediaParser()
 	size, err := r.Seek(0, io.SeekEnd)
 	if err != nil {
@@ -386,7 +407,10 @@ func patchReaderRemoveExif(r io.ReadSeeker) (io.Reader, error) {
 	}
 	_, _ = r.Seek(0, io.SeekStart)
 
-	buff := bytes.NewBuffer(make([]byte, 0, size))
+	buff := pool.Get()
+	defer func() {
+		_ = buff.Close()
+	}()
 	intfc, err := jmp.Parse(r, int(size))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file to read exif: %w", err)
@@ -403,5 +427,5 @@ func patchReaderRemoveExif(r io.ReadSeeker) (io.Reader, error) {
 		return nil, err
 	}
 
-	return buff, nil
+	return buff.GetReadSeekCloser()
 }

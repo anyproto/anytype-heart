@@ -31,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
@@ -66,7 +65,6 @@ type service struct {
 	fileSync    filesync.FileSync
 	dagService  ipld.DAGService
 	fileStorage filestorage.FileStorage
-	objectStore objectstore.ObjectStore
 
 	lock              sync.Mutex
 	addOperationLocks map[string]*sync.Mutex
@@ -85,7 +83,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -210,21 +207,6 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) 
 
 }
 
-func (s *service) getFileIdAndEncryptionKeysFromInfo(fileInfo *storage.FileInfo) (domain.FileId, *domain.FileEncryptionKeys, error) {
-	if len(fileInfo.Targets) == 0 {
-		return "", nil, fmt.Errorf("file exists but has no root")
-	}
-	fileId := domain.FileId(fileInfo.Targets[0])
-	keys, err := s.fileStore.GetFileKeys(fileId)
-	if err != nil {
-		return "", nil, fmt.Errorf("can't get encryption keys for existing file: %w", err)
-	}
-	return fileId, &domain.FileEncryptionKeys{
-		FileId:         fileId,
-		EncryptionKeys: keys,
-	}, nil
-}
-
 // addFileRootNode has structure:
 /*
 - dir (outer)
@@ -337,18 +319,6 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 	return &file, nil
 }
 
-func (s *service) fileContent(ctx context.Context, spaceId string, childId domain.FileContentId) (io.ReadSeeker, *storage.FileInfo, error) {
-	var err error
-	var file *storage.FileInfo
-	var reader io.ReadSeeker
-	file, err = s.fileStore.GetFileVariant(childId)
-	if err != nil {
-		return nil, nil, err
-	}
-	reader, err = s.getContentReader(ctx, spaceId, file)
-	return reader, file, err
-}
-
 func (s *service) getContentReader(ctx context.Context, spaceID string, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
@@ -420,7 +390,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", m.ErrProcessing, err)
 	}
 
 	// count the result size after the applied mill
@@ -431,7 +401,12 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	if variant, err := s.fileStore.GetFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
-		return newExistingFileResult(variant)
+		if variant.Source == conf.checksum {
+			// we may have same variant checksum for different files
+			// e.g. empty image exif with the same resolution
+			// reuse the whole file only in case the checksum of the original file is the same
+			return newExistingFileResult(variant)
+		}
 	}
 
 	_, err = conf.Reader.Seek(0, io.SeekStart)
@@ -439,8 +414,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	// because mill result reader doesn't support seek we need to do the mill again
-	res, err = mill.Mill(conf.Reader, conf.Name)
+	_, err = res.File.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err
 	}
@@ -495,6 +469,10 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	fileInfo.MetaHash = metaNode.Cid().String()
 
 	pairNode, err := s.addFilePairNode(ctx, spaceID, fileInfo)
+	err = res.File.Close()
+	if err != nil {
+		log.Warnf("failed to close file: %s", err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("add file pair node: %w", err)
 	}

@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"go.uber.org/zap"
@@ -43,10 +42,9 @@ type SpaceManager interface {
 }
 
 type deletionController struct {
-	spaceManager  SpaceManager
-	client        coordinatorclient.CoordinatorClient
-	spaceCore     spacecore.SpaceCoreService
-	joiningClient aclclient.AclJoiningClient
+	spaceManager SpaceManager
+	client       coordinatorclient.CoordinatorClient
+	spaceCore    spacecore.SpaceCoreService
 
 	updater  *updateLoop
 	mx       sync.Mutex
@@ -56,7 +54,6 @@ type deletionController struct {
 func (d *deletionController) Init(a *app.App) (err error) {
 	d.client = app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	d.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
-	d.joiningClient = app.MustComponent[aclclient.AclJoiningClient](a)
 	d.spaceManager = app.MustComponent[SpaceManager](a)
 	d.updater = newUpdateLoop(d.loopIterate, loopInterval, loopTimeout)
 	d.toDelete = make(map[string]struct{})

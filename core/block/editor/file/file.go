@@ -220,6 +220,9 @@ func (sf *sfile) updateFile(ctx session.Context, id, groupId string, apply func(
 }
 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
+	if err = sf.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return err
+	}
 	proc := &dropFilesProcess{
 		spaceID:             sf.SpaceID(),
 		processService:      sf.processService,
@@ -561,7 +564,6 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.DragAndDrop())
 	res := upl.
 		SetName(f.name).
-		AutoType(true).
 		SetFile(f.path).
 		Upload(context.Background())
 

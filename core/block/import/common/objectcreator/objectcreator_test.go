@@ -31,7 +31,7 @@ func TestObjectCreator_Create(t *testing.T) {
 		mockSpace := mock_clientspace.NewMockSpace(t)
 		mockSpace.EXPECT().IsReadOnly().Return(true)
 		mockService.EXPECT().Get(context.Background(), spaceID).Return(mockSpace, nil)
-		service := New(blockService, nil, nil, nil, nil, mockService, objectcreator.NewCreator())
+		service := New(blockService, nil, nil, nil, mockService, objectcreator.NewCreator())
 
 		importedSpaceId := "importedSpaceID"
 		identity := "identity"

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
@@ -29,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -59,16 +57,13 @@ type ObjectCreator struct {
 	objectStore    objectstore.ObjectStore
 	relationSyncer *syncer.FileRelationSyncer
 	syncFactory    *syncer.Factory
-	fileStore      filestore.FileStore
 	objectCreator  objectcreator.Service
-	mu             sync.Mutex
 }
 
 func New(service BlockService,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer *syncer.FileRelationSyncer,
-	fileStore filestore.FileStore,
 	spaceService space.Service,
 	objectCreator objectcreator.Service,
 ) Service {
@@ -77,7 +72,6 @@ func New(service BlockService,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
-		fileStore:      fileStore,
 		spaceService:   spaceService,
 		objectCreator:  objectCreator,
 	}

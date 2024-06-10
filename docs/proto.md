@@ -585,10 +585,6 @@
     - [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request)
     - [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response)
     - [Rpc.File.Offload.Response.Error](#anytype-Rpc-File-Offload-Response-Error)
-    - [Rpc.File.Reconcile](#anytype-Rpc-File-Reconcile)
-    - [Rpc.File.Reconcile.Request](#anytype-Rpc-File-Reconcile-Request)
-    - [Rpc.File.Reconcile.Response](#anytype-Rpc-File-Reconcile-Response)
-    - [Rpc.File.Reconcile.Response.Error](#anytype-Rpc-File-Reconcile-Response-Error)
     - [Rpc.File.SpaceOffload](#anytype-Rpc-File-SpaceOffload)
     - [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request)
     - [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response)
@@ -615,6 +611,10 @@
     - [Rpc.GenericErrorResponse](#anytype-Rpc-GenericErrorResponse)
     - [Rpc.GenericErrorResponse.Error](#anytype-Rpc-GenericErrorResponse-Error)
     - [Rpc.History](#anytype-Rpc-History)
+    - [Rpc.History.DiffVersions](#anytype-Rpc-History-DiffVersions)
+    - [Rpc.History.DiffVersions.Request](#anytype-Rpc-History-DiffVersions-Request)
+    - [Rpc.History.DiffVersions.Response](#anytype-Rpc-History-DiffVersions-Response)
+    - [Rpc.History.DiffVersions.Response.Error](#anytype-Rpc-History-DiffVersions-Response-Error)
     - [Rpc.History.GetVersions](#anytype-Rpc-History-GetVersions)
     - [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request)
     - [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response)
@@ -859,6 +859,10 @@
     - [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request)
     - [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response)
     - [Rpc.Object.SearchUnsubscribe.Response.Error](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error)
+    - [Rpc.Object.SearchWithMeta](#anytype-Rpc-Object-SearchWithMeta)
+    - [Rpc.Object.SearchWithMeta.Request](#anytype-Rpc-Object-SearchWithMeta-Request)
+    - [Rpc.Object.SearchWithMeta.Response](#anytype-Rpc-Object-SearchWithMeta-Response)
+    - [Rpc.Object.SearchWithMeta.Response.Error](#anytype-Rpc-Object-SearchWithMeta-Response-Error)
     - [Rpc.Object.SetBreadcrumbs](#anytype-Rpc-Object-SetBreadcrumbs)
     - [Rpc.Object.SetBreadcrumbs.Request](#anytype-Rpc-Object-SetBreadcrumbs-Request)
     - [Rpc.Object.SetBreadcrumbs.Response](#anytype-Rpc-Object-SetBreadcrumbs-Response)
@@ -1258,13 +1262,13 @@
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
     - [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
-    - [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code)
     - [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
     - [Rpc.Gallery.DownloadIndex.Response.Error.Code](#anytype-Rpc-Gallery-DownloadIndex-Response-Error-Code)
     - [Rpc.Gallery.DownloadManifest.Response.Error.Code](#anytype-Rpc-Gallery-DownloadManifest-Response-Error-Code)
     - [Rpc.GenericErrorResponse.Error.Code](#anytype-Rpc-GenericErrorResponse-Error-Code)
+    - [Rpc.History.DiffVersions.Response.Error.Code](#anytype-Rpc-History-DiffVersions-Response-Error-Code)
     - [Rpc.History.GetVersions.Response.Error.Code](#anytype-Rpc-History-GetVersions-Response-Error-Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype-Rpc-History-SetVersion-Response-Error-Code)
     - [Rpc.History.ShowVersion.Response.Error.Code](#anytype-Rpc-History-ShowVersion-Response-Error-Code)
@@ -1329,6 +1333,7 @@
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
+    - [Rpc.Object.SearchWithMeta.Response.Error.Code](#anytype-Rpc-Object-SearchWithMeta-Response-Error-Code)
     - [Rpc.Object.SetBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-SetBreadcrumbs-Response-Error-Code)
     - [Rpc.Object.SetDetails.Response.Error.Code](#anytype-Rpc-Object-SetDetails-Response-Error-Code)
     - [Rpc.Object.SetInternalFlags.Response.Error.Code](#anytype-Rpc-Object-SetInternalFlags-Response-Error-Code)
@@ -1679,6 +1684,7 @@
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
     - [ObjectView](#anytype-model-ObjectView)
+    - [ObjectView.BlockParticipant](#anytype-model-ObjectView-BlockParticipant)
     - [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet)
     - [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize)
     - [ObjectView.RelationWithValuePerObject](#anytype-model-ObjectView-RelationWithValuePerObject)
@@ -1692,6 +1698,9 @@
     - [Relations](#anytype-model-Relations)
     - [Restrictions](#anytype-model-Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype-model-Restrictions-DataviewRestrictions)
+    - [Search](#anytype-model-Search)
+    - [Search.Meta](#anytype-model-Search-Meta)
+    - [Search.Result](#anytype-model-Search-Result)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
@@ -1829,6 +1838,7 @@
 | ObjectCreateSet | [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request) | [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response) | ObjectCreateSet just creates the new set, without adding the link to it from some other page |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
+| ObjectSearchWithMeta | [Rpc.Object.SearchWithMeta.Request](#anytype-Rpc-Object-SearchWithMeta-Request) | [Rpc.Object.SearchWithMeta.Response](#anytype-Rpc-Object-SearchWithMeta-Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
 | ObjectGroupsSubscribe | [Rpc.Object.GroupsSubscribe.Request](#anytype-Rpc-Object-GroupsSubscribe-Request) | [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response) |  |
@@ -1880,8 +1890,9 @@
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
-| FileSpaceOffload | [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request) | [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response) | Files *** |
-| FileReconcile | [Rpc.File.Reconcile.Request](#anytype-Rpc-File-Reconcile-Request) | [Rpc.File.Reconcile.Response](#anytype-Rpc-File-Reconcile-Response) |  |
+| HistoryDiffVersions | [Rpc.History.DiffVersions.Request](#anytype-Rpc-History-DiffVersions-Request) | [Rpc.History.DiffVersions.Response](#anytype-Rpc-History-DiffVersions-Response) |  |
+| FileOffload | [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request) | [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response) | Files *** |
+| FileSpaceOffload | [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request) | [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response) |  |
 | FileListOffload | [Rpc.File.ListOffload.Request](#anytype-Rpc-File-ListOffload-Request) | [Rpc.File.ListOffload.Response](#anytype-Rpc-File-ListOffload-Response) |  |
 | FileUpload | [Rpc.File.Upload.Request](#anytype-Rpc-File-Upload-Request) | [Rpc.File.Upload.Response](#anytype-Rpc-File-Upload-Response) |  |
 | FileDownload | [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request) | [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response) |  |
@@ -2005,7 +2016,7 @@
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
 | NotificationTest | [Rpc.Notification.Test.Request](#anytype-Rpc-Notification-Test-Request) | [Rpc.Notification.Test.Response](#anytype-Rpc-Notification-Test-Response) |  |
 | MembershipGetStatus | [Rpc.Membership.GetStatus.Request](#anytype-Rpc-Membership-GetStatus-Request) | [Rpc.Membership.GetStatus.Response](#anytype-Rpc-Membership-GetStatus-Response) | Membership *** Get current subscription status (tier, expiration date, etc.) WARNING: can be cached by Anytype Heart |
-| MembershipIsNameValid | [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request) | [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response) |  |
+| MembershipIsNameValid | [Rpc.Membership.IsNameValid.Request](#anytype-Rpc-Membership-IsNameValid-Request) | [Rpc.Membership.IsNameValid.Response](#anytype-Rpc-Membership-IsNameValid-Response) | Check if the requested name is valid and vacant for the requested tier |
 | MembershipRegisterPaymentRequest | [Rpc.Membership.RegisterPaymentRequest.Request](#anytype-Rpc-Membership-RegisterPaymentRequest-Request) | [Rpc.Membership.RegisterPaymentRequest.Response](#anytype-Rpc-Membership-RegisterPaymentRequest-Response) | Buy a subscription, will return a payment URL. The user should be redirected to this URL to complete the payment. |
 | MembershipGetPortalLinkUrl | [Rpc.Membership.GetPortalLinkUrl.Request](#anytype-Rpc-Membership-GetPortalLinkUrl-Request) | [Rpc.Membership.GetPortalLinkUrl.Response](#anytype-Rpc-Membership-GetPortalLinkUrl-Response) | Get a link to the user&#39;s subscription management portal. The user should be redirected to this URL to manage their subscription: a) change his billing details b) see payment info, invoices, etc c) cancel the subscription |
 | MembershipGetVerificationEmailStatus | [Rpc.Membership.GetVerificationEmailStatus.Request](#anytype-Rpc-Membership-GetVerificationEmailStatus-Request) | [Rpc.Membership.GetVerificationEmailStatus.Response](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response) | Check the current status of the verification email |
@@ -5009,6 +5020,7 @@ Makes blocks copy by given ids and paste it to shown place
 | blockId | [string](#string) |  |  |
 | filePath | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| bytes | [bytes](#bytes) |  |  |
 
 
 
@@ -6389,7 +6401,7 @@ Makes blocks copy by given ids and paste it to shown place
 <a name="anytype-Rpc-BlockDataview-View-SetActive"></a>
 
 ### Rpc.BlockDataview.View.SetActive
-set the current active view (persisted only within a session)
+set the current active view locally
 
 
 
@@ -6407,8 +6419,6 @@ set the current active view (persisted only within a session)
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block |
 | viewId | [string](#string) |  | id of active view |
-| offset | [uint32](#uint32) |  |  |
-| limit | [uint32](#uint32) |  |  |
 
 
 
@@ -10480,57 +10490,6 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype-Rpc-File-Reconcile"></a>
-
-### Rpc.File.Reconcile
-
-
-
-
-
-
-
-<a name="anytype-Rpc-File-Reconcile-Request"></a>
-
-### Rpc.File.Reconcile.Request
-
-
-
-
-
-
-
-<a name="anytype-Rpc-File-Reconcile-Response"></a>
-
-### Rpc.File.Reconcile.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.File.Reconcile.Response.Error](#anytype-Rpc-File-Reconcile-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-File-Reconcile-Response-Error"></a>
-
-### Rpc.File.Reconcile.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-File-SpaceOffload"></a>
 
 ### Rpc.File.SpaceOffload
@@ -10903,6 +10862,67 @@ Get marks list in the selected range in text block.
 
 ### Rpc.History
 
+
+
+
+
+
+
+<a name="anytype-Rpc-History-DiffVersions"></a>
+
+### Rpc.History.DiffVersions
+
+
+
+
+
+
+
+<a name="anytype-Rpc-History-DiffVersions-Request"></a>
+
+### Rpc.History.DiffVersions.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
+| currentVersion | [string](#string) |  |  |
+| previousVersion | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-History-DiffVersions-Response"></a>
+
+### Rpc.History.DiffVersions.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.History.DiffVersions.Response.Error](#anytype-Rpc-History-DiffVersions-Response-Error) |  |  |
+| historyEvents | [Event.Message](#anytype-Event-Message) | repeated |  |
+| objectView | [model.ObjectView](#anytype-model-ObjectView) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-History-DiffVersions-Response-Error"></a>
+
+### Rpc.History.DiffVersions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.History.DiffVersions.Response.Error.Code](#anytype-Rpc-History-DiffVersions-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -11586,7 +11606,7 @@ Status can change if you call GetVerificationEmail or VerifyEmailCode
 <a name="anytype-Rpc-Membership-IsNameValid"></a>
 
 ### Rpc.Membership.IsNameValid
-Check if the requested name is valid for the requested tier
+Check if the requested name is valid and vacant for the requested tier
 before requesting a payment link and paying
 
 
@@ -11646,8 +11666,7 @@ before requesting a payment link and paying
 
 ### Rpc.Membership.RegisterPaymentRequest
 Generate a unique id for payment request (for mobile clients)
-Generate a link to Stripe where user can pay for the membership (for desktop client)
-TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
+Generate a link to Stripe/Crypto where user can pay for the membership (for desktop client)
 
 
 
@@ -11666,6 +11685,7 @@ TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
 | paymentMethod | [model.Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod) |  |  |
 | nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
 | nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
+| userEmail | [string](#string) |  | for some tiers and payment methods (like crypto) we need an e-mail please get if either from: 1. Membership.GetStatus() -&gt; anytype.model.Membership.userEmail field 2. Ask user from the UI |
 
 
 
@@ -11723,7 +11743,6 @@ TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| billingId | [string](#string) |  | billingId is used to identify payment request on payment node side |
 | receipt | [string](#string) |  | receipt is a JWT-encoded string including info about subscription purchase |
 
 
@@ -14309,7 +14328,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 <a name="anytype-Rpc-Object-Search"></a>
 
 ### Rpc.Object.Search
-
+deprecated in favor of SearchWithMeta
 
 
 
@@ -14491,6 +14510,74 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta"></a>
+
+### Rpc.Object.SearchWithMeta
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta-Request"></a>
+
+### Rpc.Object.SearchWithMeta.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
+| fullText | [string](#string) |  |  |
+| offset | [int32](#int32) |  |  |
+| limit | [int32](#int32) |  |  |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
+
+DEPRECATED, GO-1926 |
+| keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
+| returnMeta | [bool](#bool) |  | add ResultMeta to each result |
+| returnMetaRelationDetails | [bool](#bool) |  | add relation option details to meta |
+| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta-Response"></a>
+
+### Rpc.Object.SearchWithMeta.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SearchWithMeta.Response.Error](#anytype-Rpc-Object-SearchWithMeta-Response-Error) |  |  |
+| results | [model.Search.Result](#anytype-model-Search-Result) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta-Response-Error"></a>
+
+### Rpc.Object.SearchWithMeta.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SearchWithMeta.Response.Error.Code](#anytype-Rpc-Object-SearchWithMeta-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19228,7 +19315,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -20080,19 +20167,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-File-Reconcile-Response-Error-Code"></a>
-
-### Rpc.File.Reconcile.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-File-SpaceOffload-Response-Error-Code"></a>
 
 ### Rpc.File.SpaceOffload.Response.Error.Code
@@ -20164,6 +20238,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-GenericErrorResponse-Error-Code"></a>
 
 ### Rpc.GenericErrorResponse.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-History-DiffVersions-Response-Error-Code"></a>
+
+### Rpc.History.DiffVersions.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -20386,6 +20473,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CACHE_ERROR | 10 |  |
 | CAN_NOT_RESERVE | 11 | for some probable future use (if needed) |
 | CAN_NOT_CONNECT | 12 |  |
+| NAME_IS_RESERVED | 13 | Same as if NameService.ResolveName returned that name is already occupied by some user |
 
 
 
@@ -20408,6 +20496,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_ANYNAME | 9 |  |
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
 | CAN_NOT_CONNECT | 11 |  |
+| EMAIL_WRONG_FORMAT | 12 | for tiers and payment methods that require that |
 
 
 
@@ -20425,6 +20514,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
 | INVALID_RECEIPT | 6 |  |
+| PURCHASE_REGISTRATION_ERROR | 7 |  |
+| SUBSCRIPTION_RENEW_ERROR | 8 |  |
 
 
 
@@ -21099,6 +21190,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-SearchWithMeta-Response-Error-Code"></a>
+
+### Rpc.Object.SearchWithMeta.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -25321,6 +25425,7 @@ Precondition: user A and user B opened the same block
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
 | areOldFilesRemoved | [bool](#bool) |  |  |
 | areDeletedObjectsReindexed | [bool](#bool) |  |  |
+| linksErase | [int32](#int32) |  |  |
 
 
 
@@ -25522,8 +25627,8 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | source | [string](#string) | repeated |  |
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
+| activeView | [string](#string) |  | do not generate changes for this field |
 | relations | [Relation](#anytype-model-Relation) | repeated | deprecated |
-| activeView | [string](#string) |  | saved within a session |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
@@ -26616,6 +26721,23 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
 | history | [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize) |  |  |
+| blockParticipants | [ObjectView.BlockParticipant](#anytype-model-ObjectView-BlockParticipant) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectView-BlockParticipant"></a>
+
+### ObjectView.BlockParticipant
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+| participantId | [string](#string) |  |  |
 
 
 
@@ -26846,6 +26968,52 @@ stored |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
 | restrictions | [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Search"></a>
+
+### Search
+
+
+
+
+
+
+
+<a name="anytype-model-Search-Meta"></a>
+
+### Search.Meta
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| highlight | [string](#string) |  | truncated text with highlights |
+| highlightRanges | [Range](#anytype-model-Range) | repeated | ranges of the highlight in the text (using utf-16 runes) |
+| blockId | [string](#string) |  | block id where the highlight has been found |
+| relationKey | [string](#string) |  | relation key of the block where the highlight has been found |
+| relationDetails | [google.protobuf.Struct](#google-protobuf-Struct) |  | contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails |
+
+
+
+
+
+
+<a name="anytype-model-Search-Result"></a>
+
+### Search.Result
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| meta | [Search.Meta](#anytype-model-Search-Meta) | repeated | meta information about the search result |
 
 
 
