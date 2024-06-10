@@ -125,7 +125,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		// when
 		assert.Equal(t, domain.Syncing, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 2, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Syncing, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, domain.Syncing, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("syncing event for files", func(t *testing.T) {
 		// given
@@ -177,7 +177,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		// when
 		assert.Equal(t, domain.Syncing, status.filesState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 2, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Syncing, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, domain.Syncing, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("don't send not needed synced event if files or objects are still syncing", func(t *testing.T) {
 		// given
@@ -230,7 +230,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		// when
 		assert.Equal(t, domain.Error, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Error, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, domain.Error, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("send offline event", func(t *testing.T) {
 		// given
@@ -263,7 +263,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		// when
 		assert.Equal(t, domain.Offline, status.objectsState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Offline, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, domain.Offline, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("send synced event", func(t *testing.T) {
 		// given
@@ -301,7 +301,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
 		assert.Equal(t, domain.Synced, status.filesState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus))
+		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 }
 

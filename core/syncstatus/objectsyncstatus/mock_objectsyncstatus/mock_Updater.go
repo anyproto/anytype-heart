@@ -113,7 +113,7 @@ func (_c *MockUpdater_Name_Call) RunAndReturn(run func() string) *MockUpdater_Na
 }
 
 // UpdateDetails provides a mock function with given fields: objectId, status, syncError, spaceId
-func (_m *MockUpdater) UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string) {
+func (_m *MockUpdater) UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string) {
 	_m.Called(objectId, status, syncError, spaceId)
 }
 

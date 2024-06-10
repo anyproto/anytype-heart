@@ -74,7 +74,7 @@ type treeStatus struct {
 
 type Updater interface {
 	app.Component
-	UpdateDetails(objectId string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 type syncStatusService struct {
@@ -97,6 +97,7 @@ type syncStatusService struct {
 	syncDetailsUpdater Updater
 	nodeStatus         nodestatus.NodeStatus
 	config             *config.Config
+	nodeConfService    nodeconf.Service
 }
 
 func NewSyncStatusService() StatusService {
@@ -120,6 +121,7 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 		log)
 	s.syncDetailsUpdater = app.MustComponent[Updater](a)
 	s.config = app.MustComponent[*config.Config](a)
+	s.nodeConfService = app.MustComponent[nodeconf.Service](a)
 	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	return
 }
@@ -210,7 +212,6 @@ func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string
 	})
 	if len(curTreeHeads.heads) == 0 {
 		curTreeHeads.syncStatus = StatusSynced
-		s.updateDetails(treeId, domain.Synced)
 	}
 	s.treeHeads[treeId] = curTreeHeads
 }
@@ -293,5 +294,9 @@ func (s *syncStatusService) updateDetails(treeId string, status domain.SyncStatu
 		syncErr = domain.Null
 		status = domain.Offline
 	}
-	s.syncDetailsUpdater.UpdateDetails(treeId, status, syncErr, s.spaceId)
+	if s.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
+		syncErr = domain.IncompatibleVersion
+		status = domain.Error
+	}
+	s.syncDetailsUpdater.UpdateDetails([]string{treeId}, status, syncErr, s.spaceId)
 }
