@@ -186,7 +186,10 @@ func getCacheExpireTime(dateEnds time.Time) time.Time {
 }
 
 func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, subscriptionEnds time.Time) (err error) {
-	expireTime := getCacheExpireTime(subscriptionEnds)
+	// expireTime := getCacheExpireTime(subscriptionEnds)
+
+	// we can fetch status from Payment Node more often
+	expireTime := time.Now().UTC().Add(10 * time.Minute)
 
 	// 1 - get existing storage
 	ss, err := s.get()

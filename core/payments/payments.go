@@ -331,7 +331,17 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		log.Error("update limits", zap.Error(err))
 	}
 
-	// 9. Enable cache again if status is active
+	// 9. Disable cache in case status is Pending
+	if status.Status == proto.SubscriptionStatus_StatusPending {
+		log.Info("disabling cache to wait for Active state")
+		err = s.cache.CacheDisableForNextMinutes(10)
+		if err != nil {
+			log.Error("can not disable cache", zap.Error(err))
+			return nil, ErrCacheProblem
+		}
+	}
+
+	// 10. Enable cache again if status is active
 	isFinished := status.Status == proto.SubscriptionStatus_StatusActive
 	if isFinished {
 		log.Info("enabling cache again")
@@ -856,7 +866,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 	}
 
 	// 3 - update tiers, not status
-	var ends time.Time = time.Unix(0, 0)
+	var ends = time.Unix(0, 0)
 	if (cachedStatus != nil) && (cachedStatus.Data != nil) {
 		ends = time.Unix(int64(cachedStatus.Data.DateEnds), 0)
 	}
