@@ -187,6 +187,7 @@ func TestSyncStatusUpdater_Run(t *testing.T) {
 		fixture := newFixture(t)
 
 		// when
+		fixture.service.EXPECT().TechSpaceId().Return("techSpaceId")
 		err := fixture.updater.Run(context.Background())
 		assert.Nil(t, err)
 		fixture.updater.UpdateDetails([]string{"id"}, domain.Synced, domain.Null, "spaceId")
@@ -201,14 +202,11 @@ func TestSyncStatusUpdater_Run(t *testing.T) {
 		fixture := newFixture(t)
 
 		// when
-		err := fixture.updater.Run(context.Background())
-		assert.Nil(t, err)
+		fixture.service.EXPECT().TechSpaceId().Return("techSpaceId").Times(2)
 		fixture.updater.UpdateDetails([]string{"id"}, domain.Synced, domain.Null, "spaceId")
 		fixture.updater.UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
 
 		// then
-		err = fixture.updater.Close(context.Background())
-		assert.Nil(t, err)
 		assert.Equal(t, &syncStatusDetails{status: domain.Syncing, syncError: domain.Null, spaceId: "spaceId"}, fixture.updater.entries["id"])
 	})
 }

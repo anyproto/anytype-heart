@@ -95,6 +95,9 @@ func (u *syncStatusUpdater) Name() (name string) {
 }
 
 func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string) {
+	if spaceId == u.spaceService.TechSpaceId() {
+		return
+	}
 	for _, id := range objectId {
 		u.mx.Lock()
 		u.entries[id] = &syncStatusDetails{

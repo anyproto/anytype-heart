@@ -4,6 +4,7 @@
 package core
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,7 +27,13 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 		log.Fatal("failed to ListenEvents: has a wrong Sender")
 		return
 	}
-
+	if mw.GetApp() != nil {
+		err := mw.GetApp().Reload(context.Background())
+		if err != nil {
+			log.Error("failed to ListenEvents: error in component reload")
+			return
+		}
+	}
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	select {

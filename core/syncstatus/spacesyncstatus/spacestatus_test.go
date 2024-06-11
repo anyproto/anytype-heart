@@ -406,3 +406,40 @@ func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
 		assert.Equal(t, status, syncStatus)
 	})
 }
+
+func TestSpaceSyncStatus_Reload(t *testing.T) {
+	t.Run("Reload success", func(t *testing.T) {
+		// given
+		eventSender := mock_event.NewMockSender(t)
+		spaceIdGetter := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
+		spaceStatus := spaceSyncStatus{
+			eventSender:   eventSender,
+			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
+			batcher:       mb.New[*domain.SpaceSync](0),
+			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
+			spaceIdGetter: spaceIdGetter,
+		}
+		// then
+		spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"id1", "id2"})
+		eventSender.EXPECT().Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id: "id1",
+					},
+				},
+			}},
+		})
+		eventSender.EXPECT().Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id: "id2",
+					},
+				},
+			}},
+		})
+		spaceStatus.Reload(context.Background())
+	})
+}

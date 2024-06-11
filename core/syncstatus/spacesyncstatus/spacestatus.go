@@ -43,7 +43,7 @@ const (
 var log = logging.Logger("anytype-mw-space-status")
 
 type Updater interface {
-	app.ComponentRunnable
+	app.ComponentReloadable
 	SendUpdate(spaceSync *domain.SpaceSync)
 }
 
@@ -51,6 +51,7 @@ type SpaceIdGetter interface {
 	app.Component
 	TechSpaceId() string
 	PersonalSpaceId() string
+	AllSpaceIds() []string
 }
 
 type State interface {
@@ -98,24 +99,32 @@ func (s *spaceSyncStatus) Name() (name string) {
 	return service
 }
 
+func (s *spaceSyncStatus) Reload(ctx context.Context) (err error) {
+	ids := s.spaceIdGetter.AllSpaceIds()
+	for _, id := range ids {
+		s.sendStartEvent(id)
+	}
+	return
+}
+
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	if s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly {
 		s.sendLocalOnlyEvent()
 		close(s.finish)
 		return
 	} else {
-		s.sendStartEvent()
+		s.sendStartEvent(s.spaceIdGetter.PersonalSpaceId())
 	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go s.processEvents()
 	return
 }
 
-func (s *spaceSyncStatus) sendStartEvent() {
+func (s *spaceSyncStatus) sendStartEvent(spaceId string) {
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(s.spaceIdGetter.PersonalSpaceId()),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
 			},
 		}},
 	})
