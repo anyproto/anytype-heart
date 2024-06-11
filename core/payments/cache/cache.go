@@ -170,9 +170,9 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 
 func getExpireTime(latestStatus *model.Membership) time.Time {
 	var (
-		tier     uint32 = 0
-		dateEnds        = time.Unix(0, 0)
-		now             = time.Now().UTC()
+		tier     = uint32(proto.SubscriptionTier_TierUnknown)
+		dateEnds = time.Unix(0, 0)
+		now      = time.Now().UTC()
 	)
 
 	if latestStatus != nil {
