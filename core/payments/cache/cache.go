@@ -10,11 +10,13 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const CName = "cache"
@@ -33,7 +35,10 @@ var (
 // it will cause cache to be dropped and recreated
 const cacheLastVersion = 6
 
-const cacheLifetimeDur = 24 * time.Hour
+const (
+	cacheLifetimeDurExplorer = 24 * time.Hour
+	cacheLifetimeDurOther    = 10 * time.Minute
+)
 
 var dbKey = "payments/subscription/v" + strconv.Itoa(cacheLastVersion)
 
@@ -81,7 +86,7 @@ type CacheService interface {
 	// if cache is disabled -> will return no error
 	// if cache is expired -> will return no error
 	// status or tiers can be nil depending on what you want to update
-	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, subscriptionEnds time.Time) (err error)
+	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error)
 
 	IsCacheEnabled() (enabled bool)
 
@@ -163,12 +168,25 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	return &ss.SubscriptionStatus, &ss.TiersData, nil
 }
 
-func getCacheExpireTime(dateEnds time.Time) time.Time {
-	// dateEnds can be 0
-	isExpired := time.Now().UTC().After(dateEnds)
+func getExpireTime(latestStatus *model.Membership) time.Time {
+	var (
+		tier     uint32 = 0
+		dateEnds        = time.Unix(0, 0)
+		now             = time.Now().UTC()
+	)
 
-	timeNow := time.Now().UTC()
-	timeNext := timeNow.Add(cacheLifetimeDur)
+	if latestStatus != nil {
+		tier = latestStatus.Tier
+		dateEnds = time.Unix(int64(latestStatus.DateEnds), 0)
+	}
+
+	if tier == uint32(proto.SubscriptionTier_TierExplorer) {
+		return now.Add(cacheLifetimeDurExplorer)
+	}
+
+	// dateEnds can be 0
+	isExpired := now.After(dateEnds)
+	timeNext := now.Add(cacheLifetimeDurOther)
 
 	// sub end < now OR no sub end provided (unlimited)
 	if isExpired {
@@ -177,7 +195,7 @@ func getCacheExpireTime(dateEnds time.Time) time.Time {
 	}
 
 	// sub end >= now
-	// return min(sub end, now + 24h)
+	// return min(sub end, now + timeout)
 	if dateEnds.Before(timeNext) {
 		log.Debug("incrementing cache lifetime because membership ends soon")
 		return dateEnds
@@ -185,29 +203,29 @@ func getCacheExpireTime(dateEnds time.Time) time.Time {
 	return timeNext
 }
 
-func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, subscriptionEnds time.Time) (err error) {
-	// expireTime := getCacheExpireTime(subscriptionEnds)
-
-	// we can fetch status from Payment Node more often
-	expireTime := time.Now().UTC().Add(10 * time.Minute)
+func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
+	var latestStatus *model.Membership
 
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {
 		// if there is no record in the cache, let's create it
 		ss = newStorageStruct()
+	} else {
+		latestStatus = ss.SubscriptionStatus.Data
 	}
 
 	// 2 - update storage
 	if status != nil {
 		ss.SubscriptionStatus = *status
+		latestStatus = status.Data
 	}
 
 	if tiers != nil {
 		ss.TiersData = *tiers
 	}
 
-	ss.ExpireTime = expireTime
+	ss.ExpireTime = getExpireTime(latestStatus)
 
 	// 3 - save to storage
 	return s.set(ss)
