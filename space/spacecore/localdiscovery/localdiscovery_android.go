@@ -2,7 +2,9 @@ package localdiscovery
 
 import (
 	"context"
+	"net"
 	gonet "net"
+	"slices"
 	"strings"
 	"sync"
 
@@ -158,7 +160,13 @@ func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) 
 }
 
 func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
+	return len(newAddrs.Interfaces) == 0 || IsLoopBack(newAddrs.Interfaces)
+}
+
+func IsLoopBack(interfaces []net.Interface) bool {
+	return len(interfaces) == 1 && slices.ContainsFunc(interfaces, func(n net.Interface) bool {
+		return n.Flags&net.FlagLoopback != 0
+	})
 }
 
 func (l *localDiscovery) executeHook(hook Hook) {

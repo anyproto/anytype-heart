@@ -5,8 +5,7 @@ package addrs
 
 import (
 	"net"
-
-	"golang.org/x/exp/slices"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/util/slice"
 )
