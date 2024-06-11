@@ -362,6 +362,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
 	sb.sendEvent(&pb.Event{
+		ContextId: sb.Id(),
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfObjectClose{
 				ObjectClose: &pb.EventObjectClose{
