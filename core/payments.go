@@ -12,6 +12,13 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+// Semantics in case of NO INTERNET:
+//
+// If called with req.NoCache -> returns error
+// If called without req.NoCache:
+//
+//	has no fresh data -> returns error
+//	has fresh data -> returns data
 func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse {
 	log.Info("payments - client asked to get a subscription status", zap.Any("req", req))
 

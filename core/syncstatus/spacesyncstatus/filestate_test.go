@@ -82,7 +82,7 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 			},
 		})
 		fileState := NewFileState(storeFixture)
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 
 		// when
 		fileState.SetObjectsNumber(syncStatus)
@@ -94,7 +94,7 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
 		fileState := NewFileState(storeFixture)
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 
 		// when
 		fileState.SetObjectsNumber(syncStatus)
@@ -105,18 +105,18 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 }
 
 func TestFileState_SetSyncStatus(t *testing.T) {
-	t.Run("SetSyncStatus, status synced", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, status synced", func(t *testing.T) {
 		// given
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
-		fileState.SetSyncStatus(syncStatus)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
+		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then
 		assert.Equal(t, domain.Synced, fileState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, received status synced, but there are syncing files in store", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, received status synced, but there are syncing files in store", func(t *testing.T) {
 		// given
 		storeFixture := objectstore.NewStoreFixture(t)
 		storeFixture.AddObjects(t, []objectstore.TestObject{
@@ -139,44 +139,69 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(storeFixture)
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, 0, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 		fileState.SetObjectsNumber(syncStatus)
-		fileState.SetSyncStatus(syncStatus)
+		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then
 		assert.Equal(t, domain.Syncing, fileState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, sync in progress", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, sync in progress", func(t *testing.T) {
 		// given
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, 0, domain.Null, domain.Files)
-		fileState.SetSyncStatus(syncStatus)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)
+		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then
 		assert.Equal(t, domain.Syncing, fileState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, sync is finished with error", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, sync is finished with error", func(t *testing.T) {
 		// given
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, 3, domain.Null, domain.Files)
-		fileState.SetSyncStatus(syncStatus)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.Null, domain.Files)
+		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then
 		assert.Equal(t, domain.Error, fileState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, offline", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, offline", func(t *testing.T) {
 		// given
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, 3, domain.Null, domain.Files)
-		fileState.SetSyncStatus(syncStatus)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Files)
+		fileState.SetSyncStatusAndErr(syncStatus)
 
 		// then
 		assert.Equal(t, domain.Offline, fileState.GetSyncStatus("spaceId"))
+	})
+	t.Run("SetSyncStatusAndErr, storage limit error", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		fileState := NewFileState(storeFixture)
+		storeFixture.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               pbtypes.String("id1"),
+				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
+				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
+			},
+			{
+				bundle.RelationKeyId:               pbtypes.String("id2"),
+				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
+				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
+			},
+		})
+
+		// when
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
+		fileState.SetSyncStatusAndErr(syncStatus)
+
+		// then
+		assert.Equal(t, domain.Error, fileState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.StorageLimitExceed, fileState.GetSyncErr("spaceId"))
 	})
 }

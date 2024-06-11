@@ -9,14 +9,17 @@ import (
 	"github.com/mr-tron/base58/base58"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/bufferpool"
 )
 
 var log = logging.Logger("tex-mill")
 
+var pool = bufferpool.NewPool()
+
 var ErrMediaTypeNotSupported = fmt.Errorf("media type not supported")
 
 type Result struct {
-	File io.Reader
+	File io.ReadSeekCloser
 	Meta map[string]interface{}
 }
 
@@ -25,7 +28,7 @@ type Mill interface {
 	Pin() bool // pin by default
 	AcceptMedia(media string) error
 	Options(add map[string]interface{}) (string, error)
-	Mill(r io.ReadSeeker, name string, sourceChecksum string) (*Result, error)
+	Mill(r io.ReadSeeker, name string) (*Result, error)
 }
 
 func accepts(list []string, media string) error {

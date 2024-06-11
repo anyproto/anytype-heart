@@ -97,7 +97,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 
 		// when
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("failed"))
-		status := domain.MakeSyncStatus(f.cm.spaceId, domain.Offline, 0, domain.Null, domain.Objects)
+		status := domain.MakeSyncStatus(f.cm.spaceId, domain.Offline, domain.Null, domain.Objects)
 		f.updater.EXPECT().SendUpdate(status)
 		f.cm.fetchResponsiblePeers()
 

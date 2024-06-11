@@ -204,7 +204,7 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 	for {
 		n.fetchResponsiblePeers()
 		select {
-		case <-time.After(time.Minute):
+		case <-time.After(time.Second * 20):
 		case <-n.rebuildResponsiblePeers:
 		case <-n.ctx.Done():
 			return
@@ -223,7 +223,7 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		for _, p := range n.responsiblePeers {
 			n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.ConnectionError)
 		}
-		n.spaceSyncService.SendUpdate(domain.MakeSyncStatus(n.spaceId, domain.Offline, 0, domain.Null, domain.Objects))
+		n.spaceSyncService.SendUpdate(domain.MakeSyncStatus(n.spaceId, domain.Offline, domain.Null, domain.Objects))
 	}
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)

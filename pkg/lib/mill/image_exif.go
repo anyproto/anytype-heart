@@ -14,18 +14,17 @@ import (
 )
 
 type ImageExifSchema struct {
-	SourceChecksum string    `json:"source_checksum"`
-	Created        time.Time `json:"created,omitempty"`
-	Name           string    `json:"name"`
-	Description    string    `json:"description"`
-	Ext            string    `json:"extension"`
-	Width          int       `json:"width"`
-	Height         int       `json:"height"`
-	Format         string    `json:"format"`
-	CameraModel    string    `json:"model,omitempty"`
-	ISO            int       `json:"iso"`
-	ExposureTime   string    `json:"exposure_time"`
-	FNumber        float64   `json:"f_number"`
+	Created      time.Time `json:"created,omitempty"`
+	Name         string    `json:"name"`
+	Description  string    `json:"description"`
+	Ext          string    `json:"extension"`
+	Width        int       `json:"width"`
+	Height       int       `json:"height"`
+	Format       string    `json:"format"`
+	CameraModel  string    `json:"model,omitempty"`
+	ISO          int       `json:"iso"`
+	ExposureTime string    `json:"exposure_time"`
+	FNumber      float64   `json:"f_number"`
 
 	Latitude  float64 `json:"latitude,omitempty"`
 	Longitude float64 `json:"longitude,omitempty"`
@@ -57,7 +56,7 @@ func (m *ImageExif) Options(add map[string]interface{}) (string, error) {
 	return hashOpts(make(map[string]string), add)
 }
 
-func (m *ImageExif) Mill(r io.ReadSeeker, name string, sourceChecksum string) (*Result, error) {
+func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	conf, formatStr, err := image.DecodeConfig(r)
 	if err != nil {
 		return nil, err
@@ -124,21 +123,20 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string, sourceChecksum string) (*
 	}
 
 	res := &ImageExifSchema{
-		SourceChecksum: sourceChecksum,
-		Created:        created,
-		Name:           name,
-		Ext:            strings.ToLower(filepath.Ext(name)),
-		Format:         string(format),
-		CameraModel:    model,
-		ISO:            iso,
-		ExposureTime:   exposureTime,
-		FNumber:        fNumber,
-		Width:          conf.Width,
-		Height:         conf.Height,
-		Latitude:       lat,
-		Longitude:      lon,
-		Artist:         artist,
-		Description:    description,
+		Created:      created,
+		Name:         name,
+		Ext:          strings.ToLower(filepath.Ext(name)),
+		Format:       string(format),
+		CameraModel:  model,
+		ISO:          iso,
+		ExposureTime: exposureTime,
+		FNumber:      fNumber,
+		Width:        conf.Width,
+		Height:       conf.Height,
+		Latitude:     lat,
+		Longitude:    lon,
+		Artist:       artist,
+		Description:  description,
 	}
 
 	b, err := jsonutil.MarshalSafely(res)
@@ -146,5 +144,5 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string, sourceChecksum string) (*
 		return nil, err
 	}
 
-	return &Result{File: bytes.NewReader(b)}, nil
+	return &Result{File: noopCloser(bytes.NewReader(b))}, nil
 }

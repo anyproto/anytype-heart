@@ -83,6 +83,7 @@ type NotificationSender interface {
 
 type service struct {
 	techSpace           *clientspace.TechSpace
+	techSpaceReady      chan struct{}
 	factory             spacefactory.SpaceFactory
 	spaceCore           spacecore.SpaceCoreService
 	accountService      accountservice.Service
@@ -137,6 +138,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.waiting = make(map[string]controllerWaiter)
+	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	if err != nil {
 		return
@@ -209,8 +211,8 @@ func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Spac
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
-	if spaceId == s.techSpace.TechSpaceId() {
-		return s.techSpace, nil
+	if spaceId == s.techSpaceId {
+		return s.getTechSpace(ctx)
 	}
 	ctrl, err := s.getCtrl(ctx, spaceId)
 	if err != nil {
@@ -355,5 +357,18 @@ func (s *service) AllSpaceIds() (ids []string) {
 }
 
 func (s *service) TechSpaceId() string {
-	return s.techSpace.TechSpaceId()
+	return s.techSpaceId
+}
+
+func (s *service) PersonalSpaceId() string {
+	return s.personalSpaceId
+}
+
+func (s *service) getTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {
+	select {
+	case <-s.techSpaceReady:
+		return s.techSpace, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

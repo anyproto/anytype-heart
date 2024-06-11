@@ -23,13 +23,13 @@ import (
 type fixture struct {
 	*treeSyncer
 
-	missingMock  *mock_objecttree.MockObjectTree
-	existingMock *mock_synctree.MockSyncTree
-	treeManager  *mock_treemanager.MockTreeManager
-	updater      *mock_treesyncer.MockUpdater
-	checker      *mock_treesyncer.MockPeerStatusChecker
-	nodeConf     *mock_nodeconf.MockService
-	syncStatus   *mock_treesyncer.MockSyncedTreeRemover
+	missingMock        *mock_objecttree.MockObjectTree
+	existingMock       *mock_synctree.MockSyncTree
+	treeManager        *mock_treemanager.MockTreeManager
+	checker            *mock_treesyncer.MockPeerStatusChecker
+	nodeConf           *mock_nodeconf.MockService
+	syncStatus         *mock_treesyncer.MockSyncedTreeRemover
+	syncDetailsUpdater *mock_treesyncer.MockSyncDetailsUpdater
 }
 
 func newFixture(t *testing.T, spaceId string) *fixture {
@@ -37,33 +37,32 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	treeManager := mock_treemanager.NewMockTreeManager(ctrl)
 	missingMock := mock_objecttree.NewMockObjectTree(ctrl)
 	existingMock := mock_synctree.NewMockSyncTree(ctrl)
-	updater := mock_treesyncer.NewMockUpdater(t)
-	updater.EXPECT().Name().Return("updater").Maybe()
 	checker := mock_treesyncer.NewMockPeerStatusChecker(t)
 	checker.EXPECT().Name().Return("checker").Maybe()
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
 	nodeConf.EXPECT().Name().Return("nodeConf").AnyTimes()
 	syncStatus := mock_treesyncer.NewMockSyncedTreeRemover(t)
+	syncDetailsUpdater := mock_treesyncer.NewMockSyncDetailsUpdater(t)
 
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, treeManager)).
-		Register(testutil.PrepareMock(context.Background(), a, updater)).
 		Register(testutil.PrepareMock(context.Background(), a, checker)).
 		Register(testutil.PrepareMock(context.Background(), a, syncStatus)).
-		Register(testutil.PrepareMock(context.Background(), a, nodeConf))
+		Register(testutil.PrepareMock(context.Background(), a, nodeConf)).
+		Register(testutil.PrepareMock(context.Background(), a, syncDetailsUpdater))
 	syncer := NewTreeSyncer(spaceId)
 	err := syncer.Init(a)
 	require.NoError(t, err)
 
 	return &fixture{
-		treeSyncer:   syncer.(*treeSyncer),
-		missingMock:  missingMock,
-		existingMock: existingMock,
-		treeManager:  treeManager,
-		updater:      updater,
-		checker:      checker,
-		nodeConf:     nodeConf,
-		syncStatus:   syncStatus,
+		treeSyncer:         syncer.(*treeSyncer),
+		missingMock:        missingMock,
+		existingMock:       existingMock,
+		treeManager:        treeManager,
+		checker:            checker,
+		nodeConf:           nodeConf,
+		syncStatus:         syncStatus,
+		syncDetailsUpdater: syncDetailsUpdater,
 	}
 }
 
@@ -198,8 +197,8 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(true)
-		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Offline, 0, domain.Null, domain.Objects))
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
+		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.Offline, domain.Null, "spaceId").Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
@@ -218,9 +217,9 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(false)
-		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Syncing, 2, domain.Null, domain.Objects))
-		fx.updater.EXPECT().SendUpdate(domain.MakeSyncStatus(spaceId, domain.Synced, 0, domain.Null, domain.Objects))
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
+		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.Synced, domain.Null, "spaceId").Return()
+		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.Syncing, domain.Null, "spaceId").Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})

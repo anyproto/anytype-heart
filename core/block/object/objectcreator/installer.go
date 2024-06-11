@@ -104,8 +104,6 @@ func (s *service) InstallBundledObjects(
 			objects = append(objects, newDetails)
 		}
 	}
-
-	s.reviseSystemObjects(space, existingObjectMap)
 	return
 }
 

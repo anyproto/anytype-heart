@@ -17,6 +17,10 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/anyproto/any-sync/util/slice"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 )
 
 const (
@@ -68,6 +72,11 @@ type treeStatus struct {
 	status SyncStatus
 }
 
+type Updater interface {
+	app.Component
+	UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+}
+
 type syncStatusService struct {
 	sync.Mutex
 	configuration  nodeconf.NodeConf
@@ -84,6 +93,11 @@ type syncStatusService struct {
 
 	updateIntervalSecs int
 	updateTimeout      time.Duration
+
+	syncDetailsUpdater Updater
+	nodeStatus         nodestatus.NodeStatus
+	config             *config.Config
+	nodeConfService    nodeconf.Service
 }
 
 func NewSyncStatusService() StatusService {
@@ -105,6 +119,10 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 		s.updateTimeout,
 		s.update,
 		log)
+	s.syncDetailsUpdater = app.MustComponent[Updater](a)
+	s.config = app.MustComponent[*config.Config](a)
+	s.nodeConfService = app.MustComponent[nodeconf.Service](a)
+	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	return
 }
 
@@ -137,6 +155,7 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 		syncStatus:   StatusNotSynced,
 	}
 	s.stateCounter++
+	s.updateDetails(treeId, domain.Syncing)
 }
 
 func (s *syncStatusService) update(ctx context.Context) (err error) {
@@ -260,6 +279,24 @@ func (s *syncStatusService) Close(ctx context.Context) error {
 	s.periodicSync.Close()
 	return nil
 }
+
 func (s *syncStatusService) isSenderResponsible(senderId string) bool {
 	return slices.Contains(s.configuration.NodeIds(s.spaceId), senderId)
+}
+
+func (s *syncStatusService) updateDetails(treeId string, status domain.SyncStatus) {
+	var syncErr domain.SyncError
+	if s.nodeStatus.GetNodeStatus(s.spaceId) != nodestatus.Online {
+		syncErr = domain.NetworkError
+		status = domain.Error
+	}
+	if s.config.IsLocalOnlyMode() {
+		syncErr = domain.Null
+		status = domain.Offline
+	}
+	if s.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
+		syncErr = domain.IncompatibleVersion
+		status = domain.Error
+	}
+	s.syncDetailsUpdater.UpdateDetails([]string{treeId}, status, syncErr, s.spaceId)
 }

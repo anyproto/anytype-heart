@@ -29,7 +29,8 @@ type updateReceiver struct {
 	spaceId       string
 }
 
-func newUpdateReceiver(nodeConfService nodeconf.Service,
+func newUpdateReceiver(
+	nodeConfService nodeconf.Service,
 	cfg *config.Config,
 	eventSender event.Sender,
 	objectStore objectstore.ObjectStore,
@@ -48,13 +49,11 @@ func newUpdateReceiver(nodeConfService nodeconf.Service,
 }
 
 func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status objectsyncstatus.SyncStatus) error {
-	objStatus := r.getObjectStatus(objId, status)
-
-	if !r.isStatusUpdated(objId, objStatus) {
+	objStatusEvent := r.getObjectSyncStatus(objId, status)
+	if !r.isStatusUpdated(objId, objStatusEvent) {
 		return nil
 	}
-	r.notify(objId, objStatus)
-
+	r.notify(objId, objStatusEvent)
 	return nil
 }
 
@@ -79,7 +78,7 @@ func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, er
 	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
-func (r *updateReceiver) getObjectStatus(objectId string, status objectsyncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) getObjectSyncStatus(objectId string, status objectsyncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
 	fileStatus, err := r.getFileStatus(objectId)
 	if err == nil {
 		// Prefer file backup status
