@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
@@ -188,7 +187,7 @@ func (s *fileSync) UploadSynchronously(ctx context.Context, spaceId string, file
 }
 
 func (s *fileSync) runOnUploadedHook(fileObjectId string, fileId domain.FullFileId) error {
-	var merr multierror.Error
+	var errs error
 	for _, hook := range s.onUploaded {
 		err := hook(fileObjectId, fileId)
 		if err != nil {
@@ -199,10 +198,10 @@ func (s *fileSync) runOnUploadedHook(fileObjectId string, fileId domain.FullFile
 					zap.String("fileId", fileId.FileId.String()),
 					zap.Error(err))
 			}
-			merr.Errors = append(merr.Errors, err)
+			errs = errors.Join(errs, err)
 		}
 	}
-	return merr.ErrorOrNil()
+	return errs
 }
 
 func (s *fileSync) runOnUploadStartedHook(fileObjectId string, fileId domain.FullFileId) error {
