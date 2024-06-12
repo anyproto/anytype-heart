@@ -88,8 +88,8 @@ func (_c *MockLinkPreview_Fetch_Call) Run(run func(ctx context.Context, url stri
 	return _c
 }
 
-func (_c *MockLinkPreview_Fetch_Call) Return(_a0 model.LinkPreview, _a1 []byte, _a2 bool, _a3 error) *MockLinkPreview_Fetch_Call {
-	_c.Call.Return(_a0, _a1, _a2, _a3)
+func (_c *MockLinkPreview_Fetch_Call) Return(linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) *MockLinkPreview_Fetch_Call {
+	_c.Call.Return(linkPreview, responseBody, isFile, err)
 	return _c
 }
 
