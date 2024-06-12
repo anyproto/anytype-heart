@@ -210,9 +210,11 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 
 func (i *indexer) addSyncDetails(space clientspace.Space) {
 	typesForSyncRelations := helper.SyncRelationsSmartblockTypes()
-	syncStatus := domain.Synced
+	syncStatus := domain.ObjectSynced
+	syncError := domain.Null
 	if i.config.IsLocalOnlyMode() {
-		syncStatus = domain.Offline
+		syncStatus = domain.ObjectError
+		syncError = domain.NetworkError
 	}
 	ids, err := i.getIdsForTypes(space.Id(), typesForSyncRelations...)
 	if err != nil {
@@ -221,7 +223,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
 			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
-				helper.InjectsSyncDetails(details, syncStatus)
+				helper.InjectsSyncDetails(details, syncStatus, syncError)
 				return details, nil
 			})
 		})

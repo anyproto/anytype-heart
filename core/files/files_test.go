@@ -146,6 +146,24 @@ func TestFileAdd(t *testing.T) {
 
 		assert.Equal(t, got.FileId.String(), infos[0].FileId)
 	})
+
+	t.Run("queue hook called", func(t *testing.T) {
+		var hookCalled bool
+		fx.fileSyncService.OnQueued(func(fileObjectId string) error {
+			hookCalled = true
+			return nil
+		})
+		err = fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		require.NoError(t, err)
+		assert.True(t, hookCalled)
+	})
+	t.Run("queue hook called with error", func(t *testing.T) {
+		fx.fileSyncService.OnQueued(func(fileObjectId string) error {
+			return fmt.Errorf("error")
+		})
+		err = fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		require.Error(t, err)
+	})
 }
 
 func TestIndexFile(t *testing.T) {

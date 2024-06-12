@@ -29,7 +29,7 @@ func Test_HeadsChange(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -43,7 +43,7 @@ func Test_HeadsChange(t *testing.T) {
 		s := newFixture(t)
 		s.config.NetworkMode = pb.RpcAccount_LocalOnly
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Offline, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectError, domain.NetworkError, "spaceId")
 
 		// when
 		s.HeadsChange("id", []string{"head1", "head2"})
@@ -56,7 +56,7 @@ func Test_HeadsChange(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.config.NetworkMode = pb.RpcAccount_DefaultConfig
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
 
 		// when
@@ -72,7 +72,7 @@ func Test_HeadsChange(t *testing.T) {
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
 		s.nodeStatus.SetNodesStatus("spaceId", "peerId", nodestatus.ConnectionError)
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Error, domain.NetworkError, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectError, domain.NetworkError, "spaceId")
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
 
 		// when
@@ -86,7 +86,7 @@ func Test_HeadsChange(t *testing.T) {
 	t.Run("HeadsChange: network incompatible", func(t *testing.T) {
 		// given
 		s := newFixture(t)
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Error, domain.IncompatibleVersion, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectError, domain.IncompatibleVersion, "spaceId")
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusIncompatible).Times(1)
 
 		// when
@@ -128,7 +128,7 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		// given
 		s := newFixture(t)
 		s.service.EXPECT().NodeIds(s.spaceId).Return([]string{"peerId2"})
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 
 		// when
@@ -146,7 +146,7 @@ func TestSyncStatusService_HeadsReceive(t *testing.T) {
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
 		s.HeadsChange("id", []string{"head1"})
 		s.HeadsReceive("peerId", "id", []string{"head1"})
 
@@ -162,7 +162,7 @@ func TestSyncStatusService_Watch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
@@ -210,7 +210,7 @@ func TestSyncStatusService_Unwatch(t *testing.T) {
 		s := newFixture(t)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
@@ -234,7 +234,7 @@ func TestSyncStatusService_update(t *testing.T) {
 		s.SetUpdateReceiver(updateReceiver)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
@@ -252,7 +252,7 @@ func TestSyncStatusService_update(t *testing.T) {
 		s.SetUpdateReceiver(updateReceiver)
 
 		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.Syncing, domain.Null, "spaceId")
+		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
 		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
 
 		s.HeadsChange("id", []string{"head1"})

@@ -7,13 +7,22 @@ const (
 	Files   SyncType = 1
 )
 
-type SyncStatus int32
+type SpaceSyncStatus int32
 
 const (
-	Synced  SyncStatus = 0
-	Syncing SyncStatus = 1
-	Error   SyncStatus = 2
-	Offline SyncStatus = 3
+	Synced  SpaceSyncStatus = 0
+	Syncing SpaceSyncStatus = 1
+	Error   SpaceSyncStatus = 2
+	Offline SpaceSyncStatus = 3
+)
+
+type ObjectSyncStatus int32
+
+const (
+	ObjectSynced  ObjectSyncStatus = 0
+	ObjectSyncing ObjectSyncStatus = 1
+	ObjectError   ObjectSyncStatus = 2
+	ObjectQueued  ObjectSyncStatus = 3
 )
 
 type SyncError int32
@@ -27,12 +36,12 @@ const (
 
 type SpaceSync struct {
 	SpaceId   string
-	Status    SyncStatus
+	Status    SpaceSyncStatus
 	SyncError SyncError
 	SyncType  SyncType
 }
 
-func MakeSyncStatus(spaceId string, status SyncStatus, syncError SyncError, syncType SyncType) *SpaceSync {
+func MakeSyncStatus(spaceId string, status SpaceSyncStatus, syncError SyncError, syncType SyncType) *SpaceSync {
 	return &SpaceSync{
 		SpaceId:   spaceId,
 		Status:    status,

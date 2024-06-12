@@ -197,3 +197,4 @@ packages:
   github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus:
     interfaces:
       SpaceIdGetter:
+      Updater:

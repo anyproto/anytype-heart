@@ -627,6 +627,39 @@ func (_c *MockFileSync_OnLimited_Call) RunAndReturn(run func(filesync.StatusCall
 	return _c
 }
 
+// OnQueued provides a mock function with given fields: _a0
+func (_m *MockFileSync) OnQueued(_a0 filesync.StatusCallback) {
+	_m.Called(_a0)
+}
+
+// MockFileSync_OnQueued_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OnQueued'
+type MockFileSync_OnQueued_Call struct {
+	*mock.Call
+}
+
+// OnQueued is a helper method to define mock.On call
+//   - _a0 filesync.StatusCallback
+func (_e *MockFileSync_Expecter) OnQueued(_a0 interface{}) *MockFileSync_OnQueued_Call {
+	return &MockFileSync_OnQueued_Call{Call: _e.mock.On("OnQueued", _a0)}
+}
+
+func (_c *MockFileSync_OnQueued_Call) Run(run func(_a0 filesync.StatusCallback)) *MockFileSync_OnQueued_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(filesync.StatusCallback))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_OnQueued_Call) Return() *MockFileSync_OnQueued_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockFileSync_OnQueued_Call) RunAndReturn(run func(filesync.StatusCallback)) *MockFileSync_OnQueued_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // OnUploadStarted provides a mock function with given fields: _a0
 func (_m *MockFileSync) OnUploadStarted(_a0 filesync.StatusCallback) {
 	_m.Called(_a0)

@@ -209,7 +209,7 @@ func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string) *pb.EventSpaceSyncS
 	}
 }
 
-func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SyncStatus {
+func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SpaceSyncStatus {
 	filesStatus := s.filesState.GetSyncStatus(spaceId)
 	objectsStatus := s.objectsState.GetSyncStatus(spaceId)
 
@@ -231,19 +231,19 @@ func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SyncStatus {
 	return domain.Synced
 }
 
-func (s *spaceSyncStatus) isSyncingStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
+func (s *spaceSyncStatus) isSyncingStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
 	return filesStatus == domain.Syncing || objectsStatus == domain.Syncing
 }
 
-func (s *spaceSyncStatus) isErrorStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
+func (s *spaceSyncStatus) isErrorStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
 	return filesStatus == domain.Error || objectsStatus == domain.Error
 }
 
-func (s *spaceSyncStatus) isSyncedStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
+func (s *spaceSyncStatus) isSyncedStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
 	return filesStatus == domain.Synced && objectsStatus == domain.Synced
 }
 
-func (s *spaceSyncStatus) isOfflineStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
+func (s *spaceSyncStatus) isOfflineStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
 	return filesStatus == domain.Offline || objectsStatus == domain.Offline
 }
 
@@ -279,7 +279,7 @@ func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 	}
 }
 
-func mapStatus(status domain.SyncStatus) pb.EventSpaceStatus {
+func mapStatus(status domain.SpaceSyncStatus) pb.EventSpaceStatus {
 	switch status {
 	case domain.Syncing:
 		return pb.EventSpace_Syncing

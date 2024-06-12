@@ -31,6 +31,10 @@ func (s *service) OnFileDelete(fileId domain.FullFileId) {
 	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId)
 }
 
+func (s *service) OnFileQueued(objectId string) error {
+	return s.indexFileSyncStatus(objectId, filesyncstatus.Queued)
+}
+
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
 	var spaceId string
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
@@ -61,7 +65,7 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 }
 
 func provideFileStatusDetails(status filesyncstatus.Status, newStatus int64) []*model.Detail {
-	syncStatus, syncError := getSyncStatus(status)
+	syncStatus, syncError := getFileObjectStatus(status)
 	details := make([]*model.Detail, 0, 4)
 	details = append(details, &model.Detail{
 		Key:   bundle.RelationKeySyncStatus.String(),
@@ -88,15 +92,37 @@ func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId st
 	s.spaceSyncStatus.SendUpdate(syncStatus)
 }
 
-func getSyncStatus(status filesyncstatus.Status) (domain.SyncStatus, domain.SyncError) {
+func getFileObjectStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {
+	var (
+		spaceStatus domain.ObjectSyncStatus
+		spaceError  domain.SyncError
+	)
+	switch status {
+	case filesyncstatus.Synced:
+		spaceStatus = domain.ObjectSynced
+	case filesyncstatus.Syncing:
+		spaceStatus = domain.ObjectSyncing
+	case filesyncstatus.Queued:
+		spaceStatus = domain.ObjectQueued
+	case filesyncstatus.Limited:
+		spaceStatus = domain.ObjectError
+		spaceError = domain.StorageLimitExceed
+	case filesyncstatus.Unknown:
+		spaceStatus = domain.ObjectError
+		spaceError = domain.NetworkError
+	}
+	return spaceStatus, spaceError
+}
+
+func getSyncStatus(status filesyncstatus.Status) (domain.SpaceSyncStatus, domain.SyncError) {
 	var (
 		spaceStatus domain.SpaceSyncStatus
-		spaceError  domain.SpaceSyncError
+		spaceError  domain.SyncError
 	)
 	switch status {
 	case filesyncstatus.Synced:
 		spaceStatus = domain.Synced
-	case filesyncstatus.Syncing:
+	case filesyncstatus.Syncing, filesyncstatus.Queued:
 		spaceStatus = domain.Syncing
 	case filesyncstatus.Limited:
 		spaceStatus = domain.Error

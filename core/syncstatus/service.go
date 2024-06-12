@@ -11,7 +11,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
@@ -31,10 +30,6 @@ type Service interface {
 	RegisterSpace(space commonspace.Space)
 
 	app.ComponentRunnable
-}
-
-type Updater interface {
-	UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 var _ Service = (*service)(nil)
@@ -78,6 +73,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
 	s.fileSyncService.OnLimited(s.onFileLimited)
 	s.fileSyncService.OnDelete(s.OnFileDelete)
+	s.fileSyncService.OnQueued(s.OnFileQueued)
 
 	return nil
 }

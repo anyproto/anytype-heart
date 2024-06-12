@@ -69,7 +69,7 @@ type PeerStatusChecker interface {
 
 type SyncDetailsUpdater interface {
 	app.Component
-	UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateDetails(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 type treeSyncer struct {
@@ -211,25 +211,25 @@ func (t *treeSyncer) sendSyncingEvent(peerId string, existing []string, missing 
 		return
 	}
 	if t.peerManager.IsPeerOffline(peerId) {
-		t.sendDetailsUpdates(existing, domain.Offline, domain.Null)
+		t.sendDetailsUpdates(existing, domain.ObjectError, domain.NetworkError)
 		return
 	}
 	if len(existing) != 0 || len(missing) != 0 {
-		t.sendDetailsUpdates(existing, domain.Syncing, domain.Null)
+		t.sendDetailsUpdates(existing, domain.ObjectSyncing, domain.Null)
 	}
 }
 
 func (t *treeSyncer) sendResultEvent(err error, nodePeer bool, peerId string, existing []string) {
 	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
 		if err != nil {
-			t.sendDetailsUpdates(existing, domain.Error, domain.NetworkError)
+			t.sendDetailsUpdates(existing, domain.ObjectError, domain.NetworkError)
 		} else {
-			t.sendDetailsUpdates(existing, domain.Synced, domain.Null)
+			t.sendDetailsUpdates(existing, domain.ObjectSynced, domain.Null)
 		}
 	}
 }
 
-func (t *treeSyncer) sendDetailsUpdates(existing []string, status domain.SyncStatus, syncError domain.SyncError) {
+func (t *treeSyncer) sendDetailsUpdates(existing []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
 	t.syncDetailsUpdater.UpdateDetails(existing, status, syncError, t.spaceId)
 }
 
