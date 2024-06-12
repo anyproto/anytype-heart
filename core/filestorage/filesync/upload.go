@@ -249,8 +249,8 @@ func (s *fileSync) runOnQueuedHook(fileObjectId string, spaceId string) error {
 				zap.String("fileObjectId", fileObjectId),
 				zap.String("spaceID", spaceId),
 				zap.Error(err))
+			return err
 		}
-		return err
 	}
 	return nil
 }
