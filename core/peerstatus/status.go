@@ -121,11 +121,7 @@ func (p *p2pStatus) checkP2PDevices() {
 func (p *p2pStatus) updateSpaceP2PStatus() {
 	p.Lock()
 	defer p.Unlock()
-	connectionCount, err := p.countOpenConnections()
-	if err != nil {
-		log.Errorf("failed to get pick peer %s", err)
-		return
-	}
+	connectionCount := p.countOpenConnections()
 	var (
 		newStatus Status
 		event     pb.EventP2PStatusStatus
@@ -145,19 +141,19 @@ func (p *p2pStatus) updateSpaceP2PStatus() {
 		p.status = newStatus
 	}
 }
-func (p *p2pStatus) countOpenConnections() (int64, error) {
+func (p *p2pStatus) countOpenConnections() int64 {
 	var connectionCount int64
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancelFunc()
-	peerIds := p.peerStore.LocalPeerIds(p.spaceId)
+	peerIds := p.peerStore.AllLocalPeers()
 	for _, peerId := range peerIds {
 		_, err := p.peersConnectionPool.Pick(ctx, peerId)
 		if err != nil {
-			return 0, err
+			continue
 		}
 		connectionCount++
 	}
-	return connectionCount, nil
+	return connectionCount
 }
 
 func (p *p2pStatus) sendNewStatus(status Status) {
