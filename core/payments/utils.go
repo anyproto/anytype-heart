@@ -5,6 +5,12 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/net/idna"
+
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+
+	"github.com/anyproto/anytype-heart/core/nameservice"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
@@ -62,4 +68,25 @@ func normalizeAnyName(name string) (string, error) {
 	}
 
 	return name, nil
+}
+
+func convertMembershipStatus(status *paymentserviceproto.GetSubscriptionResponse) pb.RpcMembershipGetStatusResponse {
+	out := pb.RpcMembershipGetStatusResponse{
+		Data: &model.Membership{},
+		Error: &pb.RpcMembershipGetStatusResponseError{
+			Code: pb.RpcMembershipGetStatusResponseError_NULL,
+		},
+	}
+
+	out.Data.Tier = status.Tier
+	out.Data.Status = model.MembershipStatus(status.Status)
+	out.Data.DateStarted = status.DateStarted
+	out.Data.DateEnds = status.DateEnds
+	out.Data.IsAutoRenew = status.IsAutoRenew
+	out.Data.PaymentMethod = PaymentMethodToModel(status.PaymentMethod)
+	out.Data.NsName, out.Data.NsNameType = nameservice.FullNameToNsName(status.RequestedAnyName)
+	out.Data.UserEmail = status.UserEmail
+	out.Data.SubscribeToNewsletter = status.SubscribeToNewsletter
+
+	return out
 }
