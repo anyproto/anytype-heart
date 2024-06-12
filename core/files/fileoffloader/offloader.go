@@ -44,6 +44,7 @@ type service struct {
 	fileStore   filestore.FileStore
 	dagService  ipld.DAGService
 	commonFile  fileservice.FileService
+	fileStorage filestorage.FileStorage
 }
 
 func New() Service {
@@ -55,6 +56,7 @@ func (s *service) Init(a *app.App) error {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.dagService = s.commonFile.DAGService()
+	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 	return nil
 }
 
@@ -108,30 +110,41 @@ func (s *service) FilesOffload(ctx context.Context, objectIds []string, includeN
 }
 
 func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
-	records, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileId.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+	gc := s.fileStorage.NewLocalStoreGarbageCollector()
+
+	if !includeNotPinned {
+		records, err := s.objectStore.Query(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyFileId.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEmpty,
+				},
+				{
+					RelationKey: bundle.RelationKeyFileBackupStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Int64(int64(filesyncstatus.Synced)),
+				},
 			},
-		},
-	})
-	if err != nil {
-		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
-	}
-	for _, record := range records {
-		size, err := s.fileOffload(ctx, record.Details, includeNotPinned)
+		})
 		if err != nil {
-			objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-			log.Error("offloadAllFiles: failed to offload file", zap.String("objectId", objectId), zap.Error(err))
-			continue
+			return 0, 0, fmt.Errorf("query not pinned files: %w", err)
 		}
-		totalSize += size
-		if size > 0 {
-			filesOffloaded++
+
+		for _, record := range records {
+			fileId := domain.FullFileId{
+				SpaceId: pbtypes.GetString(record.Details, bundle.RelationKeySpaceId.String()),
+				FileId:  domain.FileId(pbtypes.GetString(record.Details, bundle.RelationKeyFileId.String())),
+			}
+			_, cids, err := s.getAllExistingFileBlocksCids(ctx, fileId)
+			if err != nil {
+				return 0, 0, fmt.Errorf("not pinned file: collect cids: %w", err)
+			}
+			gc.MarkAsUsing(cids)
 		}
 	}
-	return filesOffloaded, totalSize, nil
+
+	err = gc.CollectGarbage(ctx)
+	return 0, 0, err
 }
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {

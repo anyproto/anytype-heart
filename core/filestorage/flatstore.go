@@ -203,7 +203,7 @@ func (d *localBytesUsageEventSender) send(usage uint64) {
 	})
 }
 
-type FlatStoreGarbageCollector interface {
+type LocalStoreGarbageCollector interface {
 	MarkAsUsing(cids []cid.Cid)
 	CollectGarbage(ctx context.Context) error
 }
@@ -237,10 +237,12 @@ func (c *flatStoreGarbageCollector) CollectGarbage(ctx context.Context) error {
 			}
 		}
 	}
+
+	c.flatStore.sendLocalBytesUsageEvent(ctx)
 	return results.Close()
 }
 
-func newFlatStoreGarbageCollector(flatStore *flatStore) FlatStoreGarbageCollector {
+func newFlatStoreGarbageCollector(flatStore *flatStore) LocalStoreGarbageCollector {
 	return &flatStoreGarbageCollector{
 		flatStore: flatStore,
 		using:     map[string]struct{}{},
