@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -18,11 +16,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
+func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	var sbType coresb.SmartBlockType
 	spc, err := s.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
-		return
+		return err
 	}
 	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
@@ -32,15 +30,14 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 		return nil
 	})
 	if err != nil {
-		return
+		return err
 	}
-
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeTemplate:
-		return s.deleteDerivedObject(id, spc)
+		err = s.deleteDerivedObject(id, spc)
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFileObject:
@@ -52,6 +49,16 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 	default:
 		err = spc.DeleteTree(context.Background(), id.ObjectID)
 	}
+	if err != nil {
+		return err
+	}
+	sendOnRemoveEvent(s.eventSender, id.ObjectID)
+	// Remove from cache
+	err = spc.Remove(context.Background(), id.ObjectID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (err error) {
@@ -80,8 +87,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 			return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
 		}
 	}
-	sendOnRemoveEvent(s.eventSender, id.ObjectID)
-	return spc.Remove(context.Background(), id.ObjectID)
+	return nil
 }
 
 func (s *Service) deleteRelationOptions(relationKey string) error {
