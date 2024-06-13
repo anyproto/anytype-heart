@@ -35,9 +35,10 @@ const CName = "objectstore"
 
 var (
 	// ObjectInfo is stored in db key pattern:
-	pagesPrefix        = "pages"
-	pagesDetailsBase   = ds.NewKey("/" + pagesPrefix + "/details")
-	pendingDetailsBase = ds.NewKey("/" + pagesPrefix + "/pending")
+	pagesPrefix         = "pages"
+	pagesDetailsBase    = ds.NewKey("/" + pagesPrefix + "/details")
+	pendingDetailsBase  = ds.NewKey("/" + pagesPrefix + "/pending")
+	pagesActiveViewBase = ds.NewKey("/" + pagesPrefix + "/activeView")
 
 	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
@@ -144,6 +145,10 @@ type ObjectStore interface {
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
+
+	SetActiveView(objectId, blockId, viewId string) error
+	SetActiveViews(objectId string, views map[string]string) error
+	GetActiveViews(objectId string) (map[string]string, error)
 
 	GetRelationLink(spaceID string, key string) (*model.RelationLink, error)
 	FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error)

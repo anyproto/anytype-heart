@@ -128,6 +128,9 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		err = res.File.Close()
+		require.NoError(t, err)
+
 		img, err := jpeg.Decode(bytes.NewReader(b))
 		require.NoError(t, err)
 		require.Equal(t, 680, img.Bounds().Max.X)
@@ -169,6 +172,8 @@ func TestImageResize_Mill(t *testing.T) {
 			t.Errorf("exif data was not removed")
 		}
 		file.Close()
+		err = res.File.Close()
+		require.NoError(t, err)
 	}
 }
 

@@ -1550,6 +1550,7 @@
     - [Event.Notification.Send](#anytype-Event-Notification-Send)
     - [Event.Notification.Update](#anytype-Event-Notification-Update)
     - [Event.Object](#anytype-Event-Object)
+    - [Event.Object.Close](#anytype-Event-Object-Close)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
     - [Event.Object.Details.Amend.KeyValue](#anytype-Event-Object-Details-Amend-KeyValue)
@@ -6401,7 +6402,7 @@ Makes blocks copy by given ids and paste it to shown place
 <a name="anytype-Rpc-BlockDataview-View-SetActive"></a>
 
 ### Rpc.BlockDataview.View.SetActive
-set the current active view (persisted only within a session)
+set the current active view locally
 
 
 
@@ -6419,8 +6420,6 @@ set the current active view (persisted only within a session)
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block |
 | viewId | [string](#string) |  | id of active view |
-| offset | [uint32](#uint32) |  |  |
-| limit | [uint32](#uint32) |  |  |
 
 
 
@@ -19317,7 +19316,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -24423,6 +24422,7 @@ Precondition: user A opened a block
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype-Event-Object-Relations-Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype-Event-Object-Remove) |  |  |
+| objectClose | [Event.Object.Close](#anytype-Event-Object-Close) |  |  |
 | objectRestrictionsSet | [Event.Object.Restrictions.Set](#anytype-Event-Object-Restrictions-Set) |  |  |
 | subscriptionAdd | [Event.Object.Subscription.Add](#anytype-Event-Object-Subscription-Add) |  |  |
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove) |  |  |
@@ -24528,6 +24528,21 @@ Precondition: user A opened a block
 
 ### Event.Object
 
+
+
+
+
+
+
+<a name="anytype-Event-Object-Close"></a>
+
+### Event.Object.Close
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 
 
 
@@ -25629,8 +25644,8 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | source | [string](#string) | repeated |  |
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
+| activeView | [string](#string) |  | do not generate changes for this field |
 | relations | [Relation](#anytype-model-Relation) | repeated | deprecated |
-| activeView | [string](#string) |  | saved within a session |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
@@ -27459,6 +27474,7 @@ stored |
 | Tree | 1 |  |
 | List | 2 |  |
 | CompactList | 3 |  |
+| View | 4 |  |
 
 
 

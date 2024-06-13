@@ -10,11 +10,13 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const CName = "cache"
@@ -31,9 +33,14 @@ var (
 
 // once you change the cache format, you need to update this variable
 // it will cause cache to be dropped and recreated
-const LAST_CACHE_VERSION = 5
+const cacheLastVersion = 6
 
-var dbKey = "payments/subscription/v" + strconv.Itoa(LAST_CACHE_VERSION)
+const (
+	cacheLifetimeDurExplorer = 24 * time.Hour
+	cacheLifetimeDurOther    = 10 * time.Minute
+)
+
+var dbKey = "payments/subscription/v" + strconv.Itoa(cacheLastVersion)
 
 type StorageStruct struct {
 	// not to migrate old storage to new format, but just to check the validity of the cache
@@ -44,7 +51,7 @@ type StorageStruct struct {
 	// this variable is just for info
 	LastUpdated time.Time
 
-	// depending on the type of the subscription the cache will have different lifetime
+	// depending on the type of the membership the cache will have different lifetime
 	// if current time is >= ExpireTime -> cache is expired
 	ExpireTime time.Time
 
@@ -58,7 +65,7 @@ type StorageStruct struct {
 
 func newStorageStruct() *StorageStruct {
 	return &StorageStruct{
-		CurrentVersion:   LAST_CACHE_VERSION,
+		CurrentVersion:   cacheLastVersion,
 		LastUpdated:      time.Now().UTC(),
 		ExpireTime:       time.Time{},
 		DisableUntilTime: time.Time{},
@@ -79,7 +86,7 @@ type CacheService interface {
 	// if cache is disabled -> will return no error
 	// if cache is expired -> will return no error
 	// status or tiers can be nil depending on what you want to update
-	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, ExpireTime time.Time) (err error)
+	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error)
 
 	IsCacheEnabled() (enabled bool)
 
@@ -134,11 +141,11 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	// 1 - check in storage
 	ss, err := s.get()
 	if err != nil {
-		log.Error("can not get subscription status from cache", zap.Error(err))
+		log.Error("can not get membership status from cache", zap.Error(err))
 		return nil, nil, ErrCacheDbError
 	}
 
-	if ss.CurrentVersion != LAST_CACHE_VERSION {
+	if ss.CurrentVersion != cacheLastVersion {
 		// currently we have only one version, but in future we can have more
 		// this error can happen if you "downgrade" the app
 		log.Error("unsupported cache version", zap.Uint16("version", ss.CurrentVersion))
@@ -161,24 +168,64 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	return &ss.SubscriptionStatus, &ss.TiersData, nil
 }
 
-func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, expireTime time.Time) (err error) {
+func getExpireTime(latestStatus *model.Membership) time.Time {
+	var (
+		tier     = uint32(proto.SubscriptionTier_TierUnknown)
+		dateEnds = time.Unix(0, 0)
+		now      = time.Now().UTC()
+	)
+
+	if latestStatus != nil {
+		tier = latestStatus.Tier
+		dateEnds = time.Unix(int64(latestStatus.DateEnds), 0)
+	}
+
+	if tier == uint32(proto.SubscriptionTier_TierExplorer) {
+		return now.Add(cacheLifetimeDurExplorer)
+	}
+
+	// dateEnds can be 0
+	isExpired := now.After(dateEnds)
+	timeNext := now.Add(cacheLifetimeDurOther)
+
+	// sub end < now OR no sub end provided (unlimited)
+	if isExpired {
+		log.Debug("incrementing cache lifetime because membership is isExpired")
+		return timeNext
+	}
+
+	// sub end >= now
+	// return min(sub end, now + timeout)
+	if dateEnds.Before(timeNext) {
+		log.Debug("incrementing cache lifetime because membership ends soon")
+		return dateEnds
+	}
+	return timeNext
+}
+
+func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
+	var latestStatus *model.Membership
+
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {
 		// if there is no record in the cache, let's create it
 		ss = newStorageStruct()
+	} else {
+		latestStatus = ss.SubscriptionStatus.Data
 	}
 
 	// 2 - update storage
 	if status != nil {
 		ss.SubscriptionStatus = *status
+		latestStatus = status.Data
 	}
 
 	if tiers != nil {
 		ss.TiersData = *tiers
 	}
 
-	ss.ExpireTime = expireTime
+	ss.ExpireTime = getExpireTime(latestStatus)
 
 	// 3 - save to storage
 	return s.set(ss)

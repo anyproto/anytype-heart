@@ -285,20 +285,24 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	if err != nil {
 		return err
 	}
-	err = i.removeCommonIndexes(space.Id(), flags)
-	if err != nil {
-		return fmt.Errorf("remove common indexes: %w", err)
+
+	if flags.removeAllIndexedObjects {
+		_, err = i.removeDetails(space.Id())
+		if err != nil {
+			return fmt.Errorf("remove details for marketplace space: %w", err)
+		}
 	}
+
 	ctx := context.Background()
 
 	if flags.bundledRelations {
-		err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledRelations, smartblock2.SmartBlockTypeBundledRelation)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledRelations, smartblock2.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return fmt.Errorf("reindex bundled relations: %w", err)
 		}
 	}
 	if flags.bundledTypes {
-		err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTypes, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTypes, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
@@ -334,6 +338,24 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 		return fmt.Errorf("reindex profile and missing object: %w", err)
 	}
 	return i.saveLatestChecksums(space.Id())
+}
+
+func (i *indexer) removeDetails(spaceId string) (ids []string, err error) {
+	err = i.removeOldObjects()
+	if err != nil {
+		err = nil
+		log.Errorf("reindex failed to removeOldObjects: %v", err)
+	}
+	ids, err = i.store.ListIdsBySpace(spaceId)
+	if err != nil {
+		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
+	}
+	for _, id := range ids {
+		if err = i.store.DeleteDetails(id); err != nil {
+			log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
+		}
+	}
+	return ids, err
 }
 
 // removeOldObjects removes all objects that are not supported anymore (e.g. old subobjects) and no longer returned by the underlying source
@@ -381,20 +403,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 	var ids []string
 	if flags.removeAllIndexedObjects {
 		flags.eraseLinks = true
-		err = i.removeOldObjects()
-		if err != nil {
-			err = nil
-			log.Errorf("reindex failed to removeOldObjects: %v", err)
-		}
-		ids, err = i.store.ListIdsBySpace(spaceId)
-		if err != nil {
-			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
-		}
-		for _, id := range ids {
-			if err = i.store.DeleteDetails(id); err != nil {
-				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
-			}
-		}
+		ids, err = i.removeDetails(spaceId)
 	}
 
 	if flags.eraseLinks {
