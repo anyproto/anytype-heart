@@ -1555,6 +1555,7 @@
     - [Event.Notification.Send](#anytype-Event-Notification-Send)
     - [Event.Notification.Update](#anytype-Event-Notification-Update)
     - [Event.Object](#anytype-Event-Object)
+    - [Event.Object.Close](#anytype-Event-Object-Close)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
     - [Event.Object.Details.Amend.KeyValue](#anytype-Event-Object-Details-Amend-KeyValue)
@@ -24490,6 +24491,7 @@ Precondition: user A opened a block
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype-Event-Object-Relations-Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype-Event-Object-Remove) |  |  |
+| objectClose | [Event.Object.Close](#anytype-Event-Object-Close) |  |  |
 | objectRestrictionsSet | [Event.Object.Restrictions.Set](#anytype-Event-Object-Restrictions-Set) |  |  |
 | subscriptionAdd | [Event.Object.Subscription.Add](#anytype-Event-Object-Subscription-Add) |  |  |
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove) |  |  |
@@ -24595,6 +24597,21 @@ Precondition: user A opened a block
 
 ### Event.Object
 
+
+
+
+
+
+
+<a name="anytype-Event-Object-Close"></a>
+
+### Event.Object.Close
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 
 
 
@@ -27526,6 +27543,7 @@ stored |
 | Tree | 1 |  |
 | List | 2 |  |
 | CompactList | 3 |  |
+| View | 4 |  |
 
 
 

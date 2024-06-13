@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -67,8 +67,8 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		}
 		return m
 	}
-	fileObjectService := getService[fileobject.Service](mw)
-	filesOffloaded, bytesRemoved, err := fileObjectService.FilesOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
+	fileOffloader := getService[fileoffloader.Service](mw)
+	filesOffloaded, bytesRemoved, err := fileOffloader.FilesOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
@@ -89,9 +89,8 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	fileObjectService := getService[fileobject.Service](mw)
-
-	bytesRemoved, err := fileObjectService.FileOffload(cctx, req.Id, req.IncludeNotPinned)
+	fileOffloader := getService[fileoffloader.Service](mw)
+	bytesRemoved, err := fileOffloader.FileOffload(cctx, req.Id, req.IncludeNotPinned)
 	if err != nil {
 		log.Errorf("failed to offload file %s: %s", req.Id, err)
 	}
@@ -113,8 +112,8 @@ func (mw *Middleware) FileSpaceOffload(cctx context.Context, req *pb.RpcFileSpac
 		return m
 	}
 
-	fileObjectService := getService[fileobject.Service](mw)
-	filesOffloaded, bytesRemoved, err := fileObjectService.FileSpaceOffload(cctx, req.SpaceId, false)
+	fileOffloader := getService[fileoffloader.Service](mw)
+	filesOffloaded, bytesRemoved, err := fileOffloader.FileSpaceOffload(cctx, req.SpaceId, false)
 	if err != nil {
 		return response(0, 0, pb.RpcFileSpaceOffloadResponseError_UNKNOWN_ERROR, err)
 	}
