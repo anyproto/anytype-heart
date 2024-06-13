@@ -2,7 +2,6 @@ package indexer
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -309,7 +308,6 @@ func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
 
 func TestRunFullTextIndexer(t *testing.T) {
 	indexerFx := NewIndexerFixture(t)
-	fmt.Println("TestRunFullTextIndexer")
 	for i := range 10 {
 		smartTest := smarttest.New("objectId" + strconv.Itoa(i))
 		smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(

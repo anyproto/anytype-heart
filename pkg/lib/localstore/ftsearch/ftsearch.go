@@ -136,10 +136,6 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs
 	if len(docs) == 0 {
 		return nil
 	}
-	defer func() {
-		b, _ := f.index.Stats().MarshalJSON()
-		fmt.Printf("index stats: %s\n", string(b))
-	}()
 	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
 	batch := f.index.NewBatch()
 	start := time.Now()
