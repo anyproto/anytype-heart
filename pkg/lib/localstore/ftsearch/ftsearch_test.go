@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
@@ -32,6 +33,39 @@ func newFixture(path string, t *testing.T) *fixture {
 		ft: ft,
 		ta: ta,
 	}
+}
+
+func TestListIndexedIds(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "")
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    domain.NewObjectPathWithBlock("o", "1").String(),
+		Title: "one",
+		Text:  "two",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    domain.NewObjectPathWithBlock("o", "2").String(),
+		Title: "one",
+		Text:  "two",
+	}))
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    domain.NewObjectPathWithBlock("a", "3").String(),
+		Title: "one",
+		Text:  "two",
+	}))
+	dc, err := ft.DocCount()
+	require.NoError(t, err)
+	require.Equal(t, 3, int(dc))
+
+	res, err := ft.ListIndexedIds("o")
+	require.NoError(t, err)
+	assert.Len(t, res, 2)
+	res, err = ft.ListIndexedIds("a")
+	require.NoError(t, err)
+	assert.Len(t, res, 1)
+	_ = ft.Close(nil)
 }
 
 func TestNewFTSearch(t *testing.T) {
@@ -173,16 +207,14 @@ func assertProperIds(t *testing.T, tmpDir string) {
 		require.NoError(t, ft.Index(SearchDoc{
 			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+100),
 			SpaceID: fmt.Sprintf("randomspaceid%d", i),
-			DocId:   fmt.Sprintf("randomid%d", i),
 		}))
 		require.NoError(t, ft.Index(SearchDoc{
 			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+1000),
 			SpaceID: fmt.Sprintf("randomspaceid%d", i),
-			DocId:   fmt.Sprintf("randomid%d", i),
 		}))
 	}
 
-	ft.Delete(fmt.Sprintf("randomid%d", 49))
+	ft.DeleteObject(fmt.Sprintf("randomid%d", 49))
 
 	count, _ := ft.DocCount()
 	require.Equal(t, 98, int(count))
@@ -191,7 +223,7 @@ func assertProperIds(t *testing.T, tmpDir string) {
 	for i := range 30 {
 		batchDelete = append(batchDelete, fmt.Sprintf("randomid%d", i))
 	}
-	ft.BatchDelete(batchDelete)
+	ft.BatchDeleteObjects(batchDelete)
 
 	count, _ = ft.DocCount()
 	require.Equal(t, 38, int(count))
@@ -390,6 +422,28 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "", "board", 2)
 	validateSearch(t, ft, "", "space", 4)
 	validateSearch(t, ft, "", "of", 5)
+
+	_ = ft.Close(nil)
+}
+
+func a(t *testing.T, tmpDir string) {
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "1",
+		Title: "This is the title",
+		Text:  "two",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "2",
+		Title: "is the title",
+		Text:  "two",
+	}))
+
+	validateSearch(t, ft, "", "this", 1)
+	validateSearch(t, ft, "", "his", 1)
+	validateSearch(t, ft, "", "is", 2)
+	validateSearch(t, ft, "", "i t", 2)
 
 	_ = ft.Close(nil)
 }
