@@ -55,6 +55,29 @@ func TestNormalize(t *testing.T) {
 					"row3": {IsHeader: true},
 				})),
 		},
+		{
+			name: "cell is a child of rows, not row",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"},
+			}, withChangedChildren(map[string][]string{
+				"rows": {"row1", "row1-col2", "row2"},
+				"row1": {"row1-col2"},
+			})),
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col2"}, {"row2-col1", "row2-col2"},
+			}),
+		},
+		{
+			name: "columns contain invalid children",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1"}, {"row2-col1", "row2-col2"},
+			}, withChangedChildren(map[string][]string{
+				"columns": {"col1", "col2", "row2-col1"},
+			})),
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1"}, {"row2-col1", "row2-col2"},
+			}),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb, err := NewTable(tc.source, "table")

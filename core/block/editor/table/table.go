@@ -20,6 +20,13 @@ import (
 
 var log = logging.Logger("anytype-simple-tables")
 
+var (
+	errNotARow        = fmt.Errorf("block is not a row")
+	errNotAColumn     = fmt.Errorf("block is not a column")
+	errRowNotFound    = fmt.Errorf("row is not found")
+	errColumnNotFound = fmt.Errorf("column is not found")
+)
+
 // nolint:revive,interfacebloat
 type TableEditor interface {
 	TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) (string, error)
@@ -385,7 +392,7 @@ func (t *Editor) RowSetHeader(s *state.State, req pb.RpcBlockTableRowSetHeaderRe
 	if row.Model().GetTableRow().IsHeader != req.IsHeader {
 		row.Model().GetTableRow().IsHeader = req.IsHeader
 
-		err = normalizeRows(s, tb)
+		err = normalizeHeaderRows(s, tb)
 		if err != nil {
 			return fmt.Errorf("normalize rows: %w", err)
 		}
@@ -799,11 +806,11 @@ func makeRow(id string) simple.Block {
 func getRow(s *state.State, id string) (simple.Block, error) {
 	b := s.Get(id)
 	if b == nil {
-		return nil, fmt.Errorf("row is not found")
+		return nil, errRowNotFound
 	}
 	_, ok := b.(table.RowBlock)
 	if !ok {
-		return nil, fmt.Errorf("block is not a row")
+		return nil, errNotARow
 	}
 	return b, nil
 }
@@ -811,10 +818,10 @@ func getRow(s *state.State, id string) (simple.Block, error) {
 func pickRow(s *state.State, id string) (simple.Block, error) {
 	b := s.Pick(id)
 	if b == nil {
-		return nil, fmt.Errorf("row is not found")
+		return nil, errRowNotFound
 	}
 	if b.Model().GetTableRow() == nil {
-		return nil, fmt.Errorf("block is not a row")
+		return nil, errNotARow
 	}
 	return b, nil
 }
@@ -822,10 +829,10 @@ func pickRow(s *state.State, id string) (simple.Block, error) {
 func pickColumn(s *state.State, id string) (simple.Block, error) {
 	b := s.Pick(id)
 	if b == nil {
-		return nil, fmt.Errorf("block is not found")
+		return nil, errColumnNotFound
 	}
 	if b.Model().GetTableColumn() == nil {
-		return nil, fmt.Errorf("block is not a column")
+		return nil, errNotAColumn
 	}
 	return b, nil
 }

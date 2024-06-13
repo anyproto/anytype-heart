@@ -1000,9 +1000,9 @@ func TestEditorAPI(t *testing.T) {
 }
 
 type testTableOptions struct {
-	blocks map[string]*model.Block
-
+	blocks    map[string]*model.Block
 	rowBlocks map[string]*model.BlockContentTableRow
+	children  map[string][]string
 }
 
 type testTableOption func(o *testTableOptions)
@@ -1016,6 +1016,12 @@ func withBlockContents(blocks map[string]*model.Block) testTableOption {
 func withRowBlockContents(blocks map[string]*model.BlockContentTableRow) testTableOption {
 	return func(o *testTableOptions) {
 		o.rowBlocks = blocks
+	}
+}
+
+func withChangedChildren(children map[string][]string) testTableOption {
+	return func(o *testTableOptions) {
+		o.children = children
 	}
 }
 
@@ -1099,6 +1105,9 @@ func mkTestTable(columns []string, rows []string, cells [][]string, opts ...test
 	}
 
 	for _, b := range blocks {
+		if children, found := o.children[b.Id]; found {
+			b.ChildrenIds = children
+		}
 		s.Add(simple.New(b))
 	}
 	return s

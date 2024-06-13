@@ -1,6 +1,7 @@
 package table
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -47,26 +48,16 @@ func (b *block) Normalize(s *state.State) error {
 		return nil
 	}
 
-	colIdx := map[string]int{}
-	for i, c := range tb.ColumnIDs() {
-		colIdx[c] = i
+	if err = normalizeColumns(tb); err != nil {
+		return fmt.Errorf("normilize columns: %w", err)
 	}
 
-	for _, rowID := range tb.RowIDs() {
-		row := s.Get(rowID)
-		// Fix data integrity by adding missing row
-		if row == nil {
-			row = makeRow(rowID)
-			if !s.Add(row) {
-				return fmt.Errorf("add missing row block %s", rowID)
-			}
-			continue
-		}
-		normalizeRow(colIdx, row)
-	}
-
-	if err := normalizeRows(s, tb); err != nil {
+	if err = normalizeRows(tb); err != nil {
 		return fmt.Errorf("normalize rows: %w", err)
+	}
+
+	if err = normalizeHeaderRows(s, tb); err != nil {
+		return fmt.Errorf("normalize header rows: %w", err)
 	}
 	return nil
 }
@@ -164,7 +155,7 @@ func (r *rowSort) Swap(i, j int) {
 	r.cells[i], r.cells[j] = r.cells[j], r.cells[i]
 }
 
-func normalizeRows(s *state.State, tb *Table) error {
+func normalizeHeaderRows(s *state.State, tb *Table) error {
 	rows := s.Get(tb.Rows().Id)
 
 	var headers []string
@@ -218,4 +209,70 @@ func normalizeRow(colIdx map[string]int, row simple.Block) {
 	if rs.touched {
 		row.Model().ChildrenIds = rs.cells
 	}
+}
+
+func normalizeColumns(tb *Table) error {
+	colIds := make([]string, 0)
+	var invalidFound bool
+	for _, col := range tb.ColumnIDs() {
+		if _, err := pickColumn(tb.s, col); err != nil {
+			invalidFound = true
+			switch {
+			case errors.Is(err, errColumnNotFound):
+				log.Warnf("normalize columns '%s': column '%s' is not found: remove it from children", tb.Columns().Id, col)
+				continue
+			case errors.Is(err, errNotAColumn):
+				log.Warnf("normalize columns '%s': block '%s' is not a column: remove it from children", tb.Columns().Id, col)
+				continue
+			}
+			return fmt.Errorf("pick colunm %s: %w", col, err)
+		}
+		colIds = append(colIds, col)
+	}
+
+	if invalidFound {
+		tb.Columns().ChildrenIds = colIds
+	}
+
+	return nil
+}
+
+func normalizeRows(tb *Table) error {
+	colIdx := map[string]int{}
+	for i, c := range tb.ColumnIDs() {
+		colIdx[c] = i
+	}
+
+	rowIds := make([]string, 0)
+	var invalidFound bool
+
+	for _, rowId := range tb.RowIDs() {
+		row, err := getRow(tb.s, rowId)
+		if err != nil {
+			invalidFound = true
+			switch {
+			case errors.Is(err, errRowNotFound):
+				// Fix data integrity by adding missing row
+				row = makeRow(rowId)
+				if !tb.s.Add(row) {
+					return fmt.Errorf("add missing row block %s", rowId)
+				}
+				log.Warnf("normalize rows '%s': row '%s' is not found: block is re-created", tb.Rows().Id, rowId)
+				rowIds = append(rowIds, rowId)
+				continue
+			case errors.Is(err, errNotARow):
+				log.Warnf("normalize rows '%s': block '%s' is not a row: remove it from children", tb.Rows().Id, rowId)
+				continue
+			}
+			return fmt.Errorf("get row %s: %w", rowId, err)
+		}
+		normalizeRow(colIdx, row)
+		rowIds = append(rowIds, rowId)
+	}
+
+	if invalidFound {
+		tb.Rows().ChildrenIds = rowIds
+	}
+
+	return nil
 }
