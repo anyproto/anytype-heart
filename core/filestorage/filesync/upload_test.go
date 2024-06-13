@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -266,4 +267,22 @@ func TestUpload(t *testing.T) {
 		// Number of uploaded files == number of tried files - number of errors
 		assert.Equal(t, len(filesInfo), numberOfFiles-len(errors))
 	})
+}
+
+func TestBlocksAvailabilityResponseMarshalUnmarshal(t *testing.T) {
+	resp := &blocksAvailabilityResponse{
+		bytesToUpload: 123,
+		cidsToUpload: map[cid.Cid]struct{}{
+			cid.MustParse("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"): {},
+		},
+	}
+
+	data, err := json.Marshal(resp)
+	require.NoError(t, err)
+
+	unmarshaledResp := &blocksAvailabilityResponse{}
+	err = json.Unmarshal(data, &unmarshaledResp)
+	require.NoError(t, err)
+
+	assert.Equal(t, resp, unmarshaledResp)
 }

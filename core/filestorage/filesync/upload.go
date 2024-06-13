@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -250,10 +251,19 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 	ctx = filestorage.ContextWithDoNotCache(ctx)
 	log.Debug("uploading file", zap.String("fileId", fileId.String()))
 
-	blocksAvailability, err := s.checkBlocksAvailability(ctx, spaceID, fileId)
+	blocksAvailability, err := s.blocksAvailabilityCache.Get(fileId.String())
 	if err != nil {
-		return fmt.Errorf("check blocks availability: %w", err)
+		// Ignore error from cache and calculate blocks availability
+		blocksAvailability, err = s.checkBlocksAvailability(ctx, spaceID, fileId)
+		if err != nil {
+			return fmt.Errorf("check blocks availability: %w", err)
+		}
+		err = s.blocksAvailabilityCache.Set(fileId.String(), blocksAvailability)
+		if err != nil {
+			log.Error("cache blocks availability", zap.String("fileId", fileId.String()), zap.Error(err))
+		}
 	}
+
 	stat, err := s.getAndUpdateSpaceStat(ctx, spaceID)
 	if err != nil {
 		return fmt.Errorf("get space stat: %w", err)
@@ -298,6 +308,10 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 		return fmt.Errorf("walk file blocks: %w", err)
 	}
 
+	err = s.blocksAvailabilityCache.Delete(fileId.String())
+	if err != nil {
+		log.Warn("delete blocks availability cache entry", zap.String("fileId", fileId.String()), zap.Error(err))
+	}
 	log.Warn("done upload", zap.String("fileId", fileId.String()), zap.Int("bytesToUpload", blocksAvailability.bytesToUpload), zap.Int("bytesUploaded", totalBytesUploaded))
 
 	return nil
@@ -336,6 +350,41 @@ func (s *fileSync) addImportEvent(spaceID string) {
 type blocksAvailabilityResponse struct {
 	bytesToUpload int
 	cidsToUpload  map[cid.Cid]struct{}
+}
+
+type blocksAvailabilityResponseJson struct {
+	BytesToUpload int
+	CidsToUpload  []string
+}
+
+var _ json.Marshaler = &blocksAvailabilityResponse{}
+
+func (r *blocksAvailabilityResponse) MarshalJSON() ([]byte, error) {
+	wrapper := blocksAvailabilityResponseJson{
+		BytesToUpload: r.bytesToUpload,
+	}
+	for c := range r.cidsToUpload {
+		wrapper.CidsToUpload = append(wrapper.CidsToUpload, c.String())
+	}
+	return json.Marshal(wrapper)
+}
+
+func (r *blocksAvailabilityResponse) UnmarshalJSON(data []byte) error {
+	var wrapper blocksAvailabilityResponseJson
+	err := json.Unmarshal(data, &wrapper)
+	if err != nil {
+		return err
+	}
+	r.bytesToUpload = wrapper.BytesToUpload
+	r.cidsToUpload = map[cid.Cid]struct{}{}
+	for _, rawCid := range wrapper.CidsToUpload {
+		cid, err := cid.Parse(rawCid)
+		if err != nil {
+			return err
+		}
+		r.cidsToUpload[cid] = struct{}{}
+	}
+	return nil
 }
 
 func (s *fileSync) checkBlocksAvailability(ctx context.Context, spaceId string, fileId domain.FileId) (*blocksAvailabilityResponse, error) {
