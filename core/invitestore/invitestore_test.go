@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -49,7 +49,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(rpcstore.NewInMemoryService(rpcStore))
 	a.Register(fileservice.New())
 	a.Register(filesync.New())
-	a.Register(files.New())
+	a.Register(fileoffloader.New())
 	err = a.Start(ctx)
 	require.NoError(t, err)
 
