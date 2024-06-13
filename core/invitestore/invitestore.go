@@ -81,7 +81,7 @@ func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Ci
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("add data to IPFS: %w", err)
 	}
-	err = s.fileSyncService.UploadSynchronously(s.techSpaceId, domain.FileId(node.Cid().String()))
+	err = s.fileSyncService.UploadSynchronously(ctx, s.techSpaceId, domain.FileId(node.Cid().String()))
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("add file to sync queue: %w", err)
 	}

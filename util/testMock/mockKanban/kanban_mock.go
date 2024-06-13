@@ -5,6 +5,7 @@
 //
 //	mockgen -package mockKanban -destination kanban_mock.go github.com/anyproto/anytype-heart/core/kanban Service
 //
+
 // Package mockKanban is a generated GoMock package.
 package mockKanban
 

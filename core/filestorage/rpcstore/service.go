@@ -1,4 +1,3 @@
-//go:generate mockgen -destination mock_rpcstore/mock_rpcstore.go github.com/anyproto/anytype-heart/core/filestorage/rpcstore Service,RpcStore
 package rpcstore
 
 import (
