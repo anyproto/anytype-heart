@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
@@ -76,10 +78,11 @@ type fileSync struct {
 	onUploadStarted StatusCallback
 	onLimited       StatusCallback
 
-	uploadingQueue      *persistentqueue.Queue[*QueueItem]
-	retryUploadingQueue *persistentqueue.Queue[*QueueItem]
-	deletionQueue       *persistentqueue.Queue[*deletionQueueItem]
-	retryDeletionQueue  *persistentqueue.Queue[*deletionQueueItem]
+	uploadingQueue          *persistentqueue.Queue[*QueueItem]
+	retryUploadingQueue     *persistentqueue.Queue[*QueueItem]
+	deletionQueue           *persistentqueue.Queue[*deletionQueueItem]
+	retryDeletionQueue      *persistentqueue.Queue[*deletionQueueItem]
+	blocksAvailabilityCache keyvaluestore.Store[*blocksAvailabilityResponse]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -99,6 +102,15 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
+
+	s.blocksAvailabilityCache = keyvaluestore.New(db, []byte(keyPrefix+"bytes_to_upload"), func(val *blocksAvailabilityResponse) ([]byte, error) {
+		return json.Marshal(val)
+	}, func(data []byte) (*blocksAvailabilityResponse, error) {
+		val := &blocksAvailabilityResponse{}
+		err := json.Unmarshal(data, val)
+		return val, err
+	})
+
 	s.uploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, s.uploadingHandler)
 	s.retryUploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, s.retryingHandler, persistentqueue.WithRetryPause(loopTimeout))
 	s.deletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, deletionKeyPrefix, makeDeletionQueueItem), log.Logger, s.deletionHandler)
