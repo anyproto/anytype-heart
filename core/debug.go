@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
+	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -206,4 +207,20 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 		return nil
 	})
 	return response(objectIDs, err)
+}
+
+func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRunProfilerRequest) *pb.RpcDebugRunProfilerResponse {
+	profilerService := getService[profiler.Service](mw)
+	path, err := profilerService.RunProfiler(cctx, int(req.DurationInSeconds))
+	if err != nil {
+		return &pb.RpcDebugRunProfilerResponse{
+			Error: &pb.RpcDebugRunProfilerResponseError{
+				Code:        pb.RpcDebugRunProfilerResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcDebugRunProfilerResponse{
+		Path: path,
+	}
 }
