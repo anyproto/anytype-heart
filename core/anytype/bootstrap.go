@@ -59,6 +59,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -244,6 +245,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
 		Register(filesync.New()).
+		Register(reconciler.New()).
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
 		Register(inviteservice.New()).
 		Register(acl.New()).

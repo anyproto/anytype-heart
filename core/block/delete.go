@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -18,11 +16,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
+func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	var sbType coresb.SmartBlockType
 	spc, err := s.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
-		return
+		return err
 	}
 	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
@@ -32,15 +30,14 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 		return nil
 	})
 	if err != nil {
-		return
+		return err
 	}
-
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeTemplate:
-		return s.deleteDerivedObject(id, spc)
+		err = s.deleteDerivedObject(id, spc)
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFileObject:
@@ -48,12 +45,20 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 		if err != nil {
 			return fmt.Errorf("delete file data: %w", err)
 		}
-		// this will call DeleteTree asynchronously in the end
-		return spc.DeleteTree(context.Background(), id.ObjectID)
+		err = spc.DeleteTree(context.Background(), id.ObjectID)
 	default:
-		// this will call DeleteTree asynchronously in the end
-		return spc.DeleteTree(context.Background(), id.ObjectID)
+		err = spc.DeleteTree(context.Background(), id.ObjectID)
 	}
+	if err != nil {
+		return err
+	}
+	sendOnRemoveEvent(s.eventSender, id.ObjectID)
+	// Remove from cache
+	err = spc.Remove(context.Background(), id.ObjectID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (err error) {
@@ -82,8 +87,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, spc clientspace.Space) (
 			return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
 		}
 	}
-	sendOnRemoveEvent(s.eventSender, id.ObjectID)
-	return spc.Remove(context.Background(), id.ObjectID)
+	return nil
 }
 
 func (s *Service) deleteRelationOptions(relationKey string) error {
@@ -140,7 +144,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 		return nil
 	})
 	if err != nil {
-		log.Error("failed to perform delete operation on object", zap.Error(err))
+		log.With("error", err, "objectId", id.ObjectID).Error("failed to perform delete operation on object")
 	}
 	if err := s.objectStore.DeleteObject(id); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)

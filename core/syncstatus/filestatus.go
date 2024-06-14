@@ -7,21 +7,22 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) OnFileUploadStarted(objectId string) error {
+func (s *service) onFileUploadStarted(objectId string, _ domain.FullFileId) error {
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Syncing)
 }
 
-func (s *service) OnFileUploaded(objectId string) error {
+func (s *service) onFileUploaded(objectId string, _ domain.FullFileId) error {
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Synced)
 }
 
-func (s *service) OnFileLimited(objectId string) error {
+func (s *service) onFileLimited(objectId string, _ domain.FullFileId) error {
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Limited)
 }
 
