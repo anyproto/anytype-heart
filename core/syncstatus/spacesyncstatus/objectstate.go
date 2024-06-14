@@ -21,7 +21,7 @@ func NewObjectState(store objectstore.ObjectStore) *ObjectState {
 	return &ObjectState{
 		objectSyncCountBySpace:  make(map[string]int, 0),
 		objectSyncStatusBySpace: make(map[string]domain.SpaceSyncStatus, 0),
-		objectSyncErrBySpace:    make(map[string]domain.SpaceSyncError, 0),
+		objectSyncErrBySpace:    make(map[string]domain.SyncError, 0),
 		store:                   store,
 	}
 }
@@ -85,6 +85,6 @@ func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
 	return o.objectSyncCountBySpace[spaceId]
 }
 
-func (o *ObjectState) GetSyncErr(spaceId string) domain.SpaceSyncError {
+func (o *ObjectState) GetSyncErr(spaceId string) domain.SyncError {
 	return o.objectSyncErrBySpace[spaceId]
 }

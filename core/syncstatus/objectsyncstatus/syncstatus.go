@@ -1,4 +1,4 @@
-package syncstatus
+package objectsyncstatus
 
 import (
 	"context"

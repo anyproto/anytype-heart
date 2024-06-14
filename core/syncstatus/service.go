@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace"
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -27,7 +26,7 @@ const CName = "status"
 type Service interface {
 	Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error)
 	Unwatch(spaceID string, id string)
-	RegisterSpace(space commonspace.Space)
+	RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher)
 
 	app.ComponentRunnable
 }
@@ -40,7 +39,7 @@ type service struct {
 	fileSyncService filesync.FileSync
 
 	objectWatchersLock sync.Mutex
-	objectWatchers     map[string]StatusWatcher
+	objectWatchers     map[string]objectsyncstatus.StatusWatcher
 
 	objectStore  objectstore.ObjectStore
 	objectGetter cache.ObjectGetter
@@ -50,8 +49,7 @@ type service struct {
 
 func New() Service {
 	return &service{
-		objectWatchers: map[string]StatusWatcher{},
-		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
+		objectWatchers: map[string]objectsyncstatus.StatusWatcher{},
 	}
 }
 
@@ -61,7 +59,6 @@ func (s *service) Init(a *app.App) (err error) {
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	cfg := app.MustComponent[*config.Config](a)
 	eventSender := app.MustComponent[event.Sender](a)
-	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
 	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
@@ -74,7 +71,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnLimited(s.onFileLimited)
 	s.fileSyncService.OnDelete(s.OnFileDelete)
 	s.fileSyncService.OnQueued(s.OnFileQueued)
-
 	return nil
 }
 
@@ -86,7 +82,7 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) RegisterSpace(space commonspace.Space) {
+func (s *service) RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher) {
 	s.objectWatchersLock.Lock()
 	defer s.objectWatchersLock.Unlock()
 

@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
@@ -48,7 +48,7 @@ type clientPeerManager struct {
 	watchingPeers             map[string]struct{}
 	rebuildResponsiblePeers   chan struct{}
 	availableResponsiblePeers chan struct{}
-	nodeStatus                syncstatus.NodeStatus
+	nodeStatus                NodeStatus
 	spaceSyncService          Updater
 
 	ctx       context.Context
@@ -62,7 +62,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
-	n.nodeStatus = app.MustComponent[syncstatus.NodeStatus](a)
+	n.nodeStatus = app.MustComponent[NodeStatus](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	return
 }
@@ -193,11 +193,11 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	p, err := n.p.pool.GetOneOf(n.ctx, n.responsibleNodeIds)
 	if err == nil {
 		peers = []peer.Peer{p}
-		n.nodeStatus.SetNodesStatus(p.Id(), syncstatus.Online)
+		n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.Online)
 	} else {
 		log.Info("can't get node peers", zap.Error(err))
 		for _, p := range n.responsiblePeers {
-			n.nodeStatus.SetNodesStatus(p.Id(), syncstatus.ConnectionError)
+			n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.ConnectionError)
 		}
 		n.spaceSyncService.SendUpdate(domain.MakeSyncStatus(n.spaceId, domain.Offline, domain.Null, domain.Objects))
 	}

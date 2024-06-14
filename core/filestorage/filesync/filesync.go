@@ -42,9 +42,9 @@ type FileSync interface {
 	OnUploadStarted(StatusCallback)
 	OnUploaded(StatusCallback)
 	OnLimited(StatusCallback)
+	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
 	OnDelete(DeleteCallback)
 	OnQueued(StatusCallback)
-	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error

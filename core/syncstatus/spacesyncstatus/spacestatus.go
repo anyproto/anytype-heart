@@ -15,31 +15,6 @@ import (
 
 const service = "core.syncstatus.spacesyncstatus"
 
-type SpaceSyncType int32
-
-const (
-	Objects SpaceSyncType = 0
-	Files   SpaceSyncType = 1
-)
-
-type SpaceSyncStatus int32
-
-const (
-	Synced  SpaceSyncStatus = 0
-	Syncing SpaceSyncStatus = 1
-	Error   SpaceSyncStatus = 2
-	Offline SpaceSyncStatus = 3
-)
-
-type SpaceSyncError int32
-
-const (
-	Null                SpaceSyncError = 0
-	StorageLimitExceed  SpaceSyncError = 1
-	IncompatibleVersion SpaceSyncError = 2
-	NetworkError        SpaceSyncError = 3
-)
-
 var log = logging.Logger("anytype-mw-space-status")
 
 type Updater interface {
@@ -59,7 +34,7 @@ type State interface {
 	SetSyncStatusAndErr(status *domain.SpaceSync)
 	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
-	GetSyncErr(spaceId string) domain.SpaceSyncError
+	GetSyncErr(spaceId string) domain.SyncError
 }
 
 type NetworkConfig interface {
@@ -302,23 +277,5 @@ func mapError(err domain.SyncError) pb.EventSpaceSyncError {
 		return pb.EventSpace_StorageLimitExceed
 	default:
 		return pb.EventSpace_Null
-	}
-}
-
-type SpaceSync struct {
-	SpaceId       string
-	Status        SpaceSyncStatus
-	ObjectsNumber int
-	SyncError     SpaceSyncError
-	SyncType      SpaceSyncType
-}
-
-func MakeSyncStatus(spaceId string, status SpaceSyncStatus, objectsNumber int, syncError SpaceSyncError, syncType SpaceSyncType) *SpaceSync {
-	return &SpaceSync{
-		SpaceId:       spaceId,
-		Status:        status,
-		ObjectsNumber: objectsNumber,
-		SyncError:     syncError,
-		SyncType:      syncType,
 	}
 }

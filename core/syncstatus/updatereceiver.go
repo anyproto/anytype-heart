@@ -48,7 +48,7 @@ func newUpdateReceiver(
 	}
 }
 
-func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status SyncStatus) error {
+func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status objectsyncstatus.SyncStatus) error {
 	objStatusEvent := r.getObjectSyncStatus(objId, status)
 	if !r.isStatusUpdated(objId, objStatusEvent) {
 		return nil
@@ -78,7 +78,7 @@ func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, er
 	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
-func (r *updateReceiver) getObjectSyncStatus(objectId string, status SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) getObjectSyncStatus(objectId string, status objectsyncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
 	fileStatus, err := r.getFileStatus(objectId)
 	if err == nil {
 		// Prefer file backup status
@@ -96,9 +96,9 @@ func (r *updateReceiver) getObjectSyncStatus(objectId string, status SyncStatus)
 	}
 
 	switch status {
-	case StatusUnknown:
+	case objectsyncstatus.StatusUnknown:
 		return pb.EventStatusThread_Unknown
-	case StatusSynced:
+	case objectsyncstatus.StatusSynced:
 		return pb.EventStatusThread_Synced
 	}
 	return pb.EventStatusThread_Syncing
@@ -122,7 +122,7 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 	r.nodeConnected = online
 }
 
-func (r *updateReceiver) UpdateNodeStatus(status ConnectionStatus) {
+func (r *updateReceiver) UpdateNodeStatus() {
 	r.Lock()
 	defer r.Unlock()
 	r.nodeConnected = r.nodeStatus.GetNodeStatus(r.spaceId) == nodestatus.Online
