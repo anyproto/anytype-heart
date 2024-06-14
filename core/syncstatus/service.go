@@ -16,10 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
-
-var log = logging.Logger("anytype-mw-status")
 
 const CName = "status"
 
