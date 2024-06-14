@@ -31,7 +31,7 @@ func (s *service) OnFileDelete(fileId domain.FullFileId) {
 	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId)
 }
 
-func (s *service) OnFileQueued(objectId string) error {
+func (s *service) OnFileQueued(objectId string, _ domain.FullFileId) error {
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Queued)
 }
 
