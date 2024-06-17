@@ -85,7 +85,7 @@ require (
 	github.com/valyala/fastjson v1.6.4
 	github.com/vektra/mockery/v2 v2.42.2
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/yuin/goldmark v1.7.1
+	github.com/yuin/goldmark v1.7.2
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.4.0
 	go.uber.org/multierr v1.11.0
