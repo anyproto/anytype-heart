@@ -1,6 +1,7 @@
 package keyvaluestore
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v4"
@@ -40,6 +41,19 @@ func New[T any](
 	}
 }
 
+// NewJson creates a new Store that marshals and unmarshals values as JSON
+func NewJson[T any](
+	db *badger.DB,
+	prefix []byte,
+) Store[T] {
+	return &store[T]{
+		prefix:       prefix,
+		db:           db,
+		marshaller:   JsonMarshal[T],
+		unmarshaller: JsonUnmarshal[T],
+	}
+}
+
 func (s *store[T]) Get(key string) (T, error) {
 	val, err := badgerhelper.GetValue(s.db, s.makeKey(key), s.unmarshaller)
 	if badgerhelper.IsNotFound(err) {
@@ -76,4 +90,14 @@ func (s *store[T]) Delete(key string) error {
 
 func (s *store[T]) makeKey(key string) []byte {
 	return append(s.prefix, []byte(key)...)
+}
+
+func JsonMarshal[T any](val T) ([]byte, error) {
+	return json.Marshal(val)
+}
+
+func JsonUnmarshal[T any](data []byte) (T, error) {
+	var val T
+	err := json.Unmarshal(data, &val)
+	return val, err
 }

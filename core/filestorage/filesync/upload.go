@@ -72,6 +72,11 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 	}
 	var limitReachedErr *errLimitReached
 	if errors.As(err, &limitReachedErr) {
+		setErr := s.isLimitReachedErrorLogged.Set(it.ObjectId, true)
+		if setErr != nil {
+			log.Error("set limit reached error logged", zap.String("objectId", it.ObjectId), zap.Error(setErr))
+		}
+
 		s.runOnLimitedHook(it.ObjectId, it.FullFileId())
 
 		if it.AddedByUser && !it.Imported {
@@ -140,11 +145,22 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 	}
 	err = s.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
-		log.Error("retry uploading file error",
-			zap.String("fileId", fileId.String()), zap.Error(err),
-			zap.String("objectId", it.ObjectId),
-		)
-		s.handleLimitReachedError(err, it)
+		limitErr := s.handleLimitReachedError(err, it)
+		var limitErrorIsLogged bool
+		if limitErr != nil {
+			var hasErr error
+			limitErrorIsLogged, hasErr = s.isLimitReachedErrorLogged.Has(it.ObjectId)
+			if hasErr != nil {
+				log.Error("check if limit reached error is logged", zap.String("objectId", it.ObjectId), zap.Error(hasErr))
+			}
+		}
+		if limitErr == nil || !limitErrorIsLogged {
+			log.Error("retry uploading file error",
+				zap.String("fileId", fileId.String()), zap.Error(err),
+				zap.String("objectId", it.ObjectId),
+			)
+		}
+
 		return persistentqueue.ActionRetry, nil
 	}
 
@@ -311,6 +327,10 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 	err = s.blocksAvailabilityCache.Delete(fileId.String())
 	if err != nil {
 		log.Warn("delete blocks availability cache entry", zap.String("fileId", fileId.String()), zap.Error(err))
+	}
+	err = s.isLimitReachedErrorLogged.Delete(fileId.String())
+	if err != nil {
+		log.Warn("delete limit reached error logged", zap.String("fileId", fileId.String()), zap.Error(err))
 	}
 	log.Warn("done upload", zap.String("fileId", fileId.String()), zap.Int("bytesToUpload", blocksAvailability.bytesToUpload), zap.Int("bytesUploaded", totalBytesUploaded))
 
