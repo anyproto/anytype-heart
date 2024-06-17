@@ -85,28 +85,8 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func TestFileAdd(t *testing.T) {
-	fx := newFixture(t)
+	fx, got, uploaded := getFixtureAndFileInfo(t)
 	ctx := context.Background()
-
-	uploaded := make(chan struct{})
-	fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
-		close(uploaded)
-		return nil
-	})
-
-	lastModifiedDate := time.Now()
-	buf := strings.NewReader(testFileContent)
-	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
-
-	opts := []AddOption{
-		WithName(testFileName),
-		WithLastModifiedDate(lastModifiedDate.Unix()),
-		WithReader(buf),
-	}
-	got, err := fx.FileAdd(ctx, spaceId, opts...)
-	require.NoError(t, err)
-	assert.NotEmpty(t, got.FileId)
-	got.Commit()
 
 	t.Run("expect decrypting content", func(t *testing.T) {
 		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
@@ -136,7 +116,7 @@ func TestFileAdd(t *testing.T) {
 	})
 
 	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
-		err = fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
 		require.NoError(t, err)
 		<-uploaded
 		infos, err := fx.rpcStore.FilesInfo(ctx, spaceId, got.FileId)
@@ -146,24 +126,54 @@ func TestFileAdd(t *testing.T) {
 
 		assert.Equal(t, got.FileId.String(), infos[0].FileId)
 	})
+}
 
+func TestOnQueued(t *testing.T) {
 	t.Run("queue hook called", func(t *testing.T) {
+		fx, got, _ := getFixtureAndFileInfo(t)
 		var hookCalled bool
 		fx.fileSyncService.OnQueued(func(fileObjectId string, fileId domain.FullFileId) error {
 			hookCalled = true
 			return nil
 		})
-		err = fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
 		require.NoError(t, err)
 		assert.True(t, hookCalled)
 	})
 	t.Run("queue hook called with error", func(t *testing.T) {
+		fx, got, _ := getFixtureAndFileInfo(t)
 		fx.fileSyncService.OnQueued(func(fileObjectId string, fileId domain.FullFileId) error {
 			return fmt.Errorf("error")
 		})
-		err = fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
 		require.Error(t, err)
 	})
+}
+
+func getFixtureAndFileInfo(t *testing.T) (*fixture, *AddResult, chan struct{}) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	uploaded := make(chan struct{})
+	fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
+		close(uploaded)
+		return nil
+	})
+
+	lastModifiedDate := time.Now()
+	buf := strings.NewReader(testFileContent)
+	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+
+	opts := []AddOption{
+		WithName(testFileName),
+		WithLastModifiedDate(lastModifiedDate.Unix()),
+		WithReader(buf),
+	}
+	got, err := fx.FileAdd(ctx, spaceId, opts...)
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.FileId)
+	got.Commit()
+	return fx, got, uploaded
 }
 
 func TestIndexFile(t *testing.T) {
