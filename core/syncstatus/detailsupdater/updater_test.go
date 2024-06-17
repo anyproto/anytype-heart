@@ -208,7 +208,12 @@ func TestSyncStatusUpdater_Run(t *testing.T) {
 
 		// when
 		fixture.service.EXPECT().TechSpaceId().Return("techSpaceId")
+		space := mock_clientspace.NewMockSpace(t)
+		fixture.service.EXPECT().Get(mock.Anything, mock.Anything).Return(space, nil).Maybe()
+		space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).Return(nil).Maybe()
+		space.EXPECT().Do(mock.Anything, mock.Anything).Return(nil).Maybe()
 		err := fixture.updater.Run(context.Background())
+		fixture.statusUpdater.EXPECT().SendUpdate(mock.Anything).Return().Maybe()
 		assert.Nil(t, err)
 		fixture.updater.UpdateDetails([]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId")
 
