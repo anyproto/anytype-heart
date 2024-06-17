@@ -116,7 +116,7 @@ func TestFileAdd(t *testing.T) {
 	})
 
 	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
-		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false, false)
 		require.NoError(t, err)
 		<-uploaded
 		infos, err := fx.rpcStore.FilesInfo(ctx, spaceId, got.FileId)
@@ -136,7 +136,7 @@ func TestOnQueued(t *testing.T) {
 			hookCalled = true
 			return nil
 		})
-		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false, true)
 		require.NoError(t, err)
 		assert.True(t, hookCalled)
 	})
@@ -145,7 +145,7 @@ func TestOnQueued(t *testing.T) {
 		fx.fileSyncService.OnQueued(func(fileObjectId string, fileId domain.FullFileId) error {
 			return fmt.Errorf("error")
 		})
-		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false, true)
 		require.Error(t, err)
 	})
 }

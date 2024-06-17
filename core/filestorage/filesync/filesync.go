@@ -37,7 +37,7 @@ type StatusCallback func(fileObjectId string, fileId domain.FullFileId) error
 type DeleteCallback func(fileObjectId domain.FullFileId)
 
 type FileSync interface {
-	AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error)
+	AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported, runHook bool) (err error)
 	UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error
 	OnUploadStarted(StatusCallback)
 	OnUploaded(StatusCallback)
