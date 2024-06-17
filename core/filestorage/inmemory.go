@@ -9,12 +9,16 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type inMemBlockStore struct {
 	data map[string]blocks.Block
 	mu   sync.Mutex
 }
+
+var _ FileStorage = (*inMemBlockStore)(nil)
 
 // NewInMemory creates new in-memory store for testing purposes
 func NewInMemory() FileStorage {
@@ -101,6 +105,10 @@ func (i *inMemBlockStore) LocalDiskUsage(ctx context.Context) (uint64, error) {
 		size += uint64(len(b.RawData()))
 	}
 	return size, nil
+}
+
+func (i *inMemBlockStore) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	return nil
 }
 
 func (i *inMemBlockStore) NewLocalStoreGarbageCollector() LocalStoreGarbageCollector {

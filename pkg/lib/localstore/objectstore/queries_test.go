@@ -359,6 +359,16 @@ func TestQuery(t *testing.T) {
 						}},
 						RelationKey: "description",
 					},
+				}, {
+					Details: makeDetails(obj2),
+					Meta: model.SearchMeta{
+						Highlight: "this is the second object description",
+						HighlightRanges: []*model.Range{{
+							From: 19,
+							To:   25,
+						}},
+						RelationKey: "description",
+					},
 				}}, recs)
 		})
 

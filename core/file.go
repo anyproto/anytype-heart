@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -192,4 +193,17 @@ func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsag
 	}
 
 	return resp
+}
+
+func (mw *Middleware) FileReconcile(ctx context.Context, req *pb.RpcFileReconcileRequest) *pb.RpcFileReconcileResponse {
+	err := getService[reconciler.Reconciler](mw).Start(ctx)
+	if err != nil {
+		return &pb.RpcFileReconcileResponse{
+			Error: &pb.RpcFileReconcileResponseError{
+				Code:        mapErrorCode[pb.RpcFileReconcileResponseErrorCode](err),
+				Description: err.Error(),
+			},
+		}
+	}
+	return &pb.RpcFileReconcileResponse{}
 }

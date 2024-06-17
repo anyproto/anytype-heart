@@ -195,6 +195,18 @@ func (t *InMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId do
 	return nil
 }
 
+func (t *InMemoryStore) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	for spaceId, spaceFiles := range t.spaceFiles {
+		for fileId := range spaceFiles {
+			iterFunc(domain.FullFileId{SpaceId: spaceId, FileId: fileId})
+		}
+	}
+	return nil
+}
+
 func (t *InMemoryStore) DeleteFiles(ctx context.Context, spaceId string, fileIds ...domain.FileId) (err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()

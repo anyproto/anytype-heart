@@ -89,7 +89,7 @@ func TestFileAdd(t *testing.T) {
 	ctx := context.Background()
 
 	uploaded := make(chan struct{})
-	fx.fileSyncService.OnUploaded(func(objectId string) error {
+	fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
 		close(uploaded)
 		return nil
 	})
@@ -199,7 +199,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 		ctx := context.Background()
 
 		uploaded := make(chan struct{})
-		fx.fileSyncService.OnUploaded(func(objectId string) error {
+		fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
 			close(uploaded)
 			return nil
 		})
@@ -237,7 +237,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 				ctx := context.Background()
 
 				uploaded := make(chan struct{})
-				fx.fileSyncService.OnUploaded(func(objectId string) error {
+				fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
 					close(uploaded)
 					return nil
 				})
