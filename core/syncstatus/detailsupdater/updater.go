@@ -168,7 +168,7 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if !changed {
 		return nil
 	}
-	spc, err := u.spaceService.Get(context.Background(), syncStatusDetails.spaceId)
+	spc, err := u.spaceService.Get(u.ctx, syncStatusDetails.spaceId)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if !errors.Is(err, ocache.ErrExists) {
 		return err
 	}
-	return spc.Do(objectId, func(sb smartblock.SmartBlock) error {
+	return spc.DoCtx(u.ctx, objectId, func(sb smartblock.SmartBlock) error {
 		return u.setSyncDetails(sb, status, syncError)
 	})
 }

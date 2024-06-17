@@ -47,7 +47,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId: pbtypes.String("id"),
@@ -66,7 +66,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:         pbtypes.String("id"),
@@ -87,9 +87,9 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(ocache.ErrExists)
-		space.EXPECT().Do("id", mock.Anything).Return(nil)
+		space.EXPECT().DoCtx(fixture.updater.ctx, "id", mock.Anything).Return(nil)
 
 		// when
 		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
@@ -103,7 +103,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:               pbtypes.String("id"),
@@ -123,7 +123,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:               pbtypes.String("id"),
@@ -143,7 +143,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:               pbtypes.String("id"),
@@ -163,7 +163,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:               pbtypes.String("id"),
@@ -183,7 +183,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:               pbtypes.String("id"),
@@ -211,7 +211,7 @@ func TestSyncStatusUpdater_Run(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		fixture.service.EXPECT().Get(mock.Anything, mock.Anything).Return(space, nil).Maybe()
 		space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).Return(nil).Maybe()
-		space.EXPECT().Do(mock.Anything, mock.Anything).Return(nil).Maybe()
+		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		err := fixture.updater.Run(context.Background())
 		fixture.statusUpdater.EXPECT().SendUpdate(mock.Anything).Return().Maybe()
 		assert.Nil(t, err)
@@ -281,7 +281,7 @@ func TestSyncStatusUpdater_updateDetails(t *testing.T) {
 		// given
 		fixture := newFixture(t)
 		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(context.Background(), "spaceId").Return(space, nil)
+		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
 		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:      pbtypes.String("id"),
