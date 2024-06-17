@@ -47,7 +47,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if txErr != nil {
 		return txErr
 	}
-	s.cache.Set(key, newDetails, int64(newDetails.Size()))
+	s.cache.Add(string(key), newDetails)
 	return nil
 }
 
@@ -152,7 +152,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 	}); err != nil {
 		return err
 	}
-	s.cache.Set(key, payload, int64(payload.Size()))
+	s.cache.Add(string(key), payload)
 	return nil
 }
 
