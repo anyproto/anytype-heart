@@ -146,7 +146,7 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 func TestImageResize_Mill(t *testing.T) {
 	m := &ImageResize{
 		Opts: ImageResizeOpts{
-			Width:   "200",
+			Width:   "100",
 			Quality: "80",
 		},
 	}
@@ -162,7 +162,7 @@ func TestImageResize_Mill(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if res.Meta["width"] != 200 {
+		if res.Meta["width"] != 100 {
 			t.Errorf("wrong width")
 		}
 
