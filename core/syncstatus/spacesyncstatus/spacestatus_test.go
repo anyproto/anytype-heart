@@ -7,10 +7,12 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus/mock_spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
@@ -407,8 +409,8 @@ func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
 	})
 }
 
-func TestSpaceSyncStatus_Reload(t *testing.T) {
-	t.Run("Reload success", func(t *testing.T) {
+func TestSpaceSyncStatus_Notify(t *testing.T) {
+	t.Run("Notify success", func(t *testing.T) {
 		// given
 		eventSender := mock_event.NewMockSender(t)
 		spaceIdGetter := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
@@ -422,7 +424,7 @@ func TestSpaceSyncStatus_Reload(t *testing.T) {
 		}
 		// then
 		spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"id1", "id2"})
-		eventSender.EXPECT().Broadcast(&pb.Event{
+		eventSender.EXPECT().SendToSession(mock.Anything, &pb.Event{
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
@@ -431,7 +433,7 @@ func TestSpaceSyncStatus_Reload(t *testing.T) {
 				},
 			}},
 		})
-		eventSender.EXPECT().Broadcast(&pb.Event{
+		eventSender.EXPECT().SendToSession(mock.Anything, &pb.Event{
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
@@ -440,6 +442,6 @@ func TestSpaceSyncStatus_Reload(t *testing.T) {
 				},
 			}},
 		})
-		spaceStatus.Reload(context.Background())
+		spaceStatus.Notify(session.NewContext())
 	})
 }

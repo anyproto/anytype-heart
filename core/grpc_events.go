@@ -4,12 +4,14 @@
 package core
 
 import (
-	"context"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	lib "github.com/anyproto/anytype-heart/pb/service"
 )
@@ -28,11 +30,8 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 		return
 	}
 	if mw.GetApp() != nil {
-		err := mw.GetApp().Reload(context.Background())
-		if err != nil {
-			log.Error("failed to ListenEvents: error in component reload")
-			return
-		}
+		notifier := app.MustComponent[session.NewSessionNotifier](mw.GetApp())
+		notifier.Notify(session.NewContext(session.WithSession(req.Token)))
 	}
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)

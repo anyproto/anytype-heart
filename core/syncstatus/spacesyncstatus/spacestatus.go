@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -18,7 +19,7 @@ const service = "core.syncstatus.spacesyncstatus"
 var log = logging.Logger("anytype-mw-space-status")
 
 type Updater interface {
-	app.ComponentReloadable
+	app.ComponentRunnable
 	SendUpdate(spaceSync *domain.SpaceSync)
 }
 
@@ -74,12 +75,11 @@ func (s *spaceSyncStatus) Name() (name string) {
 	return service
 }
 
-func (s *spaceSyncStatus) Reload(ctx context.Context) (err error) {
+func (s *spaceSyncStatus) Notify(ctx session.Context) {
 	ids := s.spaceIdGetter.AllSpaceIds()
 	for _, id := range ids {
-		s.sendStartEvent(id)
+		s.sendEventToSession(id, ctx.ID())
 	}
-	return
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
@@ -93,6 +93,16 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go s.processEvents()
 	return
+}
+
+func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
+	s.eventSender.SendToSession(token, &pb.Event{
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
+			},
+		}},
+	})
 }
 
 func (s *spaceSyncStatus) sendStartEvent(spaceId string) {
