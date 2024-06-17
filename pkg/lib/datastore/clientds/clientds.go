@@ -109,6 +109,9 @@ func isBadgerCorrupted(err error) bool {
 	if strings.Contains(err.Error(), "checksum mismatch") {
 		return true
 	}
+	if strings.Contains(err.Error(), "checksum is empty") {
+		return true
+	}
 	if strings.Contains(err.Error(), "EOF") {
 		return true
 	}
