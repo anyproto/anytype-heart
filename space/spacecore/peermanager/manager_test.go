@@ -103,7 +103,8 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 
 		// then
 		f.updater.AssertCalled(t, "SendUpdate", status)
-	})t.Run("no local peers", func(t *testing.T) {
+	})
+	t.Run("no local peers", func(t *testing.T) {
 		// given
 		f := newFixtureManager(t, spaceId)
 

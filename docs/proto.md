@@ -1617,6 +1617,7 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
     - [Event.Space.Network](#anytype-Event-Space-Network)
     - [Event.Space.Status](#anytype-Event-Space-Status)
     - [Event.Space.SyncError](#anytype-Event-Space-SyncError)
@@ -25525,6 +25526,19 @@ Precondition: user A and user B opened the same block
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
 | SliceOperationReplace | 4 |  |
+
+
+
+<a name="anytype-Event-P2PStatus-Status"></a>
+
+### Event.P2PStatus.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Connected | 0 |  |
+| NotPossible | 1 |  |
+| NotConnected | 2 |  |
 
 
 
