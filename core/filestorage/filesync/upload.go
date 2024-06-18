@@ -23,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
-func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported, runHook bool) (err error) {
+func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error) {
 	it := &QueueItem{
 		ObjectId:    fileObjectId,
 		SpaceId:     fileId.SpaceId,
@@ -87,7 +87,7 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 
 func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	err := s.uploadFile(ctx, spaceId, fileId)
+	err := s.uploadFile(ctx, spaceId, fileId, it.ObjectId)
 	if isObjectDeletedError(err) {
 		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
 	}
@@ -133,7 +133,7 @@ func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Actio
 
 func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	err := s.uploadFile(ctx, spaceId, fileId)
+	err := s.uploadFile(ctx, spaceId, fileId, it.ObjectId)
 	if isObjectDeletedError(err) {
 		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}
@@ -177,7 +177,7 @@ func (s *fileSync) removeFromUploadingQueues(objectId string) error {
 func (s *fileSync) UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error {
 	// TODO After we migrate to storing invites as file objects in tech space, we should update their sync status
 	//  via OnUploadStarted and OnUploaded callbacks
-	err := s.uploadFile(ctx, spaceId, fileId)
+	err := s.uploadFile(ctx, spaceId, fileId, "")
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (e *errLimitReached) Error() string {
 	return "file upload limit has been reached"
 }
 
-func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain.FileId) error {
+func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain.FileId, objectId string) error {
 	ctx = filestorage.ContextWithDoNotCache(ctx)
 	log.Debug("uploading file", zap.String("fileId", fileId.String()))
 
@@ -280,9 +280,11 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 			totalBytesUsage: stat.TotalBytesUsage,
 		}
 	}
-	err = s.runOnUploadStartedHook(fileId.String(), domain.FullFileId{FileId: fileId, SpaceId: spaceID})
-	if isObjectDeletedError(err) {
-		return err
+	if objectId != "" {
+		err = s.runOnUploadStartedHook(objectId, domain.FullFileId{FileId: fileId, SpaceId: spaceID})
+		if isObjectDeletedError(err) {
+			return err
+		}
 	}
 	var totalBytesUploaded int
 	err = s.walkFileBlocks(ctx, spaceID, fileId, func(fileBlocks []blocks.Block) error {

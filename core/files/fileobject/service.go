@@ -173,7 +173,7 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 	for _, record := range records {
 		fullId := extractFullFileIdFromDetails(record.Details)
 		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-		err := s.addToSyncQueue(id, fullId, false, false, true)
+		err := s.addToSyncQueue(id, fullId, false, false)
 		if err != nil {
 			log.Errorf("add to sync queue: %v", err)
 		}
@@ -199,7 +199,7 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.St
 		SpaceId: id.SpaceID,
 		FileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
 	}
-	err := s.addToSyncQueue(id.ObjectID, fullId, false, false, false)
+	err := s.addToSyncQueue(id.ObjectID, fullId, false, false)
 	return err
 }
 
@@ -235,7 +235,7 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	if err != nil {
 		return "", nil, fmt.Errorf("create in space: %w", err)
 	}
-	err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported(), true)
+	err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported())
 	if err != nil {
 		return "", nil, fmt.Errorf("add to sync queue: %w", err)
 	}
@@ -354,8 +354,8 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	return fileObjectId, nil
 }
 
-func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool, runHook bool) error {
-	if err := s.fileSync.AddFile(objectId, fileId, uploadedByUser, imported, runHook); err != nil {
+func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) error {
+	if err := s.fileSync.AddFile(objectId, fileId, uploadedByUser, imported); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	return nil
