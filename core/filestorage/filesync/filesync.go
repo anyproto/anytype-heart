@@ -14,6 +14,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
@@ -86,6 +87,8 @@ type fileSync struct {
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
+	cfg               *config.Config
+	isRunning         bool
 }
 
 func New() FileSync {
@@ -98,6 +101,7 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
+	s.cfg = app.MustComponent[*config.Config](a)
 	db, err := s.dbProvider.LocalStorage()
 	if err != nil {
 		return
@@ -153,18 +157,24 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-
+	if s.cfg.IsLocalOnlyMode() {
+		return
+	}
 	s.uploadingQueue.Run()
 	s.retryUploadingQueue.Run()
 	s.deletionQueue.Run()
 	s.retryDeletionQueue.Run()
 
+	s.isRunning = true
 	s.loopCtx, s.loopCancel = context.WithCancel(context.Background())
 	go s.runNodeUsageUpdater()
 	return
 }
 
 func (s *fileSync) Close(ctx context.Context) error {
+	if !s.isRunning {
+		return nil
+	}
 	if s.loopCancel != nil {
 		s.loopCancel()
 	}
