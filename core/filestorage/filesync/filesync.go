@@ -2,7 +2,6 @@ package filesync
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -81,11 +80,12 @@ type fileSync struct {
 	onLimited       StatusCallback
 	onDelete        DeleteCallback
 
-	uploadingQueue          *persistentqueue.Queue[*QueueItem]
-	retryUploadingQueue     *persistentqueue.Queue[*QueueItem]
-	deletionQueue           *persistentqueue.Queue[*deletionQueueItem]
-	retryDeletionQueue      *persistentqueue.Queue[*deletionQueueItem]
-	blocksAvailabilityCache keyvaluestore.Store[*blocksAvailabilityResponse]
+	uploadingQueue            *persistentqueue.Queue[*QueueItem]
+	retryUploadingQueue       *persistentqueue.Queue[*QueueItem]
+	deletionQueue             *persistentqueue.Queue[*deletionQueueItem]
+	retryDeletionQueue        *persistentqueue.Queue[*deletionQueueItem]
+	blocksAvailabilityCache   keyvaluestore.Store[*blocksAvailabilityResponse]
+	isLimitReachedErrorLogged keyvaluestore.Store[bool]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -106,13 +106,8 @@ func (s *fileSync) Init(a *app.App) (err error) {
 		return
 	}
 
-	s.blocksAvailabilityCache = keyvaluestore.New(db, []byte(keyPrefix+"bytes_to_upload"), func(val *blocksAvailabilityResponse) ([]byte, error) {
-		return json.Marshal(val)
-	}, func(data []byte) (*blocksAvailabilityResponse, error) {
-		val := &blocksAvailabilityResponse{}
-		err := json.Unmarshal(data, val)
-		return val, err
-	})
+	s.blocksAvailabilityCache = keyvaluestore.NewJson[*blocksAvailabilityResponse](db, []byte(keyPrefix+"bytes_to_upload"))
+	s.isLimitReachedErrorLogged = keyvaluestore.NewJson[bool](db, []byte(keyPrefix+"limit_reached_error_logged"))
 
 	s.uploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, s.uploadingHandler)
 	s.retryUploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, s.retryingHandler, persistentqueue.WithRetryPause(loopTimeout))
