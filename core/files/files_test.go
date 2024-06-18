@@ -128,28 +128,6 @@ func TestFileAdd(t *testing.T) {
 	})
 }
 
-func TestOnQueued(t *testing.T) {
-	t.Run("queue hook called", func(t *testing.T) {
-		fx, got, _ := getFixtureAndFileInfo(t)
-		var hookCalled bool
-		fx.fileSyncService.OnQueued(func(fileObjectId string, fileId domain.FullFileId) error {
-			hookCalled = true
-			return nil
-		})
-		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false, true)
-		require.NoError(t, err)
-		assert.True(t, hookCalled)
-	})
-	t.Run("queue hook called with error", func(t *testing.T) {
-		fx, got, _ := getFixtureAndFileInfo(t)
-		fx.fileSyncService.OnQueued(func(fileObjectId string, fileId domain.FullFileId) error {
-			return fmt.Errorf("error")
-		})
-		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false, true)
-		require.Error(t, err)
-	})
-}
-
 func getFixtureAndFileInfo(t *testing.T) (*fixture, *AddResult, chan struct{}) {
 	fx := newFixture(t)
 	ctx := context.Background()

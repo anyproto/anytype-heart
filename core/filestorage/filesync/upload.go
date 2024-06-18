@@ -87,11 +87,10 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 
 func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	err := s.runOnUploadStartedHook(it.ObjectId, it.FullFileId())
+	err := s.uploadFile(ctx, spaceId, fileId)
 	if isObjectDeletedError(err) {
 		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
 	}
-	err = s.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
 		if limitErr := s.handleLimitReachedError(err, it); limitErr != nil {
 			log.Warn("upload limit has been reached",
@@ -134,11 +133,10 @@ func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Actio
 
 func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	err := s.runOnUploadStartedHook(it.ObjectId, it.FullFileId())
+	err := s.uploadFile(ctx, spaceId, fileId)
 	if isObjectDeletedError(err) {
 		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}
-	err = s.uploadFile(ctx, spaceId, fileId)
 	if err != nil {
 		log.Error("retry uploading file error",
 			zap.String("fileId", fileId.String()), zap.Error(err),
@@ -282,7 +280,10 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 			totalBytesUsage: stat.TotalBytesUsage,
 		}
 	}
-
+	err = s.runOnUploadStartedHook(fileId.String(), domain.FullFileId{FileId: fileId, SpaceId: spaceID})
+	if isObjectDeletedError(err) {
+		return err
+	}
 	var totalBytesUploaded int
 	err = s.walkFileBlocks(ctx, spaceID, fileId, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, spaceID, fileId, fileBlocks, blocksAvailability.cidsToUpload)

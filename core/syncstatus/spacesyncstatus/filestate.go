@@ -33,8 +33,8 @@ func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(filesyncstatus.Syncing)),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.IntList(int(filesyncstatus.Syncing), int(filesyncstatus.Queued)),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
