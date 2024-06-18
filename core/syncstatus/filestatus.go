@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const limitReachErrorPercentage = 0.9
+const limitReachErrorPercentage = 0.99
 
 func (s *service) onFileUploadStarted(objectId string, _ domain.FullFileId) error {
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Syncing, 0)
