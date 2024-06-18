@@ -34,6 +34,7 @@ var log = logger.NewNamed(CName)
 var loopTimeout = time.Minute
 
 type StatusCallback func(fileObjectId string, fileId domain.FullFileId) error
+type LimitCallback func(fileObjectId string, fileId domain.FullFileId, bytesLeft float64) error
 type DeleteCallback func(fileObjectId domain.FullFileId)
 
 type FileSync interface {
@@ -41,7 +42,7 @@ type FileSync interface {
 	UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error
 	OnUploadStarted(StatusCallback)
 	OnUploaded(StatusCallback)
-	OnLimited(StatusCallback)
+	OnLimited(LimitCallback)
 	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
 	OnDelete(DeleteCallback)
 	OnQueued(StatusCallback)
@@ -79,7 +80,7 @@ type fileSync struct {
 	eventSender     event.Sender
 	onUploaded      []StatusCallback
 	onUploadStarted StatusCallback
-	onLimited       StatusCallback
+	onLimited       LimitCallback
 	onQueued        StatusCallback
 	onDelete        DeleteCallback
 
@@ -135,7 +136,7 @@ func (s *fileSync) OnUploadStarted(callback StatusCallback) {
 	s.onUploadStarted = callback
 }
 
-func (s *fileSync) OnLimited(callback StatusCallback) {
+func (s *fileSync) OnLimited(callback LimitCallback) {
 	s.onLimited = callback
 }
 

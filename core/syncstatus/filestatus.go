@@ -15,27 +15,29 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const limitReachErrorPercentage = 0.9
+
 func (s *service) onFileUploadStarted(objectId string, _ domain.FullFileId) error {
-	return s.indexFileSyncStatus(objectId, filesyncstatus.Syncing)
+	return s.indexFileSyncStatus(objectId, filesyncstatus.Syncing, 0)
 }
 
 func (s *service) onFileUploaded(objectId string, _ domain.FullFileId) error {
-	return s.indexFileSyncStatus(objectId, filesyncstatus.Synced)
+	return s.indexFileSyncStatus(objectId, filesyncstatus.Synced, 0)
 }
 
-func (s *service) onFileLimited(objectId string, _ domain.FullFileId) error {
-	return s.indexFileSyncStatus(objectId, filesyncstatus.Limited)
+func (s *service) onFileLimited(objectId string, _ domain.FullFileId, bytesLeft float64) error {
+	return s.indexFileSyncStatus(objectId, filesyncstatus.Limited, bytesLeft)
 }
 
 func (s *service) OnFileDelete(fileId domain.FullFileId) {
-	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId)
+	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId, 0)
 }
 
 func (s *service) OnFileQueued(objectId string, _ domain.FullFileId) error {
-	return s.indexFileSyncStatus(objectId, filesyncstatus.Queued)
+	return s.indexFileSyncStatus(objectId, filesyncstatus.Queued, 0)
 }
 
-func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
+func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status, bytesLeft float64) error {
 	var spaceId string
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
 		spaceId = sb.SpaceID()
@@ -60,7 +62,7 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 		return fmt.Errorf("update tree: %w", err)
 	}
 
-	s.sendSpaceStatusUpdate(status, spaceId)
+	s.sendSpaceStatusUpdate(status, spaceId, bytesLeft)
 	return nil
 }
 
@@ -86,35 +88,35 @@ func provideFileStatusDetails(status filesyncstatus.Status, newStatus int64) []*
 	return details
 }
 
-func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string) {
-	spaceStatus, spaceError := getSyncStatus(status)
+func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string, bytesLeft float64) {
+	spaceStatus, spaceError := getSyncStatus(status, bytesLeft)
 	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, spaceError, domain.Files)
 	s.spaceSyncStatus.SendUpdate(syncStatus)
 }
 
 func getFileObjectStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {
 	var (
-		spaceStatus domain.ObjectSyncStatus
-		spaceError  domain.SyncError
+		objectSyncStatus domain.ObjectSyncStatus
+		objectError      domain.SyncError
 	)
 	switch status {
 	case filesyncstatus.Synced:
-		spaceStatus = domain.ObjectSynced
+		objectSyncStatus = domain.ObjectSynced
 	case filesyncstatus.Syncing:
-		spaceStatus = domain.ObjectSyncing
+		objectSyncStatus = domain.ObjectSyncing
 	case filesyncstatus.Queued:
-		spaceStatus = domain.ObjectQueued
+		objectSyncStatus = domain.ObjectQueued
 	case filesyncstatus.Limited:
-		spaceStatus = domain.ObjectError
-		spaceError = domain.StorageLimitExceed
+		objectError = domain.Oversized
+		objectSyncStatus = domain.ObjectError
 	case filesyncstatus.Unknown:
-		spaceStatus = domain.ObjectError
-		spaceError = domain.NetworkError
+		objectSyncStatus = domain.ObjectError
+		objectError = domain.NetworkError
 	}
-	return spaceStatus, spaceError
+	return objectSyncStatus, objectError
 }
 
-func getSyncStatus(status filesyncstatus.Status) (domain.SpaceSyncStatus, domain.SyncError) {
+func getSyncStatus(status filesyncstatus.Status, bytesLeft float64) (domain.SpaceSyncStatus, domain.SyncError) {
 	var (
 		spaceStatus domain.SpaceSyncStatus
 		spaceError  domain.SyncError
@@ -125,8 +127,11 @@ func getSyncStatus(status filesyncstatus.Status) (domain.SpaceSyncStatus, domain
 	case filesyncstatus.Syncing, filesyncstatus.Queued:
 		spaceStatus = domain.Syncing
 	case filesyncstatus.Limited:
-		spaceStatus = domain.Error
-		spaceError = domain.StorageLimitExceed
+		spaceStatus = domain.Synced
+		if bytesLeft <= limitReachErrorPercentage {
+			spaceStatus = domain.Error
+			spaceError = domain.StorageLimitExceed
+		}
 	case filesyncstatus.Unknown:
 		spaceStatus = domain.Error
 		spaceError = domain.NetworkError

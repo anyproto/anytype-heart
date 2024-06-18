@@ -76,7 +76,8 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 	}
 	var limitReachedErr *errLimitReached
 	if errors.As(err, &limitReachedErr) {
-		s.runOnLimitedHook(it.ObjectId, it.FullFileId())
+		bytesLeftPercentage := float64(limitReachedErr.accountLimit-limitReachedErr.totalBytesUsage) / float64(limitReachedErr.accountLimit)
+		s.runOnLimitedHook(it.ObjectId, it.FullFileId(), bytesLeftPercentage)
 
 		if it.AddedByUser && !it.Imported {
 			s.sendLimitReachedEvent(it.SpaceId)
@@ -226,9 +227,9 @@ func (s *fileSync) runOnUploadStartedHook(fileObjectId string, fileId domain.Ful
 	return nil
 }
 
-func (s *fileSync) runOnLimitedHook(fileObjectId string, fileId domain.FullFileId) {
+func (s *fileSync) runOnLimitedHook(fileObjectId string, fileId domain.FullFileId, bytesLeft float64) {
 	if s.onLimited != nil {
-		err := s.onLimited(fileObjectId, fileId)
+		err := s.onLimited(fileObjectId, fileId, bytesLeft)
 		if err != nil {
 			if !isObjectDeletedError(err) {
 				log.Warn("on limited callback failed",
