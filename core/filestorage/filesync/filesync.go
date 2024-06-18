@@ -44,7 +44,6 @@ type FileSync interface {
 	OnLimited(StatusCallback)
 	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
 	OnDelete(DeleteCallback)
-	OnQueued(StatusCallback)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error
@@ -80,7 +79,6 @@ type fileSync struct {
 	onUploaded      []StatusCallback
 	onUploadStarted StatusCallback
 	onLimited       StatusCallback
-	onQueued        StatusCallback
 	onDelete        DeleteCallback
 
 	uploadingQueue          *persistentqueue.Queue[*QueueItem]
@@ -141,10 +139,6 @@ func (s *fileSync) OnLimited(callback StatusCallback) {
 
 func (s *fileSync) OnDelete(callback DeleteCallback) {
 	s.onDelete = callback
-}
-
-func (s *fileSync) OnQueued(callback StatusCallback) {
-	s.onQueued = callback
 }
 
 func (s *fileSync) Name() (name string) {

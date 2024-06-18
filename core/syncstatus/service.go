@@ -67,7 +67,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
 	s.fileSyncService.OnLimited(s.onFileLimited)
 	s.fileSyncService.OnDelete(s.OnFileDelete)
-	s.fileSyncService.OnQueued(s.OnFileQueued)
 	return nil
 }
 

@@ -38,10 +38,6 @@ func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, upload
 	}
 
 	if !s.fileIsInAnyQueue(it.Key()) {
-		err := s.runOnQueuedHook(fileObjectId, it.FullFileId(), runHook)
-		if err != nil {
-			return fmt.Errorf("failed to run queue hook: %w", err)
-		}
 		return s.uploadingQueue.Add(it)
 	}
 	return nil
@@ -239,20 +235,6 @@ func (s *fileSync) runOnLimitedHook(fileObjectId string, fileId domain.FullFileI
 			}
 		}
 	}
-}
-
-func (s *fileSync) runOnQueuedHook(fileObjectId string, fileId domain.FullFileId, runHook bool) error {
-	if s.onQueued != nil && runHook {
-		err := s.onQueued(fileObjectId, fileId)
-		if err != nil {
-			log.Warn("on queued started callback failed",
-				zap.String("fileObjectId", fileObjectId),
-				zap.String("spaceID", fileId.SpaceId),
-				zap.Error(err))
-			return err
-		}
-	}
-	return nil
 }
 
 type errLimitReached struct {
