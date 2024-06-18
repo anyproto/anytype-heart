@@ -2,7 +2,6 @@ package reconciler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -84,13 +83,7 @@ func (r *reconciler) Init(a *app.App) error {
 		return fmt.Errorf("get badger: %w", err)
 	}
 
-	r.isStartedStore = keyvaluestore.New(db, []byte("file_reconciler/is_started"), func(val bool) ([]byte, error) {
-		return json.Marshal(val)
-	}, func(data []byte) (bool, error) {
-		var val bool
-		err := json.Unmarshal(data, &val)
-		return val, err
-	})
+	r.isStartedStore = keyvaluestore.NewJson[bool](db, []byte("file_reconciler/is_started"))
 	r.deletedFiles = keyvaluestore.New(db, []byte("file_reconciler/deleted_files"), func(_ struct{}) ([]byte, error) {
 		return []byte(""), nil
 	}, func(data []byte) (struct{}, error) {
@@ -169,7 +162,7 @@ func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persis
 	}
 
 	log.Warn("add to queue", zap.String("objectId", item.ObjectId), zap.String("fileId", item.FileId.FileId.String()))
-	err = r.fileSync.AddFile(item.ObjectId, item.FileId, false, false, true)
+	err = r.fileSync.AddFile(item.ObjectId, item.FileId, false, false)
 	if err != nil {
 		return persistentqueue.ActionRetry, fmt.Errorf("upload file: %w", err)
 	}

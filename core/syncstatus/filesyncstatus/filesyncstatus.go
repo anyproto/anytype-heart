@@ -14,7 +14,7 @@ const (
 	Syncing
 	Limited
 	Synced
-	Queued = 5
+	Queued
 )
 
 func (s Status) ToSyncStatus() objectsyncstatus.SyncStatus {
