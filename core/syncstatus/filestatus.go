@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const limitReachErrorPercentage = 0.99
+const limitReachErrorPercentage = 0.01
 
 func (s *service) onFileUploadStarted(objectId string, _ domain.FullFileId) error {
 	return s.indexFileSyncStatus(objectId, filesyncstatus.Syncing, 0)
@@ -33,7 +33,7 @@ func (s *service) OnFileDelete(fileId domain.FullFileId) {
 	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId, 0)
 }
 
-func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
+func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status, bytesLeft float64) error {
 	var spaceId string
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
 		spaceId = sb.SpaceID()
