@@ -396,6 +396,7 @@ func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
 			batcher:       mb.New[*domain.SpaceSync](0),
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
+			isRunning:     true,
 		}
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
 
