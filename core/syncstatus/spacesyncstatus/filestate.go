@@ -13,7 +13,6 @@ import (
 type FileState struct {
 	fileSyncCountBySpace  map[string]int
 	fileSyncStatusBySpace map[string]domain.SpaceSyncStatus
-	filesErrorBySpace     map[string]domain.SyncError
 
 	store objectstore.ObjectStore
 }
@@ -22,9 +21,7 @@ func NewFileState(store objectstore.ObjectStore) *FileState {
 	return &FileState{
 		fileSyncCountBySpace:  make(map[string]int, 0),
 		fileSyncStatusBySpace: make(map[string]domain.SpaceSyncStatus, 0),
-		filesErrorBySpace:     make(map[string]domain.SyncError, 0),
-
-		store: store,
+		store:                 store,
 	}
 }
 
@@ -53,19 +50,13 @@ func (f *FileState) SetSyncStatusAndErr(status *domain.SpaceSync) {
 	switch status.Status {
 	case domain.Synced:
 		f.fileSyncStatusBySpace[status.SpaceId] = domain.Synced
-		f.setError(status.SpaceId, domain.Null)
 		if number := f.fileSyncCountBySpace[status.SpaceId]; number > 0 {
 			f.fileSyncStatusBySpace[status.SpaceId] = domain.Syncing
 			return
 		}
 	case domain.Error, domain.Syncing, domain.Offline:
 		f.fileSyncStatusBySpace[status.SpaceId] = status.Status
-		f.setError(status.SpaceId, status.SyncError)
 	}
-}
-
-func (f *FileState) setError(spaceId string, syncErr domain.SyncError) {
-	f.filesErrorBySpace[spaceId] = syncErr
 }
 
 func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
@@ -74,8 +65,4 @@ func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
 
 func (f *FileState) GetSyncObjectCount(spaceId string) int {
 	return f.fileSyncCountBySpace[spaceId]
-}
-
-func (f *FileState) GetSyncErr(spaceId string) domain.SyncError {
-	return f.filesErrorBySpace[spaceId]
 }

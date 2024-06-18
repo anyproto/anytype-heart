@@ -35,7 +35,6 @@ type State interface {
 	SetSyncStatusAndErr(status *domain.SpaceSync)
 	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
-	GetSyncErr(spaceId string) domain.SyncError
 }
 
 type NetworkConfig interface {
@@ -99,7 +98,7 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 	s.eventSender.SendToSession(token, &pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId, 0),
 			},
 		}},
 	})
@@ -109,7 +108,7 @@ func (s *spaceSyncStatus) sendStartEvent(spaceId string) {
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId, 0),
 			},
 		}},
 	})
@@ -163,7 +162,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(status *domain.SpaceSync) {
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(status.SpaceId),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(status.SpaceId, status.SyncError),
 			},
 		}},
 	})
@@ -184,12 +183,12 @@ func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	return s.batcher.Close()
 }
 
-func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string) *pb.EventSpaceSyncStatusUpdate {
+func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string, syncError domain.SyncError) *pb.EventSpaceSyncStatusUpdate {
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    spaceId,
 		Status:                mapStatus(s.getSpaceSyncStatus(spaceId)),
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
-		Error:                 s.getError(spaceId),
+		Error:                 mapError(syncError),
 		SyncingObjectsCounter: int64(s.filesState.GetSyncObjectCount(spaceId) + s.objectsState.GetSyncObjectCount(spaceId)),
 	}
 }
@@ -237,20 +236,6 @@ func (s *spaceSyncStatus) getCurrentState(status *domain.SpaceSync) State {
 		return s.filesState
 	}
 	return s.objectsState
-}
-
-func (s *spaceSyncStatus) getError(spaceId string) pb.EventSpaceSyncError {
-	syncErr := s.filesState.GetSyncErr(spaceId)
-	if syncErr != domain.Null {
-		return mapError(syncErr)
-	}
-
-	syncErr = s.objectsState.GetSyncErr(spaceId)
-	if syncErr != domain.Null {
-		return mapError(syncErr)
-	}
-
-	return pb.EventSpace_Null
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
