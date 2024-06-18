@@ -54,7 +54,8 @@ type spaceSyncStatus struct {
 	ctxCancel     context.CancelFunc
 	spaceIdGetter SpaceIdGetter
 
-	finish chan struct{}
+	finish    chan struct{}
+	isRunning bool
 }
 
 func NewSpaceSyncStatus() Updater {
@@ -90,6 +91,7 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	} else {
 		s.sendStartEvent(s.spaceIdGetter.PersonalSpaceId())
 	}
+	s.isRunning = true
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go s.processEvents()
 	return
@@ -129,6 +131,9 @@ func (s *spaceSyncStatus) sendLocalOnlyEvent() {
 }
 
 func (s *spaceSyncStatus) SendUpdate(status *domain.SpaceSync) {
+	if !s.isRunning {
+		return
+	}
 	e := s.batcher.Add(context.Background(), status)
 	if e != nil {
 		log.Errorf("failed to add space sync event to queue %s", e)
@@ -181,6 +186,7 @@ func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 		s.ctxCancel()
 	}
 	<-s.finish
+	s.isRunning = false
 	return s.batcher.Close()
 }
 
