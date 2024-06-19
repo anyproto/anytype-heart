@@ -220,63 +220,6 @@ func (_c *MockService_FileGetKeys_Call) RunAndReturn(run func(domain.FileId) (*d
 	return _c
 }
 
-// FileOffload provides a mock function with given fields: ctx, id
-func (_m *MockService) FileOffload(ctx context.Context, id domain.FullFileId) (uint64, error) {
-	ret := _m.Called(ctx, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FileOffload")
-	}
-
-	var r0 uint64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, domain.FullFileId) (uint64, error)); ok {
-		return rf(ctx, id)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, domain.FullFileId) uint64); ok {
-		r0 = rf(ctx, id)
-	} else {
-		r0 = ret.Get(0).(uint64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, domain.FullFileId) error); ok {
-		r1 = rf(ctx, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_FileOffload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FileOffload'
-type MockService_FileOffload_Call struct {
-	*mock.Call
-}
-
-// FileOffload is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id domain.FullFileId
-func (_e *MockService_Expecter) FileOffload(ctx interface{}, id interface{}) *MockService_FileOffload_Call {
-	return &MockService_FileOffload_Call{Call: _e.mock.On("FileOffload", ctx, id)}
-}
-
-func (_c *MockService_FileOffload_Call) Run(run func(ctx context.Context, id domain.FullFileId)) *MockService_FileOffload_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(domain.FullFileId))
-	})
-	return _c
-}
-
-func (_c *MockService_FileOffload_Call) Return(totalSize uint64, err error) *MockService_FileOffload_Call {
-	_c.Call.Return(totalSize, err)
-	return _c
-}
-
-func (_c *MockService_FileOffload_Call) RunAndReturn(run func(context.Context, domain.FullFileId) (uint64, error)) *MockService_FileOffload_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetNodeUsage provides a mock function with given fields: ctx
 func (_m *MockService) GetNodeUsage(ctx context.Context) (*files.NodeUsageResponse, error) {
 	ret := _m.Called(ctx)

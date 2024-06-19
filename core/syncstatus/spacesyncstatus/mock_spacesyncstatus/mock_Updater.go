@@ -162,52 +162,6 @@ func (_c *MockUpdater_Name_Call) RunAndReturn(run func() string) *MockUpdater_Na
 	return _c
 }
 
-// Reload provides a mock function with given fields: ctx
-func (_m *MockUpdater) Reload(ctx context.Context) error {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Reload")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockUpdater_Reload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Reload'
-type MockUpdater_Reload_Call struct {
-	*mock.Call
-}
-
-// Reload is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockUpdater_Expecter) Reload(ctx interface{}) *MockUpdater_Reload_Call {
-	return &MockUpdater_Reload_Call{Call: _e.mock.On("Reload", ctx)}
-}
-
-func (_c *MockUpdater_Reload_Call) Run(run func(ctx context.Context)) *MockUpdater_Reload_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *MockUpdater_Reload_Call) Return(err error) *MockUpdater_Reload_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockUpdater_Reload_Call) RunAndReturn(run func(context.Context) error) *MockUpdater_Reload_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Run provides a mock function with given fields: ctx
 func (_m *MockUpdater) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
