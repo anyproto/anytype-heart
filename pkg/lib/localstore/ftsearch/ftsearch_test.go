@@ -3,6 +3,7 @@ package ftsearch
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
@@ -10,15 +11,14 @@ import (
 	"github.com/blevesearch/bleve/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
 type fixture struct {
-	ft   FTSearch
-	ta   *app.App
-	ctrl *gomock.Controller
+	ft FTSearch
+	ta *app.App
 }
 
 func newFixture(path string, t *testing.T) *fixture {
@@ -35,11 +35,48 @@ func newFixture(path string, t *testing.T) *fixture {
 	}
 }
 
+func TestListIndexedIds(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "")
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    domain.NewObjectPathWithBlock("o", "1").String(),
+		Title: "one",
+		Text:  "two",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    domain.NewObjectPathWithBlock("o", "2").String(),
+		Title: "one",
+		Text:  "two",
+	}))
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    domain.NewObjectPathWithBlock("a", "3").String(),
+		Title: "one",
+		Text:  "two",
+	}))
+	dc, err := ft.DocCount()
+	require.NoError(t, err)
+	require.Equal(t, 3, int(dc))
+
+	res, err := ft.ListIndexedIds("o")
+	require.NoError(t, err)
+	assert.Len(t, res, 2)
+	res, err = ft.ListIndexedIds("a")
+	require.NoError(t, err)
+	assert.Len(t, res, 1)
+	_ = ft.Close(nil)
+}
+
 func TestNewFTSearch(t *testing.T) {
 	testCases := []struct {
 		name   string
 		tester func(t *testing.T, tmpDir string)
 	}{
+		{
+			name:   "assertProperIds",
+			tester: assertProperIds,
+		},
 		{
 			name:   "assertSearch",
 			tester: assertSearch,
@@ -163,6 +200,37 @@ func assertThaiSubstrFound(t *testing.T, tmpDir string) {
 	_ = ft.Close(nil)
 }
 
+func assertProperIds(t *testing.T, tmpDir string) {
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	for i := range 50 {
+		require.NoError(t, ft.Index(SearchDoc{
+			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+100),
+			SpaceID: fmt.Sprintf("randomspaceid%d", i),
+		}))
+		require.NoError(t, ft.Index(SearchDoc{
+			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+1000),
+			SpaceID: fmt.Sprintf("randomspaceid%d", i),
+		}))
+	}
+
+	ft.DeleteObject(fmt.Sprintf("randomid%d", 49))
+
+	count, _ := ft.DocCount()
+	require.Equal(t, 98, int(count))
+
+	var batchDelete []string
+	for i := range 30 {
+		batchDelete = append(batchDelete, fmt.Sprintf("randomid%d", i))
+	}
+	ft.BatchDeleteObjects(batchDelete)
+
+	count, _ = ft.DocCount()
+	require.Equal(t, 38, int(count))
+
+	_ = ft.Close(nil)
+}
+
 func assertSearch(t *testing.T, tmpDir string) {
 	fixture := newFixture(tmpDir, t)
 	ft := fixture.ft
@@ -201,7 +269,7 @@ func assertFoundPartsOfTheWords(t *testing.T, tmpDir string) {
 }
 
 func validateSearch(t *testing.T, ft FTSearch, spaceID, qry string, times int) {
-	res, err := ft.Search(spaceID, qry)
+	res, err := ft.Search(spaceID, HtmlHighlightFormatter, qry)
 	require.NoError(t, err)
 	assert.Len(t, res, times)
 }
@@ -354,6 +422,28 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "", "board", 2)
 	validateSearch(t, ft, "", "space", 4)
 	validateSearch(t, ft, "", "of", 5)
+
+	_ = ft.Close(nil)
+}
+
+func a(t *testing.T, tmpDir string) {
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "1",
+		Title: "This is the title",
+		Text:  "two",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "2",
+		Title: "is the title",
+		Text:  "two",
+	}))
+
+	validateSearch(t, ft, "", "this", 1)
+	validateSearch(t, ft, "", "his", 1)
+	validateSearch(t, ft, "", "is", 2)
+	validateSearch(t, ft, "", "i t", 2)
 
 	_ = ft.Close(nil)
 }

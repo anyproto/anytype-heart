@@ -23,8 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -63,11 +61,10 @@ type service struct {
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	accountService     accountService
 	accountKeysService accountservice.Service
-	fileStore          filestore.FileStore
 	spaceCoreService   spacecore.SpaceCoreService
 	storageService     storage.ClientStorage
 	fileService        files.Service
-	objectStore        objectstore.ObjectStore
+	objectStore        RelationGetter
 	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
@@ -80,12 +77,11 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.accountService = app.MustComponent[accountService](a)
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 
 	s.fileService = app.MustComponent[files.Service](a)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.objectStore = app.MustComponent[RelationGetter](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }

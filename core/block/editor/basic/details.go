@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -31,7 +32,7 @@ type detailUpdate struct {
 	value *types.Value
 }
 
-func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (bs *basic) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	s := bs.NewStateCtx(ctx)
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
@@ -52,7 +53,26 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	return nil
 }
 
-func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s *state.State) []*detailUpdate {
+func (bs *basic) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+	if update == nil {
+		return fmt.Errorf("update function is nil")
+	}
+	s := bs.NewState()
+
+	newDetails, err := update(s.CombinedDetails())
+	if err != nil {
+		return
+	}
+	s.SetDetails(newDetails)
+
+	if err = bs.addRelationLinks(s, maps.Keys(newDetails.Fields)...); err != nil {
+		return
+	}
+
+	return bs.Apply(s)
+}
+
+func (bs *basic) collectDetailUpdates(details []*model.Detail, s *state.State) []*detailUpdate {
 	updates := make([]*detailUpdate, 0, len(details))
 	for _, detail := range details {
 		update, err := bs.createDetailUpdate(s, detail)
@@ -82,7 +102,7 @@ func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *type
 	return newDetails
 }
 
-func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDetailsDetail) (*detailUpdate, error) {
+func (bs *basic) createDetailUpdate(st *state.State, detail *model.Detail) (*detailUpdate, error) {
 	if detail.Value != nil {
 		if err := pbtypes.ValidateValue(detail.Value); err != nil {
 			return nil, fmt.Errorf("detail %s validation error: %w", detail.Key, err)
@@ -90,7 +110,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
 			return nil, fmt.Errorf("special case: %w", err)
 		}
-		if err := bs.addRelationLink(detail.Key, st); err != nil {
+		if err := bs.addRelationLink(st, detail.Key); err != nil {
 			return nil, err
 		}
 		if err := bs.validateDetailFormat(bs.SpaceID(), detail.Key, detail.Value); err != nil {
@@ -235,7 +255,7 @@ func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error 
 	return nil
 }
 
-func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetDetailsDetail) error {
+func (bs *basic) setDetailSpecialCases(st *state.State, detail *model.Detail) error {
 	if detail.Key == bundle.RelationKeyType.String() {
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}
@@ -246,12 +266,24 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 	return nil
 }
 
-func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
+func (bs *basic) addRelationLink(st *state.State, relationKey string) error {
 	relLink, err := bs.objectStore.GetRelationLink(bs.SpaceID(), relationKey)
 	if err != nil || relLink == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
 	st.AddRelationLinks(relLink)
+	return nil
+}
+
+func (bs *basic) addRelationLinks(st *state.State, relationKeys ...string) error {
+	if len(relationKeys) == 0 {
+		return nil
+	}
+	relations, err := bs.objectStore.FetchRelationByKeys(bs.SpaceID(), relationKeys...)
+	if err != nil || relations == nil {
+		return fmt.Errorf("failed to get relations: %w", err)
+	}
+	st.AddRelationLinks(relations.RelationLinks()...)
 	return nil
 }
 

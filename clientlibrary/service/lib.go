@@ -6,6 +6,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
@@ -24,10 +25,16 @@ var mw = core.New()
 
 func init() {
 	fixTZ()
+	// if android
+	if runtime.GOOS == "android" {
+		// disable GSO on android because incorrect detection
+		// https://github.com/quic-go/quic-go/pull/4447
+		os.Setenv("QUIC_GO_DISABLE_GSO", "1")
+	}
 	fmt.Printf("mw lib: %s\n", vcs.GetVCSInfo().Description())
 
 	PanicHandler = mw.OnPanic
-	metrics.Service.InitWithKeys(metrics.DefaultAmplitudeKey, metrics.DefaultInHouseKey)
+	metrics.Service.InitWithKeys(metrics.DefaultInHouseKey)
 	registerClientCommandsHandler(
 		&ClientCommandsHandlerProxy{
 			client: mw,

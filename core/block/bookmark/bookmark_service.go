@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -57,7 +58,7 @@ type ObjectCreator interface {
 }
 
 type DetailsSetter interface {
-	SetDetails(ctx session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
+	SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error)
 }
 
 type service struct {
@@ -123,7 +124,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 	}
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
-	records, _, err := s.store.Query(database.Query{
+	records, err := s.store.Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
@@ -192,18 +193,15 @@ func detailsFromContent(content *bookmark.ObjectContent) map[string]*types.Value
 func (s *service) UpdateObject(objectId string, getContent *bookmark.ObjectContent) error {
 	detailsMap := detailsFromContent(getContent)
 
-	details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(detailsMap))
+	details := make([]*model.Detail, 0, len(detailsMap))
 	for k, v := range detailsMap {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   k,
 			Value: v,
 		})
 	}
 
-	return s.detailsSetter.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: objectId,
-		Details:   details,
-	})
+	return s.detailsSetter.SetDetails(nil, objectId, details)
 }
 
 func (s *service) FetchAsync(spaceID string, blockID string, params bookmark.FetchParams) {
@@ -243,7 +241,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 
 	updaters := make(chan func(contentBookmark *bookmark.ObjectContent), 1)
 
-	data, body, err := s.linkPreview.Fetch(ctx, url)
+	data, body, isFile, err := s.linkPreview.Fetch(ctx, url)
 	if err != nil {
 		updaters <- func(c *bookmark.ObjectContent) {
 			if c.BookmarkContent == nil {
@@ -315,6 +313,10 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		go func() {
 			defer wg.Done()
 			updaters <- func(c *bookmark.ObjectContent) {
+				if isFile {
+					s.handleFileBlock(c, url)
+					return
+				}
 				blocks, _, err := anymark.HTMLToBlocks(body, url)
 				if err != nil {
 					log.Errorf("parse blocks: %s", err)
@@ -329,6 +331,19 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		close(updaters)
 	}()
 	return updaters, nil
+}
+
+func (s *service) handleFileBlock(c *bookmark.ObjectContent, url string) {
+	c.Blocks = append(
+		c.Blocks,
+		&model.Block{
+			Id: bson.NewObjectId().Hex(),
+			Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{
+					Name: url,
+				}},
+		},
+	)
 }
 
 func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchParams) error {

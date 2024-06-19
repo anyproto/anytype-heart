@@ -85,17 +85,17 @@ func (_c *MockObjectStore_AddToIndexQueue_Call) RunAndReturn(run func(string) er
 	return _c
 }
 
-// BatchProcessFullTextQueue provides a mock function with given fields: limit, processIds
-func (_m *MockObjectStore) BatchProcessFullTextQueue(limit int, processIds func([]string) error) error {
-	ret := _m.Called(limit, processIds)
+// BatchProcessFullTextQueue provides a mock function with given fields: ctx, limit, processIds
+func (_m *MockObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func([]string) error) error {
+	ret := _m.Called(ctx, limit, processIds)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BatchProcessFullTextQueue")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int, func([]string) error) error); ok {
-		r0 = rf(limit, processIds)
+	if rf, ok := ret.Get(0).(func(context.Context, int, func([]string) error) error); ok {
+		r0 = rf(ctx, limit, processIds)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -109,15 +109,16 @@ type MockObjectStore_BatchProcessFullTextQueue_Call struct {
 }
 
 // BatchProcessFullTextQueue is a helper method to define mock.On call
+//   - ctx context.Context
 //   - limit int
 //   - processIds func([]string) error
-func (_e *MockObjectStore_Expecter) BatchProcessFullTextQueue(limit interface{}, processIds interface{}) *MockObjectStore_BatchProcessFullTextQueue_Call {
-	return &MockObjectStore_BatchProcessFullTextQueue_Call{Call: _e.mock.On("BatchProcessFullTextQueue", limit, processIds)}
+func (_e *MockObjectStore_Expecter) BatchProcessFullTextQueue(ctx interface{}, limit interface{}, processIds interface{}) *MockObjectStore_BatchProcessFullTextQueue_Call {
+	return &MockObjectStore_BatchProcessFullTextQueue_Call{Call: _e.mock.On("BatchProcessFullTextQueue", ctx, limit, processIds)}
 }
 
-func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Run(run func(limit int, processIds func([]string) error)) *MockObjectStore_BatchProcessFullTextQueue_Call {
+func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Run(run func(ctx context.Context, limit int, processIds func([]string) error)) *MockObjectStore_BatchProcessFullTextQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int), args[1].(func([]string) error))
+		run(args[0].(context.Context), args[1].(int), args[2].(func([]string) error))
 	})
 	return _c
 }
@@ -127,7 +128,7 @@ func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) Return(_a0 error) *Moc
 	return _c
 }
 
-func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) RunAndReturn(run func(int, func([]string) error) error) *MockObjectStore_BatchProcessFullTextQueue_Call {
+func (_c *MockObjectStore_BatchProcessFullTextQueue_Call) RunAndReturn(run func(context.Context, int, func([]string) error) error) *MockObjectStore_BatchProcessFullTextQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -297,7 +298,7 @@ func (_c *MockObjectStore_DeleteLinks_Call) RunAndReturn(run func(...string) err
 }
 
 // DeleteObject provides a mock function with given fields: id
-func (_m *MockObjectStore) DeleteObject(id string) error {
+func (_m *MockObjectStore) DeleteObject(id domain.FullID) error {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
@@ -305,7 +306,7 @@ func (_m *MockObjectStore) DeleteObject(id string) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullID) error); ok {
 		r0 = rf(id)
 	} else {
 		r0 = ret.Error(0)
@@ -320,14 +321,14 @@ type MockObjectStore_DeleteObject_Call struct {
 }
 
 // DeleteObject is a helper method to define mock.On call
-//   - id string
+//   - id domain.FullID
 func (_e *MockObjectStore_Expecter) DeleteObject(id interface{}) *MockObjectStore_DeleteObject_Call {
 	return &MockObjectStore_DeleteObject_Call{Call: _e.mock.On("DeleteObject", id)}
 }
 
-func (_c *MockObjectStore_DeleteObject_Call) Run(run func(id string)) *MockObjectStore_DeleteObject_Call {
+func (_c *MockObjectStore_DeleteObject_Call) Run(run func(id domain.FullID)) *MockObjectStore_DeleteObject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(domain.FullID))
 	})
 	return _c
 }
@@ -337,7 +338,7 @@ func (_c *MockObjectStore_DeleteObject_Call) Return(_a0 error) *MockObjectStore_
 	return _c
 }
 
-func (_c *MockObjectStore_DeleteObject_Call) RunAndReturn(run func(string) error) *MockObjectStore_DeleteObject_Call {
+func (_c *MockObjectStore_DeleteObject_Call) RunAndReturn(run func(domain.FullID) error) *MockObjectStore_DeleteObject_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -679,6 +680,64 @@ func (_c *MockObjectStore_GetAccountStatus_Call) Return(status *coordinatorproto
 }
 
 func (_c *MockObjectStore_GetAccountStatus_Call) RunAndReturn(run func() (*coordinatorproto.SpaceStatusPayload, error)) *MockObjectStore_GetAccountStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetActiveViews provides a mock function with given fields: objectId
+func (_m *MockObjectStore) GetActiveViews(objectId string) (map[string]string, error) {
+	ret := _m.Called(objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetActiveViews")
+	}
+
+	var r0 map[string]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (map[string]string, error)); ok {
+		return rf(objectId)
+	}
+	if rf, ok := ret.Get(0).(func(string) map[string]string); ok {
+		r0 = rf(objectId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(objectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_GetActiveViews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetActiveViews'
+type MockObjectStore_GetActiveViews_Call struct {
+	*mock.Call
+}
+
+// GetActiveViews is a helper method to define mock.On call
+//   - objectId string
+func (_e *MockObjectStore_Expecter) GetActiveViews(objectId interface{}) *MockObjectStore_GetActiveViews_Call {
+	return &MockObjectStore_GetActiveViews_Call{Call: _e.mock.On("GetActiveViews", objectId)}
+}
+
+func (_c *MockObjectStore_GetActiveViews_Call) Run(run func(objectId string)) *MockObjectStore_GetActiveViews_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetActiveViews_Call) Return(_a0 map[string]string, _a1 error) *MockObjectStore_GetActiveViews_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectStore_GetActiveViews_Call) RunAndReturn(run func(string) (map[string]string, error)) *MockObjectStore_GetActiveViews_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2098,7 +2157,7 @@ func (_c *MockObjectStore_Name_Call) RunAndReturn(run func() string) *MockObject
 }
 
 // Query provides a mock function with given fields: q
-func (_m *MockObjectStore) Query(q database.Query) ([]database.Record, int, error) {
+func (_m *MockObjectStore) Query(q database.Query) ([]database.Record, error) {
 	ret := _m.Called(q)
 
 	if len(ret) == 0 {
@@ -2106,9 +2165,8 @@ func (_m *MockObjectStore) Query(q database.Query) ([]database.Record, int, erro
 	}
 
 	var r0 []database.Record
-	var r1 int
-	var r2 error
-	if rf, ok := ret.Get(0).(func(database.Query) ([]database.Record, int, error)); ok {
+	var r1 error
+	if rf, ok := ret.Get(0).(func(database.Query) ([]database.Record, error)); ok {
 		return rf(q)
 	}
 	if rf, ok := ret.Get(0).(func(database.Query) []database.Record); ok {
@@ -2119,19 +2177,13 @@ func (_m *MockObjectStore) Query(q database.Query) ([]database.Record, int, erro
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(database.Query) int); ok {
+	if rf, ok := ret.Get(1).(func(database.Query) error); ok {
 		r1 = rf(q)
 	} else {
-		r1 = ret.Get(1).(int)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(database.Query) error); ok {
-		r2 = rf(q)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockObjectStore_Query_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Query'
@@ -2152,12 +2204,12 @@ func (_c *MockObjectStore_Query_Call) Run(run func(q database.Query)) *MockObjec
 	return _c
 }
 
-func (_c *MockObjectStore_Query_Call) Return(records []database.Record, total int, err error) *MockObjectStore_Query_Call {
-	_c.Call.Return(records, total, err)
+func (_c *MockObjectStore_Query_Call) Return(records []database.Record, err error) *MockObjectStore_Query_Call {
+	_c.Call.Return(records, err)
 	return _c
 }
 
-func (_c *MockObjectStore_Query_Call) RunAndReturn(run func(database.Query) ([]database.Record, int, error)) *MockObjectStore_Query_Call {
+func (_c *MockObjectStore_Query_Call) RunAndReturn(run func(database.Query) ([]database.Record, error)) *MockObjectStore_Query_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2674,6 +2726,101 @@ func (_c *MockObjectStore_SaveVirtualSpace_Call) Return(_a0 error) *MockObjectSt
 }
 
 func (_c *MockObjectStore_SaveVirtualSpace_Call) RunAndReturn(run func(string) error) *MockObjectStore_SaveVirtualSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetActiveView provides a mock function with given fields: objectId, blockId, viewId
+func (_m *MockObjectStore) SetActiveView(objectId string, blockId string, viewId string) error {
+	ret := _m.Called(objectId, blockId, viewId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetActiveView")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
+		r0 = rf(objectId, blockId, viewId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_SetActiveView_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetActiveView'
+type MockObjectStore_SetActiveView_Call struct {
+	*mock.Call
+}
+
+// SetActiveView is a helper method to define mock.On call
+//   - objectId string
+//   - blockId string
+//   - viewId string
+func (_e *MockObjectStore_Expecter) SetActiveView(objectId interface{}, blockId interface{}, viewId interface{}) *MockObjectStore_SetActiveView_Call {
+	return &MockObjectStore_SetActiveView_Call{Call: _e.mock.On("SetActiveView", objectId, blockId, viewId)}
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) Run(run func(objectId string, blockId string, viewId string)) *MockObjectStore_SetActiveView_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) Return(_a0 error) *MockObjectStore_SetActiveView_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveView_Call) RunAndReturn(run func(string, string, string) error) *MockObjectStore_SetActiveView_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetActiveViews provides a mock function with given fields: objectId, views
+func (_m *MockObjectStore) SetActiveViews(objectId string, views map[string]string) error {
+	ret := _m.Called(objectId, views)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetActiveViews")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, map[string]string) error); ok {
+		r0 = rf(objectId, views)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_SetActiveViews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetActiveViews'
+type MockObjectStore_SetActiveViews_Call struct {
+	*mock.Call
+}
+
+// SetActiveViews is a helper method to define mock.On call
+//   - objectId string
+//   - views map[string]string
+func (_e *MockObjectStore_Expecter) SetActiveViews(objectId interface{}, views interface{}) *MockObjectStore_SetActiveViews_Call {
+	return &MockObjectStore_SetActiveViews_Call{Call: _e.mock.On("SetActiveViews", objectId, views)}
+}
+
+func (_c *MockObjectStore_SetActiveViews_Call) Run(run func(objectId string, views map[string]string)) *MockObjectStore_SetActiveViews_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(map[string]string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveViews_Call) Return(_a0 error) *MockObjectStore_SetActiveViews_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_SetActiveViews_Call) RunAndReturn(run func(string, map[string]string) error) *MockObjectStore_SetActiveViews_Call {
 	_c.Call.Return(run)
 	return _c
 }

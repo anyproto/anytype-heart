@@ -3,11 +3,13 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
@@ -80,24 +82,20 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 		return m
 	}
 
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id := domain.FullID{
-			SpaceID:  req.SpaceId,
-			ObjectID: req.ObjectId,
-		}
 		obj, err = bs.OpenBlock(ctx, id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
-	if err != nil {
-		if err == source.ErrUnknownDataFormat {
-			return response(pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE, err)
-		} else if err == source.ErrObjectNotFound {
-			return response(pb.RpcObjectOpenResponseError_NOT_FOUND, err)
-		}
-		return response(pb.RpcObjectOpenResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectOpenResponseError_NULL, nil)
+	code := mapErrorCode(err,
+		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectOpenResponseError_OBJECT_DELETED),
+		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE),
+		errToCode(source.ErrObjectNotFound, pb.RpcObjectOpenResponseError_NOT_FOUND),
+	)
+	return response(code, err)
 }
 
 func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
@@ -112,24 +110,20 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 		return m
 	}
 
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id := domain.FullID{
-			SpaceID:  req.SpaceId,
-			ObjectID: req.ObjectId,
-		}
 		obj, err = bs.ShowBlock(id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
-	if err != nil {
-		if err == source.ErrUnknownDataFormat {
-			return response(pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE, err)
-		} else if err == source.ErrObjectNotFound {
-			return response(pb.RpcObjectShowResponseError_NOT_FOUND, err)
-		}
-		return response(pb.RpcObjectShowResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectShowResponseError_NULL, nil)
+	code := mapErrorCode(err,
+		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectShowResponseError_OBJECT_DELETED),
+		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE),
+		errToCode(source.ErrObjectNotFound, pb.RpcObjectShowResponseError_NOT_FOUND),
+	)
+	return response(code, err)
 }
 
 func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse {
@@ -287,7 +281,7 @@ func (mw *Middleware) BlockSetCarriage(_ context.Context, req *pb.RpcBlockSetCar
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return block.Do(bs, req.ContextId, func(sb smartblock.SmartBlock) error {
+		return cache.Do(bs, req.ContextId, func(sb smartblock.SmartBlock) error {
 			sb.History().SetCarriageState(undo.CarriageState{
 				BlockID:   req.BlockId,
 				RangeFrom: req.Range.From,
@@ -901,6 +895,25 @@ func (mw *Middleware) BlockFileSetName(cctx context.Context, req *pb.RpcBlockFil
 	}
 	// TODO
 	return response(pb.RpcBlockFileSetNameResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockFileSetTargetObjectId(cctx context.Context, req *pb.RpcBlockFileSetTargetObjectIdRequest) *pb.RpcBlockFileSetTargetObjectIdResponse {
+	ctx := mw.newContext(cctx)
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetFileTargetObjectId(ctx, req.ContextId, req.BlockId, req.ObjectId)
+	})
+
+	code := mapErrorCode(err,
+		errToCode(err, pb.RpcBlockFileSetTargetObjectIdResponseError_UNKNOWN_ERROR),
+	)
+
+	return &pb.RpcBlockFileSetTargetObjectIdResponse{
+		Error: &pb.RpcBlockFileSetTargetObjectIdResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		Event: mw.getResponseEvent(ctx),
+	}
 }
 
 func (mw *Middleware) BlockFileListSetStyle(cctx context.Context, req *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse {

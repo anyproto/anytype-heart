@@ -85,7 +85,7 @@ func TestService_Search(t *testing.T) {
 		})
 
 		require.Len(t, fx.Service.(*service).cache.entries, 3)
-		assert.Len(t, fx.Service.(*service).cache.entries["1"].SubIds(), 2)
+		assert.Len(t, fx.Service.(*service).cache.entries["1"].SubIds(), 1)
 		assert.Len(t, fx.Service.(*service).cache.entries["author2"].SubIds(), 1)
 		assert.Len(t, fx.Service.(*service).cache.entries["author3"].SubIds(), 1)
 

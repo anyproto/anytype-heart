@@ -197,14 +197,15 @@ func isBundledObjects(targetObjectID string) bool {
 
 func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
 	if iconImage := block.Model().GetText().GetIconImage(); iconImage != "" {
-		_, err := cid.Decode(iconImage)
-		if err == nil { // this can be url, because for notion import we store url to picture
-			newTarget := oldIDtoNew[iconImage]
-			if newTarget == "" {
+		newTarget := oldIDtoNew[iconImage]
+		if newTarget == "" {
+			newTarget = iconImage
+			_, err := cid.Decode(newTarget) // this can be url, because for notion import we store url to picture
+			if err == nil {
 				newTarget = addr.MissingObject
 			}
-			block.Model().GetText().IconImage = newTarget
 		}
+		block.Model().GetText().IconImage = newTarget
 	}
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
@@ -346,7 +347,7 @@ func AddRelationsToDataView(collectionState *state.State, relationLink *model.Re
 				err := dataView.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
 					Key:       relationLink.Key,
 					IsVisible: true,
-					Width:     192,
+					Width:     dataview.DefaultViewRelationWidth,
 				})
 				if err != nil {
 					return true

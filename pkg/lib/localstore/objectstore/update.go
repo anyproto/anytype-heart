@@ -47,7 +47,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if txErr != nil {
 		return txErr
 	}
-	s.cache.Set(key, newDetails, int64(newDetails.Size()))
+	s.cache.Add(string(key), newDetails)
 	return nil
 }
 
@@ -152,7 +152,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 	}); err != nil {
 		return err
 	}
-	s.cache.Set(key, payload, int64(payload.Size()))
+	s.cache.Add(string(key), payload)
 	return nil
 }
 
@@ -208,9 +208,7 @@ func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Str
 			Details: detCopy,
 		})
 	}
-	for i := range s.subscriptions {
-		go func(sub database.Subscription) {
-			_ = sub.Publish(id, detCopy)
-		}(s.subscriptions[i])
+	for _, sub := range s.subscriptions {
+		_ = sub.PublishAsync(id, detCopy)
 	}
 }

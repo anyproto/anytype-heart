@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 )
 
 const (
@@ -68,9 +69,17 @@ func (s *clientServer) Port() int {
 }
 
 func (s *clientServer) startServer(ctx context.Context) (err error) {
+	// todo: start using sqlite db
 	db, err := s.provider.SpaceStorage()
 	if err != nil {
-		return
+		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
+			db, err = s.provider.LocalStorage()
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 	s.storage = &portStorage{db}
 	oldPort, err := s.storage.getPort()
@@ -104,7 +113,7 @@ func (s *clientServer) prepareListener(port int) (net.Listener, error) {
 		}
 	}
 	// otherwise listening to new port
-	//nolint: gosec
+	// nolint: gosec
 	return net.Listen("tcp", ":")
 }
 

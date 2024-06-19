@@ -19,10 +19,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
@@ -40,6 +40,7 @@ type FileStorage interface {
 	app.ComponentRunnable
 
 	LocalDiskUsage(ctx context.Context) (uint64, error)
+	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
 }
 
 type fileStorage struct {
@@ -49,7 +50,6 @@ type fileStorage struct {
 	cfg        *config.Config
 	flatfsPath string
 
-	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
 	spaceStorage storage.ClientStorage
 	eventSender  event.Sender
@@ -109,6 +109,10 @@ func (f *fileStorage) initOldStore() (*badger.DB, error) {
 		return nil, nil
 	}
 	return badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath).WithReadOnly(true).WithBypassLockGuard(true))
+}
+
+func (f *fileStorage) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	return f.proxy.origin.IterateFiles(ctx, iterFunc)
 }
 
 func (f *fileStorage) LocalDiskUsage(ctx context.Context) (uint64, error) {

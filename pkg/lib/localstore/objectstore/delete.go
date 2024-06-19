@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -20,11 +21,9 @@ func (s *dsObjectStore) DeleteDetails(ids ...string) error {
 	for _, chunk := range lo.Chunk(ids, 100) {
 		err := s.updateTxn(func(txn *badger.Txn) error {
 			for _, id := range chunk {
-				s.cache.Del(pagesDetailsBase.ChildString(id).Bytes())
+				s.cache.Remove(pagesDetailsBase.ChildString(id).String())
 
 				for _, key := range []ds.Key{
-					pagesDetailsBase.ChildString(id),
-					pagesSnippetBase.ChildString(id),
 					pagesDetailsBase.ChildString(id),
 					indexedHeadsState.ChildString(id),
 				} {
@@ -43,11 +42,12 @@ func (s *dsObjectStore) DeleteDetails(ids ...string) error {
 }
 
 // DeleteObject removes all details, leaving only id and isDeleted
-func (s *dsObjectStore) DeleteObject(id string) error {
+func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err := s.UpdateObjectDetails(id, &types.Struct{
+	err := s.UpdateObjectDetails(id.ObjectID, &types.Struct{
 		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():        pbtypes.String(id),
+			bundle.RelationKeyId.String():        pbtypes.String(id.ObjectID),
+			bundle.RelationKeySpaceId.String():   pbtypes.String(id.SpaceID),
 			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
 		},
 	})
@@ -60,16 +60,15 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 		defer txn.Discard()
 
 		for _, key := range []ds.Key{
-			pagesSnippetBase.ChildString(id),
-			indexQueueBase.ChildString(id),
-			indexedHeadsState.ChildString(id),
+			indexQueueBase.ChildString(id.ObjectID),
+			indexedHeadsState.ChildString(id.ObjectID),
 		} {
 			if err = txn.Delete(key.Bytes()); err != nil {
 				return err
 			}
 		}
 
-		txn, err = s.eraseLinksForObject(txn, id)
+		txn, err = s.eraseLinksForObject(txn, id.ObjectID)
 		if err != nil {
 			return err
 		}
@@ -79,11 +78,11 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 		}
 
 		if s.fts != nil {
-			err = s.removeFromIndexQueue(id)
+			err = s.removeFromIndexQueue(id.ObjectID)
 			if err != nil {
 				log.Errorf("error removing %s from index queue: %s", id, err)
 			}
-			if err := s.fts.Delete(id); err != nil {
+			if err := s.fts.DeleteObject(id.ObjectID); err != nil {
 				return err
 			}
 		}

@@ -18,13 +18,11 @@ func getTask() *task {
 }
 
 type result struct {
-	cid cid.Cid
 	err error
 }
 
 type task struct {
 	ctx         context.Context
-	peerId      string
 	spaceId     string
 	cid         cid.Cid
 	denyPeerIds []string
@@ -40,7 +38,6 @@ func (t *task) execWithClient(c *client) {
 
 func (t *task) release() {
 	t.ctx = nil
-	t.peerId = ""
 	t.spaceId = ""
 	t.denyPeerIds = t.denyPeerIds[:0]
 	t.write = false

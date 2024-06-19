@@ -3,116 +3,129 @@ package syncstatus
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
-
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type FileStatus int
-
-// First constants must repeat syncstatus.SyncStatus constants for
-// avoiding inconsistency with data stored in filestore
-const (
-	FileStatusUnknown FileStatus = iota
-	FileStatusSynced
-	FileStatusSyncing
-	FileStatusLimited
-)
-
-func (s FileStatus) ToSyncStatus() syncstatus.SyncStatus {
-	switch s {
-	case FileStatusUnknown:
-		return syncstatus.StatusUnknown
-	case FileStatusSynced:
-		return syncstatus.StatusSynced
-	case FileStatusSyncing, FileStatusLimited:
-		return syncstatus.StatusNotSynced
-	default:
-		return syncstatus.StatusUnknown
-	}
+func (s *service) onFileUploadStarted(objectId string, _ domain.FullFileId) error {
+	return s.indexFileSyncStatus(objectId, filesyncstatus.Syncing)
 }
 
-func (s *service) updateFileStatus(fileId domain.FileId, status FileStatus) error {
-	fileObjectIds, err := s.getObjectIdsByFileId(fileId)
-	if err != nil {
-		return fmt.Errorf("get file id by file hash: %w", err)
-	}
-	for _, id := range fileObjectIds {
-		err = s.indexFileSyncStatus(id, status)
-		if err != nil {
-			return fmt.Errorf("index file sync status: %w", err)
-		}
-	}
-	return nil
+func (s *service) onFileUploaded(objectId string, _ domain.FullFileId) error {
+	return s.indexFileSyncStatus(objectId, filesyncstatus.Synced)
 }
 
-func (s *service) OnFileUploadStarted(fileId domain.FileId) error {
-	return s.updateFileStatus(fileId, FileStatusSyncing)
+func (s *service) onFileLimited(objectId string, _ domain.FullFileId) error {
+	return s.indexFileSyncStatus(objectId, filesyncstatus.Limited)
 }
 
-func (s *service) OnFileUploaded(fileId domain.FileId) error {
-	return s.updateFileStatus(fileId, FileStatusSynced)
+func (s *service) OnFileDelete(fileId domain.FullFileId) {
+	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId)
 }
 
-func (s *service) OnFileLimited(fileId domain.FileId) error {
-	return s.updateFileStatus(fileId, FileStatusLimited)
-}
-
-func (s *service) getObjectIdsByFileId(fileId domain.FileId) ([]string, error) {
-	records, _, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.String()),
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("query objects by file hash: %w", err)
-	}
-	if len(records) == 0 {
-		return nil, fmt.Errorf("file object not found")
-	}
-	ids := make([]string, 0, len(records))
-	for _, rec := range records {
-		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
-	}
-	return ids, nil
-}
-
-func (s *service) indexFileSyncStatus(fileObjectId string, status FileStatus) error {
-	err := s.updateReceiver.UpdateTree(context.Background(), fileObjectId, status.ToSyncStatus())
-	if err != nil {
-		return fmt.Errorf("update tree: %w", err)
-	}
-
-	err = getblock.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
+func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
+	var spaceId string
+	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
+		spaceId = sb.SpaceID()
 		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
 		newStatus := int64(status)
 		if prevStatus == newStatus {
 			return nil
 		}
-
 		detailsSetter, ok := sb.(basic.DetailsSettable)
 		if !ok {
 			return fmt.Errorf("setting of details is not supported for %T", sb)
 		}
-		return detailsSetter.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
-			{
-				Key:   bundle.RelationKeyFileBackupStatus.String(),
-				Value: pbtypes.Int64(newStatus),
-			},
-		}, true)
+		details := provideFileStatusDetails(status, newStatus)
+		return detailsSetter.SetDetails(nil, details, true)
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("get object: %w", err)
+	}
+
+	err = s.updateReceiver.UpdateTree(context.Background(), fileObjectId, status.ToSyncStatus())
+	if err != nil {
+		return fmt.Errorf("update tree: %w", err)
+	}
+
+	s.sendSpaceStatusUpdate(status, spaceId)
+	return nil
+}
+
+func provideFileStatusDetails(status filesyncstatus.Status, newStatus int64) []*model.Detail {
+	syncStatus, syncError := getFileObjectStatus(status)
+	details := make([]*model.Detail, 0, 4)
+	details = append(details, &model.Detail{
+		Key:   bundle.RelationKeySyncStatus.String(),
+		Value: pbtypes.Int64(int64(syncStatus)),
+	})
+	details = append(details, &model.Detail{
+		Key:   bundle.RelationKeySyncError.String(),
+		Value: pbtypes.Int64(int64(syncError)),
+	})
+	details = append(details, &model.Detail{
+		Key:   bundle.RelationKeySyncDate.String(),
+		Value: pbtypes.Int64(time.Now().Unix()),
+	})
+	details = append(details, &model.Detail{
+		Key:   bundle.RelationKeyFileBackupStatus.String(),
+		Value: pbtypes.Int64(newStatus),
+	})
+	return details
+}
+
+func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string) {
+	spaceStatus, spaceError := getSyncStatus(status)
+	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, spaceError, domain.Files)
+	s.spaceSyncStatus.SendUpdate(syncStatus)
+}
+
+func getFileObjectStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {
+	var (
+		spaceStatus domain.ObjectSyncStatus
+		spaceError  domain.SyncError
+	)
+	switch status {
+	case filesyncstatus.Synced:
+		spaceStatus = domain.ObjectSynced
+	case filesyncstatus.Syncing:
+		spaceStatus = domain.ObjectSyncing
+	case filesyncstatus.Queued:
+		spaceStatus = domain.ObjectQueued
+	case filesyncstatus.Limited:
+		spaceStatus = domain.ObjectError
+		spaceError = domain.StorageLimitExceed
+	case filesyncstatus.Unknown:
+		spaceStatus = domain.ObjectError
+		spaceError = domain.NetworkError
+	}
+	return spaceStatus, spaceError
+}
+
+func getSyncStatus(status filesyncstatus.Status) (domain.SpaceSyncStatus, domain.SyncError) {
+	var (
+		spaceStatus domain.SpaceSyncStatus
+		spaceError  domain.SyncError
+	)
+	switch status {
+	case filesyncstatus.Synced:
+		spaceStatus = domain.Synced
+	case filesyncstatus.Syncing, filesyncstatus.Queued:
+		spaceStatus = domain.Syncing
+	case filesyncstatus.Limited:
+		spaceStatus = domain.Error
+		spaceError = domain.StorageLimitExceed
+	case filesyncstatus.Unknown:
+		spaceStatus = domain.Error
+		spaceError = domain.NetworkError
+	}
+	return spaceStatus, spaceError
 }

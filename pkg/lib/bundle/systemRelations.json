@@ -41,6 +41,8 @@
   "isReadonly",
   "isDeleted",
   "isHidden",
+  "spaceShareableStatus",
+  "isAclShared",
   "isHiddenDiscovery",
   "done",
   "isArchived",
@@ -77,8 +79,10 @@
   "spaceInviteFileKey",
   "readersLimit",
   "writersLimit",
+  "sharedSpacesLimit",
   "participantPermissions",
   "participantStatus",
   "latestAclHeadId",
-  "identity"
+  "identity",
+  "globalName"
 ]

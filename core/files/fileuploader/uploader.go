@@ -19,7 +19,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/h2non/filetype"
 
-	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -45,7 +45,7 @@ type Service interface {
 type service struct {
 	fileService       files.Service
 	tempDirProvider   core.TempDirProvider
-	picker            getblock.ObjectGetter
+	picker            cache.ObjectGetter
 	fileObjectService fileobject.Service
 }
 
@@ -73,7 +73,7 @@ func (f *service) Name() string {
 func (f *service) Init(a *app.App) error {
 	f.fileService = app.MustComponent[files.Service](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-	f.picker = app.MustComponent[getblock.ObjectGetter](a)
+	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
 	return nil
 }
@@ -103,7 +103,6 @@ type Uploader interface {
 	SetGroupId(groupId string) Uploader
 	SetCustomEncryptionKeys(keys map[string]string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
-	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
 	Upload(ctx context.Context) (result UploadResult)
@@ -142,20 +141,20 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
-	spaceId           string
-	fileObjectService fileobject.Service
-	picker            getblock.ObjectGetter
-	block             file.Block
-	getReader         func(ctx context.Context) (*fileReader, error)
-	name              string
-	lastModifiedDate  int64
-	typeDetect        bool
-	forceType         bool
-	smartBlockID      string
-	fileType          model.BlockContentFileType
-	fileStyle         model.BlockContentFileStyle
-	opts              []files.AddOption
-	groupID           string
+	spaceId              string
+	fileObjectService    fileobject.Service
+	picker               cache.ObjectGetter
+	block                file.Block
+	getReader            func(ctx context.Context) (*fileReader, error)
+	name                 string
+	lastModifiedDate     int64
+	forceType            bool
+	forceUploadingAsFile bool
+	smartBlockID         string
+	fileType             model.BlockContentFileType
+	fileStyle            model.BlockContentFileStyle
+	opts                 []files.AddOption
+	groupID              string
 
 	tempDirProvider      core.TempDirProvider
 	fileService          files.Service
@@ -211,6 +210,11 @@ func (u *uploader) SetName(name string) Uploader {
 func (u *uploader) SetType(tp model.BlockContentFileType) Uploader {
 	u.fileType = tp
 	u.forceType = true
+	return u
+}
+
+func (u *uploader) ForceUploadingAsFile() Uploader {
+	u.forceUploadingAsFile = true
 	return u
 }
 
@@ -356,11 +360,6 @@ func (u *uploader) setLastModifiedDate(path string) {
 	}
 }
 
-func (u *uploader) AutoType(enable bool) Uploader {
-	u.typeDetect = enable
-	return u
-}
-
 func (u *uploader) AsyncUpdates(smartBlockId string) Uploader {
 	u.smartBlockID = smartBlockId
 	return u
@@ -440,10 +439,13 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	var addResult *files.AddResult
-	if u.fileType == model.BlockContentFile_Image {
+	if !u.forceUploadingAsFile && u.fileType == model.BlockContentFile_Image {
 		addResult, err = u.fileService.ImageAdd(ctx, u.spaceId, opts...)
-		if errors.Is(err, image.ErrFormat) || errors.Is(err, mill.ErrFormatSupportNotEnabled) {
-			return u.SetType(model.BlockContentFile_File).Upload(ctx)
+		if errors.Is(err, image.ErrFormat) ||
+			errors.Is(err, mill.ErrFormatSupportNotEnabled) ||
+			errors.Is(err, mill.ErrProcessing) {
+			err = nil
+			return u.ForceUploadingAsFile().Upload(ctx)
 		}
 		if err != nil {
 			return UploadResult{Err: fmt.Errorf("add image to storage: %w", err)}
@@ -526,7 +528,7 @@ type FileComponent interface {
 
 func (u *uploader) updateBlock() {
 	if u.smartBlockID != "" && u.block != nil {
-		err := getblock.Do(u.picker, u.smartBlockID, func(f FileComponent) error {
+		err := cache.Do(u.picker, u.smartBlockID, func(f FileComponent) error {
 			return f.UpdateFile(u.block.Model().Id, u.groupID, func(b file.Block) error {
 				b.SetModel(u.block.Copy().Model().GetFile())
 				return nil

@@ -57,7 +57,7 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 		assert.Equal(t, options[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()], pbtypes.String("blue"))
 	}
 
-	//Relation already exist
+	// Relation already exist
 	selectProperty = property.SelectItem{
 		Object: "",
 		ID:     "id",
@@ -277,7 +277,7 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 		assert.Equal(t, options[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()], pbtypes.String("pink"))
 	}
 
-	//Relation already exist
+	// Relation already exist
 	statusProperty = property.StatusItem{
 		ID:   "id",
 		Type: property.PropertyConfigStatus,
@@ -302,6 +302,40 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 		assert.Equal(t, options[1].Details.Fields[bundle.RelationKeyName.String()], pbtypes.String("In progress"))
 		assert.Equal(t, options[1].Details.Fields[bundle.RelationKeyRelationOptionColor.String()], pbtypes.String("grey"))
 	}
+}
+
+func Test_handlePageProperties(t *testing.T) {
+	t.Run("empty status property", func(t *testing.T) {
+		c := client.NewClient()
+		details := make(map[string]*types.Value, 0)
+
+		statusProperty := property.StatusItem{
+			ID:   "id",
+			Type: property.PropertyConfigStatus,
+		}
+		properties := property.Properties{"Status": &statusProperty}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: properties},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &api.NotionImportContext{},
+			relations: req,
+		}
+		snapshots, _ := pageTask.handlePageProperties(do, details)
+
+		assert.Len(t, snapshots, 1) // 1 relation without option
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+		key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
+		assert.NotEmpty(t, details[key])
+	})
 }
 
 func Test_handlePagePropertiesNumber(t *testing.T) {
@@ -384,7 +418,7 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 		assert.Equal(t, options[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()], pbtypes.String("blue"))
 	}
 
-	//Relation already exist
+	// Relation already exist
 	multiSelectProperty = property.MultiSelectItem{
 		ID:   "id",
 		Type: string(property.PropertyConfigTypeMultiSelect),

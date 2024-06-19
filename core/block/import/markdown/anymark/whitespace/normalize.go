@@ -36,31 +36,6 @@ var (
 		'\u205F': struct{}{}, // Medium mathemtical space.
 		'\u3000': struct{}{}, // Ideographic space.
 	}
-
-	// Whitespace line replacement character map.
-	unicodeWhitespaceLineRepl = map[rune]struct{}{
-		'\u0009': struct{}{}, // Character tabulation (HT.)
-		'\u000A': struct{}{}, // Line feed.
-		'\u0020': struct{}{}, // Space.
-		'\u00A0': struct{}{}, // No-break space.
-		'\u180E': struct{}{}, // Mongolian vowel separator.
-		'\u2000': struct{}{}, // En quad.
-		'\u2001': struct{}{}, // Em quad.
-		'\u2002': struct{}{}, // En space.
-		'\u2003': struct{}{}, // Em space.
-		'\u2004': struct{}{}, // Three-per-em space.
-		'\u2005': struct{}{}, // Four-per-em space.
-		'\u2006': struct{}{}, // Six-per-em space.
-		'\u2007': struct{}{}, // Figure space.
-		'\u2008': struct{}{}, // Punctuation space.
-		'\u2009': struct{}{}, // Thin space.
-		'\u200A': struct{}{}, // Hair space.
-		'\u2028': struct{}{}, // Line separator.
-		'\u2029': struct{}{}, // Paragraph separator.
-		'\u202F': struct{}{}, // Narrow no-break space.
-		'\u205F': struct{}{}, // Medium mathemtical space.
-		'\u3000': struct{}{}, // Ideographic space.
-	}
 )
 
 // Normalize string.

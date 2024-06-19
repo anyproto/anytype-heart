@@ -2,55 +2,49 @@ package spacestatus
 
 import (
 	"context"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 
-	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.components.spacestatus"
 
 type SpaceStatus interface {
 	app.ComponentRunnable
-	sync.Locker
 	SpaceId() string
 	GetLocalStatus() spaceinfo.LocalStatus
-	GetRemoteStatus() spaceinfo.RemoteStatus
 	GetPersistentStatus() spaceinfo.AccountStatus
-	LatestAclHeadId() string
-	UpdatePersistentStatus(ctx context.Context, status spaceinfo.AccountStatus)
-	UpdatePersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo)
-	SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error
-	SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error)
-	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
-	SetLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error
-	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
-	SetAccessType(ctx context.Context, status spaceinfo.AccessType) (err error)
+	GetLatestAclHeadId() string
+	SetPersistentStatus(status spaceinfo.AccountStatus) (err error)
+	SetPersistentInfo(info spaceinfo.SpacePersistentInfo) (err error)
+	SetLocalStatus(status spaceinfo.LocalStatus) error
+	SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
+	SetAccessType(status spaceinfo.AccessType) (err error)
+	SetAclIsEmpty(isEmpty bool) (err error)
+	GetSpaceView() techspace.SpaceView
 }
 
 type spaceStatus struct {
-	sync.Mutex
-	spaceId         string
-	accountStatus   spaceinfo.AccountStatus
-	localStatus     spaceinfo.LocalStatus
-	remoteStatus    spaceinfo.RemoteStatus
-	latestAclHeadId string
-	techSpace       techspace.TechSpace
-	statService     debugstat.StatService
-	readLimit       uint32
-	writeLimit      uint32
+	spaceId     string
+	techSpace   techspace.TechSpace
+	spaceView   techspace.SpaceView
+	statService debugstat.StatService
 }
 
 func (s *spaceStatus) ProvideStat() any {
+	s.spaceView.Lock()
+	defer s.spaceView.Unlock()
+	localInfo := s.spaceView.GetLocalInfo()
+	persistentInfo := s.spaceView.GetPersistentInfo()
 	return spaceStatusStat{
 		SpaceId:       s.spaceId,
-		AccountStatus: s.accountStatus.String(),
-		LocalStatus:   s.localStatus.String(),
-		RemoteStatus:  s.remoteStatus.String(),
-		AclHeadId:     s.latestAclHeadId,
+		AccountStatus: persistentInfo.GetAccountStatus().String(),
+		AclHeadId:     persistentInfo.GetAclHeadId(),
+		LocalStatus:   localInfo.GetLocalStatus().String(),
+		RemoteStatus:  localInfo.GetRemoteStatus().String(),
 	}
 }
 
@@ -62,16 +56,18 @@ func (s *spaceStatus) StatType() string {
 	return CName
 }
 
-func New(spaceId string, accountStatus spaceinfo.AccountStatus, aclHeadId string) SpaceStatus {
+func New(spaceId string) SpaceStatus {
 	return &spaceStatus{
-		accountStatus:   accountStatus,
-		spaceId:         spaceId,
-		latestAclHeadId: aclHeadId,
+		spaceId: spaceId,
 	}
 }
 
 func (s *spaceStatus) Init(a *app.App) (err error) {
-	s.techSpace = a.MustComponent(techspace.CName).(techspace.TechSpace)
+	s.techSpace = app.MustComponent[techspace.TechSpace](a)
+	s.spaceView, err = s.techSpace.GetSpaceView(context.Background(), s.spaceId)
+	if err != nil {
+		return err
+	}
 	s.statService, _ = a.Component(debugstat.CName).(debugstat.StatService)
 	if s.statService == nil {
 		s.statService = debugstat.NewNoOp()
@@ -85,8 +81,16 @@ func (s *spaceStatus) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceStatus) Close(ctx context.Context) (err error) {
-	s.statService.RemoveProvider(s)
+	if s.statService != nil {
+		s.statService.RemoveProvider(s)
+	}
 	return nil
+}
+
+func doSpaceView[T any](spaceView techspace.SpaceView, f func(techspace.SpaceView) T) (res T) {
+	spaceView.Lock()
+	defer spaceView.Unlock()
+	return f(spaceView)
 }
 
 func (s *spaceStatus) Name() (name string) {
@@ -97,92 +101,65 @@ func (s *spaceStatus) SpaceId() string {
 	return s.spaceId
 }
 
+func (s *spaceStatus) GetSpaceView() techspace.SpaceView {
+	return s.spaceView
+}
+
 func (s *spaceStatus) GetLocalStatus() spaceinfo.LocalStatus {
-	return s.localStatus
-}
-
-func (s *spaceStatus) GetRemoteStatus() spaceinfo.RemoteStatus {
-	return s.remoteStatus
-}
-
-func (s *spaceStatus) GetPersistentStatus() spaceinfo.AccountStatus {
-	return s.accountStatus
-}
-
-func (s *spaceStatus) UpdatePersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) {
-	s.accountStatus = status
-}
-
-func (s *spaceStatus) UpdatePersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) {
-	s.accountStatus = info.AccountStatus
-	s.latestAclHeadId = info.AclHeadId
-}
-
-func (s *spaceStatus) LatestAclHeadId() string {
-	return s.latestAclHeadId
-}
-
-func (s *spaceStatus) SetRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
-	s.remoteStatus = status.RemoteStatus
-	s.readLimit = status.ReadLimit
-	s.writeLimit = status.WriteLimit
-	return s.setCurrentLocalInfo(ctx)
-}
-
-func (s *spaceStatus) SetLocalStatus(ctx context.Context, status spaceinfo.LocalStatus) error {
-	s.localStatus = status
-	return s.setCurrentLocalInfo(ctx)
-}
-
-func (s *spaceStatus) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
-	if s.localStatus == info.LocalStatus && info.RemoteStatus == s.remoteStatus {
-		return nil
-	}
-	s.localStatus = info.LocalStatus
-	s.remoteStatus = info.RemoteStatus
-	return s.setCurrentLocalInfo(ctx)
-}
-
-func (s *spaceStatus) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error) {
-	if s.GetPersistentStatus() == info.AccountStatus {
-		return nil
-	}
-	if err = s.techSpace.SetPersistentInfo(ctx, info); err != nil {
-		return err
-	}
-	s.accountStatus = info.AccountStatus
-	if info.AclHeadId != "" {
-		s.latestAclHeadId = info.AclHeadId
-	}
-	return nil
-}
-
-func (s *spaceStatus) SetPersistentStatus(ctx context.Context, status spaceinfo.AccountStatus) (err error) {
-	if s.GetPersistentStatus() == status {
-		return nil
-	}
-	if err = s.techSpace.SetPersistentInfo(ctx, spaceinfo.SpacePersistentInfo{
-		SpaceID:       s.spaceId,
-		AccountStatus: status,
-	}); err != nil {
-		return err
-	}
-	s.accountStatus = status
-	return nil
-}
-
-func (s *spaceStatus) setCurrentLocalInfo(ctx context.Context) (err error) {
-	return s.techSpace.SetLocalInfo(ctx, spaceinfo.SpaceLocalInfo{
-		SpaceID:      s.spaceId,
-		LocalStatus:  s.localStatus,
-		RemoteStatus: s.remoteStatus,
-		ReadLimit:    s.readLimit,
-		WriteLimit:   s.writeLimit,
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) spaceinfo.LocalStatus {
+		info := view.GetLocalInfo()
+		return info.GetLocalStatus()
 	})
 }
 
-func (s *spaceStatus) SetAccessType(ctx context.Context, acc spaceinfo.AccessType) (err error) {
-	return s.techSpace.SetAccessType(ctx, s.spaceId, acc)
+func (s *spaceStatus) GetPersistentStatus() spaceinfo.AccountStatus {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) spaceinfo.AccountStatus {
+		info := view.GetPersistentInfo()
+		return info.GetAccountStatus()
+	})
+}
+
+func (s *spaceStatus) GetLatestAclHeadId() string {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) string {
+		info := view.GetPersistentInfo()
+		return info.GetAclHeadId()
+	})
+}
+
+func (s *spaceStatus) SetLocalStatus(status spaceinfo.LocalStatus) error {
+	info := spaceinfo.NewSpaceLocalInfo(s.spaceId)
+	info.SetLocalStatus(status)
+	return s.SetLocalInfo(info)
+}
+
+func (s *spaceStatus) SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetSpaceLocalInfo(info)
+	})
+}
+
+func (s *spaceStatus) SetPersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetSpacePersistentInfo(info)
+	})
+}
+
+func (s *spaceStatus) SetPersistentStatus(status spaceinfo.AccountStatus) (err error) {
+	info := spaceinfo.NewSpacePersistentInfo(s.spaceId)
+	info.SetAccountStatus(status)
+	return s.SetPersistentInfo(info)
+}
+
+func (s *spaceStatus) SetAccessType(acc spaceinfo.AccessType) (err error) {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetAccessType(acc)
+	})
+}
+
+func (s *spaceStatus) SetAclIsEmpty(isEmpty bool) (err error) {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetAclIsEmpty(isEmpty)
+	})
 }
 
 type spaceStatusStat struct {

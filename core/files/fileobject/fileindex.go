@@ -2,7 +2,6 @@ package fileobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -106,14 +105,15 @@ func (ind *indexer) initQuery() {
 			},
 			{
 				RelationKey: bundle.RelationKeyFileIndexingStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Empty,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)),
 			},
 		},
 	}
 }
 
 func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
-	recs, _, err := ind.objectStore.Query(ind.query)
+	recs, err := ind.objectStore.Query(ind.query)
 	if err != nil {
 		return fmt.Errorf("query: %w", err)
 	}
@@ -126,6 +126,10 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 		fileId := domain.FullFileId{
 			SpaceId: spaceId,
 			FileId:  domain.FileId(pbtypes.GetString(rec.Details, bundle.RelationKeyFileId.String())),
+		}
+		// Additional check if we are accidentally migrated file object
+		if !fileId.Valid() {
+			continue
 		}
 		err = ind.addToQueue(ctx, id, fileId)
 		if err != nil {
@@ -202,11 +206,6 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 
 func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, fileId domain.FullFileId, id domain.FullID) error {
 	details, typeKey, err := ind.buildDetails(ctx, fileId)
-	if errors.Is(err, domain.ErrFileNotFound) {
-		log.Errorf("build details: %v", err)
-		ind.markFileAsNotFound(st)
-		return nil
-	}
 	if err != nil {
 		return fmt.Errorf("build details: %w", err)
 	}
@@ -230,16 +229,18 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	return nil
 }
 
-func (ind *indexer) markFileAsNotFound(st *state.State) {
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileIndexingStatus, pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)))
-}
-
 func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (details *types.Struct, typeKey domain.TypeKey, err error) {
 	file, err := ind.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, "", err
 	}
-	if mill.IsImage(file.Info().Media) {
+
+	if file.Info().Mill == mill.BlobId {
+		details, typeKey, err = file.Details(ctx)
+		if err != nil {
+			return nil, "", err
+		}
+	} else {
 		image, err := ind.fileService.ImageByHash(ctx, id)
 		if err != nil {
 			return nil, "", err
@@ -248,13 +249,15 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId) (det
 		if err != nil {
 			return nil, "", err
 		}
-		typeKey = bundle.TypeKeyImage
-	} else {
-		details, typeKey, err = file.Details(ctx)
-		if err != nil {
-			return nil, "", err
-		}
 	}
+
+	// Overwrite typeKey for images in case that image is uploaded as file.
+	// That can be possible because some images can't be handled properly and wee fall back to
+	// handling them as files
+	if mill.IsImage(file.Info().Media) {
+		typeKey = bundle.TypeKeyImage
+	}
+
 	details.Fields[bundle.RelationKeyFileIndexingStatus.String()] = pbtypes.Int64(int64(model.FileIndexingStatus_Indexed))
 	return details, typeKey, nil
 }

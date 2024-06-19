@@ -52,6 +52,22 @@ enum SmartBlockType {
     NotificationObject = 0x217;
 }
 
+message Search {
+    message Result {
+        string objectId = 1;
+        google.protobuf.Struct details = 2; //
+        repeated Meta meta = 3; // meta information about the search result
+    }
+
+    message Meta {
+        string highlight = 1; // truncated text with highlights
+        repeated Range highlightRanges = 2; // ranges of the highlight in the text (using utf-16 runes)
+        string blockId = 3; // block id where the highlight has been found
+        string relationKey = 4; // relation key of the block where the highlight has been found
+        google.protobuf.Struct relationDetails = 5; // contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails
+    }
+}
+
 message Block {
     string id = 1;
     google.protobuf.Struct fields = 2;
@@ -112,6 +128,7 @@ message Block {
         AlignLeft = 0;
         AlignCenter = 1;
         AlignRight = 2;
+        AlignJustify = 3;
     }
 
     enum VerticalAlign {
@@ -316,9 +333,9 @@ message Block {
         message Dataview {
             repeated string source = 1;
             repeated View views = 2;
+            string activeView = 3; // do not generate changes for this field
             // deprecated
             repeated model.Relation relations = 4;
-            string activeView = 3; // saved within a session
             repeated GroupOrder groupOrders = 12;
             repeated ObjectOrder objectOrders = 13;
             repeated anytype.model.RelationLink relationLinks = 5;
@@ -383,17 +400,24 @@ message Block {
             }
 
             message Sort {
-                string id = 6;
                 string RelationKey = 1;
                 Type type = 2;
                 repeated google.protobuf.Value customOrder = 3;
                 RelationFormat format = 4;
                 bool includeTime = 5;
+                string id = 6;
+                EmptyType emptyPlacement = 7;
 
                 enum Type {
                     Asc = 0;
                     Desc = 1;
                     Custom = 2;
+                }
+
+                enum EmptyType {
+                    NotSpecified = 0;
+                    Start = 1;
+                    End = 2;
                 }
             }
 
@@ -544,6 +568,7 @@ message Block {
                 Tree = 1;
                 List = 2;
                 CompactList = 3;
+                View = 4;
             }
         }
     }
@@ -892,6 +917,12 @@ message ObjectView {
         int32 undo = 1;
         int32 redo = 2;
     }
+
+    repeated BlockParticipant blockParticipants = 11;
+    message BlockParticipant {
+        string blockId = 1;
+        string participantId = 2;
+    }
 }
 
 enum SpaceStatus {
@@ -1142,6 +1173,12 @@ enum FileIndexingStatus {
     NotFound = 2;
 }
 
+enum SpaceShareableStatus {
+    StatusUnknown = 0;
+    StatusShareable = 1;
+    StatusNotShareable = 2;
+}
+
 message ManifestInfo {
     string schema = 1;
     string id = 2;
@@ -1157,55 +1194,62 @@ message ManifestInfo {
     string language = 12;
 }
 
-message Membership {
-    enum Tier {
-        TierNewUser = 0;
-        // "free" tier
-        TierExplorer = 1;
-        // this tier can be used just for testing in debug mode
-        // it will still create an active subscription, but with NO features
-        TierBuilder1WeekTEST = 2;
-        // this tier can be used just for testing in debug mode
-        // it will still create an active subscription, but with NO features
-        TierCoCreator1WeekTEST = 3;
-        TierBuilder = 4;
-        TierCoCreator = 5;
-    }
-    
+enum NameserviceNameType {
+    // .any suffix
+    AnyName = 0;
+}
+
+
+message Membership {    
     enum Status {
         StatusUnknown = 0;
-        // please wait a bit more
+        // please wait a bit more, we are still processing your request
+        // the payment is confirmed, but we need more time to do some side-effects:
+        // - increase limits
+        // - send emails
+        // - allocate names
         StatusPending = 1;
+        // the membership is active, ready to use!
         StatusActive = 2;
         // in some cases we need to finalize the process:
         // - if user has bought membership directly without first calling
         // the BuySubscription method
-        // 
         // in this case please call Finalize to finish the process
         StatusPendingRequiresFinalization = 3;
     }
     
     enum PaymentMethod {
-        MethodCard = 0;
-        MethodCrypto = 1;
-        MethodApplePay = 2;
-        MethodGooglePay = 3;
-        MethodAppleInapp = 4;
-        MethodGoogleInapp = 5;
+        MethodNone = 0;
+        MethodStripe = 1;
+        MethodCrypto = 2;
+        MethodInappApple = 3;
+        MethodInappGoogle = 4;
+    }
+
+    enum EmailVerificationStatus {
+        // user NEVER comleted the verification of the email
+        StatusNotVerified = 0;
+        // user has asked for new code, but did not enter it yet
+        // (even if email was verified before, you can ask to UPDATE your e-mail)
+        // please wait, you can not ask for more codes yet
+        StatusCodeSent = 1;
+        // the e-mail is finally verified
+        StatusVerified = 2;
     }
 
     // it was Tier before, changed to int32 to allow dynamic values
-    int32 tier = 1;
+    uint32 tier = 1;
     Status status = 2;
     uint64 dateStarted = 3;
     uint64 dateEnds = 4;
     bool isAutoRenew = 5;
     PaymentMethod paymentMethod = 6;
     // can be empty if user did not ask for any name
-    string requestedAnyName = 7;
+    string nsName = 7;
+    anytype.model.NameserviceNameType nsNameType = 8;
     // if the email was verified by the user or set during the checkout - it will be here
-    string userEmail = 8;
-    bool subscribeToNewsletter = 9;
+    string userEmail = 9;
+    bool subscribeToNewsletter = 10;
 }
 
 message MembershipTierData {
@@ -1217,49 +1261,46 @@ message MembershipTierData {
         PeriodTypeMonths = 4;
         PeriodTypeYears = 5;  
     }
-    
-    message Feature {
-        // usually feature has uint value
-        // like "storage" - 120
-        uint32 valueUint = 1;
 
-        // in case feature will have string value
-        string valueStr = 2;
-    }
-
-    // this is a unique ID of the tier
-    // you should hardcode this in your app and provide icon, graphics, etc for each tier 
-    // (even for old/historical/inactive/hidden tiers)
+    // this is a unique Payment Node ID of the tier
+    // WARNING: tiers can be sorted differently, not according to their IDs!
     uint32 id = 1;
     // localazied name of the tier
     string name = 2;
     // just a short technical description
-    // you don't have to use it, you can use your own UI-friendly texts
     string description = 3;
-    // can you buy it (ON ALL PLATFORMS, without clarification)?
-    bool isActive = 4;
-    // is this tier for debugging only?
-    bool isTest = 5;  
-    // hidden tiers are only visible once user got them
-    bool isHiddenTier = 6;
+    // is this tier for testing and debugging only?
+    bool isTest = 4;    
     // how long is the period of the subscription
-    PeriodType periodType = 7;
+    PeriodType periodType = 5;
     // i.e. "5 days" or "3 years"
-    uint32 periodValue = 8;
+    uint32 periodValue = 6;
     // this one is a price we use ONLY on Stripe platform
-    uint32 priceStripeUsdCents = 9;
+    uint32 priceStripeUsdCents = 7;
     // number of ANY NS names that this tier includes 
-    // (not counted as a "feature" and not in the features list)
-    uint32 anyNamesCountIncluded = 10;
-    // somename.any - len of 8
-    uint32 anyNameMinLength = 11;
-    // each tier has a set of features
-    // each feature has a unique key: "storage", "invites", etc
-    // not using enum here to provide dynamic feature list:
-    // 
-    // "stoageGB" -> {64, ""}
-    // "invites" -> {120, ""}
-    // "spaces-public" -> {10, ""}
-    // ...
-    map<string, Feature> features = 12;
+    // also in the "features" list (see below)
+    uint32 anyNamesCountIncluded = 8;
+    // somename.any - is of len 8
+    uint32 anyNameMinLength = 9;
+    // localized strings for the features
+    repeated string features = 10;
+    // green, blue, red, purple, custom
+    string colorStr = 11;
+
+    // Stripe platform-specific data:
+    string stripeProductId = 12;
+    string stripeManageUrl = 13;
+
+    // iOS platform-specific data:
+    string iosProductId = 15;
+    string iosManageUrl = 16;
+
+    // Android platform-specific data:
+    string androidProductId = 17;
+    string androidManageUrl = 18;
+}
+
+message Detail {
+    string key = 1;
+    google.protobuf.Value value = 2; // NUll - removes key
 }

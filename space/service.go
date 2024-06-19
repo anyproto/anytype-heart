@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -26,18 +27,22 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
+var waitSpaceDelay = 500 * time.Millisecond
+
 var (
-	ErrIncorrectSpaceID = errors.New("incorrect space id")
-	ErrSpaceNotExists   = errors.New("space not exists")
-	ErrSpaceDeleted     = errors.New("space is deleted")
-	ErrSpaceIsClosing   = errors.New("space is closing")
-	ErrFailedToLoad     = errors.New("failed to load space")
+	ErrIncorrectSpaceID   = errors.New("incorrect space id")
+	ErrSpaceNotExists     = errors.New("space not exists")
+	ErrSpaceStorageMissig = errors.New("space storage missing")
+	ErrSpaceDeleted       = errors.New("space is deleted")
+	ErrSpaceIsClosing     = errors.New("space is closing")
+	ErrFailedToLoad       = errors.New("failed to load space")
 )
 
 func New() Service {
@@ -55,6 +60,7 @@ type Service interface {
 	Join(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
+	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
 	TechSpace() *clientspace.TechSpace
@@ -77,6 +83,7 @@ type NotificationSender interface {
 
 type service struct {
 	techSpace           *clientspace.TechSpace
+	techSpaceReady      chan struct{}
 	factory             spacefactory.SpaceFactory
 	spaceCore           spacecore.SpaceCoreService
 	accountService      accountservice.Service
@@ -95,7 +102,7 @@ type service struct {
 	repKey                 uint64
 
 	mu        sync.Mutex
-	ctx       context.Context
+	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
 	ctxCancel context.CancelFunc
 	isClosing atomic.Bool
 }
@@ -131,6 +138,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.waiting = make(map[string]controllerWaiter)
+	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	if err != nil {
 		return
@@ -165,11 +173,11 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
-	err = s.initTechSpace()
+	err = s.initTechSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	err = s.initPersonalSpace()
+	err = s.initPersonalSpace(ctx)
 	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 			err = ErrSpaceNotExists
@@ -181,6 +189,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		}
 		return fmt.Errorf("init personal space: %w", err)
 	}
+	s.techSpace.WakeUpViews()
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
 	if err != nil {
@@ -196,15 +205,26 @@ func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
 	return s.create(ctx)
 }
 
+func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
+	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
+	return waiter.waitSpace(ctx, spaceId)
+}
+
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
-	if spaceId == s.techSpace.TechSpaceId() {
-		return s.techSpace, nil
+	if spaceId == s.techSpaceId {
+		return s.getTechSpace(ctx)
 	}
-	ctrl, err := s.getStatus(ctx, spaceId)
+	ctrl, err := s.getCtrl(ctx, spaceId)
 	if err != nil {
 		return nil, err
 	}
 	return s.waitLoad(ctx, ctrl)
+}
+
+func (s *service) UpdateSharedLimits(ctx context.Context, limits int) error {
+	return s.techSpace.DoSpaceView(ctx, s.personalSpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.SetSharedSpacesLimit(limits)
+	})
 }
 
 func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, err error) {
@@ -226,7 +246,7 @@ func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 			log.Warn("OnViewUpdated.startStatus error", zap.Error(err))
 			return
 		}
-		err = ctrl.UpdateInfo(s.ctx, info)
+		err = ctrl.Update()
 		if err != nil {
 			log.Warn("OnViewCreated.UpdateStatus error", zap.Error(err))
 			return
@@ -251,26 +271,27 @@ func (s *service) AccountMetadataPayload() []byte {
 }
 
 func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
+	spaceId := status.LocalInfo.SpaceId
 	s.mu.Lock()
-	ctrl := s.spaceControllers[status.SpaceId]
+	ctrl := s.spaceControllers[spaceId]
 	s.mu.Unlock()
 	if ctrl == nil {
-		return fmt.Errorf("no such space: %s", status.SpaceId)
+		return fmt.Errorf("no such space: %s", spaceId)
 	}
-	err := ctrl.UpdateRemoteStatus(ctx, status)
+	err := ctrl.SetLocalInfo(ctx, status.LocalInfo)
 	if err != nil {
 		return fmt.Errorf("updateRemoteStatus: %w", err)
 	}
-	if !status.IsOwned && status.RemoteStatus == spaceinfo.RemoteStatusDeleted {
+	if !status.IsOwned && status.LocalInfo.GetRemoteStatus() == spaceinfo.RemoteStatusDeleted {
 		accountStatus := ctrl.GetStatus()
 		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
-			s.sendNotification(status.SpaceId)
+			if ctrl.GetLocalStatus() == spaceinfo.LocalStatusOk {
+				s.sendNotification(spaceId)
+			}
+			info := spaceinfo.NewSpacePersistentInfo(spaceId)
+			info.SetAccountStatus(spaceinfo.AccountStatusRemoving)
+			return ctrl.SetPersistentInfo(ctx, info)
 		}
-		return ctrl.SetInfo(ctx, spaceinfo.SpacePersistentInfo{
-			SpaceID:       status.SpaceId,
-			AccountStatus: spaceinfo.AccountStatusRemoving,
-		})
-
 	}
 	return nil
 }
@@ -336,5 +357,18 @@ func (s *service) AllSpaceIds() (ids []string) {
 }
 
 func (s *service) TechSpaceId() string {
-	return s.techSpace.TechSpaceId()
+	return s.techSpaceId
+}
+
+func (s *service) PersonalSpaceId() string {
+	return s.personalSpaceId
+}
+
+func (s *service) getTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {
+	select {
+	case <-s.techSpaceReady:
+		return s.techSpace, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -40,6 +41,7 @@ type AllOperations interface {
 
 type CommonOperations interface {
 	DetailsSettable
+	DetailsUpdatable
 
 	SetFields(ctx session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	SetDivStyle(ctx session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
@@ -52,7 +54,7 @@ type CommonOperations interface {
 
 	PasteBlocks(s *state.State, targetBlockId string, position model.BlockPosition, blocks []simple.Block) (err error)
 	ReplaceLink(oldId, newId string) error
-	ExtractBlocksToObjects(ctx session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc TemplateStateCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
 	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
 	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
@@ -61,7 +63,11 @@ type CommonOperations interface {
 }
 
 type DetailsSettable interface {
-	SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
+	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+}
+
+type DetailsUpdatable interface {
+	UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error)
 }
 
 type Restrictionable interface {
@@ -402,7 +408,7 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 			}
 			frc = append(frc, r)
 			if !bs.HasRelation(s, r) {
-				err = bs.addRelationLink(r, s)
+				err = bs.addRelationLink(s, r)
 				if err != nil {
 					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %w", r, err)
 				}

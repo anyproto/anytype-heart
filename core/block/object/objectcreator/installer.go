@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -21,6 +22,45 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+func (s *service) BundledObjectsIdsToInstall(
+	ctx context.Context,
+	space clientspace.Space,
+	sourceObjectIds []string,
+) (objectIds []string, err error) {
+	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
+	if err != nil {
+		return nil, fmt.Errorf("get marketplace space: %w", err)
+	}
+
+	existingObjectMap, err := s.listInstalledObjects(space, sourceObjectIds)
+	if err != nil {
+		return nil, fmt.Errorf("list installed objects: %w", err)
+	}
+
+	for _, sourceObjectId := range sourceObjectIds {
+		if _, ok := existingObjectMap[sourceObjectId]; ok {
+			continue
+		}
+
+		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
+			uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeyUniqueKey.String()))
+			if err != nil {
+				return err
+			}
+			objectId, err := space.DeriveObjectID(ctx, uk)
+			if err != nil {
+				return err
+			}
+			objectIds = append(objectIds, objectId)
+			return nil
+		})
+		if err != nil {
+			return
+		}
+	}
+	return
+}
 
 func (s *service) InstallBundledObjects(
 	ctx context.Context,
@@ -64,8 +104,6 @@ func (s *service) InstallBundledObjects(
 			objects = append(objects, newDetails)
 		}
 	}
-
-	s.reviseSystemObjects(space, existingObjectMap)
 	return
 }
 
@@ -87,6 +125,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 		Details:       installingDetails,
 		ObjectTypeKey: objectTypeKey,
 	})
+	log.Desugar().Info("install new object", zap.String("id", id))
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		// we don't want to stop adding other objects
 		log.Errorf("error while block create: %v", err)
@@ -96,7 +135,7 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 }
 
 func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
-	existingObjects, _, err := s.objectStore.Query(database.Query{
+	existingObjects, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
@@ -241,7 +280,7 @@ func (s *service) prepareDetailsForInstallingObject(
 }
 
 func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs []string) (deletedObjects []database.Record, err error) {
-	deletedObjects, _, err = s.objectStore.Query(database.Query{
+	deletedObjects, err = s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),
@@ -264,7 +303,7 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 }
 
 func (s *service) queryArchivedObjects(space clientspace.Space, sourceObjectIDs []string) (archivedObjects []database.Record, err error) {
-	archivedObjects, _, err = s.objectStore.Query(database.Query{
+	archivedObjects, err = s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),

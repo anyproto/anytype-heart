@@ -4,8 +4,10 @@ import "io"
 
 type Blob struct{}
 
+const BlobId = "/blob"
+
 func (m *Blob) ID() string {
-	return "/blob"
+	return BlobId
 }
 
 func (m *Blob) Pin() bool {
@@ -21,5 +23,5 @@ func (m *Blob) Options(add map[string]interface{}) (string, error) {
 }
 
 func (m *Blob) Mill(r io.ReadSeeker, name string) (*Result, error) {
-	return &Result{File: r}, nil
+	return &Result{File: noopCloser(r)}, nil
 }

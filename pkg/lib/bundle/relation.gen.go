@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "768e9292e39109be715a9c6f503c3680b5055ed615cf4e8b1f72665919894d12"
+const RelationChecksum = "696b6038e768bea6ecc336a9192c012b3a91a04d72811a26bc74f0f644207d46"
 const (
 	RelationKeyTag                         domain.RelationKey = "tag"
 	RelationKeyCamera                      domain.RelationKey = "camera"
@@ -30,6 +30,7 @@ const (
 	RelationKeyRestrictions                domain.RelationKey = "restrictions"
 	RelationKeyReadersLimit                domain.RelationKey = "readersLimit"
 	RelationKeyWritersLimit                domain.RelationKey = "writersLimit"
+	RelationKeySharedSpacesLimit           domain.RelationKey = "sharedSpacesLimit"
 	RelationKeyIsHighlighted               domain.RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage              domain.RelationKey = "thumbnailImage"
 	RelationKeyAttachments                 domain.RelationKey = "attachments"
@@ -168,6 +169,8 @@ const (
 	RelationKeyOrigin                      domain.RelationKey = "origin"
 	RelationKeySpaceLocalStatus            domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus           domain.RelationKey = "spaceRemoteStatus"
+	RelationKeySpaceShareableStatus        domain.RelationKey = "spaceShareableStatus"
+	RelationKeyIsAclShared                 domain.RelationKey = "isAclShared"
 	RelationKeySpaceAccountStatus          domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid          domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey          domain.RelationKey = "spaceInviteFileKey"
@@ -183,6 +186,9 @@ const (
 	RelationKeyImageKind                   domain.RelationKey = "imageKind"
 	RelationKeyImportType                  domain.RelationKey = "importType"
 	RelationKeyGlobalName                  domain.RelationKey = "globalName"
+	RelationKeySyncStatus                  domain.RelationKey = "syncStatus"
+	RelationKeySyncDate                    domain.RelationKey = "syncDate"
+	RelationKeySyncError                   domain.RelationKey = "syncError"
 )
 
 var (
@@ -861,7 +867,7 @@ var (
 		},
 		RelationKeyGlobalName: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Name of profile that the user could be mentioned by",
 			Format:           model.RelationFormat_shorttext,
 			Id:               "_brglobalName",
@@ -1084,6 +1090,20 @@ var (
 			Id:               "_brinternalFlags",
 			Key:              "internalFlags",
 			Name:             "Internal flags",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsAclShared: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Specify if access control list is shared",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisAclShared",
+			Key:              "isAclShared",
+			MaxCount:         1,
+			Name:             "Is Acl Shared",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1951,6 +1971,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySharedSpacesLimit: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Shared spaces limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brsharedSpacesLimit",
+			Key:              "sharedSpacesLimit",
+			MaxCount:         1,
+			Name:             "Shared spaces limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySizeInBytes: {
 
 			DataSource:       model.Relation_details,
@@ -2184,6 +2218,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceShareableStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Specify if the space is shareable",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceShareableStatus",
+			Key:              "spaceShareableStatus",
+			MaxCount:         1,
+			Name:             "Space shareable status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyStakeholders: {
 
 			DataSource:       model.Relation_details,
@@ -2231,6 +2279,48 @@ var (
 			MaxCount:         1,
 			Name:             "Status",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySyncDate: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Object sync date",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brsyncDate",
+			Key:              "syncDate",
+			MaxCount:         1,
+			Name:             "Sync date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySyncError: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Object sync error",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brsyncError",
+			Key:              "syncError",
+			MaxCount:         1,
+			Name:             "Sync error",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySyncStatus: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Object sync status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brsyncStatus",
+			Key:              "syncStatus",
+			MaxCount:         1,
+			Name:             "Sync status",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

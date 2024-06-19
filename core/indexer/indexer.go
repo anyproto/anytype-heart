@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -15,10 +14,9 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -39,9 +37,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 func New() Indexer {
-	return &indexer{
-		indexedFiles: &sync.Map{},
-	}
+	return &indexer{}
 }
 
 type Indexer interface {
@@ -62,34 +58,32 @@ type indexer struct {
 	store          objectstore.ObjectStore
 	fileStore      filestore.FileStore
 	source         source.Service
-	picker         block.ObjectGetter
+	picker         cache.ObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
-	fileService    files.Service
 
-	quit       chan struct{}
-	btHash     Hasher
-	newAccount bool
-	forceFt    chan struct{}
+	quit            chan struct{}
+	ftQueueFinished chan struct{}
+	config          *config.Config
 
-	indexedFiles     *sync.Map
+	btHash  Hasher
+	forceFt chan struct{}
+
 	reindexLogFields []zap.Field
-
-	flags reindexFlags
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
-	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.picker = app.MustComponent[block.ObjectGetter](a)
-	i.fileService = app.MustComponent[files.Service](a)
+	i.picker = app.MustComponent[cache.ObjectGetter](a)
 	i.quit = make(chan struct{})
+	i.ftQueueFinished = make(chan struct{})
 	i.forceFt = make(chan struct{})
+	i.config = app.MustComponent[*config.Config](a)
 	return
 }
 
@@ -105,12 +99,14 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
-	go i.ftLoop()
+	go i.ftLoopRoutine()
 	return
 }
 
 func (i *indexer) Close(ctx context.Context) (err error) {
 	close(i.quit)
+	// we need to wait for the ftQueue processing to be finished gracefully. Because we may be in the middle of badger transaction
+	<-i.ftQueueFinished
 	return nil
 }
 
@@ -174,9 +170,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 			log.With("objectID", info.Id).Errorf("heads hash is empty")
 		} else if lastIndexedHash == headHashToIndex {
 			log.With("objectID", info.Id).Debugf("heads not changed, skipping indexing")
-
-			// todo: the optimization temporarily disabled to see the metrics
-			// return nil
+			return nil
 		}
 	}
 
@@ -217,8 +211,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 			}
 		}
 
-		// todo: the optimization temporarily disabled to see the metrics
-		if true || !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
+		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			if err := i.store.AddToIndexQueue(info.Id); err != nil {
 				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 			}

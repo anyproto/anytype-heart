@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -23,9 +25,17 @@ type updateReceiver struct {
 	nodeConnected bool
 	lastStatus    map[string]pb.EventStatusThreadSyncStatus
 	objectStore   objectstore.ObjectStore
+	nodeStatus    nodestatus.NodeStatus
+	spaceId       string
 }
 
-func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender, objectStore objectstore.ObjectStore) *updateReceiver {
+func newUpdateReceiver(
+	nodeConfService nodeconf.Service,
+	cfg *config.Config,
+	eventSender event.Sender,
+	objectStore objectstore.ObjectStore,
+	nodeStatus nodestatus.NodeStatus,
+) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		eventSender = nil
 	}
@@ -34,17 +44,16 @@ func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eve
 		lastStatus:      make(map[string]pb.EventStatusThreadSyncStatus),
 		eventSender:     eventSender,
 		objectStore:     objectStore,
+		nodeStatus:      nodeStatus,
 	}
 }
 
-func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status syncstatus.SyncStatus) error {
-	objStatus := r.getObjectStatus(objId, status)
-
-	if !r.isStatusUpdated(objId, objStatus) {
+func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status objectsyncstatus.SyncStatus) error {
+	objStatusEvent := r.getObjectSyncStatus(objId, status)
+	if !r.isStatusUpdated(objId, objStatusEvent) {
 		return nil
 	}
-	r.notify(objId, objStatus)
-
+	r.notify(objId, objStatusEvent)
 	return nil
 }
 
@@ -58,22 +67,22 @@ func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStat
 	return true
 }
 
-func (r *updateReceiver) getFileStatus(fileId string) (FileStatus, error) {
+func (r *updateReceiver) getFileStatus(fileId string) (filesyncstatus.Status, error) {
 	details, err := r.objectStore.GetDetails(fileId)
 	if err != nil {
-		return FileStatusUnknown, fmt.Errorf("get file details: %w", err)
+		return filesyncstatus.Unknown, fmt.Errorf("get file details: %w", err)
 	}
 	if v, ok := details.GetDetails().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		return FileStatus(v.GetNumberValue()), nil
+		return filesyncstatus.Status(v.GetNumberValue()), nil
 	}
-	return FileStatusUnknown, fmt.Errorf("no backup status")
+	return filesyncstatus.Unknown, fmt.Errorf("no backup status")
 }
 
-func (r *updateReceiver) getObjectStatus(objectId string, status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) getObjectSyncStatus(objectId string, status objectsyncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
 	fileStatus, err := r.getFileStatus(objectId)
 	if err == nil {
 		// Prefer file backup status
-		if fileStatus != FileStatusSynced {
+		if fileStatus != filesyncstatus.Synced {
 			status = fileStatus.ToSyncStatus()
 		}
 	}
@@ -87,9 +96,9 @@ func (r *updateReceiver) getObjectStatus(objectId string, status syncstatus.Sync
 	}
 
 	switch status {
-	case syncstatus.StatusUnknown:
+	case objectsyncstatus.StatusUnknown:
 		return pb.EventStatusThread_Unknown
-	case syncstatus.StatusSynced:
+	case objectsyncstatus.StatusSynced:
 		return pb.EventStatusThread_Synced
 	}
 	return pb.EventStatusThread_Syncing
@@ -113,10 +122,10 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 	r.nodeConnected = online
 }
 
-func (r *updateReceiver) UpdateNodeStatus(status syncstatus.ConnectionStatus) {
+func (r *updateReceiver) UpdateNodeStatus() {
 	r.Lock()
 	defer r.Unlock()
-	r.nodeConnected = status == syncstatus.Online
+	r.nodeConnected = r.nodeStatus.GetNodeStatus(r.spaceId) == nodestatus.Online
 }
 
 func (r *updateReceiver) notify(

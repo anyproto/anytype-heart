@@ -2,34 +2,28 @@ package syncstatus
 
 import (
 	"context"
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace"
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
-	"github.com/dgraph-io/badger/v4"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
-
-var log = logging.Logger("anytype-mw-status")
 
 const CName = "status"
 
 type Service interface {
 	Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error)
 	Unwatch(spaceID string, id string)
-	RegisterSpace(space commonspace.Space)
+	RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher)
 
 	app.ComponentRunnable
 }
@@ -39,46 +33,40 @@ var _ Service = (*service)(nil)
 type service struct {
 	updateReceiver *updateReceiver
 
-	typeProvider              typeprovider.SmartBlockTypeProvider
-	fileSyncService           filesync.FileSync
-	fileWatcherUpdateInterval time.Duration
+	fileSyncService filesync.FileSync
 
 	objectWatchersLock sync.Mutex
-	objectWatchers     map[string]syncstatus.StatusWatcher
+	objectWatchers     map[string]objectsyncstatus.StatusWatcher
 
 	objectStore  objectstore.ObjectStore
-	objectGetter getblock.ObjectGetter
-	badger       *badger.DB
+	objectGetter cache.ObjectGetter
+
+	spaceSyncStatus spacesyncstatus.Updater
 }
 
-func New(fileWatcherUpdateInterval time.Duration) Service {
+func New() Service {
 	return &service{
-		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
-		objectWatchers:            map[string]syncstatus.StatusWatcher{},
+		objectWatchers: map[string]objectsyncstatus.StatusWatcher{},
 	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.typeProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	cfg := app.MustComponent[*config.Config](a)
 	eventSender := app.MustComponent[event.Sender](a)
 
-	dbProvider := app.MustComponent[datastore.Datastore](a)
-	db, err := dbProvider.SpaceStorage()
-	if err != nil {
-		return fmt.Errorf("get badger from provider: %w", err)
-	}
-	s.badger = db
+	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
 
-	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
-	s.objectGetter = app.MustComponent[getblock.ObjectGetter](a)
+	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
+	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
-	s.fileSyncService.OnUploaded(s.OnFileUploaded)
-	s.fileSyncService.OnUploadStarted(s.OnFileUploadStarted)
-	s.fileSyncService.OnLimited(s.OnFileLimited)
+	s.fileSyncService.OnUploaded(s.onFileUploaded)
+	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
+	s.fileSyncService.OnLimited(s.onFileLimited)
+	s.fileSyncService.OnDelete(s.OnFileDelete)
 	return nil
 }
 
@@ -90,13 +78,13 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) RegisterSpace(space commonspace.Space) {
+func (s *service) RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher) {
 	s.objectWatchersLock.Lock()
 	defer s.objectWatchersLock.Unlock()
 
-	watcher := space.SyncStatus().(syncstatus.StatusWatcher)
-	watcher.SetUpdateReceiver(s.updateReceiver)
-	s.objectWatchers[space.Id()] = watcher
+	sw.SetUpdateReceiver(s.updateReceiver)
+	s.objectWatchers[space.Id()] = sw
+	s.updateReceiver.spaceId = space.Id()
 }
 
 func (s *service) UnregisterSpace(space commonspace.Space) {

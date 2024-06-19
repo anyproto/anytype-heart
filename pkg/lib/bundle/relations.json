@@ -187,6 +187,16 @@
     "source": "derived"
   },
   {
+    "description": "Shared spaces limit",
+    "format": "number",
+    "hidden": true,
+    "key": "sharedSpacesLimit",
+    "maxCount": 1,
+    "name": "Shared spaces limit",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Adds the object to the highlighted dataview in space",
     "format": "checkbox",
     "hidden": true,
@@ -1571,6 +1581,26 @@
     "source": "derived"
   },
   {
+    "description": "Specify if the space is shareable",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceShareableStatus",
+    "maxCount": 1,
+    "name": "Space shareable status",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Specify if access control list is shared",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isAclShared",
+    "maxCount": 1,
+    "name": "Is Acl Shared",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Relation that indicates the status of space that the user is set. Possible values: models.SpaceStatus",
     "format": "number",
     "hidden": true,
@@ -1717,6 +1747,36 @@
     "maxCount": 1,
     "name": "Global name",
     "readonly": true,
-    "source": "details"
+    "source": "derived"
+  },
+  {
+    "description": "Object sync status",
+    "format": "number",
+    "hidden": true,
+    "key": "syncStatus",
+    "maxCount": 1,
+    "name": "Sync status",
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "Object sync date",
+    "format": "date",
+    "hidden": true,
+    "key": "syncDate",
+    "maxCount": 1,
+    "name": "Sync date",
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "Object sync error",
+    "format": "number",
+    "hidden": true,
+    "key": "syncError",
+    "maxCount": 1,
+    "name": "Sync error",
+    "readonly": true,
+    "source": "local"
   }
 ]

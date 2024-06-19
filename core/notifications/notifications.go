@@ -9,8 +9,9 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/net/peer"
 
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -22,7 +23,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 var log = logging.Logger("notifications")
@@ -43,9 +45,9 @@ type notificationService struct {
 	eventSender        event.Sender
 	notificationStore  NotificationStore
 	spaceService       space.Service
-	picker             block.ObjectGetter
-	spaceCore          spacecore.SpaceCoreService
+	picker             cache.ObjectGetter
 	mu                 sync.Mutex
+	loadFinish         chan struct{}
 
 	sync.RWMutex
 	lastNotificationIdToAcl map[string]string
@@ -54,6 +56,7 @@ type notificationService struct {
 func New() Notifications {
 	return &notificationService{
 		lastNotificationIdToAcl: make(map[string]string, 0),
+		loadFinish:              make(chan struct{}),
 	}
 }
 
@@ -65,9 +68,8 @@ func (n *notificationService) Init(a *app.App) (err error) {
 	}
 	n.notificationStore = NewNotificationStore(db)
 	n.eventSender = app.MustComponent[event.Sender](a)
-	n.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	n.spaceService = app.MustComponent[space.Service](a)
-	n.picker = app.MustComponent[block.ObjectGetter](a)
+	n.picker = app.MustComponent[cache.ObjectGetter](a)
 	return nil
 }
 
@@ -94,7 +96,7 @@ func (n *notificationService) indexNotifications(ctx context.Context) {
 
 func (n *notificationService) updateNotificationsInLocalStore() {
 	var notifications map[string]*model.Notification
-	err := block.Do(n.picker, n.notificationId, func(sb smartblock.SmartBlock) error {
+	err := cache.Do(n.picker, n.notificationId, func(sb smartblock.SmartBlock) error {
 		s := sb.NewState()
 		notifications = s.ListNotifications()
 		return nil
@@ -130,8 +132,15 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 	if !notification.IsLocal {
 		n.mu.Lock()
 		defer n.mu.Unlock()
+		storeNotification, err := n.notificationStore.GetNotificationById(notification.Id)
+		if err != nil && !badgerhelper.IsNotFound(err) {
+			return err
+		}
+		if storeNotification != nil {
+			return nil
+		}
 		var exist bool
-		err := block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
+		err = cache.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 			stateNotification := s.GetNotificationById(notification.Id)
 			if stateNotification != nil {
 				exist = true
@@ -205,7 +214,7 @@ func (n *notificationService) Reply(notificationIds []string, notificationAction
 		}
 
 		if !notification.IsLocal {
-			err = block.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
+			err = cache.DoState(n.picker, n.notificationId, func(s *state.State, sb smartblock.SmartBlock) error {
 				s.AddNotification(notification)
 				return nil
 			})
@@ -218,6 +227,13 @@ func (n *notificationService) Reply(notificationIds []string, notificationAction
 }
 
 func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Notification, error) {
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
+
+	select {
+	case <-n.loadFinish:
+	case <-ticker.C:
+	}
 	notifications, err := n.notificationStore.ListNotifications()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list notifications: %w", err)
@@ -246,11 +262,16 @@ func (n *notificationService) GetLastNotificationId(acl string) string {
 	return n.lastNotificationIdToAcl[acl]
 }
 
+func (n *notificationService) LoadFinish() chan struct{} {
+	return n.loadFinish
+}
+
 func (n *notificationService) isNotificationRead(notification *model.Notification) bool {
 	return notification.GetStatus() == model.Notification_Read || notification.GetStatus() == model.Notification_Replied
 }
 
 func (n *notificationService) loadNotificationObject(ctx context.Context) {
+	defer close(n.loadFinish)
 	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeNotificationObject, "")
 	if err != nil {
 		log.Errorf("failed to get notification object unique key: %v", err)
@@ -260,30 +281,32 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	notificationObject, err := techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-		Key: uk,
-		InitFunc: func(id string) *smartblock.InitContext {
-			return &smartblock.InitContext{
-				Ctx:     ctx,
-				SpaceID: techSpace.Id(),
-				State:   state.NewDoc(id, nil).(*state.State),
-			}
-		},
-	})
-	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-		log.Errorf("failed to derive notification object: %v", err)
+
+	objectId, err := techSpace.DeriveObjectID(ctx, uk)
+	if err != nil {
+		log.Errorf("failed to derive notification object id: %v", err)
 		return
 	}
-	if err == nil {
-		n.notificationId = notificationObject.Id()
-	}
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		notificationID, err := techSpace.DeriveObjectID(ctx, uk)
-		if err != nil {
-			log.Errorf("failed to derive notification object id: %v", err)
+	n.notificationId = objectId
+
+	ctx = context.WithValue(ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(30*time.Second))
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	_, err = techSpace.GetObject(ctx, objectId)
+	if err != nil {
+		_, err := techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+			Key: uk,
+			InitFunc: func(id string) *smartblock.InitContext {
+				return &smartblock.InitContext{
+					Ctx:     ctx,
+					SpaceID: techSpace.Id(),
+					State:   state.NewDoc(id, nil).(*state.State),
+				}
+			},
+		})
+		if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+			log.Errorf("failed to derive notification object: %v", err)
 			return
 		}
-		n.notificationId = notificationID
 	}
 	n.indexNotifications(ctx)
 }

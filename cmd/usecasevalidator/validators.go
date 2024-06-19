@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -137,6 +136,15 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 
 			_, found := info.objects[val]
 			if !found {
+				if isBrokenTemplate(k, val) {
+					fmt.Println("WARNING: object", id, "is a template with no target type included in the archive, so it will be skipped")
+					return errSkipObject
+				}
+				if k == bundle.RelationKeyRecommendedRelations.String() {
+					// TODO: remove this fix as most of users should obtain version with fixed export of derived objects in GO-2821
+					delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyRecommendedRelations.String())
+					return nil
+				}
 				err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
 			}
 		}
@@ -205,50 +213,22 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	return err
 }
 
-func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
-	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	for _, r := range s.Snapshot.Data.RelationLinks {
-		if r.Format == model.RelationFormat_file || r.Key == bundle.RelationKeyCoverId.String() {
-			for _, hash := range pbtypes.GetStringList(s.Snapshot.GetData().GetDetails(), r.Key) {
-				if r.Format != model.RelationFormat_file {
-					_, err := cid.Parse(hash)
-					if err != nil {
-						continue
-					}
-				}
-				if !snapshotHasKeyForHash(s, hash) {
-					err = multierror.Append(err, fmt.Errorf("object '%s' has file detail '%s' has hash '%s' which keys are not in the snapshot", id, r.Key, hash))
-				}
-			}
-		}
-	}
-	for _, b := range s.Snapshot.Data.Blocks {
-		if v, ok := simple.New(b).(simple.FileHashes); ok {
-			hashes := v.FillFileHashes([]string{})
-			if len(hashes) == 0 {
-				continue
-			}
-			for _, hash := range hashes {
-				if !snapshotHasKeyForHash(s, hash) {
-					err = multierror.Append(err, fmt.Errorf("file block '%s' of object '%s' has hash '%s' which keys are not in the snapshot", b.Id, id, hash))
-				}
-			}
-		}
-	}
-	return err
-}
-
 func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String()) {
-		return fmt.Errorf("object is archived")
+		fmt.Println("WARNING: object", id, " is archived, so it will be skipped")
+		return errSkipObject
 	}
 
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsDeleted.String()) {
-		return fmt.Errorf("object is deleted")
+		fmt.Println("WARNING: object", id, " is deleted, so it will be skipped")
+		return errSkipObject
 	}
 
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsUninstalled.String()) {
-		return fmt.Errorf("object is uninstalled")
+		fmt.Println("WARNING: object", id, " is uninstalled, so it will be skipped")
+		return errSkipObject
 	}
 
 	return nil
@@ -280,15 +260,6 @@ func getRelationLinkByKey(links []*model.RelationLink, key string) *model.Relati
 	return nil
 }
 
-func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
-	for _, k := range s.Snapshot.FileKeys {
-		if k.Hash == hash && len(k.Keys) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
 func isLinkRelation(k string) bool {
 	return k == bundle.RelationKeyLinks.String() || k == bundle.RelationKeySourceObject.String() || k == bundle.RelationKeyBacklinks.String()
 }
@@ -312,4 +283,8 @@ func isDefaultWidget(target string) bool {
 		widget.DefaultWidgetRecent,
 		widget.DefaultWidgetCollection,
 	}, target)
+}
+
+func isBrokenTemplate(key, value string) bool {
+	return key == bundle.RelationKeyTargetObjectType.String() && value == addr.MissingObject
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	dependencies2 "github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
-	"github.com/anyproto/anytype-heart/space/internal/techspace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -32,7 +31,6 @@ type spaceBuilder struct {
 	indexer         dependencies2.SpaceIndexer
 	installer       dependencies2.BundledObjectsInstaller
 	spaceCore       spacecore.SpaceCoreService
-	techSpace       techspace.TechSpace
 	accountService  accountservice.Service
 	objectFactory   objectcache.ObjectFactory
 	storageService  storage.ClientStorage
@@ -49,7 +47,6 @@ func (b *spaceBuilder) Init(a *app.App) (err error) {
 	b.indexer = app.MustComponent[dependencies2.SpaceIndexer](a)
 	b.installer = app.MustComponent[dependencies2.BundledObjectsInstaller](a)
 	b.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
-	b.techSpace = app.MustComponent[techspace.TechSpace](a)
 	b.accountService = app.MustComponent[accountservice.Service](a)
 	b.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
 	b.storageService = app.MustComponent[storage.ClientStorage](a)
@@ -108,7 +105,7 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 	if space.Id() == b.personalSpaceId {
 		acc = spaceinfo.AccessTypePersonal
 	}
-	err = b.status.SetAccessType(ctx, acc)
+	err = b.status.SetAccessType(acc)
 	if err != nil {
 		return nil, fmt.Errorf("set access type: %w", err)
 	}

@@ -3,6 +3,7 @@ package clientspace
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app/logger"
@@ -25,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/internal/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
@@ -45,6 +47,7 @@ type Space interface {
 	CommonSpace() commonspace.Space
 
 	Do(objectId string, apply func(sb smartblock.SmartBlock) error) error
+	DoCtx(ctx context.Context, objectId string, apply func(sb smartblock.SmartBlock) error) error
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
@@ -62,9 +65,12 @@ type spaceIndexer interface {
 
 type bundledObjectsInstaller interface {
 	InstallBundledObjects(ctx context.Context, spc Space, ids []string, isNewSpace bool) ([]string, []*types.Struct, error)
+
+	BundledObjectsIdsToInstall(ctx context.Context, spc Space, sourceObjectIds []string) (objectIds []string, err error)
 }
 
 var log = logger.NewNamed("client.space")
+var BundledObjectsPeerFindTimeout = time.Second * 30
 
 type space struct {
 	objectcache.Cache
@@ -122,6 +128,9 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
+		if err = sp.InstallBundledObjects(ctx); err != nil {
+			return nil, fmt.Errorf("install bundled objects: %w", err)
+		}
 	}
 	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
 	return sp, nil
@@ -140,6 +149,10 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	s.loadMandatoryObjectsErr = s.LoadObjects(loadCtx, s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
 		return
+	}
+	ctxWithPeerTimeout := context.WithValue(loadCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(BundledObjectsPeerFindTimeout))
+	if err := s.TryLoadBundledObjects(ctxWithPeerTimeout); err != nil {
+		log.Error("failed to load bundled objects", zap.Error(err))
 	}
 	s.loadMandatoryObjectsErr = s.InstallBundledObjects(ctx)
 	if s.loadMandatoryObjectsErr != nil {
@@ -196,7 +209,11 @@ func (s *space) WaitMandatoryObjects(ctx context.Context) (err error) {
 }
 
 func (s *space) Do(objectId string, apply func(sb smartblock.SmartBlock) error) error {
-	sb, err := s.GetObject(context.Background(), objectId)
+	return s.DoCtx(context.Background(), objectId, apply)
+}
+
+func (s *space) DoCtx(ctx context.Context, objectId string, apply func(sb smartblock.SmartBlock) error) error {
+	sb, err := s.GetObject(ctx, objectId)
 	if err != nil {
 		return err
 	}
@@ -252,6 +269,29 @@ func (s *space) InstallBundledObjects(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *space) TryLoadBundledObjects(ctx context.Context) error {
+	st := time.Now()
+	defer func() {
+		if dur := time.Since(st); dur > time.Millisecond*200 {
+			log.Warn("load bundled objects", zap.Duration("duration", dur))
+		}
+	}()
+
+	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
+	for _, ot := range bundle.SystemTypes {
+		ids = append(ids, ot.BundledURL())
+	}
+	for _, rk := range bundle.SystemRelations {
+		ids = append(ids, rk.BundledURL())
+	}
+	objectIds, err := s.installer.BundledObjectsIdsToInstall(ctx, s, ids)
+	if err != nil {
+		return err
+	}
+	s.LoadObjectsIgnoreErrs(ctx, objectIds)
 	return nil
 }
 

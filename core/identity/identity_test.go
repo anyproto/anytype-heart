@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -27,20 +27,22 @@ import (
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/mutex"
 )
 
 type fixture struct {
 	*service
 	coordinatorClient *inMemoryIdentityRepo
+	spaceService      *mock_space.MockService
+	accountService    *mock_account.MockService
 }
 
 const (
-	testObserverPeriod = 1 * time.Millisecond
-	globalName         = "anytypeuser.any"
-	identity           = "identity1"
+	globalName   = "anytypeuser.any"
+	testIdentity = "identity1"
 )
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 
@@ -49,10 +51,11 @@ func newFixture(t *testing.T) *fixture {
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
 	fileAclService := mock_fileacl.NewMockService(t)
-	dataStore := datastore.NewInMemory()
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
-	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{identity, ""}}).AnyTimes().
+	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{testIdentity}}).AnyTimes().
 		Return(&nameserviceproto.BatchNameByAddressResponse{Results: []*nameserviceproto.NameByAddressResponse{{
 			Found: true,
 			Name:  globalName,
@@ -61,12 +64,11 @@ func newFixture(t *testing.T) *fixture {
 			Name:  "",
 		},
 		}}, nil)
-	err := dataStore.Run(ctx)
+	err = dataStoreProvider.Run(ctx)
 	require.NoError(t, err)
 
 	a := new(app.App)
-	a.Register(&spaceIdDeriverStub{})
-	a.Register(dataStore)
+	a.Register(dataStoreProvider)
 	a.Register(objectStore)
 	a.Register(identityRepoClient)
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
@@ -83,12 +85,15 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	svcRef := svc.(*service)
-	db, err := dataStore.LocalStorage()
+	db, err := dataStoreProvider.LocalStorage()
 	require.NoError(t, err)
 	svcRef.db = db
-	svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
+	// TODO
+	// svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
 	fx := &fixture{
 		service:           svcRef,
+		spaceService:      spaceService,
+		accountService:    accountService,
 		coordinatorClient: identityRepoClient,
 	}
 	go fx.observeIdentitiesLoop()
@@ -107,6 +112,7 @@ func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.Sym
 type inMemoryIdentityRepo struct {
 	lock           sync.Mutex
 	isUnavailable  bool
+	getCallback    func(identities []string, kinds []string, res []*identityrepoproto.DataWithIdentity, resErr error)
 	identitiesData map[string]*identityrepoproto.DataWithIdentity
 }
 
@@ -114,6 +120,12 @@ func newInMemoryIdentityRepo() *inMemoryIdentityRepo {
 	return &inMemoryIdentityRepo{
 		identitiesData: make(map[string]*identityrepoproto.DataWithIdentity),
 	}
+}
+
+func (d *inMemoryIdentityRepo) setCallback(callback func(identities []string, kinds []string, res []*identityrepoproto.DataWithIdentity, resErr error)) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	d.getCallback = callback
 }
 
 func (d *inMemoryIdentityRepo) Init(a *app.App) (err error) {
@@ -146,7 +158,11 @@ func (d *inMemoryIdentityRepo) IdentityRepoGet(ctx context.Context, identities [
 	defer d.lock.Unlock()
 
 	if d.isUnavailable {
-		return nil, fmt.Errorf("network problem")
+		err := fmt.Errorf("network problem")
+		if d.getCallback != nil {
+			d.getCallback(identities, kinds, nil, err)
+		}
+		return nil, err
 	}
 
 	res = make([]*identityrepoproto.DataWithIdentity, 0, len(identities))
@@ -155,43 +171,90 @@ func (d *inMemoryIdentityRepo) IdentityRepoGet(ctx context.Context, identities [
 			res = append(res, data)
 		}
 	}
+	if d.getCallback != nil {
+		d.getCallback(identities, kinds, res, err)
+	}
 	return
 }
 
 func TestIdentityProfileCache(t *testing.T) {
-	fx := newFixture(t)
+	t.Run("with available cache, use it while registering identity", func(t *testing.T) {
+		fx := newFixture(t, time.Minute)
 
-	spaceId := "space1"
-	identity := "identity1"
+		spaceId := "space1"
+		identity := "identity1"
 
-	fx.coordinatorClient.setUnavailable()
+		profileSymKey, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		wantProfile := &model.IdentityProfile{
+			Identity: identity,
+			Name:     "name1",
+		}
+		wantData := marshalProfile(t, wantProfile, profileSymKey)
+		// Global name is cached separately
+		wantProfile.GlobalName = globalName
 
-	profileSymKey, err := crypto.NewRandomAES()
-	require.NoError(t, err)
-	wantProfile := &model.IdentityProfile{
-		Identity:   identity,
-		Name:       "name1",
-		GlobalName: globalName,
-	}
-	wantData := marshalProfile(t, wantProfile, profileSymKey)
+		err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+		require.NoError(t, err)
+		err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+		require.NoError(t, err)
 
-	err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
-	require.NoError(t, err)
+		var (
+			gotIdentity string
+			gotProfile  *model.IdentityProfile
+		)
+		err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(callbackIdentity string, profile *model.IdentityProfile) {
+			gotIdentity = callbackIdentity
+			gotProfile = profile
+		})
+		require.NoError(t, err)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(gotIdentity string, gotProfile *model.IdentityProfile) {
 		assert.Equal(t, identity, gotIdentity)
 		assert.Equal(t, wantProfile, gotProfile)
-		wg.Done()
 	})
-	require.NoError(t, err)
 
-	wg.Wait()
+	t.Run("with available cache and unavailable identity repo, use cache instead of remote service", func(t *testing.T) {
+		testObserverPeriod := 10 * time.Millisecond
+		fx := newFixture(t, testObserverPeriod)
+
+		spaceId := "space1"
+		identity := "identity1"
+
+		fx.coordinatorClient.setUnavailable()
+
+		profileSymKey, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		wantProfile := &model.IdentityProfile{
+			Identity: identity,
+			Name:     "name1",
+		}
+		wantData := marshalProfile(t, wantProfile, profileSymKey)
+		// Global name is cached separately
+		wantProfile.GlobalName = globalName
+
+		err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+		require.NoError(t, err)
+
+		var called uint64
+		err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(callbackIdentity string, profile *model.IdentityProfile) {
+			atomic.AddUint64(&called, 1)
+			assert.Equal(t, identity, callbackIdentity)
+			assert.Equal(t, wantProfile, profile)
+		})
+		require.NoError(t, err)
+
+		err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+		require.NoError(t, err)
+
+		time.Sleep(testObserverPeriod * 2)
+		assert.Equal(t, uint64(1), atomic.LoadUint64(&called))
+	})
+
 }
 
 func TestObservers(t *testing.T) {
-	fx := newFixture(t)
+	testObserverPeriod := 10 * time.Millisecond
+	fx := newFixture(t, testObserverPeriod)
 
 	spaceId := "space1"
 	identity := "identity1"
@@ -268,15 +331,20 @@ func TestObservers(t *testing.T) {
 		require.NoError(t, err)
 		wg.Wait()
 	})
+
 }
 
-type spaceIdDeriverStub struct{}
+func TestGetIdentitiesDataFromRepo(t *testing.T) {
+	t.Run("empty identities", func(t *testing.T) {
+		fx := newFixture(t, time.Millisecond)
 
-func (s spaceIdDeriverStub) Init(a *app.App) (err error) { return nil }
-
-func (s spaceIdDeriverStub) Name() (name string) { return "spaceIdDeriverStub" }
-
-func (s spaceIdDeriverStub) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
-	// TODO implement me
-	panic("implement me")
+		called := mutex.NewValue(false)
+		fx.coordinatorClient.setCallback(func(_ []string, _ []string, _ []*identityrepoproto.DataWithIdentity, _ error) {
+			called.Set(true)
+		})
+		list, err := fx.getIdentitiesDataFromRepo(context.Background(), nil)
+		require.NoError(t, err)
+		require.Empty(t, list)
+		require.False(t, called.Get())
+	})
 }

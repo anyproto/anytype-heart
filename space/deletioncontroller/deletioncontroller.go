@@ -5,11 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
-	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"go.uber.org/zap"
@@ -18,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-const CName = "client.space.deletioncontroller"
+const CName = "mockClient.space.deletioncontroller"
 
 var log = logger.NewNamed(CName)
 
@@ -37,17 +34,17 @@ func New() DeletionController {
 	return &deletionController{}
 }
 
-type spaceManager interface {
+type SpaceManager interface {
+	app.Component
 	UpdateRemoteStatus(ctx context.Context, spaceStatusInfo spaceinfo.SpaceRemoteStatusInfo) error
+	UpdateSharedLimits(ctx context.Context, limits int) error
 	AllSpaceIds() (ids []string)
 }
 
 type deletionController struct {
-	spaceManager  spaceManager
-	client        coordinatorclient.CoordinatorClient
-	spaceCore     spacecore.SpaceCoreService
-	joiningClient aclclient.AclJoiningClient
-	keys          *accountdata.AccountKeys
+	spaceManager SpaceManager
+	client       coordinatorclient.CoordinatorClient
+	spaceCore    spacecore.SpaceCoreService
 
 	updater  *updateLoop
 	mx       sync.Mutex
@@ -55,11 +52,9 @@ type deletionController struct {
 }
 
 func (d *deletionController) Init(a *app.App) (err error) {
-	d.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
-	d.spaceCore = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
-	d.joiningClient = a.MustComponent(aclclient.CName).(aclclient.AclJoiningClient)
-	d.spaceManager = app.MustComponent[spaceManager](a)
-	d.keys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
+	d.client = app.MustComponent[coordinatorclient.CoordinatorClient](a)
+	d.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
+	d.spaceManager = app.MustComponent[SpaceManager](a)
 	d.updater = newUpdateLoop(d.loopIterate, loopInterval, loopTimeout)
 	d.toDelete = make(map[string]struct{})
 	return
@@ -106,7 +101,7 @@ func (d *deletionController) loopIterate(ctx context.Context) error {
 
 func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []string) {
 	ids := d.spaceManager.AllSpaceIds()
-	remoteStatuses, err := d.client.StatusCheckMany(ctx, ids)
+	remoteStatuses, limits, err := d.client.StatusCheckMany(ctx, ids)
 	if err != nil {
 		log.Warn("remote status check error", zap.Error(err))
 		return
@@ -121,6 +116,12 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []str
 			return spaceinfo.RemoteStatusDeleted
 		}
 	}
+	if limits != nil {
+		err := d.spaceManager.UpdateSharedLimits(ctx, int(limits.SharedSpacesLimit))
+		if err != nil {
+			log.Warn("shared limits update error", zap.Error(err))
+		}
+	}
 	for idx, nodeStatus := range remoteStatuses {
 		if nodeStatus.Status == coordinatorproto.SpaceStatus_SpaceStatusNotExists {
 			continue
@@ -130,16 +131,21 @@ func (d *deletionController) updateStatuses(ctx context.Context) (ownedIds []str
 			ownedIds = append(ownedIds, ids[idx])
 		}
 		remoteStatus := convStatus(nodeStatus.Status)
-		statusInfo := spaceinfo.SpaceRemoteStatusInfo{
-			SpaceId:      ids[idx],
-			RemoteStatus: remoteStatus,
-			IsOwned:      isOwned,
+		shareableStatus := spaceinfo.ShareableStatusNotShareable
+		if nodeStatus.IsShared {
+			shareableStatus = spaceinfo.ShareableStatusShareable
 		}
+		info := spaceinfo.NewSpaceLocalInfo(ids[idx])
+		info.SetRemoteStatus(remoteStatus).
+			SetShareableStatus(shareableStatus)
 		if nodeStatus.Limits != nil {
-			statusInfo.WriteLimit = nodeStatus.Limits.WriteMembers
-			statusInfo.ReadLimit = nodeStatus.Limits.ReadMembers
+			info.SetWriteLimit(nodeStatus.Limits.WriteMembers).
+				SetReadLimit(nodeStatus.Limits.ReadMembers)
 		}
-		err := d.spaceManager.UpdateRemoteStatus(ctx, statusInfo)
+		err := d.spaceManager.UpdateRemoteStatus(ctx, spaceinfo.SpaceRemoteStatusInfo{
+			IsOwned:   isOwned,
+			LocalInfo: info,
+		})
 		if err != nil {
 			log.Warn("remote status update error", zap.Error(err), zap.String("spaceId", ids[idx]))
 			return

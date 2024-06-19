@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -35,10 +35,13 @@ func newFixture(t *testing.T) *fixture {
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
+	dataStoreProvider, err := datastore.NewInMemory()
+	require.NoError(t, err)
+
 	ctx := context.Background()
 	a := new(app.App)
 	a.Register(objectstore.NewStoreFixture(t))
-	a.Register(datastore.NewInMemory())
+	a.Register(dataStoreProvider)
 	a.Register(filestore.New())
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
@@ -46,8 +49,8 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(rpcstore.NewInMemoryService(rpcStore))
 	a.Register(fileservice.New())
 	a.Register(filesync.New())
-	a.Register(files.New())
-	err := a.Start(ctx)
+	a.Register(fileoffloader.New())
+	err = a.Start(ctx)
 	require.NoError(t, err)
 
 	s := New()
