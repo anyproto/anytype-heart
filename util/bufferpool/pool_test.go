@@ -2,6 +2,7 @@ package bufferpool
 
 import (
 	"io"
+	"runtime/debug"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,7 @@ func TestBuffer_Close(t *testing.T) {
 }
 
 func TestBuffer_GetReadSeekCloser(t *testing.T) {
+	debug.SetGCPercent(-1)
 	pool := NewPool()
 	buf := pool.Get()
 
@@ -81,4 +83,5 @@ func TestBuffer_GetReadSeekCloser(t *testing.T) {
 
 	err = rsc.Close()
 	require.NoError(t, err, "Close after Close should not return an error")
+	debug.SetGCPercent(100)
 }

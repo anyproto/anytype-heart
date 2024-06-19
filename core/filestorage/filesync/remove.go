@@ -67,6 +67,9 @@ func (s *fileSync) deletionHandler(ctx context.Context, it *deletionQueueItem) (
 	if err != nil {
 		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
+	if s.onDelete != nil {
+		s.onDelete(fileId)
+	}
 	return persistentqueue.ActionDone, nil
 }
 
@@ -83,6 +86,9 @@ func (s *fileSync) retryDeletionHandler(ctx context.Context, it *deletionQueueIt
 	err = s.removeFromDeletionQueues(it)
 	if err != nil {
 		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
+	}
+	if s.onDelete != nil {
+		s.onDelete(fileId)
 	}
 	return persistentqueue.ActionDone, nil
 }
