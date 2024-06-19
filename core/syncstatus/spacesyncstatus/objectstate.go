@@ -26,9 +26,9 @@ func NewObjectState(store objectstore.ObjectStore) *ObjectState {
 
 func (o *ObjectState) SetObjectsNumber(status *domain.SpaceSync) {
 	switch status.Status {
-	case domain.Error, domain.Offline:
+	case domain.Error, domain.Offline, domain.Synced:
 		o.objectSyncCountBySpace[status.SpaceId] = 0
-	case domain.Syncing, domain.Synced:
+	case domain.Syncing:
 		records := o.getSyncingObjects(status)
 		o.objectSyncCountBySpace[status.SpaceId] = len(records)
 	}
@@ -65,12 +65,8 @@ func (o *ObjectState) getSyncingObjects(status *domain.SpaceSync) []database.Rec
 	return records
 }
 
-func (o *ObjectState) SetSyncStatusAndErr(status *domain.SpaceSync) {
-	if objectNumber, ok := o.objectSyncCountBySpace[status.SpaceId]; ok && objectNumber > 0 {
-		o.objectSyncStatusBySpace[status.SpaceId] = domain.Syncing
-		return
-	}
-	o.objectSyncStatusBySpace[status.SpaceId] = status.Status
+func (o *ObjectState) SetSyncStatus(status domain.SpaceSyncStatus, spaceId string) {
+	o.objectSyncStatusBySpace[spaceId] = status
 }
 
 func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
@@ -80,3 +76,5 @@ func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
 func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
 	return o.objectSyncCountBySpace[spaceId]
 }
+
+func (o *ObjectState) ResetSpaceErrorStatus(string, domain.SyncError) {}

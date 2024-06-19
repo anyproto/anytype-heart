@@ -32,9 +32,10 @@ type SpaceIdGetter interface {
 
 type State interface {
 	SetObjectsNumber(status *domain.SpaceSync)
-	SetSyncStatusAndErr(status *domain.SpaceSync)
+	SetSyncStatus(status domain.SpaceSyncStatus, spaceId string)
 	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
+	ResetSpaceErrorStatus(spaceId string, syncError domain.SyncError)
 }
 
 type NetworkConfig interface {
@@ -152,13 +153,11 @@ func (s *spaceSyncStatus) processEvents() {
 func (s *spaceSyncStatus) updateSpaceSyncStatus(status *domain.SpaceSync) {
 	state := s.getCurrentState(status)
 	state.SetObjectsNumber(status)
-	state.SetSyncStatusAndErr(status)
-
+	state.SetSyncStatus(status.Status, status.SpaceId)
 	// send synced event only if files and objects are all synced
 	if !s.needToSendEvent(status) {
 		return
 	}
-
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -166,6 +165,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(status *domain.SpaceSync) {
 			},
 		}},
 	})
+	state.ResetSpaceErrorStatus(status.SpaceId, status.SyncError)
 }
 
 func (s *spaceSyncStatus) needToSendEvent(status *domain.SpaceSync) bool {

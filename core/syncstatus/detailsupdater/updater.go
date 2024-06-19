@@ -203,6 +203,7 @@ func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus, syncError do
 	case domain.ObjectSyncing, domain.ObjectQueued:
 		return domain.Syncing
 	case domain.ObjectError:
+		// don't send error to space if file were oversized
 		if syncError != domain.Oversized {
 			return domain.Error
 		}
