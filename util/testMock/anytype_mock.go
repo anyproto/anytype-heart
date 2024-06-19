@@ -5,6 +5,7 @@
 //
 //	mockgen -package testMock -destination anytype_mock.go github.com/anyproto/anytype-heart/pkg/lib/core Service
 //
+
 // Package testMock is a generated GoMock package.
 package testMock
 

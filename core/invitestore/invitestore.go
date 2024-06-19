@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -30,7 +30,7 @@ type Service interface {
 
 type service struct {
 	commonFile      fileservice.FileService
-	fileService     files.Service
+	fileOffloader   fileoffloader.Service
 	fileSyncService filesync.FileSync
 	spaceService    space.Service
 	techSpaceId     string
@@ -41,7 +41,7 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.fileService = app.MustComponent[files.Service](a)
+	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.spaceService = app.MustComponent[space.Service](a)
@@ -81,7 +81,7 @@ func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Ci
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("add data to IPFS: %w", err)
 	}
-	err = s.fileSyncService.UploadSynchronously(s.techSpaceId, domain.FileId(node.Cid().String()))
+	err = s.fileSyncService.UploadSynchronously(ctx, s.techSpaceId, domain.FileId(node.Cid().String()))
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("add file to sync queue: %w", err)
 	}
@@ -89,7 +89,7 @@ func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Ci
 }
 
 func (s *service) RemoveInvite(ctx context.Context, id cid.Cid) error {
-	_, err := s.fileService.FileOffload(ctx, domain.FullFileId{
+	_, err := s.fileOffloader.FileOffloadRaw(ctx, domain.FullFileId{
 		SpaceId: s.techSpaceId,
 		FileId:  domain.FileId(id.String()),
 	})

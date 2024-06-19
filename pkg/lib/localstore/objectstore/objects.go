@@ -11,9 +11,9 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	lru "github.com/hashicorp/golang-lru/v2"
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -35,9 +35,10 @@ const CName = "objectstore"
 
 var (
 	// ObjectInfo is stored in db key pattern:
-	pagesPrefix        = "pages"
-	pagesDetailsBase   = ds.NewKey("/" + pagesPrefix + "/details")
-	pendingDetailsBase = ds.NewKey("/" + pagesPrefix + "/pending")
+	pagesPrefix         = "pages"
+	pagesDetailsBase    = ds.NewKey("/" + pagesPrefix + "/details")
+	pendingDetailsBase  = ds.NewKey("/" + pagesPrefix + "/pending")
+	pagesActiveViewBase = ds.NewKey("/" + pagesPrefix + "/activeView")
 
 	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
@@ -86,11 +87,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 }
 
 func (s *dsObjectStore) initCache() error {
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10_000_000,
-		MaxCost:     100_000_000,
-		BufferItems: 64,
-	})
+	cache, err := lru.New[string, *model.ObjectDetails](50000)
 	if err != nil {
 		return fmt.Errorf("init cache: %w", err)
 	}
@@ -145,6 +142,10 @@ type ObjectStore interface {
 	GetOutboundLinksByID(id string) ([]string, error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 
+	SetActiveView(objectId, blockId, viewId string) error
+	SetActiveViews(objectId string, views map[string]string) error
+	GetActiveViews(objectId string) (map[string]string, error)
+
 	GetRelationLink(spaceID string, key string) (*model.RelationLink, error)
 	FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error)
 	FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
@@ -189,7 +190,7 @@ var ErrNotAnObject = fmt.Errorf("not an object")
 type dsObjectStore struct {
 	sourceService SourceDetailsFromID
 
-	cache *ristretto.Cache
+	cache *lru.Cache[string, *model.ObjectDetails]
 	db    *badger.DB
 
 	fts ftsearch.FTSearch
@@ -360,8 +361,8 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 
 func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
 	key := it.Key()
-	if v, ok := s.cache.Get(key); ok {
-		return v.(*model.ObjectDetails), nil
+	if v, ok := s.cache.Get(string(key)); ok {
+		return v, nil
 	}
 	return s.unmarshalDetailsFromItem(it)
 }
@@ -374,7 +375,7 @@ func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*model.Object
 		if err != nil {
 			return fmt.Errorf("unmarshal details: %w", err)
 		}
-		s.cache.Set(it.Key(), details, int64(details.Size()))
+		s.cache.Add(string(it.Key()), details)
 		return nil
 	})
 	if err != nil {

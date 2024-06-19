@@ -57,7 +57,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -74,6 +76,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -93,7 +98,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
@@ -207,7 +211,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
 		Register(peerstore.New()).
-		Register(syncstatusprovider.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(metric.New()).
@@ -235,6 +238,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(files.New()).
+		Register(fileoffloader.New()).
 		Register(fileacl.New()).
 		Register(source.New()).
 		Register(spacefactory.New()).
@@ -242,6 +246,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
 		Register(filesync.New()).
+		Register(reconciler.New()).
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
 		Register(inviteservice.New()).
 		Register(acl.New()).
@@ -255,6 +260,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).
+		Register(detailsupdater.NewUpdater()).
+		Register(spacesyncstatus.NewSpaceSyncStatus()).
+		Register(nodestatus.NewNodeStatus()).
 		Register(syncstatus.New()).
 		Register(history.New()).
 		Register(gateway.New()).

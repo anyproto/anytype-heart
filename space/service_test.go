@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -46,12 +47,37 @@ const (
 
 // TODO Revive tests
 func TestService_Init(t *testing.T) {
-	t.Skip("@roman should revive this test")
+	t.Run("tech space getter", func(t *testing.T) {
+		serv := New().(*service)
+		serv.techSpaceId = "tech.space"
+		factory := mock_spacefactory.NewMockSpaceFactory(t)
+		serv.factory = factory
+		serv.techSpaceReady = make(chan struct{})
+
+		// not initialized - expect context deadline
+		ctx, ctxCancel := context.WithTimeout(context.Background(), time.Millisecond)
+		defer ctxCancel()
+		_, err := serv.Get(ctx, serv.techSpaceId)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+
+		// initialized - expect space
+		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), time.Millisecond)
+		defer ctxCancel2()
+
+		factory.EXPECT().CreateAndSetTechSpace(ctx2).Return(&clientspace.TechSpace{}, nil)
+		require.NoError(t, serv.initTechSpace(ctx2))
+
+		s, err := serv.Get(ctx2, serv.techSpaceId)
+		require.NoError(t, err)
+		assert.NotNil(t, s)
+	})
 	t.Run("existing account", func(t *testing.T) {
+		t.Skip("@roman should revive this test")
 		fx := newFixture(t, false)
 		defer fx.finish(t)
 	})
 	t.Run("new account", func(t *testing.T) {
+		t.Skip("@roman should revive this test")
 		fx := newFixture(t, true)
 		defer fx.finish(t)
 	})

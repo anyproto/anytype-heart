@@ -591,6 +591,10 @@
     - [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request)
     - [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response)
     - [Rpc.File.Offload.Response.Error](#anytype-Rpc-File-Offload-Response-Error)
+    - [Rpc.File.Reconcile](#anytype-Rpc-File-Reconcile)
+    - [Rpc.File.Reconcile.Request](#anytype-Rpc-File-Reconcile-Request)
+    - [Rpc.File.Reconcile.Response](#anytype-Rpc-File-Reconcile-Response)
+    - [Rpc.File.Reconcile.Response.Error](#anytype-Rpc-File-Reconcile-Response-Error)
     - [Rpc.File.SpaceOffload](#anytype-Rpc-File-SpaceOffload)
     - [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request)
     - [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response)
@@ -617,6 +621,10 @@
     - [Rpc.GenericErrorResponse](#anytype-Rpc-GenericErrorResponse)
     - [Rpc.GenericErrorResponse.Error](#anytype-Rpc-GenericErrorResponse-Error)
     - [Rpc.History](#anytype-Rpc-History)
+    - [Rpc.History.DiffVersions](#anytype-Rpc-History-DiffVersions)
+    - [Rpc.History.DiffVersions.Request](#anytype-Rpc-History-DiffVersions-Request)
+    - [Rpc.History.DiffVersions.Response](#anytype-Rpc-History-DiffVersions-Response)
+    - [Rpc.History.DiffVersions.Response.Error](#anytype-Rpc-History-DiffVersions-Response-Error)
     - [Rpc.History.GetVersions](#anytype-Rpc-History-GetVersions)
     - [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request)
     - [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response)
@@ -1265,12 +1273,14 @@
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
     - [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
+    - [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code)
     - [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
     - [Rpc.Gallery.DownloadIndex.Response.Error.Code](#anytype-Rpc-Gallery-DownloadIndex-Response-Error-Code)
     - [Rpc.Gallery.DownloadManifest.Response.Error.Code](#anytype-Rpc-Gallery-DownloadManifest-Response-Error-Code)
     - [Rpc.GenericErrorResponse.Error.Code](#anytype-Rpc-GenericErrorResponse-Error-Code)
+    - [Rpc.History.DiffVersions.Response.Error.Code](#anytype-Rpc-History-DiffVersions-Response-Error-Code)
     - [Rpc.History.GetVersions.Response.Error.Code](#anytype-Rpc-History-GetVersions-Response-Error-Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype-Rpc-History-SetVersion-Response-Error-Code)
     - [Rpc.History.ShowVersion.Response.Error.Code](#anytype-Rpc-History-ShowVersion-Response-Error-Code)
@@ -1552,6 +1562,7 @@
     - [Event.Notification.Send](#anytype-Event-Notification-Send)
     - [Event.Notification.Update](#anytype-Event-Notification-Update)
     - [Event.Object](#anytype-Event-Object)
+    - [Event.Object.Close](#anytype-Event-Object-Close)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
     - [Event.Object.Details.Amend.KeyValue](#anytype-Event-Object-Details-Amend-KeyValue)
@@ -1576,6 +1587,9 @@
     - [Event.Process.Done](#anytype-Event-Process-Done)
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
+    - [Event.Space](#anytype-Event-Space)
+    - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
+    - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
     - [Event.Status](#anytype-Event-Status)
     - [Event.Status.Thread](#anytype-Event-Status-Thread)
     - [Event.Status.Thread.Account](#anytype-Event-Status-Thread-Account)
@@ -1595,6 +1609,9 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.Space.Network](#anytype-Event-Space-Network)
+    - [Event.Space.Status](#anytype-Event-Space-Status)
+    - [Event.Space.SyncError](#anytype-Event-Space-SyncError)
     - [Event.Status.Thread.SyncStatus](#anytype-Event-Status-Thread-SyncStatus)
     - [Model.Process.State](#anytype-Model-Process-State)
     - [Model.Process.Type](#anytype-Model-Process-Type)
@@ -1686,6 +1703,7 @@
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
     - [ObjectView](#anytype-model-ObjectView)
+    - [ObjectView.BlockParticipant](#anytype-model-ObjectView-BlockParticipant)
     - [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet)
     - [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize)
     - [ObjectView.RelationWithValuePerObject](#anytype-model-ObjectView-RelationWithValuePerObject)
@@ -1892,8 +1910,9 @@
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
-| FileOffload | [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request) | [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response) | Files *** |
-| FileSpaceOffload | [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request) | [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response) |  |
+| HistoryDiffVersions | [Rpc.History.DiffVersions.Request](#anytype-Rpc-History-DiffVersions-Request) | [Rpc.History.DiffVersions.Response](#anytype-Rpc-History-DiffVersions-Response) |  |
+| FileSpaceOffload | [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request) | [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response) | Files *** |
+| FileReconcile | [Rpc.File.Reconcile.Request](#anytype-Rpc-File-Reconcile-Request) | [Rpc.File.Reconcile.Response](#anytype-Rpc-File-Reconcile-Response) |  |
 | FileListOffload | [Rpc.File.ListOffload.Request](#anytype-Rpc-File-ListOffload-Request) | [Rpc.File.ListOffload.Response](#anytype-Rpc-File-ListOffload-Response) |  |
 | FileUpload | [Rpc.File.Upload.Request](#anytype-Rpc-File-Upload-Request) | [Rpc.File.Upload.Response](#anytype-Rpc-File-Upload-Response) |  |
 | FileDownload | [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request) | [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response) |  |
@@ -6403,7 +6422,7 @@ Makes blocks copy by given ids and paste it to shown place
 <a name="anytype-Rpc-BlockDataview-View-SetActive"></a>
 
 ### Rpc.BlockDataview.View.SetActive
-set the current active view (persisted only within a session)
+set the current active view locally
 
 
 
@@ -6421,8 +6440,6 @@ set the current active view (persisted only within a session)
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block |
 | viewId | [string](#string) |  | id of active view |
-| offset | [uint32](#uint32) |  |  |
-| limit | [uint32](#uint32) |  |  |
 
 
 
@@ -10570,6 +10587,57 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-File-Reconcile"></a>
+
+### Rpc.File.Reconcile
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-Reconcile-Request"></a>
+
+### Rpc.File.Reconcile.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-Reconcile-Response"></a>
+
+### Rpc.File.Reconcile.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.Reconcile.Response.Error](#anytype-Rpc-File-Reconcile-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-Reconcile-Response-Error"></a>
+
+### Rpc.File.Reconcile.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File-SpaceOffload"></a>
 
 ### Rpc.File.SpaceOffload
@@ -10942,6 +11010,67 @@ Get marks list in the selected range in text block.
 
 ### Rpc.History
 
+
+
+
+
+
+
+<a name="anytype-Rpc-History-DiffVersions"></a>
+
+### Rpc.History.DiffVersions
+
+
+
+
+
+
+
+<a name="anytype-Rpc-History-DiffVersions-Request"></a>
+
+### Rpc.History.DiffVersions.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
+| currentVersion | [string](#string) |  |  |
+| previousVersion | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-History-DiffVersions-Response"></a>
+
+### Rpc.History.DiffVersions.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.History.DiffVersions.Response.Error](#anytype-Rpc-History-DiffVersions-Response-Error) |  |  |
+| historyEvents | [Event.Message](#anytype-Event-Message) | repeated |  |
+| objectView | [model.ObjectView](#anytype-model-ObjectView) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-History-DiffVersions-Response-Error"></a>
+
+### Rpc.History.DiffVersions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.History.DiffVersions.Response.Error.Code](#anytype-Rpc-History-DiffVersions-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -19334,7 +19463,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -20200,6 +20329,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-File-Reconcile-Response-Error-Code"></a>
+
+### Rpc.File.Reconcile.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-File-SpaceOffload-Response-Error-Code"></a>
 
 ### Rpc.File.SpaceOffload.Response.Error.Code
@@ -20271,6 +20413,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-GenericErrorResponse-Error-Code"></a>
 
 ### Rpc.GenericErrorResponse.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-History-DiffVersions-Response-Error-Code"></a>
+
+### Rpc.History.DiffVersions.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -20534,6 +20689,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PAYMENT_NODE_ERROR | 4 |  |
 | CACHE_ERROR | 5 |  |
 | INVALID_RECEIPT | 6 |  |
+| PURCHASE_REGISTRATION_ERROR | 7 |  |
+| SUBSCRIPTION_RENEW_ERROR | 8 |  |
 
 
 
@@ -24439,6 +24596,7 @@ Precondition: user A opened a block
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype-Event-Object-Relations-Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype-Event-Object-Remove) |  |  |
+| objectClose | [Event.Object.Close](#anytype-Event-Object-Close) |  |  |
 | objectRestrictionsSet | [Event.Object.Restrictions.Set](#anytype-Event-Object-Restrictions-Set) |  |  |
 | subscriptionAdd | [Event.Object.Subscription.Add](#anytype-Event-Object-Subscription-Add) |  |  |
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove) |  |  |
@@ -24494,6 +24652,7 @@ Precondition: user A opened a block
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
+| spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
 
 
 
@@ -24544,6 +24703,21 @@ Precondition: user A opened a block
 
 ### Event.Object
 
+
+
+
+
+
+
+<a name="anytype-Event-Object-Close"></a>
+
+### Event.Object.Close
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 
 
 
@@ -24900,6 +25074,45 @@ Removes document from subscription
 
 
 
+<a name="anytype-Event-Space"></a>
+
+### Event.Space
+
+
+
+
+
+
+
+<a name="anytype-Event-Space-SyncStatus"></a>
+
+### Event.Space.SyncStatus
+
+
+
+
+
+
+
+<a name="anytype-Event-Space-SyncStatus-Update"></a>
+
+### Event.Space.SyncStatus.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [Event.Space.Status](#anytype-Event-Space-Status) |  |  |
+| network | [Event.Space.Network](#anytype-Event-Space-Network) |  |  |
+| error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
+| syncingObjectsCounter | [int64](#int64) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Status"></a>
 
 ### Event.Status
@@ -25188,6 +25401,47 @@ Precondition: user A and user B opened the same block
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
 | SliceOperationReplace | 4 |  |
+
+
+
+<a name="anytype-Event-Space-Network"></a>
+
+### Event.Space.Network
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Anytype | 0 |  |
+| SelfHost | 1 |  |
+| LocalOnly | 2 |  |
+
+
+
+<a name="anytype-Event-Space-Status"></a>
+
+### Event.Space.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Synced | 0 |  |
+| Syncing | 1 |  |
+| Error | 2 |  |
+| Offline | 3 |  |
+
+
+
+<a name="anytype-Event-Space-SyncError"></a>
+
+### Event.Space.SyncError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Null | 0 |  |
+| StorageLimitExceed | 1 |  |
+| IncompatibleVersion | 2 |  |
+| NetworkError | 3 |  |
 
 
 
@@ -25645,8 +25899,8 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | source | [string](#string) | repeated |  |
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
+| activeView | [string](#string) |  | do not generate changes for this field |
 | relations | [Relation](#anytype-model-Relation) | repeated | deprecated |
-| activeView | [string](#string) |  | saved within a session |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
@@ -26739,6 +26993,23 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
 | history | [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize) |  |  |
+| blockParticipants | [ObjectView.BlockParticipant](#anytype-model-ObjectView-BlockParticipant) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ObjectView-BlockParticipant"></a>
+
+### ObjectView.BlockParticipant
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+| participantId | [string](#string) |  |  |
 
 
 
@@ -27458,6 +27729,7 @@ stored |
 | Tree | 1 |  |
 | List | 2 |  |
 | CompactList | 3 |  |
+| View | 4 |  |
 
 
 

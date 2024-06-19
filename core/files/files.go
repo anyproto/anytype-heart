@@ -50,7 +50,6 @@ type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
 	FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error)
-	FileOffload(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
@@ -401,7 +400,12 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	if variant, err := s.fileStore.GetFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
-		return newExistingFileResult(variant)
+		if variant.Source == conf.checksum {
+			// we may have same variant checksum for different files
+			// e.g. empty image exif with the same resolution
+			// reuse the whole file only in case the checksum of the original file is the same
+			return newExistingFileResult(variant)
+		}
 	}
 
 	_, err = conf.Reader.Seek(0, io.SeekStart)
@@ -409,8 +413,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	// because mill result reader doesn't support seek we need to do the mill again
-	res, err = mill.Mill(conf.Reader, conf.Name)
+	_, err = res.File.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err
 	}
@@ -465,6 +468,10 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	fileInfo.MetaHash = metaNode.Cid().String()
 
 	pairNode, err := s.addFilePairNode(ctx, spaceID, fileInfo)
+	err = res.File.Close()
+	if err != nil {
+		log.Warnf("failed to close file: %s", err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("add file pair node: %w", err)
 	}

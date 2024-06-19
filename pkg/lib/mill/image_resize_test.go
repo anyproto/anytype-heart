@@ -128,6 +128,9 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		err = res.File.Close()
+		require.NoError(t, err)
+
 		img, err := jpeg.Decode(bytes.NewReader(b))
 		require.NoError(t, err)
 		require.Equal(t, 680, img.Bounds().Max.X)
@@ -143,7 +146,7 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 func TestImageResize_Mill(t *testing.T) {
 	m := &ImageResize{
 		Opts: ImageResizeOpts{
-			Width:   "200",
+			Width:   "100",
 			Quality: "80",
 		},
 	}
@@ -159,7 +162,7 @@ func TestImageResize_Mill(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if res.Meta["width"] != 200 {
+		if res.Meta["width"] != 100 {
 			t.Errorf("wrong width")
 		}
 
@@ -169,6 +172,8 @@ func TestImageResize_Mill(t *testing.T) {
 			t.Errorf("exif data was not removed")
 		}
 		file.Close()
+		err = res.File.Close()
+		require.NoError(t, err)
 	}
 }
 
