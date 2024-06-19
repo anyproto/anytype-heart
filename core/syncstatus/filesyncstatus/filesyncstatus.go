@@ -14,6 +14,7 @@ const (
 	Syncing
 	Limited
 	Synced
+	Queued
 )
 
 func (s Status) ToSyncStatus() objectsyncstatus.SyncStatus {
@@ -22,7 +23,7 @@ func (s Status) ToSyncStatus() objectsyncstatus.SyncStatus {
 		return objectsyncstatus.StatusUnknown
 	case Synced:
 		return objectsyncstatus.StatusSynced
-	case Syncing, Limited:
+	case Syncing, Limited, Queued:
 		return objectsyncstatus.StatusNotSynced
 	default:
 		return objectsyncstatus.StatusUnknown

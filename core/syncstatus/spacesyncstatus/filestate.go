@@ -12,7 +12,7 @@ import (
 
 type FileState struct {
 	fileSyncCountBySpace  map[string]int
-	fileSyncStatusBySpace map[string]domain.SyncStatus
+	fileSyncStatusBySpace map[string]domain.SpaceSyncStatus
 	filesErrorBySpace     map[string]domain.SyncError
 
 	store objectstore.ObjectStore
@@ -21,7 +21,7 @@ type FileState struct {
 func NewFileState(store objectstore.ObjectStore) *FileState {
 	return &FileState{
 		fileSyncCountBySpace:  make(map[string]int, 0),
-		fileSyncStatusBySpace: make(map[string]domain.SyncStatus, 0),
+		fileSyncStatusBySpace: make(map[string]domain.SpaceSyncStatus, 0),
 		filesErrorBySpace:     make(map[string]domain.SyncError, 0),
 
 		store: store,
@@ -33,8 +33,8 @@ func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(filesyncstatus.Syncing)),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.IntList(int(filesyncstatus.Syncing), int(filesyncstatus.Queued)),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
@@ -73,7 +73,7 @@ func (f *FileState) setError(spaceId string, syncErr domain.SyncError) {
 	f.filesErrorBySpace[spaceId] = syncErr
 }
 
-func (f *FileState) GetSyncStatus(spaceId string) domain.SyncStatus {
+func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
 	return f.fileSyncStatusBySpace[spaceId]
 }
 

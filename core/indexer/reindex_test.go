@@ -29,15 +29,10 @@ import (
 )
 
 func TestReindexMarketplaceSpace(t *testing.T) {
-	t.Run("reindex missing object", func(t *testing.T) {
-		// given
-		indexerFx := NewIndexerFixture(t)
-		checksums := indexerFx.getLatestChecksums()
-		err := indexerFx.store.SaveChecksums("spaceId", &checksums)
-		assert.Nil(t, err)
-
-		virtualSpace := clientspace.NewVirtualSpace("spaceId", clientspace.VirtualSpaceDeps{
-			Indexer: indexerFx,
+	spaceId := "market"
+	getMockSpace := func(fx *IndexerFixture) *clientspace.VirtualSpace {
+		virtualSpace := clientspace.NewVirtualSpace(spaceId, clientspace.VirtualSpaceDeps{
+			Indexer: fx,
 		})
 		mockCache := mock_objectcache.NewMockCache(t)
 		smartTest := smarttest.New(addr.MissingObject)
@@ -48,6 +43,18 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		mockCache.EXPECT().GetObject(context.Background(), addr.MissingObject).Return(editor.NewMissingObject(smartTest), nil)
 		mockCache.EXPECT().GetObject(context.Background(), addr.AnytypeProfileId).Return(smartTest, nil)
 		virtualSpace.Cache = mockCache
+
+		return virtualSpace
+	}
+
+	t.Run("reindex missing object", func(t *testing.T) {
+		// given
+		indexerFx := NewIndexerFixture(t)
+		checksums := indexerFx.getLatestChecksums()
+		err := indexerFx.store.SaveChecksums(spaceId, &checksums)
+		assert.Nil(t, err)
+
+		virtualSpace := getMockSpace(indexerFx)
 
 		storage := mock_storage.NewMockClientStorage(t)
 		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
@@ -60,6 +67,50 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		details, err := indexerFx.store.GetDetails(addr.MissingObject)
 		assert.Nil(t, err)
 		assert.NotNil(t, details)
+	})
+
+	t.Run("do not reindex links in marketplace", func(t *testing.T) {
+		// given
+		fx := NewIndexerFixture(t)
+
+		favs := []string{"fav1", "fav2"}
+		trash := []string{"trash1", "trash2"}
+		err := fx.store.UpdateObjectLinks("home", favs)
+		require.NoError(t, err)
+		err = fx.store.UpdateObjectLinks("bin", trash)
+		require.NoError(t, err)
+
+		homeLinks, err := fx.store.GetOutboundLinksByID("home")
+		require.Equal(t, favs, homeLinks)
+
+		archiveLinks, err := fx.store.GetOutboundLinksByID("bin")
+		require.Equal(t, trash, archiveLinks)
+
+		checksums := fx.getLatestChecksums()
+		checksums.LinksErase = checksums.LinksErase - 1
+
+		err = fx.objectStore.SaveChecksums(spaceId, &checksums)
+		require.NoError(t, err)
+
+		storage := mock_storage.NewMockClientStorage(t)
+		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
+		fx.storageService = storage
+
+		// when
+		err = fx.ReindexMarketplaceSpace(getMockSpace(fx))
+		assert.NoError(t, err)
+
+		// then
+		homeLinks, err = fx.store.GetOutboundLinksByID("home")
+		assert.NoError(t, err)
+		assert.Equal(t, favs, homeLinks)
+
+		archiveLinks, err = fx.store.GetOutboundLinksByID("bin")
+		assert.NoError(t, err)
+		assert.Equal(t, trash, archiveLinks)
+
+		storeChecksums, err := fx.store.GetChecksums(spaceId)
+		assert.Equal(t, ForceLinksReindexCounter, storeChecksums.LinksErase)
 	})
 }
 

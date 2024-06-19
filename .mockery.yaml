@@ -56,6 +56,10 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/filestorage/rpcstore:
+    interfaces:
+      Service:
+      RpcStore:
   github.com/anyproto/anytype-heart/core/block/import/common/objectid:
     interfaces:
       IdGetterProvider:
@@ -165,6 +169,9 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
+  github.com/anyproto/anytype-heart/core/filestorage:
+    interfaces:
+      FileStorage:
   github.com/anyproto/anytype-heart/util/linkpreview:
     interfaces:
       LinkPreview:
@@ -204,3 +211,4 @@ packages:
   github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus:
     interfaces:
       SpaceIdGetter:
+      Updater:

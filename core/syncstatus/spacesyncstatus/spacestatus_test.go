@@ -7,10 +7,12 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus/mock_spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
@@ -404,5 +406,42 @@ func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
 		status, err := spaceStatus.batcher.WaitOne(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, status, syncStatus)
+	})
+}
+
+func TestSpaceSyncStatus_Notify(t *testing.T) {
+	t.Run("Notify success", func(t *testing.T) {
+		// given
+		eventSender := mock_event.NewMockSender(t)
+		spaceIdGetter := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
+		spaceStatus := spaceSyncStatus{
+			eventSender:   eventSender,
+			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_DefaultConfig},
+			batcher:       mb.New[*domain.SpaceSync](0),
+			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
+			spaceIdGetter: spaceIdGetter,
+		}
+		// then
+		spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"id1", "id2"})
+		eventSender.EXPECT().SendToSession(mock.Anything, &pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id: "id1",
+					},
+				},
+			}},
+		})
+		eventSender.EXPECT().SendToSession(mock.Anything, &pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id: "id2",
+					},
+				},
+			}},
+		})
+		spaceStatus.Notify(session.NewContext())
 	})
 }

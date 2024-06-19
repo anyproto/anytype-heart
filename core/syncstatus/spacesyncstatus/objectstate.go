@@ -10,7 +10,7 @@ import (
 )
 
 type ObjectState struct {
-	objectSyncStatusBySpace map[string]domain.SyncStatus
+	objectSyncStatusBySpace map[string]domain.SpaceSyncStatus
 	objectSyncCountBySpace  map[string]int
 	objectSyncErrBySpace    map[string]domain.SyncError
 
@@ -20,7 +20,7 @@ type ObjectState struct {
 func NewObjectState(store objectstore.ObjectStore) *ObjectState {
 	return &ObjectState{
 		objectSyncCountBySpace:  make(map[string]int, 0),
-		objectSyncStatusBySpace: make(map[string]domain.SyncStatus, 0),
+		objectSyncStatusBySpace: make(map[string]domain.SpaceSyncStatus, 0),
 		objectSyncErrBySpace:    make(map[string]domain.SyncError, 0),
 		store:                   store,
 	}
@@ -77,7 +77,7 @@ func (o *ObjectState) SetSyncStatusAndErr(status *domain.SpaceSync) {
 	o.objectSyncErrBySpace[status.SpaceId] = status.SyncError
 }
 
-func (o *ObjectState) GetSyncStatus(spaceId string) domain.SyncStatus {
+func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
 	return o.objectSyncStatusBySpace[spaceId]
 }
 

@@ -198,7 +198,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(true)
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
-		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.Offline, domain.Null, "spaceId").Return()
+		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.ObjectError, domain.NetworkError, "spaceId").Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
@@ -218,8 +218,8 @@ func TestTreeSyncer(t *testing.T) {
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
 		fx.checker.EXPECT().IsPeerOffline(peerId).Return(false)
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
-		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.Synced, domain.Null, "spaceId").Return()
-		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.Syncing, domain.Null, "spaceId").Return()
+		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.ObjectSynced, domain.Null, "spaceId").Return()
+		fx.syncDetailsUpdater.EXPECT().UpdateDetails([]string{"existing"}, domain.ObjectSyncing, domain.Null, "spaceId").Return()
 
 		fx.StartSync()
 		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})

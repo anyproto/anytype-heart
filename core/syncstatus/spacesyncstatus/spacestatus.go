@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -26,12 +27,13 @@ type SpaceIdGetter interface {
 	app.Component
 	TechSpaceId() string
 	PersonalSpaceId() string
+	AllSpaceIds() []string
 }
 
 type State interface {
 	SetObjectsNumber(status *domain.SpaceSync)
 	SetSyncStatusAndErr(status *domain.SpaceSync)
-	GetSyncStatus(spaceId string) domain.SyncStatus
+	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
 	GetSyncErr(spaceId string) domain.SyncError
 }
@@ -73,24 +75,41 @@ func (s *spaceSyncStatus) Name() (name string) {
 	return service
 }
 
+func (s *spaceSyncStatus) Notify(ctx session.Context) {
+	ids := s.spaceIdGetter.AllSpaceIds()
+	for _, id := range ids {
+		s.sendEventToSession(id, ctx.ID())
+	}
+}
+
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	if s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly {
 		s.sendLocalOnlyEvent()
 		close(s.finish)
 		return
 	} else {
-		s.sendStartEvent()
+		s.sendStartEvent(s.spaceIdGetter.PersonalSpaceId())
 	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go s.processEvents()
 	return
 }
 
-func (s *spaceSyncStatus) sendStartEvent() {
+func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
+	s.eventSender.SendToSession(token, &pb.Event{
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
+			},
+		}},
+	})
+}
+
+func (s *spaceSyncStatus) sendStartEvent(spaceId string) {
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(s.spaceIdGetter.PersonalSpaceId()),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
 			},
 		}},
 	})
@@ -175,7 +194,7 @@ func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string) *pb.EventSpaceSyncS
 	}
 }
 
-func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SyncStatus {
+func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SpaceSyncStatus {
 	filesStatus := s.filesState.GetSyncStatus(spaceId)
 	objectsStatus := s.objectsState.GetSyncStatus(spaceId)
 
@@ -197,19 +216,19 @@ func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SyncStatus {
 	return domain.Synced
 }
 
-func (s *spaceSyncStatus) isSyncingStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
+func (s *spaceSyncStatus) isSyncingStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
 	return filesStatus == domain.Syncing || objectsStatus == domain.Syncing
 }
 
-func (s *spaceSyncStatus) isErrorStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
+func (s *spaceSyncStatus) isErrorStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
 	return filesStatus == domain.Error || objectsStatus == domain.Error
 }
 
-func (s *spaceSyncStatus) isSyncedStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
+func (s *spaceSyncStatus) isSyncedStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
 	return filesStatus == domain.Synced && objectsStatus == domain.Synced
 }
 
-func (s *spaceSyncStatus) isOfflineStatus(filesStatus domain.SyncStatus, objectsStatus domain.SyncStatus) bool {
+func (s *spaceSyncStatus) isOfflineStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
 	return filesStatus == domain.Offline || objectsStatus == domain.Offline
 }
 
@@ -245,7 +264,7 @@ func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 	}
 }
 
-func mapStatus(status domain.SyncStatus) pb.EventSpaceStatus {
+func mapStatus(status domain.SpaceSyncStatus) pb.EventSpaceStatus {
 	switch status {
 	case domain.Syncing:
 		return pb.EventSpace_Syncing

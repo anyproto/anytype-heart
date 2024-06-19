@@ -113,7 +113,7 @@ func (_c *MockUpdater_Name_Call) RunAndReturn(run func() string) *MockUpdater_Na
 }
 
 // UpdateDetails provides a mock function with given fields: objectId, status, syncError, spaceId
-func (_m *MockUpdater) UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string) {
+func (_m *MockUpdater) UpdateDetails(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string) {
 	_m.Called(objectId, status, syncError, spaceId)
 }
 
@@ -124,16 +124,16 @@ type MockUpdater_UpdateDetails_Call struct {
 
 // UpdateDetails is a helper method to define mock.On call
 //   - objectId []string
-//   - status domain.SyncStatus
+//   - status domain.ObjectSyncStatus
 //   - syncError domain.SyncError
 //   - spaceId string
 func (_e *MockUpdater_Expecter) UpdateDetails(objectId interface{}, status interface{}, syncError interface{}, spaceId interface{}) *MockUpdater_UpdateDetails_Call {
 	return &MockUpdater_UpdateDetails_Call{Call: _e.mock.On("UpdateDetails", objectId, status, syncError, spaceId)}
 }
 
-func (_c *MockUpdater_UpdateDetails_Call) Run(run func(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)) *MockUpdater_UpdateDetails_Call {
+func (_c *MockUpdater_UpdateDetails_Call) Run(run func(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)) *MockUpdater_UpdateDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string), args[1].(domain.SyncStatus), args[2].(domain.SyncError), args[3].(string))
+		run(args[0].([]string), args[1].(domain.ObjectSyncStatus), args[2].(domain.SyncError), args[3].(string))
 	})
 	return _c
 }
@@ -143,7 +143,7 @@ func (_c *MockUpdater_UpdateDetails_Call) Return() *MockUpdater_UpdateDetails_Ca
 	return _c
 }
 
-func (_c *MockUpdater_UpdateDetails_Call) RunAndReturn(run func([]string, domain.SyncStatus, domain.SyncError, string)) *MockUpdater_UpdateDetails_Call {
+func (_c *MockUpdater_UpdateDetails_Call) RunAndReturn(run func([]string, domain.ObjectSyncStatus, domain.SyncError, string)) *MockUpdater_UpdateDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

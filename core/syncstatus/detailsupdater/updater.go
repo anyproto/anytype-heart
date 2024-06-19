@@ -32,14 +32,14 @@ const CName = "core.syncstatus.objectsyncstatus.updater"
 
 type syncStatusDetails struct {
 	objectIds []string
-	status    domain.SyncStatus
+	status    domain.ObjectSyncStatus
 	syncError domain.SyncError
 	spaceId   string
 }
 
 type Updater interface {
 	app.ComponentRunnable
-	UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateDetails(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 type SpaceStatusUpdater interface {
@@ -94,7 +94,10 @@ func (u *syncStatusUpdater) Name() (name string) {
 	return CName
 }
 
-func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.SyncStatus, syncError domain.SyncError, spaceId string) {
+func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string) {
+	if spaceId == u.spaceService.TechSpaceId() {
+		return
+	}
 	for _, id := range objectId {
 		u.mx.Lock()
 		u.entries[id] = &syncStatusDetails{
@@ -165,11 +168,12 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if !changed {
 		return nil
 	}
-	spc, err := u.spaceService.Get(context.Background(), syncStatusDetails.spaceId)
+	spc, err := u.spaceService.Get(u.ctx, syncStatusDetails.spaceId)
 	if err != nil {
 		return err
 	}
-	defer u.sendStatusUpdate(err, syncStatusDetails, status, syncError)
+	spaceStatus := mapObjectSyncToSpaceSyncStatus(status)
+	defer u.sendSpaceStatusUpdate(err, syncStatusDetails, spaceStatus, syncError)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
 		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, error) {
 			if details == nil || details.Fields == nil {
@@ -187,34 +191,48 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if !errors.Is(err, ocache.ErrExists) {
 		return err
 	}
-	return spc.Do(objectId, func(sb smartblock.SmartBlock) error {
+	return spc.DoCtx(u.ctx, objectId, func(sb smartblock.SmartBlock) error {
 		return u.setSyncDetails(sb, status, syncError)
 	})
 }
 
-func (u *syncStatusUpdater) sendStatusUpdate(err error, syncStatusDetails *syncStatusDetails, status domain.SyncStatus, syncError domain.SyncError) {
+func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus) domain.SpaceSyncStatus {
+	switch status {
+	case domain.ObjectSynced:
+		return domain.Synced
+	case domain.ObjectSyncing, domain.ObjectQueued:
+		return domain.Syncing
+	case domain.ObjectError:
+		return domain.Error
+	}
+	return domain.Synced
+}
+
+func (u *syncStatusUpdater) sendSpaceStatusUpdate(err error, syncStatusDetails *syncStatusDetails, status domain.SpaceSyncStatus, syncError domain.SyncError) {
 	if err == nil {
 		u.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(syncStatusDetails.spaceId, status, syncError, domain.Objects))
 	}
 }
 
-func mapFileStatus(status filesyncstatus.Status) (domain.SyncStatus, domain.SyncError) {
+func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {
 	var syncError domain.SyncError
 	switch status {
 	case filesyncstatus.Syncing:
-		return domain.Syncing, 0
+		return domain.ObjectSyncing, domain.Null
+	case filesyncstatus.Queued:
+		return domain.ObjectQueued, domain.Null
 	case filesyncstatus.Limited:
 		syncError = domain.StorageLimitExceed
-		return domain.Error, syncError
+		return domain.ObjectError, syncError
 	case filesyncstatus.Unknown:
 		syncError = domain.NetworkError
-		return domain.Error, syncError
+		return domain.ObjectError, syncError
 	default:
-		return domain.Synced, 0
+		return domain.ObjectSynced, domain.Null
 	}
 }
 
-func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.SyncStatus, syncError domain.SyncError) error {
+func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		return nil
 	}
@@ -238,7 +256,7 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	return nil
 }
 
-func (u *syncStatusUpdater) hasRelationsChange(record *types.Struct, status domain.SyncStatus, syncError domain.SyncError) bool {
+func (u *syncStatusUpdater) hasRelationsChange(record *types.Struct, status domain.ObjectSyncStatus, syncError domain.SyncError) bool {
 	var changed bool
 	if record == nil || len(record.GetFields()) == 0 {
 		changed = true

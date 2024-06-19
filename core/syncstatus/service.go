@@ -17,10 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
-
-var log = logging.Logger("anytype-mw-status")
 
 const CName = "status"
 
@@ -71,11 +68,11 @@ func (s *service) Init(a *app.App) (err error) {
 	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 
-	s.fileSyncService.OnUploaded(s.OnFileUploaded)
-	s.fileSyncService.OnUploadStarted(s.OnFileUploadStarted)
-	s.fileSyncService.OnLimited(s.OnFileLimited)
+	s.fileSyncService.OnUploaded(s.onFileUploaded)
+	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
+	s.fileSyncService.OnLimited(s.onFileLimited)
 	s.fileSyncService.OnDelete(s.OnFileDelete)
-
+	s.fileSyncService.OnDelete(s.OnFileDelete)
 	return nil
 }
 
