@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/net/streampool"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
@@ -27,15 +28,15 @@ func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.
 }
 
 func (r *rpcHandler) ObjectSync(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
-	sp, err := r.s.Get(ctx, req.SpaceId)
+	return nil, fmt.Errorf("nt implemented")
+}
+
+func (r *rpcHandler) ObjectSyncRequestStream(req *spacesyncproto.ObjectSyncMessage, stream spacesyncproto.DRPCSpaceSync_ObjectSyncRequestStreamStream) (err error) {
+	sp, err := r.s.Get(stream.Context(), req.SpaceId)
 	if err != nil {
-		if err != spacesyncproto.ErrSpaceMissing {
-			err = spacesyncproto.ErrUnexpected
-		}
-		return
+		return err
 	}
-	resp, err = sp.HandleSyncRequest(ctx, req)
-	return
+	return sp.HandleStreamSyncRequest(stream.Context(), req, stream)
 }
 
 func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceproto.SpaceExchangeRequest) (resp *clientspaceproto.SpaceExchangeResponse, err error) {
@@ -114,5 +115,17 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 }
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
-	return r.s.streamPool.ReadStream(stream)
+	defer func() {
+		log.DebugCtx(stream.Context(), "incoming stream error")
+	}()
+	log.DebugCtx(stream.Context(), "open incoming stream")
+	msg := &spacesyncproto.ObjectSyncMessage{}
+	if err := stream.MsgRecv(msg, streampool.EncodingProto); err != nil {
+		return err
+	}
+	sp, err := r.s.Get(stream.Context(), msg.SpaceId)
+	if err != nil {
+		return err
+	}
+	return sp.HandleStream(stream)
 }
