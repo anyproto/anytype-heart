@@ -47,8 +47,9 @@ func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 		}
 	}
 
+	var key string
 	if d.isDeletedObject(uniqueKey.Marshal()) {
-		key := bson.NewObjectId().Hex()
+		key = bson.NewObjectId().Hex()
 		uniqueKey, err = domain.NewUniqueKey(sn.SbType, key)
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("create unique key from %s and %q: %w", sn.SbType, key, err)
@@ -64,7 +65,7 @@ func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("derive tree create payload: %w", err)
 	}
-	return payload.RootRawChange.Id, payload, uniqueKey.Marshal(), nil
+	return payload.RootRawChange.Id, payload, key, nil
 }
 
 func (d *derivedObject) isDeletedObject(uniqueKey string) bool {

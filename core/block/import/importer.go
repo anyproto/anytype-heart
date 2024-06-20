@@ -431,12 +431,14 @@ func (i *Import) getObjectID(
 	if payload.RootRawChange != nil {
 		createPayloads[id] = payload
 	}
-	oldUniqueKey := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
-	if oldUniqueKey == "" {
-		oldUniqueKey = snapshot.Snapshot.Data.Key
-	}
-	if oldUniqueKey != "" {
-		oldIDToNew[oldUniqueKey] = newUniqueKey
+	if newUniqueKey != "" {
+		oldUniqueKey := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+		if oldUniqueKey == "" {
+			oldUniqueKey = snapshot.Snapshot.Data.Key
+		}
+		if oldUniqueKey != "" {
+			oldIDToNew[oldUniqueKey] = newUniqueKey
+		}
 	}
 	return nil
 }
