@@ -224,3 +224,18 @@ func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRun
 		Path: path,
 	}
 }
+
+func (mw *Middleware) DebugLoginTrace(cctx context.Context, req *pb.RpcDebugLoginTraceRequest) *pb.RpcDebugLoginTraceResponse {
+	path, err := mw.applicationService.SaveLoginTrace()
+	if err != nil {
+		return &pb.RpcDebugLoginTraceResponse{
+			Error: &pb.RpcDebugLoginTraceResponseError{
+				Code:        pb.RpcDebugLoginTraceResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcDebugLoginTraceResponse{
+		Path: path,
+	}
+}

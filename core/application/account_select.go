@@ -5,11 +5,14 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	trace2 "runtime/trace"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
+	"golang.org/x/exp/trace"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -37,6 +40,22 @@ var (
 func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) (*model.Account, error) {
 	if req.Id == "" {
 		return nil, ErrEmptyAccountID
+	}
+
+	flightRecorder := trace.NewFlightRecorder()
+	flightRecorder.SetPeriod(60 * time.Second)
+	err := flightRecorder.Start()
+	if err == nil {
+		s.traceRecorderLock.Lock()
+		s.traceRecorder = flightRecorder
+		s.traceRecorderLock.Unlock()
+
+		defer func() {
+			s.traceRecorderLock.Lock()
+			s.traceRecorder.Stop()
+			s.traceRecorder = nil
+			s.traceRecorderLock.Unlock()
+		}()
 	}
 
 	s.cancelStartIfInProcess()
@@ -72,6 +91,9 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 }
 
 func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
+	ctx, task := trace2.NewTask(ctx, "application.start")
+	defer task.End()
+
 	if rootPath != "" {
 		s.rootPath = rootPath
 	}
@@ -113,7 +135,7 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 		request = request + "_recover"
 	}
 
-	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, request))
+	ctx, cancel := context.WithCancel(context.WithValue(ctx, metrics.CtxKeyEntrypoint, request))
 	// save the cancel function to be able to stop the app in case of account stop or other select/create operation is called
 	s.appAccountStartInProcessCancelMutex.Lock()
 	s.appAccountStartInProcessCancel = cancel
