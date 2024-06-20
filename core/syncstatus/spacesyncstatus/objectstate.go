@@ -1,6 +1,8 @@
 package spacesyncstatus
 
 import (
+	"sync"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -11,8 +13,11 @@ import (
 
 type ObjectState struct {
 	objectSyncStatusBySpace map[string]domain.SpaceSyncStatus
-	objectSyncCountBySpace  map[string]int
-	objectSyncErrBySpace    map[string]domain.SyncError
+	statusMu                sync.RWMutex
+
+	objectSyncCountBySpace map[string]int
+	objectSyncErrBySpace   map[string]domain.SyncError
+	countMu                sync.RWMutex
 
 	store objectstore.ObjectStore
 }
@@ -27,6 +32,8 @@ func NewObjectState(store objectstore.ObjectStore) *ObjectState {
 }
 
 func (o *ObjectState) SetObjectsNumber(status *domain.SpaceSync) {
+	o.countMu.Lock()
+	defer o.countMu.Unlock()
 	switch status.Status {
 	case domain.Error, domain.Offline:
 		o.objectSyncCountBySpace[status.SpaceId] = 0
@@ -68,6 +75,9 @@ func (o *ObjectState) getSyncingObjects(status *domain.SpaceSync) []database.Rec
 }
 
 func (o *ObjectState) SetSyncStatusAndErr(status *domain.SpaceSync) {
+	o.statusMu.Lock()
+	defer o.statusMu.Unlock()
+
 	if objectNumber, ok := o.objectSyncCountBySpace[status.SpaceId]; ok && objectNumber > 0 {
 		o.objectSyncStatusBySpace[status.SpaceId] = domain.Syncing
 		o.objectSyncErrBySpace[status.SpaceId] = domain.Null
@@ -78,13 +88,19 @@ func (o *ObjectState) SetSyncStatusAndErr(status *domain.SpaceSync) {
 }
 
 func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
+	o.statusMu.RLock()
+	defer o.statusMu.RUnlock()
 	return o.objectSyncStatusBySpace[spaceId]
 }
 
 func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
+	o.countMu.RLock()
+	defer o.countMu.RUnlock()
 	return o.objectSyncCountBySpace[spaceId]
 }
 
 func (o *ObjectState) GetSyncErr(spaceId string) domain.SyncError {
+	o.statusMu.RLock()
+	defer o.statusMu.RUnlock()
 	return o.objectSyncErrBySpace[spaceId]
 }
