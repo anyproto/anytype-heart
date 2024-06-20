@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/net/peer"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 )
 
 const deviceService = "deviceService"
@@ -77,40 +79,37 @@ func (d *devices) loadDevices(ctx context.Context) {
 		log.Errorf("failed to get devices object unique key: %v", err)
 		return
 	}
+
 	techSpace, err := d.spaceService.GetTechSpace(ctx)
 	if err != nil {
 		return
 	}
-	deviceObject, err := techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-		Key: uk,
-		InitFunc: func(id string) *smartblock.InitContext {
-			return &smartblock.InitContext{
-				Ctx:     ctx,
-				SpaceID: techSpace.Id(),
-				State:   state.NewDoc(id, nil).(*state.State),
-			}
-		},
-	})
-	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-		log.Errorf("failed to derive device object: %v", err)
+	objectId, err := techSpace.DeriveObjectID(ctx, uk)
+	if err != nil {
+		log.Errorf("failed to derive notification object id: %v", err)
 		return
 	}
-	if err == nil {
-		d.deviceObjectId = deviceObject.Id()
-	}
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		id, err := techSpace.DeriveObjectID(ctx, uk)
-		if err != nil {
-			log.Errorf("failed to derive device object id: %v", err)
+	d.deviceObjectId = objectId
+	ctx = context.WithValue(ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(30*time.Second))
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	deviceObject, err := techSpace.GetObject(ctx, objectId)
+	if err != nil {
+		deviceObject, err = techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+			Key: uk,
+			InitFunc: func(id string) *smartblock.InitContext {
+				return &smartblock.InitContext{
+					Ctx:     ctx,
+					SpaceID: techSpace.Id(),
+					State:   state.NewDoc(id, nil).(*state.State),
+				}
+			},
+		})
+		if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+			log.Errorf("failed to derive device object: %v", err)
 			return
 		}
-		d.deviceObjectId = id
-	}
-	if deviceObject == nil {
-		deviceObject, err = techSpace.GetObject(ctx, d.deviceObjectId)
-		if err != nil {
-			log.Errorf("failed to get device object id: %v", err)
-			return
+		if err == nil {
+			d.deviceObjectId = deviceObject.Id()
 		}
 	}
 	hostname, err := os.Hostname()
@@ -181,6 +180,5 @@ func (d *devices) UpdateName(ctx context.Context, id, name string) error {
 }
 
 func (d *devices) ListDevices(ctx context.Context) ([]*model.DeviceInfo, error) {
-	<-d.finishLoad
 	return d.store.ListDevices()
 }
