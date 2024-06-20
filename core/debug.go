@@ -210,8 +210,7 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 }
 
 func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRunProfilerRequest) *pb.RpcDebugRunProfilerResponse {
-	profilerService := getService[profiler.Service](mw)
-	path, err := profilerService.RunProfiler(cctx, int(req.DurationInSeconds))
+	path, err := profiler.RunProfiler(cctx, int(req.DurationInSeconds))
 	if err != nil {
 		return &pb.RpcDebugRunProfilerResponse{
 			Error: &pb.RpcDebugRunProfilerResponseError{
