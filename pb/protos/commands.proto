@@ -6352,6 +6352,7 @@ message Rpc {
 
         message RunProfiler {
             message Request {
+                option (no_auth) = true;
                 int32 durationInSeconds = 1;
             }
 
