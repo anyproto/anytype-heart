@@ -21,7 +21,7 @@ import (
 var log = logging.Logger("import").Desugar()
 
 type IDProvider interface {
-	GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)
+	GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error)
 }
 
 type Provider struct {
@@ -40,7 +40,7 @@ func NewIDProvider(
 	}
 	existingObject := newExistingObject(objectStore)
 	treeObject := newTreeObject(existingObject, spaceService)
-	derivedObject := newDerivedObject(existingObject, spaceService)
+	derivedObject := newDerivedObject(existingObject, spaceService, objectStore)
 	fileObject := &fileObject{
 		treeObject:   treeObject,
 		blockService: blockService,
@@ -64,9 +64,9 @@ func NewIDProvider(
 	return p
 }
 
-func (p *Provider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (p *Provider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error) {
 	if idProvider, ok := p.idProviderBySmartBlockType[sn.SbType]; ok {
 		return idProvider.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting, origin)
 	}
-	return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("unsupported smartblock to import")
+	return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("unsupported smartblock to import")
 }

@@ -22,24 +22,24 @@ func newTreeObject(existingObject *existingObject, spaceService space.Service) *
 	return &treeObject{existingObject: existingObject, spaceService: spaceService}
 }
 
-func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, getExisting bool, _ objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error) {
 	id, payload, err := t.existingObject.GetIDAndPayload(ctx, spaceID, sn, getExisting)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
+		return "", treestorage.TreeStorageCreatePayload{}, "", err
 	}
 	if id != "" {
-		return id, payload, nil
+		return id, payload, "", nil
 	}
 	spc, err := t.spaceService.Get(ctx, spaceID)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)
+		return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("get space : %w", err)
 	}
 	payload, err = spc.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
 		Time:           time.Now(),
 		SmartblockType: sn.SbType,
 	})
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create tree payload: %w", err)
+		return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("create tree payload: %w", err)
 	}
-	return payload.RootRawChange.Id, payload, nil
+	return payload.RootRawChange.Id, payload, "", nil
 }

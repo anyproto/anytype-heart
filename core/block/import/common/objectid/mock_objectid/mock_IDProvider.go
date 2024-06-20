@@ -29,7 +29,7 @@ func (_m *MockIDProvider) EXPECT() *MockIDProvider_Expecter {
 }
 
 // GetIDAndPayload provides a mock function with given fields: ctx, spaceID, sn, createdTime, getExisting
-func (_m *MockIDProvider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (_m *MockIDProvider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error) {
 	ret := _m.Called(ctx, spaceID, sn, createdTime, getExisting)
 
 	if len(ret) == 0 {
@@ -60,7 +60,7 @@ func (_m *MockIDProvider) GetIDAndPayload(ctx context.Context, spaceID string, s
 		r2 = ret.Error(2)
 	}
 
-	return r0, r1, r2
+	return r0, r1, "", r2
 }
 
 // MockIDProvider_GetIDAndPayload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIDAndPayload'

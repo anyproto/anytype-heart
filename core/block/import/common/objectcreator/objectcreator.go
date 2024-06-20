@@ -111,6 +111,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
+	oc.updateKeys(spaceID, st, oldIDtoNew)
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(spaceID, st)
 		return nil, newID, nil
@@ -534,4 +535,26 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 		return nil, err
 	}
 	return existingWidgetsTargetIDs, nil
+}
+
+func (oc *ObjectCreator) updateKeys(spaceId string, st *state.State, oldIDtoNew map[string]string) {
+	for key, value := range st.Details().GetFields() {
+		if newKey, ok := oldIDtoNew[key]; ok {
+			st.SetDetail(newKey, value)
+			relation, err := oc.objectStore.FetchRelationByKey(spaceId, key)
+			if err != nil {
+				log.Errorf("failed to fetch relation %s", err)
+			}
+			st.RemoveRelation(key)
+			st.AddRelationLinks(&model.RelationLink{
+				Key:    key,
+				Format: relation.Format,
+			})
+		}
+	}
+
+	if newKey, ok := oldIDtoNew[st.ObjectTypeKey().String()]; ok {
+		st.SetObjectTypeKey(domain.TypeKey(newKey))
+	}
+
 }

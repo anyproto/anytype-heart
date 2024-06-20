@@ -20,10 +20,10 @@ func newWidget(spaceService space.Service) *widget {
 	return &widget{spaceService: spaceService}
 }
 
-func (w widget) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, _ bool, _ objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (w widget) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error) {
 	spc, err := w.spaceService.Get(ctx, spaceID)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)
+		return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("get space : %w", err)
 	}
-	return spc.DerivedIDs().Widgets, treestorage.TreeStorageCreatePayload{}, nil
+	return spc.DerivedIDs().Widgets, treestorage.TreeStorageCreatePayload{}, "", nil
 }

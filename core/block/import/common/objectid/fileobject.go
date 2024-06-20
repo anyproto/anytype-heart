@@ -20,10 +20,10 @@ type fileObject struct {
 	blockService *block.Service
 }
 
-func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, timestamp time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
-	id, payload, err := o.treeObject.GetIDAndPayload(ctx, spaceId, sn, timestamp, getExisting, origin)
+func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error) {
+	id, payload, _, err := o.treeObject.GetIDAndPayload(ctx, spaceId, sn, timestamp, getExisting, origin)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
+		return "", treestorage.TreeStorageCreatePayload{}, "", err
 	}
 
 	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
@@ -39,9 +39,9 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 		fileObjectId, err := uploadFile(ctx, o.blockService, spaceId, name, filePath, origin, encryptionKeys)
 		if err != nil {
 			log.Error("handling file object: upload file", zap.Error(err))
-			return id, payload, nil
+			return id, payload, "", nil
 		}
-		return fileObjectId, treestorage.TreeStorageCreatePayload{}, nil
+		return fileObjectId, treestorage.TreeStorageCreatePayload{}, "", nil
 	}
-	return id, payload, nil
+	return id, payload, "", nil
 }
