@@ -1,12 +1,8 @@
 package application
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"io"
-	"os"
 	"runtime/trace"
 	"sync"
 
@@ -97,29 +93,4 @@ func (s *Service) GetEventSender() event.Sender {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.eventSender
-}
-
-func (s *Service) SaveLoginTrace() (string, error) {
-	s.traceRecorderLock.Lock()
-	defer s.traceRecorderLock.Unlock()
-
-	if s.traceRecorder == nil {
-		return "", errors.New("no running trace recorder")
-	}
-
-	buf := bytes.NewBuffer(nil)
-	_, err := s.traceRecorder.WriteTo(buf)
-	if err != nil {
-		return "", fmt.Errorf("write trace: %w", err)
-	}
-
-	f, err := os.CreateTemp("", "login-trace-*.trace")
-	if err != nil {
-		return "", fmt.Errorf("create temp file: %w", err)
-	}
-	_, err = io.Copy(f, buf)
-	if err != nil {
-		return "", errors.Join(f.Close(), fmt.Errorf("copy trace: %w", err))
-	}
-	return f.Name(), f.Close()
 }

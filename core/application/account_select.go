@@ -7,12 +7,10 @@ import (
 	"path/filepath"
 	trace2 "runtime/trace"
 	"strings"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
-	"golang.org/x/exp/trace"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -42,21 +40,8 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, ErrEmptyAccountID
 	}
 
-	flightRecorder := trace.NewFlightRecorder()
-	flightRecorder.SetPeriod(60 * time.Second)
-	err := flightRecorder.Start()
-	if err == nil {
-		s.traceRecorderLock.Lock()
-		s.traceRecorder = flightRecorder
-		s.traceRecorderLock.Unlock()
-
-		defer func() {
-			s.traceRecorderLock.Lock()
-			s.traceRecorder.Stop()
-			s.traceRecorder = nil
-			s.traceRecorderLock.Unlock()
-		}()
-	}
+	s.startTraceRecorder()
+	defer s.stopTraceRecorder()
 
 	s.cancelStartIfInProcess()
 	s.lock.Lock()

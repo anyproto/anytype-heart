@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
-	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -210,7 +209,7 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 }
 
 func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRunProfilerRequest) *pb.RpcDebugRunProfilerResponse {
-	path, err := profiler.RunProfiler(cctx, int(req.DurationInSeconds))
+	path, err := mw.applicationService.RunProfiler(cctx, int(req.DurationInSeconds))
 	if err != nil {
 		return &pb.RpcDebugRunProfilerResponse{
 			Error: &pb.RpcDebugRunProfilerResponseError{
