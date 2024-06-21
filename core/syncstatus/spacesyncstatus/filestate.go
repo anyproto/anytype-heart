@@ -13,12 +13,10 @@ import (
 )
 
 type FileState struct {
-	fileSyncCountBySpace map[string]int
-	countMu              sync.RWMutex
-
+	fileSyncCountBySpace  map[string]int
 	fileSyncStatusBySpace map[string]domain.SpaceSyncStatus
 	filesErrorBySpace     map[string]domain.SyncError
-	statusMu              sync.RWMutex
+	sync.RWMutex
 
 	store objectstore.ObjectStore
 }
@@ -34,8 +32,8 @@ func NewFileState(store objectstore.ObjectStore) *FileState {
 }
 
 func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
-	f.countMu.Lock()
-	defer f.countMu.Unlock()
+	f.Lock()
+	defer f.Unlock()
 	records, err := f.store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -57,8 +55,8 @@ func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 }
 
 func (f *FileState) SetSyncStatusAndErr(status *domain.SpaceSync) {
-	f.statusMu.RLock()
-	defer f.statusMu.RUnlock()
+	f.RLock()
+	defer f.RUnlock()
 	switch status.Status {
 	case domain.Synced:
 		f.fileSyncStatusBySpace[status.SpaceId] = domain.Synced
@@ -83,20 +81,20 @@ func (f *FileState) setError(spaceId string, syncErr domain.SyncError) {
 }
 
 func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
-	f.statusMu.RLock()
-	defer f.statusMu.RUnlock()
+	f.RLock()
+	defer f.RUnlock()
 	return f.fileSyncStatusBySpace[spaceId]
 }
 
 func (f *FileState) GetSyncObjectCount(spaceId string) int {
-	f.countMu.RLock()
-	defer f.countMu.RUnlock()
+	f.RLock()
+	defer f.RUnlock()
 	return f.fileSyncCountBySpace[spaceId]
 }
 
 func (f *FileState) GetSyncErr(spaceId string) domain.SyncError {
-	f.statusMu.RLock()
-	defer f.statusMu.RUnlock()
+	f.RLock()
+	defer f.RUnlock()
 	return f.filesErrorBySpace[spaceId]
 }
 

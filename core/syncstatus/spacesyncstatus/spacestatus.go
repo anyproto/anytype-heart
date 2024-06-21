@@ -181,20 +181,17 @@ func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync) bool {
 		// we need to check if number of syncing object is changed first
 		return false
 	}
-	errNotChange := s.getError(status.SpaceId) == mapError(status.SyncError)
+	syncErrNotChange := s.getError(status.SpaceId) == mapError(status.SyncError)
 	statusNotChange := s.getSpaceSyncStatus(status.SpaceId) == status.Status
-	if errNotChange && statusNotChange {
+	if syncErrNotChange && statusNotChange {
 		return true
 	}
 	return false
 }
 
 func (s *spaceSyncStatus) needToSendEvent(status domain.SpaceSyncStatus, prevObjectNumber int64, newObjectNumber int64) bool {
-	if status == domain.Syncing && prevObjectNumber == newObjectNumber {
-		// that because we get update on syncing objects count, so we need to send updated object counter to client
-		return false
-	}
-	return true
+	// that because we get update on syncing objects count, so we need to send updated object counter to client
+	return status != domain.Syncing || prevObjectNumber != newObjectNumber
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
