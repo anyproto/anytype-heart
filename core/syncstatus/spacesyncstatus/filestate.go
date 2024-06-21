@@ -1,6 +1,8 @@
 package spacesyncstatus
 
 import (
+	"sync"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -14,6 +16,7 @@ type FileState struct {
 	fileSyncCountBySpace  map[string]int
 	fileSyncStatusBySpace map[string]domain.SpaceSyncStatus
 	filesErrorBySpace     map[string]domain.SyncError
+	sync.Mutex
 
 	store objectstore.ObjectStore
 }
@@ -29,6 +32,8 @@ func NewFileState(store objectstore.ObjectStore) *FileState {
 }
 
 func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
+	f.Lock()
+	defer f.Unlock()
 	records, err := f.store.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -50,6 +55,8 @@ func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 }
 
 func (f *FileState) SetSyncStatusAndErr(status *domain.SpaceSync) {
+	f.Lock()
+	defer f.Unlock()
 	switch status.Status {
 	case domain.Synced:
 		f.fileSyncStatusBySpace[status.SpaceId] = domain.Synced
@@ -74,14 +81,20 @@ func (f *FileState) setError(spaceId string, syncErr domain.SyncError) {
 }
 
 func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
+	f.Lock()
+	defer f.Unlock()
 	return f.fileSyncStatusBySpace[spaceId]
 }
 
 func (f *FileState) GetSyncObjectCount(spaceId string) int {
+	f.Lock()
+	defer f.Unlock()
 	return f.fileSyncCountBySpace[spaceId]
 }
 
 func (f *FileState) GetSyncErr(spaceId string) domain.SyncError {
+	f.Lock()
+	defer f.Unlock()
 	return f.filesErrorBySpace[spaceId]
 }
 
