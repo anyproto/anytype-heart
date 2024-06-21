@@ -6,7 +6,7 @@ package bundle
 
 import domain "github.com/anyproto/anytype-heart/core/domain"
 
-const SystemRelationsChecksum = "48ce5b75cf81b1afc8a9c4e298892eda1a81a94d13fad91c1d250792d6f91185"
+const SystemRelationsChecksum = "be10834b29b49dad4364cb399e3eedb39d3fe31f2fc4d8bcc6a45bd74de4f552"
 
 // SystemRelations contains relations that have some special biz logic depends on them in some objects
 // in case EVERY object depend on the relation please add it to RequiredInternalRelations
@@ -21,6 +21,8 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyRelationDefaultValue,
 	RelationKeyRelationMaxCount,
 	RelationKeyRelationOptionColor,
+	RelationKeyRelationOptionOrder,
+	RelationKeyRelationOptionInternalOrder,
 	RelationKeyRelationFormatObjectTypes,
 	RelationKeyIsReadonly,
 	RelationKeyIsDeleted,

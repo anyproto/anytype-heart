@@ -986,6 +986,10 @@
     - [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request)
     - [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response)
     - [Rpc.Relation.ListRemoveOption.Response.Error](#anytype-Rpc-Relation-ListRemoveOption-Response-Error)
+    - [Rpc.Relation.MoveOption](#anytype-Rpc-Relation-MoveOption)
+    - [Rpc.Relation.MoveOption.Request](#anytype-Rpc-Relation-MoveOption-Request)
+    - [Rpc.Relation.MoveOption.Response](#anytype-Rpc-Relation-MoveOption-Response)
+    - [Rpc.Relation.MoveOption.Response.Error](#anytype-Rpc-Relation-MoveOption-Response-Error)
     - [Rpc.Relation.Options](#anytype-Rpc-Relation-Options)
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
@@ -1367,6 +1371,8 @@
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
+    - [Rpc.Relation.MoveOption.Request.OptionsSort](#anytype-Rpc-Relation-MoveOption-Request-OptionsSort)
+    - [Rpc.Relation.MoveOption.Response.Error.Code](#anytype-Rpc-Relation-MoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
@@ -1890,6 +1896,7 @@
 | ObjectCreateRelation | [Rpc.Object.CreateRelation.Request](#anytype-Rpc-Object-CreateRelation-Request) | [Rpc.Object.CreateRelation.Response](#anytype-Rpc-Object-CreateRelation-Response) | Relations *** |
 | ObjectCreateRelationOption | [Rpc.Object.CreateRelationOption.Request](#anytype-Rpc-Object-CreateRelationOption-Request) | [Rpc.Object.CreateRelationOption.Response](#anytype-Rpc-Object-CreateRelationOption-Response) |  |
 | RelationListRemoveOption | [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request) | [Rpc.Relation.ListRemoveOption.Response](#anytype-Rpc-Relation-ListRemoveOption-Response) |  |
+| RelationMoveOption | [Rpc.Relation.MoveOption.Request](#anytype-Rpc-Relation-MoveOption-Request) | [Rpc.Relation.MoveOption.Response](#anytype-Rpc-Relation-MoveOption-Response) |  |
 | RelationOptions | [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request) | [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response) |  |
 | ObjectRelationAdd | [Rpc.ObjectRelation.Add.Request](#anytype-Rpc-ObjectRelation-Add-Request) | [Rpc.ObjectRelation.Add.Response](#anytype-Rpc-ObjectRelation-Add-Response) | Object Relations *** |
 | ObjectRelationDelete | [Rpc.ObjectRelation.Delete.Request](#anytype-Rpc-ObjectRelation-Delete-Request) | [Rpc.ObjectRelation.Delete.Response](#anytype-Rpc-ObjectRelation-Delete-Response) |  |
@@ -16350,6 +16357,65 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Relation-MoveOption"></a>
+
+### Rpc.Relation.MoveOption
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-MoveOption-Request"></a>
+
+### Rpc.Relation.MoveOption.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| optionId | [string](#string) |  |  |
+| afterId | [string](#string) |  | move it after the given id |
+| beforeId | [string](#string) |  | move it before the given id |
+| sort | [Rpc.Relation.MoveOption.Request.OptionsSort](#anytype-Rpc-Relation-MoveOption-Request-OptionsSort) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-MoveOption-Response"></a>
+
+### Rpc.Relation.MoveOption.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.MoveOption.Response.Error](#anytype-Rpc-Relation-MoveOption-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-MoveOption-Response-Error"></a>
+
+### Rpc.Relation.MoveOption.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.MoveOption.Response.Error.Code](#anytype-Rpc-Relation-MoveOption-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Relation-Options"></a>
 
 ### Rpc.Relation.Options
@@ -21650,6 +21716,31 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | OPTION_USED_BY_OBJECTS | 3 |  |
+
+
+
+<a name="anytype-Rpc-Relation-MoveOption-Request-OptionsSort"></a>
+
+### Rpc.Relation.MoveOption.Request.OptionsSort
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OlderFirst | 0 |  |
+| NewerFirst | 1 | the reverse sorting, used for multi-select tags. Swaps the meaning of afterId and beforeId |
+
+
+
+<a name="anytype-Rpc-Relation-MoveOption-Response-Error-Code"></a>
+
+### Rpc.Relation.MoveOption.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
