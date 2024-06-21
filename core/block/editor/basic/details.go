@@ -141,8 +141,13 @@ func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value
 		return nil
 	case model.RelationFormat_number:
 		if _, ok := v.Kind.(*types.Value_NumberValue); !ok {
+			// allow null value for number field
+			if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
+				return nil
+			}
 			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
 		}
+
 		return nil
 	case model.RelationFormat_status:
 		if _, ok := v.Kind.(*types.Value_StringValue); ok {

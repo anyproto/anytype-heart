@@ -94,11 +94,14 @@ func TestBasic_UpdateDetails(t *testing.T) {
 			bundle.RelationKeyRelationKey:    pbtypes.String("spaceDashboardId"),
 			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-spaceDashboardId"),
 			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+			bundle.RelationKeyCameraIso:      pbtypes.Int64(100),
 		}})
 
 		// when
 		err = f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
 			current.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String("new123")
+			current.Fields[bundle.RelationKeyCameraIso.String()] = pbtypes.Null()
+
 			return current, nil
 		})
 
@@ -109,6 +112,10 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		assert.True(t, found)
 		assert.Equal(t, pbtypes.String("new123"), value)
 		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeySpaceDashboardId.String()))
+
+		value, found = f.sb.Details().Fields[bundle.RelationKeyCameraIso.String()]
+		assert.True(t, found)
+		assert.Equal(t, pbtypes.Null(), value)
 	})
 
 	t.Run("delete details", func(t *testing.T) {
