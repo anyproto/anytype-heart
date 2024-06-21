@@ -15,7 +15,7 @@ type ObjectState struct {
 	objectSyncStatusBySpace map[string]domain.SpaceSyncStatus
 	objectSyncCountBySpace  map[string]int
 	objectSyncErrBySpace    map[string]domain.SyncError
-	sync.RWMutex
+	sync.Mutex
 
 	store objectstore.ObjectStore
 }
@@ -86,19 +86,19 @@ func (o *ObjectState) SetSyncStatusAndErr(status *domain.SpaceSync) {
 }
 
 func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
-	o.RLock()
-	defer o.RUnlock()
+	o.Lock()
+	defer o.Unlock()
 	return o.objectSyncStatusBySpace[spaceId]
 }
 
 func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
-	o.RLock()
-	defer o.RUnlock()
+	o.Lock()
+	defer o.Unlock()
 	return o.objectSyncCountBySpace[spaceId]
 }
 
 func (o *ObjectState) GetSyncErr(spaceId string) domain.SyncError {
-	o.RLock()
-	defer o.RUnlock()
+	o.Lock()
+	defer o.Unlock()
 	return o.objectSyncErrBySpace[spaceId]
 }

@@ -181,9 +181,9 @@ func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync) bool {
 		// we need to check if number of syncing object is changed first
 		return false
 	}
-	syncErrNotChange := s.getError(status.SpaceId) == mapError(status.SyncError)
-	statusNotChange := s.getSpaceSyncStatus(status.SpaceId) == status.Status
-	if syncErrNotChange && statusNotChange {
+	syncErrNotChanged := s.getError(status.SpaceId) == mapError(status.SyncError)
+	statusNotChanged := s.getSpaceSyncStatus(status.SpaceId) == status.Status
+	if syncErrNotChanged && statusNotChanged {
 		return true
 	}
 	return false
