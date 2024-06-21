@@ -31,8 +31,7 @@ const (
 var log = logger.NewNamed(syncstatus.CName)
 
 type UpdateReceiver interface {
-	UpdateTree(ctx context.Context, treeId string, status SyncStatus) (err error)
-	UpdateNodeStatus()
+	UpdateTree(ctx context.Context, treeId string, status SyncStatus)
 }
 
 type SyncStatus int
@@ -52,7 +51,6 @@ type StatusUpdater interface {
 type StatusWatcher interface {
 	Watch(treeId string) (err error)
 	Unwatch(treeId string)
-	SetUpdateReceiver(updater UpdateReceiver)
 }
 
 type StatusService interface {
@@ -79,10 +77,9 @@ type Updater interface {
 
 type syncStatusService struct {
 	sync.Mutex
-	configuration  nodeconf.NodeConf
-	periodicSync   periodicsync.PeriodicSync
-	updateReceiver UpdateReceiver
-	storage        spacestorage.SpaceStorage
+	configuration nodeconf.NodeConf
+	periodicSync  periodicsync.PeriodicSync
+	storage       spacestorage.SpaceStorage
 
 	spaceId      string
 	treeHeads    map[string]treeHeadsEntry
@@ -130,13 +127,6 @@ func (s *syncStatusService) Name() (name string) {
 	return syncstatus.CName
 }
 
-func (s *syncStatusService) SetUpdateReceiver(updater UpdateReceiver) {
-	s.Lock()
-	defer s.Unlock()
-
-	s.updateReceiver = updater
-}
-
 func (s *syncStatusService) Run(ctx context.Context) error {
 	s.periodicSync.Run()
 	return nil
@@ -162,10 +152,6 @@ func (s *syncStatusService) update(ctx context.Context) (err error) {
 	s.treeStatusBuf = s.treeStatusBuf[:0]
 
 	s.Lock()
-	if s.updateReceiver == nil {
-		s.Unlock()
-		return
-	}
 	for treeId := range s.watchers {
 		// that means that we haven't yet got the status update
 		treeHeads, exists := s.treeHeads[treeId]
@@ -177,14 +163,17 @@ func (s *syncStatusService) update(ctx context.Context) (err error) {
 		s.treeStatusBuf = append(s.treeStatusBuf, treeStatus{treeId, treeHeads.syncStatus})
 	}
 	s.Unlock()
-	s.updateReceiver.UpdateNodeStatus()
 	for _, entry := range s.treeStatusBuf {
-		err = s.updateReceiver.UpdateTree(ctx, entry.treeId, entry.status)
-		if err != nil {
-			return
-		}
+		s.updateDetails(entry.treeId, mapStatus(entry.status))
 	}
 	return
+}
+
+func mapStatus(status SyncStatus) domain.ObjectSyncStatus {
+	if status == StatusSynced {
+		return domain.ObjectSynced
+	}
+	return domain.ObjectSyncing
 }
 
 func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string) {
