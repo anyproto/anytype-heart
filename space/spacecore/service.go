@@ -28,6 +28,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
@@ -84,7 +85,7 @@ type service struct {
 }
 
 type syncStatusService interface {
-	RegisterSpace(space commonspace.Space)
+	RegisterSpace(space commonspace.Space, sw objectsyncstatus.StatusWatcher)
 	UnregisterSpace(space commonspace.Space)
 }
 
@@ -236,11 +237,12 @@ func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
 }
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id)})
+	statusService := objectsyncstatus.NewSyncStatusService()
+	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{TreeSyncer: treesyncer.NewTreeSyncer(id), SyncStatus: statusService})
 	if err != nil {
 		return
 	}
-	ns, err := newAnySpace(cc, s.syncStatusService)
+	ns, err := newAnySpace(cc, s.syncStatusService, statusService)
 	if err != nil {
 		return
 	}
