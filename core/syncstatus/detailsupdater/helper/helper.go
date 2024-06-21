@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func InjectsSyncDetails(details *types.Struct, status domain.ObjectSyncStatus, syncError domain.SyncError) {
+func InjectsSyncDetails(details *types.Struct, status domain.ObjectSyncStatus, syncError domain.SyncError) *types.Struct {
 	if details == nil || details.Fields == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
@@ -24,6 +24,7 @@ func InjectsSyncDetails(details *types.Struct, status domain.ObjectSyncStatus, s
 	if pbtypes.Get(details, bundle.RelationKeySyncError.String()) == nil {
 		details.Fields[bundle.RelationKeySyncError.String()] = pbtypes.Int64(int64(syncError))
 	}
+	return details
 }
 
 func SyncRelationsSmartblockTypes() []smartblock.SmartBlockType {

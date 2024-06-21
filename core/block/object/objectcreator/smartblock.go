@@ -98,6 +98,8 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 		return "", nil, err
 	}
 
+	sb.Lock()
+	defer sb.Unlock()
 	newDetails = sb.CombinedDetails()
 	id = sb.Id()
 
