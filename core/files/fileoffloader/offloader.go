@@ -34,7 +34,7 @@ type Service interface {
 	app.Component
 
 	FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error)
-	FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error)
+	FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (err error)
 	FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error)
 	FileOffloadRaw(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
 }
@@ -90,26 +90,22 @@ func (s *service) fileOffload(ctx context.Context, fileDetails *types.Struct, in
 	return s.FileOffloadRaw(ctx, id)
 }
 
-func (s *service) FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
+func (s *service) FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (err error) {
 	if len(objectIds) == 0 {
 		return s.offloadAllFiles(ctx, includeNotPinned)
 	}
 
 	for _, objectId := range objectIds {
-		size, err := s.FileOffload(ctx, objectId, includeNotPinned)
+		_, err := s.FileOffload(ctx, objectId, includeNotPinned)
 		if err != nil {
 			log.Error("failed to offload file", zap.String("objectId", objectId), zap.Error(err))
 			continue
 		}
-		totalSize += size
-		if size > 0 {
-			filesOffloaded++
-		}
 	}
-	return filesOffloaded, totalSize, nil
+	return nil
 }
 
-func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
+func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (err error) {
 	gc := s.fileStorage.NewLocalStoreGarbageCollector()
 
 	if !includeNotPinned {
@@ -127,7 +123,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (f
 			},
 		})
 		if err != nil {
-			return 0, 0, fmt.Errorf("query not pinned files: %w", err)
+			return fmt.Errorf("query not pinned files: %w", err)
 		}
 
 		for _, record := range records {
@@ -137,14 +133,14 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (f
 			}
 			_, cids, err := s.getAllExistingFileBlocksCids(ctx, fileId)
 			if err != nil {
-				return 0, 0, fmt.Errorf("not pinned file: collect cids: %w", err)
+				return fmt.Errorf("not pinned file: collect cids: %w", err)
 			}
 			gc.MarkAsUsing(cids)
 		}
 	}
 
 	err = gc.CollectGarbage(ctx)
-	return 0, 0, err
+	return err
 }
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {

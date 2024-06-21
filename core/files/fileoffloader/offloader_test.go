@@ -78,7 +78,7 @@ func TestOffloadAllFiles(t *testing.T) {
 		},
 	})
 
-	_, _, err = fx.FilesOffload(ctx, nil, false)
+	err = fx.FilesOffload(ctx, nil, false)
 	require.NoError(t, err)
 
 	_, err = fx.commonFile.GetFile(ctx, fileNode1.Cid())
