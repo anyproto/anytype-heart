@@ -31,6 +31,6 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           skip-cache: true
-          version: 1.58.2
+          version: latest
           only-new-issues: true
           args: --timeout 25m --verbose
