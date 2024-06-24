@@ -56,7 +56,7 @@ func generateLink(resource string, pars map[string]string) (string, error) {
 		return "", fmt.Errorf("unknown resource %s", resource)
 	}
 
-	link := fmt.Sprintf("%s/", resource)
+	link := fmt.Sprintf("%s?", resource)
 	for _, key := range parKeys {
 		par, ok := pars[key]
 		if !ok {
@@ -116,7 +116,7 @@ func ParseBlockLink(link string) (id domain.FullID, blockId string, err error) {
 }
 
 func parseLink(link string) (resource string, result map[string]string, err error) {
-	parts := strings.Split(link, "/")
+	parts := strings.Split(link, "?")
 	if len(parts) != 2 {
 		return "", nil, fmt.Errorf("%w: wrong link format. '{resource}/{key1}={value1}&{key2}={value2}' expected, got '%s'", ErrLinkParsing, link)
 	}

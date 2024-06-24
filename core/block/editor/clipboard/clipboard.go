@@ -698,6 +698,9 @@ func (cb *clipboard) convertLinksInAnySlot(anySlot []*model.Block) []*model.Bloc
 		sb := simple.New(block)
 		if replacer, ok := sb.(simple.ObjectLinkReplacer); ok {
 			replacer.ReplaceLinkIds(func(oldId string) (newId string) {
+				if oldId == "" {
+					return
+				}
 				if !linkresolver.IsObjectLink(oldId) {
 					return linkresolver.GetObjectLink(domain.FullID{SpaceID: cb.SpaceID(), ObjectID: oldId})
 				}
