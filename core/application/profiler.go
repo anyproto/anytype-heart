@@ -75,7 +75,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int) (string, error) 
 		{name: "goroutines_end.txt", data: bytes.NewReader(goroutinesEnd)},
 	}
 	if inFlightTraceBuf != nil {
-		files = append(files, zipFile{name: "in_flight_trace", data: inFlightTraceBuf})
+		files = append(files, zipFile{name: "account_select_trace", data: inFlightTraceBuf})
 	}
 	err = createZipArchive(f, files)
 	if err != nil {
@@ -115,7 +115,7 @@ func (s *Service) SaveLoginTrace() (string, error) {
 type traceRecorder struct {
 	lock            sync.Mutex
 	recorder        *exptrace.FlightRecorder
-	lastRecordedBuf *bytes.Buffer
+	lastRecordedBuf *bytes.Buffer // contains zip archive of trace
 }
 
 func (r *traceRecorder) save() (string, error) {
@@ -131,14 +131,14 @@ func (r *traceRecorder) save() (string, error) {
 		r.lastRecordedBuf = nil
 	} else {
 		buf := bytes.NewBuffer(nil)
-		_, err := r.recorder.WriteTo(buf)
+		err := r.saveTraceToZipArchive(buf)
 		if err != nil {
-			return "", fmt.Errorf("write trace: %w", err)
+			return "", fmt.Errorf("save trace to zip archive: %w", err)
 		}
 		traceReader = buf
 	}
 
-	f, err := os.CreateTemp("", "login-trace-*.trace")
+	f, err := os.CreateTemp("", "account-select-trace-*.zip")
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}
@@ -164,9 +164,10 @@ func (r *traceRecorder) stop() {
 	r.lock.Lock()
 	if r.recorder != nil {
 		r.lastRecordedBuf = bytes.NewBuffer(nil)
-		_, err := r.recorder.WriteTo(r.lastRecordedBuf)
+		// Store trace in memory as zip archive to reduce memory usage
+		err := r.saveTraceToZipArchive(r.lastRecordedBuf)
 		if err != nil {
-			log.With("error", err).Error("save recorded trace to buf")
+			log.With("error", err).Error("save trace to zip archive")
 		}
 		err = r.recorder.Stop()
 		if err != nil {
@@ -175,6 +176,19 @@ func (r *traceRecorder) stop() {
 		r.recorder = nil
 	}
 	r.lock.Unlock()
+}
+
+func (r *traceRecorder) saveTraceToZipArchive(w io.Writer) error {
+	buf := bytes.NewBuffer(nil)
+	_, err := r.recorder.WriteTo(buf)
+	if err != nil {
+		return fmt.Errorf("write trace: %w", err)
+	}
+	err = createZipArchive(w, []zipFile{{name: "account_select_trace", data: buf}})
+	if err != nil {
+		return fmt.Errorf("create zip archive: %w", err)
+	}
+	return nil
 }
 
 func (r *traceRecorder) stopAndGetInFlightTrace() (*bytes.Buffer, error) {
