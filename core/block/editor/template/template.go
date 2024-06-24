@@ -427,7 +427,6 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 })
 
 var WithBlockChat = StateTransformer(func(s *state.State) {
-	RequireHeader(s)
 	blockExists := s.Exists(ChatId)
 	if blockExists {
 		return
@@ -438,7 +437,7 @@ var WithBlockChat = StateTransformer(func(s *state.State) {
 		Content: &model.BlockContentOfChat{},
 	}))
 
-	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, ChatId); err != nil {
+	if err := s.InsertTo(s.RootId(), model.Block_Inner, ChatId); err != nil {
 		log.Errorf("template BlockChat failed to insert: %v", err)
 	}
 })
