@@ -6372,7 +6372,7 @@ message Rpc {
                 }
             }
         }
-        message LoginTrace {
+        message AccountSelectTrace {
             message Request {
                 option (no_auth) = true;
             }
