@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	debug2 "github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -16,8 +15,7 @@ type Service interface {
 }
 
 type service struct {
-	closeCh      chan struct{}
-	debugService debug2.Debug
+	closeCh chan struct{}
 
 	timesHighMemoryUsageDetected int
 	previousHighMemoryDetected   uint64
@@ -30,7 +28,6 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.debugService = app.MustComponent[debug2.Debug](a)
 	return nil
 }
 
