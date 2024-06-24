@@ -150,6 +150,23 @@ func TestImageAddReuse(t *testing.T) {
 	require.False(t, got3.IsExisting)
 }
 
+func TestReuseWithCorruptedFileInfo(t *testing.T) {
+	fx := newFixture(t)
+
+	addResult := testAddImage(t, fx)
+
+	variants, err := fx.fileStore.ListFileVariants(addResult.FileId)
+	require.NoError(t, err)
+	for _, variant := range variants {
+		variant.Targets = nil
+	}
+	err = fx.fileStore.AddFileVariants(true, variants...)
+	require.NoError(t, err)
+
+	addResult = testAddImage(t, fx)
+	require.False(t, addResult.IsExisting)
+}
+
 func assertCustomEncryptionKeys(t *testing.T, fx *fixture, got *AddResult, customKeys map[string]string) {
 	encKeys, err := fx.fileStore.GetFileKeys(got.FileId)
 	require.NoError(t, err)

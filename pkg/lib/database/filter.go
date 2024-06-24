@@ -169,16 +169,12 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 	}
 }
 
-type Getter interface {
-	Get(key string) *types.Value
-}
-
 type WithNestedFilter interface {
 	IterateNestedFilters(func(nestedFilter Filter) error) error
 }
 
 type Filter interface {
-	FilterObject(g Getter) bool
+	FilterObject(g *types.Struct) bool
 	String() string
 }
 
@@ -186,7 +182,7 @@ type FiltersAnd []Filter
 
 var _ WithNestedFilter = FiltersAnd{}
 
-func (a FiltersAnd) FilterObject(g Getter) bool {
+func (a FiltersAnd) FilterObject(g *types.Struct) bool {
 	for _, f := range a {
 		if !f.FilterObject(g) {
 			return false
@@ -211,7 +207,7 @@ type FiltersOr []Filter
 
 var _ WithNestedFilter = FiltersOr{}
 
-func (fo FiltersOr) FilterObject(g Getter) bool {
+func (fo FiltersOr) FilterObject(g *types.Struct) bool {
 	if len(fo) == 0 {
 		return true
 	}
@@ -251,7 +247,7 @@ type FilterNot struct {
 	Filter
 }
 
-func (n FilterNot) FilterObject(g Getter) bool {
+func (n FilterNot) FilterObject(g *types.Struct) bool {
 	if n.Filter == nil {
 		return false
 	}
@@ -268,8 +264,9 @@ type FilterEq struct {
 	Value *types.Value
 }
 
-func (e FilterEq) FilterObject(g Getter) bool {
-	return e.filterObject(g.Get(e.Key))
+func (e FilterEq) FilterObject(g *types.Struct) bool {
+	val := pbtypes.Get(g, e.Key)
+	return e.filterObject(val)
 }
 
 func (e FilterEq) filterObject(v *types.Value) bool {
@@ -319,8 +316,8 @@ type FilterIn struct {
 	Value *types.ListValue
 }
 
-func (i FilterIn) FilterObject(g Getter) bool {
-	val := g.Get(i.Key)
+func (i FilterIn) FilterObject(g *types.Struct) bool {
+	val := pbtypes.Get(g, i.Key)
 	for _, v := range i.Value.Values {
 		eq := FilterEq{Value: v, Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
@@ -339,8 +336,8 @@ type FilterLike struct {
 	Value *types.Value
 }
 
-func (l FilterLike) FilterObject(g Getter) bool {
-	val := g.Get(l.Key)
+func (l FilterLike) FilterObject(g *types.Struct) bool {
+	val := pbtypes.Get(g, l.Key)
 	if val == nil {
 		return false
 	}
@@ -359,8 +356,8 @@ type FilterExists struct {
 	Key string
 }
 
-func (e FilterExists) FilterObject(g Getter) bool {
-	val := g.Get(e.Key)
+func (e FilterExists) FilterObject(g *types.Struct) bool {
+	val := pbtypes.Get(g, e.Key)
 	if val == nil {
 		return false
 	}
@@ -376,8 +373,8 @@ type FilterEmpty struct {
 	Key string
 }
 
-func (e FilterEmpty) FilterObject(g Getter) bool {
-	val := g.Get(e.Key)
+func (e FilterEmpty) FilterObject(g *types.Struct) bool {
+	val := pbtypes.Get(g, e.Key)
 	if val == nil {
 		return true
 	}
@@ -410,8 +407,8 @@ type FilterAllIn struct {
 	Value *types.ListValue
 }
 
-func (l FilterAllIn) FilterObject(g Getter) bool {
-	val := g.Get(l.Key)
+func (l FilterAllIn) FilterObject(g *types.Struct) bool {
+	val := pbtypes.Get(g, l.Key)
 	if val == nil {
 		return false
 	}
@@ -449,8 +446,8 @@ type FilterExactIn struct {
 	Options map[string]string
 }
 
-func (exIn FilterExactIn) FilterObject(g Getter) bool {
-	val := g.Get(exIn.Key)
+func (exIn FilterExactIn) FilterObject(g *types.Struct) bool {
+	val := pbtypes.Get(g, exIn.Key)
 	if val == nil {
 		return false
 	}
@@ -541,8 +538,8 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 	}, nil
 }
 
-func (i *FilterNestedIn) FilterObject(g Getter) bool {
-	val := g.Get(i.Key)
+func (i *FilterNestedIn) FilterObject(g *types.Struct) bool {
+	val := pbtypes.Get(g, i.Key)
 	for _, id := range i.IDs {
 		eq := FilterEq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {

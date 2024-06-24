@@ -377,28 +377,6 @@ func BundledRelationIdToKey(id string) (string, error) {
 	return "", fmt.Errorf("incorrect id format")
 }
 
-type Getter interface {
-	Get(key string) *types.Value
-}
-
-type structGetter struct {
-	st *types.Struct
-}
-
-func ValueGetter(s *types.Struct) Getter {
-	return &structGetter{s}
-}
-
-func (sg *structGetter) Get(key string) *types.Value {
-	if sg == nil {
-		return nil
-	}
-	if sg.st.Fields == nil {
-		return nil
-	}
-	return sg.st.Fields[key]
-}
-
 func Map(s *types.Struct, keys ...string) *types.Struct {
 	if len(keys) == 0 {
 		return s
