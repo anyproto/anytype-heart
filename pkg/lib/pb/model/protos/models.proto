@@ -96,6 +96,7 @@ message Block {
         Content.TableColumn tableColumn = 27;
         Content.TableRow tableRow = 28;
         Content.Widget widget = 29;
+        Content.Chat chat = 30;
     }
 
     message Restrictions {
@@ -571,6 +572,10 @@ message Block {
                 View = 4;
             }
         }
+
+        message Chat {
+
+        }
     }
 }
 
@@ -759,6 +764,7 @@ message ObjectType {
         participant = 19;
 
         pdf = 20;
+        chat = 21;
     }
 }
 

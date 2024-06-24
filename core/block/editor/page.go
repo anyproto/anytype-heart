@@ -197,6 +197,11 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 				)
+			case model.ObjectType_chat:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithBlockChat,
+				)
 				// TODO case for relationOption?
 			default:
 				templates = append(templates,

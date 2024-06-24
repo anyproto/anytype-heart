@@ -1632,6 +1632,7 @@
     - [Block](#anytype-model-Block)
     - [Block.Content](#anytype-model-Block-Content)
     - [Block.Content.Bookmark](#anytype-model-Block-Content-Bookmark)
+    - [Block.Content.Chat](#anytype-model-Block-Content-Chat)
     - [Block.Content.Dataview](#anytype-model-Block-Content-Dataview)
     - [Block.Content.Dataview.Checkbox](#anytype-model-Block-Content-Dataview-Checkbox)
     - [Block.Content.Dataview.Date](#anytype-model-Block-Content-Dataview-Date)
@@ -25752,6 +25753,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |
 | tableRow | [Block.Content.TableRow](#anytype-model-Block-Content-TableRow) |  |  |
 | widget | [Block.Content.Widget](#anytype-model-Block-Content-Widget) |  |  |
+| chat | [Block.Content.Chat](#anytype-model-Block-Content-Chat) |  |  |
 
 
 
@@ -25784,6 +25786,16 @@ Bookmark is to keep a web-link and to preview a content.
 | type | [LinkPreview.Type](#anytype-model-LinkPreview-Type) |  |  |
 | targetObjectId | [string](#string) |  |  |
 | state | [Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Chat"></a>
+
+### Block.Content.Chat
+
 
 
 
@@ -27926,6 +27938,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | spaceView | 18 |  |
 | participant | 19 |  |
 | pdf | 20 |  |
+| chat | 21 |  |
 
 
 

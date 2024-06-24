@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "fea3b06c998f4c974f06b3b0714b26dd2c5a7fa35ce9dc8b8f17d7c619215f7b"
+const TypeChecksum = "ccff39ba78431f015906dd049ca3ed1d064cd955397c775d82b9da2ca4c48485"
 const (
 	TypePrefix = "_ot"
 )
@@ -48,6 +48,7 @@ const (
 	TypeKeyDocument       domain.TypeKey = "document"
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
+	TypeKeyChat           domain.TypeKey = "chat"
 )
 
 var (
@@ -96,6 +97,16 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyHowToReproduce), MustGetRelationLink(RelationKeyResult), MustGetRelationLink(RelationKeyAdditional), MustGetRelationLink(RelationKeyAttachments), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyPriority)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bug",
+		},
+		TypeKeyChat: {
+
+			Description:   "A chat",
+			Layout:        model.ObjectType_chat,
+			Name:          "Discussion",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:           TypePrefix + "chat",
 		},
 		TypeKeyClassNote: {
 
