@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"runtime/trace"
+	"sync"
 	"time"
 
 	exptrace "golang.org/x/exp/trace"
@@ -19,7 +20,7 @@ import (
 
 func (s *Service) RunProfiler(ctx context.Context, seconds int) (string, error) {
 	// Start
-	inFlightTraceBuf, err := s.stopAndGetInFlightTrace()
+	inFlightTraceBuf, err := s.traceRecorder.stopAndGetInFlightTrace()
 	if err != nil {
 		return "", err
 	}
@@ -83,24 +84,6 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int) (string, error) 
 	return f.Name(), f.Close()
 }
 
-func (s *Service) stopAndGetInFlightTrace() (*bytes.Buffer, error) {
-	s.traceRecorderLock.Lock()
-	defer s.traceRecorderLock.Unlock()
-
-	if s.traceRecorder != nil {
-		buf := bytes.NewBuffer(nil)
-		_, err := s.traceRecorder.WriteTo(buf)
-		if err != nil {
-			s.traceRecorderLock.Unlock()
-			return nil, fmt.Errorf("write in-flight trace: %w", err)
-		}
-		s.traceRecorder.Stop()
-		s.traceRecorder = nil
-		return buf, nil
-	}
-	return nil, nil
-}
-
 type zipFile struct {
 	name string
 	data io.Reader
@@ -125,46 +108,91 @@ func createZipArchive(w io.Writer, files []zipFile) error {
 }
 
 func (s *Service) SaveLoginTrace() (string, error) {
-	s.traceRecorderLock.Lock()
-	defer s.traceRecorderLock.Unlock()
+	return s.traceRecorder.save()
+}
 
-	if s.traceRecorder == nil {
-		return "", errors.New("no running trace recorder")
-	}
+// traceRecorder is a helper to start and stop flight trace recorder
+type traceRecorder struct {
+	lock            sync.Mutex
+	recorder        *exptrace.FlightRecorder
+	lastRecordedBuf *bytes.Buffer
+}
 
-	buf := bytes.NewBuffer(nil)
-	_, err := s.traceRecorder.WriteTo(buf)
-	if err != nil {
-		return "", fmt.Errorf("write trace: %w", err)
+func (r *traceRecorder) save() (string, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	var traceReader io.Reader
+	if r.recorder == nil {
+		if r.lastRecordedBuf == nil {
+			return "", errors.New("no running trace recorder")
+		}
+		traceReader = r.lastRecordedBuf
+		r.lastRecordedBuf = nil
+	} else {
+		buf := bytes.NewBuffer(nil)
+		_, err := r.recorder.WriteTo(buf)
+		if err != nil {
+			return "", fmt.Errorf("write trace: %w", err)
+		}
+		traceReader = buf
 	}
 
 	f, err := os.CreateTemp("", "login-trace-*.trace")
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}
-	_, err = io.Copy(f, buf)
+	_, err = io.Copy(f, traceReader)
 	if err != nil {
 		return "", errors.Join(f.Close(), fmt.Errorf("copy trace: %w", err))
 	}
 	return f.Name(), f.Close()
 }
 
-func (s *Service) stopTraceRecorder() {
-	s.traceRecorderLock.Lock()
-	if s.traceRecorder != nil {
-		s.traceRecorder.Stop()
-		s.traceRecorder = nil
-	}
-	s.traceRecorderLock.Unlock()
-}
-
-func (s *Service) startTraceRecorder() {
+func (r *traceRecorder) start() {
 	flightRecorder := exptrace.NewFlightRecorder()
 	flightRecorder.SetPeriod(60 * time.Second)
 	err := flightRecorder.Start()
 	if err == nil {
-		s.traceRecorderLock.Lock()
-		s.traceRecorder = flightRecorder
-		s.traceRecorderLock.Unlock()
+		r.lock.Lock()
+		r.recorder = flightRecorder
+		r.lock.Unlock()
 	}
+}
+
+func (r *traceRecorder) stop() {
+	r.lock.Lock()
+	if r.recorder != nil {
+		r.lastRecordedBuf = bytes.NewBuffer(nil)
+		_, err := r.recorder.WriteTo(r.lastRecordedBuf)
+		if err != nil {
+			log.With("error", err).Error("save recorded trace to buf")
+		}
+		err = r.recorder.Stop()
+		if err != nil {
+			log.With("error", err).Error("stop trace recorder")
+		}
+		r.recorder = nil
+	}
+	r.lock.Unlock()
+}
+
+func (r *traceRecorder) stopAndGetInFlightTrace() (*bytes.Buffer, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if r.recorder != nil {
+		buf := bytes.NewBuffer(nil)
+		_, err := r.recorder.WriteTo(buf)
+		if err != nil {
+			return nil, fmt.Errorf("write in-flight trace: %w", err)
+		}
+		err = r.recorder.Stop()
+		if err != nil {
+			log.With("error", err).Error("stop trace recorder")
+		}
+		r.recorder = nil
+		return buf, nil
+	}
+	return nil, nil
 }

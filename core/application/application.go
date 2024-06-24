@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	exptrace "golang.org/x/exp/trace"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -30,9 +29,7 @@ type Service struct {
 	clientWithVersion string
 	eventSender       event.Sender
 	sessions          session.Service
-
-	traceRecorder     *exptrace.FlightRecorder
-	traceRecorderLock sync.Mutex
+	traceRecorder     *traceRecorder
 
 	appAccountStartInProcessCancel      context.CancelFunc
 	appAccountStartInProcessCancelMutex sync.Mutex
@@ -40,7 +37,8 @@ type Service struct {
 
 func New() *Service {
 	return &Service{
-		sessions: session.New(),
+		sessions:      session.New(),
+		traceRecorder: &traceRecorder{},
 	}
 }
 

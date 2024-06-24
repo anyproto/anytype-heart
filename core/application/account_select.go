@@ -40,8 +40,8 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, ErrEmptyAccountID
 	}
 
-	s.startTraceRecorder()
-	defer s.stopTraceRecorder()
+	s.traceRecorder.start()
+	defer s.traceRecorder.stop()
 
 	s.cancelStartIfInProcess()
 	s.lock.Lock()
