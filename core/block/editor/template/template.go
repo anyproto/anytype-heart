@@ -434,7 +434,7 @@ var WithBlockChat = StateTransformer(func(s *state.State) {
 
 	s.Set(simple.New(&model.Block{
 		Id:      ChatId,
-		Content: &model.BlockContentOfChat{},
+		Content: &model.BlockContentOfChat{Chat: &model.BlockContentChat{}},
 	}))
 
 	if err := s.InsertTo(s.RootId(), model.Block_Inner, ChatId); err != nil {
