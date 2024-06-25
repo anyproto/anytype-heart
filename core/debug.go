@@ -207,3 +207,33 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 	})
 	return response(objectIDs, err)
 }
+
+func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRunProfilerRequest) *pb.RpcDebugRunProfilerResponse {
+	path, err := mw.applicationService.RunProfiler(cctx, int(req.DurationInSeconds))
+	if err != nil {
+		return &pb.RpcDebugRunProfilerResponse{
+			Error: &pb.RpcDebugRunProfilerResponseError{
+				Code:        pb.RpcDebugRunProfilerResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcDebugRunProfilerResponse{
+		Path: path,
+	}
+}
+
+func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcDebugAccountSelectTraceRequest) *pb.RpcDebugAccountSelectTraceResponse {
+	path, err := mw.applicationService.SaveLoginTrace()
+	if err != nil {
+		return &pb.RpcDebugAccountSelectTraceResponse{
+			Error: &pb.RpcDebugAccountSelectTraceResponseError{
+				Code:        pb.RpcDebugAccountSelectTraceResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcDebugAccountSelectTraceResponse{
+		Path: path,
+	}
+}

@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -19,12 +20,12 @@ import (
 )
 
 type FileSyncer struct {
-	service           *block.Service
+	service           BlockService
 	fileObjectService fileobject.Service
 }
 
 func NewFileSyncer(
-	service *block.Service,
+	service BlockService,
 	fileObjectService fileobject.Service,
 ) *FileSyncer {
 	return &FileSyncer{
@@ -70,6 +71,9 @@ func (s *FileSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 		ObjectOrigin:          origin,
 	}
 	_, err := s.service.UploadFileBlock(id.ObjectID, dto)
+	if os.IsNotExist(err) {
+		return oserror.TransformError(err)
+	}
 	if err != nil {
 		return fmt.Errorf("%w: %s", common.ErrFileLoad, oserror.TransformError(err).Error())
 	}

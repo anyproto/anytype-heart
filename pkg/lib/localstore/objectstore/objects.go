@@ -7,13 +7,14 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"unsafe"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	lru "github.com/hashicorp/golang-lru/v2"
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -87,11 +88,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 }
 
 func (s *dsObjectStore) initCache() error {
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10_000_000,
-		MaxCost:     100_000_000,
-		BufferItems: 64,
-	})
+	cache, err := lru.New[string, *model.ObjectDetails](50000)
 	if err != nil {
 		return fmt.Errorf("init cache: %w", err)
 	}
@@ -194,7 +191,7 @@ var ErrNotAnObject = fmt.Errorf("not an object")
 type dsObjectStore struct {
 	sourceService SourceDetailsFromID
 
-	cache *ristretto.Cache
+	cache *lru.Cache[string, *model.ObjectDetails]
 	db    *badger.DB
 
 	fts ftsearch.FTSearch
@@ -365,8 +362,9 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 
 func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
 	key := it.Key()
-	if v, ok := s.cache.Get(key); ok {
-		return v.(*model.ObjectDetails), nil
+	sKey := unsafe.String(unsafe.SliceData(key), len(key))
+	if v, ok := s.cache.Get(sKey); ok {
+		return v, nil
 	}
 	return s.unmarshalDetailsFromItem(it)
 }
@@ -379,7 +377,7 @@ func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*model.Object
 		if err != nil {
 			return fmt.Errorf("unmarshal details: %w", err)
 		}
-		s.cache.Set(it.Key(), details, int64(details.Size()))
+		s.cache.Add(string(it.Key()), details)
 		return nil
 	})
 	if err != nil {

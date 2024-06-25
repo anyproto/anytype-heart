@@ -30,6 +30,13 @@ func CopyBlock(in *model.Block) (out *model.Block) {
 	return
 }
 
+func EnsureStructInited(s *types.Struct) *types.Struct {
+	if s == nil || s.Fields == nil {
+		return &types.Struct{Fields: make(map[string]*types.Value)}
+	}
+	return s
+}
+
 func CopyStruct(s *types.Struct, copyVals bool) *types.Struct {
 	if s == nil {
 		return nil

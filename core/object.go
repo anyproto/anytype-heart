@@ -241,7 +241,7 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 		return nil, fmt.Errorf("make date record: %w", err)
 	}
 	f, _ := database.MakeFiltersAnd(req.Filters, store) //nolint:errcheck
-	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
+	if f.FilterObject(rec.Details) {
 		return append([]database.Record{rec}, records...), nil
 	}
 	return records, nil
