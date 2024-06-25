@@ -34,7 +34,7 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 
 // getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
 func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
-	return s.queryRaw(func(g database.Getter) bool {
+	return s.queryRaw(func(g *types.Struct) bool {
 		listValue := pbtypes.StringList([]string{objectId})
 		optionFilter := database.FilterAllIn{relationKey, listValue.GetListValue()}
 		if !optionFilter.FilterObject(g) {
@@ -90,7 +90,7 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 	return injectedResults
 }
 
-func (s *dsObjectStore) queryRaw(filter func(g database.Getter) bool, order database.Order, limit int, offset int) ([]database.Record, error) {
+func (s *dsObjectStore) queryRaw(filter func(g *types.Struct) bool, order database.Order, limit int, offset int) ([]database.Record, error) {
 	var (
 		records []database.Record
 	)
@@ -110,7 +110,7 @@ func (s *dsObjectStore) queryRaw(filter func(g database.Getter) bool, order data
 			}
 			rec := database.Record{Details: details.Details}
 
-			if filter == nil || filter(rec) {
+			if filter == nil || filter(details.Details) {
 				records = append(records, rec)
 			}
 		}
@@ -125,7 +125,7 @@ func (s *dsObjectStore) queryRaw(filter func(g database.Getter) bool, order data
 	}
 	if order != nil {
 		sort.Slice(records, func(i, j int) bool {
-			return order.Compare(records[i], records[j]) == -1
+			return order.Compare(records[i].Details, records[j].Details) == -1
 		})
 	}
 	if limit > 0 {
@@ -163,7 +163,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 					details.Fields[database.RecordIDField] = pbtypes.ToValue(res.Path.ObjectId)
 					details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
 					rec := database.Record{Details: details}
-					if params.FilterObj == nil || params.FilterObj.FilterObject(rec) {
+					if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 						resultObjectMap[res.Path.ObjectId] = struct{}{}
 						records = append(records, rec)
 					}
@@ -185,7 +185,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
 
 			rec := database.Record{Details: details}
-			if params.FilterObj == nil || params.FilterObj.FilterObject(rec) {
+			if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 				rec.Meta = res.Model()
 				if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
 					records = append(records, rec)
@@ -223,7 +223,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	}
 	if params.Order != nil {
 		sort.Slice(records, func(i, j int) bool {
-			return params.Order.Compare(records[i], records[j]) == -1
+			return params.Order.Compare(records[i].Details, records[j].Details) == -1
 		})
 	}
 	if limit > 0 {

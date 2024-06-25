@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	trace2 "runtime/trace"
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
@@ -39,6 +40,9 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, ErrEmptyAccountID
 	}
 
+	s.traceRecorder.start()
+	defer s.traceRecorder.stop()
+
 	s.cancelStartIfInProcess()
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -72,6 +76,9 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 }
 
 func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
+	ctx, task := trace2.NewTask(ctx, "application.start")
+	defer task.End()
+
 	if rootPath != "" {
 		s.rootPath = rootPath
 	}
@@ -113,7 +120,7 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 		request = request + "_recover"
 	}
 
-	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, request))
+	ctx, cancel := context.WithCancel(context.WithValue(ctx, metrics.CtxKeyEntrypoint, request))
 	// save the cancel function to be able to stop the app in case of account stop or other select/create operation is called
 	s.appAccountStartInProcessCancelMutex.Lock()
 	s.appAccountStartInProcessCancel = cancel
