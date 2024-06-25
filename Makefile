@@ -18,7 +18,8 @@ ifndef $(GOROOT)
 endif
 
 DEPS_PATH := $(shell pwd)/deps
-export PATH := $(DEPS_PATH):$(PATH)
+NPM_PATH := $(shell pwd)/node_modules/.bin
+export PATH := $(DEPS_PATH):$(NPM_PATH):$(PATH)
 
 $(shell git config core.hooksPath .githooks)
 
@@ -266,8 +267,8 @@ protos-swift-local: protos-swift
 
 protos-js:
 	@echo 'Generating protobuf packages (JS)...'
-	@protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
-	@protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@protoc -I ./  --ts_out=./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@protoc -I ./  --grpc-web_out=import_style=typescript,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
 protos-java:
 	@echo 'Generating protobuf packages (Java)...'
