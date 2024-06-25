@@ -172,9 +172,6 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 }
 
 func (s *fileSync) Close(ctx context.Context) error {
-	if !s.isRunning {
-		return nil
-	}
 	if s.loopCancel != nil {
 		s.loopCancel()
 	}
