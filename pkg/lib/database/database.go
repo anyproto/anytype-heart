@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore/query"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -185,27 +182,6 @@ func isSingleDateSort(sorts []*model.BlockContentDataviewSort) bool {
 	return len(sorts) == 1 && sorts[0].Format == model.RelationFormat_date
 }
 
-type filterGetter struct {
-	dateKeys []string
-	curEl    *types.Struct
-}
-
-func (f filterGetter) Get(key string) *types.Value {
-	res := pbtypes.Get(f.curEl, key)
-	if res != nil && lo.Contains(f.dateKeys, key) {
-		res = dateOnly(res)
-	}
-	return res
-}
-
-type sortGetter struct {
-	curEl *types.Struct
-}
-
-func (f sortGetter) Get(key string) *types.Value {
-	return pbtypes.Get(f.curEl, key)
-}
-
 type FulltextResult struct {
 	Path            domain.ObjectPath
 	Highlight       string
@@ -227,48 +203,6 @@ type Filters struct {
 	FilterObj Filter
 	Order     Order
 	dateKeys  []string
-}
-
-func (f *Filters) Filter(e query.Entry) bool {
-	g := f.unmarshalFilter(e)
-	if g == nil {
-		return false
-	}
-	res := f.FilterObj.FilterObject(g)
-	return res
-}
-
-func (f *Filters) Compare(a, b query.Entry) int {
-	if f.Order == nil {
-		return 0
-	}
-	ag := f.unmarshalSort(a)
-	if ag == nil {
-		return 0
-	}
-	bg := f.unmarshalSort(b)
-	if bg == nil {
-		return 0
-	}
-	return f.Order.Compare(ag, bg)
-}
-
-func (f *Filters) unmarshalFilter(e query.Entry) Getter {
-	return filterGetter{dateKeys: f.dateKeys, curEl: f.unmarshal(e)}
-}
-
-func (f *Filters) unmarshalSort(e query.Entry) Getter {
-	return sortGetter{curEl: f.unmarshal(e)}
-}
-
-func (f *Filters) unmarshal(e query.Entry) *types.Struct {
-	var details model.ObjectDetails
-	err := proto.Unmarshal(e.Value, &details)
-	if err != nil {
-		log.Errorf("query filters decode error: %s", err)
-		return nil
-	}
-	return details.Details
 }
 
 func (f *Filters) String() string {

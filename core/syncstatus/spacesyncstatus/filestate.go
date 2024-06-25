@@ -1,6 +1,8 @@
 package spacesyncstatus
 
 import (
+	"sync"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -13,6 +15,8 @@ import (
 type FileState struct {
 	fileSyncCountBySpace  map[string]int
 	fileSyncStatusBySpace map[string]domain.SpaceSyncStatus
+	filesErrorBySpace     map[string]domain.SyncError
+	sync.Mutex
 
 	store objectstore.ObjectStore
 }
@@ -51,15 +55,25 @@ func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 	}
 }
 
+func (f *FileState) SetSyncStatusAndErr(status *domain.SpaceSync) {
+	f.Lock()
+	defer f.Unlock()
+	f.fileSyncStatusBySpace[status.SpaceId] = status.Status
+}
+
 func (f *FileState) SetSyncStatus(status domain.SpaceSyncStatus, spaceId string) {
 	f.fileSyncStatusBySpace[spaceId] = status
 }
 
 func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
+	f.Lock()
+	defer f.Unlock()
 	return f.fileSyncStatusBySpace[spaceId]
 }
 
 func (f *FileState) GetSyncObjectCount(spaceId string) int {
+	f.Lock()
+	defer f.Unlock()
 	return f.fileSyncCountBySpace[spaceId]
 }
 

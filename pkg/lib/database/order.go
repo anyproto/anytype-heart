@@ -14,7 +14,7 @@ import (
 )
 
 type Order interface {
-	Compare(a, b Getter) int
+	Compare(a, b *types.Struct) int
 	String() string
 }
 
@@ -26,7 +26,7 @@ type ObjectStore interface {
 
 type SetOrder []Order
 
-func (so SetOrder) Compare(a, b Getter) int {
+func (so SetOrder) Compare(a, b *types.Struct) int {
 	for _, o := range so {
 		if comp := o.Compare(a, b); comp != 0 {
 			return comp
@@ -55,9 +55,9 @@ type KeyOrder struct {
 	comparator     *collate.Collator
 }
 
-func (ko *KeyOrder) Compare(a, b Getter) int {
-	av := a.Get(ko.Key)
-	bv := b.Get(ko.Key)
+func (ko *KeyOrder) Compare(a, b *types.Struct) int {
+	av := pbtypes.Get(a, ko.Key)
+	bv := pbtypes.Get(b, ko.Key)
 
 	av, bv = ko.tryExtractSnippet(a, b, av, bv)
 	av, bv = ko.tryExtractDateTime(av, bv)
@@ -150,24 +150,24 @@ func (ko *KeyOrder) tryExtractDateTime(av *types.Value, bv *types.Value) (*types
 	return av, bv
 }
 
-func (ko *KeyOrder) tryExtractSnippet(a Getter, b Getter, av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+func (ko *KeyOrder) tryExtractSnippet(a *types.Struct, b *types.Struct, av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
 	av = ko.trySubstituteSnippet(a, av)
 	bv = ko.trySubstituteSnippet(b, bv)
 	return av, bv
 }
 
-func (ko *KeyOrder) trySubstituteSnippet(getter Getter, value *types.Value) *types.Value {
+func (ko *KeyOrder) trySubstituteSnippet(getter *types.Struct, value *types.Value) *types.Value {
 	if ko.Key == bundle.RelationKeyName.String() && getLayout(getter) == model.ObjectType_note {
-		value = getter.Get(bundle.RelationKeyName.String())
+		value = pbtypes.Get(getter, bundle.RelationKeyName.String())
 		if value == nil {
-			value = getter.Get(bundle.RelationKeySnippet.String())
+			value = pbtypes.Get(getter, bundle.RelationKeySnippet.String())
 		}
 	}
 	return value
 }
 
-func getLayout(getter Getter) model.ObjectTypeLayout {
-	rawLayout := getter.Get(bundle.RelationKeyLayout.String()).GetNumberValue()
+func getLayout(getter *types.Struct) model.ObjectTypeLayout {
+	rawLayout := pbtypes.Get(getter, bundle.RelationKeyLayout.String()).GetNumberValue()
 	return model.ObjectTypeLayout(int32(rawLayout))
 }
 
@@ -221,9 +221,9 @@ type CustomOrder struct {
 	KeyOrd       KeyOrder
 }
 
-func (co CustomOrder) Compare(a, b Getter) int {
-	aID, okA := co.NeedOrderMap[a.Get(co.Key).String()]
-	bID, okB := co.NeedOrderMap[b.Get(co.Key).String()]
+func (co CustomOrder) Compare(a, b *types.Struct) int {
+	aID, okA := co.NeedOrderMap[pbtypes.Get(a, co.Key).String()]
+	bID, okB := co.NeedOrderMap[pbtypes.Get(b, co.Key).String()]
 
 	if okA && okB {
 		if aID == bID {

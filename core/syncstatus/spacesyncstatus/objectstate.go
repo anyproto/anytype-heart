@@ -1,6 +1,8 @@
 package spacesyncstatus
 
 import (
+	"sync"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -12,6 +14,7 @@ import (
 type ObjectState struct {
 	objectSyncStatusBySpace map[string]domain.SpaceSyncStatus
 	objectSyncCountBySpace  map[string]int
+	sync.Mutex
 
 	store objectstore.ObjectStore
 }
@@ -25,6 +28,8 @@ func NewObjectState(store objectstore.ObjectStore) *ObjectState {
 }
 
 func (o *ObjectState) SetObjectsNumber(status *domain.SpaceSync) {
+	o.Lock()
+	defer o.Unlock()
 	switch status.Status {
 	case domain.Error, domain.Offline, domain.Synced:
 		o.objectSyncCountBySpace[status.SpaceId] = 0
@@ -70,10 +75,14 @@ func (o *ObjectState) SetSyncStatus(status domain.SpaceSyncStatus, spaceId strin
 }
 
 func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
+	o.Lock()
+	defer o.Unlock()
 	return o.objectSyncStatusBySpace[spaceId]
 }
 
 func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
+	o.Lock()
+	defer o.Unlock()
 	return o.objectSyncCountBySpace[spaceId]
 }
 
