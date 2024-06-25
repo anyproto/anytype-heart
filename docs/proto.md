@@ -525,6 +525,10 @@
     - [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response)
     - [Rpc.Broadcast.PayloadEvent.Response.Error](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
+    - [Rpc.Debug.AccountSelectTrace](#anytype-Rpc-Debug-AccountSelectTrace)
+    - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
+    - [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response)
+    - [Rpc.Debug.AccountSelectTrace.Response.Error](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
     - [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response)
@@ -537,6 +541,10 @@
     - [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request)
     - [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response)
     - [Rpc.Debug.Ping.Response.Error](#anytype-Rpc-Debug-Ping-Response-Error)
+    - [Rpc.Debug.RunProfiler](#anytype-Rpc-Debug-RunProfiler)
+    - [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request)
+    - [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response)
+    - [Rpc.Debug.RunProfiler.Response.Error](#anytype-Rpc-Debug-RunProfiler-Response-Error)
     - [Rpc.Debug.SpaceSummary](#anytype-Rpc-Debug-SpaceSummary)
     - [Rpc.Debug.SpaceSummary.Request](#anytype-Rpc-Debug-SpaceSummary-Request)
     - [Rpc.Debug.SpaceSummary.Response](#anytype-Rpc-Debug-SpaceSummary-Response)
@@ -1252,9 +1260,11 @@
     - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
+    - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
+    - [Rpc.Debug.RunProfiler.Response.Error.Code](#anytype-Rpc-Debug-RunProfiler-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
     - [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code)
     - [Rpc.Debug.Stat.Response.Error.Code](#anytype-Rpc-Debug-Stat-Response-Error-Code)
@@ -1580,6 +1590,9 @@
     - [Event.Process.Done](#anytype-Event-Process-Done)
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
+    - [Event.Space](#anytype-Event-Space)
+    - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
+    - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
     - [Event.Status](#anytype-Event-Status)
     - [Event.Status.Thread](#anytype-Event-Status-Thread)
     - [Event.Status.Thread.Account](#anytype-Event-Status-Thread-Account)
@@ -1599,6 +1612,9 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.Space.Network](#anytype-Event-Space-Network)
+    - [Event.Space.Status](#anytype-Event-Space-Status)
+    - [Event.Space.SyncError](#anytype-Event-Space-SyncError)
     - [Event.Status.Thread.SyncStatus](#anytype-Event-Status-Thread-SyncStatus)
     - [Model.Process.State](#anytype-Model-Process-State)
     - [Model.Process.Type](#anytype-Model-Process-Type)
@@ -2016,6 +2032,8 @@
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request) | [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response) |  |
 | DebugSubscriptions | [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request) | [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response) |  |
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
+| DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) |  |
+| DebugAccountSelectTrace | [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request) | [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
@@ -9638,6 +9656,58 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-AccountSelectTrace"></a>
+
+### Rpc.Debug.AccountSelectTrace
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AccountSelectTrace-Request"></a>
+
+### Rpc.Debug.AccountSelectTrace.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AccountSelectTrace-Response"></a>
+
+### Rpc.Debug.AccountSelectTrace.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.AccountSelectTrace.Response.Error](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AccountSelectTrace-Response-Error"></a>
+
+### Rpc.Debug.AccountSelectTrace.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore"></a>
 
 ### Rpc.Debug.ExportLocalstore
@@ -9801,6 +9871,63 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler"></a>
+
+### Rpc.Debug.RunProfiler
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Request"></a>
+
+### Rpc.Debug.RunProfiler.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| durationInSeconds | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Response"></a>
+
+### Rpc.Debug.RunProfiler.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.RunProfiler.Response.Error](#anytype-Rpc-Debug-RunProfiler-Response-Error) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Response-Error"></a>
+
+### Rpc.Debug.RunProfiler.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.RunProfiler.Response.Error.Code](#anytype-Rpc-Debug-RunProfiler-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -20040,6 +20167,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code"></a>
+
+### Rpc.Debug.AccountSelectTrace.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -20069,6 +20209,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Debug-Ping-Response-Error-Code"></a>
 
 ### Rpc.Debug.Ping.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Response-Error-Code"></a>
+
+### Rpc.Debug.RunProfiler.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -24547,6 +24700,7 @@ Precondition: user A opened a block
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
+| spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
 
 
 
@@ -24968,6 +25122,45 @@ Removes document from subscription
 
 
 
+<a name="anytype-Event-Space"></a>
+
+### Event.Space
+
+
+
+
+
+
+
+<a name="anytype-Event-Space-SyncStatus"></a>
+
+### Event.Space.SyncStatus
+
+
+
+
+
+
+
+<a name="anytype-Event-Space-SyncStatus-Update"></a>
+
+### Event.Space.SyncStatus.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [Event.Space.Status](#anytype-Event-Space-Status) |  |  |
+| network | [Event.Space.Network](#anytype-Event-Space-Network) |  |  |
+| error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
+| syncingObjectsCounter | [int64](#int64) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Status"></a>
 
 ### Event.Status
@@ -25256,6 +25449,47 @@ Precondition: user A and user B opened the same block
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
 | SliceOperationReplace | 4 |  |
+
+
+
+<a name="anytype-Event-Space-Network"></a>
+
+### Event.Space.Network
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Anytype | 0 |  |
+| SelfHost | 1 |  |
+| LocalOnly | 2 |  |
+
+
+
+<a name="anytype-Event-Space-Status"></a>
+
+### Event.Space.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Synced | 0 |  |
+| Syncing | 1 |  |
+| Error | 2 |  |
+| Offline | 3 |  |
+
+
+
+<a name="anytype-Event-Space-SyncError"></a>
+
+### Event.Space.SyncError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Null | 0 |  |
+| StorageLimitExceed | 1 |  |
+| IncompatibleVersion | 2 |  |
+| NetworkError | 3 |  |
 
 
 

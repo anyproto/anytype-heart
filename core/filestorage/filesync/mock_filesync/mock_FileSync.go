@@ -561,6 +561,39 @@ func (_c *MockFileSync_NodeUsage_Call) RunAndReturn(run func(context.Context) (f
 	return _c
 }
 
+// OnDelete provides a mock function with given fields: _a0
+func (_m *MockFileSync) OnDelete(_a0 filesync.DeleteCallback) {
+	_m.Called(_a0)
+}
+
+// MockFileSync_OnDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OnDelete'
+type MockFileSync_OnDelete_Call struct {
+	*mock.Call
+}
+
+// OnDelete is a helper method to define mock.On call
+//   - _a0 filesync.DeleteCallback
+func (_e *MockFileSync_Expecter) OnDelete(_a0 interface{}) *MockFileSync_OnDelete_Call {
+	return &MockFileSync_OnDelete_Call{Call: _e.mock.On("OnDelete", _a0)}
+}
+
+func (_c *MockFileSync_OnDelete_Call) Run(run func(_a0 filesync.DeleteCallback)) *MockFileSync_OnDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(filesync.DeleteCallback))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_OnDelete_Call) Return() *MockFileSync_OnDelete_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockFileSync_OnDelete_Call) RunAndReturn(run func(filesync.DeleteCallback)) *MockFileSync_OnDelete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // OnLimited provides a mock function with given fields: _a0
 func (_m *MockFileSync) OnLimited(_a0 filesync.StatusCallback) {
 	_m.Called(_a0)

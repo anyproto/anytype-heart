@@ -214,6 +214,63 @@ func (_c *MockBlockService_UploadFile_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// UploadFileBlock provides a mock function with given fields: contextID, req
+func (_m *MockBlockService) UploadFileBlock(contextID string, req block.UploadRequest) (string, error) {
+	ret := _m.Called(contextID, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UploadFileBlock")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, block.UploadRequest) (string, error)); ok {
+		return rf(contextID, req)
+	}
+	if rf, ok := ret.Get(0).(func(string, block.UploadRequest) string); ok {
+		r0 = rf(contextID, req)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, block.UploadRequest) error); ok {
+		r1 = rf(contextID, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockBlockService_UploadFileBlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UploadFileBlock'
+type MockBlockService_UploadFileBlock_Call struct {
+	*mock.Call
+}
+
+// UploadFileBlock is a helper method to define mock.On call
+//   - contextID string
+//   - req block.UploadRequest
+func (_e *MockBlockService_Expecter) UploadFileBlock(contextID interface{}, req interface{}) *MockBlockService_UploadFileBlock_Call {
+	return &MockBlockService_UploadFileBlock_Call{Call: _e.mock.On("UploadFileBlock", contextID, req)}
+}
+
+func (_c *MockBlockService_UploadFileBlock_Call) Run(run func(contextID string, req block.UploadRequest)) *MockBlockService_UploadFileBlock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(block.UploadRequest))
+	})
+	return _c
+}
+
+func (_c *MockBlockService_UploadFileBlock_Call) Return(fileObjectId string, err error) *MockBlockService_UploadFileBlock_Call {
+	_c.Call.Return(fileObjectId, err)
+	return _c
+}
+
+func (_c *MockBlockService_UploadFileBlock_Call) RunAndReturn(run func(string, block.UploadRequest) (string, error)) *MockBlockService_UploadFileBlock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockBlockService creates a new instance of MockBlockService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockBlockService(t interface {

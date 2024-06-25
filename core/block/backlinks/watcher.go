@@ -192,7 +192,7 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 		backlinks := pbtypes.GetStringList(current, bundle.RelationKeyBacklinks.String())
 
 		for _, removed := range backlinksChange.removed {
-			slice.Remove(backlinks, removed)
+			backlinks = slice.Remove(backlinks, removed)
 		}
 
 		for _, added := range backlinksChange.added {

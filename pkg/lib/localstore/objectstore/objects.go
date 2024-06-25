@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"unsafe"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
@@ -361,7 +362,8 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 
 func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
 	key := it.Key()
-	if v, ok := s.cache.Get(string(key)); ok {
+	sKey := unsafe.String(unsafe.SliceData(key), len(key))
+	if v, ok := s.cache.Get(sKey); ok {
 		return v, nil
 	}
 	return s.unmarshalDetailsFromItem(it)
