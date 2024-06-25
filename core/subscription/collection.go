@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 
@@ -122,6 +123,10 @@ func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 	id := val.GetStringValue()
 	_, ok := c.idsSet[id]
 	return ok
+}
+
+func (c *collectionObserver) Compile() query.Filter {
+	return nil
 }
 
 func (c *collectionObserver) String() string {

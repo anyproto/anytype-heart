@@ -3,8 +3,10 @@ package database
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
@@ -176,6 +178,7 @@ type WithNestedFilter interface {
 type Filter interface {
 	FilterObject(g *types.Struct) bool
 	String() string
+	Compile() query.Filter
 }
 
 type FiltersAnd []Filter
@@ -199,6 +202,15 @@ func (a FiltersAnd) String() string {
 	return fmt.Sprintf("(%s)", strings.Join(andS, " AND "))
 }
 
+func (a FiltersAnd) Compile() query.Filter {
+	var filters []query.Filter
+	for _, f := range a {
+		compiled := f.Compile()
+		filters = append(filters, compiled)
+	}
+	return query.And(filters)
+}
+
 func (a FiltersAnd) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
 	return iterateNestedFilters(a, fn)
 }
@@ -217,6 +229,15 @@ func (fo FiltersOr) FilterObject(g *types.Struct) bool {
 		}
 	}
 	return false
+}
+
+func (fo FiltersOr) Compile() query.Filter {
+	var filters []query.Filter
+	for _, f := range fo {
+		compiled := f.Compile()
+		filters = append(filters, compiled)
+	}
+	return query.Or(filters)
 }
 
 func (fo FiltersOr) String() string {
@@ -262,6 +283,47 @@ type FilterEq struct {
 	Key   string
 	Cond  model.BlockContentDataviewFilterCondition
 	Value *types.Value
+}
+
+func (e FilterEq) Compile() query.Filter {
+	var op query.CompOp
+	switch e.Cond {
+	case model.BlockContentDataviewFilter_Equal:
+		op = query.CompOpEq
+	case model.BlockContentDataviewFilter_Greater:
+		op = query.CompOpGt
+	case model.BlockContentDataviewFilter_GreaterOrEqual:
+		op = query.CompOpGte
+	case model.BlockContentDataviewFilter_Less:
+		op = query.CompOpLt
+	case model.BlockContentDataviewFilter_LessOrEqual:
+		op = query.CompOpLte
+	}
+	return query.Key{
+		Path:   []string{e.Key},
+		Filter: query.NewComp(op, scalarPbValueToAny(e.Value)),
+	}
+}
+
+func scalarPbValueToAny(v *types.Value) any {
+	if v == nil || v.Kind == nil {
+		return nil
+	}
+	switch v.Kind.(type) {
+	case *types.Value_NullValue:
+		return nil
+	case *types.Value_StringValue:
+		return v.GetStringValue()
+	case *types.Value_NumberValue:
+		return v.GetNumberValue()
+	case *types.Value_BoolValue:
+		return v.GetBoolValue()
+	case *types.Value_StructValue:
+		return nil
+	case *types.Value_ListValue:
+		return nil
+	}
+	return nil
 }
 
 func (e FilterEq) FilterObject(g *types.Struct) bool {
@@ -311,6 +373,7 @@ func (e FilterEq) String() string {
 	return fmt.Sprintf("%s %s '%s'", e.Key, eq, pbtypes.Sprint(e.Value))
 }
 
+// any?
 type FilterIn struct {
 	Key   string
 	Value *types.ListValue
@@ -325,6 +388,17 @@ func (i FilterIn) FilterObject(g *types.Struct) bool {
 		}
 	}
 	return false
+}
+
+func (i FilterIn) Compile() query.Filter {
+	conds := make([]query.Filter, 0, len(i.Value.GetValues()))
+	for _, v := range i.Value.GetValues() {
+		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
+	}
+	return query.Key{
+		Path:   []string{i.Key},
+		Filter: query.Or(conds),
+	}
 }
 
 func (i FilterIn) String() string {
@@ -348,6 +422,18 @@ func (l FilterLike) FilterObject(g *types.Struct) bool {
 	return strings.Contains(strings.ToLower(valStr), strings.ToLower(l.Value.GetStringValue()))
 }
 
+func (l FilterLike) Compile() query.Filter {
+	// TODO Return errro
+	re, err := regexp.Compile("(?i)" + l.Value.GetStringValue())
+	_ = err
+	return query.Key{
+		Path: []string{l.Key},
+		Filter: query.Regexp{
+			Regexp: re,
+		},
+	}
+}
+
 func (l FilterLike) String() string {
 	return fmt.Sprintf("%v LIKE '%s'", l.Key, pbtypes.Sprint(l.Value))
 }
@@ -363,6 +449,13 @@ func (e FilterExists) FilterObject(g *types.Struct) bool {
 	}
 
 	return true
+}
+
+func (e FilterExists) Compile() query.Filter {
+	return query.Key{
+		Path:   []string{e.Key},
+		Filter: query.Exists{},
+	}
 }
 
 func (e FilterExists) String() string {
@@ -398,10 +491,16 @@ func (e FilterEmpty) FilterObject(g *types.Struct) bool {
 	return false
 }
 
+func (e FilterEmpty) Compile() query.Filter {
+	// TODO implement
+	return nil
+}
+
 func (e FilterEmpty) String() string {
 	return fmt.Sprintf("%v IS EMPTY", e.Key)
 }
 
+// all?
 type FilterAllIn struct {
 	Key   string
 	Value *types.ListValue
@@ -436,6 +535,16 @@ func (l FilterAllIn) FilterObject(g *types.Struct) bool {
 	return true
 }
 
+func (l FilterAllIn) Compile() query.Filter {
+	conds := make([]query.Filter, 0, len(l.Value.GetValues()))
+	for _, v := range l.Value.GetValues() {
+		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
+	}
+	return query.Key{
+		Path:   []string{l.Key},
+		Filter: query.And(conds),
+	}
+}
 func (l FilterAllIn) String() string {
 	return fmt.Sprintf("%s ALLIN(%v)", l.Key, l.Value)
 }
@@ -483,6 +592,11 @@ func (exIn FilterExactIn) FilterObject(g *types.Struct) bool {
 		}
 	}
 	return true
+}
+
+func (exIn FilterExactIn) Compile() query.Filter {
+	// TODO implement
+	return nil
 }
 
 func (exIn FilterExactIn) String() string {
@@ -547,6 +661,11 @@ func (i *FilterNestedIn) FilterObject(g *types.Struct) bool {
 		}
 	}
 	return false
+}
+
+func (i *FilterNestedIn) Compile() query.Filter {
+	// TODO !!!
+	return nil
 }
 
 func (i *FilterNestedIn) String() string {
