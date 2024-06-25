@@ -15,9 +15,9 @@ func TestGenerateLink(t *testing.T) {
 		shouldError    bool
 	}{
 		{"generate object link", ResourceObject, map[string]string{ParameterSpaceId: "space1", ParameterObjectId: "obj1"},
-			"object/spaceId=space1&objectId=obj1", false},
+			"object?spaceId=space1&objectId=obj1", false},
 		{"generate block link", ResourceBlock, map[string]string{ParameterSpaceId: "space1", ParameterObjectId: "obj1", ParameterBlockId: "dataview"},
-			"block/spaceId=space1&objectId=obj1&blockId=dataview", false},
+			"block?spaceId=space1&objectId=obj1&blockId=dataview", false},
 		{"invalid resource", "invalid", map[string]string{ParameterSpaceId: "space1", ParameterObjectId: "obj1"}, "", true},
 		{"parameter is missing", ResourceObject, map[string]string{ParameterObjectId: "obj1"}, "", true},
 	} {
@@ -39,15 +39,15 @@ func TestParseLink(t *testing.T) {
 		params               map[string]string
 		shouldError          bool
 	}{
-		{"parse object link", "object/spaceId=space1&objectId=obj1", ResourceObject,
+		{"parse object link", "object?spaceId=space1&objectId=obj1", ResourceObject,
 			map[string]string{ParameterSpaceId: "space1", ParameterObjectId: "obj1"}, false},
-		{"parse block link", "block/spaceId=space1&objectId=obj1&blockId=title", ResourceBlock,
+		{"parse block link", "block?spaceId=space1&objectId=obj1&blockId=title", ResourceBlock,
 			map[string]string{ParameterSpaceId: "space1", ParameterObjectId: "obj1", ParameterBlockId: "title"}, false},
 		{"invalid string", "absolutely invalid string", "", nil, true},
-		{"invalid resource", "image/size=100&format=png", "image", nil, true},
-		{"wrong parameters order", "object/objectId=o&spaceId=s", ResourceObject, nil, true},
-		{"redundant parameter", "object/spaceId=s&objectId=o&creator=k", ResourceObject, nil, true},
-		{"wrong parameter format", "block/spaceId=s&objectId=o&blockId==description", ResourceBlock, nil, true},
+		{"invalid resource", "image?size=100&format=png", "image", nil, true},
+		{"wrong parameters order", "object?objectId=o&spaceId=s", ResourceObject, nil, true},
+		{"redundant parameter", "object?spaceId=s&objectId=o&creator=k", ResourceObject, nil, true},
+		{"wrong parameter format", "block?spaceId=s&objectId=o&blockId==description", ResourceBlock, nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resource, params, err := parseLink(tc.link)

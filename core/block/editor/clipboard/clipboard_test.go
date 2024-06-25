@@ -353,11 +353,11 @@ func TestCommonSmart_pasteAny_marks(t *testing.T) {
 		pasteMarksArr := [][]*model.BlockContentTextMark{
 			{{
 				Range: &model.Range{From: 1, To: 2},
-				Param: "object/spaceId=space1&objectId=obj1",
+				Param: "object?spaceId=space1&objectId=obj1",
 				Type:  model.BlockContentTextMark_Mention,
 			}, {
 				Range: &model.Range{From: 4, To: 5},
-				Param: "object/spaceId=OTHERSPACE&objectId=obj3",
+				Param: "object?spaceId=OTHERSPACE&objectId=obj3",
 				Type:  model.BlockContentTextMark_Object,
 			}},
 			{{
@@ -378,7 +378,7 @@ func TestCommonSmart_pasteAny_marks(t *testing.T) {
 				Type:  model.BlockContentTextMark_Mention,
 			}, {
 				Range: &model.Range{From: 4, To: 5},
-				Param: "object/spaceId=OTHERSPACE&objectId=obj3",
+				Param: "object?spaceId=OTHERSPACE&objectId=obj3",
 				Type:  model.BlockContentTextMark_Object,
 			}},
 			{{
@@ -1601,7 +1601,7 @@ func Test_CopyAndCutText(t *testing.T) {
 		spaceId := "space1"
 		dv := blockbuilder.Dataview("tasks", blockbuilder.ID("dataview"))
 		link1 := blockbuilder.Link("object1", blockbuilder.ID("link"))
-		link2 := blockbuilder.Link("object/spaceId=1&objectId=2", blockbuilder.ID("space-link"))
+		link2 := blockbuilder.Link("object?spaceId=1&objectId=2", blockbuilder.ID("space-link"))
 		file := blockbuilder.File("image", blockbuilder.ID("file"))
 		txt := blockbuilder.Text("mention", blockbuilder.ID("text"), blockbuilder.TextMarks(model.BlockContentTextMarks{
 			Marks: []*model.BlockContentTextMark{{
@@ -1611,11 +1611,11 @@ func Test_CopyAndCutText(t *testing.T) {
 			}},
 		}))
 		expected := map[string]string{
-			"dataview":   "object/spaceId=space1&objectId=tasks",
-			"link":       "object/spaceId=space1&objectId=object1",
-			"space-link": "object/spaceId=1&objectId=2",
-			"file":       "object/spaceId=space1&objectId=image",
-			"text":       "object/spaceId=space1&objectId=object2",
+			"dataview":   "object?spaceId=space1&objectId=tasks",
+			"link":       "object?spaceId=space1&objectId=object1",
+			"space-link": "object?spaceId=1&objectId=2",
+			"file":       "object?spaceId=space1&objectId=image",
+			"text":       "object?spaceId=space1&objectId=object2",
 		}
 
 		sb := smarttest.New("text")

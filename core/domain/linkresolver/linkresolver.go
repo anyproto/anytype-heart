@@ -156,7 +156,7 @@ func IsObjectLink(link string) bool {
 	return err == nil
 }
 
-func ShortenObjectLinks(links []string) []string {
+func ShortenObjectLinks(links ...string) []string {
 	for i, link := range links {
 		if id, err := ParseObjectLink(link); err == nil {
 			links[i] = id.ObjectID
