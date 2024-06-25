@@ -32,9 +32,10 @@ type SpaceIdGetter interface {
 
 type State interface {
 	SetObjectsNumber(status *domain.SpaceSync)
-	SetSyncStatus(status domain.SpaceSyncStatus, spaceId string)
+	SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncError domain.SyncError, spaceId string)
 	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
+	GetSyncErr(spaceId string) domain.SyncError
 	ResetSpaceErrorStatus(spaceId string, syncError domain.SyncError)
 }
 
@@ -99,7 +100,7 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 	s.eventSender.SendToSession(token, &pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId, 0),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
 			},
 		}},
 	})
@@ -109,7 +110,7 @@ func (s *spaceSyncStatus) sendStartEvent(spaceId string) {
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId, 0),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
 			},
 		}},
 	})
@@ -150,17 +151,17 @@ func (s *spaceSyncStatus) processEvents() {
 	}
 }
 
-func (s *spaceSyncStatus) updateSpaceSyncStatus(recievedStatus *domain.SpaceSync) {
-	if s.isStatusNotChanged(recievedStatus) {
+func (s *spaceSyncStatus) updateSpaceSyncStatus(receivedStatus *domain.SpaceSync) {
+	if s.isStatusNotChanged(receivedStatus) {
 		return
 	}
-	state := s.getCurrentState(recievedStatus)
-	prevObjectNumber := s.getObjectNumber(recievedStatus.SpaceId)
-	state.SetObjectsNumber(recievedStatus)
-	newObjectNumber := s.getObjectNumber(recievedStatus.SpaceId)
-	state.SetSyncStatus(recievedStatus.Status, recievedStatus.SpaceId)
+	state := s.getCurrentState(receivedStatus)
+	prevObjectNumber := s.getObjectNumber(receivedStatus.SpaceId)
+	state.SetObjectsNumber(receivedStatus)
+	newObjectNumber := s.getObjectNumber(receivedStatus.SpaceId)
+	state.SetSyncStatusAndErr(receivedStatus.Status, receivedStatus.SyncError, receivedStatus.SpaceId)
 
-	spaceStatus := s.getSpaceSyncStatus(recievedStatus.SpaceId)
+	spaceStatus := s.getSpaceSyncStatus(receivedStatus.SpaceId)
 
 	// send synced event only if files and objects are all synced
 	if !s.needToSendEvent(spaceStatus, prevObjectNumber, newObjectNumber) {
@@ -169,11 +170,11 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(recievedStatus *domain.SpaceSync
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(recievedStatus.SpaceId, status.SyncError),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(receivedStatus.SpaceId),
 			},
 		}},
 	})
-	state.ResetSpaceErrorStatus(status.SpaceId, status.SyncError)
+	state.ResetSpaceErrorStatus(receivedStatus.SpaceId, receivedStatus.SyncError)
 }
 
 func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync) bool {
@@ -202,12 +203,12 @@ func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	return s.batcher.Close()
 }
 
-func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string, syncError domain.SyncError) *pb.EventSpaceSyncStatusUpdate {
+func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string) *pb.EventSpaceSyncStatusUpdate {
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    spaceId,
 		Status:                mapStatus(s.getSpaceSyncStatus(spaceId)),
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
-		Error:                 mapError(syncError),
+		Error:                 s.getError(spaceId),
 		SyncingObjectsCounter: s.getObjectNumber(spaceId),
 	}
 }
@@ -259,6 +260,20 @@ func (s *spaceSyncStatus) getCurrentState(status *domain.SpaceSync) State {
 		return s.filesState
 	}
 	return s.objectsState
+}
+
+func (s *spaceSyncStatus) getError(spaceId string) pb.EventSpaceSyncError {
+	syncErr := s.filesState.GetSyncErr(spaceId)
+	if syncErr != domain.Null {
+		return mapError(syncErr)
+	}
+
+	syncErr = s.objectsState.GetSyncErr(spaceId)
+	if syncErr != domain.Null {
+		return mapError(syncErr)
+	}
+
+	return pb.EventSpace_Null
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {

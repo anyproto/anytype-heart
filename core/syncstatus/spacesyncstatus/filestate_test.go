@@ -105,44 +105,44 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 }
 
 func TestFileState_SetSyncStatus(t *testing.T) {
-	t.Run("SetSyncStatus, status synced", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, status synced", func(t *testing.T) {
 		// given
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		fileState.SetSyncStatus(domain.Synced, "spaceId")
+		fileState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
 
 		// then
 		assert.Equal(t, domain.Synced, fileState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, sync in progress", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, sync in progress", func(t *testing.T) {
 		// given
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)
-		fileState.SetSyncStatus(syncStatus.Status, syncStatus.SpaceId)
+		fileState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Syncing, fileState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, sync is finished with error", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, sync is finished with error", func(t *testing.T) {
 		// given
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.Null, domain.Files)
-		fileState.SetSyncStatus(syncStatus.Status, syncStatus.SpaceId)
+		fileState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Error, fileState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, offline", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, offline", func(t *testing.T) {
 		// given
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		fileState.SetSyncStatus(domain.Offline, "spaceId")
+		fileState.SetSyncStatusAndErr(domain.Offline, domain.Null, "spaceId")
 
 		// then
 		assert.Equal(t, domain.Offline, fileState.GetSyncStatus("spaceId"))

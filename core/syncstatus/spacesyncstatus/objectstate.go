@@ -14,6 +14,7 @@ import (
 type ObjectState struct {
 	objectSyncStatusBySpace map[string]domain.SpaceSyncStatus
 	objectSyncCountBySpace  map[string]int
+	objectSyncErrBySpace    map[string]domain.SyncError
 	sync.Mutex
 
 	store objectstore.ObjectStore
@@ -23,6 +24,7 @@ func NewObjectState(store objectstore.ObjectStore) *ObjectState {
 	return &ObjectState{
 		objectSyncCountBySpace:  make(map[string]int, 0),
 		objectSyncStatusBySpace: make(map[string]domain.SpaceSyncStatus, 0),
+		objectSyncErrBySpace:    make(map[string]domain.SyncError, 0),
 		store:                   store,
 	}
 }
@@ -70,8 +72,9 @@ func (o *ObjectState) getSyncingObjects(status *domain.SpaceSync) []database.Rec
 	return records
 }
 
-func (o *ObjectState) SetSyncStatus(status domain.SpaceSyncStatus, spaceId string) {
+func (o *ObjectState) SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncErr domain.SyncError, spaceId string) {
 	o.objectSyncStatusBySpace[spaceId] = status
+	o.objectSyncErrBySpace[spaceId] = syncErr
 }
 
 func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
@@ -84,6 +87,12 @@ func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
 	o.Lock()
 	defer o.Unlock()
 	return o.objectSyncCountBySpace[spaceId]
+}
+
+func (o *ObjectState) GetSyncErr(spaceId string) domain.SyncError {
+	o.Lock()
+	defer o.Unlock()
+	return o.objectSyncErrBySpace[spaceId]
 }
 
 func (o *ObjectState) ResetSpaceErrorStatus(string, domain.SyncError) {}

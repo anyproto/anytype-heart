@@ -98,46 +98,46 @@ func TestObjectState_SetObjectsNumber(t *testing.T) {
 }
 
 func TestObjectState_SetSyncStatus(t *testing.T) {
-	t.Run("SetSyncStatus, status synced", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, status synced", func(t *testing.T) {
 		// given
 		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
-		objectState.SetSyncStatus(syncStatus.Status, syncStatus.SpaceId)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Synced, objectState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, sync in progress", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, sync in progress", func(t *testing.T) {
 		// given
 		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		objectState.SetSyncStatus(syncStatus.Status, syncStatus.SpaceId)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Syncing, objectState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, sync is finished with error", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, sync is finished with error", func(t *testing.T) {
 		// given
 		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.Null, domain.Objects)
-		objectState.SetSyncStatus(syncStatus.Status, syncStatus.SpaceId)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Error, objectState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatus, offline", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, offline", func(t *testing.T) {
 		// given
 		objectState := NewObjectState(objectstore.NewStoreFixture(t))
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Objects)
-		objectState.SetSyncStatus(syncStatus.Status, syncStatus.SpaceId)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Offline, objectState.GetSyncStatus("spaceId"))

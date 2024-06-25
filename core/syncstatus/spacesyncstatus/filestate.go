@@ -25,11 +25,15 @@ func NewFileState(store objectstore.ObjectStore) *FileState {
 	return &FileState{
 		fileSyncCountBySpace:  make(map[string]int, 0),
 		fileSyncStatusBySpace: make(map[string]domain.SpaceSyncStatus, 0),
-		store:                 store,
+		filesErrorBySpace:     make(map[string]domain.SyncError, 0),
+
+		store: store,
 	}
 }
 
 func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
+	f.Lock()
+	defer f.Unlock()
 	switch status.Status {
 	case domain.Error, domain.Offline, domain.Synced:
 		f.fileSyncCountBySpace[status.SpaceId] = 0
@@ -55,14 +59,11 @@ func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 	}
 }
 
-func (f *FileState) SetSyncStatusAndErr(status *domain.SpaceSync) {
+func (f *FileState) SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncErr domain.SyncError, spaceId string) {
 	f.Lock()
 	defer f.Unlock()
-	f.fileSyncStatusBySpace[status.SpaceId] = status.Status
-}
-
-func (f *FileState) SetSyncStatus(status domain.SpaceSyncStatus, spaceId string) {
 	f.fileSyncStatusBySpace[spaceId] = status
+	f.filesErrorBySpace[spaceId] = syncErr
 }
 
 func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
@@ -80,6 +81,12 @@ func (f *FileState) GetSyncObjectCount(spaceId string) int {
 func (f *FileState) ResetSpaceErrorStatus(spaceId string, syncError domain.SyncError) {
 	// show StorageLimitExceed only once
 	if syncError == domain.StorageLimitExceed {
-		f.SetSyncStatus(domain.Synced, spaceId)
+		f.SetSyncStatusAndErr(domain.Synced, domain.Null, spaceId)
 	}
+}
+
+func (f *FileState) GetSyncErr(spaceId string) domain.SyncError {
+	f.Lock()
+	defer f.Unlock()
+	return f.filesErrorBySpace[spaceId]
 }

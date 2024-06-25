@@ -205,7 +205,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
 		objectsSyncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		status.objectsState.SetSyncStatus(objectsSyncStatus.Status, objectsSyncStatus.SpaceId)
+		status.objectsState.SetSyncStatusAndErr(objectsSyncStatus.Status, domain.Null, objectsSyncStatus.SpaceId)
 
 		// then
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
@@ -371,7 +371,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		}
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
 		status.objectsState.SetObjectsNumber(syncStatus)
-		status.objectsState.SetSyncStatus(syncStatus.Status, syncStatus.SpaceId)
+		status.objectsState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		syncStatus = domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
