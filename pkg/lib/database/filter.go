@@ -520,7 +520,12 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 	var negation bool
 	if rawNestedFilter.Condition == model.BlockContentDataviewFilter_NotIn {
 		negation = true
+		rawNestedFilter.Condition = model.BlockContentDataviewFilter_In
+	} else if rawNestedFilter.Condition == model.BlockContentDataviewFilter_NotEqual {
+		negation = true
+		rawNestedFilter.Condition = model.BlockContentDataviewFilter_Equal
 	}
+
 	rawNestedFilter.RelationKey = nestedRelationKey
 	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {
