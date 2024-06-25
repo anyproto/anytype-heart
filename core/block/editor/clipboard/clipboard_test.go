@@ -1602,7 +1602,8 @@ func Test_CopyAndCutText(t *testing.T) {
 		dv := blockbuilder.Dataview("tasks", blockbuilder.ID("dataview"))
 		link1 := blockbuilder.Link("object1", blockbuilder.ID("link"))
 		link2 := blockbuilder.Link("object?spaceId=1&objectId=2", blockbuilder.ID("space-link"))
-		file := blockbuilder.File("image", blockbuilder.ID("file"))
+		// TODO: GO-3660 - Uncomment file-related strings when MLP support for file blocks will be added
+		// file := blockbuilder.File("image", blockbuilder.ID("file"))
 		txt := blockbuilder.Text("mention", blockbuilder.ID("text"), blockbuilder.TextMarks(model.BlockContentTextMarks{
 			Marks: []*model.BlockContentTextMark{{
 				Type:  model.BlockContentTextMark_Mention,
@@ -1614,8 +1615,8 @@ func Test_CopyAndCutText(t *testing.T) {
 			"dataview":   "object?spaceId=space1&objectId=tasks",
 			"link":       "object?spaceId=space1&objectId=object1",
 			"space-link": "object?spaceId=1&objectId=2",
-			"file":       "object?spaceId=space1&objectId=image",
-			"text":       "object?spaceId=space1&objectId=object2",
+			// "file":       "object?spaceId=space1&objectId=image",
+			"text": "object?spaceId=space1&objectId=object2",
 		}
 
 		sb := smarttest.New("text")
@@ -1623,19 +1624,22 @@ func Test_CopyAndCutText(t *testing.T) {
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
 		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
 			blockbuilder.ID("root"),
-			blockbuilder.Children(dv, link1, link2, file, txt),
+			// blockbuilder.Children(dv, link1, link2, file, txt),
+			blockbuilder.Children(dv, link1, link2, txt),
 		))
 
 		// when
 		cb := newFixture(t, sb)
 		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			SelectedTextRange: &model.Range{From: 0, To: 0},
-			Blocks:            []*model.Block{dv.Block(), link1.Block(), link2.Block(), file.Block(), txt.Block()},
+			// Blocks:            []*model.Block{dv.Block(), link1.Block(), link2.Block(), file.Block(), txt.Block()},
+			Blocks: []*model.Block{dv.Block(), link1.Block(), link2.Block(), txt.Block()},
 		})
 		require.NoError(t, err)
 		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
 			SelectedTextRange: &model.Range{From: 0, To: 0},
-			Blocks:            []*model.Block{dv.Block(), link1.Block(), link2.Block(), file.Block(), txt.Block()},
+			// Blocks:            []*model.Block{dv.Block(), link1.Block(), link2.Block(), file.Block(), txt.Block()},
+			Blocks: []*model.Block{dv.Block(), link1.Block(), link2.Block(), txt.Block()},
 		})
 		require.NoError(t, err)
 
