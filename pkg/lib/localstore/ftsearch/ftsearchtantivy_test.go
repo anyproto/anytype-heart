@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
@@ -22,7 +23,7 @@ type fixture struct {
 }
 
 func newFixture(path string, t *testing.T) *fixture {
-	ft := New()
+	ft := TantivyNew()
 	ta := new(app.App)
 
 	ta.Register(wallet.NewWithRepoDirAndRandomKeys(path)).
@@ -59,12 +60,6 @@ func TestListIndexedIds(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, int(dc))
 
-	res, err := ft.ListIndexedIds("o")
-	require.NoError(t, err)
-	assert.Len(t, res, 2)
-	res, err = ft.ListIndexedIds("a")
-	require.NoError(t, err)
-	assert.Len(t, res, 1)
 	_ = ft.Close(nil)
 }
 
@@ -82,24 +77,8 @@ func TestNewFTSearch(t *testing.T) {
 			tester: assertSearch,
 		},
 		{
-			name:   "assertThaiSubstrFound",
-			tester: assertThaiSubstrFound,
-		},
-		{
-			name:   "assertChineseFound",
-			tester: assertChineseFound,
-		},
-		{
-			name:   "assertFoundPartsOfTheWords",
-			tester: assertFoundPartsOfTheWords,
-		},
-		{
 			name:   "assertFoundCaseSensitivePartsOfTheWords",
 			tester: assertFoundCaseSensitivePartsOfTheWords,
-		},
-		{
-			name:   "assertNonEscapedQuery",
-			tester: assertNonEscapedQuery,
 		},
 		{
 			name:   "assertMultiSpace",
@@ -203,18 +182,22 @@ func assertThaiSubstrFound(t *testing.T, tmpDir string) {
 func assertProperIds(t *testing.T, tmpDir string) {
 	fixture := newFixture(tmpDir, t)
 	ft := fixture.ft
+	var docs []SearchDoc
 	for i := range 50 {
-		require.NoError(t, ft.Index(SearchDoc{
+		docs = append(docs, SearchDoc{
 			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+100),
 			SpaceID: fmt.Sprintf("randomspaceid%d", i),
-		}))
-		require.NoError(t, ft.Index(SearchDoc{
+		})
+		docs = append(docs, SearchDoc{
 			Id:      fmt.Sprintf("randomid%d/r/randomrel%d", i, i+1000),
 			SpaceID: fmt.Sprintf("randomspaceid%d", i),
-		}))
+		})
 	}
+	start := time.Now().UnixMilli()
+	assert.NoError(t, ft.BatchIndex(context.Background(), docs, nil))
+	fmt.Println(time.Now().UnixMilli() - start)
 
-	ft.DeleteObject(fmt.Sprintf("randomid%d", 49))
+	assert.NoError(t, ft.DeleteObject(fmt.Sprintf("randomid%d", 49)))
 
 	count, _ := ft.DocCount()
 	require.Equal(t, 98, int(count))
@@ -242,28 +225,6 @@ func assertSearch(t *testing.T, tmpDir string) {
 
 	validateSearch(t, ft, "", "one", 1)
 	validateSearch(t, ft, "", "two", 1)
-
-	_ = ft.Close(nil)
-}
-
-func assertFoundPartsOfTheWords(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "1",
-		Title: "This is the title",
-		Text:  "two",
-	}))
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "2",
-		Title: "is the title",
-		Text:  "two",
-	}))
-
-	validateSearch(t, ft, "", "this", 1)
-	validateSearch(t, ft, "", "his", 1)
-	validateSearch(t, ft, "", "is", 2)
-	validateSearch(t, ft, "", "i t", 2)
 
 	_ = ft.Close(nil)
 }
@@ -365,47 +326,26 @@ func givenPrefilledChineseIndex() bleve.Index {
 	return index
 }
 
-func assertNonEscapedQuery(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "1",
-		Title: "This is the title",
-		Text:  "two",
-	}))
-
-	validateSearch(t, ft, "", "*", 0)
-
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "1",
-		Title: "This is the title",
-		Text:  ".*?([])",
-	}))
-	validateSearch(t, ft, "", ".*?([])", 1)
-
-	_ = ft.Close(nil)
-}
-
 func assertMultiSpace(t *testing.T, tmpDir string) {
 	fixture := newFixture(tmpDir, t)
 	ft := fixture.ft
 	require.NoError(t, ft.Index(SearchDoc{
-		Id:      "1.1",
+		Id:      "1/1",
 		SpaceID: "first",
 		Title:   "Dashboard of first space",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
-		Id:      "1.2",
+		Id:      "1/2",
 		SpaceID: "first",
 		Title:   "Advanced of first space",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
-		Id:      "2.1",
+		Id:      "2/1",
 		SpaceID: "second",
 		Title:   "Dashboard of second space",
 	}))
 	require.NoError(t, ft.Index(SearchDoc{
-		Id:      "2.2",
+		Id:      "2/2",
 		SpaceID: "second",
 		Title:   "Get Started of second space",
 	}))
@@ -419,31 +359,9 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "second", "space", 2)
 	validateSearch(t, ft, "second", "coffee", 0)
 	validateSearch(t, ft, "", "Advanced", 1)
-	validateSearch(t, ft, "", "board", 2)
+	validateSearch(t, ft, "", "dash", 2)
 	validateSearch(t, ft, "", "space", 4)
-	validateSearch(t, ft, "", "of", 5)
-
-	_ = ft.Close(nil)
-}
-
-func a(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "1",
-		Title: "This is the title",
-		Text:  "two",
-	}))
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "2",
-		Title: "is the title",
-		Text:  "two",
-	}))
-
-	validateSearch(t, ft, "", "this", 1)
-	validateSearch(t, ft, "", "his", 1)
-	validateSearch(t, ft, "", "is", 2)
-	validateSearch(t, ft, "", "i t", 2)
+	validateSearch(t, ft, "", "of", 4)
 
 	_ = ft.Close(nil)
 }

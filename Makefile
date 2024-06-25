@@ -2,6 +2,7 @@ CUSTOM_NETWORK_FILE ?= ./core/anytype/config/nodes/custom.yml
 CLIENT_DESKTOP_PATH ?= ../anytype-ts
 CLIENT_ANDROID_PATH ?= ../anytype-kotlin
 CLIENT_IOS_PATH ?= ../anytype-swift
+TANTIVY_GO_PATH ?= ../tantivy-go
 BUILD_FLAGS ?=
 
 export GOLANGCI_LINT_VERSION=1.58.1
@@ -328,3 +329,38 @@ ifdef GOLANGCI_LINT_BRANCH
 else 
 	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --fix
 endif
+
+### Tantivy Section
+
+REPO := anyproto/tantivy-go
+VERSION := go/v0.0.2
+OUTPUT_DIR := deps/libs
+
+TANTIVY_LIBS := android-386.tar.gz \
+         android-amd64.tar.gz \
+         android-arm.tar.gz \
+         android-arm64.tar.gz \
+         darwin-amd64.tar.gz \
+         darwin-arm64.tar.gz \
+         ios-amd64.tar.gz \
+         ios-arm64.tar.gz \
+         linux-amd64-musl.tar.gz \
+         windows-amd64.tar.gz
+
+define download_tantivy_lib
+	curl -L -o $(OUTPUT_DIR)/$(1) -O https://github.com/$(REPO)/releases/download/$(VERSION)/$(1)
+endef
+
+download-tantivy-all: $(TANTIVY_LIBS)
+
+$(TANTIVY_LIBS):
+	@mkdir -p $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1)
+	$(call download_tantivy_lib,$@)
+	@tar -C $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1) -xvzf $(OUTPUT_DIR)/$@
+	@rm -f $(OUTPUT_DIR)/$@
+	@echo "Extracted $@"
+
+download-tantivy-local:
+	@mkdir -p $(OUTPUT_DIR)
+	@cp -r $(TANTIVY_GO_PATH)/go/libs/ $(OUTPUT_DIR)
+### End Tantivy Section
