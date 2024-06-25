@@ -509,14 +509,18 @@ func optionsToMap(spaceID string, key string, store ObjectStore) map[string]stri
 type FilterNestedIn struct {
 	Key                    string
 	FilterForNestedObjects Filter
-
-	IDs []string
+	Negation               bool // if true that it find objects that don't match FilterForNestedObjects
+	IDs                    []string
 }
 
 var _ WithNestedFilter = &FilterNestedIn{}
 
 func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore, relationKey string, nestedRelationKey string) (Filter, error) {
 	rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
+	var negation bool
+	if rawNestedFilter.Condition == model.BlockContentDataviewFilter_NotIn {
+		negation = true
+	}
 	rawNestedFilter.RelationKey = nestedRelationKey
 	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {
@@ -535,16 +539,24 @@ func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFil
 		Key:                    relationKey,
 		FilterForNestedObjects: nestedFilter,
 		IDs:                    ids,
+		Negation:               negation,
 	}, nil
 }
 
 func (i *FilterNestedIn) FilterObject(g *types.Struct) bool {
 	val := pbtypes.Get(g, i.Key)
+
 	for _, id := range i.IDs {
 		eq := FilterEq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
+			if i.Negation {
+				return false
+			}
 			return true
 		}
+	}
+	if i.Negation {
+		return true
 	}
 	return false
 }

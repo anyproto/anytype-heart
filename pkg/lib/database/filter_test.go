@@ -395,6 +395,7 @@ func TestNestedFilters(t *testing.T) {
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String(): pbtypes.String("id1"),
 						"typeKey":                     pbtypes.String("note"),
+						"a":                           pbtypes.String("b"),
 					},
 				},
 			},
@@ -403,6 +404,7 @@ func TestNestedFilters(t *testing.T) {
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String(): pbtypes.String("id2"),
 						"typeKey":                     pbtypes.String("note"),
+						"a":                           pbtypes.String("b"),
 					},
 				},
 			},
@@ -417,6 +419,16 @@ func TestNestedFilters(t *testing.T) {
 
 		assert.True(t, f.FilterObject(&types.Struct{Fields: map[string]*types.Value{"type": pbtypes.String("id1")}}))
 		assert.True(t, f.FilterObject(&types.Struct{Fields: map[string]*types.Value{"type": pbtypes.StringList([]string{"id2", "id1"})}}))
+
+		emptyFilter, err := MakeFilter("", &model.BlockContentDataviewFilter{
+			RelationKey: "type.a",
+			Condition:   model.BlockContentDataviewFilter_NotIn,
+			Value:       pbtypes.StringList([]string{"b"}),
+		}, store)
+		require.NoError(t, err)
+		assert.True(t, emptyFilter.FilterObject(&types.Struct{Fields: map[string]*types.Value{"type": pbtypes.StringList([]string{"id4"})}}))
+		assert.False(t, emptyFilter.FilterObject(&types.Struct{Fields: map[string]*types.Value{"type": pbtypes.StringList([]string{"id2"})}}))
+
 	})
 
 }
