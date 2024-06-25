@@ -11,17 +11,17 @@ import (
 const uniqueKeySeparator = "-"
 
 var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
-	smartblock.SmartBlockTypeObjectType:     "ot",
-	smartblock.SmartBlockTypeRelation:       "rel",
-	smartblock.SmartBlockTypeRelationOption: "opt",
-	smartblock.SmartBlockTypeWorkspace:      "ws",
-	smartblock.SmartBlockTypeHome:           "home",
-	smartblock.SmartBlockTypeArchive:        "archive",
-	smartblock.SmartBlockTypeProfilePage:    "profile",
-	smartblock.SmartBlockTypeWidget:         "widget",
-	smartblock.SmartBlockTypeSpaceView:      "spaceview",
-	smartblock.SmartBlockTypeFileObject:     "file", // For migration purposes only
-	smartblock.SmartBlockTypePage:           "page", // For migration purposes only, used for old profile data migration
+	smartblock.SmartBlockTypeObjectType:         "ot",
+	smartblock.SmartBlockTypeRelation:           "rel",
+	smartblock.SmartBlockTypeRelationOption:     "opt",
+	smartblock.SmartBlockTypeWorkspace:          "ws",
+	smartblock.SmartBlockTypeHome:               "home",
+	smartblock.SmartBlockTypeArchive:            "archive",
+	smartblock.SmartBlockTypeProfilePage:        "profile",
+	smartblock.SmartBlockTypeWidget:             "widget",
+	smartblock.SmartBlockTypeSpaceView:          "spaceview",
+	smartblock.SmartBlockTypeFileObject:         "file", // For migration purposes only
+	smartblock.SmartBlockTypePage:               "page", // For migration purposes only, used for old profile data migration
 	smartblock.SmartBlockTypeNotificationObject: "notification",
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -28,15 +29,10 @@ import (
 )
 
 func TestReindexMarketplaceSpace(t *testing.T) {
-	t.Run("reindex missing object", func(t *testing.T) {
-		// given
-		indexerFx := NewIndexerFixture(t)
-		checksums := indexerFx.getLatestChecksums()
-		err := indexerFx.store.SaveChecksums("spaceId", &checksums)
-		assert.Nil(t, err)
-
-		virtualSpace := clientspace.NewVirtualSpace("spaceId", clientspace.VirtualSpaceDeps{
-			Indexer: indexerFx,
+	spaceId := "market"
+	getMockSpace := func(fx *IndexerFixture) *clientspace.VirtualSpace {
+		virtualSpace := clientspace.NewVirtualSpace(spaceId, clientspace.VirtualSpaceDeps{
+			Indexer: fx,
 		})
 		mockCache := mock_objectcache.NewMockCache(t)
 		smartTest := smarttest.New(addr.MissingObject)
@@ -47,6 +43,18 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		mockCache.EXPECT().GetObject(context.Background(), addr.MissingObject).Return(editor.NewMissingObject(smartTest), nil)
 		mockCache.EXPECT().GetObject(context.Background(), addr.AnytypeProfileId).Return(smartTest, nil)
 		virtualSpace.Cache = mockCache
+
+		return virtualSpace
+	}
+
+	t.Run("reindex missing object", func(t *testing.T) {
+		// given
+		indexerFx := NewIndexerFixture(t)
+		checksums := indexerFx.getLatestChecksums()
+		err := indexerFx.store.SaveChecksums(spaceId, &checksums)
+		assert.Nil(t, err)
+
+		virtualSpace := getMockSpace(indexerFx)
 
 		storage := mock_storage.NewMockClientStorage(t)
 		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
@@ -59,6 +67,50 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		details, err := indexerFx.store.GetDetails(addr.MissingObject)
 		assert.Nil(t, err)
 		assert.NotNil(t, details)
+	})
+
+	t.Run("do not reindex links in marketplace", func(t *testing.T) {
+		// given
+		fx := NewIndexerFixture(t)
+
+		favs := []string{"fav1", "fav2"}
+		trash := []string{"trash1", "trash2"}
+		err := fx.store.UpdateObjectLinks("home", favs)
+		require.NoError(t, err)
+		err = fx.store.UpdateObjectLinks("bin", trash)
+		require.NoError(t, err)
+
+		homeLinks, err := fx.store.GetOutboundLinksByID("home")
+		require.Equal(t, favs, homeLinks)
+
+		archiveLinks, err := fx.store.GetOutboundLinksByID("bin")
+		require.Equal(t, trash, archiveLinks)
+
+		checksums := fx.getLatestChecksums()
+		checksums.LinksErase = checksums.LinksErase - 1
+
+		err = fx.objectStore.SaveChecksums(spaceId, &checksums)
+		require.NoError(t, err)
+
+		storage := mock_storage.NewMockClientStorage(t)
+		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
+		fx.storageService = storage
+
+		// when
+		err = fx.ReindexMarketplaceSpace(getMockSpace(fx))
+		assert.NoError(t, err)
+
+		// then
+		homeLinks, err = fx.store.GetOutboundLinksByID("home")
+		assert.NoError(t, err)
+		assert.Equal(t, favs, homeLinks)
+
+		archiveLinks, err = fx.store.GetOutboundLinksByID("bin")
+		assert.NoError(t, err)
+		assert.Equal(t, trash, archiveLinks)
+
+		storeChecksums, err := fx.store.GetChecksums(spaceId)
+		assert.Equal(t, ForceLinksReindexCounter, storeChecksums.LinksErase)
 	})
 }
 
@@ -106,6 +158,8 @@ func TestReindexDeletedObjects(t *testing.T) {
 		space1.EXPECT().Storage().Return(storage1)
 		space1.EXPECT().StoredIds().Return([]string{})
 
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil)
+
 		err = fx.ReindexSpace(space1)
 		require.NoError(t, err)
 
@@ -122,6 +176,7 @@ func TestReindexDeletedObjects(t *testing.T) {
 		space2.EXPECT().Id().Return(spaceId2)
 		space2.EXPECT().Storage().Return(storage2)
 		space2.EXPECT().StoredIds().Return([]string{})
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil)
 
 		err = fx.ReindexSpace(space2)
 		require.NoError(t, err)
@@ -157,7 +212,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 			case coresb.SmartBlockTypeArchive:
 				return idsLister{Ids: []string{"bin"}}, nil
 			default:
-				return nil, nil
+				return idsLister{Ids: []string{}}, nil
 			}
 		},
 	)
@@ -298,6 +353,86 @@ func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []
 	})
 	require.NoError(t, err)
 	return ids
+}
+
+func TestReindex_addSyncRelations(t *testing.T) {
+	t.Run("addSyncRelations local only", func(t *testing.T) {
+		// given
+		const spaceId1 = "spaceId1"
+		fx := NewIndexerFixture(t)
+
+		fx.objectStore.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:        pbtypes.String("1"),
+				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String("2"),
+				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			},
+		})
+
+		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().Id().Return(spaceId1)
+		space1.EXPECT().StoredIds().Return([]string{})
+
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypePage).Return(idsLister{Ids: []string{"1", "2"}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeRelation).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeRelationOption).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeFileObject).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeObjectType).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeTemplate).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeProfilePage).Return(idsLister{Ids: []string{}}, nil)
+
+		space1.EXPECT().DoLockedIfNotExists("1", mock.AnythingOfType("func() error")).Return(nil)
+		space1.EXPECT().DoLockedIfNotExists("2", mock.AnythingOfType("func() error")).Return(nil)
+
+		// when
+		err := fx.ReindexSpace(space1)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("addSyncRelations", func(t *testing.T) {
+		// given
+		const spaceId1 = "spaceId1"
+		fx := NewIndexerFixture(t)
+
+		fx.objectStore.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:        pbtypes.String("1"),
+				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String("2"),
+				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+			},
+		})
+
+		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().Id().Return(spaceId1)
+		space1.EXPECT().StoredIds().Return([]string{})
+
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypePage).Return(idsLister{Ids: []string{"1", "2"}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeRelation).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeRelationOption).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeFileObject).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeObjectType).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeTemplate).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(spaceId1, coresb.SmartBlockTypeProfilePage).Return(idsLister{Ids: []string{}}, nil)
+
+		space1.EXPECT().DoLockedIfNotExists("1", mock.AnythingOfType("func() error")).Return(nil)
+		space1.EXPECT().DoLockedIfNotExists("2", mock.AnythingOfType("func() error")).Return(nil)
+
+		fx.config.NetworkMode = pb.RpcAccount_DefaultConfig
+
+		// when
+		err := fx.ReindexSpace(space1)
+
+		// then
+		require.NoError(t, err)
+	})
 }
 
 type idsLister struct {

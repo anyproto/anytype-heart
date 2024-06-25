@@ -5,6 +5,7 @@
 //
 //	mockgen -package testMock -destination file_service_mock.go -mock_names Service=MockFileService github.com/anyproto/anytype-heart/core/files Service,Image,File
 //
+
 // Package testMock is a generated GoMock package.
 package testMock
 
@@ -93,21 +94,6 @@ func (m *MockFileService) FileGetKeys(arg0 domain.FileId) (*domain.FileEncryptio
 func (mr *MockFileServiceMockRecorder) FileGetKeys(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileGetKeys", reflect.TypeOf((*MockFileService)(nil).FileGetKeys), arg0)
-}
-
-// FileOffload mocks base method.
-func (m *MockFileService) FileOffload(arg0 context.Context, arg1 domain.FullFileId) (uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FileOffload", arg0, arg1)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FileOffload indicates an expected call of FileOffload.
-func (mr *MockFileServiceMockRecorder) FileOffload(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileOffload", reflect.TypeOf((*MockFileService)(nil).FileOffload), arg0, arg1)
 }
 
 // GetNodeUsage mocks base method.

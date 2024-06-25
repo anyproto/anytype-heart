@@ -50,7 +50,6 @@ type Service interface {
 	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
 	FileByHash(ctx context.Context, id domain.FullFileId) (File, error)
 	FileGetKeys(id domain.FileId) (*domain.FileEncryptionKeys, error)
-	FileOffload(ctx context.Context, id domain.FullFileId) (totalSize uint64, err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (*AddResult, error)
@@ -385,7 +384,10 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	if variant, err := s.fileStore.GetFileVariantBySource(mill.ID(), conf.checksum, opts); err == nil {
-		return newExistingFileResult(variant)
+		existingRes, err := newExistingFileResult(variant)
+		if err == nil {
+			return existingRes, nil
+		}
 	}
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
@@ -405,7 +407,10 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 			// we may have same variant checksum for different files
 			// e.g. empty image exif with the same resolution
 			// reuse the whole file only in case the checksum of the original file is the same
-			return newExistingFileResult(variant)
+			existingRes, err := newExistingFileResult(variant)
+			if err == nil {
+				return existingRes, nil
+			}
 		}
 	}
 

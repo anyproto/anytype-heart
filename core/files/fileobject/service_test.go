@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -98,6 +99,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(objectCreator)
 	a.Register(svc)
 	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
+	a.Register(fileoffloader.New())
 
 	err = a.Start(ctx)
 	require.NoError(t, err)

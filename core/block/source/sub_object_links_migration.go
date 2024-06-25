@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -27,15 +26,10 @@ type subObjectsAndProfileLinksMigration struct {
 	identityObjectID string
 	sbType           smartblock.SmartBlockType
 	space            Space
-	objectStore      objectstore.ObjectStore
+	objectStore      RelationGetter
 }
 
-func NewSubObjectsAndProfileLinksMigration(
-	sbType smartblock.SmartBlockType,
-	space Space,
-	identityObjectID string,
-	objectStore objectstore.ObjectStore,
-) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore RelationGetter) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,

@@ -51,7 +51,6 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
-	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
 const (
@@ -356,7 +355,23 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+
+	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
+}
+
+func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
+	sb.sendEvent(&pb.Event{
+		ContextId: sb.Id(),
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfObjectClose{
+				ObjectClose: &pb.EventObjectClose{
+					Id: sb.Id(),
+				},
+			},
+		}},
+	})
+	return nil
 }
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
@@ -552,7 +567,7 @@ func (sb *smartBlock) EnabledRelationAsDependentObjects() {
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	startTime := time.Now()
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	var (
 		sendEvent           = true
@@ -970,7 +985,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []st
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	s, changes, err := f(sb.Doc)
 	if err != nil {
@@ -1003,7 +1018,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 // TODO: need to test StateRebuild
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())

@@ -10,11 +10,13 @@ import (
 	"github.com/anyproto/any-sync/util/slice"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -202,7 +204,33 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
+	i.addSyncDetails(space)
 	return i.saveLatestChecksums(space.Id())
+}
+
+func (i *indexer) addSyncDetails(space clientspace.Space) {
+	typesForSyncRelations := helper.SyncRelationsSmartblockTypes()
+	syncStatus := domain.ObjectSynced
+	syncError := domain.Null
+	if i.config.IsLocalOnlyMode() {
+		syncStatus = domain.ObjectError
+		syncError = domain.NetworkError
+	}
+	ids, err := i.getIdsForTypes(space.Id(), typesForSyncRelations...)
+	if err != nil {
+		log.Error("failed to add sync status relations", zap.Error(err))
+	}
+	for _, id := range ids {
+		err := space.DoLockedIfNotExists(id, func() error {
+			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
+				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
+				return details, nil
+			})
+		})
+		if err != nil {
+			log.Error("failed to add sync status relations", zap.Error(err))
+		}
+	}
 }
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
@@ -285,20 +313,24 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	if err != nil {
 		return err
 	}
-	err = i.removeCommonIndexes(space.Id(), flags)
-	if err != nil {
-		return fmt.Errorf("remove common indexes: %w", err)
+
+	if flags.removeAllIndexedObjects {
+		_, err = i.removeDetails(space.Id())
+		if err != nil {
+			return fmt.Errorf("remove details for marketplace space: %w", err)
+		}
 	}
+
 	ctx := context.Background()
 
 	if flags.bundledRelations {
-		err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledRelations, smartblock2.SmartBlockTypeBundledRelation)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledRelations, smartblock2.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return fmt.Errorf("reindex bundled relations: %w", err)
 		}
 	}
 	if flags.bundledTypes {
-		err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTypes, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTypes, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
@@ -334,6 +366,24 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 		return fmt.Errorf("reindex profile and missing object: %w", err)
 	}
 	return i.saveLatestChecksums(space.Id())
+}
+
+func (i *indexer) removeDetails(spaceId string) (ids []string, err error) {
+	err = i.removeOldObjects()
+	if err != nil {
+		err = nil
+		log.Errorf("reindex failed to removeOldObjects: %v", err)
+	}
+	ids, err = i.store.ListIdsBySpace(spaceId)
+	if err != nil {
+		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
+	}
+	for _, id := range ids {
+		if err = i.store.DeleteDetails(id); err != nil {
+			log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
+		}
+	}
+	return ids, err
 }
 
 // removeOldObjects removes all objects that are not supported anymore (e.g. old subobjects) and no longer returned by the underlying source
@@ -381,20 +431,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 	var ids []string
 	if flags.removeAllIndexedObjects {
 		flags.eraseLinks = true
-		err = i.removeOldObjects()
-		if err != nil {
-			err = nil
-			log.Errorf("reindex failed to removeOldObjects: %v", err)
-		}
-		ids, err = i.store.ListIdsBySpace(spaceId)
-		if err != nil {
-			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
-		}
-		for _, id := range ids {
-			if err = i.store.DeleteDetails(id); err != nil {
-				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
-			}
-		}
+		ids, err = i.removeDetails(spaceId)
 	}
 
 	if flags.eraseLinks {
