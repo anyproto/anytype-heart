@@ -1633,6 +1633,12 @@
     - [Block.Content](#anytype-model-Block-Content)
     - [Block.Content.Bookmark](#anytype-model-Block-Content-Bookmark)
     - [Block.Content.Chat](#anytype-model-Block-Content-Chat)
+    - [Block.Content.ChatMessage](#anytype-model-Block-Content-ChatMessage)
+    - [Block.Content.ChatMessage.Attachment](#anytype-model-Block-Content-ChatMessage-Attachment)
+    - [Block.Content.ChatMessage.Mark](#anytype-model-Block-Content-ChatMessage-Mark)
+    - [Block.Content.ChatMessage.Marks](#anytype-model-Block-Content-ChatMessage-Marks)
+    - [Block.Content.ChatMessage.Part](#anytype-model-Block-Content-ChatMessage-Part)
+    - [Block.Content.ChatMessage.Parts](#anytype-model-Block-Content-ChatMessage-Parts)
     - [Block.Content.Dataview](#anytype-model-Block-Content-Dataview)
     - [Block.Content.Dataview.Checkbox](#anytype-model-Block-Content-Dataview-Checkbox)
     - [Block.Content.Dataview.Date](#anytype-model-Block-Content-Dataview-Date)
@@ -1720,6 +1726,8 @@
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
     - [Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State)
+    - [Block.Content.ChatMessage.Mark.Type](#anytype-model-Block-Content-ChatMessage-Mark-Type)
+    - [Block.Content.ChatMessage.PartStyle](#anytype-model-Block-Content-ChatMessage-PartStyle)
     - [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
@@ -25754,6 +25762,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | tableRow | [Block.Content.TableRow](#anytype-model-Block-Content-TableRow) |  |  |
 | widget | [Block.Content.Widget](#anytype-model-Block-Content-Widget) |  |  |
 | chat | [Block.Content.Chat](#anytype-model-Block-Content-Chat) |  |  |
+| chatMessage | [Block.Content.ChatMessage](#anytype-model-Block-Content-ChatMessage) |  |  |
 
 
 
@@ -25796,6 +25805,111 @@ Bookmark is to keep a web-link and to preview a content.
 
 ### Block.Content.Chat
 
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-ChatMessage"></a>
+
+### Block.Content.ChatMessage
+text stored per part
+single mark covers only one part
+client doesn&#39;t need to calculate ranges for parts. For example just convert some html blocks(quote, ul, etc) to Part
+in case mark covers multiple parts, client put it them separately
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| creator | [string](#string) |  |  |
+| createdDate | [int64](#int64) |  |  |
+| parts | [Block.Content.ChatMessage.Parts](#anytype-model-Block-Content-ChatMessage-Parts) |  |  |
+| attachments | [Block.Content.ChatMessage.Attachment](#anytype-model-Block-Content-ChatMessage-Attachment) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-ChatMessage-Attachment"></a>
+
+### Block.Content.ChatMessage.Attachment
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| text | [Block.Content.Text](#anytype-model-Block-Content-Text) |  |  |
+| file | [Block.Content.File](#anytype-model-Block-Content-File) |  |  |
+| bookmark | [Block.Content.Bookmark](#anytype-model-Block-Content-Bookmark) |  |  |
+| link | [Block.Content.Link](#anytype-model-Block-Content-Link) |  |  |
+| latex | [Block.Content.Latex](#anytype-model-Block-Content-Latex) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-ChatMessage-Mark"></a>
+
+### Block.Content.ChatMessage.Mark
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| range | [Range](#anytype-model-Range) |  | range of symbols to apply this mark. From(symbol) To(symbol) |
+| type | [Block.Content.ChatMessage.Mark.Type](#anytype-model-Block-Content-ChatMessage-Mark-Type) |  |  |
+| param | [string](#string) |  | link, color, etc |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-ChatMessage-Marks"></a>
+
+### Block.Content.ChatMessage.Marks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| marks | [Block.Content.ChatMessage.Mark](#anytype-model-Block-Content-ChatMessage-Mark) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-ChatMessage-Part"></a>
+
+### Block.Content.ChatMessage.Part
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
+| style | [Block.Content.ChatMessage.PartStyle](#anytype-model-Block-Content-ChatMessage-PartStyle) |  |  |
+| marks | [Block.Content.ChatMessage.Marks](#anytype-model-Block-Content-ChatMessage-Marks) |  | list of marks to apply to the text |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-ChatMessage-Parts"></a>
+
+### Block.Content.ChatMessage.Parts
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| parts | [Block.Content.ChatMessage.Part](#anytype-model-Block-Content-ChatMessage-Part) | repeated |  |
 
 
 
@@ -27286,6 +27400,43 @@ stored |
 | Fetching | 1 |  |
 | Done | 2 |  |
 | Error | 3 |  |
+
+
+
+<a name="anytype-model-Block-Content-ChatMessage-Mark-Type"></a>
+
+### Block.Content.ChatMessage.Mark.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Strikethrough | 0 |  |
+| Keyboard | 1 |  |
+| Italic | 2 |  |
+| Bold | 3 |  |
+| Underscored | 4 |  |
+| Link | 5 |  |
+| TextColor | 6 |  |
+| BackgroundColor | 7 |  |
+| Mention | 8 |  |
+| Emoji | 9 |  |
+| Object | 10 |  |
+
+
+
+<a name="anytype-model-Block-Content-ChatMessage-PartStyle"></a>
+
+### Block.Content.ChatMessage.PartStyle
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Paragraph | 0 |  |
+| Quote | 5 |  |
+| Code | 6 |  |
+| Marked | 9 |  |
+| Numbered | 10 |  |
+| Callout | 13 |  |
 
 
 
