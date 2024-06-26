@@ -51,7 +51,7 @@ func (gs *groupSub) counters() (prev, next int) {
 func (gs *groupSub) onChange(ctx *opCtx) {
 	checkGroups := false
 	for _, ctxEntry := range ctx.entries {
-		inFilter := gs.filter.FilterObj.FilterObject(ctxEntry)
+		inFilter := gs.filter.FilterObj.FilterObject(ctxEntry.data)
 		if _, inSet := gs.set[ctxEntry.id]; inSet {
 			cacheEntry := gs.cache.Get(ctxEntry.id)
 			if !checkGroups && cacheEntry != nil {

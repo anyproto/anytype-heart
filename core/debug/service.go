@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -145,6 +146,9 @@ func (d *debug) SpaceSummary(ctx context.Context, spaceID string) (summary Space
 
 func (d *debug) DebugStat() (string, error) {
 	stats := d.statService.GetStat()
+	sort.Slice(stats.Stats, func(i, j int) bool {
+		return stats.Stats[i].Type < stats.Stats[j].Type
+	})
 	marshaled, err := json.Marshal(stats)
 	if err != nil {
 		return "", err
