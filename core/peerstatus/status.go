@@ -9,13 +9,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 const CName = "core.syncstatus.p2p"
-
-var log = logging.Logger(CName)
 
 type Status int32
 

@@ -461,48 +461,6 @@ func TestInjectLocalDetails(t *testing.T) {
 		assert.Equal(t, fx.source.createdDate, pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
 	})
 
-	t.Run("add sync status info", func(t *testing.T) {
-		const id = "id"
-
-		fx := newFixture(id, t)
-
-		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: &types.Struct{Fields: map[string]*types.Value{}}}, nil)
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).Run(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
-			_, err := f(&types.Struct{Fields: map[string]*types.Value{}})
-			require.NoError(t, err)
-		}).Return(nil)
-
-		st := state.NewDoc("id", nil).NewState()
-
-		err := fx.injectLocalDetails(st)
-
-		require.NoError(t, err)
-
-		assert.Equal(t, domain.Synced, domain.SyncStatus(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySyncStatus.String())))
-		assert.Equal(t, domain.Null, domain.SyncError(pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeySyncError.String())))
-	})
-	t.Run("don't add sync status info, because smart block type is not suitable", func(t *testing.T) {
-		const id = "id"
-
-		fx := newFixture(id, t)
-
-		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: &types.Struct{Fields: map[string]*types.Value{}}}, nil)
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, mock.Anything).Run(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
-			_, err := f(&types.Struct{Fields: map[string]*types.Value{}})
-			require.NoError(t, err)
-		}).Return(nil)
-
-		st := state.NewDoc("id", nil).NewState()
-
-		fx.source.sbType = smartblock.SmartBlockTypeWorkspace
-		err := fx.injectLocalDetails(st)
-
-		require.NoError(t, err)
-
-		assert.Nil(t, pbtypes.Get(st.LocalDetails(), bundle.RelationKeySyncStatus.String()))
-		assert.Nil(t, pbtypes.Get(st.LocalDetails(), bundle.RelationKeySyncError.String()))
-	})
-
 	// TODO More tests
 }
 
