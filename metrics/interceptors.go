@@ -54,7 +54,14 @@ func LongMethodsInterceptor(ctx context.Context, req any, info *grpc.UnaryServer
 	return SharedLongMethodsInterceptor(ctx, req, extractMethodName(info.FullMethod), handler)
 }
 
+var excludedLongExecutionMethods = []string{
+	"DebugRunProfiler",
+}
+
 func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
+	if lo.Contains(excludedLongExecutionMethods, methodName) {
+		return actualCall(ctx, req)
+	}
 	doneCh := make(chan struct{})
 	start := time.Now()
 

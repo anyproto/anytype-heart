@@ -18,7 +18,18 @@ func Test_sendSpaceStatusUpdate(t *testing.T) {
 
 		// when
 		updater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Error, domain.StorageLimitExceed, domain.Files)).Return()
-		s.sendSpaceStatusUpdate(filesyncstatus.Limited, "spaceId")
+		s.sendSpaceStatusUpdate(filesyncstatus.Limited, "spaceId", 0)
+	})
+	t.Run("file limited, but over 1% of storage is available", func(t *testing.T) {
+		// given
+		updater := mock_spacesyncstatus.NewMockUpdater(t)
+		s := &service{
+			spaceSyncStatus: updater,
+		}
+
+		// when
+		updater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)).Return()
+		s.sendSpaceStatusUpdate(filesyncstatus.Limited, "spaceId", 0.9)
 	})
 	t.Run("file synced", func(t *testing.T) {
 		// given
@@ -29,7 +40,7 @@ func Test_sendSpaceStatusUpdate(t *testing.T) {
 
 		// when
 		updater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)).Return()
-		s.sendSpaceStatusUpdate(filesyncstatus.Synced, "spaceId")
+		s.sendSpaceStatusUpdate(filesyncstatus.Synced, "spaceId", 0)
 	})
 	t.Run("file queued", func(t *testing.T) {
 		// given
@@ -40,7 +51,7 @@ func Test_sendSpaceStatusUpdate(t *testing.T) {
 
 		// when
 		updater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)).Return()
-		s.sendSpaceStatusUpdate(filesyncstatus.Queued, "spaceId")
+		s.sendSpaceStatusUpdate(filesyncstatus.Queued, "spaceId", 0)
 	})
 	t.Run("file syncing", func(t *testing.T) {
 		// given
@@ -51,7 +62,7 @@ func Test_sendSpaceStatusUpdate(t *testing.T) {
 
 		// when
 		updater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)).Return()
-		s.sendSpaceStatusUpdate(filesyncstatus.Syncing, "spaceId")
+		s.sendSpaceStatusUpdate(filesyncstatus.Syncing, "spaceId", 0)
 	})
 	t.Run("file unknown status", func(t *testing.T) {
 		// given
@@ -62,7 +73,7 @@ func Test_sendSpaceStatusUpdate(t *testing.T) {
 
 		// when
 		updater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Error, domain.NetworkError, domain.Files)).Return()
-		s.sendSpaceStatusUpdate(filesyncstatus.Unknown, "spaceId")
+		s.sendSpaceStatusUpdate(filesyncstatus.Unknown, "spaceId", 0)
 	})
 
 }

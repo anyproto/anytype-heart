@@ -12,9 +12,7 @@ import (
 )
 
 func InjectsSyncDetails(details *types.Struct, status domain.ObjectSyncStatus, syncError domain.SyncError) *types.Struct {
-	if details == nil || details.Fields == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
+	details = pbtypes.EnsureStructInited(details)
 	if pbtypes.Get(details, bundle.RelationKeySyncStatus.String()) == nil {
 		details.Fields[bundle.RelationKeySyncStatus.String()] = pbtypes.Int64(int64(status))
 	}
