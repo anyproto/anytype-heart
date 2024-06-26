@@ -152,8 +152,15 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 			return
 		}
 
-		targetState.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String(), bundle.RelationKeyOrigin.String())
+		targetState.RemoveDetail(
+			bundle.RelationKeyTargetObjectType.String(),
+			bundle.RelationKeyTemplateIsBundled.String(),
+			bundle.RelationKeyOrigin.String(),
+			bundle.RelationKeyAddedDate.String(),
+		)
 		targetState.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
+		// original created timestamp is used to set creationDate for imported objects, not for template-based objects
+		targetState.SetOriginalCreatedTimestamp(0)
 		targetState.SetLocalDetails(nil)
 		return
 	})
@@ -306,6 +313,7 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 		template.WithDefaultFeaturedRelations,
 		template.WithFeaturedRelations,
 		template.WithAddedFeaturedRelation(bundle.RelationKeyTag),
+		template.WithDetail(bundle.RelationKeyTag, pbtypes.StringList(nil)),
 		template.WithRequiredRelations(),
 		template.WithTitle,
 	)

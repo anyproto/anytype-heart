@@ -56,6 +56,7 @@ type subscription interface {
 	onChange(ctx *opCtx)
 	getActiveRecords() (res []*types.Struct)
 	hasDep() bool
+	// getSession() string
 	close()
 }
 

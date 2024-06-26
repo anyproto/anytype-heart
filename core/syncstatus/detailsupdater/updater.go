@@ -172,7 +172,7 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if err != nil {
 		return err
 	}
-	spaceStatus := mapObjectSyncToSpaceSyncStatus(status)
+	spaceStatus := mapObjectSyncToSpaceSyncStatus(status, syncError)
 	defer u.sendSpaceStatusUpdate(err, syncStatusDetails, spaceStatus, syncError)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
 		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, error) {
@@ -196,14 +196,17 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	})
 }
 
-func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus) domain.SpaceSyncStatus {
+func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus, syncError domain.SyncError) domain.SpaceSyncStatus {
 	switch status {
 	case domain.ObjectSynced:
 		return domain.Synced
 	case domain.ObjectSyncing, domain.ObjectQueued:
 		return domain.Syncing
 	case domain.ObjectError:
-		return domain.Error
+		// don't send error to space if file were oversized
+		if syncError != domain.Oversized {
+			return domain.Error
+		}
 	}
 	return domain.Synced
 }
@@ -222,7 +225,7 @@ func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domai
 	case filesyncstatus.Queued:
 		return domain.ObjectQueued, domain.Null
 	case filesyncstatus.Limited:
-		syncError = domain.StorageLimitExceed
+		syncError = domain.Oversized
 		return domain.ObjectError, syncError
 	case filesyncstatus.Unknown:
 		syncError = domain.NetworkError

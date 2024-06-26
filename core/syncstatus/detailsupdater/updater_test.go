@@ -119,26 +119,6 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 	})
-	t.Run("update sync status and date - storage limit file status", func(t *testing.T) {
-		// given
-		fixture := newFixture(t)
-		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
-		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:               pbtypes.String("id"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
-			},
-		})
-		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
-
-		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Error, domain.StorageLimitExceed, domain.Objects))
-		err := fixture.updater.updateObjectDetails(&syncStatusDetails{[]string{"id"}, domain.ObjectSynced, domain.Null, "spaceId"}, "id")
-
-		// then
-		assert.Nil(t, err)
-	})
 	t.Run("update sync status and date - unknown file status", func(t *testing.T) {
 		// given
 		fixture := newFixture(t)
