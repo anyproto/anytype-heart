@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
@@ -14,12 +15,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 var ctx = context.Background()
@@ -49,6 +54,10 @@ func newFixture(t *testing.T, limit int) *fixture {
 
 	dataStoreProvider, err := datastore.NewInMemory()
 	require.NoError(t, err)
+	ctrl := gomock.NewController(t)
+	wallet := mock_wallet.NewMockWallet(t)
+	wallet.EXPECT().Name().Return(wallet2.CName)
+	wallet.EXPECT().RepoPath().Return("repo/path")
 
 	fx.a.Register(fx.fileService).
 		Register(localFileStorage).
@@ -56,7 +65,11 @@ func newFixture(t *testing.T, limit int) *fixture {
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.fileSync).
 		Register(fileStore).
-		Register(sender)
+		Register(sender).
+		Register(testutil.PrepareMock(ctx, fx.a, mock_accountservice.NewMockService(ctrl))).
+		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
+		Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }

@@ -32,6 +32,7 @@ const (
 	StorageLimitExceed  SyncError = 1
 	IncompatibleVersion SyncError = 2
 	NetworkError        SyncError = 3
+	Oversized           SyncError = 4
 )
 
 type SpaceSync struct {
