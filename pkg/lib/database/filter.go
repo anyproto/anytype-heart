@@ -265,7 +265,7 @@ func iterateNestedFilters[F ~[]Filter](composedFilter F, fn func(nestedFilter Fi
 }
 
 type FilterNot struct {
-	Filter
+	Filter Filter
 }
 
 func (n FilterNot) FilterObject(g *types.Struct) bool {
@@ -273,6 +273,10 @@ func (n FilterNot) FilterObject(g *types.Struct) bool {
 		return false
 	}
 	return !n.Filter.FilterObject(g)
+}
+
+func (f FilterNot) Compile() query.Filter {
+	return query.Not{Filter: f.Filter.Compile()}
 }
 
 func (n FilterNot) String() string {
@@ -664,8 +668,14 @@ func (i *FilterNestedIn) FilterObject(g *types.Struct) bool {
 }
 
 func (i *FilterNestedIn) Compile() query.Filter {
-	// TODO !!!
-	return nil
+	conds := make([]query.Filter, 0, len(i.IDs))
+	for _, id := range i.IDs {
+		conds = append(conds, query.NewComp(query.CompOpEq, id))
+	}
+	return query.Key{
+		Path:   []string{i.Key},
+		Filter: query.Or(conds),
+	}
 }
 
 func (i *FilterNestedIn) String() string {

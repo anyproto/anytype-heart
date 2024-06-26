@@ -15,6 +15,7 @@ import (
 
 type Order interface {
 	Compare(a, b *types.Struct) int
+	Compile() []string
 	String() string
 }
 
@@ -33,6 +34,14 @@ func (so SetOrder) Compare(a, b *types.Struct) int {
 		}
 	}
 	return 0
+}
+
+func (so SetOrder) Compile() []string {
+	var ss []string
+	for _, o := range so {
+		ss = append(ss, o.Compile()...)
+	}
+	return ss
 }
 
 func (so SetOrder) String() (s string) {
@@ -73,6 +82,32 @@ func (ko *KeyOrder) Compare(a, b *types.Struct) int {
 	}
 	return comp
 }
+
+func (ko *KeyOrder) Compile() []string {
+	sortString := ko.Key
+	if ko.Type == model.BlockContentDataviewSort_Desc {
+		sortString = "-" + sortString
+	}
+	return []string{sortString}
+}
+
+// func (ko *KeyOrder) sort() {
+// 	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {
+// 		if ko.Key == bundle.RelationKeyName.String() && getLayout(getter) == model.ObjectType_note {
+// 			// custom: order by (name OR snippet)
+// 		} else if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
+// 			// custom: cut out time
+// 		} else if ko.RelationFormat == model.RelationFormat_tag || ko.RelationFormat == model.RelationFormat_status {
+// 			// custom: order by tag and status Name
+// 		} else {
+// 			// compare with collate collate.New(language.Und, collate.IgnoreCase)
+// 		}
+// 	} else if ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+// 		// basic comparison with collate, but only if ORDER BY always put nulls first
+// 	} else {
+// 		// custom
+// 	}
+// }
 
 func (ko *KeyOrder) tryAdjustEmptyPositions(av *types.Value, bv *types.Value, comp int) int {
 	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {
@@ -219,6 +254,11 @@ type CustomOrder struct {
 	Key          string
 	NeedOrderMap map[string]int
 	KeyOrd       KeyOrder
+}
+
+func (co CustomOrder) Compile() []string {
+	// TODO implement
+	return nil
 }
 
 func (co CustomOrder) Compare(a, b *types.Struct) int {

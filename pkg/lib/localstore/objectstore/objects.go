@@ -9,6 +9,7 @@ import (
 	"sync"
 	"unsafe"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/dgraph-io/badger/v4"
@@ -16,6 +17,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	lru "github.com/hashicorp/golang-lru/v2"
 	ds "github.com/ipfs/go-datastore"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -37,7 +39,6 @@ const CName = "objectstore"
 var (
 	// ObjectInfo is stored in db key pattern:
 	pagesPrefix         = "pages"
-	pagesDetailsBase    = ds.NewKey("/" + pagesPrefix + "/details")
 	pendingDetailsBase  = ds.NewKey("/" + pagesPrefix + "/pending")
 	pagesActiveViewBase = ds.NewKey("/" + pagesPrefix + "/activeView")
 
@@ -55,50 +56,10 @@ var (
 	virtualSpaces = ds.NewKey("/" + spacePrefix + "/virtual")
 
 	ErrObjectNotFound = errors.New("object not found")
+	ErrNotAnObject    = fmt.Errorf("not an object")
 
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
-
-func New() ObjectStore {
-	return &dsObjectStore{}
-}
-
-type SourceDetailsFromID interface {
-	DetailsFromIdBasedSource(id string) (*types.Struct, error)
-}
-
-func (s *dsObjectStore) Init(a *app.App) (err error) {
-	src := a.Component("source")
-	if src != nil {
-		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)
-	}
-	fts := a.Component(ftsearch.CName)
-	if fts == nil {
-		log.Warnf("init objectstore without fulltext")
-	} else {
-		s.fts = fts.(ftsearch.FTSearch)
-	}
-	datastoreService := a.MustComponent(datastore.CName).(datastore.Datastore)
-	s.db, err = datastoreService.LocalStorage()
-	if err != nil {
-		return fmt.Errorf("get badger: %w", err)
-	}
-
-	return s.initCache()
-}
-
-func (s *dsObjectStore) initCache() error {
-	cache, err := lru.New[string, *model.ObjectDetails](50000)
-	if err != nil {
-		return fmt.Errorf("init cache: %w", err)
-	}
-	s.cache = cache
-	return nil
-}
-
-func (s *dsObjectStore) Name() (name string) {
-	return CName
-}
 
 // nolint: interfacebloat
 type ObjectStore interface {
@@ -186,10 +147,11 @@ type VirtualSpacesStore interface {
 	DeleteVirtualSpace(spaceID string) error
 }
 
-var ErrNotAnObject = fmt.Errorf("not an object")
-
 type dsObjectStore struct {
 	sourceService SourceDetailsFromID
+	objects       anystore.Collection
+
+	arenaPool *fastjson.ArenaPool
 
 	cache *lru.Cache[string, *model.ObjectDetails]
 	db    *badger.DB
@@ -202,7 +164,62 @@ type dsObjectStore struct {
 	onLinksUpdateCallback func(info LinksUpdateInfo)
 }
 
-func (s *dsObjectStore) Run(context.Context) (err error) {
+func New() ObjectStore {
+	return &dsObjectStore{}
+}
+
+type SourceDetailsFromID interface {
+	DetailsFromIdBasedSource(id string) (*types.Struct, error)
+}
+
+func (s *dsObjectStore) Init(a *app.App) (err error) {
+	src := a.Component("source")
+	if src != nil {
+		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)
+	}
+	fts := a.Component(ftsearch.CName)
+	if fts == nil {
+		log.Warnf("init objectstore without fulltext")
+	} else {
+		s.fts = fts.(ftsearch.FTSearch)
+	}
+	datastoreService := a.MustComponent(datastore.CName).(datastore.Datastore)
+	s.db, err = datastoreService.LocalStorage()
+	if err != nil {
+		return fmt.Errorf("get badger: %w", err)
+	}
+	s.arenaPool = &fastjson.ArenaPool{}
+
+	return s.initCache()
+}
+
+func (s *dsObjectStore) initCache() error {
+	cache, err := lru.New[string, *model.ObjectDetails](50000)
+	if err != nil {
+		return fmt.Errorf("init cache: %w", err)
+	}
+	s.cache = cache
+	return nil
+}
+
+func (s *dsObjectStore) Name() (name string) {
+	return CName
+}
+
+func (s *dsObjectStore) Run(ctx context.Context) (err error) {
+	return s.runDatabase(ctx, "objects.db")
+}
+
+func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
+	store, err := anystore.Open(ctx, path, nil)
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	objects, err := store.Collection(ctx, "objects")
+	if err != nil {
+		return fmt.Errorf("open objects collection: %w", err)
+	}
+	s.objects = objects
 	return nil
 }
 
@@ -244,25 +261,17 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 // GetDetails returns empty struct without errors in case details are not found
 // todo: get rid of this or change the name method!
 func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
-	var details *model.ObjectDetails
-	err := s.db.View(func(txn *badger.Txn) error {
-		it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
-		if err != nil {
-			return fmt.Errorf("get details: %w", err)
-		}
-		details, err = s.extractDetailsFromItem(it)
-		return err
-	})
-	if badgerhelper.IsNotFound(err) {
-		return &model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil
-	}
-
+	doc, err := s.objects.FindId(context.Background(), id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	return details, nil
+	details, err := jsonToProto(doc.Value())
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal details: %w", err)
+	}
+	return &model.ObjectDetails{
+		Details: details,
+	}, nil
 }
 
 func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {

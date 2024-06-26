@@ -1,6 +1,8 @@
 package objectstore
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -9,6 +11,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -34,14 +37,12 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 
 // getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
 func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
-	return s.queryRaw(func(g *types.Struct) bool {
-		listValue := pbtypes.StringList([]string{objectId})
-		optionFilter := database.FilterAllIn{relationKey, listValue.GetListValue()}
-		if !optionFilter.FilterObject(g) {
-			return false
-		}
-		return params.FilterObj.FilterObject(g)
-	}, params.Order, limit, 0)
+	listValue := pbtypes.StringList([]string{objectId})
+	f := database.FiltersAnd{
+		database.FilterAllIn{Key: relationKey, Value: listValue.GetListValue()},
+		params.FilterObj,
+	}
+	return s.queryAnyStore(context.Background(), f, params.Order, uint(limit), 0)
 }
 
 func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
@@ -90,59 +91,106 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 	return injectedResults
 }
 
-func (s *dsObjectStore) queryRaw(filter func(g *types.Struct) bool, order database.Order, limit int, offset int) ([]database.Record, error) {
-	var (
-		records []database.Record
-	)
-
-	err := s.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = false
-		opts.Prefix = pagesDetailsBase.Bytes()
-		iterator := txn.NewIterator(opts)
-		defer iterator.Close()
-
-		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
-			it := iterator.Item()
-			details, err := s.extractDetailsFromItem(it)
-			if err != nil {
-				return err
-			}
-			rec := database.Record{Details: details.Details}
-
-			if filter == nil || filter(details.Details) {
-				records = append(records, rec)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if offset >= len(records) {
-		return nil, nil
-	}
+func (s *dsObjectStore) queryAnyStore(ctx context.Context, filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
+	compiled := filter.Compile()
+	var sortsAny []any
 	if order != nil {
-		sort.Slice(records, func(i, j int) bool {
-			return order.Compare(records[i].Details, records[j].Details) == -1
-		})
-	}
-	if limit > 0 {
-		upperBound := offset + limit
-		if upperBound > len(records) {
-			upperBound = len(records)
+		sorts := order.Compile()
+		sortsAny = make([]any, 0, len(sorts))
+		for _, s := range sorts {
+			sortsAny = append(sortsAny, s)
 		}
-		return records[offset:upperBound], nil
 	}
-	return records[offset:], nil
+	iter, err := s.objects.Find(compiled).Sort(sortsAny...).Offset(offset).Limit(limit).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find: %w", err)
+	}
+	var records []database.Record
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+		}
+		details, err := jsonToProto(doc.Value())
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("json to proto: %w", err), iter.Close())
+		}
+		records = append(records, database.Record{Details: details})
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
+	}
+	err = iter.Close()
+	if err != nil {
+		return nil, fmt.Errorf("close iterator: %w", err)
+	}
+	return records, nil
+}
+
+func jsonToProto(v *fastjson.Value) (*types.Struct, error) {
+	obj, err := v.Object()
+	if err != nil {
+		return nil, fmt.Errorf("is object: %w", err)
+	}
+	res := &types.Struct{
+		Fields: make(map[string]*types.Value, obj.Len()),
+	}
+	var visitErr error
+	obj.Visit(func(k []byte, v *fastjson.Value) {
+		if visitErr != nil {
+			return
+		}
+		// key is copied
+		val, err := jsonValueToProto(v)
+		if err != nil {
+			visitErr = err
+		}
+		res.Fields[string(k)] = val
+	})
+	return res, visitErr
+}
+
+func jsonValueToProto(val *fastjson.Value) (*types.Value, error) {
+	switch val.Type() {
+	case fastjson.TypeNumber:
+		v, err := val.Float64()
+		if err != nil {
+			return nil, fmt.Errorf("float64: %w", err)
+		}
+		return pbtypes.Float64(v), nil
+	case fastjson.TypeString:
+		v, err := val.StringBytes()
+		if err != nil {
+			return nil, fmt.Errorf("string: %w", err)
+		}
+		return pbtypes.String(string(v)), nil
+	case fastjson.TypeTrue:
+		return pbtypes.Bool(true), nil
+	case fastjson.TypeFalse:
+		return pbtypes.Bool(false), nil
+	case fastjson.TypeArray:
+		vals, err := val.Array()
+		if err != nil {
+			return nil, fmt.Errorf("array: %w", err)
+		}
+		lst := make([]*types.Value, 0, len(vals))
+		for i, v := range vals {
+			val, err := jsonValueToProto(v)
+			if err != nil {
+				return nil, fmt.Errorf("array item %d: %w", i, err)
+			}
+			lst = append(lst, val)
+		}
+	}
+	return pbtypes.Null(), nil
 }
 
 func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
-	return s.queryRaw(filters.FilterObj.FilterObject, filters.Order, limit, offset)
+	return s.queryAnyStore(context.Background(), filters.FilterObj, filters.Order, uint(limit), uint(offset))
 }
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int) ([]database.Record, error) {

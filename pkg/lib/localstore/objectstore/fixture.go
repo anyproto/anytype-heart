@@ -11,6 +11,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -27,7 +28,7 @@ type StoreFixture struct {
 // nolint: unused
 const spaceName = "space1"
 
-func NewStoreFixture(t *testing.T) *StoreFixture {
+func NewStoreFixture(t testing.TB) *StoreFixture {
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
@@ -53,9 +54,14 @@ func NewStoreFixture(t *testing.T) *StoreFixture {
 		fts:           fullText,
 		sourceService: &detailsFromId{},
 		db:            db,
+		arenaPool:     &fastjson.ArenaPool{},
 	}
 	err = ds.initCache()
 	require.NoError(t, err)
+
+	err = ds.runDatabase(context.Background(), filepath.Join(t.TempDir(), "objects"))
+	require.NoError(t, err)
+
 	return &StoreFixture{
 		dsObjectStore: ds,
 	}
@@ -107,7 +113,7 @@ func makeDetails(fields TestObject) *types.Struct {
 	return &types.Struct{Fields: f}
 }
 
-func (fx *StoreFixture) AddObjects(t *testing.T, objects []TestObject) {
+func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].GetStringValue()
 		require.NotEmpty(t, id)

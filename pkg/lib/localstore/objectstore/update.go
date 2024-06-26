@@ -1,11 +1,13 @@
 package objectstore
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -22,33 +24,49 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if details.Fields == nil {
 		return fmt.Errorf("details fields are nil")
 	}
-	newDetails := &model.ObjectDetails{
-		Details: details,
-	}
+	// Ensure ID is set
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	s.sendUpdatesToSubscriptions(id, details)
 
-	key := pagesDetailsBase.ChildString(id).Bytes()
-	txErr := s.updateTxn(func(txn *badger.Txn) error {
-		oldDetails, err := s.extractDetailsByKey(txn, key)
-		if err != nil && !badgerhelper.IsNotFound(err) {
-			return fmt.Errorf("extract details: %w", err)
-		}
-		if oldDetails != nil && oldDetails.Details.Equal(newDetails.Details) {
-			return ErrDetailsNotChanged
-		}
-		// Ensure ID is set
-		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-		s.sendUpdatesToSubscriptions(id, details)
-		val, err := proto.Marshal(newDetails)
-		if err != nil {
-			return fmt.Errorf("marshal details: %w", err)
-		}
-		return txn.Set(key, val)
-	})
-	if txErr != nil {
-		return txErr
+	arena := s.arenaPool.Get()
+	jsonVal := protoToJson(arena, details)
+	_, err := s.objects.UpsertOne(context.Background(), jsonVal)
+	if err != nil {
+		return fmt.Errorf("upsert details: %w", err)
 	}
-	s.cache.Add(string(key), newDetails)
+	s.arenaPool.Put(arena)
 	return nil
+}
+
+func protoToJson(arena *fastjson.Arena, details *types.Struct) *fastjson.Value {
+	obj := arena.NewObject()
+	for k, v := range details.Fields {
+		obj.Set(k, protoValueToJson(arena, v))
+	}
+	return obj
+}
+
+func protoValueToJson(arena *fastjson.Arena, v *types.Value) *fastjson.Value {
+	switch v.Kind.(type) {
+	case *types.Value_StringValue:
+		return arena.NewString(v.GetStringValue())
+	case *types.Value_NumberValue:
+		return arena.NewNumberFloat64(v.GetNumberValue())
+	case *types.Value_BoolValue:
+		if v.GetBoolValue() {
+			return arena.NewTrue()
+		} else {
+			return arena.NewFalse()
+		}
+	case *types.Value_ListValue:
+		lst := arena.NewArray()
+		for i, v := range v.GetListValue().Values {
+			lst.SetArrayItem(i, protoValueToJson(arena, v))
+		}
+		return lst
+	default:
+		return arena.NewNull()
+	}
 }
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
