@@ -595,7 +595,7 @@ func (_c *MockFileSync_OnDelete_Call) RunAndReturn(run func(filesync.DeleteCallb
 }
 
 // OnLimited provides a mock function with given fields: _a0
-func (_m *MockFileSync) OnLimited(_a0 filesync.StatusCallback) {
+func (_m *MockFileSync) OnLimited(_a0 filesync.LimitCallback) {
 	_m.Called(_a0)
 }
 
@@ -605,14 +605,14 @@ type MockFileSync_OnLimited_Call struct {
 }
 
 // OnLimited is a helper method to define mock.On call
-//   - _a0 filesync.StatusCallback
+//   - _a0 filesync.LimitCallback
 func (_e *MockFileSync_Expecter) OnLimited(_a0 interface{}) *MockFileSync_OnLimited_Call {
 	return &MockFileSync_OnLimited_Call{Call: _e.mock.On("OnLimited", _a0)}
 }
 
-func (_c *MockFileSync_OnLimited_Call) Run(run func(_a0 filesync.StatusCallback)) *MockFileSync_OnLimited_Call {
+func (_c *MockFileSync_OnLimited_Call) Run(run func(_a0 filesync.LimitCallback)) *MockFileSync_OnLimited_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(filesync.StatusCallback))
+		run(args[0].(filesync.LimitCallback))
 	})
 	return _c
 }
@@ -622,7 +622,7 @@ func (_c *MockFileSync_OnLimited_Call) Return() *MockFileSync_OnLimited_Call {
 	return _c
 }
 
-func (_c *MockFileSync_OnLimited_Call) RunAndReturn(run func(filesync.StatusCallback)) *MockFileSync_OnLimited_Call {
+func (_c *MockFileSync_OnLimited_Call) RunAndReturn(run func(filesync.LimitCallback)) *MockFileSync_OnLimited_Call {
 	_c.Call.Return(run)
 	return _c
 }

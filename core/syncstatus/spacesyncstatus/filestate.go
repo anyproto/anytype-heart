@@ -34,49 +34,35 @@ func NewFileState(store objectstore.ObjectStore) *FileState {
 func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 	f.Lock()
 	defer f.Unlock()
-	records, err := f.store.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(filesyncstatus.Syncing), int(filesyncstatus.Queued)),
+	switch status.Status {
+	case domain.Error, domain.Offline, domain.Synced:
+		f.fileSyncCountBySpace[status.SpaceId] = 0
+	case domain.Syncing:
+		records, err := f.store.Query(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyFileBackupStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.IntList(int(filesyncstatus.Syncing), int(filesyncstatus.Queued)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(status.SpaceId),
+				},
 			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(status.SpaceId),
-			},
-		},
-	})
-	if err != nil {
-		log.Errorf("failed to query file status: %s", err)
+		})
+		if err != nil {
+			log.Errorf("failed to query file status: %s", err)
+		}
+		f.fileSyncCountBySpace[status.SpaceId] = len(records)
 	}
-	f.fileSyncCountBySpace[status.SpaceId] = len(records)
 }
 
-func (f *FileState) SetSyncStatusAndErr(status *domain.SpaceSync) {
+func (f *FileState) SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncErr domain.SyncError, spaceId string) {
 	f.Lock()
 	defer f.Unlock()
-	switch status.Status {
-	case domain.Synced:
-		f.fileSyncStatusBySpace[status.SpaceId] = domain.Synced
-		f.setError(status.SpaceId, domain.Null)
-		if number := f.fileSyncCountBySpace[status.SpaceId]; number > 0 {
-			f.fileSyncStatusBySpace[status.SpaceId] = domain.Syncing
-			return
-		}
-		if fileLimitedCount := f.getFileLimitedCount(status.SpaceId); fileLimitedCount > 0 {
-			f.fileSyncStatusBySpace[status.SpaceId] = domain.Error
-			f.setError(status.SpaceId, domain.StorageLimitExceed)
-			return
-		}
-	case domain.Error, domain.Syncing, domain.Offline:
-		f.fileSyncStatusBySpace[status.SpaceId] = status.Status
-		f.setError(status.SpaceId, status.SyncError)
-	}
-}
-
-func (f *FileState) setError(spaceId string, syncErr domain.SyncError) {
+	f.fileSyncStatusBySpace[spaceId] = status
 	f.filesErrorBySpace[spaceId] = syncErr
 }
 
@@ -92,29 +78,15 @@ func (f *FileState) GetSyncObjectCount(spaceId string) int {
 	return f.fileSyncCountBySpace[spaceId]
 }
 
+func (f *FileState) ResetSpaceErrorStatus(spaceId string, syncError domain.SyncError) {
+	// show StorageLimitExceed only once
+	if syncError == domain.StorageLimitExceed {
+		f.SetSyncStatusAndErr(domain.Synced, domain.Null, spaceId)
+	}
+}
+
 func (f *FileState) GetSyncErr(spaceId string) domain.SyncError {
 	f.Lock()
 	defer f.Unlock()
 	return f.filesErrorBySpace[spaceId]
-}
-
-func (f *FileState) getFileLimitedCount(spaceId string) int {
-	records, err := f.store.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(filesyncstatus.Limited)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
-	if err != nil {
-		log.Errorf("failed to query file status: %s", err)
-	}
-	return len(records)
 }
