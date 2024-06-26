@@ -91,7 +91,6 @@ type fileSync struct {
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
 	cfg               *config.Config
-	isRunning         bool
 }
 
 func New() FileSync {
@@ -172,7 +171,6 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 	s.deletionQueue.Run()
 	s.retryDeletionQueue.Run()
 
-	s.isRunning = true
 	s.loopCtx, s.loopCancel = context.WithCancel(context.Background())
 	go s.runNodeUsageUpdater()
 	return
