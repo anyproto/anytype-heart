@@ -2,6 +2,7 @@ package basic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
@@ -62,7 +63,7 @@ func (bs *basic) ExtractBlocksToObjects(
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
 
-		linkID, err := bs.changeToBlockWithLink(newState, rootBlock, objectID)
+		linkID, err := bs.changeToBlockWithLink(newState, rootBlock, objectID, req.Block)
 		if err != nil {
 			return nil, fmt.Errorf("create link to object %s: %w", objectID, err)
 		}
@@ -117,17 +118,27 @@ func insertBlocksToState(
 	objState.Set(simple.New(rootB))
 }
 
-func (bs *basic) changeToBlockWithLink(newState *state.State, blockToChange simple.Block, objectID string) (string, error) {
-	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
-		TargetId: blockToChange.Model().Id,
-		Block: &model.Block{
+func (bs *basic) changeToBlockWithLink(newState *state.State, blockToChange simple.Block, objectID string, block *model.Block) (string, error) {
+	if block == nil {
+		block = &model.Block{
 			Content: &model.BlockContentOfLink{
 				Link: &model.BlockContentLink{
 					TargetBlockId: objectID,
 					Style:         model.BlockContentLink_Page,
 				},
 			},
-		},
+		}
+	} else {
+		link := block.GetLink()
+		if link == nil {
+			return "", errors.New("block content is not a link")
+		} else {
+			link.TargetBlockId = objectID
+		}
+	}
+	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
+		TargetId: blockToChange.Model().Id,
+		Block:    block,
 		Position: model.Block_Replace,
 	})
 }

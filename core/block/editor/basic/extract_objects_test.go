@@ -323,6 +323,39 @@ func TestExtractObjects(t *testing.T) {
 
 		assert.Contains(t, fields, bundle.RelationKeyName.String())
 	})
+	t.Run("add custom link block", func(t *testing.T) {
+		fixture := newFixture(t)
+		defer fixture.cleanUp()
+		creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
+		sb := makeTestObject()
+		creator.Add(sb)
+
+		ts := testTemplateService{templates: map[string]*state.State{}}
+		tmpl := makeTemplateState()
+		ts.AddTemplate("template", tmpl)
+
+		req := pb.RpcBlockListConvertToObjectsRequest{
+			ContextId:           "test",
+			BlockIds:            []string{"1"},
+			ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
+			Block: &model.Block{Id: "newId", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					CardStyle: model.BlockContentLink_Card,
+				},
+			}},
+		}
+		ctx := session.NewContext()
+		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, creator, ts, req)
+		assert.NoError(t, err)
+		var block *model.Block
+		for _, block = range sb.Blocks() {
+			if block.GetLink() != nil {
+				break
+			}
+		}
+		assert.NotNil(t, block)
+		assert.Equal(t, block.GetLink().GetCardStyle(), model.BlockContentLink_Card)
+	})
 }
 
 type fixture struct {
