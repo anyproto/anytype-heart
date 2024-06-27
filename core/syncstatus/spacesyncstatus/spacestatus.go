@@ -32,10 +32,11 @@ type SpaceIdGetter interface {
 
 type State interface {
 	SetObjectsNumber(status *domain.SpaceSync)
-	SetSyncStatusAndErr(status *domain.SpaceSync)
+	SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncError domain.SyncError, spaceId string)
 	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
 	GetSyncErr(spaceId string) domain.SyncError
+	ResetSpaceErrorStatus(spaceId string, syncError domain.SyncError)
 }
 
 type NetworkConfig interface {
@@ -150,30 +151,30 @@ func (s *spaceSyncStatus) processEvents() {
 	}
 }
 
-func (s *spaceSyncStatus) updateSpaceSyncStatus(recievedStatus *domain.SpaceSync) {
-	if s.isStatusNotChanged(recievedStatus) {
+func (s *spaceSyncStatus) updateSpaceSyncStatus(receivedStatus *domain.SpaceSync) {
+	if s.isStatusNotChanged(receivedStatus) {
 		return
 	}
-	state := s.getCurrentState(recievedStatus)
-	prevObjectNumber := s.getObjectNumber(recievedStatus.SpaceId)
-	state.SetObjectsNumber(recievedStatus)
-	newObjectNumber := s.getObjectNumber(recievedStatus.SpaceId)
-	state.SetSyncStatusAndErr(recievedStatus)
+	state := s.getCurrentState(receivedStatus)
+	prevObjectNumber := s.getObjectNumber(receivedStatus.SpaceId)
+	state.SetObjectsNumber(receivedStatus)
+	newObjectNumber := s.getObjectNumber(receivedStatus.SpaceId)
+	state.SetSyncStatusAndErr(receivedStatus.Status, receivedStatus.SyncError, receivedStatus.SpaceId)
 
-	spaceStatus := s.getSpaceSyncStatus(recievedStatus.SpaceId)
+	spaceStatus := s.getSpaceSyncStatus(receivedStatus.SpaceId)
 
 	// send synced event only if files and objects are all synced
 	if !s.needToSendEvent(spaceStatus, prevObjectNumber, newObjectNumber) {
 		return
 	}
-
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(recievedStatus.SpaceId),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(receivedStatus.SpaceId),
 			},
 		}},
 	})
+	state.ResetSpaceErrorStatus(receivedStatus.SpaceId, receivedStatus.SyncError)
 }
 
 func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync) bool {
