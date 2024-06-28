@@ -25683,9 +25683,9 @@ Precondition: user A and user B opened the same block
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Connected | 0 |  |
+| NotConnected | 0 |  |
 | NotPossible | 1 |  |
-| NotConnected | 2 |  |
+| Connected | 2 |  |
 
 
 
