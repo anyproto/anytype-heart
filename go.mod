@@ -85,13 +85,13 @@ require (
 	github.com/valyala/fastjson v1.6.4
 	github.com/vektra/mockery/v2 v2.42.2
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/yuin/goldmark v1.7.1
+	github.com/yuin/goldmark v1.7.4
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.4.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
-	golang.org/x/image v0.17.0
+	golang.org/x/image v0.18.0
 	golang.org/x/mobile v0.0.0-20240404231514-09dbf07665ed
 	golang.org/x/net v0.26.0
 	golang.org/x/oauth2 v0.21.0
