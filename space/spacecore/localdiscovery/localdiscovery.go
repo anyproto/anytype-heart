@@ -72,7 +72,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
+	l.periodicCheck = periodicsync.NewPeriodicSync(5, 0, l.checkAddrs, log)
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	l.eventSender = app.MustComponent[event.Sender](a)
 	return
@@ -183,15 +183,24 @@ func (l *localDiscovery) checkAddrs(ctx context.Context) (err error) {
 	return
 }
 
+func parseAddr(addr gonet.Addr) (ipv4 string, ipv6 string) {
+	ip := strings.Split(addr.String(), "/")[0]
+	if gonet.ParseIP(ip).To4() != nil {
+		ipv4 = ip
+	} else {
+		ipv6 = ip
+	}
+	return
+}
 func (l *localDiscovery) startServer() (err error) {
 	l.ipv4 = l.ipv4[:0]
 	l.ipv6 = l.ipv6[:0]
 	for _, addr := range l.interfacesAddrs.Addrs {
-		ip := strings.Split(addr.String(), "/")[0]
-		if gonet.ParseIP(ip).To4() != nil {
-			l.ipv4 = append(l.ipv4, ip)
-		} else {
-			l.ipv6 = append(l.ipv6, ip)
+		ipv4, ipv6 := parseAddr(addr)
+		if ipv4 != "" {
+			l.ipv4 = append(l.ipv4, ipv4)
+		} else if ipv6 != "" {
+			l.ipv6 = append(l.ipv6, ipv6)
 		}
 	}
 	log.Debug("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
@@ -261,15 +270,11 @@ func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEn
 }
 
 func (l *localDiscovery) notifyPeerToPeerStatus(newAddrs addrs.InterfacesAddrs) {
-	if l.notifyP2PNotPossible(newAddrs) {
+	if isP2PPossible(newAddrs) {
 		l.executeHook(PeerToPeerImpossible)
 	} else {
 		l.executeHook(PeerToPeerPossible)
 	}
-}
-
-func (l *localDiscovery) notifyP2PNotPossible(newAddrs addrs.InterfacesAddrs) bool {
-	return len(newAddrs.Interfaces) == 0 || addrs.IsLoopBack(newAddrs.Interfaces)
 }
 
 func (l *localDiscovery) executeHook(hook Hook) {
