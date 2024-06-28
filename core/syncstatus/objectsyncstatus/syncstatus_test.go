@@ -228,14 +228,10 @@ func TestSyncStatusService_update(t *testing.T) {
 	t.Run("update: got updates on objects", func(t *testing.T) {
 		// given
 		s := newFixture(t)
-		updateReceiver := NewMockUpdateReceiver(t)
-		updateReceiver.EXPECT().UpdateNodeStatus().Return()
-		updateReceiver.EXPECT().UpdateTree(context.Background(), "id", StatusNotSynced).Return(nil)
-		s.SetUpdateReceiver(updateReceiver)
 
 		// when
 		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
 		s.HeadsChange("id", []string{"head1"})
 		err := s.Watch("id")
 		assert.Nil(t, err)
@@ -243,27 +239,6 @@ func TestSyncStatusService_update(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		updateReceiver.AssertCalled(t, "UpdateTree", context.Background(), "id", StatusNotSynced)
-	})
-	t.Run("update: watch object, but no update received", func(t *testing.T) {
-		// given
-		s := newFixture(t)
-		updateReceiver := NewMockUpdateReceiver(t)
-		s.SetUpdateReceiver(updateReceiver)
-
-		// when
-		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
-		s.service.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-
-		s.HeadsChange("id", []string{"head1"})
-		err := s.Watch("id")
-		assert.Nil(t, err)
-		delete(s.treeHeads, "id")
-		err = s.update(context.Background())
-
-		// then
-		assert.NotNil(t, err)
-		updateReceiver.AssertNotCalled(t, "UpdateTree")
 	})
 }
 

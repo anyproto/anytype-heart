@@ -35,9 +35,9 @@ func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 	f.Lock()
 	defer f.Unlock()
 	switch status.Status {
-	case domain.Error, domain.Offline, domain.Synced:
+	case domain.Error, domain.Offline:
 		f.fileSyncCountBySpace[status.SpaceId] = 0
-	case domain.Syncing:
+	default:
 		records, err := f.store.Query(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -62,8 +62,18 @@ func (f *FileState) SetObjectsNumber(status *domain.SpaceSync) {
 func (f *FileState) SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncErr domain.SyncError, spaceId string) {
 	f.Lock()
 	defer f.Unlock()
-	f.fileSyncStatusBySpace[spaceId] = status
-	f.filesErrorBySpace[spaceId] = syncErr
+	switch status {
+	case domain.Synced:
+		f.fileSyncStatusBySpace[spaceId] = domain.Synced
+		f.filesErrorBySpace[spaceId] = syncErr
+		if number := f.fileSyncCountBySpace[spaceId]; number > 0 {
+			f.fileSyncStatusBySpace[spaceId] = domain.Syncing
+			return
+		}
+	case domain.Error, domain.Syncing, domain.Offline:
+		f.fileSyncStatusBySpace[spaceId] = status
+		f.filesErrorBySpace[spaceId] = syncErr
+	}
 }
 
 func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {

@@ -30,7 +30,7 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 		return
 	}
 	if mw.GetApp() != nil {
-		notifier := app.MustComponent[session.NewSessionNotifier](mw.GetApp())
+		notifier := app.MustComponent[session.Notifier](mw.GetApp())
 		notifier.Notify(session.NewContext(session.WithSession(req.Token)))
 	}
 	var stopChan = make(chan os.Signal, 2)
