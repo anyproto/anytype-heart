@@ -736,6 +736,60 @@ func TestMakeFilters(t *testing.T) {
 		assert.NotNil(t, filters.(FiltersAnd)[0].(FilterEq))
 		assert.NotNil(t, filters.(FiltersAnd)[1].(FiltersOr))
 	})
+	t.Run("linear and nested filters", func(t *testing.T) {
+		// given
+		mockStore := NewMockObjectStore(t)
+		filter := []*model.BlockContentDataviewFilter{
+			{
+				Operator:    model.BlockContentDataviewFilter_And,
+				RelationKey: "key1",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_And,
+				RelationKey: "key1",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_And,
+				RelationKey: "key1",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_And,
+				RelationKey: "key1",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_And,
+				RelationKey: "key1",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_And,
+				RelationKey: "key1",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_And,
+				RelationKey: "key1",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+		}
+
+		// when
+		_, err := MakeFilters(filter, mockStore)
+
+		// then
+		assert.Nil(t, err)
+	})
 	t.Run("transform quick options", func(t *testing.T) {
 		// given
 		mockStore := NewMockObjectStore(t)
