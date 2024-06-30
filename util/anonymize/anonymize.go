@@ -103,6 +103,11 @@ func Event(e *pb.EventMessage) (res *pb.EventMessage) {
 	case *pb.EventMessageValueOfBlockSetText:
 		if v.BlockSetText.Text != nil {
 			v.BlockSetText.Text.Value = Text(v.BlockSetText.Text.Value)
+			if v.BlockSetText.Marks != nil && v.BlockSetText.Marks.Value != nil {
+				for i, mark := range v.BlockSetText.Marks.Value.Marks {
+					v.BlockSetText.Marks.Value.Marks[i].Param = Text(mark.Param)
+				}
+			}
 		}
 	case *pb.EventMessageValueOfBlockSetFile:
 		if v.BlockSetFile.Name != nil {

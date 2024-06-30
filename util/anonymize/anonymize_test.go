@@ -34,6 +34,12 @@ func TestChange(t *testing.T) {
 								Content: &model.BlockContentOfText{
 									Text: &model.BlockContentText{
 										Text: "block create text",
+										Marks: &model.BlockContentTextMarks{
+											Marks: []*model.BlockContentTextMark{{
+												Param: "https://randomsite.com/kosilica",
+												Type:  model.BlockContentTextMark_Link,
+											}},
+										},
 									},
 								},
 							},
@@ -43,9 +49,18 @@ func TestChange(t *testing.T) {
 			},
 			changeUpdate(&pb.EventMessage{
 				Value: &pb.EventMessageValueOfBlockSetText{
-					BlockSetText: &pb.EventBlockSetText{Id: "text", Text: &pb.EventBlockSetTextText{
-						Value: "set text event",
-					}},
+					BlockSetText: &pb.EventBlockSetText{
+						Id: "text",
+						Text: &pb.EventBlockSetTextText{
+							Value: "set text event",
+						},
+						Marks: &pb.EventBlockSetTextMarks{Value: &model.BlockContentTextMarks{
+							Marks: []*model.BlockContentTextMark{{
+								Param: "https://randomsite.com/kosilica",
+								Type:  model.BlockContentTextMark_Link,
+							}},
+						}},
+					},
 				},
 			}),
 		},
@@ -62,14 +77,25 @@ func TestChange(t *testing.T) {
 	)
 	assert.NotEqual(
 		t,
+		in.Content[0].GetBlockCreate().Blocks[0].GetText().Marks.Marks[0].Param,
+		out.Content[0].GetBlockCreate().Blocks[0].GetText().Marks.Marks[0].Param,
+	)
+	assert.NotEqual(
+		t,
 		in.Content[1].GetBlockUpdate().Events[0].GetBlockSetText().Text,
 		out.Content[1].GetBlockUpdate().Events[0].GetBlockSetText().Text,
+	)
+	assert.NotEqual(
+		t,
+		in.Content[1].GetBlockUpdate().Events[0].GetBlockSetText().Marks.Value.Marks[0].Param,
+		out.Content[1].GetBlockUpdate().Events[0].GetBlockSetText().Marks.Value.Marks[0].Param,
 	)
 }
 
 func TestText(t *testing.T) {
 	in := "Some string with ютф. Symbols? http://123.com"
 	out := Text(in)
+	assert.NotEqual(t, in, out)
 	assert.Equal(t, text.UTF16RuneCountString(in), text.UTF16RuneCountString(out))
 }
 
