@@ -72,7 +72,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.periodicCheck = periodicsync.NewPeriodicSync(30, 0, l.checkAddrs, log)
+	l.periodicCheck = periodicsync.NewPeriodicSync(10, 0, l.checkAddrs, log)
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	l.eventSender = app.MustComponent[event.Sender](a)
 	return
