@@ -118,9 +118,9 @@ func insertBlocksToState(
 	objState.Set(simple.New(rootB))
 }
 
-func (bs *basic) changeToBlockWithLink(newState *state.State, blockToChange simple.Block, objectID string, block *model.Block) (string, error) {
-	if block == nil {
-		block = &model.Block{
+func (bs *basic) changeToBlockWithLink(newState *state.State, blockToReplace simple.Block, objectID string, linkBlock *model.Block) (string, error) {
+	if linkBlock == nil {
+		linkBlock = &model.Block{
 			Content: &model.BlockContentOfLink{
 				Link: &model.BlockContentLink{
 					TargetBlockId: objectID,
@@ -129,16 +129,16 @@ func (bs *basic) changeToBlockWithLink(newState *state.State, blockToChange simp
 			},
 		}
 	} else {
-		link := block.GetLink()
+		link := linkBlock.GetLink()
 		if link == nil {
-			return "", errors.New("block content is not a link")
+			return "", errors.New("linkBlock content is not a link")
 		} else {
 			link.TargetBlockId = objectID
 		}
 	}
 	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
-		TargetId: blockToChange.Model().Id,
-		Block:    block,
+		TargetId: blockToReplace.Model().Id,
+		Block:    linkBlock,
 		Position: model.Block_Replace,
 	})
 }
