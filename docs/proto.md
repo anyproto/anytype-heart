@@ -3938,6 +3938,7 @@ common simple block command
 | blockIds | [string](#string) | repeated |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
 | templateId | [string](#string) |  |  |
+| block | [model.Block](#anytype-model-Block) |  |  |
 
 
 
