@@ -104,8 +104,6 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 }
 
 func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
-	newAcc.Name = req.Name
-
 	personalSpaceId := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	var err error
 	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, personalSpaceId)
@@ -138,7 +136,6 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		if err != nil {
 			log.Warnf("can't add avatar: %v", err)
 		} else {
-			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
 			profileDetails = append(profileDetails, &model.Detail{
 				Key:   bundle.RelationKeyIconImage.String(),
 				Value: pbtypes.String(hash),
