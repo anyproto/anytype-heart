@@ -106,7 +106,7 @@ func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.Objec
 		}
 		u.mx.Unlock()
 	}
-	err := u.batcher.Add(u.ctx, &syncStatusDetails{
+	err := u.batcher.TryAdd(&syncStatusDetails{
 		objectIds: objectId,
 		status:    status,
 		syncError: syncError,
@@ -291,29 +291,24 @@ func (u *syncStatusUpdater) hasRelationsChange(record *types.Struct, status doma
 func (u *syncStatusUpdater) processEvents() {
 	defer close(u.finish)
 	for {
-		statuses, err := u.batcher.Wait(u.ctx)
-		if len(statuses) == 0 {
+		status, err := u.batcher.WaitOne(u.ctx)
+		if err != nil {
 			return
 		}
-		for _, status := range statuses {
-			if err != nil {
-				return
-			}
-			for _, id := range status.objectIds {
-				u.mx.Lock()
-				objectStatus := u.entries[id]
-				delete(u.entries, id)
-				u.mx.Unlock()
-				if objectStatus != nil {
-					err := u.updateObjectDetails(objectStatus, id)
-					if err != nil {
-						log.Errorf("failed to update details %s", err)
-					}
+		for _, id := range status.objectIds {
+			u.mx.Lock()
+			objectStatus := u.entries[id]
+			delete(u.entries, id)
+			u.mx.Unlock()
+			if objectStatus != nil {
+				err := u.updateObjectDetails(objectStatus, id)
+				if err != nil {
+					log.Errorf("failed to update details %s", err)
 				}
 			}
-			if len(status.objectIds) == 0 {
-				u.updateDetails(status)
-			}
+		}
+		if len(status.objectIds) == 0 {
+			u.updateDetails(status)
 		}
 	}
 }
