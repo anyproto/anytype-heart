@@ -1635,7 +1635,6 @@
   
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
-    - [Account.Avatar](#anytype-model-Account-Avatar)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
     - [Account.Status](#anytype-model-Account-Status)
@@ -25777,27 +25776,9 @@ Contains basic information about a user account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | User&#39;s thread id |
-| name | [string](#string) |  | User name, that associated with this account |
-| avatar | [Account.Avatar](#anytype-model-Account-Avatar) |  | Avatar of a user&#39;s account |
 | config | [Account.Config](#anytype-model-Account-Config) |  |  |
 | status | [Account.Status](#anytype-model-Account-Status) |  |  |
 | info | [Account.Info](#anytype-model-Account-Info) |  |  |
-
-
-
-
-
-
-<a name="anytype-model-Account-Avatar"></a>
-
-### Account.Avatar
-Avatar of a user&#39;s account. It could be an image or color
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| image | [Block.Content.File](#anytype-model-Block-Content-File) |  | Image of the avatar. Contains the hash to retrieve the image. |
-| color | [string](#string) |  | Color of the avatar, used if image not set. |
 
 
 
