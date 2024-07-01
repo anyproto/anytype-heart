@@ -14,6 +14,7 @@ const (
 	Syncing SpaceSyncStatus = 1
 	Error   SpaceSyncStatus = 2
 	Offline SpaceSyncStatus = 3
+	Unknown SpaceSyncStatus = 4
 )
 
 type ObjectSyncStatus int32

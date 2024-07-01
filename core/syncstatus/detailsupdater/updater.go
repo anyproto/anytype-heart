@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -107,7 +106,7 @@ func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.Objec
 		}
 		u.mx.Unlock()
 	}
-	err := u.batcher.TryAdd(&syncStatusDetails{
+	err := u.batcher.Add(u.ctx, &syncStatusDetails{
 		objectIds: objectId,
 		status:    status,
 		syncError: syncError,
@@ -168,6 +167,9 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if !changed {
 		return nil
 	}
+	if !u.isLayoutSuitableForSyncRelations(record) {
+		return nil
+	}
 	spc, err := u.spaceService.Get(u.ctx, syncStatusDetails.spaceId)
 	if err != nil {
 		return err
@@ -194,6 +196,18 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	return spc.DoCtx(u.ctx, objectId, func(sb smartblock.SmartBlock) error {
 		return u.setSyncDetails(sb, status, syncError)
 	})
+}
+
+func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {
+	layoutsWithoutSyncRelations := []float64{
+		float64(model.ObjectType_participant),
+		float64(model.ObjectType_dashboard),
+		float64(model.ObjectType_spaceView),
+		float64(model.ObjectType_space),
+		float64(model.ObjectType_date),
+	}
+	layout := details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue()
+	return !slices.Contains(layoutsWithoutSyncRelations, layout)
 }
 
 func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus, syncError domain.SyncError) domain.SpaceSyncStatus {
@@ -236,9 +250,6 @@ func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domai
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
-	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
-		return nil
-	}
 	if d, ok := sb.(basic.DetailsSettable); ok {
 		syncStatusDetails := []*model.Detail{
 			{
@@ -280,24 +291,29 @@ func (u *syncStatusUpdater) hasRelationsChange(record *types.Struct, status doma
 func (u *syncStatusUpdater) processEvents() {
 	defer close(u.finish)
 	for {
-		status, err := u.batcher.WaitOne(u.ctx)
-		if err != nil {
+		statuses, err := u.batcher.Wait(u.ctx)
+		if len(statuses) == 0 {
 			return
 		}
-		for _, id := range status.objectIds {
-			u.mx.Lock()
-			objectStatus := u.entries[id]
-			delete(u.entries, id)
-			u.mx.Unlock()
-			if objectStatus != nil {
-				err := u.updateObjectDetails(objectStatus, id)
-				if err != nil {
-					log.Errorf("failed to update details %s", err)
+		for _, status := range statuses {
+			if err != nil {
+				return
+			}
+			for _, id := range status.objectIds {
+				u.mx.Lock()
+				objectStatus := u.entries[id]
+				delete(u.entries, id)
+				u.mx.Unlock()
+				if objectStatus != nil {
+					err := u.updateObjectDetails(objectStatus, id)
+					if err != nil {
+						log.Errorf("failed to update details %s", err)
+					}
 				}
 			}
-		}
-		if len(status.objectIds) == 0 {
-			u.updateDetails(status)
+			if len(status.objectIds) == 0 {
+				u.updateDetails(status)
+			}
 		}
 	}
 }

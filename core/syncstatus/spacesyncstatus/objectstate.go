@@ -87,7 +87,10 @@ func (o *ObjectState) SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncErr
 func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
 	o.Lock()
 	defer o.Unlock()
-	return o.objectSyncStatusBySpace[spaceId]
+	if status, ok := o.objectSyncStatusBySpace[spaceId]; ok {
+		return status
+	}
+	return domain.Unknown
 }
 
 func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
