@@ -496,8 +496,21 @@ func (e FilterEmpty) FilterObject(g *types.Struct) bool {
 }
 
 func (e FilterEmpty) Compile() query.Filter {
-	// TODO implement
-	return nil
+	return query.Or{
+		query.Key{
+			Path:   []string{e.Key},
+			Filter: query.Not{Filter: query.Exists{}},
+		},
+		query.Key{
+			Path: []string{e.Key},
+			Filter: query.Or{
+				query.NewComp(query.CompOpEq, nil),
+				query.NewComp(query.CompOpEq, ""),
+				query.NewComp(query.CompOpEq, 0),
+				query.NewComp(query.CompOpEq, false),
+			},
+		},
+	}
 }
 
 func (e FilterEmpty) String() string {

@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v4"
@@ -16,8 +17,9 @@ type LinksUpdateInfo struct {
 
 func (s *dsObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
 	var res *model.ObjectInfoWithLinks
+	ctx := context.Background()
 	err := s.db.View(func(txn *badger.Txn) error {
-		pages, err := s.getObjectsInfo(txn, spaceID, []string{id})
+		pages, err := s.getObjectsInfo(ctx, spaceID, []string{id})
 		if err != nil {
 			return err
 		}
@@ -36,12 +38,12 @@ func (s *dsObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.
 			return fmt.Errorf("find outbound links: %w", err)
 		}
 
-		inbound, err := s.getObjectsInfo(txn, spaceID, inboundIds)
+		inbound, err := s.getObjectsInfo(ctx, spaceID, inboundIds)
 		if err != nil {
 			return err
 		}
 
-		outbound, err := s.getObjectsInfo(txn, spaceID, outboundsIds)
+		outbound, err := s.getObjectsInfo(ctx, spaceID, outboundsIds)
 		if err != nil {
 			return err
 		}

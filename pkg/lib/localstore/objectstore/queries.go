@@ -8,10 +8,8 @@ import (
 	"sort"
 
 	"github.com/blevesearch/bleve/v2/search"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
-	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -93,15 +91,14 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 
 func (s *dsObjectStore) queryAnyStore(ctx context.Context, filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
 	compiled := filter.Compile()
-	var sortsAny []any
+	var sortsArg []any
 	if order != nil {
 		sorts := order.Compile()
-		sortsAny = make([]any, 0, len(sorts))
-		for _, s := range sorts {
-			sortsAny = append(sortsAny, s)
+		if sorts != nil {
+			sortsArg = []any{sorts}
 		}
 	}
-	iter, err := s.objects.Find(compiled).Sort(sortsAny...).Offset(offset).Limit(limit).Iter(ctx)
+	iter, err := s.objects.Find(compiled).Sort(sortsArg...).Offset(offset).Limit(limit).Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)
 	}
@@ -111,7 +108,7 @@ func (s *dsObjectStore) queryAnyStore(ctx context.Context, filter database.Filte
 		if err != nil {
 			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
 		}
-		details, err := jsonToProto(doc.Value())
+		details, err := pbtypes.JsonToProto(doc.Value())
 		if err != nil {
 			return nil, errors.Join(fmt.Errorf("json to proto: %w", err), iter.Close())
 		}
@@ -128,64 +125,6 @@ func (s *dsObjectStore) queryAnyStore(ctx context.Context, filter database.Filte
 	return records, nil
 }
 
-func jsonToProto(v *fastjson.Value) (*types.Struct, error) {
-	obj, err := v.Object()
-	if err != nil {
-		return nil, fmt.Errorf("is object: %w", err)
-	}
-	res := &types.Struct{
-		Fields: make(map[string]*types.Value, obj.Len()),
-	}
-	var visitErr error
-	obj.Visit(func(k []byte, v *fastjson.Value) {
-		if visitErr != nil {
-			return
-		}
-		// key is copied
-		val, err := jsonValueToProto(v)
-		if err != nil {
-			visitErr = err
-		}
-		res.Fields[string(k)] = val
-	})
-	return res, visitErr
-}
-
-func jsonValueToProto(val *fastjson.Value) (*types.Value, error) {
-	switch val.Type() {
-	case fastjson.TypeNumber:
-		v, err := val.Float64()
-		if err != nil {
-			return nil, fmt.Errorf("float64: %w", err)
-		}
-		return pbtypes.Float64(v), nil
-	case fastjson.TypeString:
-		v, err := val.StringBytes()
-		if err != nil {
-			return nil, fmt.Errorf("string: %w", err)
-		}
-		return pbtypes.String(string(v)), nil
-	case fastjson.TypeTrue:
-		return pbtypes.Bool(true), nil
-	case fastjson.TypeFalse:
-		return pbtypes.Bool(false), nil
-	case fastjson.TypeArray:
-		vals, err := val.Array()
-		if err != nil {
-			return nil, fmt.Errorf("array: %w", err)
-		}
-		lst := make([]*types.Value, 0, len(vals))
-		for i, v := range vals {
-			val, err := jsonValueToProto(v)
-			if err != nil {
-				return nil, fmt.Errorf("array item %d: %w", i, err)
-			}
-			lst = append(lst, val)
-		}
-	}
-	return pbtypes.Null(), nil
-}
-
 func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
@@ -194,76 +133,68 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 }
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int) ([]database.Record, error) {
+	ctx := context.Background()
 	records := make([]database.Record, 0, len(results))
 	resultObjectMap := make(map[string]struct{})
 	// we assume that results are already sorted by score DESC.
 	// this mean we use map to ignore duplicates without checking score
-	err := s.db.View(func(txn *badger.Txn) error {
-		for _, res := range results {
-			// Don't use spaceID because expected objects are virtual
-			if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
-				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
-					details, err := s.sourceService.DetailsFromIdBasedSource(res.Path.ObjectId)
-					if err != nil {
-						log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
-						continue
-					}
-					details.Fields[database.RecordIDField] = pbtypes.ToValue(res.Path.ObjectId)
-					details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
-					rec := database.Record{Details: details}
-					if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
-						resultObjectMap[res.Path.ObjectId] = struct{}{}
-						records = append(records, rec)
-					}
+	for _, res := range results {
+		// Don't use spaceID because expected objects are virtual
+		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
+			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+				details, err := s.sourceService.DetailsFromIdBasedSource(res.Path.ObjectId)
+				if err != nil {
+					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
 					continue
 				}
-			}
-			it, err := txn.Get(pagesDetailsBase.ChildString(res.Path.ObjectId).Bytes())
-			if err != nil {
-				log.Infof("QueryByIds failed to find id: %s", res.Path.ObjectId)
-				continue
-			}
-
-			detailsNoCopy, err := s.extractDetailsFromItem(it)
-			if err != nil {
-				log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
-				continue
-			}
-			details := pbtypes.CopyStruct(detailsNoCopy.Details, false)
-			details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
-
-			rec := database.Record{Details: details}
-			if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
-				rec.Meta = res.Model()
-				if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
-					records = append(records, rec)
+				details.Fields[database.RecordIDField] = pbtypes.ToValue(res.Path.ObjectId)
+				details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
+				rec := database.Record{Details: details}
+				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
+					records = append(records, rec)
 				}
-			}
-
-			injectedResults := s.getInjectedResults(details, res.Score, res.Path, 10, params)
-			if len(injectedResults) == 0 {
 				continue
 			}
-			// for now, we only allow one injected result per object
-			// this may happen when we for example have a match in the different tags of the same object,
-			// or we may already have a better match for the same object but in block
-			injectedResults = lo.Filter(injectedResults, func(item database.Record, _ int) bool {
-				id := pbtypes.GetString(item.Details, bundle.RelationKeyId.String())
-				if _, ok := resultObjectMap[id]; !ok {
-					resultObjectMap[id] = struct{}{}
-					return true
-				}
-				return false
-			})
-
-			records = append(records, injectedResults...)
 		}
-		return nil
-	})
+		doc, err := s.objects.FindId(ctx, res.Path.ObjectId)
+		if err != nil {
+			log.Errorf("QueryByIds failed to find id: %s", res.Path.ObjectId)
+			continue
+		}
+		details, err := pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
+			continue
+		}
+		details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
 
-	if err != nil {
-		return nil, err
+		rec := database.Record{Details: details}
+		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
+			rec.Meta = res.Model()
+			if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
+				records = append(records, rec)
+				resultObjectMap[res.Path.ObjectId] = struct{}{}
+			}
+		}
+
+		injectedResults := s.getInjectedResults(details, res.Score, res.Path, 10, params)
+		if len(injectedResults) == 0 {
+			continue
+		}
+		// for now, we only allow one injected result per object
+		// this may happen when we for example have a match in the different tags of the same object,
+		// or we may already have a better match for the same object but in block
+		injectedResults = lo.Filter(injectedResults, func(item database.Record, _ int) bool {
+			id := pbtypes.GetString(item.Details, bundle.RelationKeyId.String())
+			if _, ok := resultObjectMap[id]; !ok {
+				resultObjectMap[id] = struct{}{}
+				return true
+			}
+			return false
+		})
+
+		records = append(records, injectedResults...)
 	}
 
 	if offset >= len(records) {
@@ -472,36 +403,33 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total in
 }
 
 func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			// Don't use spaceID because expected objects are virtual
-			if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
-				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
-					details, err := s.sourceService.DetailsFromIdBasedSource(id)
-					if err != nil {
-						log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
-						continue
-					}
-					details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-					records = append(records, database.Record{Details: details})
+	ctx := context.Background()
+	for _, id := range ids {
+		// Don't use spaceID because expected objects are virtual
+		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
+			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+				details, err := s.sourceService.DetailsFromIdBasedSource(id)
+				if err != nil {
+					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
 					continue
 				}
-			}
-			it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
-			if err != nil {
-				log.Infof("QueryByIds failed to find id: %s", id)
+				details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+				records = append(records, database.Record{Details: details})
 				continue
 			}
-
-			details, err := s.extractDetailsFromItem(it)
-			if err != nil {
-				log.Errorf("QueryByIds failed to extract details: %s", id)
-				continue
-			}
-			records = append(records, database.Record{Details: details.Details})
 		}
-		return nil
-	})
+		doc, err := s.objects.FindId(ctx, id)
+		if err != nil {
+			log.Errorf("QueryByIds failed to find id: %s", id)
+			continue
+		}
+		details, err := pbtypes.JsonToProto(doc.Value())
+		if err != nil {
+			log.Errorf("QueryByIds failed to extract details: %s", id)
+			continue
+		}
+		records = append(records, database.Record{Details: details})
+	}
 	return
 }
 

@@ -262,10 +262,15 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 // todo: get rid of this or change the name method!
 func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	doc, err := s.objects.FindId(context.Background(), id)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return &model.ObjectDetails{
+			Details: &types.Struct{Fields: map[string]*types.Value{}},
+		}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err := jsonToProto(doc.Value())
+	details, err := pbtypes.JsonToProto(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
@@ -312,29 +317,21 @@ func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.Obj
 }
 
 func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		for _, id := range ids {
-			_, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
-			if err != nil && err != badger.ErrKeyNotFound {
-				return fmt.Errorf("get %s: %w", id, err)
-			}
-			if err == nil {
-				exists = append(exists, id)
-			}
+	ctx := context.Background()
+	for _, id := range ids {
+		_, err := s.objects.FindId(ctx, id)
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+			return nil, fmt.Errorf("get %s: %w", id, err)
 		}
-		return nil
-	})
+		if err == nil {
+			exists = append(exists, id)
+		}
+	}
 	return exists, err
 }
 
 func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error) {
-	var infos []*model.ObjectInfo
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		infos, err = s.getObjectsInfo(txn, spaceID, ids)
-		return err
-	})
-	return infos, err
+	return s.getObjectsInfo(context.Background(), spaceID, ids)
 }
 
 func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
@@ -351,13 +348,25 @@ func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
 }
 
 func (s *dsObjectStore) ListIds() ([]string, error) {
+	ctx := context.Background()
 	var ids []string
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		ids, err = listIDsByPrefix(txn, pagesDetailsBase.Bytes())
-		return err
-	})
-	return ids, err
+	iter, err := s.objects.Find(nil).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find all: %w", err)
+	}
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("get doc: %w", err), iter.Close())
+		}
+		id := doc.Value().GetStringBytes("id")
+		ids = append(ids, string(id))
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("iterate: %w", err), iter.Close())
+	}
+	return ids, iter.Close()
 }
 
 func (s *dsObjectStore) Prefix() string {
@@ -416,7 +425,7 @@ func detailsKeyToID(key []byte) string {
 	return path.Base(string(key))
 }
 
-func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string) (*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id string) (*model.ObjectInfo, error) {
 	details, err := s.sourceService.DetailsFromIdBasedSource(id)
 	if err == nil {
 		details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
@@ -426,15 +435,14 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string
 		}, nil
 	}
 
-	it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
+	doc, err := s.objects.FindId(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get details: %w", err)
+		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	detailsModel, err := s.extractDetailsFromItem(it)
+	details, err = pbtypes.JsonToProto(doc.Value())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
-	details = detailsModel.Details
 	snippet := pbtypes.GetString(details, bundle.RelationKeySnippet.String())
 
 	return &model.ObjectInfo{
@@ -444,10 +452,10 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string
 	}, nil
 }
 
-func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, spaceID string, ids []string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids []string) ([]*model.ObjectInfo, error) {
 	objects := make([]*model.ObjectInfo, 0, len(ids))
 	for _, id := range ids {
-		info, err := s.getObjectInfo(txn, spaceID, id)
+		info, err := s.getObjectInfo(ctx, spaceID, id)
 		if err != nil {
 			if badgerhelper.IsNotFound(err) || errors.Is(err, ErrObjectNotFound) || errors.Is(err, ErrNotAnObject) {
 				continue

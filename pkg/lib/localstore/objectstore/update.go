@@ -7,7 +7,6 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -29,44 +28,13 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	s.sendUpdatesToSubscriptions(id, details)
 
 	arena := s.arenaPool.Get()
-	jsonVal := protoToJson(arena, details)
+	jsonVal := pbtypes.ProtoToJson(arena, details)
 	_, err := s.objects.UpsertOne(context.Background(), jsonVal)
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
 	s.arenaPool.Put(arena)
 	return nil
-}
-
-func protoToJson(arena *fastjson.Arena, details *types.Struct) *fastjson.Value {
-	obj := arena.NewObject()
-	for k, v := range details.Fields {
-		obj.Set(k, protoValueToJson(arena, v))
-	}
-	return obj
-}
-
-func protoValueToJson(arena *fastjson.Arena, v *types.Value) *fastjson.Value {
-	switch v.Kind.(type) {
-	case *types.Value_StringValue:
-		return arena.NewString(v.GetStringValue())
-	case *types.Value_NumberValue:
-		return arena.NewNumberFloat64(v.GetNumberValue())
-	case *types.Value_BoolValue:
-		if v.GetBoolValue() {
-			return arena.NewTrue()
-		} else {
-			return arena.NewFalse()
-		}
-	case *types.Value_ListValue:
-		lst := arena.NewArray()
-		for i, v := range v.GetListValue().Values {
-			lst.SetArrayItem(i, protoValueToJson(arena, v))
-		}
-		return lst
-	default:
-		return arena.NewNull()
-	}
 }
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
@@ -138,38 +106,40 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 // ModifyObjectDetails updates existing details in store using modification function `proc`
 // `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
 func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	if proc == nil {
-		return nil
-	}
-	var payload *model.ObjectDetails
-	key := pagesDetailsBase.ChildString(id).Bytes()
-
-	if err := s.updateTxn(func(txn *badger.Txn) error {
-		oldDetails, err := s.extractDetailsByKey(txn, key)
-		if err != nil && !badgerhelper.IsNotFound(err) {
-			return fmt.Errorf("get existing details: %w", err)
-		}
-
-		inputDetails := pbtypes.CopyStruct(oldDetails.GetDetails(), false)
-		inputDetails = pbtypes.EnsureStructInited(inputDetails)
-		newDetails, err := proc(inputDetails)
-		if err != nil {
-			return fmt.Errorf("run a modifier: %w", err)
-		}
-		newDetails = pbtypes.EnsureStructInited(newDetails)
-		// Ensure ID is set
-		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-		s.sendUpdatesToSubscriptions(id, newDetails)
-		payload = &model.ObjectDetails{Details: newDetails}
-		err = badgerhelper.SetValueTxn(txn, key, payload)
-		if err != nil {
-			return fmt.Errorf("put details: %w", err)
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	s.cache.Add(string(key), payload)
+	// TODO Do atomically in anystore
+	// if proc == nil {
+	// 	return nil
+	// }
+	// var payload *model.ObjectDetails
+	// key := pagesDetailsBase.ChildString(id).Bytes()
+	//
+	// if err := s.updateTxn(func(txn *badger.Txn) error {
+	// 	oldDetails, err := s.extractDetailsByKey(txn, key)
+	// 	if err != nil && !badgerhelper.IsNotFound(err) {
+	// 		return fmt.Errorf("get existing details: %w", err)
+	// 	}
+	//
+	// 	inputDetails := pbtypes.CopyStruct(oldDetails.GetDetails(), false)
+	// 	inputDetails = pbtypes.EnsureStructInited(inputDetails)
+	// 	newDetails, err := proc(inputDetails)
+	// 	if err != nil {
+	// 		return fmt.Errorf("run a modifier: %w", err)
+	// 	}
+	// 	newDetails = pbtypes.EnsureStructInited(newDetails)
+	// 	// Ensure ID is set
+	// 	newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	// 	s.sendUpdatesToSubscriptions(id, newDetails)
+	// 	payload = &model.ObjectDetails{Details: newDetails}
+	// 	err = badgerhelper.SetValueTxn(txn, key, payload)
+	// 	if err != nil {
+	// 		return fmt.Errorf("put details: %w", err)
+	// 	}
+	// 	return nil
+	// }); err != nil {
+	// 	return err
+	// }
+	// s.cache.Add(string(key), payload)
+	// return nil
 	return nil
 }
 
