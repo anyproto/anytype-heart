@@ -595,21 +595,10 @@ message Range {
 */
 message Account {
     string id = 1; // User's thread id
-    string name = 2; // User name, that associated with this account
-    Avatar avatar = 3; // Avatar of a user's account
     Config config = 4;
     Status status = 5;
     Info info = 6;
 
-    /**
-    * Avatar of a user's account. It could be an image or color
-    */
-    message Avatar {
-        oneof avatar {
-            Block.Content.File image = 1; // Image of the avatar. Contains the hash to retrieve the image.
-            string color = 2; // Color of the avatar, used if image not set.
-        }
-    }
     message Config {
         bool enableDataview = 1;
         bool enableDebug = 2;
