@@ -1,6 +1,8 @@
 package objectstore
 
 import (
+	"fmt"
+
 	"github.com/dgraph-io/badger/v4"
 
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
@@ -35,6 +37,12 @@ func iterateKeysByPrefixBatchedTx(
 	batchSize int,
 	processKeysFn func(keys [][]byte) error,
 ) error {
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("badger iterator panic: %v", r)
+		}
+	}()
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = false
 	opts.Prefix = prefix
@@ -50,7 +58,7 @@ func iterateKeysByPrefixBatchedTx(
 		count++
 
 		if count == batchSize {
-			err := processKeysFn(batch)
+			err = processKeysFn(batch)
 			if err != nil {
 				return err
 			}
@@ -60,7 +68,7 @@ func iterateKeysByPrefixBatchedTx(
 	}
 
 	if count > 0 {
-		err := processKeysFn(batch)
+		err = processKeysFn(batch)
 		if err != nil {
 			return err
 		}
@@ -70,6 +78,12 @@ func iterateKeysByPrefixBatchedTx(
 }
 
 func iterateKeysByPrefixTx(txn *badger.Txn, prefix []byte, processKeyFn func(key []byte)) error {
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("badger iterator panic: %v", r)
+		}
+	}()
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = false
 	opts.Prefix = prefix
@@ -80,5 +94,5 @@ func iterateKeysByPrefixTx(txn *badger.Txn, prefix []byte, processKeyFn func(key
 		key := iter.Item().KeyCopy(nil)
 		processKeyFn(key)
 	}
-	return nil
+	return err
 }

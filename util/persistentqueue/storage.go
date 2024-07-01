@@ -34,7 +34,13 @@ func NewBadgerStorage[T Item](db *badger.DB, badgerPrefix []byte, factoryFunc Fa
 
 func (s *badgerStorage[T]) List() ([]T, error) {
 	var items []T
-	err := s.db.View(func(txn *badger.Txn) error {
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("badger iterator panic: %v", r)
+		}
+	}()
+	err = s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
 			PrefetchSize:   100,
 			PrefetchValues: true,
