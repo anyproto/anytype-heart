@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -250,6 +251,9 @@ func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domai
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
+	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
+		return nil
+	}
 	if d, ok := sb.(basic.DetailsSettable); ok {
 		syncStatusDetails := []*model.Detail{
 			{
