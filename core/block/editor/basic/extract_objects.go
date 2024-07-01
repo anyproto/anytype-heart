@@ -136,9 +136,10 @@ func (bs *basic) changeToBlockWithLink(newState *state.State, blockToReplace sim
 			link.TargetBlockId = objectID
 		}
 	}
+	linkBlockCopy := pbtypes.CopyBlock(linkBlock)
 	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
 		TargetId: blockToReplace.Model().Id,
-		Block:    linkBlock,
+		Block:    linkBlockCopy,
 		Position: model.Block_Replace,
 	})
 }
