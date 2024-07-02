@@ -26,7 +26,7 @@ import (
 
 const deviceService = "deviceService"
 
-var log = logging.Logger("notifications")
+var log = logging.Logger(deviceService)
 
 type Service interface {
 	app.ComponentRunnable
