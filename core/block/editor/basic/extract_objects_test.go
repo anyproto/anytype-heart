@@ -356,6 +356,42 @@ func TestExtractObjects(t *testing.T) {
 		assert.NotNil(t, block)
 		assert.Equal(t, block.GetLink().GetCardStyle(), model.BlockContentLink_Card)
 	})
+	t.Run("add custom link block for multiple blocks", func(t *testing.T) {
+		fixture := newFixture(t)
+		defer fixture.cleanUp()
+		creator := testCreator{objects: map[string]*smarttest.SmartTest{}}
+		sb := makeTestObject()
+		creator.Add(sb)
+
+		ts := testTemplateService{templates: map[string]*state.State{}}
+		tmpl := makeTemplateState()
+		ts.AddTemplate("template", tmpl)
+
+		req := pb.RpcBlockListConvertToObjectsRequest{
+			ContextId:           "test",
+			BlockIds:            []string{"1", "2"},
+			ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
+			Block: &model.Block{Id: "newId", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					CardStyle: model.BlockContentLink_Card,
+				},
+			}},
+		}
+		ctx := session.NewContext()
+		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, creator, ts, req)
+		assert.NoError(t, err)
+		var addedBlocks []*model.Block
+		for _, message := range sb.Results.Events {
+			for _, eventMessage := range message {
+				if blockAdd := eventMessage.Msg.GetBlockAdd(); blockAdd != nil {
+					addedBlocks = append(addedBlocks, blockAdd.Blocks...)
+				}
+			}
+		}
+		assert.Len(t, addedBlocks, 2)
+		assert.NotEqual(t, addedBlocks[0].Id, addedBlocks[1].Id)
+		assert.NotEqual(t, addedBlocks[0].GetLink().GetTargetBlockId(), addedBlocks[1].GetLink().GetTargetBlockId())
+	})
 }
 
 type fixture struct {
