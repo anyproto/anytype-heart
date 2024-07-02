@@ -26,7 +26,7 @@ import (
 
 const deviceService = "deviceService"
 
-var log = logging.Logger("notifications")
+var log = logging.Logger(deviceService)
 
 type Service interface {
 	app.ComponentRunnable
@@ -86,7 +86,7 @@ func (d *devices) loadDevices(ctx context.Context) {
 	}
 	objectId, err := techSpace.DeriveObjectID(ctx, uk)
 	if err != nil {
-		log.Errorf("failed to derive notification object id: %v", err)
+		log.Errorf("failed to derive device object id: %v", err)
 		return
 	}
 	d.deviceObjectId = objectId
