@@ -25245,6 +25245,7 @@ Removes document from subscription
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | status | [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status) |  |  |
+| devicesCounter | [int64](#int64) |  |  |
 
 
 

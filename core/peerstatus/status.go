@@ -44,7 +44,8 @@ type p2pStatus struct {
 	peerStore     peerstore.PeerStore
 
 	sync.Mutex
-	status Status
+	status           Status
+	connectionsCount int64
 
 	forceCheckSpace        chan struct{}
 	updateStatus           chan Status
@@ -133,9 +134,11 @@ func (p *p2pStatus) updateSpaceP2PStatus() {
 		event = pb.EventP2PStatus_Connected
 		newStatus = Connected
 	}
-	if p.status != newStatus {
-		p.sendEvent(p.spaceId, event)
+	connectionCount++ // count current device
+	if p.status != newStatus || p.connectionsCount != connectionCount {
+		p.sendEvent(p.spaceId, event, connectionCount)
 		p.status = newStatus
+		p.connectionsCount = connectionCount
 	}
 }
 func (p *p2pStatus) countOpenConnections() int64 {
@@ -154,6 +157,8 @@ func (p *p2pStatus) countOpenConnections() int64 {
 }
 
 func (p *p2pStatus) sendNewStatus(status Status) {
+	p.Lock()
+	defer p.Unlock()
 	var pbStatus pb.EventP2PStatusStatus
 	switch status {
 	case Connected:
@@ -163,20 +168,19 @@ func (p *p2pStatus) sendNewStatus(status Status) {
 	case NotPossible:
 		pbStatus = pb.EventP2PStatus_NotPossible
 	}
-	p.Lock()
 	p.status = status
-	p.Unlock()
-	p.sendEvent(p.spaceId, pbStatus)
+	p.sendEvent(p.spaceId, pbStatus, p.connectionsCount)
 }
 
-func (p *p2pStatus) sendEvent(spaceId string, status pb.EventP2PStatusStatus) {
+func (p *p2pStatus) sendEvent(spaceId string, status pb.EventP2PStatusStatus, count int64) {
 	p.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfP2PStatusUpdate{
 					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
-						SpaceId: spaceId,
-						Status:  status,
+						SpaceId:        spaceId,
+						Status:         status,
+						DevicesCounter: count,
 					},
 				},
 			},
