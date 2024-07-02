@@ -279,6 +279,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
+		Register(device.NewDevices()).
 		Register(editor.NewObjectFactory()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
@@ -290,8 +291,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
-		Register(paymentscache.New()).
-		Register(device.NewDevices())
+		Register(paymentscache.New())
 }
 
 func MiddlewareVersion() string {

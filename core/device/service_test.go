@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
@@ -24,7 +25,6 @@ import (
 
 func TestService_SaveDeviceInfo(t *testing.T) {
 	deviceObjectId := "deviceObjectId"
-	techSpaceId := "techSpaceId"
 	t.Run("save device in object", func(t *testing.T) {
 		// given
 		testDevice := &model.DeviceInfo{
@@ -33,18 +33,15 @@ func TestService_SaveDeviceInfo(t *testing.T) {
 		}
 
 		devicesService := newFixture(t, deviceObjectId)
-		virtualSpace := clientspace.NewVirtualSpace(techSpaceId, clientspace.VirtualSpaceDeps{})
-		devicesService.mockSpaceService.EXPECT().Get(context.Background(), techSpaceId).Return(virtualSpace, nil)
-		devicesService.mockSpaceService.EXPECT().TechSpaceId().Return(techSpaceId)
 
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
-		mockCache := mock_objectcache.NewMockCache(t)
-		mockCache.EXPECT().GetObject(context.Background(), deviceObjectId).Return(deviceObject, nil)
-
-		virtualSpace.Cache = mockCache
+		state := deviceObject.NewState()
+		state.AddDevice(testDevice)
+		err := deviceObject.Apply(state)
+		assert.Nil(t, err)
 
 		// when
-		err := devicesService.SaveDeviceInfo(context.Background(), testDevice)
+		err = devicesService.SaveDeviceInfo(smartblock.ApplyInfo{State: deviceObject.NewState()})
 
 		// then
 		assert.Nil(t, err)
@@ -62,23 +59,20 @@ func TestService_SaveDeviceInfo(t *testing.T) {
 		}
 
 		devicesService := newFixture(t, deviceObjectId)
-		virtualSpace := clientspace.NewVirtualSpace(techSpaceId, clientspace.VirtualSpaceDeps{})
-		devicesService.mockSpaceService.EXPECT().Get(context.Background(), techSpaceId).Return(virtualSpace, nil)
-		devicesService.mockSpaceService.EXPECT().TechSpaceId().Return(techSpaceId)
-
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
-		mockCache := mock_objectcache.NewMockCache(t)
-		mockCache.EXPECT().GetObject(context.Background(), deviceObjectId).Return(deviceObject, nil)
-		virtualSpace.Cache = mockCache
 
 		testDevice1 := &model.DeviceInfo{
 			Id:   "id",
 			Name: "test1",
 		}
+		state := deviceObject.NewState()
+		state.AddDevice(testDevice)
+		err := deviceObject.Apply(state)
+		assert.Nil(t, err)
 
 		// when
-		err := devicesService.SaveDeviceInfo(context.Background(), testDevice)
-		err = devicesService.SaveDeviceInfo(context.Background(), testDevice1)
+		err = devicesService.SaveDeviceInfo(smartblock.ApplyInfo{State: deviceObject.NewState()})
+		err = devicesService.SaveDeviceInfo(smartblock.ApplyInfo{State: deviceObject.NewState()})
 
 		// then
 		assert.Nil(t, err)
@@ -139,8 +133,13 @@ func TestService_UpdateName(t *testing.T) {
 		mockCache := mock_objectcache.NewMockCache(t)
 		mockCache.EXPECT().GetObject(context.Background(), deviceObjectId).Return(deviceObject, nil)
 
+		state := deviceObject.NewState()
+		state.AddDevice(testDevice)
+		err := deviceObject.Apply(state)
+		assert.Nil(t, err)
+
 		virtualSpace.Cache = mockCache
-		err := devicesService.SaveDeviceInfo(context.Background(), testDevice)
+		err = devicesService.SaveDeviceInfo(smartblock.ApplyInfo{State: deviceObject.NewState()})
 		assert.Nil(t, err)
 
 		// when
@@ -160,7 +159,6 @@ func TestService_UpdateName(t *testing.T) {
 
 func TestService_ListDevices(t *testing.T) {
 	deviceObjectId := "deviceObjectId"
-	techSpaceId := "techSpaceId"
 	t.Run("list devices, no devices", func(t *testing.T) {
 		// given
 
@@ -188,19 +186,14 @@ func TestService_ListDevices(t *testing.T) {
 		}
 
 		devicesService := newFixture(t, deviceObjectId)
-		virtualSpace := clientspace.NewVirtualSpace(techSpaceId, clientspace.VirtualSpaceDeps{})
-		devicesService.mockSpaceService.EXPECT().Get(context.Background(), techSpaceId).Return(virtualSpace, nil)
-		devicesService.mockSpaceService.EXPECT().TechSpaceId().Return(techSpaceId)
-
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
-		mockCache := mock_objectcache.NewMockCache(t)
-		mockCache.EXPECT().GetObject(context.Background(), deviceObjectId).Return(deviceObject, nil)
-
-		virtualSpace.Cache = mockCache
-
-		err := devicesService.SaveDeviceInfo(context.Background(), testDevice)
+		state := deviceObject.NewState()
+		state.AddDevice(testDevice)
+		state.AddDevice(testDevice1)
+		err := deviceObject.Apply(state)
 		assert.Nil(t, err)
-		err = devicesService.SaveDeviceInfo(context.Background(), testDevice1)
+
+		err = devicesService.SaveDeviceInfo(smartblock.ApplyInfo{State: deviceObject.NewState()})
 		assert.Nil(t, err)
 
 		// when
@@ -282,6 +275,7 @@ func TestService_loadDevices(t *testing.T) {
 		})
 		err := deviceObject.Apply(state)
 		assert.Nil(t, err)
+		deviceObject.AddHook(devicesService.SaveDeviceInfo, smartblock.HookAfterApply)
 
 		// when
 		devicesService.loadDevices(ctx)
