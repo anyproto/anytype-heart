@@ -79,7 +79,10 @@ func (f *FileState) SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncErr d
 func (f *FileState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
 	f.Lock()
 	defer f.Unlock()
-	return f.fileSyncStatusBySpace[spaceId]
+	if status, ok := f.fileSyncStatusBySpace[spaceId]; ok {
+		return status
+	}
+	return domain.Unknown
 }
 
 func (f *FileState) GetSyncObjectCount(spaceId string) int {

@@ -56,7 +56,7 @@ func TestFileState_GetSyncStatus(t *testing.T) {
 		syncStatus := fileState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, domain.Synced, syncStatus)
+		assert.Equal(t, domain.Unknown, syncStatus)
 	})
 }
 
