@@ -74,7 +74,7 @@ func (d *devices) Run(ctx context.Context) error {
 
 func (d *devices) loadDevices(ctx context.Context) {
 	defer close(d.finishLoad)
-	uk, err := domain.NewUniqueKey(sb.SmartBlockTypePage, "")
+	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeDevicesObject, "")
 	if err != nil {
 		log.Errorf("failed to get devices object unique key: %v", err)
 		return

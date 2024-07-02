@@ -28419,6 +28419,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | MissingObject | 519 |  |
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
+| DevicesObject | 536 |  |
 
 
 
