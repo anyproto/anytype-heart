@@ -32,7 +32,7 @@ type Service interface {
 	app.ComponentRunnable
 	UpdateName(ctx context.Context, id, name string) error
 	ListDevices(ctx context.Context) ([]*model.DeviceInfo, error)
-	SaveDeviceInfo(ctx context.Context, device *model.DeviceInfo) error
+	SaveDeviceInfo(info smartblock.ApplyInfo) error
 }
 
 func NewDevices() Service {
@@ -74,7 +74,7 @@ func (d *devices) Run(ctx context.Context) error {
 
 func (d *devices) loadDevices(ctx context.Context) {
 	defer close(d.finishLoad)
-	uk, err := domain.NewUniqueKey(sb.SmartBlockTypePage, "")
+	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeDevicesObject, "")
 	if err != nil {
 		log.Errorf("failed to get devices object unique key: %v", err)
 		return
@@ -121,22 +121,15 @@ func (d *devices) loadDevices(ctx context.Context) {
 	st := deviceObject.NewState()
 	deviceId := d.wallet.GetDevicePrivkey().GetPublic().PeerId()
 	st.AddDevice(&model.DeviceInfo{
-		Id:          deviceId,
-		Name:        hostname,
-		AddDate:     time.Now().Unix(),
-		IsConnected: true,
+		Id:      deviceId,
+		Name:    hostname,
+		AddDate: time.Now().Unix(),
 	})
 	err = deviceObject.Apply(st)
 	if err != nil {
 		log.Errorf("failed to apply device state: %v", err)
 	}
 	deviceObject.Unlock()
-	for _, info := range st.ListDevices() {
-		err := d.store.SaveDevice(info)
-		if err != nil {
-			log.Errorf("failed to save device: %v", err)
-		}
-	}
 }
 
 func (d *devices) Close(ctx context.Context) error {
@@ -146,21 +139,21 @@ func (d *devices) Close(ctx context.Context) error {
 	return nil
 }
 
-func (d *devices) SaveDeviceInfo(ctx context.Context, device *model.DeviceInfo) error {
-	err := d.store.SaveDevice(device)
-	if err != nil {
-		return fmt.Errorf("failed to save device: %w", err)
+func (d *devices) SaveDeviceInfo(info smartblock.ApplyInfo) error {
+	if info.State == nil {
+		return nil
 	}
-
-	spc, err := d.spaceService.Get(ctx, d.spaceService.TechSpaceId())
-	if err != nil {
-		return fmt.Errorf("failed to get space: %w", err)
+	deviceId := d.wallet.GetDevicePrivkey().GetPublic().PeerId()
+	for _, deviceInfo := range info.State.ListDevices() {
+		if deviceInfo.Id == deviceId {
+			deviceInfo.IsConnected = true
+		}
+		err := d.store.SaveDevice(deviceInfo)
+		if err != nil {
+			return fmt.Errorf("failed to save device: %w", err)
+		}
 	}
-	return spc.Do(d.deviceObjectId, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-		st.AddDevice(device)
-		return sb.Apply(st)
-	})
+	return nil
 }
 
 func (d *devices) UpdateName(ctx context.Context, id, name string) error {
