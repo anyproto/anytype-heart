@@ -31,10 +31,12 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 		a := new(app.App)
 		eventSender := mock_event.NewMockSender(t)
 		space := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
+
 		a.Register(testutil.PrepareMock(ctx, a, eventSender)).
 			Register(objectstore.NewStoreFixture(t)).
 			Register(&config.Config{NetworkMode: pb.RpcAccount_DefaultConfig}).
-			Register(testutil.PrepareMock(ctx, a, space))
+			Register(testutil.PrepareMock(ctx, a, space)).
+			Register(session.NewHookRunner())
 
 		// when
 		err := status.Init(a)
@@ -81,7 +83,8 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 		a.Register(testutil.PrepareMock(ctx, a, eventSender)).
 			Register(objectstore.NewStoreFixture(t)).
 			Register(&config.Config{NetworkMode: pb.RpcAccount_LocalOnly}).
-			Register(testutil.PrepareMock(ctx, a, space))
+			Register(testutil.PrepareMock(ctx, a, space)).
+			Register(session.NewHookRunner())
 
 		// when
 		err := status.Init(a)
@@ -550,6 +553,6 @@ func TestSpaceSyncStatus_Notify(t *testing.T) {
 				},
 			}},
 		})
-		spaceStatus.Notify(session.NewContext())
+		spaceStatus.NotifyNewSession(session.NewContext())
 	})
 }

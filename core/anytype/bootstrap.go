@@ -73,7 +73,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
+	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
@@ -261,6 +263,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(block.New()).
 		Register(indexer.New()).
 		Register(detailsupdater.NewUpdater()).
+		Register(session.NewHookRunner()).
 		Register(spacesyncstatus.NewSpaceSyncStatus()).
 		Register(nodestatus.NewNodeStatus()).
 		Register(syncstatus.New()).
@@ -291,7 +294,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
-		Register(paymentscache.New())
+		Register(paymentscache.New()).
+		Register(peerstatus.New())
 }
 
 func MiddlewareVersion() string {

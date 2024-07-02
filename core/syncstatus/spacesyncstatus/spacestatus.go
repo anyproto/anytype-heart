@@ -68,6 +68,8 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.filesState = NewFileState(store)
 	s.objectsState = NewObjectState(store)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
+	sessionHookRunner := app.MustComponent[session.HookRunner](a)
+	sessionHookRunner.RegisterHook(s.NotifyNewSession)
 	return
 }
 
@@ -75,11 +77,12 @@ func (s *spaceSyncStatus) Name() (name string) {
 	return service
 }
 
-func (s *spaceSyncStatus) Notify(ctx session.Context) {
+func (s *spaceSyncStatus) NotifyNewSession(ctx session.Context) error {
 	ids := s.spaceIdGetter.AllSpaceIds()
 	for _, id := range ids {
 		s.sendEventToSession(id, ctx.ID())
 	}
+	return nil
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {

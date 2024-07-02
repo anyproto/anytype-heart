@@ -180,8 +180,7 @@ packages:
       ClientServer:
   github.com/anyproto/anytype-heart/core/peerstatus:
     interfaces:
-      StatusUpdateSender:
-      HookRegister:
+      LocalDiscoveryHook:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:

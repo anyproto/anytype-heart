@@ -16,8 +16,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
@@ -41,14 +39,7 @@ type Updater interface {
 }
 
 type PeerToPeerStatus interface {
-	Run()
-	Close()
 	CheckPeerStatus()
-}
-
-type LocalDiscoveryHook interface {
-	RegisterP2PNotPossible(hook func())
-	RegisterResetNotPossible(hook func())
 }
 
 type clientPeerManager struct {
@@ -79,9 +70,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.availableResponsiblePeers = make(chan struct{})
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
-	eventSender := app.MustComponent[event.Sender](a)
-	localDiscoveryHook := app.MustComponent[LocalDiscoveryHook](a)
-	n.peerToPeerStatus = peerstatus.NewP2PStatus(n.spaceId, eventSender, n.p.pool, localDiscoveryHook, n.peerStore)
+	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
 	return
 }
 
@@ -90,7 +79,6 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
-	go n.peerToPeerStatus.Run()
 	go n.manageResponsiblePeers()
 	return
 }
@@ -281,7 +269,6 @@ func (n *clientPeerManager) watchPeer(p peer.Peer) {
 
 func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 	n.ctxCancel()
-	n.peerToPeerStatus.Close()
 	return
 }
 
