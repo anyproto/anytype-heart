@@ -1,6 +1,7 @@
 package syncstatus
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -51,7 +52,10 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 	if err != nil {
 		return fmt.Errorf("get object: %w", err)
 	}
-
+	err = s.updateReceiver.UpdateTree(context.Background(), fileObjectId, status.ToSyncStatus())
+	if err != nil {
+		return fmt.Errorf("update tree: %w", err)
+	}
 	s.sendSpaceStatusUpdate(status, spaceId, bytesLeftPercentage)
 	return nil
 }

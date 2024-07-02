@@ -228,6 +228,10 @@ func TestSyncStatusService_update(t *testing.T) {
 	t.Run("update: got updates on objects", func(t *testing.T) {
 		// given
 		s := newFixture(t)
+		updateReceiver := NewMockUpdateReceiver(t)
+		updateReceiver.EXPECT().UpdateNodeStatus().Return()
+		updateReceiver.EXPECT().UpdateTree(context.Background(), "id", StatusNotSynced).Return(nil)
+		s.SetUpdateReceiver(updateReceiver)
 
 		// when
 		s.detailsUpdater.EXPECT().UpdateDetails([]string{"id"}, domain.ObjectSyncing, domain.Null, "spaceId")
@@ -239,6 +243,7 @@ func TestSyncStatusService_update(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
+		updateReceiver.AssertCalled(t, "UpdateTree", context.Background(), "id", StatusNotSynced)
 	})
 }
 
