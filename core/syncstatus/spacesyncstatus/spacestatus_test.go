@@ -553,6 +553,6 @@ func TestSpaceSyncStatus_Notify(t *testing.T) {
 				},
 			}},
 		})
-		spaceStatus.NotifyNewSession(session.NewContext())
+		spaceStatus.sendSyncEventForNewSession(session.NewContext())
 	})
 }

@@ -75,11 +75,11 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
 	localDiscoveryHook.RegisterP2PNotPossible(p.SendNotPossibleStatus)
 	localDiscoveryHook.RegisterResetNotPossible(p.ResetNotPossibleStatus)
-	sessionHookRunner.RegisterHook(p.NotifyNewSession)
+	sessionHookRunner.RegisterHook(p.sendStatusForNewSession)
 	return nil
 }
 
-func (p *p2pStatus) NotifyNewSession(ctx session.Context) error {
+func (p *p2pStatus) sendStatusForNewSession(ctx session.Context) error {
 	p.sendStatus(p.status)
 	return nil
 }

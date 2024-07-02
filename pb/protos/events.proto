@@ -1101,9 +1101,8 @@ message Event {
     }
     message P2PStatus {
         message Update {
-            string spaceId = 1;
-            Status status = 2;
-            int64 devicesCounter = 3;
+            Status status = 1;
+            int64 devicesCounter = 2;
         }
 
         enum Status {
