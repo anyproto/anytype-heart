@@ -4118,6 +4118,7 @@ message Rpc {
                 repeated string blockIds = 2;
                 string objectTypeUniqueKey = 3;
                 string templateId = 4;
+                anytype.model.Block block = 5;
             }
 
             message Response {

@@ -26,7 +26,6 @@ type Updater interface {
 type SpaceIdGetter interface {
 	app.Component
 	TechSpaceId() string
-	PersonalSpaceId() string
 	AllSpaceIds() []string
 }
 
@@ -89,7 +88,7 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 		close(s.finish)
 		return
 	} else {
-		s.sendStartEvent(s.spaceIdGetter.PersonalSpaceId())
+		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
 	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go s.processEvents()
@@ -106,14 +105,16 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 	})
 }
 
-func (s *spaceSyncStatus) sendStartEvent(spaceId string) {
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
-			},
-		}},
-	})
+func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
+	for _, id := range spaceIds {
+		s.eventSender.Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(id),
+				},
+			}},
+		})
+	}
 }
 
 func (s *spaceSyncStatus) sendLocalOnlyEvent() {
@@ -183,7 +184,11 @@ func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync) bool {
 		return false
 	}
 	syncErrNotChanged := s.getError(status.SpaceId) == mapError(status.SyncError)
-	statusNotChanged := s.getSpaceSyncStatus(status.SpaceId) == status.Status
+	syncStatus := s.getSpaceSyncStatus(status.SpaceId)
+	if syncStatus == domain.Unknown {
+		return false
+	}
+	statusNotChanged := syncStatus == status.Status
 	if syncErrNotChanged && statusNotChanged {
 		return true
 	}
@@ -221,6 +226,9 @@ func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SpaceSyncSta
 	filesStatus := s.filesState.GetSyncStatus(spaceId)
 	objectsStatus := s.objectsState.GetSyncStatus(spaceId)
 
+	if s.isUnknown(filesStatus, objectsStatus) {
+		return domain.Unknown
+	}
 	if s.isOfflineStatus(filesStatus, objectsStatus) {
 		return domain.Offline
 	}
@@ -274,6 +282,10 @@ func (s *spaceSyncStatus) getError(spaceId string) pb.EventSpaceSyncError {
 	}
 
 	return pb.EventSpace_Null
+}
+
+func (s *spaceSyncStatus) isUnknown(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
+	return filesStatus == domain.Unknown && objectsStatus == domain.Unknown
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {

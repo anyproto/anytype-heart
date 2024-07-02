@@ -158,51 +158,6 @@ func (_c *MockSpaceIdGetter_Name_Call) RunAndReturn(run func() string) *MockSpac
 	return _c
 }
 
-// PersonalSpaceId provides a mock function with given fields:
-func (_m *MockSpaceIdGetter) PersonalSpaceId() string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for PersonalSpaceId")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// MockSpaceIdGetter_PersonalSpaceId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PersonalSpaceId'
-type MockSpaceIdGetter_PersonalSpaceId_Call struct {
-	*mock.Call
-}
-
-// PersonalSpaceId is a helper method to define mock.On call
-func (_e *MockSpaceIdGetter_Expecter) PersonalSpaceId() *MockSpaceIdGetter_PersonalSpaceId_Call {
-	return &MockSpaceIdGetter_PersonalSpaceId_Call{Call: _e.mock.On("PersonalSpaceId")}
-}
-
-func (_c *MockSpaceIdGetter_PersonalSpaceId_Call) Run(run func()) *MockSpaceIdGetter_PersonalSpaceId_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockSpaceIdGetter_PersonalSpaceId_Call) Return(_a0 string) *MockSpaceIdGetter_PersonalSpaceId_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockSpaceIdGetter_PersonalSpaceId_Call) RunAndReturn(run func() string) *MockSpaceIdGetter_PersonalSpaceId_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // TechSpaceId provides a mock function with given fields:
 func (_m *MockSpaceIdGetter) TechSpaceId() string {
 	ret := _m.Called()
