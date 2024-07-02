@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -256,23 +258,33 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 	})
 }
 
-func TestSyncStatusUpdater_updateDetails(t *testing.T) {
-	t.Run("update sync status and date - no changes", func(t *testing.T) {
+func TestSyncStatusUpdater_isLayoutSuitableForSyncRelations(t *testing.T) {
+	t.Run("isLayoutSuitableForSyncRelations - participant details", func(t *testing.T) {
 		// given
 		fixture := newFixture(t)
-		space := mock_clientspace.NewMockSpace(t)
-		fixture.service.EXPECT().Get(fixture.updater.ctx, "spaceId").Return(space, nil)
-		fixture.storeFixture.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:      pbtypes.String("id"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId"),
-			},
-		})
-		space.EXPECT().DoLockedIfNotExists("id", mock.Anything).Return(nil)
 
 		// when
-		fixture.statusUpdater.EXPECT().SendUpdate(domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects))
-		fixture.updater.updateDetails(&syncStatusDetails{nil, domain.ObjectSynced, domain.Null, "spaceId"})
+		details := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(model.ObjectType_participant)),
+		}}
+		isSuitable := fixture.updater.isLayoutSuitableForSyncRelations(details)
+
+		// then
+		assert.False(t, isSuitable)
+	})
+
+	t.Run("isLayoutSuitableForSyncRelations - basic details", func(t *testing.T) {
+		// given
+		fixture := newFixture(t)
+
+		// when
+		details := &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
+		}}
+		isSuitable := fixture.updater.isLayoutSuitableForSyncRelations(details)
+
+		// then
+		assert.True(t, isSuitable)
 	})
 }
 
