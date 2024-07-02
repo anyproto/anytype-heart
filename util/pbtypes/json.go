@@ -61,6 +61,13 @@ func JsonValueToProto(val *fastjson.Value) (*types.Value, error) {
 			}
 			lst = append(lst, val)
 		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{
+				ListValue: &types.ListValue{
+					Values: lst,
+				},
+			},
+		}, nil
 	}
 	return Null(), nil
 }
