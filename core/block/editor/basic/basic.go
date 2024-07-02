@@ -2,6 +2,7 @@ package basic
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -288,8 +289,22 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 
 func checkTableBlocksMove(st *state.State, target string, pos model.BlockPosition, blockIds []string) (string, model.BlockPosition, error) {
 	for _, id := range blockIds {
-		t := table.GetTableRootBlock(st, id)
-		if t != nil && t.Model().Id != id {
+		root := table.GetTableRootBlock(st, id)
+		if root != nil && root.Model().Id != id {
+			t, err := table.NewTable(st, root.Model().Id)
+			if err != nil {
+				return "", 0, ErrCannotMoveTableBlocks
+			}
+
+			// we allow moving rows between each other
+			rows := t.RowIDs()
+			if slices.Contains(rows, id) && slices.Contains(rows, target) {
+				if pos == model.Block_Bottom || pos == model.Block_Top {
+					return target, pos, nil
+				}
+				return "", 0, fmt.Errorf("failed to move rows: position should be Top or Bottom, got %s", model.BlockPosition_name[int32(pos)])
+			}
+
 			// we should not move table blocks except table root block
 			return "", 0, ErrCannotMoveTableBlocks
 		}
@@ -297,11 +312,21 @@ func checkTableBlocksMove(st *state.State, target string, pos model.BlockPositio
 
 	t := table.GetTableRootBlock(st, target)
 	if t != nil && t.Model().Id != target {
-		// if the target is one of table blocks, we should insert blocks under the table
+		// we allow inserting blocks into table cell
+		if isTableCell(target) && slices.Contains([]model.BlockPosition{model.Block_Inner, model.Block_Replace, model.Block_InnerFirst}, pos) {
+			return target, pos, nil
+		}
+
+		// if the target is one of table blocks, but not cell or table root, we should insert blocks under the table
 		return t.Model().Id, model.Block_Bottom, nil
 	}
 
 	return target, pos, nil
+}
+
+func isTableCell(id string) bool {
+	_, _, err := table.ParseCellID(id)
+	return err == nil
 }
 
 func (bs *basic) Replace(ctx session.Context, id string, block *model.Block) (newId string, err error) {

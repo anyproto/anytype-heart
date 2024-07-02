@@ -267,15 +267,16 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "table", ChildrenIds: []string{"columns", "rows"}, Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}})).
 			AddBlock(simple.New(&model.Block{Id: "columns", ChildrenIds: []string{"column"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}})).
 			AddBlock(simple.New(&model.Block{Id: "column", ChildrenIds: []string{}, Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}})).
-			AddBlock(simple.New(&model.Block{Id: "rows", ChildrenIds: []string{"row"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}})).
-			AddBlock(simple.New(&model.Block{Id: "row", ChildrenIds: []string{"cell"}, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}}})).
-			AddBlock(simple.New(&model.Block{Id: "cell", ChildrenIds: []string{}})).
+			AddBlock(simple.New(&model.Block{Id: "rows", ChildrenIds: []string{"row", "row2"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}})).
+			AddBlock(simple.New(&model.Block{Id: "row", ChildrenIds: []string{"column-row"}, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}}})).
+			AddBlock(simple.New(&model.Block{Id: "row2", ChildrenIds: []string{}, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}}})).
+			AddBlock(simple.New(&model.Block{Id: "column-row", ChildrenIds: []string{}})).
 			AddBlock(simple.New(&model.Block{Id: "block", ChildrenIds: []string{}})).
 			AddBlock(simple.New(&model.Block{Id: "upper", ChildrenIds: []string{}}))
 		return sb
 	}
 
-	for _, block := range []string{"columns", "rows", "column", "row", "cell"} {
+	for _, block := range []string{"columns", "rows", "column", "row", "column-row"} {
 		t.Run("moving non-root table block '"+block+"' leads to error", func(t *testing.T) {
 			// given
 			sb := getSB()
@@ -305,6 +306,33 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		assert.Equal(t, []string{"upper", "block", "table"}, st.Pick("test").Model().ChildrenIds)
 	})
 
+	t.Run("no error on moving one row between another", func(t *testing.T) {
+		// given
+		sb := getSB()
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+
+		// when
+		err := b.Move(st, st, "row2", model.Block_Bottom, []string{"row"})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"row2", "row"}, st.Pick("rows").Model().ChildrenIds)
+	})
+
+	t.Run("moving rows with incorrect position leads to error", func(t *testing.T) {
+		// given
+		sb := getSB()
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+
+		// when
+		err := b.Move(st, st, "row2", model.Block_Left, []string{"row"})
+
+		// then
+		assert.Error(t, err)
+	})
+
 	t.Run("moving table block from invalid table leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()
@@ -313,14 +341,14 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		st.Unlink("columns")
 
 		// when
-		err := b.Move(st, st, "block", model.Block_Bottom, []string{"cell"})
+		err := b.Move(st, st, "block", model.Block_Bottom, []string{"column-row"})
 
 		// then
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, ErrCannotMoveTableBlocks))
 	})
 
-	for _, block := range []string{"columns", "rows", "column", "row", "cell"} {
+	for _, block := range []string{"columns", "rows", "column", "row"} {
 		t.Run("moving a block to '"+block+"' block leads to moving it under the table", func(t *testing.T) {
 			// given
 			sb := getSB()
@@ -328,7 +356,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 			st := sb.NewState()
 
 			// when
-			err := b.Move(st, st, block, model.BlockPosition(rand.Intn(6)), []string{"upper"})
+			err := b.Move(st, st, block, model.BlockPosition(rand.Intn(len(model.BlockPosition_name))), []string{"upper"})
 
 			// then
 			assert.NoError(t, err)
@@ -344,11 +372,26 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		st.Unlink("columns")
 
 		// when
-		err := b.Move(st, st, "cell", model.BlockPosition(rand.Intn(6)), []string{"upper"})
+		err := b.Move(st, st, "rows", model.BlockPosition(rand.Intn(6)), []string{"upper"})
 
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"table", "upper", "block"}, st.Pick("test").Model().ChildrenIds)
+	})
+
+	t.Run("moving a block to table cell is allowed", func(t *testing.T) {
+		// given
+		sb := getSB()
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+
+		// when
+		err := b.Move(st, st, "column-row", model.Block_Inner, []string{"upper"})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"table", "block"}, st.Pick("test").Model().ChildrenIds)
+		assert.Equal(t, []string{"upper"}, st.Pick("column-row").Model().ChildrenIds)
 	})
 }
 
