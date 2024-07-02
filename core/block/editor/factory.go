@@ -40,6 +40,10 @@ type accountService interface {
 	MyParticipantId(spaceId string) string
 }
 
+type deviceService interface {
+	SaveDeviceInfo(info smartblock.ApplyInfo) error
+}
+
 type ObjectFactory struct {
 	bookmarkService     bookmark.BookmarkService
 	fileBlockService    file.BlockService
@@ -61,6 +65,7 @@ type ObjectFactory struct {
 	fileUploaderService fileuploader.Service
 	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
+	deviceService       deviceService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -88,6 +93,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
+	f.deviceService = app.MustComponent[deviceService](a)
 	return nil
 }
 
@@ -185,6 +191,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:
 		return f.newParticipant(sb), nil
+	case coresb.SmartBlockTypeDevicesObject:
+		return NewDevicesObject(sb, f.deviceService), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}
