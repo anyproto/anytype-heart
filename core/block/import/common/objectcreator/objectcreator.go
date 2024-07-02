@@ -255,7 +255,9 @@ func (oc *ObjectCreator) createNewObject(
 		}
 	})
 	if err == nil {
+		sb.Lock()
 		respDetails = sb.Details()
+		sb.Unlock()
 	} else if errors.Is(err, treestorage.ErrTreeExists) {
 		err = spc.Do(newID, func(sb smartblock.SmartBlock) error {
 			respDetails = sb.Details()

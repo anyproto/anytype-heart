@@ -26,16 +26,16 @@ type Updater interface {
 type SpaceIdGetter interface {
 	app.Component
 	TechSpaceId() string
-	PersonalSpaceId() string
 	AllSpaceIds() []string
 }
 
 type State interface {
 	SetObjectsNumber(status *domain.SpaceSync)
-	SetSyncStatusAndErr(status *domain.SpaceSync)
+	SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncError domain.SyncError, spaceId string)
 	GetSyncStatus(spaceId string) domain.SpaceSyncStatus
 	GetSyncObjectCount(spaceId string) int
 	GetSyncErr(spaceId string) domain.SyncError
+	ResetSpaceErrorStatus(spaceId string, syncError domain.SyncError)
 }
 
 type NetworkConfig interface {
@@ -88,7 +88,7 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 		close(s.finish)
 		return
 	} else {
-		s.sendStartEvent(s.spaceIdGetter.PersonalSpaceId())
+		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
 	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go s.processEvents()
@@ -105,14 +105,16 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 	})
 }
 
-func (s *spaceSyncStatus) sendStartEvent(spaceId string) {
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
-			},
-		}},
-	})
+func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
+	for _, id := range spaceIds {
+		s.eventSender.Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(id),
+				},
+			}},
+		})
+	}
 }
 
 func (s *spaceSyncStatus) sendLocalOnlyEvent() {
@@ -150,30 +152,52 @@ func (s *spaceSyncStatus) processEvents() {
 	}
 }
 
-func (s *spaceSyncStatus) updateSpaceSyncStatus(status *domain.SpaceSync) {
-	state := s.getCurrentState(status)
-	state.SetObjectsNumber(status)
-	state.SetSyncStatusAndErr(status)
-
-	// send synced event only if files and objects are all synced
-	if !s.needToSendEvent(status) {
+func (s *spaceSyncStatus) updateSpaceSyncStatus(receivedStatus *domain.SpaceSync) {
+	if s.isStatusNotChanged(receivedStatus) {
 		return
 	}
+	state := s.getCurrentState(receivedStatus)
+	prevObjectNumber := s.getObjectNumber(receivedStatus.SpaceId)
+	state.SetObjectsNumber(receivedStatus)
+	newObjectNumber := s.getObjectNumber(receivedStatus.SpaceId)
+	state.SetSyncStatusAndErr(receivedStatus.Status, receivedStatus.SyncError, receivedStatus.SpaceId)
 
+	spaceStatus := s.getSpaceSyncStatus(receivedStatus.SpaceId)
+
+	// send synced event only if files and objects are all synced
+	if !s.needToSendEvent(spaceStatus, prevObjectNumber, newObjectNumber) {
+		return
+	}
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(status.SpaceId),
+				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(receivedStatus.SpaceId),
 			},
 		}},
 	})
+	state.ResetSpaceErrorStatus(receivedStatus.SpaceId, receivedStatus.SyncError)
 }
 
-func (s *spaceSyncStatus) needToSendEvent(status *domain.SpaceSync) bool {
-	if status.Status != domain.Synced {
+func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync) bool {
+	if status.Status == domain.Syncing {
+		// we need to check if number of syncing object is changed first
+		return false
+	}
+	syncErrNotChanged := s.getError(status.SpaceId) == mapError(status.SyncError)
+	syncStatus := s.getSpaceSyncStatus(status.SpaceId)
+	if syncStatus == domain.Unknown {
+		return false
+	}
+	statusNotChanged := syncStatus == status.Status
+	if syncErrNotChanged && statusNotChanged {
 		return true
 	}
-	return s.getSpaceSyncStatus(status.SpaceId) == domain.Synced && status.Status == domain.Synced
+	return false
+}
+
+func (s *spaceSyncStatus) needToSendEvent(status domain.SpaceSyncStatus, prevObjectNumber int64, newObjectNumber int64) bool {
+	// that because we get update on syncing objects count, so we need to send updated object counter to client
+	return status != domain.Syncing || prevObjectNumber != newObjectNumber
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
@@ -190,14 +214,21 @@ func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string) *pb.EventSpaceSyncS
 		Status:                mapStatus(s.getSpaceSyncStatus(spaceId)),
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
 		Error:                 s.getError(spaceId),
-		SyncingObjectsCounter: int64(s.filesState.GetSyncObjectCount(spaceId) + s.objectsState.GetSyncObjectCount(spaceId)),
+		SyncingObjectsCounter: s.getObjectNumber(spaceId),
 	}
+}
+
+func (s *spaceSyncStatus) getObjectNumber(spaceId string) int64 {
+	return int64(s.filesState.GetSyncObjectCount(spaceId) + s.objectsState.GetSyncObjectCount(spaceId))
 }
 
 func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SpaceSyncStatus {
 	filesStatus := s.filesState.GetSyncStatus(spaceId)
 	objectsStatus := s.objectsState.GetSyncStatus(spaceId)
 
+	if s.isUnknown(filesStatus, objectsStatus) {
+		return domain.Unknown
+	}
 	if s.isOfflineStatus(filesStatus, objectsStatus) {
 		return domain.Offline
 	}
@@ -251,6 +282,10 @@ func (s *spaceSyncStatus) getError(spaceId string) pb.EventSpaceSyncError {
 	}
 
 	return pb.EventSpace_Null
+}
+
+func (s *spaceSyncStatus) isUnknown(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
+	return filesStatus == domain.Unknown && objectsStatus == domain.Unknown
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {

@@ -132,14 +132,13 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 			return fmt.Errorf("get existing details: %w", err)
 		}
 
-		newDetails, err := proc(oldDetails.GetDetails())
+		inputDetails := pbtypes.CopyStruct(oldDetails.GetDetails(), false)
+		inputDetails = pbtypes.EnsureStructInited(inputDetails)
+		newDetails, err := proc(inputDetails)
 		if err != nil {
 			return fmt.Errorf("run a modifier: %w", err)
 		}
-
-		if newDetails == nil || newDetails.Fields == nil {
-			newDetails = &types.Struct{Fields: map[string]*types.Value{}}
-		}
+		newDetails = pbtypes.EnsureStructInited(newDetails)
 		// Ensure ID is set
 		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 		s.sendUpdatesToSubscriptions(id, newDetails)

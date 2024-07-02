@@ -55,7 +55,7 @@ func TestObjectState_GetSyncStatus(t *testing.T) {
 		syncStatus := objectState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, domain.Synced, syncStatus)
+		assert.Equal(t, domain.Unknown, syncStatus)
 	})
 }
 
@@ -104,34 +104,10 @@ func TestObjectState_SetSyncStatus(t *testing.T) {
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
-		objectState.SetSyncStatusAndErr(syncStatus)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Synced, objectState.GetSyncStatus("spaceId"))
-	})
-	t.Run("SetSyncStatusAndErr, status synced for object, but there are still some syncing", func(t *testing.T) {
-		// given
-		storeFixture := objectstore.NewStoreFixture(t)
-		objectState := NewObjectState(storeFixture)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:         pbtypes.String("id1"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
-				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:         pbtypes.String("id2"),
-				bundle.RelationKeySyncStatus: pbtypes.Int64(int64(domain.Syncing)),
-				bundle.RelationKeySpaceId:    pbtypes.String("spaceId"),
-			},
-		})
-		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
-		objectState.SetObjectsNumber(syncStatus)
-		objectState.SetSyncStatusAndErr(syncStatus)
-
-		// then
-		assert.Equal(t, domain.Syncing, objectState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatusAndErr, sync in progress", func(t *testing.T) {
 		// given
@@ -139,7 +115,7 @@ func TestObjectState_SetSyncStatus(t *testing.T) {
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		objectState.SetSyncStatusAndErr(syncStatus)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Syncing, objectState.GetSyncStatus("spaceId"))
@@ -150,7 +126,7 @@ func TestObjectState_SetSyncStatus(t *testing.T) {
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.Null, domain.Objects)
-		objectState.SetSyncStatusAndErr(syncStatus)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Error, objectState.GetSyncStatus("spaceId"))
@@ -161,7 +137,7 @@ func TestObjectState_SetSyncStatus(t *testing.T) {
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Objects)
-		objectState.SetSyncStatusAndErr(syncStatus)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Offline, objectState.GetSyncStatus("spaceId"))

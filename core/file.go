@@ -56,23 +56,17 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 }
 
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
-	response := func(filesOffloaded int, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
-		m := &pb.RpcFileListOffloadResponse{
-			Error:          &pb.RpcFileListOffloadResponseError{Code: code},
-			BytesOffloaded: bytesOffloaded,
-			FilesOffloaded: int32(filesOffloaded),
-		}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
 	fileOffloader := getService[fileoffloader.Service](mw)
-	filesOffloaded, bytesRemoved, err := fileOffloader.FilesOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
+	err := fileOffloader.FilesOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
-		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
+		return &pb.RpcFileListOffloadResponse{
+			Error: &pb.RpcFileListOffloadResponseError{
+				Code:        pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
 	}
-	return response(filesOffloaded, bytesRemoved, pb.RpcFileListOffloadResponseError_NULL, nil)
+	return &pb.RpcFileListOffloadResponse{}
 }
 
 func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
