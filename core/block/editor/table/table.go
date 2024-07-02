@@ -868,14 +868,7 @@ func NewTable(s *state.State, id string) (*Table, error) {
 		s: s,
 	}
 
-	next := s.Pick(id)
-	for next != nil {
-		if next.Model().GetTable() != nil {
-			tb.block = next
-			break
-		}
-		next = s.PickParentOf(next.Model().Id)
-	}
+	tb.block = GetTableRootBlock(s, id)
 	if tb.block == nil {
 		return nil, fmt.Errorf("root table block is not found")
 	}
@@ -899,6 +892,19 @@ func NewTable(s *state.State, id string) (*Table, error) {
 	}
 
 	return &tb, nil
+}
+
+// GetTableRootBlock iterates over parents of block. Returns nil in case root table block is not found
+func GetTableRootBlock(s *state.State, id string) (block simple.Block) {
+	next := s.Pick(id)
+	for next != nil {
+		if next.Model().GetTable() != nil {
+			block = next
+			break
+		}
+		next = s.PickParentOf(next.Model().Id)
+	}
+	return block
 }
 
 // destructureDivs removes child dividers from block

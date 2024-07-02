@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -97,6 +98,8 @@ type Replaceable interface {
 type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
+
+var ErrCannotMoveTableBlocks = fmt.Errorf("can not move table blocks")
 
 func NewBasic(
 	sb smartblock.SmartBlock,
@@ -236,6 +239,11 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		}
 	}
 
+	targetBlockId, position, err = checkTableBlocksMove(srcState, targetBlockId, position, blockIds)
+	if err != nil {
+		return err
+	}
+
 	var replacementCandidate simple.Block
 	for _, id := range blockIds {
 		if b := srcState.Pick(id); b != nil {
@@ -276,6 +284,24 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 	}
 
 	return srcState.InsertTo(targetBlockId, position, blockIds...)
+}
+
+func checkTableBlocksMove(st *state.State, target string, pos model.BlockPosition, blockIds []string) (string, model.BlockPosition, error) {
+	for _, id := range blockIds {
+		t := table.GetTableRootBlock(st, id)
+		if t != nil && t.Model().Id != id {
+			// we should not move table blocks except table root block
+			return "", 0, ErrCannotMoveTableBlocks
+		}
+	}
+
+	t := table.GetTableRootBlock(st, target)
+	if t != nil {
+		// if the target is one of table blocks, we should insert blocks under the table
+		return t.Model().Id, model.Block_Bottom, nil
+	}
+
+	return target, pos, nil
 }
 
 func (bs *basic) Replace(ctx session.Context, id string, block *model.Block) (newId string, err error) {

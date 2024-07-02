@@ -1,6 +1,8 @@
 package basic
 
 import (
+	"errors"
+	"math/rand"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -146,24 +148,6 @@ func TestBasic_Move(t *testing.T) {
 		assert.Len(t, sb.NewState().Pick("4").Model().ChildrenIds, 1)
 
 	})
-	t.Run("incorrect table cell move", func(t *testing.T) {
-		// given
-		sb := smarttest.New("test")
-		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"table"}})).
-			AddBlock(simple.New(&model.Block{Id: "table", ChildrenIds: []string{"rows", "columns"}})).
-			AddBlock(simple.New(&model.Block{Id: "columns", ChildrenIds: []string{"column"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}})).
-			AddBlock(simple.New(&model.Block{Id: "column", ChildrenIds: []string{}, Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}})).
-			AddBlock(simple.New(&model.Block{Id: "rows", ChildrenIds: []string{"row"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}})).
-			AddBlock(simple.New(&model.Block{Id: "row", ChildrenIds: []string{"cell"}, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}}})).
-			AddBlock(simple.New(&model.Block{Id: "cell", ChildrenIds: []string{}}))
-
-		b := NewBasic(sb, nil, converter.NewLayoutConverter())
-		st := sb.NewState()
-
-		err := b.Move(st, st, "rows", model.Block_Bottom, []string{"cell"})
-		require.NoError(t, err)
-		require.NoError(t, sb.Apply(st))
-	})
 	t.Run("header", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
@@ -273,6 +257,98 @@ func TestBasic_Move(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, sb.Apply(st))
 		assert.Len(t, sb.NewState().Pick("test").Model().ChildrenIds, 2)
+	})
+}
+
+func TestBasic_MoveTableBlocks(t *testing.T) {
+	getSB := func() *smarttest.SmartTest {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"upper", "table", "block"}})).
+			AddBlock(simple.New(&model.Block{Id: "table", ChildrenIds: []string{"columns", "rows"}, Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}})).
+			AddBlock(simple.New(&model.Block{Id: "columns", ChildrenIds: []string{"column"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}})).
+			AddBlock(simple.New(&model.Block{Id: "column", ChildrenIds: []string{}, Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}})).
+			AddBlock(simple.New(&model.Block{Id: "rows", ChildrenIds: []string{"row"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}})).
+			AddBlock(simple.New(&model.Block{Id: "row", ChildrenIds: []string{"cell"}, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}}})).
+			AddBlock(simple.New(&model.Block{Id: "cell", ChildrenIds: []string{}})).
+			AddBlock(simple.New(&model.Block{Id: "block", ChildrenIds: []string{}})).
+			AddBlock(simple.New(&model.Block{Id: "upper", ChildrenIds: []string{}}))
+		return sb
+	}
+
+	for _, block := range []string{"columns", "rows", "column", "row", "cell"} {
+		t.Run("moving non-root table block '"+block+"' leads to error", func(t *testing.T) {
+			// given
+			sb := getSB()
+			b := NewBasic(sb, nil, converter.NewLayoutConverter())
+			st := sb.NewState()
+
+			// when
+			err := b.Move(st, st, "block", model.Block_Bottom, []string{block})
+
+			// then
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, ErrCannotMoveTableBlocks))
+		})
+	}
+
+	t.Run("no error on moving root table block", func(t *testing.T) {
+		// given
+		sb := getSB()
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+
+		// when
+		err := b.Move(st, st, "block", model.Block_Bottom, []string{"table"})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"upper", "block", "table"}, st.Pick("test").Model().ChildrenIds)
+	})
+
+	t.Run("moving table block from invalid table leads to error", func(t *testing.T) {
+		// given
+		sb := getSB()
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+		st.Unlink("columns")
+
+		// when
+		err := b.Move(st, st, "block", model.Block_Bottom, []string{"cell"})
+
+		// then
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrCannotMoveTableBlocks))
+	})
+
+	for _, block := range []string{"table", "columns", "rows", "column", "row", "cell"} {
+		t.Run("moving a block to '"+block+"' block leads to moving it under the table", func(t *testing.T) {
+			// given
+			sb := getSB()
+			b := NewBasic(sb, nil, converter.NewLayoutConverter())
+			st := sb.NewState()
+
+			// when
+			err := b.Move(st, st, block, model.BlockPosition(rand.Intn(6)), []string{"upper"})
+
+			// then
+			assert.NoError(t, err)
+			assert.Equal(t, []string{"table", "upper", "block"}, st.Pick("test").Model().ChildrenIds)
+		})
+	}
+
+	t.Run("moving a block to the invalid table leads to moving it under the table", func(t *testing.T) {
+		// given
+		sb := getSB()
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+		st.Unlink("columns")
+
+		// when
+		err := b.Move(st, st, "cell", model.BlockPosition(rand.Intn(6)), []string{"upper"})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"table", "upper", "block"}, st.Pick("test").Model().ChildrenIds)
 	})
 }
 
