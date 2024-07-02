@@ -146,6 +146,24 @@ func TestBasic_Move(t *testing.T) {
 		assert.Len(t, sb.NewState().Pick("4").Model().ChildrenIds, 1)
 
 	})
+	t.Run("incorrect table cell move", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"table"}})).
+			AddBlock(simple.New(&model.Block{Id: "table", ChildrenIds: []string{"rows", "columns"}})).
+			AddBlock(simple.New(&model.Block{Id: "columns", ChildrenIds: []string{"column"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}})).
+			AddBlock(simple.New(&model.Block{Id: "column", ChildrenIds: []string{}, Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}})).
+			AddBlock(simple.New(&model.Block{Id: "rows", ChildrenIds: []string{"row"}, Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}})).
+			AddBlock(simple.New(&model.Block{Id: "row", ChildrenIds: []string{"cell"}, Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}}})).
+			AddBlock(simple.New(&model.Block{Id: "cell", ChildrenIds: []string{}}))
+
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+
+		err := b.Move(st, st, "rows", model.Block_Bottom, []string{"cell"})
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+	})
 	t.Run("header", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
