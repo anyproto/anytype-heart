@@ -6,10 +6,14 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/nodeconf"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -32,6 +36,7 @@ type Updater interface {
 var _ Service = (*service)(nil)
 
 type service struct {
+	updateReceiver  *updateReceiver
 	fileSyncService filesync.FileSync
 
 	objectWatchersLock sync.Mutex
@@ -58,6 +63,12 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
 	s.fileSyncService.OnLimited(s.onFileLimited)
 	s.fileSyncService.OnDelete(s.OnFileDelete)
+
+	nodeConfService := app.MustComponent[nodeconf.Service](a)
+	cfg := app.MustComponent[*config.Config](a)
+	eventSender := app.MustComponent[event.Sender](a)
+	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
 	return nil
 }
 
@@ -73,7 +84,9 @@ func (s *service) RegisterSpace(space commonspace.Space, sw objectsyncstatus.Sta
 	s.objectWatchersLock.Lock()
 	defer s.objectWatchersLock.Unlock()
 
+	sw.SetUpdateReceiver(s.updateReceiver)
 	s.objectWatchers[space.Id()] = sw
+	s.updateReceiver.spaceId = space.Id()
 }
 
 func (s *service) UnregisterSpace(space commonspace.Space) {
