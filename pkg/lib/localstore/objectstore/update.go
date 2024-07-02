@@ -2,11 +2,14 @@ package objectstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -25,15 +28,29 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	}
 	// Ensure ID is set
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	s.sendUpdatesToSubscriptions(id, details)
 
 	arena := s.arenaPool.Get()
 	jsonVal := pbtypes.ProtoToJson(arena, details)
-	_, err := s.objects.UpsertOne(context.Background(), jsonVal)
+	ctx := context.Background()
+	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+		diff, err := pbtypes.DiffJson(val, jsonVal)
+		if err != nil {
+			return nil, false, fmt.Errorf("diff json: %w", err)
+		}
+		if len(diff) == 0 {
+			return nil, false, ErrDetailsNotChanged
+		}
+		s.sendUpdatesToSubscriptions(id, details)
+		return jsonVal, true, nil
+	}))
+	s.arenaPool.Put(arena)
+	if errors.Is(err, ErrDetailsNotChanged) {
+		return ErrDetailsNotChanged
+	}
+	// _, err := s.objects.UpsertOne(context.Background(), jsonVal)
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
-	s.arenaPool.Put(arena)
 	return nil
 }
 
