@@ -230,6 +230,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
+		Register(device.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
@@ -290,8 +291,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
-		Register(paymentscache.New()).
-		Register(device.New())
+		Register(paymentscache.New())
 }
 
 func MiddlewareVersion() string {

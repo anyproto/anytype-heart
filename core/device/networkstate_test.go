@@ -30,6 +30,23 @@ func TestNetworkState_SetNetworkState(t *testing.T) {
 		// then
 		assert.Equal(t, model.DeviceNetworkType_WIFI, state.networkState)
 	})
+	t.Run("update network state with hook", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		var hookState model.DeviceNetworkType
+		h := func(state model.DeviceNetworkType) {
+			hookState = state
+		}
+		state.RegisterHook(h)
+
+		// when
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		state.SetNetworkState(model.DeviceNetworkType_WIFI)
+
+		// then
+		assert.Equal(t, model.DeviceNetworkType_WIFI, state.networkState)
+		assert.Equal(t, model.DeviceNetworkType_WIFI, hookState)
+	})
 }
 
 func TestNetworkState_GetNetworkState(t *testing.T) {
