@@ -418,7 +418,7 @@ func checkChangeSize(data []byte, maxSize int) error {
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	spc, err := s.spaceService.Get(context.Background(), s.spaceID)
+	spc, err := s.spaceService.Pick(context.Background(), s.spaceID)
 	if err != nil {
 		return
 	}

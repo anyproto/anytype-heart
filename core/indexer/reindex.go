@@ -314,7 +314,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	}
 
 	if flags.removeAllIndexedObjects {
-		_, err = i.removeDetails(space.Id())
+		err = i.removeDetails(space.Id())
 		if err != nil {
 			return fmt.Errorf("remove details for marketplace space: %w", err)
 		}
@@ -367,13 +367,13 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	return i.saveLatestChecksums(space.Id())
 }
 
-func (i *indexer) removeDetails(spaceId string) (ids []string, err error) {
-	err = i.removeOldObjects()
+func (i *indexer) removeDetails(spaceId string) error {
+	err := i.removeOldObjects()
 	if err != nil {
 		err = nil
 		log.Errorf("reindex failed to removeOldObjects: %v", err)
 	}
-	ids, err = i.store.ListIdsBySpace(spaceId)
+	ids, err := i.store.ListIdsBySpace(spaceId)
 	if err != nil {
 		log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 	}
@@ -382,7 +382,7 @@ func (i *indexer) removeDetails(spaceId string) (ids []string, err error) {
 			log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
 		}
 	}
-	return ids, err
+	return err
 }
 
 // removeOldObjects removes all objects that are not supported anymore (e.g. old subobjects) and no longer returned by the underlying source
@@ -427,31 +427,27 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 		}
 	}
 
-	var ids []string
-	if flags.removeAllIndexedObjects {
-		flags.eraseLinks = true
-		ids, err = i.removeDetails(spaceId)
-	}
-
 	if flags.eraseLinks {
-		var virtualObjectIds []string
-		if len(ids) == 0 {
-			ids, err = i.store.ListIdsBySpace(spaceId)
-		}
+		ids, err := i.store.ListIdsBySpace(spaceId)
 		if err != nil {
 			log.Errorf("reindex failed to get all ids(eraseLinks): %v", err)
 		}
+
 		// we get ids of Home and Archive separately from other objects,
 		// because we do not index its details, so it could not be fetched via store.Query
-		virtualObjectIds, err = i.getIdsForTypes(spaceId, smartblock2.SmartBlockTypeHome, smartblock2.SmartBlockTypeArchive)
+		homeAndArchive, err := i.getIdsForTypes(spaceId, smartblock2.SmartBlockTypeHome, smartblock2.SmartBlockTypeArchive)
 		if err != nil {
 			log.Errorf("reindex: failed to get ids of virtual objects (eraseLinks): %v", err)
 		}
-		for _, id := range append(ids, virtualObjectIds...) {
+		for _, id := range append(ids, homeAndArchive...) {
 			if err = i.store.DeleteLinks(id); err != nil {
 				log.Errorf("reindex failed to delete links(eraseLinks): %v", err)
 			}
 		}
+	}
+
+	if flags.removeAllIndexedObjects {
+		err = i.removeDetails(spaceId)
 	}
 
 	return
@@ -551,6 +547,7 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 func (i *indexer) getIdsForTypes(spaceID string, sbt ...smartblock2.SmartBlockType) ([]string, error) {
 	var ids []string
 	for _, t := range sbt {
+		// TODO: get rid of listing ids using space. We can get ids from store as soon as we will save sbType for objects
 		lister, err := i.source.IDsListerBySmartblockType(spaceID, t)
 		if err != nil {
 			return nil, err
