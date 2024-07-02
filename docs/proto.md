@@ -1133,6 +1133,10 @@
     - [Rpc.Workspace.Open.Request](#anytype-Rpc-Workspace-Open-Request)
     - [Rpc.Workspace.Open.Response](#anytype-Rpc-Workspace-Open-Response)
     - [Rpc.Workspace.Open.Response.Error](#anytype-Rpc-Workspace-Open-Response-Error)
+    - [Rpc.Workspace.Reinit](#anytype-Rpc-Workspace-Reinit)
+    - [Rpc.Workspace.Reinit.Request](#anytype-Rpc-Workspace-Reinit-Request)
+    - [Rpc.Workspace.Reinit.Response](#anytype-Rpc-Workspace-Reinit-Response)
+    - [Rpc.Workspace.Reinit.Response.Error](#anytype-Rpc-Workspace-Reinit-Response-Error)
     - [Rpc.Workspace.Select](#anytype-Rpc-Workspace-Select)
     - [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request)
     - [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response)
@@ -1410,6 +1414,7 @@
     - [Rpc.Workspace.Object.ListAdd.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error-Code)
     - [Rpc.Workspace.Object.ListRemove.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error-Code)
     - [Rpc.Workspace.Open.Response.Error.Code](#anytype-Rpc-Workspace-Open-Response-Error-Code)
+    - [Rpc.Workspace.Reinit.Response.Error.Code](#anytype-Rpc-Workspace-Reinit-Response-Error-Code)
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype-Rpc-Workspace-Select-Response-Error-Code)
     - [Rpc.Workspace.SetInfo.Response.Error.Code](#anytype-Rpc-Workspace-SetInfo-Response-Error-Code)
   
@@ -1825,6 +1830,7 @@
 | WorkspaceGetAll | [Rpc.Workspace.GetAll.Request](#anytype-Rpc-Workspace-GetAll-Request) | [Rpc.Workspace.GetAll.Response](#anytype-Rpc-Workspace-GetAll-Response) |  |
 | WorkspaceSetInfo | [Rpc.Workspace.SetInfo.Request](#anytype-Rpc-Workspace-SetInfo-Request) | [Rpc.Workspace.SetInfo.Response](#anytype-Rpc-Workspace-SetInfo-Response) |  |
 | WorkspaceExport | [Rpc.Workspace.Export.Request](#anytype-Rpc-Workspace-Export-Request) | [Rpc.Workspace.Export.Response](#anytype-Rpc-Workspace-Export-Response) |  |
+| WorkspaceReinit | [Rpc.Workspace.Reinit.Request](#anytype-Rpc-Workspace-Reinit-Request) | [Rpc.Workspace.Reinit.Response](#anytype-Rpc-Workspace-Reinit-Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request) | [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response) | Account *** |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
@@ -18439,6 +18445,64 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Workspace-Reinit"></a>
+
+### Rpc.Workspace.Reinit
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Reinit-Request"></a>
+
+### Rpc.Workspace.Reinit.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| workspaceId | [string](#string) |  | the path where export files will place |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Reinit-Response"></a>
+
+### Rpc.Workspace.Reinit.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Reinit.Response.Error](#anytype-Rpc-Workspace-Reinit-Response-Error) |  |  |
+| path | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Reinit-Response-Error"></a>
+
+### Rpc.Workspace.Reinit.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Reinit.Response.Error.Code](#anytype-Rpc-Workspace-Reinit-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Workspace-Select"></a>
 
 ### Rpc.Workspace.Select
@@ -22304,6 +22368,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Workspace-Reinit-Response-Error-Code"></a>
+
+### Rpc.Workspace.Reinit.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 

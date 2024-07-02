@@ -32,6 +32,7 @@ service ClientCommands {
     rpc WorkspaceGetAll (anytype.Rpc.Workspace.GetAll.Request) returns (anytype.Rpc.Workspace.GetAll.Response);
     rpc WorkspaceSetInfo (anytype.Rpc.Workspace.SetInfo.Request) returns (anytype.Rpc.Workspace.SetInfo.Response);
     rpc WorkspaceExport (anytype.Rpc.Workspace.Export.Request) returns (anytype.Rpc.Workspace.Export.Response);
+    rpc WorkspaceReinit (anytype.Rpc.Workspace.Reinit.Request) returns (anytype.Rpc.Workspace.Reinit.Response);
 
     // Account
     // ***

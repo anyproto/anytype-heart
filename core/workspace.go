@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 
 	"github.com/gogo/protobuf/types"
 
@@ -9,8 +10,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
@@ -230,4 +238,76 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 			Description: "Not implemented",
 		},
 	}
+}
+
+func (mw *Middleware) WorkspaceReinit(cctx context.Context, req *pb.RpcWorkspaceReinitRequest) *pb.RpcWorkspaceReinitResponse {
+	response := func(path string, err error) (res *pb.RpcWorkspaceReinitResponse) {
+		res = &pb.RpcWorkspaceReinitResponse{
+			Error: &pb.RpcWorkspaceReinitResponseError{
+				Code: pb.RpcWorkspaceReinitResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcWorkspaceReinitResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+			return
+		} else {
+			res.Path = path
+		}
+		return res
+	}
+	var (
+		path string
+		err  error
+	)
+	err = mw.doBlockService(func(bs *block.Service) error {
+		es := mw.applicationService.GetApp().MustComponent(export.CName).(export.Export)
+		// create temp dir
+		tempDirProvider := mw.applicationService.GetApp().MustComponent(core.CName).(core.TempDirProvider)
+		path, _, err = es.Export(cctx, pb.RpcObjectListExportRequest{
+			SpaceId: req.WorkspaceId,
+			Path:    tempDirProvider.TempDir(),
+			Format:  model.Export_Protobuf,
+		})
+		os := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
+		ids, _, err := os.QueryObjectIDs(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.IntList(int(model.ObjectType_basic), int(model.ObjectType_profile), int(model.ObjectType_todo), int(model.ObjectType_set), int(model.ObjectType_note), int(model.ObjectType_bookmark)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(req.WorkspaceId),
+				},
+			},
+		})
+
+		for _, id := range ids {
+			err := bs.DeleteObjectByFullID(domain.FullID{SpaceID: req.WorkspaceId, ObjectID: id})
+			if err != nil {
+				log.With("error", err, "objectId", id).Error("space reinit: failed to perform delete operation on object")
+			}
+		}
+
+		resp := mw.ObjectImport(cctx, &pb.RpcObjectImportRequest{
+			SpaceId:               req.WorkspaceId,
+			UpdateExistingObjects: true,
+			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+			Type:                  model.Import_Pb,
+			Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+				Path:            []string{path},
+				NoCollection:    true,
+				CollectionTitle: "",
+				ImportType:      0,
+			},
+			}})
+		if resp.Error.Code != pb.RpcObjectImportResponseError_NULL {
+			return errors.New(resp.Error.Description)
+		}
+		return err
+	})
+	return response(path, err)
 }
