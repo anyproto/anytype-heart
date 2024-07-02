@@ -14,7 +14,7 @@ issues:
   exclude-files:
     - '.*_test.go'
     - 'testMock/*'
-    - 'clientlibrary/service.pb.go'
+    - 'clientlibrary/service/service.pb.go'
 
 linters-settings:
   unused:
