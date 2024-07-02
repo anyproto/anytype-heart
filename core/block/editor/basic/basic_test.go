@@ -320,7 +320,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		assert.True(t, errors.Is(err, ErrCannotMoveTableBlocks))
 	})
 
-	for _, block := range []string{"table", "columns", "rows", "column", "row", "cell"} {
+	for _, block := range []string{"columns", "rows", "column", "row", "cell"} {
 		t.Run("moving a block to '"+block+"' block leads to moving it under the table", func(t *testing.T) {
 			// given
 			sb := getSB()

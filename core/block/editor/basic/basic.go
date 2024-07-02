@@ -296,7 +296,7 @@ func checkTableBlocksMove(st *state.State, target string, pos model.BlockPositio
 	}
 
 	t := table.GetTableRootBlock(st, target)
-	if t != nil {
+	if t != nil && t.Model().Id != target {
 		// if the target is one of table blocks, we should insert blocks under the table
 		return t.Model().Id, model.Block_Bottom, nil
 	}
