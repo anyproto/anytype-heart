@@ -5,10 +5,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"path"
+
 	// nolint: gosec
 	_ "net/http/pprof"
 	"os"
@@ -49,12 +52,16 @@ var commonOSSignals = []os.Signal{os.Interrupt, syscall.SIGTERM, syscall.SIGINT}
 func main() {
 	var addr string
 	var webaddr string
+	var dataPath string
 	app.StartWarningAfter = time.Second * 5
 	fmt.Printf("mw grpc: %s\n", vcs.GetVCSInfo().Description())
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
 		if len(os.Args) > 2 {
 			webaddr = os.Args[2]
+			if len(os.Args) > 3 {
+				dataPath = os.Args[3]
+			}
 		}
 	}
 
@@ -71,6 +78,16 @@ func main() {
 			webaddr = env
 		} else {
 			webaddr = defaultWebAddr
+		}
+	}
+
+	if dataPath == "" {
+		if env := os.Getenv("ANYTYPE_DATA_PATH"); env != "" {
+			dataPath = env
+		} else {
+			if appData, err := os.UserConfigDir(); err == nil {
+				dataPath = path.Join(appData, "anytype")
+			}
 		}
 	}
 
@@ -226,6 +243,10 @@ func main() {
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 
+	if err := saveListeningAddresses(dataPath, addr, webaddr); err != nil {
+		log.Errorf("failed to write listening.json: %s", err)
+	}
+
 	for {
 		sig := <-signalChan
 		if shouldSaveStack(sig) {
@@ -239,6 +260,26 @@ func main() {
 		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
 		return
 	}
+}
+
+func saveListeningAddresses(dataPath, addr, webaddr string) error {
+	if dataPath == "" {
+		return nil
+	}
+
+	listening := map[string]interface{}{
+		"grpc":    addr,
+		"web":     webaddr,
+		"updated": time.Now().Unix(),
+	}
+
+	listeningB, err := json.Marshal(listening)
+	if err != nil {
+		return err
+	}
+
+	listeningPath := path.Join(dataPath, "listening.json")
+	return os.WriteFile(listeningPath, listeningB, 0644)
 }
 
 func appendInterceptor(
