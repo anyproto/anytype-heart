@@ -40,6 +40,8 @@ type Updater interface {
 
 type PeerToPeerStatus interface {
 	CheckPeerStatus()
+	RegisterSpace(spaceId string)
+	UnregisterSpace(spaceId string)
 }
 
 type clientPeerManager struct {
@@ -71,6 +73,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
+	n.peerToPeerStatus.RegisterSpace(n.spaceId)
 	return
 }
 
@@ -269,6 +272,7 @@ func (n *clientPeerManager) watchPeer(p peer.Peer) {
 
 func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 	n.ctxCancel()
+	n.peerToPeerStatus.UnregisterSpace(n.spaceId)
 	return
 }
 

@@ -36,9 +36,12 @@ type PeerToPeerStatus interface {
 	SendNotPossibleStatus()
 	CheckPeerStatus()
 	ResetNotPossibleStatus()
+	RegisterSpace(spaceId string)
+	UnregisterSpace(spaceId string)
 }
 
 type p2pStatus struct {
+	spaceIds      map[string]struct{}
 	eventSender   event.Sender
 	contextCancel context.CancelFunc
 	ctx           context.Context
@@ -62,6 +65,7 @@ func New() PeerToPeerStatus {
 		updateStatus:           make(chan Status, 1),
 		resetNotPossibleStatus: make(chan struct{}, 1),
 		finish:                 make(chan struct{}),
+		spaceIds:               make(map[string]struct{}),
 	}
 
 	return p2pStatusService
@@ -114,9 +118,34 @@ func (p *p2pStatus) ResetNotPossibleStatus() {
 	p.resetNotPossibleStatus <- struct{}{}
 }
 
+func (p *p2pStatus) RegisterSpace(spaceId string) {
+	p.Lock()
+	defer p.Unlock()
+	p.spaceIds[spaceId] = struct{}{}
+	p.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfP2PStatusUpdate{
+					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+						SpaceId:        spaceId,
+						Status:         p.mapStatusToEvent(p.status),
+						DevicesCounter: p.connectionsCount,
+					},
+				},
+			},
+		},
+	})
+}
+
+func (p *p2pStatus) UnregisterSpace(spaceId string) {
+	p.Lock()
+	defer p.Unlock()
+	delete(p.spaceIds, spaceId)
+}
+
 func (p *p2pStatus) checkP2PDevices() {
 	defer close(p.finish)
-	timer := time.NewTicker(20 * time.Second)
+	timer := time.NewTicker(10 * time.Second)
 	defer timer.Stop()
 	p.updateSpaceP2PStatus()
 	for {
@@ -186,6 +215,12 @@ func (p *p2pStatus) countOpenConnections() int64 {
 func (p *p2pStatus) sendStatus(status Status) {
 	p.Lock()
 	defer p.Unlock()
+	pbStatus := p.mapStatusToEvent(status)
+	p.status = status
+	p.sendEvent(pbStatus, p.connectionsCount)
+}
+
+func (p *p2pStatus) mapStatusToEvent(status Status) pb.EventP2PStatusStatus {
 	var pbStatus pb.EventP2PStatusStatus
 	switch status {
 	case Connected:
@@ -195,23 +230,25 @@ func (p *p2pStatus) sendStatus(status Status) {
 	case NotPossible:
 		pbStatus = pb.EventP2PStatus_NotPossible
 	}
-	p.status = status
-	p.sendEvent(pbStatus, p.connectionsCount)
+	return pbStatus
 }
 
 func (p *p2pStatus) sendEvent(status pb.EventP2PStatusStatus, count int64) {
-	p.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfP2PStatusUpdate{
-					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
-						Status:         status,
-						DevicesCounter: count,
+	for spaceId := range p.spaceIds {
+		p.eventSender.Broadcast(&pb.Event{
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfP2PStatusUpdate{
+						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        spaceId,
+							Status:         status,
+							DevicesCounter: count,
+						},
 					},
 				},
 			},
-		},
-	})
+		})
+	}
 }
 
 func (p *p2pStatus) resetNotPossible() {

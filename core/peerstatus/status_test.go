@@ -55,6 +55,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotPossible,
 							DevicesCounter: 1,
 						},
@@ -68,6 +69,11 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 		status := f.PeerToPeerStatus.(*p2pStatus)
 		assert.NotNil(t, status)
 		err := waitForStatus(status, NotPossible)
+		assert.Nil(t, err)
+
+		f.CheckPeerStatus()
+		err = waitForStatus(status, NotPossible)
+
 		assert.Nil(t, err)
 		f.Close(nil)
 	})
@@ -105,6 +111,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_Connected,
 							DevicesCounter: 2,
 						},
@@ -139,6 +146,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_Connected,
 							DevicesCounter: 2,
 						},
@@ -155,6 +163,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotConnected,
 							DevicesCounter: 1,
 						},
@@ -186,6 +195,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotPossible,
 							DevicesCounter: 1,
 						},
@@ -209,6 +219,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_Connected,
 							DevicesCounter: 2,
 						},
@@ -249,6 +260,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_Connected,
 							DevicesCounter: 2,
 						},
@@ -280,6 +292,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotPossible,
 							DevicesCounter: 1,
 						},
@@ -296,6 +309,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 				{
 					Value: &pb.EventMessageValueOfP2PStatusUpdate{
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotConnected,
 							DevicesCounter: 1,
 						},
@@ -332,7 +346,33 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 	})
 }
 
-func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusStatus, i int) *fixture {
+func TestP2pStatus_UnregisterSpace(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		f := newFixture(t, "spaceId", pb.EventP2PStatus_NotConnected, 1)
+
+		// when
+		f.UnregisterSpace("spaceId")
+
+		// then
+
+		status := f.PeerToPeerStatus.(*p2pStatus)
+		assert.Len(t, status.spaceIds, 0)
+	})
+	t.Run("delete non existing space", func(t *testing.T) {
+		// given
+		f := newFixture(t, "spaceId", pb.EventP2PStatus_NotConnected, 1)
+
+		// when
+		f.UnregisterSpace("spaceId1")
+
+		// then
+		status := f.PeerToPeerStatus.(*p2pStatus)
+		assert.Len(t, status.spaceIds, 1)
+	})
+}
+
+func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusStatus, deviceCount int) *fixture {
 	ctrl := gomock.NewController(t)
 	sender := mock_event.NewMockSender(t)
 	service := mock_nodeconf.NewMockService(ctrl)
@@ -358,6 +398,31 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 	status := New()
 
 	err := status.Init(a)
+	sender.EXPECT().Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfP2PStatusUpdate{
+					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+						SpaceId: spaceId,
+					},
+				},
+			},
+		},
+	}).Maybe()
+	sender.EXPECT().Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfP2PStatusUpdate{
+					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+						SpaceId:        spaceId,
+						Status:         initialStatus,
+						DevicesCounter: int64(deviceCount),
+					},
+				},
+			},
+		},
+	}).Maybe()
+	status.RegisterSpace(spaceId)
 	assert.Nil(t, err)
 
 	f := &fixture{
@@ -368,18 +433,6 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 		pool:             pool,
 		hookRegister:     hookRegister,
 	}
-	f.sender.EXPECT().Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfP2PStatusUpdate{
-					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
-						Status:         initialStatus,
-						DevicesCounter: 1,
-					},
-				},
-			},
-		},
-	}).Maybe()
 	return f
 }
 
