@@ -19,7 +19,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 )
@@ -54,7 +53,6 @@ type localDiscovery struct {
 	started     bool
 	notifier    Notifier
 	m           sync.Mutex
-	eventSender event.Sender
 
 	hookMu sync.Mutex
 	hooks  map[Hook][]HookCallback
@@ -74,7 +72,6 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	l.periodicCheck = periodicsync.NewPeriodicSync(10, 0, l.checkAddrs, log)
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
-	l.eventSender = app.MustComponent[event.Sender](a)
 	return
 }
 

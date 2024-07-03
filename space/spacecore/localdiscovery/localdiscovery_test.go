@@ -2,6 +2,7 @@ package localdiscovery
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
@@ -97,16 +98,16 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
-		var hookCalled bool
+		var hookCalled atomic.Bool
 		ld.RegisterResetNotPossible(func() {
-			hookCalled = true
+			hookCalled.Store(true)
 		})
 		ld.port = 6789
 		err := ld.checkAddrs(context.Background())
 
 		// then
 		assert.Nil(t, err)
-		assert.True(t, hookCalled)
+		assert.True(t, hookCalled.Load())
 	})
 }
 
