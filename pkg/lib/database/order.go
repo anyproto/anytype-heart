@@ -155,22 +155,30 @@ func (s dateOnlySort) Fields() []query.SortField {
 
 func (s dateOnlySort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
 	arena := &fastjson.Arena{}
-	val := v.GetInt64(s.relationKey)
+	val := v.Get(s.relationKey)
+	var (
+		empty bool
+		ts    int64
+	)
+	if val.Type() == fastjson.TypeNumber {
+		tsFloat, _ := val.Float64()
+		ts = time_util.CutToDay(time.Unix(int64(tsFloat), 0)).Unix()
+	} else {
+		empty = true
+	}
 
-	val = time_util.CutToDay(time.Unix(val, 0)).Unix()
-
-	if s.reverse {
-		if s.nulls == model.BlockContentDataviewSort_Start && val == 0 {
+	if empty {
+		if s.nulls == model.BlockContentDataviewSort_Start {
 			return encoding.AppendJSONValue(k, arena.NewNull())
 		} else {
-			return encoding.AppendInvertedJSON(k, arena.NewNumberFloat64(float64(val)))
-		}
-	} else {
-		if s.nulls == model.BlockContentDataviewSort_End && val == 0 {
 			return encoding.AppendInvertedJSON(k, arena.NewNull())
-		} else {
-			return encoding.AppendJSONValue(k, arena.NewNumberFloat64(float64(val)))
 		}
+	}
+
+	if s.reverse {
+		return encoding.AppendInvertedJSON(k, arena.NewNumberFloat64(float64(ts)))
+	} else {
+		return encoding.AppendJSONValue(k, arena.NewNumberFloat64(float64(ts)))
 	}
 }
 
@@ -201,20 +209,18 @@ func (s emptyPlacementSort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
 	arena := &fastjson.Arena{}
 	val := v.Get(s.relationKey)
 
-	isEmpty := s.isEmpty(val)
-
-	if s.reverse {
-		if s.nulls == model.BlockContentDataviewSort_Start && isEmpty {
+	if s.isEmpty(val) {
+		if s.nulls == model.BlockContentDataviewSort_Start {
 			return encoding.AppendJSONValue(k, arena.NewNull())
 		} else {
-			return encoding.AppendInvertedJSON(k, val)
-		}
-	} else {
-		if s.nulls == model.BlockContentDataviewSort_End && isEmpty {
 			return encoding.AppendInvertedJSON(k, arena.NewNull())
-		} else {
-			return encoding.AppendJSONValue(k, val)
 		}
+	}
+
+	if s.reverse {
+		return encoding.AppendInvertedJSON(k, val)
+	} else {
+		return encoding.AppendJSONValue(k, val)
 	}
 }
 
