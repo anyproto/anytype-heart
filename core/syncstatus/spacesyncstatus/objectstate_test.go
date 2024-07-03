@@ -55,7 +55,7 @@ func TestObjectState_GetSyncStatus(t *testing.T) {
 		syncStatus := objectState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, domain.Synced, syncStatus)
+		assert.Equal(t, domain.Unknown, syncStatus)
 	})
 }
 

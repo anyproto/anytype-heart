@@ -1,5 +1,5 @@
 package session
 
-type NewSessionNotifier interface {
+type Notifier interface {
 	Notify(ctx Context)
 }

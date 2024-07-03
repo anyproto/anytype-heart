@@ -56,7 +56,7 @@ func TestFileState_GetSyncStatus(t *testing.T) {
 		syncStatus := fileState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, domain.Synced, syncStatus)
+		assert.Equal(t, domain.Unknown, syncStatus)
 	})
 }
 
@@ -146,5 +146,16 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 
 		// then
 		assert.Equal(t, domain.Offline, fileState.GetSyncStatus("spaceId"))
+	})
+	t.Run("SetSyncStatusAndErr, syncing status", func(t *testing.T) {
+		// given
+		fileState := NewFileState(objectstore.NewStoreFixture(t))
+
+		// when
+		fileState.fileSyncCountBySpace["spaceId"] = 1
+		fileState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
+
+		// then
+		assert.Equal(t, domain.Syncing, fileState.GetSyncStatus("spaceId"))
 	})
 }

@@ -168,6 +168,9 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if !changed {
 		return nil
 	}
+	if !u.isLayoutSuitableForSyncRelations(record) {
+		return nil
+	}
 	spc, err := u.spaceService.Get(u.ctx, syncStatusDetails.spaceId)
 	if err != nil {
 		return err
@@ -194,6 +197,18 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	return spc.DoCtx(u.ctx, objectId, func(sb smartblock.SmartBlock) error {
 		return u.setSyncDetails(sb, status, syncError)
 	})
+}
+
+func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {
+	layoutsWithoutSyncRelations := []float64{
+		float64(model.ObjectType_participant),
+		float64(model.ObjectType_dashboard),
+		float64(model.ObjectType_spaceView),
+		float64(model.ObjectType_space),
+		float64(model.ObjectType_date),
+	}
+	layout := details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue()
+	return !slices.Contains(layoutsWithoutSyncRelations, layout)
 }
 
 func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus, syncError domain.SyncError) domain.SpaceSyncStatus {

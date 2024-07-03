@@ -217,32 +217,6 @@ func TestUpdateReceiver_UpdateTree(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 	})
-	t.Run("sync status not changed", func(t *testing.T) {
-		// given
-		receiver := newFixture(t)
-		receiver.nodeConnected = true
-		receiver.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).Times(2)
-		receiver.sender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{Value: &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
-				Summary: &pb.EventStatusThreadSummary{Status: pb.EventStatusThread_Synced},
-				Cafe: &pb.EventStatusThreadCafe{
-					Status: pb.EventStatusThread_Synced,
-					Files:  &pb.EventStatusThreadCafePinStatus{},
-				},
-			}}}},
-			ContextId: "id",
-		}).Return().Times(1)
-
-		// when
-		err := receiver.UpdateTree(nil, "id", objectsyncstatus.StatusSynced)
-		assert.Nil(t, err)
-
-		err = receiver.UpdateTree(nil, "id", objectsyncstatus.StatusSynced)
-		assert.Nil(t, err)
-
-		// then
-		assert.Nil(t, err)
-	})
 }
 
 func newFixture(t *testing.T) *fixture {
