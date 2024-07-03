@@ -47,7 +47,6 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if errors.Is(err, ErrDetailsNotChanged) {
 		return ErrDetailsNotChanged
 	}
-	// _, err := s.objects.UpsertOne(context.Background(), jsonVal)
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
@@ -123,40 +122,43 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 // ModifyObjectDetails updates existing details in store using modification function `proc`
 // `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
 func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	// TODO Do atomically in anystore
-	// if proc == nil {
-	// 	return nil
-	// }
-	// var payload *model.ObjectDetails
-	// key := pagesDetailsBase.ChildString(id).Bytes()
-	//
-	// if err := s.updateTxn(func(txn *badger.Txn) error {
-	// 	oldDetails, err := s.extractDetailsByKey(txn, key)
-	// 	if err != nil && !badgerhelper.IsNotFound(err) {
-	// 		return fmt.Errorf("get existing details: %w", err)
-	// 	}
-	//
-	// 	inputDetails := pbtypes.CopyStruct(oldDetails.GetDetails(), false)
-	// 	inputDetails = pbtypes.EnsureStructInited(inputDetails)
-	// 	newDetails, err := proc(inputDetails)
-	// 	if err != nil {
-	// 		return fmt.Errorf("run a modifier: %w", err)
-	// 	}
-	// 	newDetails = pbtypes.EnsureStructInited(newDetails)
-	// 	// Ensure ID is set
-	// 	newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	// 	s.sendUpdatesToSubscriptions(id, newDetails)
-	// 	payload = &model.ObjectDetails{Details: newDetails}
-	// 	err = badgerhelper.SetValueTxn(txn, key, payload)
-	// 	if err != nil {
-	// 		return fmt.Errorf("put details: %w", err)
-	// 	}
-	// 	return nil
-	// }); err != nil {
-	// 	return err
-	// }
-	// s.cache.Add(string(key), payload)
-	// return nil
+	if proc == nil {
+		return nil
+	}
+	arena := s.arenaPool.Get()
+	ctx := context.Background()
+	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+		inputDetails, err := pbtypes.JsonToProto(val)
+		if err != nil {
+			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
+		}
+		inputDetails = pbtypes.EnsureStructInited(inputDetails)
+		newDetails, err := proc(inputDetails)
+		if err != nil {
+			return nil, false, fmt.Errorf("run a modifier: %w", err)
+		}
+		newDetails = pbtypes.EnsureStructInited(newDetails)
+		// Ensure ID is set
+		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+
+		jsonVal := pbtypes.ProtoToJson(arena, newDetails)
+		diff, err := pbtypes.DiffJson(val, jsonVal)
+		if err != nil {
+			return nil, false, fmt.Errorf("diff json: %w", err)
+		}
+		if len(diff) == 0 {
+			return nil, false, ErrDetailsNotChanged
+		}
+		s.sendUpdatesToSubscriptions(id, newDetails)
+		return jsonVal, true, nil
+	}))
+	s.arenaPool.Put(arena)
+	if errors.Is(err, ErrDetailsNotChanged) {
+		return ErrDetailsNotChanged
+	}
+	if err != nil {
+		return fmt.Errorf("upsert details: %w", err)
+	}
 	return nil
 }
 
