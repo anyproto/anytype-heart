@@ -1289,6 +1289,11 @@ message MembershipTierData {
     string androidProductId = 17;
     string androidManageUrl = 18;
 }
+enum DeviceNetworkType {
+    WIFI = 0;
+    CELLULAR = 1;
+    NOT_CONNECTED = 2;
+}
 
 message Detail {
     string key = 1;
