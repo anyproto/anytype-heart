@@ -163,7 +163,15 @@ func extractOrder(spaceID string, sorts []*model.BlockContentDataviewSort, store
 
 func appendCustomOrder(sort *model.BlockContentDataviewSort, order SetOrder, keyOrder *KeyOrder) SetOrder {
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
-		order = append(order, NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
+		idsIndices := make(map[string]int, len(sort.CustomOrder))
+		var idx int
+		for _, it := range sort.CustomOrder {
+			if id := it.GetStringValue(); id != "" {
+				idsIndices[id] = idx
+				idx++
+			}
+		}
+		order = append(order, NewCustomOrder(sort.RelationKey, idsIndices, *keyOrder))
 	} else {
 		order = append(order, keyOrder)
 	}

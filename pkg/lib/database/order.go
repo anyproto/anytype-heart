@@ -433,15 +433,10 @@ func (ko *KeyOrder) ensureComparator() {
 	}
 }
 
-func NewCustomOrder(key string, needOrder []*types.Value, keyOrd KeyOrder) CustomOrder {
-	m := make(map[string]int, 0)
-	for id, v := range needOrder {
-		m[v.String()] = id
-	}
-
+func NewCustomOrder(key string, idsIndices map[string]int, keyOrd KeyOrder) CustomOrder {
 	return CustomOrder{
 		Key:          key,
-		NeedOrderMap: m,
+		NeedOrderMap: idsIndices,
 		KeyOrd:       keyOrd,
 	}
 }
@@ -452,14 +447,36 @@ type CustomOrder struct {
 	KeyOrd       KeyOrder
 }
 
+func (co CustomOrder) AppendKey(k key.Key, v *fastjson.Value) key.Key {
+	arena := &fastjson.Arena{}
+	val := v.GetStringBytes(co.Key)
+	idx, ok := co.NeedOrderMap[string(val)]
+	if !ok {
+		compiled := co.KeyOrd.Compile()
+		// Push to the end
+		k = encoding.AppendJSONValue(k, arena.NewNumberInt(len(co.NeedOrderMap)))
+		// and add sorting
+		return compiled.AppendKey(k, v)
+	}
+	return encoding.AppendJSONValue(k, arena.NewNumberInt(idx))
+}
+
+func (co CustomOrder) Fields() []query.SortField {
+	return []query.SortField{
+		{
+			Field: "",
+			Path:  []string{co.Key},
+		},
+	}
+}
+
 func (co CustomOrder) Compile() query.Sort {
-	// TODO implement
-	return nil
+	return co
 }
 
 func (co CustomOrder) Compare(a, b *types.Struct) int {
-	aID, okA := co.NeedOrderMap[pbtypes.Get(a, co.Key).String()]
-	bID, okB := co.NeedOrderMap[pbtypes.Get(b, co.Key).String()]
+	aID, okA := co.NeedOrderMap[pbtypes.Get(a, co.Key).GetStringValue()]
+	bID, okB := co.NeedOrderMap[pbtypes.Get(b, co.Key).GetStringValue()]
 
 	if okA && okB {
 		if aID == bID {

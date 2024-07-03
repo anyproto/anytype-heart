@@ -21,7 +21,10 @@ func assertCompare(t *testing.T, order Order, a *types.Struct, b *types.Struct, 
 	aJson := pbtypes.ProtoToJson(arena, a)
 	bJson := pbtypes.ProtoToJson(arena, b)
 	s := order.Compile()
-	assert.Equal(t, expected, bytes.Compare(s.AppendKey(nil, aJson), s.AppendKey(nil, bJson)))
+	aBytes := s.AppendKey(nil, aJson)
+	bBytes := s.AppendKey(nil, bJson)
+	got := bytes.Compare(aBytes, bBytes)
+	assert.Equal(t, expected, got)
 }
 
 func TestKeyOrder_Compare(t *testing.T) {
@@ -347,13 +350,13 @@ func TestSetOrder_Compare(t *testing.T) {
 }
 
 func TestCustomOrder_Compare(t *testing.T) {
-	needOrder := []*types.Value{
-		pbtypes.String("b"),
-		pbtypes.String("c"),
-		pbtypes.String("d"),
-		pbtypes.String("a"),
+	idxIndices := map[string]int{
+		"b": 0,
+		"c": 1,
+		"d": 2,
+		"a": 3,
 	}
-	co := NewCustomOrder("ID", needOrder, KeyOrder{Key: "ID", Type: model.BlockContentDataviewSort_Asc, RelationFormat: model.RelationFormat_shorttext})
+	co := NewCustomOrder("ID", idxIndices, KeyOrder{Key: "ID", Type: model.BlockContentDataviewSort_Asc, RelationFormat: model.RelationFormat_shorttext})
 
 	t.Run("gt", func(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"ID": pbtypes.String("c")}}
