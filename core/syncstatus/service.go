@@ -31,8 +31,7 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type service struct {
-	updateReceiver *updateReceiver
-
+	updateReceiver  *updateReceiver
 	fileSyncService filesync.FileSync
 
 	objectWatchersLock sync.Mutex
@@ -53,20 +52,18 @@ func New() Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	nodeConfService := app.MustComponent[nodeconf.Service](a)
-	cfg := app.MustComponent[*config.Config](a)
-	eventSender := app.MustComponent[event.Sender](a)
-
-	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
-
 	s.spaceSyncStatus = app.MustComponent[spacesyncstatus.Updater](a)
-	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
-
 	s.fileSyncService.OnUploaded(s.onFileUploaded)
 	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
 	s.fileSyncService.OnLimited(s.onFileLimited)
 	s.fileSyncService.OnDelete(s.OnFileDelete)
+
+	nodeConfService := app.MustComponent[nodeconf.Service](a)
+	cfg := app.MustComponent[*config.Config](a)
+	eventSender := app.MustComponent[event.Sender](a)
+	nodeStatus := app.MustComponent[nodestatus.NodeStatus](a)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore, nodeStatus)
 	return nil
 }
 
@@ -101,8 +98,6 @@ func (s *service) Unwatch(spaceID string, id string) {
 }
 
 func (s *service) Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error) {
-	s.updateReceiver.ClearLastObjectStatus(id)
-
 	s.objectWatchersLock.Lock()
 	defer s.objectWatchersLock.Unlock()
 	objectWatcher := s.objectWatchers[spaceId]
@@ -116,8 +111,6 @@ func (s *service) Watch(spaceId string, id string, filesGetter func() []string) 
 }
 
 func (s *service) unwatch(spaceID string, id string) {
-	s.updateReceiver.ClearLastObjectStatus(id)
-
 	s.objectWatchersLock.Lock()
 	defer s.objectWatchersLock.Unlock()
 	objectWatcher := s.objectWatchers[spaceID]

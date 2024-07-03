@@ -93,9 +93,16 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 func (s *dsObjectStore) queryRaw(filter func(g *types.Struct) bool, order database.Order, limit int, offset int) ([]database.Record, error) {
 	var (
 		records []database.Record
+		err     error
 	)
 
-	err := s.db.View(func(txn *badger.Txn) error {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("badger iterator panic: %v", r)
+		}
+	}()
+
+	err = s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		opts.Prefix = pagesDetailsBase.Bytes()
@@ -394,6 +401,13 @@ func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
 	case database.FilterEq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
 			return f.Value.GetStringValue()
+		}
+	case database.FilterIn:
+		if f.Key == bundle.RelationKeySpaceId.String() {
+			values := f.Value.GetValues()
+			if len(values) > 0 {
+				return values[0].GetStringValue()
+			}
 		}
 	case database.FiltersAnd:
 		spaceID = iterateOverAndFilters(f)

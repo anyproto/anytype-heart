@@ -218,17 +218,16 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	}
 	ids, err := i.getIdsForTypes(space.Id(), typesForSyncRelations...)
 	if err != nil {
-		log.Error("failed to add sync status relations", zap.Error(err))
+		log.Debug("failed to add sync status relations", zap.Error(err))
 	}
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
 			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
-				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
-				return details, nil
+				return helper.InjectsSyncDetails(details, syncStatus, syncError), nil
 			})
 		})
 		if err != nil {
-			log.Error("failed to add sync status relations", zap.Error(err))
+			log.Debug("failed to add sync status relations", zap.Error(err))
 		}
 	}
 }

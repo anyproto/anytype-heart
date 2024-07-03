@@ -56,7 +56,7 @@ func TestFileState_GetSyncStatus(t *testing.T) {
 		syncStatus := fileState.GetSyncStatus("spaceId")
 
 		// then
-		assert.Equal(t, domain.Synced, syncStatus)
+		assert.Equal(t, domain.Unknown, syncStatus)
 	})
 }
 
@@ -82,7 +82,7 @@ func TestFileState_SetObjectsNumber(t *testing.T) {
 			},
 		})
 		fileState := NewFileState(storeFixture)
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)
 
 		// when
 		fileState.SetObjectsNumber(syncStatus)
@@ -110,41 +110,10 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
-		fileState.SetSyncStatusAndErr(syncStatus)
+		fileState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
 
 		// then
 		assert.Equal(t, domain.Synced, fileState.GetSyncStatus("spaceId"))
-	})
-	t.Run("SetSyncStatusAndErr, received status synced, but there are syncing files in store", func(t *testing.T) {
-		// given
-		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:               pbtypes.String("id1"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Syncing)),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:               pbtypes.String("id2"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Synced)),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:               pbtypes.String("id3"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Syncing)),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-			},
-		})
-		fileState := NewFileState(storeFixture)
-
-		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
-		fileState.SetObjectsNumber(syncStatus)
-		fileState.SetSyncStatusAndErr(syncStatus)
-
-		// then
-		assert.Equal(t, domain.Syncing, fileState.GetSyncStatus("spaceId"))
 	})
 	t.Run("SetSyncStatusAndErr, sync in progress", func(t *testing.T) {
 		// given
@@ -152,7 +121,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Files)
-		fileState.SetSyncStatusAndErr(syncStatus)
+		fileState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Syncing, fileState.GetSyncStatus("spaceId"))
@@ -163,7 +132,7 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 
 		// when
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Error, domain.Null, domain.Files)
-		fileState.SetSyncStatusAndErr(syncStatus)
+		fileState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
 
 		// then
 		assert.Equal(t, domain.Error, fileState.GetSyncStatus("spaceId"))
@@ -173,35 +142,20 @@ func TestFileState_SetSyncStatus(t *testing.T) {
 		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Offline, domain.Null, domain.Files)
-		fileState.SetSyncStatusAndErr(syncStatus)
+		fileState.SetSyncStatusAndErr(domain.Offline, domain.Null, "spaceId")
 
 		// then
 		assert.Equal(t, domain.Offline, fileState.GetSyncStatus("spaceId"))
 	})
-	t.Run("SetSyncStatusAndErr, storage limit error", func(t *testing.T) {
+	t.Run("SetSyncStatusAndErr, syncing status", func(t *testing.T) {
 		// given
-		storeFixture := objectstore.NewStoreFixture(t)
-		fileState := NewFileState(storeFixture)
-		storeFixture.AddObjects(t, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:               pbtypes.String("id1"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-			},
-			{
-				bundle.RelationKeyId:               pbtypes.String("id2"),
-				bundle.RelationKeyFileBackupStatus: pbtypes.Int64(int64(filesyncstatus.Limited)),
-				bundle.RelationKeySpaceId:          pbtypes.String("spaceId"),
-			},
-		})
+		fileState := NewFileState(objectstore.NewStoreFixture(t))
 
 		// when
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
-		fileState.SetSyncStatusAndErr(syncStatus)
+		fileState.fileSyncCountBySpace["spaceId"] = 1
+		fileState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
 
 		// then
-		assert.Equal(t, domain.Error, fileState.GetSyncStatus("spaceId"))
-		assert.Equal(t, domain.StorageLimitExceed, fileState.GetSyncErr("spaceId"))
+		assert.Equal(t, domain.Syncing, fileState.GetSyncStatus("spaceId"))
 	})
 }
