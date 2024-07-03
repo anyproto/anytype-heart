@@ -353,5 +353,7 @@ service ClientCommands {
     
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
 
+    rpc DeviceSetName (anytype.Rpc.Device.SetName.Request) returns (anytype.Rpc.Device.SetName.Response);
+    rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
     rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
 }
