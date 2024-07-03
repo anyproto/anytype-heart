@@ -403,7 +403,8 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 			{
 				Value: &pb.EventMessageValueOfP2PStatusUpdate{
 					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
-						SpaceId: spaceId,
+						SpaceId:        spaceId,
+						DevicesCounter: 1,
 					},
 				},
 			},

@@ -122,6 +122,10 @@ func (p *p2pStatus) RegisterSpace(spaceId string) {
 	p.Lock()
 	defer p.Unlock()
 	p.spaceIds[spaceId] = struct{}{}
+	connection := p.connectionsCount
+	if connection == 0 {
+		connection++ // count current device
+	}
 	p.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -129,7 +133,7 @@ func (p *p2pStatus) RegisterSpace(spaceId string) {
 					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 						SpaceId:        spaceId,
 						Status:         p.mapStatusToEvent(p.status),
-						DevicesCounter: p.connectionsCount,
+						DevicesCounter: connection,
 					},
 				},
 			},
