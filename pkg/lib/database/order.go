@@ -2,7 +2,6 @@ package database
 
 import (
 	"strings"
-	"time"
 
 	"github.com/anyproto/any-store/encoding"
 	"github.com/anyproto/any-store/key"
@@ -109,7 +108,7 @@ func (ko *KeyOrder) Compile() query.Sort {
 		return ko.basicSort(fastjson.TypeString)
 	case model.RelationFormat_tag, model.RelationFormat_status:
 		// TODO tag-status sort
-		return ko.basicSort(fastjson.TypeArray)
+		return ko.tagStatusSort()
 	default:
 		return ko.basicSort(fastjson.TypeString)
 	}
@@ -129,6 +128,21 @@ func (ko *KeyOrder) basicSort(valType fastjson.Type) query.Sort {
 	}
 }
 
+func (ko *KeyOrder) tagStatusSort() query.Sort {
+	if ko.Options == nil {
+		ko.Options = make(map[string]string)
+	}
+	if len(ko.Options) == 0 && ko.Store != nil {
+		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
+	}
+	return tagStatusSort{
+		relationKey: ko.Key,
+		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
+		nulls:       ko.EmptyPlacement,
+		idToName:    ko.Options,
+	}
+}
+
 func (ko *KeyOrder) emptyPlacementSort(valType fastjson.Type) query.Sort {
 	return emptyPlacementSort{
 		relationKey: ko.Key,
@@ -138,150 +152,11 @@ func (ko *KeyOrder) emptyPlacementSort(valType fastjson.Type) query.Sort {
 	}
 }
 
-type dateOnlySort struct {
-	relationKey string
-	reverse     bool
-	nulls       model.BlockContentDataviewSortEmptyType
-	valType     fastjson.Type
-}
-
-func (s dateOnlySort) Fields() []query.SortField {
-	return []query.SortField{
-		{
-			Field: "",
-		},
-	}
-}
-
-func (s dateOnlySort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
-	arena := &fastjson.Arena{}
-	val := v.Get(s.relationKey)
-	var (
-		empty bool
-		ts    int64
-	)
-	if val.Type() == fastjson.TypeNumber {
-		tsFloat, _ := val.Float64()
-		ts = time_util.CutToDay(time.Unix(int64(tsFloat), 0)).Unix()
-	} else {
-		empty = true
-	}
-
-	if empty {
-		if s.nulls == model.BlockContentDataviewSort_Start {
-			return encoding.AppendJSONValue(k, arena.NewNull())
-		} else {
-			return encoding.AppendInvertedJSON(k, arena.NewNull())
-		}
-	}
-
-	if s.reverse {
-		return encoding.AppendInvertedJSON(k, arena.NewNumberFloat64(float64(ts)))
-	} else {
-		return encoding.AppendJSONValue(k, arena.NewNumberFloat64(float64(ts)))
-	}
-}
-
 func (ko *KeyOrder) dateOnlySort() query.Sort {
 	return dateOnlySort{
 		relationKey: ko.Key,
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
-	}
-}
-
-type emptyPlacementSort struct {
-	relationKey string
-	reverse     bool
-	nulls       model.BlockContentDataviewSortEmptyType
-	valType     fastjson.Type
-}
-
-func (s emptyPlacementSort) Fields() []query.SortField {
-	return []query.SortField{
-		{
-			Field: "",
-		},
-	}
-}
-
-func (s emptyPlacementSort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
-	arena := &fastjson.Arena{}
-	val := v.Get(s.relationKey)
-
-	if s.isEmpty(val) {
-		if s.nulls == model.BlockContentDataviewSort_Start {
-			return encoding.AppendJSONValue(k, arena.NewNull())
-		} else {
-			return encoding.AppendInvertedJSON(k, arena.NewNull())
-		}
-	}
-
-	if s.reverse {
-		return encoding.AppendInvertedJSON(k, val)
-	} else {
-		return encoding.AppendJSONValue(k, val)
-	}
-}
-
-func (s emptyPlacementSort) isEmpty(val *fastjson.Value) bool {
-	switch s.valType {
-	case fastjson.TypeNull:
-		return true
-	case fastjson.TypeString:
-		return len(val.GetStringBytes()) == 0
-	case fastjson.TypeNumber:
-		n, _ := val.Float64()
-		return n == 0
-	case fastjson.TypeFalse:
-		return true
-	case fastjson.TypeTrue:
-		return false
-	case fastjson.TypeArray:
-		return len(val.GetArray()) == 0
-	case fastjson.TypeObject:
-		panic("not implemented")
-	}
-	return false
-}
-
-type textSort struct {
-	relationKey string
-	reverse     bool
-	nulls       model.BlockContentDataviewSortEmptyType
-}
-
-func (s textSort) Fields() []query.SortField {
-	return []query.SortField{
-		{
-			Field: "",
-			Path:  []string{s.relationKey},
-		},
-	}
-}
-
-func (s textSort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
-	// TODO Pass buffer, arena and collator
-	coll := collate.New(language.Und, collate.IgnoreCase)
-
-	val := v.GetStringBytes(s.relationKey)
-	// TODO note layout check
-
-	arena := &fastjson.Arena{}
-
-	collated := coll.Key(&collate.Buffer{}, val)
-	if s.reverse {
-		if s.nulls == model.BlockContentDataviewSort_Start && len(val) == 0 {
-			return encoding.AppendJSONValue(k, arena.NewNull())
-		} else {
-			return encoding.AppendInvertedJSON(k, arena.NewStringBytes(collated))
-		}
-	} else {
-		if s.nulls == model.BlockContentDataviewSort_End && len(val) == 0 {
-			return encoding.AppendInvertedJSON(k, arena.NewNull())
-		} else {
-			return encoding.AppendJSONValue(k, arena.NewStringBytes(collated))
-		}
 	}
 }
 

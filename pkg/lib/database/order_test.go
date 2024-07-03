@@ -251,11 +251,11 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assertCompare(t, asc, a, b, 1)
 	})
 
-	t.Run("asc_nil", func(t *testing.T) {
+	t.Run("nil and empty string -- equal", func(t *testing.T) {
 		a := &types.Struct{Fields: map[string]*types.Value{"k": nil}}
 		b := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("")}}
 		asc := &KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc, RelationFormat: model.RelationFormat_shorttext}
-		assertCompare(t, asc, a, b, -1)
+		assertCompare(t, asc, a, b, 0)
 	})
 
 	t.Run("asc_nil", func(t *testing.T) {
