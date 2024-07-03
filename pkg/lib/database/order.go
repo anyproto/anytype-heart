@@ -1,8 +1,6 @@
 package database
 
 import (
-	"strings"
-
 	"github.com/anyproto/any-store/encoding"
 	"github.com/anyproto/any-store/key"
 	"github.com/anyproto/any-store/query"
@@ -20,7 +18,6 @@ import (
 type Order interface {
 	Compare(a, b *types.Struct) int
 	Compile() query.Sort
-	String() string
 }
 
 // ObjectStore interface is used to enrich filters
@@ -49,14 +46,6 @@ func (so SetOrder) Compile() query.Sort {
 		sorts = append(sorts, o.Compile())
 	}
 	return sorts
-}
-
-func (so SetOrder) String() (s string) {
-	var ss []string
-	for _, o := range so {
-		ss = append(ss, o.String())
-	}
-	return strings.Join(ss, ", ")
 }
 
 type KeyOrder struct {
@@ -281,14 +270,6 @@ func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
 	return pbtypes.String(res)
 }
 
-func (ko *KeyOrder) String() (s string) {
-	s = ko.Key
-	if ko.Type == model.BlockContentDataviewSort_Desc {
-		s += " DESC"
-	}
-	return
-}
-
 func (ko *KeyOrder) ensureComparator() {
 	if ko.comparator == nil {
 		ko.comparator = collate.New(language.Und, collate.IgnoreCase)
@@ -359,12 +340,4 @@ func (co CustomOrder) Compare(a, b *types.Struct) int {
 	}
 
 	return co.KeyOrd.Compare(a, b)
-}
-
-func (co CustomOrder) String() (s string) {
-	ss := make([]string, len(co.NeedOrderMap))
-	for key, id := range co.NeedOrderMap {
-		ss[id] = key
-	}
-	return strings.Join(ss, ", ")
 }

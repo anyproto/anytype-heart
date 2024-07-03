@@ -177,7 +177,6 @@ type WithNestedFilter interface {
 
 type Filter interface {
 	FilterObject(g *types.Struct) bool
-	String() string
 	Compile() query.Filter
 }
 
@@ -192,14 +191,6 @@ func (a FiltersAnd) FilterObject(g *types.Struct) bool {
 		}
 	}
 	return true
-}
-
-func (a FiltersAnd) String() string {
-	var andS []string
-	for _, f := range a {
-		andS = append(andS, f.String())
-	}
-	return fmt.Sprintf("(%s)", strings.Join(andS, " AND "))
 }
 
 func (a FiltersAnd) Compile() query.Filter {
@@ -240,14 +231,6 @@ func (fo FiltersOr) Compile() query.Filter {
 	return query.Or(filters)
 }
 
-func (fo FiltersOr) String() string {
-	var orS []string
-	for _, f := range fo {
-		orS = append(orS, f.String())
-	}
-	return fmt.Sprintf("(%s)", strings.Join(orS, " OR "))
-}
-
 func (fo FiltersOr) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
 	return iterateNestedFilters(fo, fn)
 }
@@ -277,10 +260,6 @@ func (n FilterNot) FilterObject(g *types.Struct) bool {
 
 func (f FilterNot) Compile() query.Filter {
 	return query.Not{Filter: f.Filter.Compile()}
-}
-
-func (n FilterNot) String() string {
-	return fmt.Sprintf("NOT(%s)", n.Filter.String())
 }
 
 type FilterEq struct {
@@ -360,24 +339,7 @@ func (e FilterEq) filterObject(v *types.Value) bool {
 	return false
 }
 
-func (e FilterEq) String() string {
-	var eq string
-	switch e.Cond {
-	case model.BlockContentDataviewFilter_Equal:
-		eq = "="
-	case model.BlockContentDataviewFilter_Greater:
-		eq = ">"
-	case model.BlockContentDataviewFilter_GreaterOrEqual:
-		eq = ">="
-	case model.BlockContentDataviewFilter_Less:
-		eq = "<"
-	case model.BlockContentDataviewFilter_LessOrEqual:
-		eq = "<="
-	}
-	return fmt.Sprintf("%s %s '%s'", e.Key, eq, pbtypes.Sprint(e.Value))
-}
-
-// any?
+// any
 type FilterIn struct {
 	Key   string
 	Value *types.ListValue
@@ -403,10 +365,6 @@ func (i FilterIn) Compile() query.Filter {
 		Path:   []string{i.Key},
 		Filter: query.Or(conds),
 	}
-}
-
-func (i FilterIn) String() string {
-	return fmt.Sprintf("%v IN(%v)", i.Key, pbtypes.Sprint(i.Value))
 }
 
 type FilterLike struct {
@@ -438,10 +396,6 @@ func (l FilterLike) Compile() query.Filter {
 	}
 }
 
-func (l FilterLike) String() string {
-	return fmt.Sprintf("%v LIKE '%s'", l.Key, pbtypes.Sprint(l.Value))
-}
-
 type FilterExists struct {
 	Key string
 }
@@ -460,10 +414,6 @@ func (e FilterExists) Compile() query.Filter {
 		Path:   []string{e.Key},
 		Filter: query.Exists{},
 	}
-}
-
-func (e FilterExists) String() string {
-	return fmt.Sprintf("%v EXISTS", e.Key)
 }
 
 type FilterEmpty struct {
@@ -513,10 +463,6 @@ func (e FilterEmpty) Compile() query.Filter {
 	}
 }
 
-func (e FilterEmpty) String() string {
-	return fmt.Sprintf("%v IS EMPTY", e.Key)
-}
-
 // all?
 type FilterAllIn struct {
 	Key   string
@@ -561,9 +507,6 @@ func (l FilterAllIn) Compile() query.Filter {
 		Path:   []string{l.Key},
 		Filter: query.And(conds),
 	}
-}
-func (l FilterAllIn) String() string {
-	return fmt.Sprintf("%s ALLIN(%v)", l.Key, l.Value)
 }
 
 type FilterOptionsEqual struct {
@@ -622,10 +565,6 @@ func (exIn FilterOptionsEqual) Compile() query.Filter {
 		Path:   []string{exIn.Key},
 		Filter: query.Or(conds),
 	}
-}
-
-func (exIn FilterOptionsEqual) String() string {
-	return fmt.Sprintf("%s EXACTINN(%v)", exIn.Key, exIn.Value)
 }
 
 func optionsToMap(spaceID string, key string, store ObjectStore) map[string]string {
@@ -697,10 +636,6 @@ func (i *FilterNestedIn) Compile() query.Filter {
 		Path:   []string{i.Key},
 		Filter: query.Or(conds),
 	}
-}
-
-func (i *FilterNestedIn) String() string {
-	return fmt.Sprintf("%v IN(%v)", i.Key, i.IDs)
 }
 
 func (i *FilterNestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {

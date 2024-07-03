@@ -1,8 +1,6 @@
 package database
 
 import (
-	"fmt"
-
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -210,20 +208,6 @@ type Filters struct {
 	FilterObj Filter
 	Order     Order
 	dateKeys  []string
-}
-
-func (f *Filters) String() string {
-	var filterString string
-	var orderString string
-	var separator string
-	if f.FilterObj != nil {
-		filterString = fmt.Sprintf("WHERE %v", f.FilterObj.String())
-		separator = " "
-	}
-	if f.Order != nil {
-		orderString = fmt.Sprintf("%sORDER BY %v", separator, f.Order.String())
-	}
-	return fmt.Sprintf("%s%s", filterString, orderString)
 }
 
 // ListRelationOptions returns options for specific relation
