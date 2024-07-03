@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -20,11 +19,7 @@ func assertFilter(t *testing.T, f Filter, obj *types.Struct, expected bool) {
 	compiled := f.Compile()
 	arena := &fastjson.Arena{}
 	val := pbtypes.ProtoToJson(arena, obj)
-	ok := assert.Equal(t, expected, compiled.Ok(val))
-	if !ok {
-		fmt.Println()
-		compiled.Ok(val)
-	}
+	assert.Equal(t, expected, compiled.Ok(val))
 }
 
 func TestEq_FilterObject(t *testing.T) {
@@ -124,7 +119,7 @@ func TestNot_FilterObject(t *testing.T) {
 	eq := FilterEq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_Equal}
 	g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Float64(1)}}
 	assertFilter(t, eq, g, true)
-	assert.False(t, FilterNot{eq}.FilterObject(g))
+	assertFilter(t, FilterNot{eq}, g, false)
 }
 
 func TestIn_FilterObject(t *testing.T) {
@@ -132,20 +127,20 @@ func TestIn_FilterObject(t *testing.T) {
 	t.Run("ok list -> str", func(t *testing.T) {
 		for _, v := range []string{"1", "2", "3"} {
 			g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String(v)}}
-			assert.True(t, in.FilterObject(g))
+			assertFilter(t, in, g, true)
 		}
 	})
 	t.Run("not ok list -> str", func(t *testing.T) {
 		g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("not ok")}}
-		assert.False(t, in.FilterObject(g))
+		assertFilter(t, in, g, false)
 	})
 	t.Run("ok list -> list", func(t *testing.T) {
 		g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"not ok", "1", "222"})}}
-		assert.True(t, in.FilterObject(g))
+		assertFilter(t, in, g, true)
 	})
 	t.Run("not ok list -> list", func(t *testing.T) {
 		g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"not ok"})}}
-		assert.False(t, in.FilterObject(g))
+		assertFilter(t, in, g, false)
 	})
 }
 
@@ -428,4 +423,79 @@ func TestNestedFilters(t *testing.T) {
 		assertFilter(t, f, obj2, true)
 	})
 
+}
+
+func TestFilterExists(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		eq := FilterExists{Key: "k"}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("equal test")}}
+		assertFilter(t, eq, obj, true)
+	})
+	t.Run("not ok", func(t *testing.T) {
+		eq := FilterExists{Key: "foo"}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("equal test")}}
+		assertFilter(t, eq, obj, false)
+	})
+}
+
+func TestFilterOptionsEqual(t *testing.T) {
+	optionIdToName := map[string]string{
+		"optionId1": "1",
+		"optionId2": "2",
+		"optionId3": "3",
+	}
+	t.Run("one option, ok", func(t *testing.T) {
+		eq := FilterOptionsEqual{
+			Key:     "k",
+			Options: optionIdToName,
+			Value:   pbtypes.StringList([]string{"optionId1"}).GetListValue(),
+		}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1"})}}
+		assertFilter(t, eq, obj, true)
+	})
+	t.Run("two options, ok", func(t *testing.T) {
+		eq := FilterOptionsEqual{
+			Key:     "k",
+			Options: optionIdToName,
+			Value:   pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(),
+		}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3"})}}
+		assertFilter(t, eq, obj, true)
+	})
+	t.Run("two options, ok, not existing options are discarded", func(t *testing.T) {
+		eq := FilterOptionsEqual{
+			Key:     "k",
+			Options: optionIdToName,
+			Value:   pbtypes.StringList([]string{"optionId1", "optionId3"}).GetListValue(),
+		}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3", "optionId7000"})}}
+		assertFilter(t, eq, obj, true)
+	})
+	t.Run("two options, not ok", func(t *testing.T) {
+		eq := FilterOptionsEqual{
+			Key:     "k",
+			Options: optionIdToName,
+			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
+		}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId3"})}}
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("two options, not ok, because object has 1 option", func(t *testing.T) {
+		eq := FilterOptionsEqual{
+			Key:     "k",
+			Options: optionIdToName,
+			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
+		}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1"})}}
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("two options, not ok, because object has 3 options", func(t *testing.T) {
+		eq := FilterOptionsEqual{
+			Key:     "k",
+			Options: optionIdToName,
+			Value:   pbtypes.StringList([]string{"optionId1", "optionId2"}).GetListValue(),
+		}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"optionId1", "optionId2", "optionId3"})}}
+		assertFilter(t, eq, obj, false)
+	})
 }

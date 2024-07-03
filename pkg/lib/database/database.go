@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 
@@ -225,16 +224,6 @@ func (f *Filters) String() string {
 		orderString = fmt.Sprintf("%sORDER BY %v", separator, f.Order.String())
 	}
 	return fmt.Sprintf("%s%s", filterString, orderString)
-}
-
-func dateOnly(v *types.Value) *types.Value {
-	if n, isNumber := v.GetKind().(*types.Value_NumberValue); isNumber {
-		tm := time.Unix(int64(n.NumberValue), 0).In(time.UTC)                 // we have all values stored in UTC, including filters
-		tm = time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC) // reset time, preserving UTC tz
-		return pbtypes.Float64(float64(tm.Unix()))
-	}
-	// reset to NULL otherwise
-	return &types.Value{Kind: &types.Value_NullValue{}}
 }
 
 // ListRelationOptions returns options for specific relation

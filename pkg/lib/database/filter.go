@@ -148,7 +148,7 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return FilterExactIn{
+		return FilterOptionsEqual{
 			Key:     rawFilter.RelationKey,
 			Value:   list,
 			Options: optionsToMap(spaceID, rawFilter.RelationKey, store),
@@ -158,7 +158,7 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return FilterNot{FilterExactIn{
+		return FilterNot{FilterOptionsEqual{
 			Key:   rawFilter.RelationKey,
 			Value: list,
 		}}, nil
@@ -566,13 +566,13 @@ func (l FilterAllIn) String() string {
 	return fmt.Sprintf("%s ALLIN(%v)", l.Key, l.Value)
 }
 
-type FilterExactIn struct {
+type FilterOptionsEqual struct {
 	Key     string
 	Value   *types.ListValue
 	Options map[string]string
 }
 
-func (exIn FilterExactIn) FilterObject(g *types.Struct) bool {
+func (exIn FilterOptionsEqual) FilterObject(g *types.Struct) bool {
 	val := pbtypes.Get(g, exIn.Key)
 	if val == nil {
 		return false
@@ -585,6 +585,7 @@ func (exIn FilterExactIn) FilterObject(g *types.Struct) bool {
 		return false
 	}
 
+	// TODO It's absolutely not clear why we filter by options CONDITIONALLY, should be filtered always
 	if len(exIn.Options) > 0 {
 		list.Values = slice.Filter(list.GetValues(), func(value *types.Value) bool {
 			_, ok := exIn.Options[value.GetStringValue()]
@@ -611,7 +612,7 @@ func (exIn FilterExactIn) FilterObject(g *types.Struct) bool {
 	return true
 }
 
-func (exIn FilterExactIn) Compile() query.Filter {
+func (exIn FilterOptionsEqual) Compile() query.Filter {
 	// TODO FIX: Add $len check
 	conds := make([]query.Filter, 0, len(exIn.Value.GetValues()))
 	for _, v := range exIn.Value.GetValues() {
@@ -623,7 +624,7 @@ func (exIn FilterExactIn) Compile() query.Filter {
 	}
 }
 
-func (exIn FilterExactIn) String() string {
+func (exIn FilterOptionsEqual) String() string {
 	return fmt.Sprintf("%s EXACTINN(%v)", exIn.Key, exIn.Value)
 }
 
