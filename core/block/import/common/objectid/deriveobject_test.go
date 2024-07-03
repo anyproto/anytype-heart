@@ -59,11 +59,11 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 		})
 
 		// when
-		id, _, key, err := deriveObject.GetIDAndPayload(context.Background(), "spaceId", sn, time.Now(), false, objectorigin.Import(model.Import_Pb))
+		id, _, err := deriveObject.GetIDAndPayload(context.Background(), "spaceId", sn, time.Now(), false, objectorigin.Import(model.Import_Pb))
 
 		// then
 		assert.Nil(t, err)
-		assert.NotEqual(t, key, "key")
+		assert.NotEqual(t, deriveObject.GetInternalKey(sn.SbType), "key")
 		assert.Equal(t, "newId", id)
 	})
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -24,26 +25,27 @@ type derivedObject struct {
 	existingObject *existingObject
 	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
+	internalKey    string
 }
 
 func newDerivedObject(existingObject *existingObject, spaceService space.Service, objectStore objectstore.ObjectStore) *derivedObject {
 	return &derivedObject{existingObject: existingObject, spaceService: spaceService, objectStore: objectStore}
 }
 
-func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error) {
+func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, _ time.Time, getExisting bool, _ objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
 	id, payload, err := d.existingObject.GetIDAndPayload(ctx, spaceID, sn, getExisting)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, "", err
+		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
 	if id != "" {
-		return id, payload, "", nil
+		return id, payload, nil
 	}
 	rawUniqueKey := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 	uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 	if err != nil {
 		uniqueKey, err = domain.NewUniqueKey(sn.SbType, sn.Snapshot.Data.Key)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("create unique key from %s and %q: %w", sn.SbType, sn.Snapshot.Data.Key, err)
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s and %q: %w", sn.SbType, sn.Snapshot.Data.Key, err)
 		}
 	}
 
@@ -52,20 +54,24 @@ func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 		key = bson.NewObjectId().Hex()
 		uniqueKey, err = domain.NewUniqueKey(sn.SbType, key)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("create unique key from %s and %q: %w", sn.SbType, key, err)
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s: %w", sn.SbType, err)
 		}
 	}
+	d.internalKey = key
 	spc, err := d.spaceService.Get(ctx, spaceID)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("get space : %w", err)
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)
 	}
 	payload, err = spc.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
 		Key: uniqueKey,
 	})
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("derive tree create payload: %w", err)
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("derive tree create payload: %w", err)
 	}
-	return payload.RootRawChange.Id, payload, key, nil
+	return payload.RootRawChange.Id, payload, nil
+}
+func (d *derivedObject) GetInternalKey(sbType sb.SmartBlockType) string {
+	return d.internalKey
 }
 
 func (d *derivedObject) isDeletedObject(uniqueKey string) bool {

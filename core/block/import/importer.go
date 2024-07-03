@@ -423,7 +423,7 @@ func (i *Import) getObjectID(
 		id      string
 		payload treestorage.TreeStorageCreatePayload
 	)
-	id, payload, newUniqueKey, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting, origin)
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting, origin)
 	if err != nil {
 		return err
 	}
@@ -431,6 +431,15 @@ func (i *Import) getObjectID(
 	if payload.RootRawChange != nil {
 		createPayloads[id] = payload
 	}
+	return i.extractInternalKey(snapshot, oldIDToNew)
+}
+
+func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[string]string) error {
+	internalKeyProvider, ok := i.idProvider.(objectid.InternalKeyProvider)
+	if !ok {
+		return nil
+	}
+	newUniqueKey := internalKeyProvider.GetInternalKey(snapshot.SbType)
 	if newUniqueKey != "" {
 		oldUniqueKey := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 		if oldUniqueKey == "" {

@@ -21,7 +21,11 @@ import (
 var log = logging.Logger("import").Desugar()
 
 type IDProvider interface {
-	GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error)
+	GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)
+}
+
+type InternalKeyProvider interface {
+	GetInternalKey(sbType sb.SmartBlockType) string
 }
 
 type Provider struct {
@@ -64,9 +68,25 @@ func NewIDProvider(
 	return p
 }
 
-func (p *Provider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error) {
+func (p *Provider) GetIDAndPayload(
+	ctx context.Context,
+	spaceID string,
+	sn *common.Snapshot,
+	createdTime time.Time,
+	getExisting bool,
+	origin objectorigin.ObjectOrigin,
+) (string, treestorage.TreeStorageCreatePayload, error) {
 	if idProvider, ok := p.idProviderBySmartBlockType[sn.SbType]; ok {
 		return idProvider.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting, origin)
 	}
-	return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("unsupported smartblock to import")
+	return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("unsupported smartblock to import")
+}
+
+func (p *Provider) GetInternalKey(sbType sb.SmartBlockType) string {
+	if idProvider, ok := p.idProviderBySmartBlockType[sbType]; ok {
+		if internalKeyProvider, ok := idProvider.(InternalKeyProvider); ok {
+			return internalKeyProvider.GetInternalKey(sbType)
+		}
+	}
+	return ""
 }

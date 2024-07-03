@@ -28,7 +28,7 @@ type oldFile struct {
 	fileObjectService fileobject.Service
 }
 
-func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, string, error) {
+func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
 	fileId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	filesKeys := map[string]string{}
 	for _, fileKeys := range sn.Snapshot.FileKeys {
@@ -46,7 +46,7 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 			log.Error("handling old file object: upload file", zap.Error(err))
 		}
 		if err == nil {
-			return fileObjectId, treestorage.TreeStorageCreatePayload{}, "", nil
+			return fileObjectId, treestorage.TreeStorageCreatePayload{}, nil
 		}
 	}
 
@@ -55,13 +55,13 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		EncryptionKeys: filesKeys,
 	})
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("add file keys: %w", err)
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("add file keys: %w", err)
 	}
 	objectId, err := f.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fileId)}, origin)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, "", fmt.Errorf("create file object: %w", err)
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create file object: %w", err)
 	}
-	return objectId, treestorage.TreeStorageCreatePayload{}, "", nil
+	return objectId, treestorage.TreeStorageCreatePayload{}, nil
 }
 
 func uploadFile(ctx context.Context, blockService *block.Service, spaceId string, name string, filePath string, origin objectorigin.ObjectOrigin, encryptionKeys map[string]string) (string, error) {
