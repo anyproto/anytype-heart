@@ -38,6 +38,12 @@ type Updater interface {
 	SendUpdate(spaceSync *domain.SpaceSync)
 }
 
+type PeerToPeerStatus interface {
+	CheckPeerStatus()
+	RegisterSpace(spaceId string)
+	UnregisterSpace(spaceId string)
+}
+
 type clientPeerManager struct {
 	spaceId            string
 	responsibleNodeIds []string
@@ -54,6 +60,8 @@ type clientPeerManager struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	sync.Mutex
+
+	peerToPeerStatus PeerToPeerStatus
 }
 
 func (n *clientPeerManager) Init(a *app.App) (err error) {
@@ -64,6 +72,8 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.availableResponsiblePeers = make(chan struct{})
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
+	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
+	n.peerToPeerStatus.RegisterSpace(n.spaceId)
 	return
 }
 
@@ -160,14 +170,19 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 		peerIds = []string{p.Id()}
 	}
 	peerIds = append(peerIds, n.peerStore.LocalPeerIds(n.spaceId)...)
+	var needUpdate bool
 	for _, peerId := range peerIds {
 		p, err := n.p.pool.Get(ctx, peerId)
 		if err != nil {
 			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get peer from stream pool", zap.String("peerId", peerId), zap.Error(err))
+			needUpdate = true
 			continue
 		}
 		peers = append(peers, p)
+	}
+	if needUpdate {
+		n.peerToPeerStatus.CheckPeerStatus()
 	}
 	// set node error if no local peers
 	if len(peers) == 0 {
@@ -203,14 +218,19 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	}
 
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
+	var needUpdate bool
 	for _, peerId := range peerIds {
 		p, err := n.p.pool.Get(n.ctx, peerId)
 		if err != nil {
 			n.peerStore.RemoveLocalPeer(peerId)
 			log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))
+			needUpdate = true
 			continue
 		}
 		peers = append(peers, p)
+	}
+	if needUpdate {
+		n.peerToPeerStatus.CheckPeerStatus()
 	}
 
 	n.Lock()
@@ -252,6 +272,7 @@ func (n *clientPeerManager) watchPeer(p peer.Peer) {
 
 func (n *clientPeerManager) Close(ctx context.Context) (err error) {
 	n.ctxCancel()
+	n.peerToPeerStatus.UnregisterSpace(n.spaceId)
 	return
 }
 

@@ -460,6 +460,7 @@ func TestInjectLocalDetails(t *testing.T) {
 		assert.Equal(t, fx.source.creator, pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyCreator.String()))
 		assert.Equal(t, fx.source.createdDate, pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
 	})
+
 	// TODO More tests
 }
 
