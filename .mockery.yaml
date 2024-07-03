@@ -62,7 +62,7 @@ packages:
       RpcStore:
   github.com/anyproto/anytype-heart/core/block/import/common/objectid:
     interfaces:
-      IDProvider:
+      IdAndKeyProvider:
   github.com/anyproto/anytype-heart/core/block/import/common/objectcreator:
     interfaces:
       Service:

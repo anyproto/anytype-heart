@@ -20,6 +20,11 @@ import (
 
 var log = logging.Logger("import").Desugar()
 
+type IdAndKeyProvider interface {
+	IDProvider
+	InternalKeyProvider
+}
+
 type IDProvider interface {
 	GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)
 }
@@ -38,7 +43,7 @@ func NewIDProvider(
 	blockService *block.Service,
 	fileStore filestore.FileStore,
 	fileObjectService fileobject.Service,
-) IDProvider {
+) IdAndKeyProvider {
 	p := &Provider{
 		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
