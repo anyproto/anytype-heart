@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -47,13 +46,17 @@ type Space interface {
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 }
 
+type IDsStore interface {
+	StoredIds() []string
+}
+
 type Service interface {
 	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
 	NewStaticSource(params StaticSourceParams) SourceWithType
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
-	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
+	IDsListerBySmartblockType(idsStore IDsStore, blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
 
@@ -61,7 +64,6 @@ type service struct {
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	accountService     accountService
 	accountKeysService accountservice.Service
-	spaceCoreService   spacecore.SpaceCoreService
 	storageService     storage.ClientStorage
 	fileService        files.Service
 	objectStore        RelationGetter
@@ -77,7 +79,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.accountService = app.MustComponent[accountService](a)
 	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
-	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 
 	s.fileService = app.MustComponent[files.Service](a)
@@ -160,7 +161,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	return s.newTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
 }
 
-func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error) {
+func (s *service) IDsListerBySmartblockType(idsStore IDsStore, blockType smartblock.SmartBlockType) (IDsLister, error) {
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
 		return &anytypeProfile{}, nil
@@ -181,9 +182,8 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 			return nil, err
 		}
 		return &source{
-			spaceID:        spaceID,
+			idsStore:       idsStore,
 			smartblockType: blockType,
-			spaceService:   s.spaceCoreService,
 			sbtProvider:    s.sbtProvider,
 		}, nil
 	}

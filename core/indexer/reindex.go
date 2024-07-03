@@ -120,7 +120,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	if err != nil {
 		return
 	}
-	err = i.removeCommonIndexes(space.Id(), flags)
+	err = i.removeCommonIndexes(space.Id(), space, flags)
 	if err != nil {
 		return fmt.Errorf("remove common indexes: %w", err)
 	}
@@ -150,7 +150,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			smartblock2.SmartBlockTypeProfilePage,
 		}
 		ids, err := i.getIdsForTypes(
-			space.Id(),
+			space,
 			types...,
 		)
 		if err != nil {
@@ -216,7 +216,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 		syncStatus = domain.ObjectError
 		syncError = domain.NetworkError
 	}
-	ids, err := i.getIdsForTypes(space.Id(), typesForSyncRelations...)
+	ids, err := i.getIdsForTypes(space, typesForSyncRelations...)
 	if err != nil {
 		log.Debug("failed to add sync status relations", zap.Error(err))
 	}
@@ -413,7 +413,8 @@ func (i *indexer) removeOldObjects() (err error) {
 	return err
 }
 
-func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err error) {
+// TODO: remove space argument as we are making Home and Archive details indexable again
+func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
 	}
@@ -435,11 +436,15 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 
 		// we get ids of Home and Archive separately from other objects,
 		// because we do not index its details, so it could not be fetched via store.Query
-		homeAndArchive, err := i.getIdsForTypes(spaceId, smartblock2.SmartBlockTypeHome, smartblock2.SmartBlockTypeArchive)
-		if err != nil {
-			log.Errorf("reindex: failed to get ids of virtual objects (eraseLinks): %v", err)
+		if space != nil {
+			homeAndArchive, err := i.getIdsForTypes(space, smartblock2.SmartBlockTypeHome, smartblock2.SmartBlockTypeArchive)
+			if err != nil {
+				log.Errorf("reindex: failed to get ids of home and archive (eraseLinks): %v", err)
+			}
+			ids = append(ids, homeAndArchive...)
 		}
-		for _, id := range append(ids, homeAndArchive...) {
+
+		for _, id := range ids {
 			if err = i.store.DeleteLinks(id); err != nil {
 				log.Errorf("reindex failed to delete links(eraseLinks): %v", err)
 			}
@@ -453,15 +458,15 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 	return
 }
 
-func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
-	ids, err := i.getIdsForTypes(space.Id(), sbTypes...)
+func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space clientspace.Space, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
+	ids, err := i.getIdsForTypes(space, sbTypes...)
 	if err != nil {
 		return err
 	}
 	return i.reindexIDs(ctx, space, reindexType, ids)
 }
 
-func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, ids []string) error {
+func (i *indexer) reindexIDs(ctx context.Context, space clientspace.Space, reindexType metrics.ReindexType, ids []string) error {
 	start := time.Now()
 	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
@@ -505,13 +510,13 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx context.Context, space smartblock.Space, id string) error {
+func (i *indexer) reindexDoc(ctx context.Context, space clientspace.Space, id string) error {
 	return space.Do(id, func(sb smartblock.SmartBlock) error {
 		return i.Index(ctx, sb.GetDocInfo())
 	})
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Space, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space clientspace.Space, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, space, id)
 		if err != nil {
@@ -544,11 +549,11 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 
-func (i *indexer) getIdsForTypes(spaceID string, sbt ...smartblock2.SmartBlockType) ([]string, error) {
+func (i *indexer) getIdsForTypes(space clientspace.Space, sbt ...smartblock2.SmartBlockType) ([]string, error) {
 	var ids []string
 	for _, t := range sbt {
 		// TODO: get rid of listing ids using space. We can get ids from store as soon as we will save sbType for objects
-		lister, err := i.source.IDsListerBySmartblockType(spaceID, t)
+		lister, err := i.source.IDsListerBySmartblockType(space, t)
 		if err != nil {
 			return nil, err
 		}
@@ -591,5 +596,5 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 func (i *indexer) RemoveIndexes(spaceId string) error {
 	var flags reindexFlags
 	flags.enableAll()
-	return i.removeCommonIndexes(spaceId, flags)
+	return i.removeCommonIndexes(spaceId, nil, flags)
 }
