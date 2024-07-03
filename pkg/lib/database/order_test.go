@@ -11,6 +11,7 @@ import (
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -25,6 +26,63 @@ func assertCompare(t *testing.T, order Order, a *types.Struct, b *types.Struct, 
 	bBytes := s.AppendKey(nil, bJson)
 	got := bytes.Compare(aBytes, bBytes)
 	assert.Equal(t, expected, got)
+}
+
+func TestTextSort(t *testing.T) {
+	t.Run("note layout, not empty name", func(t *testing.T) {
+		a := &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String("b"),
+			},
+		}
+		b := &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String():    pbtypes.String("a"),
+				bundle.RelationKeySnippet.String(): pbtypes.String("b"),
+				bundle.RelationKeyLayout.String():  pbtypes.Int64(int64(model.ObjectType_note)),
+			},
+		}
+		asc := &KeyOrder{Key: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc, RelationFormat: model.RelationFormat_shorttext}
+		assertCompare(t, asc, a, b, 1)
+		desc := &KeyOrder{Key: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Desc, RelationFormat: model.RelationFormat_shorttext}
+		assertCompare(t, desc, a, b, -1)
+	})
+	t.Run("note layout, empty name", func(t *testing.T) {
+		t.Run("one with name, one with snippet, not equal", func(t *testing.T) {
+			a := &types.Struct{
+				Fields: map[string]*types.Value{
+					bundle.RelationKeyName.String(): pbtypes.String("a"),
+				},
+			}
+			b := &types.Struct{
+				Fields: map[string]*types.Value{
+					bundle.RelationKeySnippet.String(): pbtypes.String("b"),
+					bundle.RelationKeyLayout.String():  pbtypes.Int64(int64(model.ObjectType_note)),
+				},
+			}
+			asc := &KeyOrder{Key: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc, RelationFormat: model.RelationFormat_shorttext}
+			assertCompare(t, asc, a, b, -1)
+			desc := &KeyOrder{Key: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Desc, RelationFormat: model.RelationFormat_shorttext}
+			assertCompare(t, desc, a, b, 1)
+		})
+		t.Run("one with name, one with snippet, equal", func(t *testing.T) {
+			a := &types.Struct{
+				Fields: map[string]*types.Value{
+					bundle.RelationKeyName.String(): pbtypes.String("a"),
+				},
+			}
+			b := &types.Struct{
+				Fields: map[string]*types.Value{
+					bundle.RelationKeySnippet.String(): pbtypes.String("a"),
+					bundle.RelationKeyLayout.String():  pbtypes.Int64(int64(model.ObjectType_note)),
+				},
+			}
+			asc := &KeyOrder{Key: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Asc, RelationFormat: model.RelationFormat_shorttext}
+			assertCompare(t, asc, a, b, 0)
+			desc := &KeyOrder{Key: bundle.RelationKeyName.String(), Type: model.BlockContentDataviewSort_Desc, RelationFormat: model.RelationFormat_shorttext}
+			assertCompare(t, desc, a, b, 0)
+		})
+	})
 }
 
 func TestKeyOrder_Compare(t *testing.T) {

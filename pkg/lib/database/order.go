@@ -107,7 +107,6 @@ func (ko *KeyOrder) Compile() query.Sort {
 	case model.RelationFormat_url, model.RelationFormat_email, model.RelationFormat_phone, model.RelationFormat_emoji:
 		return ko.basicSort(fastjson.TypeString)
 	case model.RelationFormat_tag, model.RelationFormat_status:
-		// TODO tag-status sort
 		return ko.tagStatusSort()
 	default:
 		return ko.basicSort(fastjson.TypeString)
@@ -167,24 +166,6 @@ func (ko *KeyOrder) textSort() query.Sort {
 		nulls:       ko.EmptyPlacement,
 	}
 }
-
-// func (ko *KeyOrder) sort() {
-// 	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {
-// 		if ko.Key == bundle.RelationKeyName.String() && getLayout(getter) == model.ObjectType_note {
-// 			// custom: order by (name OR snippet)
-// 		} else if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
-// 			// custom: cut out time
-// 		} else if ko.RelationFormat == model.RelationFormat_tag || ko.RelationFormat == model.RelationFormat_status {
-// 			// custom: order by tag and status Name
-// 		} else {
-// 			// compare with collate collate.New(language.Und, collate.IgnoreCase)
-// 		}
-// 	} else if ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
-// 		// basic comparison with collate, but only if ORDER BY always put nulls first
-// 	} else {
-// 		// custom
-// 	}
-// }
 
 func (ko *KeyOrder) tryAdjustEmptyPositions(av *types.Value, bv *types.Value, comp int) int {
 	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {

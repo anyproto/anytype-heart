@@ -10,6 +10,7 @@ import (
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	time_util "github.com/anyproto/anytype-heart/util/time"
 )
@@ -133,7 +134,13 @@ func (s textSort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
 	coll := collate.New(language.Und, collate.IgnoreCase)
 
 	val := v.GetStringBytes(s.relationKey)
-	// TODO note layout check
+
+	if s.relationKey == bundle.RelationKeyName.String() && len(val) == 0 {
+		layout := model.ObjectTypeLayout(v.GetFloat64(bundle.RelationKeyLayout.String()))
+		if layout == model.ObjectType_note {
+			val = v.GetStringBytes(bundle.RelationKeySnippet.String())
+		}
+	}
 
 	arena := &fastjson.Arena{}
 
