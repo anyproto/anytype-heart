@@ -612,8 +612,15 @@ func (exIn FilterExactIn) FilterObject(g *types.Struct) bool {
 }
 
 func (exIn FilterExactIn) Compile() query.Filter {
-	// TODO implement
-	return nil
+	// TODO FIX: Add $len check
+	conds := make([]query.Filter, 0, len(exIn.Value.GetValues()))
+	for _, v := range exIn.Value.GetValues() {
+		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
+	}
+	return query.Key{
+		Path:   []string{exIn.Key},
+		Filter: query.Or(conds),
+	}
 }
 
 func (exIn FilterExactIn) String() string {
