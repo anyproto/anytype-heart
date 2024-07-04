@@ -2,10 +2,11 @@ package payments
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/pkg/errors"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -272,8 +273,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	// update only status, not tiers
 	err = s.cache.CacheSet(&out, nil)
 	if err != nil {
-		log.Error("can not save subscription status to cache", zap.Error(err))
-		return nil, ErrCacheProblem
+		log.Warn("can not save subscription status to cache", zap.Error(err))
+		// skip this error, even if we can not save to cache
+		// return nil, ErrCacheProblem
 	}
 
 	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
@@ -320,8 +322,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		log.Info("disabling cache to wait for Active state")
 		err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
 		if err != nil {
-			log.Error("can not disable cache", zap.Error(err))
-			return nil, ErrCacheProblem
+			log.Warn("can not disable cache", zap.Error(err))
+			// skip this error
+			// return nil, errors.Wrap(ErrCacheProblem, err.Error())
 		}
 	}
 
@@ -333,8 +336,9 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
 		err = s.cache.CacheEnable()
 		if err != nil {
-			log.Error("can not enable cache", zap.Error(err))
-			return nil, ErrCacheProblem
+			log.Warn("can not enable cache", zap.Error(err))
+			// skip this error
+			// return nil, errors.Wrap(ErrCacheProblem, err.Error())
 		}
 	}
 
@@ -538,8 +542,9 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 
 	err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
 	if err != nil {
-		log.Error("can not disable cache", zap.Error(err))
-		return nil, ErrCacheProblem
+		log.Warn("can not disable cache", zap.Error(err))
+		// skip this error
+		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
 	}
 
 	return &out, nil
@@ -585,8 +590,9 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 	log.Debug("disabling cache for 30 minutes after portal link was received")
 	err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
 	if err != nil {
-		log.Error("can not disable cache", zap.Error(err))
-		return nil, ErrCacheProblem
+		log.Warn("can not disable cache", zap.Error(err))
+		// skip this error
+		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
 	}
 
 	return &out, nil
@@ -669,8 +675,9 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 	log.Debug("disabling cache after email verification code was confirmed")
 	err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
 	if err != nil {
-		log.Error("can not disable cache", zap.Error(err))
-		return nil, ErrCacheProblem
+		log.Warn("can not disable cache", zap.Error(err))
+		// skip this error
+		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
 	}
 
 	// return out
@@ -719,8 +726,9 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 	log.Debug("disable cache after subscription was finalized")
 	err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
 	if err != nil {
-		log.Error("can not disable cache", zap.Error(err))
-		return nil, ErrCacheProblem
+		log.Warn("can not disable cache", zap.Error(err))
+		// skip this error
+		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
 	}
 
 	// return out
@@ -852,8 +860,9 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 	// 3 - update tiers, not status
 	err = s.cache.CacheSet(nil, &out)
 	if err != nil {
-		log.Error("can not save tiers to cache", zap.Error(err))
-		return nil, ErrCacheProblem
+		log.Warn("can not save tiers to cache", zap.Error(err))
+		// skip this error, even if we can not save to cache
+		// return nil, ErrCacheProblem
 	}
 
 	return &out, nil
