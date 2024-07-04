@@ -730,7 +730,36 @@ func TestLocalRelationChanges(t *testing.T) {
 		// then
 		require.Len(t, chs, 0)
 	})
+	t.Run("derived relation added", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		a.relationLinks = []*model.RelationLink{}
+		b := a.NewState()
+		b.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySpaceId.String(), Format: model.RelationFormat_longtext}}
 
+		// when
+		_, _, err := ApplyState(b, false)
+		require.NoError(t, err)
+		chs := a.GetChanges()
+
+		// then
+		require.Len(t, chs, 0)
+	})
+	t.Run("derived relation removed", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		a.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySpaceId.String(), Format: model.RelationFormat_longtext}}
+		b := a.NewState()
+		b.relationLinks = []*model.RelationLink{}
+
+		// when
+		_, _, err := ApplyState(b, false)
+		require.NoError(t, err)
+		chs := a.GetChanges()
+
+		// then
+		require.Len(t, chs, 0)
+	})
 }
 
 func TestRootBlockChanges(t *testing.T) {

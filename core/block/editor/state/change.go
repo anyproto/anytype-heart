@@ -599,24 +599,24 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		})
 	}
 	if len(newRelLinks) > 0 {
-		relationsLinksWithoutLocal := s.getRelationsLinksWithoutLocal(newRelLinks)
-		if len(relationsLinksWithoutLocal) > 0 {
+		filteredRelationsLinks := s.filterLocalAndDerivedRelations(newRelLinks)
+		if len(filteredRelationsLinks) > 0 {
 			cb.AddChange(&pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfRelationAdd{
 					RelationAdd: &pb.ChangeRelationAdd{
-						RelationLinks: relationsLinksWithoutLocal,
+						RelationLinks: filteredRelationsLinks,
 					},
 				},
 			})
 		}
 	}
 	if len(delRelIds) > 0 {
-		relationsKeyWithoutLocalByKey := s.getRelationsLinksWithoutLocalByKey(delIds)
-		if len(relationsKeyWithoutLocalByKey) > 0 {
+		filteredRelationsKeys := s.filterLocalAndDerivedRelationsByKey(delRelIds)
+		if len(filteredRelationsKeys) > 0 {
 			cb.AddChange(&pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfRelationRemove{
 					RelationRemove: &pb.ChangeRelationRemove{
-						RelationKey: relationsKeyWithoutLocalByKey,
+						RelationKey: filteredRelationsKeys,
 					},
 				},
 			})
@@ -641,20 +641,20 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.makeDeviceInfoChanges()...)
 }
 
-func (s *State) getRelationsLinksWithoutLocal(newRelLinks pbtypes.RelationLinks) pbtypes.RelationLinks {
+func (s *State) filterLocalAndDerivedRelations(newRelLinks pbtypes.RelationLinks) pbtypes.RelationLinks {
 	var relLinksWithoutLocal pbtypes.RelationLinks
 	for _, link := range newRelLinks {
-		if !slices.Contains(bundle.LocalRelationsKeys, link.Key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
 			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
 		}
 	}
 	return relLinksWithoutLocal
 }
 
-func (s *State) getRelationsLinksWithoutLocalByKey(relationKeys []string) []string {
+func (s *State) filterLocalAndDerivedRelationsByKey(relationKeys []string) []string {
 	var relKeysWithoutLocal []string
 	for _, key := range relationKeys {
-		if !slices.Contains(bundle.LocalRelationsKeys, key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
 			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
 		}
 	}
