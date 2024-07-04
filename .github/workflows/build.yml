@@ -32,7 +32,9 @@ permissions:
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-11' || (github.event.inputs.run-on-runner || 'self-hosted') }}
+    runs-on:
+    - ${{ github.event_name == 'push' && 'macos-11' || (github.event.inputs.run-on-runner || 'self-hosted') }}
+    - self-hosted
     steps:
       - name: validate agent
         run: |
@@ -60,7 +62,7 @@ jobs:
           git fetch
           git checkout db6184738b77fbd5089e5fa1112177f391c91b24
           go install github.com/mitchellh/gox
-        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
+        if: false
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
@@ -69,7 +71,7 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install grpcurl
           npm i -g node-gyp
-        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
+        if: false
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
