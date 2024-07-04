@@ -222,9 +222,9 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	}
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
-			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, error) {
+			return i.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
 				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
-				return details, nil
+				return details, true, nil
 			})
 		})
 		if err != nil {

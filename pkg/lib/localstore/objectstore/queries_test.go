@@ -1007,7 +1007,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 
 	t.Run("update details called, but there are no changes", func(t *testing.T) {
 		err = s.UpdateObjectDetails("id1", makeDetails(obj1))
-		require.ErrorIs(t, err, ErrDetailsNotChanged)
+		require.NoError(t, err)
 
 		select {
 		case <-recordsCh:

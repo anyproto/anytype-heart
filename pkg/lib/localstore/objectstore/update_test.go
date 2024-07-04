@@ -79,13 +79,13 @@ func TestUpdateObjectDetails(t *testing.T) {
 		assert.Equal(t, makeDetails(obj), det.GetDetails())
 	})
 
-	t.Run("with write same details expect error", func(t *testing.T) {
+	t.Run("with write same details expect no error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj := makeObjectWithName("id1", "foo")
 		s.AddObjects(t, []TestObject{obj})
 
 		err := s.UpdateObjectDetails("id1", makeDetails(obj))
-		require.Equal(t, ErrDetailsNotChanged, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("with updated details just store them", func(t *testing.T) {
@@ -113,7 +113,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 		})
 
 		err := s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", "foo")))
-		require.Equal(t, ErrDetailsNotChanged, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("with new details", func(t *testing.T) {
@@ -339,9 +339,9 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
 
 		// when
-		err := s.ModifyObjectDetails("id", func(details *types.Struct) (*types.Struct, error) {
+		err := s.ModifyObjectDetails("id", func(details *types.Struct) (*types.Struct, bool, error) {
 			details.Fields[bundle.RelationKeyName.String()] = pbtypes.String("bar")
-			return details, nil
+			return details, true, nil
 		})
 
 		// then
@@ -362,8 +362,8 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{makeObjectWithName("id", "foo")})
 
 		// when
-		err := s.ModifyObjectDetails("id", func(_ *types.Struct) (*types.Struct, error) {
-			return nil, nil
+		err := s.ModifyObjectDetails("id", func(_ *types.Struct) (*types.Struct, bool, error) {
+			return nil, true, nil
 		})
 
 		// then

@@ -596,7 +596,7 @@ func (mr *MockObjectStoreMockRecorder) ListVirtualSpaces() *gomock.Call {
 }
 
 // ModifyObjectDetails mocks base method.
-func (m *MockObjectStore) ModifyObjectDetails(arg0 string, arg1 func(*types.Struct) (*types.Struct, error)) error {
+func (m *MockObjectStore) ModifyObjectDetails(arg0 string, arg1 func(*types.Struct) (*types.Struct, bool, error)) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ModifyObjectDetails", arg0, arg1)
 	ret0, _ := ret[0].(error)

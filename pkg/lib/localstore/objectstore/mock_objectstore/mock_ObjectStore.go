@@ -2065,7 +2065,7 @@ func (_c *MockObjectStore_ListVirtualSpaces_Call) RunAndReturn(run func() ([]str
 }
 
 // ModifyObjectDetails provides a mock function with given fields: id, proc
-func (_m *MockObjectStore) ModifyObjectDetails(id string, proc func(*types.Struct) (*types.Struct, error)) error {
+func (_m *MockObjectStore) ModifyObjectDetails(id string, proc func(*types.Struct) (*types.Struct, bool, error)) error {
 	ret := _m.Called(id, proc)
 
 	if len(ret) == 0 {
@@ -2073,7 +2073,7 @@ func (_m *MockObjectStore) ModifyObjectDetails(id string, proc func(*types.Struc
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, func(*types.Struct) (*types.Struct, error)) error); ok {
+	if rf, ok := ret.Get(0).(func(string, func(*types.Struct) (*types.Struct, bool, error)) error); ok {
 		r0 = rf(id, proc)
 	} else {
 		r0 = ret.Error(0)
@@ -2089,14 +2089,14 @@ type MockObjectStore_ModifyObjectDetails_Call struct {
 
 // ModifyObjectDetails is a helper method to define mock.On call
 //   - id string
-//   - proc func(*types.Struct)(*types.Struct , error)
+//   - proc func(*types.Struct)(*types.Struct , bool , error)
 func (_e *MockObjectStore_Expecter) ModifyObjectDetails(id interface{}, proc interface{}) *MockObjectStore_ModifyObjectDetails_Call {
 	return &MockObjectStore_ModifyObjectDetails_Call{Call: _e.mock.On("ModifyObjectDetails", id, proc)}
 }
 
-func (_c *MockObjectStore_ModifyObjectDetails_Call) Run(run func(id string, proc func(*types.Struct) (*types.Struct, error))) *MockObjectStore_ModifyObjectDetails_Call {
+func (_c *MockObjectStore_ModifyObjectDetails_Call) Run(run func(id string, proc func(*types.Struct) (*types.Struct, bool, error))) *MockObjectStore_ModifyObjectDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(func(*types.Struct) (*types.Struct, error)))
+		run(args[0].(string), args[1].(func(*types.Struct) (*types.Struct, bool, error)))
 	})
 	return _c
 }
@@ -2106,7 +2106,7 @@ func (_c *MockObjectStore_ModifyObjectDetails_Call) Return(_a0 error) *MockObjec
 	return _c
 }
 
-func (_c *MockObjectStore_ModifyObjectDetails_Call) RunAndReturn(run func(string, func(*types.Struct) (*types.Struct, error)) error) *MockObjectStore_ModifyObjectDetails_Call {
+func (_c *MockObjectStore_ModifyObjectDetails_Call) RunAndReturn(run func(string, func(*types.Struct) (*types.Struct, bool, error)) error) *MockObjectStore_ModifyObjectDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

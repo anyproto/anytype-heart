@@ -175,14 +175,14 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	spaceStatus := mapObjectSyncToSpaceSyncStatus(status)
 	defer u.sendSpaceStatusUpdate(err, syncStatusDetails, spaceStatus, syncError)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
-		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, error) {
+		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, bool, error) {
 			if details == nil || details.Fields == nil {
 				details = &types.Struct{Fields: map[string]*types.Value{}}
 			}
 			details.Fields[bundle.RelationKeySyncStatus.String()] = pbtypes.Int64(int64(status))
 			details.Fields[bundle.RelationKeySyncError.String()] = pbtypes.Int64(int64(syncError))
 			details.Fields[bundle.RelationKeySyncDate.String()] = pbtypes.Int64(time.Now().Unix())
-			return details, nil
+			return details, true, nil
 		})
 	})
 	if err == nil {

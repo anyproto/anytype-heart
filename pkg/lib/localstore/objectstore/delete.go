@@ -54,7 +54,7 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
 		},
 	})
-	if err != nil && !errors.Is(err, ErrDetailsNotChanged) {
+	if err != nil {
 		return fmt.Errorf("failed to overwrite details and relations: %w", err)
 	}
 

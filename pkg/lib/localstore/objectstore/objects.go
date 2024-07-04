@@ -35,7 +35,6 @@ import (
 )
 
 var log = logging.Logger("anytype-localstore")
-var ErrDetailsNotChanged = errors.New("details not changed")
 
 const CName = "objectstore"
 
@@ -93,7 +92,7 @@ type ObjectStore interface {
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
-	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
+	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
 
 	DeleteObject(id domain.FullID) error
 	DeleteDetails(id ...string) error

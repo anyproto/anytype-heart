@@ -2,7 +2,6 @@ package objectstore
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-store/query"
@@ -38,15 +37,12 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 			return nil, false, fmt.Errorf("diff json: %w", err)
 		}
 		if len(diff) == 0 {
-			return nil, false, ErrDetailsNotChanged
+			return nil, false, nil
 		}
 		s.sendUpdatesToSubscriptions(id, details)
 		return jsonVal, true, nil
 	}))
 	s.arenaPool.Put(arena)
-	if errors.Is(err, ErrDetailsNotChanged) {
-		return ErrDetailsNotChanged
-	}
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
@@ -121,7 +117,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 
 // ModifyObjectDetails updates existing details in store using modification function `proc`
 // `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
-func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
+func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error {
 	if proc == nil {
 		return nil
 	}
@@ -133,9 +129,12 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
 		}
 		inputDetails = pbtypes.EnsureStructInited(inputDetails)
-		newDetails, err := proc(inputDetails)
+		newDetails, modified, err := proc(inputDetails)
 		if err != nil {
 			return nil, false, fmt.Errorf("run a modifier: %w", err)
+		}
+		if !modified {
+			return nil, false, nil
 		}
 		newDetails = pbtypes.EnsureStructInited(newDetails)
 		// Ensure ID is set
@@ -147,15 +146,12 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 			return nil, false, fmt.Errorf("diff json: %w", err)
 		}
 		if len(diff) == 0 {
-			return nil, false, ErrDetailsNotChanged
+			return nil, false, nil
 		}
 		s.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
 	}))
 	s.arenaPool.Put(arena)
-	if errors.Is(err, ErrDetailsNotChanged) {
-		return ErrDetailsNotChanged
-	}
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
