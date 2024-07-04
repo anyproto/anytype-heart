@@ -55,11 +55,12 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		sourceService: &detailsFromId{},
 		db:            db,
 		arenaPool:     &fastjson.ArenaPool{},
+		repoPath:      walletService.RepoPath(),
 	}
 	err = ds.initCache()
 	require.NoError(t, err)
 
-	err = ds.runDatabase(context.Background(), filepath.Join(t.TempDir(), "objects"))
+	err = ds.Run(context.Background())
 	require.NoError(t, err)
 
 	return &StoreFixture{

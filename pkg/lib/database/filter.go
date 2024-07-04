@@ -6,9 +6,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/anyproto/any-store/encoding"
 	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -458,6 +460,10 @@ func (e FilterEmpty) Compile() query.Filter {
 				query.NewComp(query.CompOpEq, ""),
 				query.NewComp(query.CompOpEq, 0),
 				query.NewComp(query.CompOpEq, false),
+				&query.Comp{
+					CompOp:  query.CompOpEq,
+					EqValue: encoding.AppendJSONValue(nil, fastjson.MustParse(`[]`)),
+				},
 			},
 		},
 	}

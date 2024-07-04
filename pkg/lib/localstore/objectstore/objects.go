@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"unsafe"
@@ -21,6 +23,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -148,6 +151,7 @@ type VirtualSpacesStore interface {
 }
 
 type dsObjectStore struct {
+	repoPath      string
 	sourceService SourceDetailsFromID
 	objects       anystore.Collection
 
@@ -189,6 +193,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		return fmt.Errorf("get badger: %w", err)
 	}
 	s.arenaPool = &fastjson.ArenaPool{}
+	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 
 	return s.initCache()
 }
@@ -206,8 +211,16 @@ func (s *dsObjectStore) Name() (name string) {
 	return CName
 }
 
-func (s *dsObjectStore) Run(ctx context.Context) (err error) {
-	return s.runDatabase(ctx, "objects.db")
+func (s *dsObjectStore) Run(ctx context.Context) error {
+	dbDir := filepath.Join(s.repoPath, "objectstore")
+	_, err := os.Stat(dbDir)
+	if errors.Is(err, os.ErrNotExist) {
+		err = os.MkdirAll(dbDir, 0700)
+		if err != nil {
+			return fmt.Errorf("create db dir: %w", err)
+		}
+	}
+	return s.runDatabase(ctx, filepath.Join(dbDir, "objects.db"))
 }
 
 func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {

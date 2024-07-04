@@ -125,8 +125,19 @@ func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 	return ok
 }
 
+// Compile called only once when subscription is created
 func (c *collectionObserver) Compile() query.Filter {
-	return nil
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	ids := make([]query.Filter, 0, len(c.idsSet))
+	for id := range c.idsSet {
+		ids = append(ids, query.NewComp(query.CompOpEq, id))
+	}
+	return query.Key{
+		Path:   []string{bundle.RelationKeyId.String()},
+		Filter: query.Or(ids),
+	}
 }
 
 func (c *collectionObserver) String() string {
