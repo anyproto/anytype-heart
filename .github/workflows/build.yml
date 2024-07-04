@@ -387,6 +387,10 @@ jobs:
           tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
+      - name: Compile protoset
+        run: |
+          make protos-bundle
+          mv dist/service.proto.bundle .release/
       - name: Release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1

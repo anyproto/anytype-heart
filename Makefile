@@ -273,6 +273,10 @@ protos-java:
 	@echo 'Generating protobuf packages (Java)...'
 	@protoc -I ./ --java_out=./dist/android/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
+protos-bundle:
+	@echo 'Compling service.proto to protoset'
+	@protoc --include_imports --proto_path=./ --descriptor_set_out=./dist/service.proto.bundle pb/protos/service/service.proto
+
 build-server: setup-network-config
 	@echo 'Building anytype-heart server...'
 	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
