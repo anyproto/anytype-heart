@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -598,22 +599,28 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		})
 	}
 	if len(newRelLinks) > 0 {
-		cb.AddChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfRelationAdd{
-				RelationAdd: &pb.ChangeRelationAdd{
-					RelationLinks: newRelLinks,
+		relationsLinksWithoutLocal := s.getRelationsLinksWithoutLocal(newRelLinks)
+		if len(relationsLinksWithoutLocal) > 0 {
+			cb.AddChange(&pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationAdd{
+					RelationAdd: &pb.ChangeRelationAdd{
+						RelationLinks: relationsLinksWithoutLocal,
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 	if len(delRelIds) > 0 {
-		cb.AddChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfRelationRemove{
-				RelationRemove: &pb.ChangeRelationRemove{
-					RelationKey: delRelIds,
+		relationsKeyWithoutLocalByKey := s.getRelationsLinksWithoutLocalByKey(delIds)
+		if len(relationsKeyWithoutLocalByKey) > 0 {
+			cb.AddChange(&pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationRemove{
+					RelationRemove: &pb.ChangeRelationRemove{
+						RelationKey: relationsKeyWithoutLocalByKey,
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 	if len(updMsgs) > 0 {
 		cb.AddChange(&pb.ChangeContent{
@@ -632,6 +639,26 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.diffFileInfo()...)
 	s.changes = append(s.changes, s.makeNotificationChanges()...)
 	s.changes = append(s.changes, s.makeDeviceInfoChanges()...)
+}
+
+func (s *State) getRelationsLinksWithoutLocal(newRelLinks pbtypes.RelationLinks) pbtypes.RelationLinks {
+	var relLinksWithoutLocal pbtypes.RelationLinks
+	for _, link := range newRelLinks {
+		if !slices.Contains(bundle.LocalRelationsKeys, link.Key) {
+			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
+		}
+	}
+	return relLinksWithoutLocal
+}
+
+func (s *State) getRelationsLinksWithoutLocalByKey(relationKeys []string) []string {
+	var relKeysWithoutLocal []string
+	for _, key := range relationKeys {
+		if !slices.Contains(bundle.LocalRelationsKeys, key) {
+			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
+		}
+	}
+	return relKeysWithoutLocal
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {

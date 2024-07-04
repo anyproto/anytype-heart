@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -696,6 +697,40 @@ func TestRelationChanges(t *testing.T) {
 	chs := a.GetChanges()
 	require.NoError(t, ac.ApplyChange(chs...))
 	require.Equal(t, a.relationLinks, ac.relationLinks)
+}
+
+func TestLocalRelationChanges(t *testing.T) {
+	t.Run("local relation added", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		a.relationLinks = []*model.RelationLink{}
+		b := a.NewState()
+		b.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySyncStatus.String(), Format: model.RelationFormat_number}}
+
+		// when
+		_, _, err := ApplyState(b, false)
+		require.NoError(t, err)
+		chs := a.GetChanges()
+
+		// then
+		require.Len(t, chs, 0)
+	})
+	t.Run("local relation removed", func(t *testing.T) {
+		// given
+		a := NewDoc("root", nil).(*State)
+		a.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySyncStatus.String(), Format: model.RelationFormat_number}}
+		b := a.NewState()
+		b.relationLinks = []*model.RelationLink{}
+
+		// when
+		_, _, err := ApplyState(b, false)
+		require.NoError(t, err)
+		chs := a.GetChanges()
+
+		// then
+		require.Len(t, chs, 0)
+	})
+
 }
 
 func TestRootBlockChanges(t *testing.T) {
