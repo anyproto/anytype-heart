@@ -35,9 +35,9 @@ func (f *ftSearch2) Iterate(objectId string, fields []string, shouldContinue fun
 				ID: string(value.GetStringBytes(fieldId)),
 			}
 			dm.Fields = make(map[string]any)
-			dm.Fields[fieldSpace] = value.GetStringBytes(fieldSpace)
-			dm.Fields[fieldText] = value.GetStringBytes(fieldText)
-			dm.Fields[fieldTitle] = value.GetStringBytes(fieldTitle)
+			dm.Fields[fieldSpace] = string(value.GetStringBytes(fieldSpace))
+			dm.Fields[fieldText] = string(value.GetStringBytes(fieldText))
+			dm.Fields[fieldTitle] = string(value.GetStringBytes(fieldTitle))
 			return dm, nil
 		},
 		fieldId, fieldSpace, fieldTitle, fieldText,
@@ -91,6 +91,11 @@ func (f *ftIndexBatcher2) UpdateDoc(searchDoc SearchDoc) error {
 		return err
 	}
 
+	err = doc.AddField(fieldIdRaw, searchDoc.Id, f.index)
+	if err != nil {
+		return err
+	}
+
 	err = doc.AddField(fieldSpace, searchDoc.SpaceID, f.index)
 	if err != nil {
 		return err
@@ -112,7 +117,7 @@ func (f *ftIndexBatcher2) UpdateDoc(searchDoc SearchDoc) error {
 
 // Finish indexes the remaining documents in the batch.
 func (f *ftIndexBatcher2) Finish() error {
-	err := f.index.DeleteDocuments(fieldId, f.deleteIds...)
+	err := f.index.DeleteDocuments(fieldIdRaw, f.deleteIds...)
 	if err != nil {
 		return err
 	}

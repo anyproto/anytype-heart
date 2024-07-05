@@ -57,7 +57,7 @@ func (f *ftSearch2) BatchDeleteObjects(ids []string) error {
 			l.Debugf("ft delete done")
 		}
 	}()
-	err := f.index.DeleteDocuments(fieldId, ids...)
+	err := f.index.DeleteDocuments(fieldIdRaw, ids...)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (f *ftSearch2) BatchDeleteObjects(ids []string) error {
 }
 
 func (f *ftSearch2) DeleteObject(objectId string) error {
-	return f.index.DeleteDocuments(fieldId, objectId)
+	return f.index.DeleteDocuments(fieldIdRaw, objectId)
 }
 
 var ftsDir2 = "fts_tantivy"
@@ -75,7 +75,7 @@ func (f *ftSearch2) Init(a *app.App) error {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
-	tantivy.LibInit("release")
+	tantivy.LibInit("debug")
 	return nil
 }
 
@@ -95,7 +95,15 @@ func (f *ftSearch2) Run(context.Context) error {
 		true,
 		true,
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
-		tantivy.TokenizerSimple,
+		tokenizerId,
+	)
+
+	err = builder.AddTextField(
+		fieldIdRaw,
+		true,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
 	)
 
 	err = builder.AddTextField(
@@ -144,6 +152,12 @@ func (f *ftSearch2) Run(context.Context) error {
 		return err
 	}
 
+	err = index.RegisterTextAnalyzerSimple(tokenizerId, 1000, tantivy.English)
+	if err != nil {
+		fmt.Println("Failed to register text analyzer:", err)
+		return err
+	}
+
 	err = index.RegisterTextAnalyzerEdgeNgram(tantivy.TokenizerEdgeNgram, 1, 5, 100)
 	if err != nil {
 		fmt.Println("Failed to register text analyzer:", err)
@@ -173,6 +187,10 @@ func (f *ftSearch2) Index(doc SearchDoc) error {
 func (f *ftSearch2) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	document := tantivy.NewDocument()
 	err := document.AddField(fieldId, doc.Id, f.index)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddField(fieldIdRaw, doc.Id, f.index)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +224,7 @@ func (f *ftSearch2) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDoc
 			l.Debugf("ft index done")
 		}
 	}()
-	err = f.index.DeleteDocuments(fieldId, deletedDocs...)
+	err = f.index.DeleteDocuments(fieldIdRaw, deletedDocs...)
 	if err != nil {
 		return err
 	}

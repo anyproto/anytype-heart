@@ -36,8 +36,10 @@ const (
 	fieldTitleNoTerms = "TitleNoTerms"
 	fieldTextNoTerms  = "TextNoTerms"
 	fieldId           = "Id"
+	fieldIdRaw        = "IdRaw"
 	score             = "score"
 	highlights        = "highlights"
+	tokenizerId       = "SimpleIdTokenizer"
 )
 
 var log = logging.Logger("ftsearch")

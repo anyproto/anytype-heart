@@ -348,7 +348,7 @@ TANTIVY_LIBS := android-386.tar.gz \
          windows-amd64.tar.gz
 
 define download_tantivy_lib
-	curl -L -o $(OUTPUT_DIR)/$(1) -O https://github.com/$(REPO)/releases/download/$(VERSION)/$(1)
+	curl -L -o $(OUTPUT_DIR)/$(1) https://github.com/$(REPO)/releases/download/$(VERSION)/$(1)
 endef
 
 download-tantivy-all: $(TANTIVY_LIBS)
