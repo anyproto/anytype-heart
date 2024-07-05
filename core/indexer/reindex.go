@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -134,20 +134,20 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.objects {
-		types := []smartblock2.SmartBlockType{
+		types := []coresb.SmartBlockType{
 			// System types first
-			smartblock2.SmartBlockTypeObjectType,
-			smartblock2.SmartBlockTypeRelation,
-			smartblock2.SmartBlockTypeRelationOption,
-			smartblock2.SmartBlockTypeFileObject,
+			coresb.SmartBlockTypeObjectType,
+			coresb.SmartBlockTypeRelation,
+			coresb.SmartBlockTypeRelationOption,
+			coresb.SmartBlockTypeFileObject,
 
-			smartblock2.SmartBlockTypePage,
-			smartblock2.SmartBlockTypeTemplate,
-			smartblock2.SmartBlockTypeArchive,
-			smartblock2.SmartBlockTypeHome,
-			smartblock2.SmartBlockTypeWorkspace,
-			smartblock2.SmartBlockTypeSpaceView,
-			smartblock2.SmartBlockTypeProfilePage,
+			coresb.SmartBlockTypePage,
+			coresb.SmartBlockTypeTemplate,
+			coresb.SmartBlockTypeArchive,
+			coresb.SmartBlockTypeHome,
+			coresb.SmartBlockTypeWorkspace,
+			coresb.SmartBlockTypeSpaceView,
+			coresb.SmartBlockTypeProfilePage,
 		}
 		ids, err := i.getIdsForTypes(
 			space,
@@ -169,7 +169,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	} else {
 
 		if flags.fileObjects {
-			err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, smartblock2.SmartBlockTypeFileObject)
+			err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, coresb.SmartBlockTypeFileObject)
 			if err != nil {
 				return fmt.Errorf("reindex file objects: %w", err)
 			}
@@ -323,13 +323,13 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	ctx := context.Background()
 
 	if flags.bundledRelations {
-		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledRelations, smartblock2.SmartBlockTypeBundledRelation)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledRelations, coresb.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return fmt.Errorf("reindex bundled relations: %w", err)
 		}
 	}
 	if flags.bundledTypes {
-		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTypes, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTypes, coresb.SmartBlockTypeBundledObjectType, coresb.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
@@ -355,7 +355,7 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 			}
 		}
 
-		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTemplates, smartblock2.SmartBlockTypeBundledTemplate)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTemplates, coresb.SmartBlockTypeBundledTemplate)
 		if err != nil {
 			return fmt.Errorf("reindex bundled templates: %w", err)
 		}
@@ -413,7 +413,6 @@ func (i *indexer) removeOldObjects() (err error) {
 	return err
 }
 
-// TODO: remove space argument as we are making Home and Archive details indexable again
 func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
@@ -437,7 +436,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, f
 		// we get ids of Home and Archive separately from other objects,
 		// because we do not index its details, so it could not be fetched via store.Query
 		if space != nil {
-			homeAndArchive, err := i.getIdsForTypes(space, smartblock2.SmartBlockTypeHome, smartblock2.SmartBlockTypeArchive)
+			homeAndArchive, err := i.getIdsForTypes(space, coresb.SmartBlockTypeHome, coresb.SmartBlockTypeArchive)
 			if err != nil {
 				log.Errorf("reindex: failed to get ids of home and archive (eraseLinks): %v", err)
 			}
@@ -458,7 +457,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, f
 	return
 }
 
-func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space clientspace.Space, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
+func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space clientspace.Space, reindexType metrics.ReindexType, sbTypes ...coresb.SmartBlockType) error {
 	ids, err := i.getIdsForTypes(space, sbTypes...)
 	if err != nil {
 		return err
@@ -549,10 +548,9 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 
-func (i *indexer) getIdsForTypes(space clientspace.Space, sbt ...smartblock2.SmartBlockType) ([]string, error) {
+func (i *indexer) getIdsForTypes(space clientspace.Space, sbt ...coresb.SmartBlockType) ([]string, error) {
 	var ids []string
 	for _, t := range sbt {
-		// TODO: get rid of listing ids using space. We can get ids from store as soon as we will save sbType for objects
 		lister, err := i.source.IDsListerBySmartblockType(space, t)
 		if err != nil {
 			return nil, err
