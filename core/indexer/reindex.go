@@ -149,10 +149,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			coresb.SmartBlockTypeSpaceView,
 			coresb.SmartBlockTypeProfilePage,
 		}
-		ids, err := i.getIdsForTypes(
-			space,
-			types...,
-		)
+		ids, err := i.getIdsForTypes(space, types...)
 		if err != nil {
 			return err
 		}
@@ -457,7 +454,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, f
 	return
 }
 
-func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space clientspace.Space, reindexType metrics.ReindexType, sbTypes ...coresb.SmartBlockType) error {
+func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, sbTypes ...coresb.SmartBlockType) error {
 	ids, err := i.getIdsForTypes(space, sbTypes...)
 	if err != nil {
 		return err
@@ -465,7 +462,7 @@ func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space client
 	return i.reindexIDs(ctx, space, reindexType, ids)
 }
 
-func (i *indexer) reindexIDs(ctx context.Context, space clientspace.Space, reindexType metrics.ReindexType, ids []string) error {
+func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, ids []string) error {
 	start := time.Now()
 	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
@@ -509,13 +506,13 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx context.Context, space clientspace.Space, id string) error {
+func (i *indexer) reindexDoc(ctx context.Context, space smartblock.Space, id string) error {
 	return space.Do(id, func(sb smartblock.SmartBlock) error {
 		return i.Index(ctx, sb.GetDocInfo())
 	})
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space clientspace.Space, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Space, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, space, id)
 		if err != nil {
@@ -548,7 +545,7 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 
-func (i *indexer) getIdsForTypes(space clientspace.Space, sbt ...coresb.SmartBlockType) ([]string, error) {
+func (i *indexer) getIdsForTypes(space smartblock.Space, sbt ...coresb.SmartBlockType) ([]string, error) {
 	var ids []string
 	for _, t := range sbt {
 		lister, err := i.source.IDsListerBySmartblockType(space, t)
