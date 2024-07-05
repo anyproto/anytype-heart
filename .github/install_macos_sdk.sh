@@ -24,4 +24,4 @@ plutil -replace DTSDKName -string macosx${MACOSX_SDK_VERSION}internal $(xcode-se
 fi
 
 
-echo "MACOSX_SDK_ROOT=${OSX_SYSROOT}" >> ${GITHUB_ENV}
+echo "SDKROOT=${OSX_SYSROOT}" >> ${GITHUB_ENV}

@@ -51,8 +51,6 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-      - name: Install old MacOS SDK (for backward compatibility)
-        run: source .github/install_macos_sdk.sh
       - name: Install patched gox
         run: |
           mkdir -p "$GOPATH/src/github.com/mitchellh"
@@ -81,13 +79,15 @@ jobs:
           key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-${{ matrix.go-version }}-
+      - name: Install old MacOS SDK (for backward compatibility)
+        run: source .github/install_macos_sdk.sh
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
           INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
           GIT_SUMMARY=$(git describe --tags --always)
-          echo "FLAGS=-isysroot ${MACOSX_SDK_ROOT} -X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+          echo "FLAGS=-isysroot ${SDKROOT} -X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION=${{ github.event.inputs.alpha_version }}
             if [ -z "$VERSION" ]; then
@@ -99,7 +99,6 @@ jobs:
           fi
           echo VERSION=${VERSION} >> $GITHUB_ENV
           echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
-          echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
           echo "${GOBIN}" >> $GITHUB_PATH
