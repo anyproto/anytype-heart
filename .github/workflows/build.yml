@@ -120,7 +120,7 @@ jobs:
           mkdir -p .release
           echo $SDKROOT
           gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
-          echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
+          export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
           echo $SDKROOT
           gox -cgo -ldflags="$FLAGS" -osarch="darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           make protos-server
