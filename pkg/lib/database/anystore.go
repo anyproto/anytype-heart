@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-store/encoding"
-	"github.com/anyproto/any-store/key"
 	"github.com/anyproto/any-store/query"
 	"github.com/valyala/fastjson"
 	"golang.org/x/text/collate"
@@ -30,7 +29,7 @@ func (s dateOnlySort) Fields() []query.SortField {
 	}
 }
 
-func (s dateOnlySort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
+func (s dateOnlySort) AppendKey(k []byte, v *fastjson.Value) []byte {
 	defer func() {
 		s.arena.Reset()
 	}()
@@ -77,7 +76,7 @@ func (s emptyPlacementSort) Fields() []query.SortField {
 	}
 }
 
-func (s emptyPlacementSort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
+func (s emptyPlacementSort) AppendKey(k []byte, v *fastjson.Value) []byte {
 	defer func() {
 		s.arena.Reset()
 	}()
@@ -137,7 +136,7 @@ func (s textSort) Fields() []query.SortField {
 	}
 }
 
-func (s textSort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
+func (s textSort) AppendKey(k []byte, v *fastjson.Value) []byte {
 	defer func() {
 		s.arena.Reset()
 		s.collatorBuffer.Reset()
@@ -184,7 +183,7 @@ func (s tagStatusSort) Fields() []query.SortField {
 	}
 }
 
-func (s tagStatusSort) AppendKey(k key.Key, v *fastjson.Value) key.Key {
+func (s tagStatusSort) AppendKey(k []byte, v *fastjson.Value) []byte {
 	val := v.Get(s.relationKey)
 	var sortKey string
 	if val.Type() == fastjson.TypeString {

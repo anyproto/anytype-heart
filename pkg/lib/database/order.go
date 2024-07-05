@@ -2,7 +2,6 @@ package database
 
 import (
 	"github.com/anyproto/any-store/encoding"
-	"github.com/anyproto/any-store/key"
 	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/types"
 	"github.com/valyala/fastjson"
@@ -302,7 +301,7 @@ type customOrder struct {
 	KeyOrd       *KeyOrder
 }
 
-func (co customOrder) AppendKey(k key.Key, v *fastjson.Value) key.Key {
+func (co customOrder) AppendKey(k []byte, v *fastjson.Value) []byte {
 	defer func() {
 		co.arena.Reset()
 	}()
