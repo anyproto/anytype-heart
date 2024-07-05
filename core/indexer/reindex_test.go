@@ -205,7 +205,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 	fx := NewIndexerFixture(t)
 
 	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).RunAndReturn(
-		func(_ source.IDsStore, sbt coresb.SmartBlockType) (source.IDsLister, error) {
+		func(_ source.Space, sbt coresb.SmartBlockType) (source.IDsLister, error) {
 			switch sbt {
 			case coresb.SmartBlockTypeHome:
 				return idsLister{Ids: []string{"home"}}, nil

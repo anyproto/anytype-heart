@@ -44,9 +44,6 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
-}
-
-type IDsStore interface {
 	StoredIds() []string
 }
 
@@ -56,7 +53,7 @@ type Service interface {
 	NewStaticSource(params StaticSourceParams) SourceWithType
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
-	IDsListerBySmartblockType(idsStore IDsStore, blockType smartblock.SmartBlockType) (IDsLister, error)
+	IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
 
@@ -161,7 +158,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	return s.newTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
 }
 
-func (s *service) IDsListerBySmartblockType(idsStore IDsStore, blockType smartblock.SmartBlockType) (IDsLister, error) {
+func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error) {
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
 		return &anytypeProfile{}, nil
@@ -182,7 +179,8 @@ func (s *service) IDsListerBySmartblockType(idsStore IDsStore, blockType smartbl
 			return nil, err
 		}
 		return &source{
-			idsStore:       idsStore,
+			space:          space,
+			spaceID:        space.Id(),
 			smartblockType: blockType,
 			sbtProvider:    s.sbtProvider,
 		}, nil

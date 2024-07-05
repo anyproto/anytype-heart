@@ -87,9 +87,9 @@ func (_c *MockService_DetailsFromIdBasedSource_Call) RunAndReturn(run func(strin
 	return _c
 }
 
-// IDsListerBySmartblockType provides a mock function with given fields: idsStore, blockType
-func (_m *MockService) IDsListerBySmartblockType(idsStore source.IDsStore, blockType smartblock.SmartBlockType) (source.IDsLister, error) {
-	ret := _m.Called(idsStore, blockType)
+// IDsListerBySmartblockType provides a mock function with given fields: space, blockType
+func (_m *MockService) IDsListerBySmartblockType(space source.Space, blockType smartblock.SmartBlockType) (source.IDsLister, error) {
+	ret := _m.Called(space, blockType)
 
 	if len(ret) == 0 {
 		panic("no return value specified for IDsListerBySmartblockType")
@@ -97,19 +97,19 @@ func (_m *MockService) IDsListerBySmartblockType(idsStore source.IDsStore, block
 
 	var r0 source.IDsLister
 	var r1 error
-	if rf, ok := ret.Get(0).(func(source.IDsStore, smartblock.SmartBlockType) (source.IDsLister, error)); ok {
-		return rf(idsStore, blockType)
+	if rf, ok := ret.Get(0).(func(source.Space, smartblock.SmartBlockType) (source.IDsLister, error)); ok {
+		return rf(space, blockType)
 	}
-	if rf, ok := ret.Get(0).(func(source.IDsStore, smartblock.SmartBlockType) source.IDsLister); ok {
-		r0 = rf(idsStore, blockType)
+	if rf, ok := ret.Get(0).(func(source.Space, smartblock.SmartBlockType) source.IDsLister); ok {
+		r0 = rf(space, blockType)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(source.IDsLister)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(source.IDsStore, smartblock.SmartBlockType) error); ok {
-		r1 = rf(idsStore, blockType)
+	if rf, ok := ret.Get(1).(func(source.Space, smartblock.SmartBlockType) error); ok {
+		r1 = rf(space, blockType)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -123,15 +123,15 @@ type MockService_IDsListerBySmartblockType_Call struct {
 }
 
 // IDsListerBySmartblockType is a helper method to define mock.On call
-//   - idsStore source.IDsStore
+//   - space source.Space
 //   - blockType smartblock.SmartBlockType
-func (_e *MockService_Expecter) IDsListerBySmartblockType(idsStore interface{}, blockType interface{}) *MockService_IDsListerBySmartblockType_Call {
-	return &MockService_IDsListerBySmartblockType_Call{Call: _e.mock.On("IDsListerBySmartblockType", idsStore, blockType)}
+func (_e *MockService_Expecter) IDsListerBySmartblockType(space interface{}, blockType interface{}) *MockService_IDsListerBySmartblockType_Call {
+	return &MockService_IDsListerBySmartblockType_Call{Call: _e.mock.On("IDsListerBySmartblockType", space, blockType)}
 }
 
-func (_c *MockService_IDsListerBySmartblockType_Call) Run(run func(idsStore source.IDsStore, blockType smartblock.SmartBlockType)) *MockService_IDsListerBySmartblockType_Call {
+func (_c *MockService_IDsListerBySmartblockType_Call) Run(run func(space source.Space, blockType smartblock.SmartBlockType)) *MockService_IDsListerBySmartblockType_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(source.IDsStore), args[1].(smartblock.SmartBlockType))
+		run(args[0].(source.Space), args[1].(smartblock.SmartBlockType))
 	})
 	return _c
 }
@@ -141,7 +141,7 @@ func (_c *MockService_IDsListerBySmartblockType_Call) Return(_a0 source.IDsListe
 	return _c
 }
 
-func (_c *MockService_IDsListerBySmartblockType_Call) RunAndReturn(run func(source.IDsStore, smartblock.SmartBlockType) (source.IDsLister, error)) *MockService_IDsListerBySmartblockType_Call {
+func (_c *MockService_IDsListerBySmartblockType_Call) RunAndReturn(run func(source.Space, smartblock.SmartBlockType) (source.IDsLister, error)) *MockService_IDsListerBySmartblockType_Call {
 	_c.Call.Return(run)
 	return _c
 }

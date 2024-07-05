@@ -179,7 +179,6 @@ type source struct {
 	id                   string
 	space                Space
 	spaceID              string
-	idsStore             IDsStore
 	smartblockType       smartblock.SmartBlockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
@@ -416,10 +415,10 @@ func checkChangeSize(data []byte, maxSize int) error {
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	if s.idsStore == nil {
+	if s.space == nil {
 		return
 	}
-	ids = slice.Filter(s.idsStore.StoredIds(), func(id string) bool {
+	ids = slice.Filter(s.space.StoredIds(), func(id string) bool {
 		t, err := s.sbtProvider.Type(s.spaceID, id)
 		if err != nil {
 			return false

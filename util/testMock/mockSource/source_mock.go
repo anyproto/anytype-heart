@@ -61,7 +61,7 @@ func (mr *MockServiceMockRecorder) DetailsFromIdBasedSource(arg0 any) *gomock.Ca
 }
 
 // IDsListerBySmartblockType mocks base method.
-func (m *MockService) IDsListerBySmartblockType(arg0 source.IDsStore, arg1 smartblock.SmartBlockType) (source.IDsLister, error) {
+func (m *MockService) IDsListerBySmartblockType(arg0 source.Space, arg1 smartblock.SmartBlockType) (source.IDsLister, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IDsListerBySmartblockType", arg0, arg1)
 	ret0, _ := ret[0].(source.IDsLister)
