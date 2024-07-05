@@ -57,7 +57,16 @@ type KeyOrder struct {
 	IncludeTime    bool
 	Store          ObjectStore
 	Options        map[string]string
-	comparator     *collate.Collator
+	arena          *fastjson.Arena
+	collatorBuffer *collate.Buffer
+	collator       *collate.Collator
+}
+
+func (ko *KeyOrder) ensureCollator() {
+	if ko.collator == nil {
+		ko.collator = collate.New(language.Und, collate.IgnoreCase)
+		ko.collatorBuffer = &collate.Buffer{}
+	}
 }
 
 func (ko *KeyOrder) Compare(a, b *types.Struct) int {
@@ -124,6 +133,7 @@ func (ko *KeyOrder) tagStatusSort() query.Sort {
 		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
 	}
 	return tagStatusSort{
+		arena:       ko.arena,
 		relationKey: ko.Key,
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
@@ -133,6 +143,7 @@ func (ko *KeyOrder) tagStatusSort() query.Sort {
 
 func (ko *KeyOrder) emptyPlacementSort(valType fastjson.Type) query.Sort {
 	return emptyPlacementSort{
+		arena:       ko.arena,
 		relationKey: ko.Key,
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
@@ -142,6 +153,7 @@ func (ko *KeyOrder) emptyPlacementSort(valType fastjson.Type) query.Sort {
 
 func (ko *KeyOrder) dateOnlySort() query.Sort {
 	return dateOnlySort{
+		arena:       ko.arena,
 		relationKey: ko.Key,
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
@@ -149,10 +161,14 @@ func (ko *KeyOrder) dateOnlySort() query.Sort {
 }
 
 func (ko *KeyOrder) textSort() query.Sort {
+	ko.ensureCollator()
 	return textSort{
-		relationKey: ko.Key,
-		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
-		nulls:       ko.EmptyPlacement,
+		arena:          ko.arena,
+		collator:       ko.collator,
+		collatorBuffer: ko.collatorBuffer,
+		relationKey:    ko.Key,
+		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
+		nulls:          ko.EmptyPlacement,
 	}
 }
 
@@ -194,8 +210,8 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 		}
 	}
 	if aString && bString && comp == 0 {
-		ko.ensureComparator()
-		comp = ko.comparator.CompareString(av.GetStringValue(), bv.GetStringValue())
+		ko.ensureCollator()
+		comp = ko.collator.CompareString(av.GetStringValue(), bv.GetStringValue())
 	}
 	if av.GetStringValue() == "" || bv.GetStringValue() == "" {
 		comp = ko.tryFlipComp(comp)
@@ -270,41 +286,39 @@ func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
 	return pbtypes.String(res)
 }
 
-func (ko *KeyOrder) ensureComparator() {
-	if ko.comparator == nil {
-		ko.comparator = collate.New(language.Und, collate.IgnoreCase)
-	}
-}
-
-func NewCustomOrder(key string, idsIndices map[string]int, keyOrd KeyOrder) CustomOrder {
-	return CustomOrder{
+func newCustomOrder(arena *fastjson.Arena, key string, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
+	return customOrder{
+		arena:        arena,
 		Key:          key,
 		NeedOrderMap: idsIndices,
 		KeyOrd:       keyOrd,
 	}
 }
 
-type CustomOrder struct {
+type customOrder struct {
+	arena        *fastjson.Arena
 	Key          string
 	NeedOrderMap map[string]int
-	KeyOrd       KeyOrder
+	KeyOrd       *KeyOrder
 }
 
-func (co CustomOrder) AppendKey(k key.Key, v *fastjson.Value) key.Key {
-	arena := &fastjson.Arena{}
+func (co customOrder) AppendKey(k key.Key, v *fastjson.Value) key.Key {
+	defer func() {
+		co.arena.Reset()
+	}()
 	val := v.GetStringBytes(co.Key)
 	idx, ok := co.NeedOrderMap[string(val)]
 	if !ok {
 		compiled := co.KeyOrd.Compile()
 		// Push to the end
-		k = encoding.AppendJSONValue(k, arena.NewNumberInt(len(co.NeedOrderMap)))
+		k = encoding.AppendJSONValue(k, co.arena.NewNumberInt(len(co.NeedOrderMap)))
 		// and add sorting
 		return compiled.AppendKey(k, v)
 	}
-	return encoding.AppendJSONValue(k, arena.NewNumberInt(idx))
+	return encoding.AppendJSONValue(k, co.arena.NewNumberInt(idx))
 }
 
-func (co CustomOrder) Fields() []query.SortField {
+func (co customOrder) Fields() []query.SortField {
 	return []query.SortField{
 		{
 			Field: "",
@@ -313,11 +327,11 @@ func (co CustomOrder) Fields() []query.SortField {
 	}
 }
 
-func (co CustomOrder) Compile() query.Sort {
+func (co customOrder) Compile() query.Sort {
 	return co
 }
 
-func (co CustomOrder) Compare(a, b *types.Struct) int {
+func (co customOrder) Compare(a, b *types.Struct) int {
 	aID, okA := co.NeedOrderMap[pbtypes.Get(a, co.Key).GetStringValue()]
 	bID, okB := co.NeedOrderMap[pbtypes.Get(b, co.Key).GetStringValue()]
 

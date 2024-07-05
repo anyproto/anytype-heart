@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/gogo/protobuf/types"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -22,10 +23,6 @@ const (
 type Record struct {
 	Details *types.Struct
 	Meta    model.SearchMeta
-}
-
-func (r Record) Get(key string) *types.Value {
-	return pbtypes.Get(r.Details, key)
 }
 
 type Query struct {
@@ -94,21 +91,33 @@ func injectDefaultOrder(qry Query, sorts []*model.BlockContentDataviewSort) []*m
 	return sorts
 }
 
-func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
+func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *Filters, err error) {
 	// spaceID could be empty
 	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	qry.Sorts = injectDefaultOrder(qry, qry.Sorts)
 	filters = new(Filters)
 
-	filterObj, err := compose(qry.Filters, store)
+	qb := queryBuilder{
+		spaceId:     spaceID,
+		arena:       arena,
+		objectStore: store,
+	}
+
+	filterObj, err := qb.compose(qry.Filters)
 	if err != nil {
 		return
 	}
 
 	filters.FilterObj = filterObj
-	filters.Order = extractOrder(spaceID, qry.Sorts, store)
+	filters.Order = qb.extractOrder(qry.Sorts)
 	return
+}
+
+type queryBuilder struct {
+	spaceId     string
+	arena       *fastjson.Arena
+	objectStore ObjectStore
 }
 
 func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
@@ -120,12 +129,11 @@ func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
 	return ""
 }
 
-func compose(
+func (b *queryBuilder) compose(
 	filters []*model.BlockContentDataviewFilter,
-	store ObjectStore,
 ) (FiltersAnd, error) {
 	var filterObj FiltersAnd
-	qryFilter, err := MakeFiltersAnd(filters, store)
+	qryFilter, err := MakeFiltersAnd(filters, b.objectStore)
 	if err != nil {
 		return nil, err
 	}
@@ -136,29 +144,29 @@ func compose(
 	return filterObj, nil
 }
 
-func extractOrder(spaceID string, sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
+func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) SetOrder {
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {
 
 			keyOrder := &KeyOrder{
-				SpaceID:        spaceID,
+				SpaceID:        b.spaceId,
 				Key:            sort.RelationKey,
 				Type:           sort.Type,
 				EmptyPlacement: sort.EmptyPlacement,
 				IncludeTime:    isIncludeTime(sorts, sort),
 				RelationFormat: sort.Format,
-				Store:          store,
+				Store:          b.objectStore,
+				arena:          b.arena,
 			}
-
-			order = appendCustomOrder(sort, order, keyOrder)
+			order = b.appendCustomOrder(sort, order, keyOrder)
 		}
 		return order
 	}
 	return nil
 }
 
-func appendCustomOrder(sort *model.BlockContentDataviewSort, order SetOrder, keyOrder *KeyOrder) SetOrder {
+func (b *queryBuilder) appendCustomOrder(sort *model.BlockContentDataviewSort, orders SetOrder, order *KeyOrder) SetOrder {
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
@@ -168,11 +176,11 @@ func appendCustomOrder(sort *model.BlockContentDataviewSort, order SetOrder, key
 				idx++
 			}
 		}
-		order = append(order, NewCustomOrder(sort.RelationKey, idsIndices, *keyOrder))
+		orders = append(orders, newCustomOrder(b.arena, sort.RelationKey, idsIndices, order))
 	} else {
-		order = append(order, keyOrder)
+		orders = append(orders, order)
 	}
-	return order
+	return orders
 }
 
 func isIncludeTime(sorts []*model.BlockContentDataviewSort, s *model.BlockContentDataviewSort) bool {

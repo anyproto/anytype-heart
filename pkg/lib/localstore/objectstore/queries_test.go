@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -850,6 +851,8 @@ func TestQueryObjectIds(t *testing.T) {
 }
 
 func TestQueryRaw(t *testing.T) {
+	arena := &fastjson.Arena{}
+
 	t.Run("with nil filter expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
@@ -873,7 +876,7 @@ func TestQueryRaw(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		flt, err := database.NewFilters(database.Query{}, s)
+		flt, err := database.NewFilters(database.Query{}, s, arena)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
@@ -896,7 +899,7 @@ func TestQueryRaw(t *testing.T) {
 					Value:       pbtypes.String("foo"),
 				},
 			},
-		}, s)
+		}, s, arena)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
@@ -926,7 +929,7 @@ func TestQueryRaw(t *testing.T) {
 					Value:       pbtypes.String("note"),
 				},
 			},
-		}, s)
+		}, s, arena)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)

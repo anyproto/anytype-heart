@@ -11,6 +11,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 
@@ -79,6 +80,7 @@ type service struct {
 	ctxBuf *opCtx
 
 	subDebugger *subDebugger
+	arenaPool   *fastjson.ArenaPool
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -92,6 +94,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.ctxBuf = &opCtx{c: s.cache}
 	s.initDebugger()
+	s.arenaPool = &fastjson.ArenaPool{}
 	return
 }
 
@@ -118,7 +121,10 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 		Limit:   int(req.Limit),
 	}
 
-	f, err := database.NewFilters(q, s.objectStore)
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	f, err := database.NewFilters(q, s.objectStore, arena)
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
@@ -318,7 +324,10 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		Filters: req.Filters,
 	}
 
-	flt, err := database.NewFilters(q, s.objectStore)
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	flt, err := database.NewFilters(q, s.objectStore, arena)
 	if err != nil {
 		return nil, err
 	}
