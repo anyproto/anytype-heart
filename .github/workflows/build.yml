@@ -118,10 +118,11 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -cgo -ldflags="-isysroot ${SDKROOT} $FLAGS" -osarch="darwin/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          echo $SDKROOT
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo $SDKROOT
-          gox -cgo -ldflags="-isysroot ${SDKROOT} $FLAGS" -osarch="darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
