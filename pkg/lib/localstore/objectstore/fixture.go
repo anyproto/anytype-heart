@@ -29,6 +29,8 @@ type StoreFixture struct {
 const spaceName = "space1"
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
@@ -51,16 +53,18 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	})
 
 	ds := &dsObjectStore{
-		fts:           fullText,
-		sourceService: &detailsFromId{},
-		db:            db,
-		arenaPool:     &fastjson.ArenaPool{},
-		repoPath:      walletService.RepoPath(),
+		componentCtx:       ctx,
+		componentCtxCancel: cancel,
+		fts:                fullText,
+		sourceService:      &detailsFromId{},
+		db:                 db,
+		arenaPool:          &fastjson.ArenaPool{},
+		repoPath:           walletService.RepoPath(),
 	}
 	err = ds.initCache()
 	require.NoError(t, err)
 
-	err = ds.Run(context.Background())
+	err = ds.Run(ctx)
 	require.NoError(t, err)
 
 	return &StoreFixture{

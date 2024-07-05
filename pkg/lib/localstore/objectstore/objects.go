@@ -165,10 +165,17 @@ type dsObjectStore struct {
 	onChangeCallback      func(record database.Record)
 	subscriptions         []database.Subscription
 	onLinksUpdateCallback func(info LinksUpdateInfo)
+
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 }
 
 func New() ObjectStore {
-	return &dsObjectStore{}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &dsObjectStore{
+		componentCtx:       ctx,
+		componentCtxCancel: cancel,
+	}
 }
 
 type SourceDetailsFromID interface {
@@ -236,6 +243,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
+	s.componentCtxCancel()
 	return nil
 }
 
@@ -273,7 +281,7 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 // GetDetails returns empty struct without errors in case details are not found
 // todo: get rid of this or change the name method!
 func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
-	doc, err := s.objects.FindId(context.Background(), id)
+	doc, err := s.objects.FindId(s.componentCtx, id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return &model.ObjectDetails{
 			Details: &types.Struct{Fields: map[string]*types.Value{}},
@@ -329,9 +337,8 @@ func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.Obj
 }
 
 func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
-	ctx := context.Background()
 	for _, id := range ids {
-		_, err := s.objects.FindId(ctx, id)
+		_, err := s.objects.FindId(s.componentCtx, id)
 		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 			return nil, fmt.Errorf("get %s: %w", id, err)
 		}
@@ -343,7 +350,7 @@ func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
 }
 
 func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error) {
-	return s.getObjectsInfo(context.Background(), spaceID, ids)
+	return s.getObjectsInfo(s.componentCtx, spaceID, ids)
 }
 
 func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
@@ -360,9 +367,8 @@ func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
 }
 
 func (s *dsObjectStore) ListIds() ([]string, error) {
-	ctx := context.Background()
 	var ids []string
-	iter, err := s.objects.Find(nil).Iter(ctx)
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("find all: %w", err)
 	}

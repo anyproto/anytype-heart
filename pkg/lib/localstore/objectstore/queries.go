@@ -1,7 +1,6 @@
 package objectstore
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -40,7 +39,7 @@ func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey, objectId str
 		database.FilterAllIn{Key: relationKey, Value: listValue.GetListValue()},
 		params.FilterObj,
 	}
-	return s.queryAnyStore(context.Background(), f, params.Order, uint(limit), 0)
+	return s.queryAnyStore(f, params.Order, uint(limit), 0)
 }
 
 func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
@@ -89,7 +88,7 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 	return injectedResults
 }
 
-func (s *dsObjectStore) queryAnyStore(ctx context.Context, filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
+func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
 	compiled := filter.Compile()
 	var sortsArg []any
 	if order != nil {
@@ -98,7 +97,7 @@ func (s *dsObjectStore) queryAnyStore(ctx context.Context, filter database.Filte
 			sortsArg = []any{sorts}
 		}
 	}
-	iter, err := s.objects.Find(compiled).Sort(sortsArg...).Offset(offset).Limit(limit).Iter(ctx)
+	iter, err := s.objects.Find(compiled).Sort(sortsArg...).Offset(offset).Limit(limit).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)
 	}
@@ -129,11 +128,10 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
-	return s.queryAnyStore(context.Background(), filters.FilterObj, filters.Order, uint(limit), uint(offset))
+	return s.queryAnyStore(filters.FilterObj, filters.Order, uint(limit), uint(offset))
 }
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int) ([]database.Record, error) {
-	ctx := context.Background()
 	records := make([]database.Record, 0, len(results))
 	resultObjectMap := make(map[string]struct{})
 	// we assume that results are already sorted by score DESC.
@@ -157,7 +155,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 				continue
 			}
 		}
-		doc, err := s.objects.FindId(ctx, res.Path.ObjectId)
+		doc, err := s.objects.FindId(s.componentCtx, res.Path.ObjectId)
 		if err != nil {
 			log.Errorf("QueryByIds failed to find id: %s", res.Path.ObjectId)
 			continue
@@ -406,7 +404,6 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total in
 }
 
 func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
-	ctx := context.Background()
 	for _, id := range ids {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
@@ -421,7 +418,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 				continue
 			}
 		}
-		doc, err := s.objects.FindId(ctx, id)
+		doc, err := s.objects.FindId(s.componentCtx, id)
 		if err != nil {
 			log.Errorf("QueryByIds failed to find id: %s", id)
 			continue

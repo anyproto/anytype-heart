@@ -2,7 +2,6 @@ package objectstore
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 
@@ -22,7 +21,7 @@ func (s *dsObjectStore) DeleteDetails(ids ...string) error {
 	for _, chunk := range lo.Chunk(ids, 100) {
 		err := s.updateTxn(func(txn *badger.Txn) error {
 			for _, id := range chunk {
-				err := s.objects.DeleteId(context.Background(), id)
+				err := s.objects.DeleteId(s.componentCtx, id)
 				if err != nil {
 					return fmt.Errorf("delete object %s: %w", id, err)
 				}

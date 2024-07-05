@@ -1,7 +1,6 @@
 package objectstore
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/anyproto/any-store/query"
@@ -30,8 +29,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 
 	arena := s.arenaPool.Get()
 	jsonVal := pbtypes.ProtoToJson(arena, details)
-	ctx := context.Background()
-	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		diff, err := pbtypes.DiffJson(val, jsonVal)
 		if err != nil {
 			return nil, false, fmt.Errorf("diff json: %w", err)
@@ -122,8 +120,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		return nil
 	}
 	arena := s.arenaPool.Get()
-	ctx := context.Background()
-	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		inputDetails, err := pbtypes.JsonToProto(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
