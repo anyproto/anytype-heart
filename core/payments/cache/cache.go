@@ -259,11 +259,7 @@ func (s *cacheservice) CacheEnable() (err error) {
 	ss.DisableUntilTime = time.Time{}
 
 	// 3 - save to storage
-	err = s.set(ss)
-	if err != nil {
-		return ErrCacheDbError
-	}
-	return nil
+	return s.set(ss)
 }
 
 // will not return error if already disabled
@@ -280,11 +276,7 @@ func (s *cacheservice) CacheDisableForNextMinutes(minutes int) (err error) {
 	ss.DisableUntilTime = time.Now().UTC().Add(time.Minute * time.Duration(minutes))
 
 	// 3 - save to storage
-	err = s.set(ss)
-	if err != nil {
-		return ErrCacheDbError
-	}
-	return nil
+	return s.set(ss)
 }
 
 // does not take into account if cache is enabled or not, erases always
@@ -300,11 +292,7 @@ func (s *cacheservice) CacheClear() (err error) {
 	ss := newStorageStruct()
 
 	// 3 - save to storage
-	err = s.set(ss)
-	if err != nil {
-		return ErrCacheDbError
-	}
-	return nil
+	return s.set(ss)
 }
 
 func (s *cacheservice) get() (out *StorageStruct, err error) {
