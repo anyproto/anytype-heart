@@ -87,7 +87,7 @@ jobs:
           INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
           GIT_SUMMARY=$(git describe --tags --always)
-          echo "FLAGS=-isysroot ${SDKROOT} -X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION=${{ github.event.inputs.alpha_version }}
             if [ -z "$VERSION" ]; then
@@ -118,7 +118,10 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          gox -cgo -ldflags="-isysroot ${SDKROOT} $FLAGS" -osarch="darwin/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
+          echo $SDKROOT
+          gox -cgo -ldflags="-isysroot ${SDKROOT} $FLAGS" -osarch="darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
