@@ -18,6 +18,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -697,6 +698,65 @@ func TestHistory_DiffVersions(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, changes, 4)
+	})
+	t.Run("object diff -local relations changes", func(t *testing.T) {
+		// given
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+
+		relationKey := "key"
+		relationKey1 := "key1"
+
+		currChange := []*objecttree.Change{
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideRelationAddChange(account, &model.RelationLink{
+				Key:    relationKey,
+				Format: model.RelationFormat_tag,
+			},
+				&model.RelationLink{
+					Key:    bundle.RelationKeySpaceId.String(),
+					Format: model.RelationFormat_longtext,
+				},
+				&model.RelationLink{
+					Key:    bundle.RelationKeySyncStatus.String(),
+					Format: model.RelationFormat_number,
+				}),
+		}
+
+		prevChanges := []*objecttree.Change{
+			provideBlockEmptyChange(objectId, account),
+			provideBlockCreateChange(blSmartBlock, account),
+			provideRelationAddChange(account, &model.RelationLink{
+				Key:    relationKey1,
+				Format: model.RelationFormat_tag,
+			},
+				&model.RelationLink{
+					Key:    bundle.RelationKeyRestrictions.String(),
+					Format: model.RelationFormat_longtext,
+				},
+				&model.RelationLink{
+					Key:    bundle.RelationKeySyncDate.String(),
+					Format: model.RelationFormat_number,
+				}),
+		}
+		history := newFixtureDiffVersions(t, currChange, prevChanges, objectId, spaceID, versionId, previousVersion)
+
+		// when
+		changes, _, err := history.DiffVersions(&pb.RpcHistoryDiffVersionsRequest{
+			ObjectId:        objectId,
+			SpaceId:         spaceID,
+			CurrentVersion:  versionId,
+			PreviousVersion: previousVersion,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, changes, 2)
+		assert.Len(t, changes[1].GetObjectRelationsAmend().RelationLinks, 1)
+		assert.Equal(t, changes[1].GetObjectRelationsAmend().RelationLinks[0].Key, relationKey)
+		assert.Len(t, changes[0].GetObjectRelationsRemove().RelationKeys, 1)
+		assert.Equal(t, changes[0].GetObjectRelationsRemove().RelationKeys[0], relationKey1)
 	})
 
 	t.Run("object diff - no changes", func(t *testing.T) {

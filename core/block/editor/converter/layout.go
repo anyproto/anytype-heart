@@ -137,7 +137,7 @@ func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State)
 
 func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
-	if len(source) == 0 {
+	if len(source) == 0 && space != nil {
 		defaultTypeID, err := space.GetTypeIdByKey(context.Background(), DefaultSetSource)
 		if err != nil {
 			return fmt.Errorf("get default type id: %w", err)

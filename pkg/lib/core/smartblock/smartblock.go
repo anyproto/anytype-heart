@@ -37,6 +37,7 @@ const (
 
 	SmartBlockTypeMissingObject      = SmartBlockType(model.SmartBlockType_MissingObject)
 	SmartBlockTypeNotificationObject = SmartBlockType(model.SmartBlockType_NotificationObject)
+	SmartBlockTypeDevicesObject      = SmartBlockType(model.SmartBlockType_DevicesObject)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
@@ -68,7 +69,8 @@ func (sbt SmartBlockType) IsOneOf(sbts ...SmartBlockType) bool {
 // Indexable determines if the object of specific type need to be proceeded by the indexer in order to appear in sets
 func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	switch sbt {
-	case SmartBlockTypeDate, SmartBlockTypeAccountOld, SmartBlockTypeArchive, SmartBlockTypeHome:
+	case SmartBlockTypeDate, SmartBlockTypeAccountOld, SmartBlockTypeArchive,
+		SmartBlockTypeHome, SmartBlockTypeNotificationObject, SmartBlockTypeDevicesObject:
 		return false, false
 	case SmartBlockTypeWidget:
 		return true, false

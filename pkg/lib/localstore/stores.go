@@ -238,6 +238,11 @@ func GetKeysByIndex(index Index, txn *badger.Txn, val interface{}, limit int) ([
 }
 
 func GetKeys(txn *badger.Txn, prefix string, limit int) []string {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("badger iterator panic: %v", r)
+		}
+	}()
 	iter := txn.NewIterator(badger.IteratorOptions{
 		Prefix:         []byte(prefix),
 		PrefetchValues: false,

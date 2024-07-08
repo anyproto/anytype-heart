@@ -35,7 +35,7 @@ func (o *ObjectState) SetObjectsNumber(status *domain.SpaceSync) {
 	switch status.Status {
 	case domain.Error, domain.Offline:
 		o.objectSyncCountBySpace[status.SpaceId] = 0
-	case domain.Syncing, domain.Synced:
+	default:
 		records := o.getSyncingObjects(status)
 		o.objectSyncCountBySpace[status.SpaceId] = len(records)
 	}
@@ -72,23 +72,25 @@ func (o *ObjectState) getSyncingObjects(status *domain.SpaceSync) []database.Rec
 	return records
 }
 
-func (o *ObjectState) SetSyncStatusAndErr(status *domain.SpaceSync) {
+func (o *ObjectState) SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncErr domain.SyncError, spaceId string) {
 	o.Lock()
 	defer o.Unlock()
-
-	if objectNumber, ok := o.objectSyncCountBySpace[status.SpaceId]; ok && objectNumber > 0 {
-		o.objectSyncStatusBySpace[status.SpaceId] = domain.Syncing
-		o.objectSyncErrBySpace[status.SpaceId] = domain.Null
+	if objectNumber, ok := o.objectSyncCountBySpace[spaceId]; ok && objectNumber > 0 {
+		o.objectSyncStatusBySpace[spaceId] = domain.Syncing
+		o.objectSyncErrBySpace[spaceId] = domain.Null
 		return
 	}
-	o.objectSyncStatusBySpace[status.SpaceId] = status.Status
-	o.objectSyncErrBySpace[status.SpaceId] = status.SyncError
+	o.objectSyncStatusBySpace[spaceId] = status
+	o.objectSyncErrBySpace[spaceId] = syncErr
 }
 
 func (o *ObjectState) GetSyncStatus(spaceId string) domain.SpaceSyncStatus {
 	o.Lock()
 	defer o.Unlock()
-	return o.objectSyncStatusBySpace[spaceId]
+	if status, ok := o.objectSyncStatusBySpace[spaceId]; ok {
+		return status
+	}
+	return domain.Unknown
 }
 
 func (o *ObjectState) GetSyncObjectCount(spaceId string) int {
@@ -102,3 +104,5 @@ func (o *ObjectState) GetSyncErr(spaceId string) domain.SyncError {
 	defer o.Unlock()
 	return o.objectSyncErrBySpace[spaceId]
 }
+
+func (o *ObjectState) ResetSpaceErrorStatus(string, domain.SyncError) {}
