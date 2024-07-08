@@ -18,7 +18,6 @@ type dateOnlySort struct {
 	relationKey string
 	reverse     bool
 	nulls       model.BlockContentDataviewSortEmptyType
-	valType     fastjson.Type
 }
 
 func (s dateOnlySort) Fields() []query.SortField {

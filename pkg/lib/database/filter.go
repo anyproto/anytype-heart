@@ -196,7 +196,7 @@ func (a FiltersAnd) FilterObject(g *types.Struct) bool {
 }
 
 func (a FiltersAnd) Compile() query.Filter {
-	var filters []query.Filter
+	filters := make([]query.Filter, 0, len(a))
 	for _, f := range a {
 		compiled := f.Compile()
 		filters = append(filters, compiled)
@@ -225,7 +225,7 @@ func (fo FiltersOr) FilterObject(g *types.Struct) bool {
 }
 
 func (fo FiltersOr) Compile() query.Filter {
-	var filters []query.Filter
+	filters := make([]query.Filter, 0, len(fo))
 	for _, f := range fo {
 		compiled := f.Compile()
 		filters = append(filters, compiled)
