@@ -94,12 +94,14 @@ func (f *ftSearch2) Run(context.Context) error {
 		fieldId,
 		true,
 		true,
+		false,
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tokenizerId,
 	)
 
 	err = builder.AddTextField(
 		fieldIdRaw,
+		true,
 		true,
 		true,
 		tantivy.IndexRecordOptionBasic,
@@ -110,6 +112,7 @@ func (f *ftSearch2) Run(context.Context) error {
 		fieldSpace,
 		true,
 		false,
+		true,
 		tantivy.IndexRecordOptionBasic,
 		tantivy.TokenizerRaw,
 	)
@@ -118,6 +121,7 @@ func (f *ftSearch2) Run(context.Context) error {
 		fieldTitle,
 		true,
 		true,
+		false,
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tantivy.TokenizerEdgeNgram,
 	)
@@ -126,6 +130,7 @@ func (f *ftSearch2) Run(context.Context) error {
 		fieldText,
 		true,
 		true,
+		false,
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tantivy.TokenizerSimple,
 	)

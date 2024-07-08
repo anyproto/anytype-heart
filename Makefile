@@ -333,7 +333,7 @@ endif
 ### Tantivy Section
 
 REPO := anyproto/tantivy-go
-VERSION := go/v0.0.2
+VERSION := go/v0.0.3
 OUTPUT_DIR := deps/libs
 
 TANTIVY_LIBS := android-386.tar.gz \
