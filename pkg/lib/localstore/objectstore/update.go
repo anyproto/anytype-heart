@@ -24,11 +24,15 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if details.Fields == nil {
 		return fmt.Errorf("details fields are nil")
 	}
+	if len(details.Fields) == 0 {
+		return fmt.Errorf("empty details")
+	}
 	// Ensure ID is set
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	arena := s.arenaPool.Get()
 	jsonVal := pbtypes.ProtoToJson(arena, details)
+	var isModified bool
 	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		diff, err := pbtypes.DiffJson(val, jsonVal)
 		if err != nil {
@@ -37,9 +41,13 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 		if len(diff) == 0 {
 			return nil, false, nil
 		}
-		s.sendUpdatesToSubscriptions(id, details)
+		isModified = true
 		return jsonVal, true, nil
 	}))
+	if isModified {
+		s.sendUpdatesToSubscriptions(id, details)
+	}
+
 	s.arenaPool.Put(arena)
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)

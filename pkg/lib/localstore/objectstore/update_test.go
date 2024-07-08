@@ -24,18 +24,11 @@ func TestUpdateObjectDetails(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("with empty details expect just id detail is written", func(t *testing.T) {
+	t.Run("with empty details expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectDetails("id1", &types.Struct{Fields: map[string]*types.Value{}})
-		require.NoError(t, err)
-
-		want := makeDetails(TestObject{
-			bundle.RelationKeyId: pbtypes.String("id1"),
-		})
-		got, err := s.GetDetails("id1")
-		require.NoError(t, err)
-		assert.Equal(t, want, got.GetDetails())
+		require.Error(t, err)
 	})
 
 	t.Run("with no id in details expect id is added on write", func(t *testing.T) {
