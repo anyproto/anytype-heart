@@ -562,14 +562,14 @@ func (exIn FilterOptionsEqual) FilterObject(g *types.Struct) bool {
 }
 
 func (exIn FilterOptionsEqual) Compile() query.Filter {
-	// TODO FIX: Add $len check
-	conds := make([]query.Filter, 0, len(exIn.Value.GetValues()))
+	conds := make([]query.Filter, 0, len(exIn.Value.GetValues())+1)
+	conds = append(conds, query.Size{Size: int64(len(exIn.Value.GetValues()))})
 	for _, v := range exIn.Value.GetValues() {
 		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
 	}
 	return query.Key{
 		Path:   []string{exIn.Key},
-		Filter: query.Or(conds),
+		Filter: query.And(conds),
 	}
 }
 
