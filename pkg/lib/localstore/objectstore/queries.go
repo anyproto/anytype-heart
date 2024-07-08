@@ -427,7 +427,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 		}
 		doc, err := s.objects.FindId(s.componentCtx, id)
 		if err != nil {
-			log.Errorf("QueryByIds failed to find id: %s", id)
+			log.Infof("QueryByIds failed to find id: %s", id)
 			continue
 		}
 		details, err := pbtypes.JsonToProto(doc.Value())

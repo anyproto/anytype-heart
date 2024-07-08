@@ -446,7 +446,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 
-	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
+	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
@@ -536,7 +536,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 }
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
-func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier bool) (ids []string) {
 	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
@@ -784,7 +784,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true, true)
+	depIDs := sb.dependentSmartIds(sb.includeRelationObjectsAsDependents, true, true)
 	changed = sb.setDependentIDs(depIDs)
 
 	if sb.recordsSub == nil {
