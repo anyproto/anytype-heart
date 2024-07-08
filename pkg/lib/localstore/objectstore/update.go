@@ -47,7 +47,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if isModified {
 		s.sendUpdatesToSubscriptions(id, details)
 	}
-
+	arena.Reset()
 	s.arenaPool.Put(arena)
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
@@ -156,6 +156,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		s.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
 	}))
+	arena.Reset()
 	s.arenaPool.Put(arena)
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
