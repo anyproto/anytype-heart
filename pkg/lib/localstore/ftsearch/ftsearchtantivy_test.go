@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
@@ -193,9 +192,7 @@ func assertProperIds(t *testing.T, tmpDir string) {
 			SpaceID: fmt.Sprintf("randomspaceid%d", i),
 		})
 	}
-	start := time.Now().UnixMilli()
 	assert.NoError(t, ft.BatchIndex(context.Background(), docs, nil))
-	fmt.Println(time.Now().UnixMilli() - start)
 
 	assert.NoError(t, ft.DeleteObject(fmt.Sprintf("randomid%d", 49)))
 

@@ -75,8 +75,22 @@ func (f *ftSearch2) Init(a *app.App) error {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
-	tantivy.LibInit("debug")
+	tantivy.LibInit("release")
 	return nil
+}
+
+func (f *ftSearch2) cleanUpOldIndexes() {
+	if strings.HasSuffix(f.rootPath, ftsDir2) {
+		dirs, err := os.ReadDir(f.rootPath)
+		if err == nil {
+			// cleanup old index versions
+			for _, dir := range dirs {
+				if dir.Name() != ftsVer {
+					_ = os.RemoveAll(filepath.Join(f.rootPath, dir.Name()))
+				}
+			}
+		}
+	}
 }
 
 func (f *ftSearch2) Name() (name string) {
@@ -86,7 +100,6 @@ func (f *ftSearch2) Name() (name string) {
 func (f *ftSearch2) Run(context.Context) error {
 	builder, err := tantivy.NewSchemaBuilder()
 	if err != nil {
-		fmt.Println("Failed to create schema builder:", err)
 		return err
 	}
 
@@ -137,41 +150,36 @@ func (f *ftSearch2) Run(context.Context) error {
 
 	schema, err := builder.BuildSchema()
 	if err != nil {
-		fmt.Println("Failed to build schema:", err)
 		return err
 	}
 
 	index, err := tantivy.NewIndexWithSchema(f.ftsPath, schema)
 	if err != nil {
-		fmt.Println("Failed to create index:", err)
 		return err
 	}
 	f.schema = schema
 	f.index = index
 
 	f.cleanupBleve()
+	f.cleanUpOldIndexes()
 
 	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, tantivy.English)
 	if err != nil {
-		fmt.Println("Failed to register text analyzer:", err)
 		return err
 	}
 
 	err = index.RegisterTextAnalyzerSimple(tokenizerId, 1000, tantivy.English)
 	if err != nil {
-		fmt.Println("Failed to register text analyzer:", err)
 		return err
 	}
 
 	err = index.RegisterTextAnalyzerEdgeNgram(tantivy.TokenizerEdgeNgram, 1, 5, 100)
 	if err != nil {
-		fmt.Println("Failed to register text analyzer:", err)
 		return err
 	}
 
 	err = index.RegisterTextAnalyzerRaw(tantivy.TokenizerRaw)
 	if err != nil {
-		fmt.Println("Failed to register text analyzer:", err)
 		return err
 	}
 
@@ -245,14 +253,12 @@ func (f *ftSearch2) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDoc
 }
 
 func (f *ftSearch2) Search(spaceId string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error) {
-	start := time.Now().UnixMilli()
 	if spaceId != "" {
 		query = fmt.Sprintf("%s:%s AND %s", fieldSpace, spaceId, escapeQuery(query))
 	} else {
 		query = escapeQuery(query)
 	}
 	result, err := f.index.Search(query, 100, true, fieldId, fieldSpace, fieldTitle, fieldText)
-	fmt.Println("### search took", time.Now().UnixMilli()-start, "ms")
 	if err != nil {
 		return nil, err
 	}
