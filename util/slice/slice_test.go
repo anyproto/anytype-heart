@@ -100,3 +100,11 @@ func TestUnsortedEquals(t *testing.T) {
 	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b"}))
 	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b", "c", "d"}))
 }
+
+func TestIsSubSlice(t *testing.T) {
+	assert.True(t, IsSubSlice([]byte("abc"), []byte("csabd")))
+	assert.True(t, IsSubSlice([]string{}, []string{}))
+	assert.True(t, IsSubSlice([]string{}, []string{"hello"}))
+	assert.True(t, IsSubSlice([]string{"a", "c"}, []string{"a", "b", "c", "d"}))
+	assert.False(t, IsSubSlice([]string{"a", "c", "b", "a"}, []string{"a", "b", "c"}))
+}

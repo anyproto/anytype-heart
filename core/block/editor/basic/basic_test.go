@@ -333,6 +333,32 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("moving rows and some other blocks between another leads to error", func(t *testing.T) {
+		// given
+		sb := getSB()
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+
+		// when
+		err := b.Move(st, st, "row2", model.Block_Top, []string{"row", "rows"})
+
+		// then
+		assert.Error(t, err)
+	})
+
+	t.Run("moving the row between itself leads to error", func(t *testing.T) {
+		// given
+		sb := getSB()
+		b := NewBasic(sb, nil, converter.NewLayoutConverter())
+		st := sb.NewState()
+
+		// when
+		err := b.Move(st, st, "row2", model.Block_Bottom, []string{"row2"})
+
+		// then
+		assert.Error(t, err)
+	})
+
 	t.Run("moving table block from invalid table leads to error", func(t *testing.T) {
 		// given
 		sb := getSB()

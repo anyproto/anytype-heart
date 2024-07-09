@@ -288,23 +288,19 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 }
 
 func checkTableBlocksMove(st *state.State, target string, pos model.BlockPosition, blockIds []string) (string, model.BlockPosition, error) {
+	if t, _ := table.NewTable(st, target); t != nil {
+		// we allow moving rows between each other
+		if slice.IsSubSlice(append(blockIds, target), t.RowIDs()) {
+			if pos == model.Block_Bottom || pos == model.Block_Top {
+				return target, pos, nil
+			}
+			return "", 0, fmt.Errorf("failed to move rows: position should be Top or Bottom, got %s", model.BlockPosition_name[int32(pos)])
+		}
+	}
+
 	for _, id := range blockIds {
-		root := table.GetTableRootBlock(st, id)
-		if root != nil && root.Model().Id != id {
-			t, err := table.NewTable(st, root.Model().Id)
-			if err != nil {
-				return "", 0, ErrCannotMoveTableBlocks
-			}
-
-			// we allow moving rows between each other
-			rows := t.RowIDs()
-			if slices.Contains(rows, id) && slices.Contains(rows, target) {
-				if pos == model.Block_Bottom || pos == model.Block_Top {
-					return target, pos, nil
-				}
-				return "", 0, fmt.Errorf("failed to move rows: position should be Top or Bottom, got %s", model.BlockPosition_name[int32(pos)])
-			}
-
+		t := table.GetTableRootBlock(st, id)
+		if t != nil && t.Model().Id != id {
 			// we should not move table blocks except table root block
 			return "", 0, ErrCannotMoveTableBlocks
 		}
