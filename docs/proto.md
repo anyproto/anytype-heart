@@ -34,6 +34,14 @@
     - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
     - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
     - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
+    - [DocumentCreate](#anytype-DocumentCreate)
+    - [DocumentDelete](#anytype-DocumentDelete)
+    - [DocumentModify](#anytype-DocumentModify)
+    - [KeyModify](#anytype-KeyModify)
+    - [StoreChange](#anytype-StoreChange)
+    - [StoreChangeContent](#anytype-StoreChangeContent)
+  
+    - [ModifyOp](#anytype-ModifyOp)
   
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
@@ -2462,7 +2470,122 @@ the element of change tree used to store and internal apply smartBlock history
 
 
 
+
+<a name="anytype-DocumentCreate"></a>
+
+### DocumentCreate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-DocumentDelete"></a>
+
+### DocumentDelete
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-DocumentModify"></a>
+
+### DocumentModify
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+| condition | [string](#string) |  | json condition; example: &#39;{&#34;$or&#34;: [{&#34;user.email&#34;: {$exists: false}}, {&#34;user.email&#34;: &#34;old@value&#34;}]}&#39; |
+| keys | [KeyModify](#anytype-KeyModify) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-KeyModify"></a>
+
+### KeyModify
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| keyPath | [string](#string) | repeated | key path; example: [user, email] |
+| modifyOp | [ModifyOp](#anytype-ModifyOp) |  | modify op: set, unset, inc, etc. |
+| modifyValue | [string](#string) |  | json value; example: &#39;&#34;new@email.com&#34;&#39; |
+
+
+
+
+
+
+<a name="anytype-StoreChange"></a>
+
+### StoreChange
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| changeSet | [StoreChangeContent](#anytype-StoreChangeContent) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-StoreChangeContent"></a>
+
+### StoreChangeContent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| create | [DocumentCreate](#anytype-DocumentCreate) |  |  |
+| modify | [DocumentModify](#anytype-DocumentModify) |  |  |
+| delete | [DocumentDelete](#anytype-DocumentDelete) |  |  |
+
+
+
+
+
  
+
+
+<a name="anytype-ModifyOp"></a>
+
+### ModifyOp
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Set | 0 |  |
+| Unset | 1 |  |
+| Inc | 2 |  |
+| AddToSet | 3 |  |
+| Pull | 4 |  |
+
 
  
 
