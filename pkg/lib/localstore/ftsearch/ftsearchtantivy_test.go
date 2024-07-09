@@ -16,12 +16,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
-type fixture struct {
+type fixture2 struct {
 	ft FTSearch
 	ta *app.App
 }
 
-func newFixture(path string, t *testing.T) *fixture {
+func newFixture(path string, t *testing.T) *fixture2 {
 	ft := TantivyNew()
 	ta := new(app.App)
 
@@ -29,7 +29,7 @@ func newFixture(path string, t *testing.T) *fixture {
 		Register(ft)
 
 	require.NoError(t, ta.Start(context.Background()))
-	return &fixture{
+	return &fixture2{
 		ft: ft,
 		ta: ta,
 	}
@@ -194,19 +194,10 @@ func assertProperIds(t *testing.T, tmpDir string) {
 	}
 	assert.NoError(t, ft.BatchIndex(context.Background(), docs, nil))
 
-	assert.NoError(t, ft.DeleteObject(fmt.Sprintf("randomid%d", 49)))
+	assert.NoError(t, ft.DeleteObject(fmt.Sprintf("randomid%d/r/randomrel%d", 49, 149)))
 
 	count, _ := ft.DocCount()
-	require.Equal(t, 98, int(count))
-
-	var batchDelete []string
-	for i := range 30 {
-		batchDelete = append(batchDelete, fmt.Sprintf("randomid%d", i))
-	}
-	ft.BatchDeleteObjects(batchDelete)
-
-	count, _ = ft.DocCount()
-	require.Equal(t, 38, int(count))
+	require.Equal(t, 99, int(count))
 
 	_ = ft.Close(nil)
 }

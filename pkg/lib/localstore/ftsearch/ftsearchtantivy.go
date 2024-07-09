@@ -36,11 +36,12 @@ func TantivyNew() FTSearch {
 }
 
 type ftSearch2 struct {
-	rootPath  string
-	ftsPath   string
-	builderId string
-	index     *tantivy.Index
-	schema    *tantivy.Schema
+	rootPath   string
+	ftsPath    string
+	builderId  string
+	index      *tantivy.Index
+	schema     *tantivy.Schema
+	parserPool *fastjson.ParserPool
 }
 
 func (f *ftSearch2) BatchDeleteObjects(ids []string) error {
@@ -159,6 +160,7 @@ func (f *ftSearch2) Run(context.Context) error {
 	}
 	f.schema = schema
 	f.index = index
+	f.parserPool = &fastjson.ParserPool{}
 
 	f.cleanupBleve()
 	f.cleanUpOldIndexes()
@@ -262,7 +264,9 @@ func (f *ftSearch2) Search(spaceId string, highlightFormatter HighlightFormatter
 	if err != nil {
 		return nil, err
 	}
-	var p fastjson.Parser
+	p := f.parserPool.Get()
+	defer f.parserPool.Put(p)
+
 	return tantivy.GetSearchResults(
 		result,
 		f.schema,
