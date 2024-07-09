@@ -89,15 +89,15 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 }
 
 func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
-	compiled := filter.Compile()
+	anystoreFilter := filter.AnystoreFilter()
 	var sortsArg []any
 	if order != nil {
-		sorts := order.Compile()
+		sorts := order.AnystoreSort()
 		if sorts != nil {
 			sortsArg = []any{sorts}
 		}
 	}
-	iter, err := s.objects.Find(compiled).Sort(sortsArg...).Offset(offset).Limit(limit).Iter(s.componentCtx)
+	iter, err := s.objects.Find(anystoreFilter).Sort(sortsArg...).Offset(offset).Limit(limit).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)
 	}

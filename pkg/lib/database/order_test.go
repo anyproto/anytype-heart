@@ -19,7 +19,7 @@ func assertCompare(t *testing.T, order Order, a *types.Struct, b *types.Struct, 
 	arena := &fastjson.Arena{}
 	aJson := pbtypes.ProtoToJson(arena, a)
 	bJson := pbtypes.ProtoToJson(arena, b)
-	s := order.Compile()
+	s := order.AnystoreSort()
 	aBytes := s.AppendKey(nil, aJson)
 	bBytes := s.AppendKey(nil, bJson)
 	got := bytes.Compare(aBytes, bBytes)

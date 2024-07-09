@@ -125,8 +125,8 @@ func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 	return ok
 }
 
-// Compile called only once when subscription is created
-func (c *collectionObserver) Compile() query.Filter {
+// AnystoreSort called only once when subscription is created
+func (c *collectionObserver) AnystoreFilter() query.Filter {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 

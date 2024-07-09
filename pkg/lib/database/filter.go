@@ -179,7 +179,7 @@ type WithNestedFilter interface {
 
 type Filter interface {
 	FilterObject(g *types.Struct) bool
-	Compile() query.Filter
+	AnystoreFilter() query.Filter
 }
 
 type FiltersAnd []Filter
@@ -195,11 +195,11 @@ func (a FiltersAnd) FilterObject(g *types.Struct) bool {
 	return true
 }
 
-func (a FiltersAnd) Compile() query.Filter {
+func (a FiltersAnd) AnystoreFilter() query.Filter {
 	filters := make([]query.Filter, 0, len(a))
 	for _, f := range a {
-		compiled := f.Compile()
-		filters = append(filters, compiled)
+		anystoreFilter := f.AnystoreFilter()
+		filters = append(filters, anystoreFilter)
 	}
 	return query.And(filters)
 }
@@ -224,11 +224,11 @@ func (fo FiltersOr) FilterObject(g *types.Struct) bool {
 	return false
 }
 
-func (fo FiltersOr) Compile() query.Filter {
+func (fo FiltersOr) AnystoreFilter() query.Filter {
 	filters := make([]query.Filter, 0, len(fo))
 	for _, f := range fo {
-		compiled := f.Compile()
-		filters = append(filters, compiled)
+		anystoreFilter := f.AnystoreFilter()
+		filters = append(filters, anystoreFilter)
 	}
 	return query.Or(filters)
 }
@@ -260,8 +260,8 @@ func (n FilterNot) FilterObject(g *types.Struct) bool {
 	return !n.Filter.FilterObject(g)
 }
 
-func (f FilterNot) Compile() query.Filter {
-	return query.Not{Filter: f.Filter.Compile()}
+func (f FilterNot) AnystoreFilter() query.Filter {
+	return query.Not{Filter: f.Filter.AnystoreFilter()}
 }
 
 type FilterEq struct {
@@ -270,7 +270,7 @@ type FilterEq struct {
 	Value *types.Value
 }
 
-func (e FilterEq) Compile() query.Filter {
+func (e FilterEq) AnystoreFilter() query.Filter {
 	var op query.CompOp
 	switch e.Cond {
 	case model.BlockContentDataviewFilter_Equal:
@@ -358,7 +358,7 @@ func (i FilterIn) FilterObject(g *types.Struct) bool {
 	return false
 }
 
-func (i FilterIn) Compile() query.Filter {
+func (i FilterIn) AnystoreFilter() query.Filter {
 	conds := make([]query.Filter, 0, len(i.Value.GetValues()))
 	for _, v := range i.Value.GetValues() {
 		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
@@ -386,10 +386,11 @@ func (l FilterLike) FilterObject(g *types.Struct) bool {
 	return strings.Contains(strings.ToLower(valStr), strings.ToLower(l.Value.GetStringValue()))
 }
 
-func (l FilterLike) Compile() query.Filter {
-	// TODO Return errro
-	re, err := regexp.Compile("(?i)" + l.Value.GetStringValue())
-	_ = err
+func (l FilterLike) AnystoreFilter() query.Filter {
+	re, err := regexp.Compile("(?i)" + regexp.QuoteMeta(l.Value.GetStringValue()))
+	if err != nil {
+		log.Errorf("failed to build anystore LIKE filter: %v", err)
+	}
 	return query.Key{
 		Path: []string{l.Key},
 		Filter: query.Regexp{
@@ -411,7 +412,7 @@ func (e FilterExists) FilterObject(g *types.Struct) bool {
 	return true
 }
 
-func (e FilterExists) Compile() query.Filter {
+func (e FilterExists) AnystoreFilter() query.Filter {
 	return query.Key{
 		Path:   []string{e.Key},
 		Filter: query.Exists{},
@@ -447,7 +448,7 @@ func (e FilterEmpty) FilterObject(g *types.Struct) bool {
 	return false
 }
 
-func (e FilterEmpty) Compile() query.Filter {
+func (e FilterEmpty) AnystoreFilter() query.Filter {
 	return query.Or{
 		query.Key{
 			Path:   []string{e.Key},
@@ -504,7 +505,7 @@ func (l FilterAllIn) FilterObject(g *types.Struct) bool {
 	return true
 }
 
-func (l FilterAllIn) Compile() query.Filter {
+func (l FilterAllIn) AnystoreFilter() query.Filter {
 	conds := make([]query.Filter, 0, len(l.Value.GetValues()))
 	for _, v := range l.Value.GetValues() {
 		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
@@ -561,7 +562,7 @@ func (exIn FilterOptionsEqual) FilterObject(g *types.Struct) bool {
 	return true
 }
 
-func (exIn FilterOptionsEqual) Compile() query.Filter {
+func (exIn FilterOptionsEqual) AnystoreFilter() query.Filter {
 	conds := make([]query.Filter, 0, len(exIn.Value.GetValues())+1)
 	conds = append(conds, query.Size{Size: int64(len(exIn.Value.GetValues()))})
 	for _, v := range exIn.Value.GetValues() {
@@ -633,7 +634,7 @@ func (i *FilterNestedIn) FilterObject(g *types.Struct) bool {
 	return false
 }
 
-func (i *FilterNestedIn) Compile() query.Filter {
+func (i *FilterNestedIn) AnystoreFilter() query.Filter {
 	conds := make([]query.Filter, 0, len(i.IDs))
 	for _, id := range i.IDs {
 		conds = append(conds, query.NewComp(query.CompOpEq, id))

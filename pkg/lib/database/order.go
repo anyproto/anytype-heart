@@ -16,7 +16,7 @@ import (
 
 type Order interface {
 	Compare(a, b *types.Struct) int
-	Compile() query.Sort
+	AnystoreSort() query.Sort
 }
 
 // ObjectStore interface is used to enrich filters
@@ -36,13 +36,13 @@ func (so SetOrder) Compare(a, b *types.Struct) int {
 	return 0
 }
 
-func (so SetOrder) Compile() query.Sort {
+func (so SetOrder) AnystoreSort() query.Sort {
 	if len(so) == 0 {
 		return nil
 	}
 	sorts := make(query.Sorts, 0, len(so))
 	for _, o := range so {
-		sorts = append(sorts, o.Compile())
+		sorts = append(sorts, o.AnystoreSort())
 	}
 	return sorts
 }
@@ -87,7 +87,7 @@ func (ko *KeyOrder) Compare(a, b *types.Struct) int {
 	return comp
 }
 
-func (ko *KeyOrder) Compile() query.Sort {
+func (ko *KeyOrder) AnystoreSort() query.Sort {
 	switch ko.RelationFormat {
 	case model.RelationFormat_shorttext, model.RelationFormat_longtext:
 		return ko.textSort()
@@ -308,11 +308,11 @@ func (co customOrder) AppendKey(k []byte, v *fastjson.Value) []byte {
 	val := v.GetStringBytes(co.Key)
 	idx, ok := co.NeedOrderMap[string(val)]
 	if !ok {
-		compiled := co.KeyOrd.Compile()
+		anystoreSort := co.KeyOrd.AnystoreSort()
 		// Push to the end
 		k = encoding.AppendJSONValue(k, co.arena.NewNumberInt(len(co.NeedOrderMap)))
 		// and add sorting
-		return compiled.AppendKey(k, v)
+		return anystoreSort.AppendKey(k, v)
 	}
 	return encoding.AppendJSONValue(k, co.arena.NewNumberInt(idx))
 }
@@ -326,7 +326,7 @@ func (co customOrder) Fields() []query.SortField {
 	}
 }
 
-func (co customOrder) Compile() query.Sort {
+func (co customOrder) AnystoreSort() query.Sort {
 	return co
 }
 

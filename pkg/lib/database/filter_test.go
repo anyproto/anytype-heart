@@ -16,10 +16,10 @@ import (
 
 func assertFilter(t *testing.T, f Filter, obj *types.Struct, expected bool) {
 	assert.Equal(t, expected, f.FilterObject(obj))
-	compiled := f.Compile()
+	anystoreFilter := f.AnystoreFilter()
 	arena := &fastjson.Arena{}
 	val := pbtypes.ProtoToJson(arena, obj)
-	assert.Equal(t, expected, compiled.Ok(val))
+	assert.Equal(t, expected, anystoreFilter.Ok(val))
 }
 
 func TestEq_FilterObject(t *testing.T) {
@@ -145,14 +145,27 @@ func TestIn_FilterObject(t *testing.T) {
 }
 
 func TestLike_FilterObject(t *testing.T) {
-	like := FilterLike{Key: "k", Value: pbtypes.String("sub")}
 	t.Run("ok", func(t *testing.T) {
+		like := FilterLike{Key: "k", Value: pbtypes.String("sub")}
 		g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("with suBstr")}}
 		assertFilter(t, like, g, true)
 	})
 	t.Run("not ok", func(t *testing.T) {
+		like := FilterLike{Key: "k", Value: pbtypes.String("sub")}
 		g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("with str")}}
 		assertFilter(t, like, g, false)
+	})
+	t.Run("escape regexp", func(t *testing.T) {
+		like := FilterLike{Key: "k", Value: pbtypes.String("[abc]")}
+		t.Run("ok", func(t *testing.T) {
+
+			g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("[abc]")}}
+			assertFilter(t, like, g, true)
+		})
+		t.Run("not ok", func(t *testing.T) {
+			g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("a")}}
+			assertFilter(t, like, g, false)
+		})
 	})
 }
 
