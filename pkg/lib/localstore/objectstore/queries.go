@@ -413,8 +413,10 @@ func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
 	case database.FilterIn:
 		if f.Key == bundle.RelationKeySpaceId.String() {
 			values := f.Value.GetValues()
-			if len(values) > 0 {
+			if len(values) == 1 {
 				return values[0].GetStringValue()
+			} else {
+				return ""
 			}
 		}
 	case database.FiltersAnd:

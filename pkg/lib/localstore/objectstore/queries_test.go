@@ -1179,7 +1179,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 	})
 
 	t.Run("filters is filter.FilterIn with spaceId", func(t *testing.T) {
-		list, err := pbtypes.ValueListWrapper(pbtypes.StringList([]string{"space1", "space2"}))
+		list, err := pbtypes.ValueListWrapper(pbtypes.StringList([]string{"space1"}))
 		assert.NoError(t, err)
 
 		f := database.FilterIn{
@@ -1187,6 +1187,17 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 			Value: list,
 		}
 		assert.Equal(t, "space1", getSpaceIDFromFilter(f))
+	})
+
+	t.Run("filters is filter.FilterIn with many spaceId", func(t *testing.T) {
+		list, err := pbtypes.ValueListWrapper(pbtypes.StringList([]string{"space1", "space2"}))
+		assert.NoError(t, err)
+
+		f := database.FilterIn{
+			Key:   bundle.RelationKeySpaceId.String(),
+			Value: list,
+		}
+		assert.Equal(t, "", getSpaceIDFromFilter(f))
 	})
 
 	t.Run("spaceID is nested in and filters", func(t *testing.T) {
