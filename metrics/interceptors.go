@@ -101,7 +101,7 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 	resp, err := actualCall(ctx, req)
 	close(doneCh)
 	if len(UnaryTraceCollections) > 0 && time.Since(start) > UnaryTraceCollections[0] {
-		// save long stack trace to file
+		// todo: save long stack trace to files
 		lastTraceB := debug.CompressBytes([]byte(lastTrace.String()))
 		l.With("ver", 2).With("error", err).With("in_progress", false).With("goroutines", lastTraceB).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
 	}
