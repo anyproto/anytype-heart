@@ -290,7 +290,7 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 func checkTableBlocksMove(st *state.State, target string, pos model.BlockPosition, blockIds []string) (string, model.BlockPosition, error) {
 	if t, _ := table.NewTable(st, target); t != nil {
 		// we allow moving rows between each other
-		if slice.IsSubSlice(append(blockIds, target), t.RowIDs()) {
+		if slice.ContainsAll(t.RowIDs(), append(blockIds, target)...) {
 			if pos == model.Block_Bottom || pos == model.Block_Top {
 				return target, pos, nil
 			}

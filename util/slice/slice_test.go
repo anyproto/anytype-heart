@@ -101,10 +101,13 @@ func TestUnsortedEquals(t *testing.T) {
 	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b", "c", "d"}))
 }
 
-func TestIsSubSlice(t *testing.T) {
-	assert.True(t, IsSubSlice([]byte("abc"), []byte("csabd")))
-	assert.True(t, IsSubSlice([]string{}, []string{}))
-	assert.True(t, IsSubSlice([]string{}, []string{"hello"}))
-	assert.True(t, IsSubSlice([]string{"a", "c"}, []string{"a", "b", "c", "d"}))
-	assert.False(t, IsSubSlice([]string{"a", "c", "b", "a"}, []string{"a", "b", "c"}))
+func TestContainsAll(t *testing.T) {
+	assert.True(t, ContainsAll([]byte("csabd"), []byte("abc")...))
+	assert.True(t, ContainsAll([]string{}))
+	assert.True(t, ContainsAll([]string{"hello"}))
+	assert.True(t, ContainsAll([]string{"a", "b", "c", "d"}, "a", "c"))
+	assert.True(t, ContainsAll([]string{"a", "b", "c", "d"}, "a", "a"))
+	assert.True(t, ContainsAll([]string{"a", "b", "c"}, "a", "c", "b", "a"))
+	assert.False(t, ContainsAll([]string{}, "z"))
+	assert.False(t, ContainsAll([]string{"y", "x"}, "z"))
 }

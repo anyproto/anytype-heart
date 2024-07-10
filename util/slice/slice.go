@@ -238,11 +238,8 @@ func FilterCID(cids []string) []string {
 	})
 }
 
-func IsSubSlice[T comparable](subs, s []T) bool {
-	if len(subs) > len(s) {
-		return false
-	}
-	for _, e := range subs {
+func ContainsAll[T comparable](s []T, items ...T) bool {
+	for _, e := range items {
 		if !slices.Contains(s, e) {
 			return false
 		}
