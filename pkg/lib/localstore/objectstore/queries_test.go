@@ -251,6 +251,15 @@ func TestQuery(t *testing.T) {
 			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		}
 
+		relObjDeleted := TestObject{
+			bundle.RelationKeyId:          pbtypes.String("relid2"),
+			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
+			bundle.RelationKeyName:        pbtypes.String("deleted_tag"),
+			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
+			bundle.RelationKeyDescription: pbtypes.String("this is a deleted relation's description"),
+			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+		}
+
 		typeObj := TestObject{
 			bundle.RelationKeyId:          pbtypes.String("typeid1"),
 			bundle.RelationKeyName:        pbtypes.String("typename"),
@@ -258,7 +267,7 @@ func TestQuery(t *testing.T) {
 			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_objectType)),
 		}
 
-		s.AddObjects(t, []TestObject{obj1, obj2, obj3, relObj, typeObj})
+		s.AddObjects(t, []TestObject{obj1, obj2, obj3, relObj, relObjDeleted, typeObj})
 		err := s.fts.Index(ftsearch.SearchDoc{
 			Id:   "id1/r/description",
 			Text: obj1[bundle.RelationKeyDescription].GetStringValue(),
@@ -539,6 +548,23 @@ func TestQuery(t *testing.T) {
 						RelationDetails: pbtypes.StructFilterKeys(makeDetails(relObj), []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyId.String(), bundle.RelationKeyName.String()}),
 					},
 				}}, recs)
+		})
+
+		t.Run("full-text by deleted tag", func(t *testing.T) {
+			recs, err := s.Query(database.Query{
+				FullText: "deleted_tag",
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						Operator:    0,
+						RelationKey: "layout",
+						Condition:   model.BlockContentDataviewFilter_NotIn,
+						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+					},
+				},
+			})
+			require.NoError(t, err)
+			removeScoreFromRecords(recs)
+			assert.Len(t, recs, 0)
 		})
 
 		t.Run("full-text by type", func(t *testing.T) {
