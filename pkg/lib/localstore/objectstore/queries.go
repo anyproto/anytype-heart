@@ -56,11 +56,19 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 		err         error
 	)
 
+	isDeleted := pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String())
+	isArchived := pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
+	if isDeleted || isArchived {
+		return nil
+	}
+
 	switch model.ObjectTypeLayout(pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())) {
 	case model.ObjectType_relationOption:
 		relationKey = pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	case model.ObjectType_objectType:
 		relationKey = bundle.RelationKeyType.String()
+	default:
+		return nil
 	}
 	recs, err := s.getObjectsWithObjectInRelation(relationKey, id, maxLength, params)
 	if err != nil {

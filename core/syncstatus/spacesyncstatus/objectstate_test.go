@@ -142,4 +142,16 @@ func TestObjectState_SetSyncStatus(t *testing.T) {
 		// then
 		assert.Equal(t, domain.Offline, objectState.GetSyncStatus("spaceId"))
 	})
+	t.Run("SetSyncStatusAndErr, syncing", func(t *testing.T) {
+		// given
+		objectState := NewObjectState(objectstore.NewStoreFixture(t))
+
+		// when
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		objectState.SetObjectsNumber(syncStatus)
+		objectState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
+
+		// then
+		assert.Equal(t, domain.Synced, objectState.GetSyncStatus("spaceId"))
+	})
 }

@@ -1,5 +1,10 @@
-on: [ pull_request ]
-name: Test
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
@@ -61,7 +66,12 @@ jobs:
           PACKAGE_NAMES=$(go list -tags nogrpcserver ./... | grep -v "github.com/anyproto/anytype-heart/cmd/grpserver" | grep -v "github.com/anyproto/anytype-heart/clientlibrary/clib")
           rm -rf ~/gotestsum-report
           mkdir ~/gotestsum-report
-          CGO_CFLAGS="-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion" gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags "nogrpcserver nographviz" -ldflags="-extldflags=-Wl,-ld_classic" -p 1 $(echo $PACKAGE_NAMES) -race -coverprofile=coverage.out -covermode=atomic ./...
+          if [[ "$GITHUB_REF" == "refs/heads/main" && "$GITHUB_EVENT_NAME" == "push" ]]; then
+            export RACE=-race
+          else
+            echo "run without race detector"
+          fi
+          CGO_CFLAGS="-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion" gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags "nogrpcserver nographviz" -ldflags="-extldflags=-Wl,-ld_classic" -p 1 $(echo $PACKAGE_NAMES) $(echo $RACE) -coverprofile=coverage.out -covermode=atomic ./...
           
           generated_pattern='^\/\/ Code generated .* DO NOT EDIT\.$'
           files_list=$(grep -rl "$generated_pattern" . | grep '\.go$' | sed 's/^\.\///')
