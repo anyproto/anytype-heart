@@ -1133,7 +1133,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 			Key:   bundle.RelationKeySpaceId.String(),
 			Value: list,
 		}
-		assert.Equal(t, []string{"space1", "space2"}, getSpaceIdsFromFilter(f))
+		assert.Equal(t, []string{"space1"}, getSpaceIdsFromFilter(f))
 	})
 
 	t.Run("filters is filter.FilterIn with many spaceId", func(t *testing.T) {
@@ -1144,7 +1144,7 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 			Key:   bundle.RelationKeySpaceId.String(),
 			Value: list,
 		}
-		assert.Equal(t, "", getSpaceIDFromFilter(f))
+		assert.Equal(t, []string{"space1", "space2"}, getSpaceIdsFromFilter(f))
 	})
 
 	t.Run("spaceID is nested in and filters", func(t *testing.T) {
