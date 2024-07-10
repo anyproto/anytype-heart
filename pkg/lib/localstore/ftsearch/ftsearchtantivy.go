@@ -254,11 +254,12 @@ func (f *ftSearch2) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDoc
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
-func (f *ftSearch2) Search(spaceId string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error) {
-	if spaceId != "" {
-		query = fmt.Sprintf("%s:%s AND %s", fieldSpace, spaceId, escapeQuery(query))
-	} else {
+func (f *ftSearch2) Search(spaceIds []string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error) {
+	spaceIdsQuery := getSpaceIdsQuery(spaceIds)
+	if spaceIdsQuery == "" {
 		query = escapeQuery(query)
+	} else {
+		query = fmt.Sprintf("%s AND %s", spaceIdsQuery, escapeQuery(query))
 	}
 	result, err := f.index.Search(query, 100, true, fieldId, fieldSpace, fieldTitle, fieldText)
 	if err != nil {
@@ -296,6 +297,37 @@ func (f *ftSearch2) Search(spaceId string, highlightFormatter HighlightFormatter
 		},
 		fieldId,
 	)
+}
+
+func getSpaceIdsQuery(ids []string) string {
+	builder := strings.Builder{}
+	last := len(ids) - 1
+	for i, id := range ids {
+		if id == "" {
+			continue
+		}
+		if i == 0 {
+			builder.WriteString("(")
+			builder.WriteString(fieldSpace)
+			builder.WriteString(":")
+			builder.WriteString(id)
+			if i == last {
+				builder.WriteString(")")
+			}
+		} else if i == last {
+			builder.WriteString(" OR ")
+			builder.WriteString(fieldSpace)
+			builder.WriteString(":")
+			builder.WriteString(id)
+			builder.WriteString(")")
+		} else {
+			builder.WriteString(" OR ")
+			builder.WriteString(fieldSpace)
+			builder.WriteString(":")
+			builder.WriteString(id)
+		}
+	}
+	return builder.String()
 }
 
 func (f *ftSearch2) Delete(id string) error {

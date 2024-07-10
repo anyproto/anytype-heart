@@ -62,6 +62,44 @@ func TestListIndexedIds(t *testing.T) {
 	_ = ft.Close(nil)
 }
 
+func TestDifferentSpaces(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "")
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:      "1",
+		Title:   "one",
+		SpaceID: "space1",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:      "2",
+		Title:   "one",
+		SpaceID: "space2",
+	}))
+
+	search, err := ft.Search([]string{"space1"}, HtmlHighlightFormatter, "one")
+	require.NoError(t, err)
+	require.Len(t, search, 1)
+
+	search, err = ft.Search([]string{"space2"}, HtmlHighlightFormatter, "one")
+	require.NoError(t, err)
+	require.Len(t, search, 1)
+
+	search, err = ft.Search([]string{"space1", "space2"}, HtmlHighlightFormatter, "one")
+	require.NoError(t, err)
+	require.Len(t, search, 2)
+
+	search, err = ft.Search([]string{""}, HtmlHighlightFormatter, "one")
+	require.NoError(t, err)
+	require.Len(t, search, 2)
+
+	search, err = ft.Search(nil, HtmlHighlightFormatter, "one")
+	require.NoError(t, err)
+	require.Len(t, search, 2)
+
+	_ = ft.Close(nil)
+}
+
 func TestNewFTSearch(t *testing.T) {
 	testCases := []struct {
 		name   string
@@ -218,7 +256,7 @@ func assertSearch(t *testing.T, tmpDir string) {
 }
 
 func validateSearch(t *testing.T, ft FTSearch, spaceID, qry string, times int) {
-	res, err := ft.Search(spaceID, HtmlHighlightFormatter, qry)
+	res, err := ft.Search([]string{spaceID}, HtmlHighlightFormatter, qry)
 	require.NoError(t, err)
 	assert.Len(t, res, times)
 }

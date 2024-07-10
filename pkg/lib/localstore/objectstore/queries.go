@@ -315,8 +315,8 @@ func jsonHighlightToRanges(s string) (text string, ranges []*model.Range) {
 }
 
 func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ftsearch.HighlightFormatter, filters *database.Filters) ([]database.FulltextResult, error) {
-	spaceID := getSpaceIDFromFilter(filters.FilterObj)
-	bleveResults, err := s.fts.Search(spaceID, highlightFormatter, text)
+	spaceIds := getSpaceIdsFromFilter(filters.FilterObj)
+	bleveResults, err := s.fts.Search(spaceIds, highlightFormatter, text)
 	if err != nil {
 		return nil, fmt.Errorf("fullText search: %w", err)
 	}
@@ -396,32 +396,30 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 	return results, nil
 }
 
-func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
+func getSpaceIdsFromFilter(fltr database.Filter) []string {
 	switch f := fltr.(type) {
 	case database.FilterEq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
-			return f.Value.GetStringValue()
+			return []string{f.Value.GetStringValue()}
 		}
 	case database.FilterIn:
 		if f.Key == bundle.RelationKeySpaceId.String() {
-			values := f.Value.GetValues()
-			if len(values) > 0 {
-				return values[0].GetStringValue()
-			}
+			return pbtypes.ListValueToStrings(f.Value)
 		}
 	case database.FiltersAnd:
-		spaceID = iterateOverAndFilters(f)
+		return iterateOverAndFilters(f)
 	}
-	return spaceID
+	return nil
 }
 
-func iterateOverAndFilters(fs []database.Filter) (spaceID string) {
+func iterateOverAndFilters(fs []database.Filter) []string {
+	var spaceIds []string
 	for _, f := range fs {
-		if spaceID = getSpaceIDFromFilter(f); spaceID != "" {
-			return spaceID
+		if newSpaceIds := getSpaceIdsFromFilter(f); len(newSpaceIds) != 0 {
+			spaceIds = append(spaceIds, newSpaceIds...)
 		}
 	}
-	return ""
+	return spaceIds
 }
 
 // TODO: objstore: no one uses total
