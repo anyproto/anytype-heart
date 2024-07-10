@@ -174,8 +174,8 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		err := s.fts.Index(ftsearch.SearchDoc{
-			Id:    "id1/b/123",
-			Title: "name",
+			Id:    "id1/r/name",
+			Title: "myname1",
 		})
 		require.NoError(t, err)
 
@@ -202,6 +202,18 @@ func TestQuery(t *testing.T) {
 			assertRecordsMatch(t, []TestObject{
 				obj2,
 				obj3,
+			}, recs)
+		})
+
+		t.Run("fulltext by relation", func(t *testing.T) {
+			recs, err := s.Query(database.Query{
+				FullText: "myname1",
+			})
+			require.NoError(t, err)
+
+			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
+			assertRecordsMatch(t, []TestObject{
+				obj1,
 			}, recs)
 		})
 
@@ -254,7 +266,7 @@ func TestQuery(t *testing.T) {
 		relObjDeleted := TestObject{
 			bundle.RelationKeyId:          pbtypes.String("relid2"),
 			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
-			bundle.RelationKeyName:        pbtypes.String("deleted_tag"),
+			bundle.RelationKeyName:        pbtypes.String("deletedtag"),
 			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
 			bundle.RelationKeyDescription: pbtypes.String("this is a deleted relation's description"),
 			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
@@ -263,7 +275,7 @@ func TestQuery(t *testing.T) {
 		relObjArchived := TestObject{
 			bundle.RelationKeyId:          pbtypes.String("relid3"),
 			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
-			bundle.RelationKeyName:        pbtypes.String("archived_tag"),
+			bundle.RelationKeyName:        pbtypes.String("archived"),
 			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
 			bundle.RelationKeyDescription: pbtypes.String("this is a archived relation's description"),
 			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
@@ -297,6 +309,28 @@ func TestQuery(t *testing.T) {
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "relid1/r/name",
 			Title: relObj[bundle.RelationKeyName].GetStringValue(),
+		})
+		require.NoError(t, err)
+
+		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:   "relid2/r/description",
+			Text: relObjDeleted[bundle.RelationKeyDescription].GetStringValue(),
+		})
+		require.NoError(t, err)
+		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:    "relid2/r/name",
+			Title: relObjDeleted[bundle.RelationKeyName].GetStringValue(),
+		})
+		require.NoError(t, err)
+
+		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:   "relid3/r/description",
+			Text: relObjArchived[bundle.RelationKeyDescription].GetStringValue(),
+		})
+		require.NoError(t, err)
+		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:    "relid3/r/name",
+			Title: relObjArchived[bundle.RelationKeyName].GetStringValue(),
 		})
 		require.NoError(t, err)
 
@@ -561,7 +595,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text by deleted tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "deleted_tag",
+				FullText: "deleted",
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						Operator:    0,
@@ -578,7 +612,7 @@ func TestQuery(t *testing.T) {
 
 		t.Run("full-text by archived tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
-				FullText: "archived_tag",
+				FullText: "archived",
 				Filters: []*model.BlockContentDataviewFilter{
 					{
 						Operator:    0,
@@ -624,7 +658,6 @@ func TestQuery(t *testing.T) {
 				},
 			}, recs)
 		})
-
 	})
 
 	t.Run("with ascending order and filter", func(t *testing.T) {
