@@ -20,8 +20,17 @@ import (
 
 var log = logging.Logger("import").Desugar()
 
+type IdAndKeyProvider interface {
+	IDProvider
+	InternalKeyProvider
+}
+
 type IDProvider interface {
 	GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error)
+}
+
+type InternalKeyProvider interface {
+	GetInternalKey(sbType sb.SmartBlockType) string
 }
 
 type Provider struct {
@@ -34,13 +43,13 @@ func NewIDProvider(
 	blockService *block.Service,
 	fileStore filestore.FileStore,
 	fileObjectService fileobject.Service,
-) IDProvider {
+) IdAndKeyProvider {
 	p := &Provider{
 		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
 	existingObject := newExistingObject(objectStore)
 	treeObject := newTreeObject(existingObject, spaceService)
-	derivedObject := newDerivedObject(existingObject, spaceService)
+	derivedObject := newDerivedObject(existingObject, spaceService, objectStore)
 	fileObject := &fileObject{
 		treeObject:   treeObject,
 		blockService: blockService,
@@ -64,9 +73,25 @@ func NewIDProvider(
 	return p
 }
 
-func (p *Provider) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
+func (p *Provider) GetIDAndPayload(
+	ctx context.Context,
+	spaceID string,
+	sn *common.Snapshot,
+	createdTime time.Time,
+	getExisting bool,
+	origin objectorigin.ObjectOrigin,
+) (string, treestorage.TreeStorageCreatePayload, error) {
 	if idProvider, ok := p.idProviderBySmartBlockType[sn.SbType]; ok {
 		return idProvider.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting, origin)
 	}
 	return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("unsupported smartblock to import")
+}
+
+func (p *Provider) GetInternalKey(sbType sb.SmartBlockType) string {
+	if idProvider, ok := p.idProviderBySmartBlockType[sbType]; ok {
+		if internalKeyProvider, ok := idProvider.(InternalKeyProvider); ok {
+			return internalKeyProvider.GetInternalKey(sbType)
+		}
+	}
+	return ""
 }
