@@ -335,6 +335,7 @@ endif
 REPO := anyproto/tantivy-go
 VERSION := go/v0.0.3
 OUTPUT_DIR := deps/libs
+SHA_FILE = tantivity_sha256.txt
 
 TANTIVY_LIBS := android-386.tar.gz \
          android-amd64.tar.gz \
@@ -351,16 +352,30 @@ define download_tantivy_lib
 	curl -L -o $(OUTPUT_DIR)/$(1) https://github.com/$(REPO)/releases/download/$(VERSION)/$(1)
 endef
 
-download-tantivy-all: $(TANTIVY_LIBS)
+define remove_arch
+	rm -f $(OUTPUT_DIR)/$(1)
+endef
+
+download-tantivy: $(TANTIVY_LIBS)
 
 $(TANTIVY_LIBS):
 	@mkdir -p $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1)
 	$(call download_tantivy_lib,$@)
 	@tar -C $(OUTPUT_DIR)/$(shell echo $@ | cut -d'.' -f1) -xvzf $(OUTPUT_DIR)/$@
-	@rm -f $(OUTPUT_DIR)/$@
-	@echo "Extracted $@"
+
+download-tantivy-all-force: download-tantivy
+	@rm -f $(SHA_FILE)
+	@for file in $(TANTIVY_LIBS); do \
+		echo "SHA256 $(OUTPUT_DIR)/$$file" ; \
+		shasum -a 256 $(OUTPUT_DIR)/$$file | awk '{print $$1 "  " "'$(OUTPUT_DIR)/$$file'" }' >> $(SHA_FILE); \
+	done
+	@echo "SHA256 checksums generated."
+
+download-tantivy-all: download-tantivy
+	@echo "Validating SHA256 checksums..."
+	@shasum -a 256 -c $(SHA_FILE) --status || { echo "Hash mismatch detected."; exit 1; }
+	@echo "All files are valid."
 
 download-tantivy-local:
 	@mkdir -p $(OUTPUT_DIR)
 	@cp -r $(TANTIVY_GO_PATH)/go/libs/ $(OUTPUT_DIR)
-### End Tantivy Section
