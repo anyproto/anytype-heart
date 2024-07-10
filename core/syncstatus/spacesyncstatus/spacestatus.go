@@ -156,7 +156,8 @@ func (s *spaceSyncStatus) processEvents() {
 }
 
 func (s *spaceSyncStatus) updateSpaceSyncStatus(receivedStatus *domain.SpaceSync) {
-	if s.isStatusNotChanged(receivedStatus) {
+	currSyncStatus := s.getSpaceSyncStatus(receivedStatus.SpaceId)
+	if s.isStatusNotChanged(receivedStatus, currSyncStatus) {
 		return
 	}
 	state := s.getCurrentState(receivedStatus)
@@ -168,7 +169,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(receivedStatus *domain.SpaceSync
 	spaceStatus := s.getSpaceSyncStatus(receivedStatus.SpaceId)
 
 	// send synced event only if files and objects are all synced
-	if !s.needToSendEvent(spaceStatus, prevObjectNumber, newObjectNumber) {
+	if !s.needToSendEvent(spaceStatus, currSyncStatus, prevObjectNumber, newObjectNumber) {
 		return
 	}
 	s.eventSender.Broadcast(&pb.Event{
@@ -181,13 +182,12 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(receivedStatus *domain.SpaceSync
 	state.ResetSpaceErrorStatus(receivedStatus.SpaceId, receivedStatus.SyncError)
 }
 
-func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync) bool {
+func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync, syncStatus domain.SpaceSyncStatus) bool {
 	if status.Status == domain.Syncing {
 		// we need to check if number of syncing object is changed first
 		return false
 	}
 	syncErrNotChanged := s.getError(status.SpaceId) == mapError(status.SyncError)
-	syncStatus := s.getSpaceSyncStatus(status.SpaceId)
 	if syncStatus == domain.Unknown {
 		return false
 	}
@@ -198,9 +198,9 @@ func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync) bool {
 	return false
 }
 
-func (s *spaceSyncStatus) needToSendEvent(status domain.SpaceSyncStatus, prevObjectNumber int64, newObjectNumber int64) bool {
+func (s *spaceSyncStatus) needToSendEvent(status domain.SpaceSyncStatus, currSyncStatus domain.SpaceSyncStatus, prevObjectNumber int64, newObjectNumber int64) bool {
 	// that because we get update on syncing objects count, so we need to send updated object counter to client
-	return status != domain.Syncing || prevObjectNumber != newObjectNumber
+	return (status == domain.Syncing && prevObjectNumber != newObjectNumber) || currSyncStatus != status
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {

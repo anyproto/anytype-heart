@@ -79,6 +79,10 @@ func (o *ObjectState) SetSyncStatusAndErr(status domain.SpaceSyncStatus, syncErr
 		o.objectSyncStatusBySpace[spaceId] = domain.Syncing
 		o.objectSyncErrBySpace[spaceId] = domain.Null
 		return
+	} else if ok && objectNumber == 0 && status == domain.Syncing {
+		o.objectSyncStatusBySpace[spaceId] = domain.Synced
+		o.objectSyncErrBySpace[spaceId] = domain.Null
+		return
 	}
 	o.objectSyncStatusBySpace[spaceId] = status
 	o.objectSyncErrBySpace[spaceId] = syncErr

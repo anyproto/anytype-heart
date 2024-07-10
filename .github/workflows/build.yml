@@ -32,7 +32,7 @@ permissions:
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-11' || (github.event.inputs.run-on-runner || 'self-hosted') }}
+    runs-on: ${{ github.event_name == 'push' && 'macos-12' || (github.event.inputs.run-on-runner || 'self-hosted') }}
     steps:
       - name: validate agent
         run: |
@@ -79,6 +79,8 @@ jobs:
           key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-${{ matrix.go-version }}-
+      - name: Install old MacOS SDK (for backward compatibility of CGO)
+        run: source .github/install_macos_sdk.sh 10.15
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -97,7 +99,6 @@ jobs:
           fi
           echo VERSION=${VERSION} >> $GITHUB_ENV
           echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
-          echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
           echo "${GOBIN}" >> $GITHUB_PATH
@@ -117,7 +118,11 @@ jobs:
         run: |
           echo $FLAGS
           mkdir -p .release
-          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          echo $SDKROOT
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
+          export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+          echo $SDKROOT
+          gox -cgo -ldflags="$FLAGS" -osarch="darwin/arm64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
