@@ -88,9 +88,9 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 				trace := debug.Stack(true)
 				// double check, because we can have a race and the stack trace can be taken after the method is already finished
 				if stackTraceHasMethod(methodName, trace) {
-					traceCompressed := debug.CompressBytes(trace)
-					lastTrace.Store(traceCompressed)
+					lastTrace.Store(string(trace))
 					if i == UnaryWarningInProgressIndex {
+						traceCompressed := debug.CompressBytes(trace)
 						l.With("ver", 2).With("in_progress", true).With("goroutines", traceCompressed).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request is taking too long")
 					}
 				}
