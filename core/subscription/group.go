@@ -123,6 +123,10 @@ func (gs *groupSub) hasDep() bool {
 	return false
 }
 
+func (gs *groupSub) getDep() subscription {
+	return nil
+}
+
 func (gs *groupSub) close() {
 	for id := range gs.set {
 		gs.cache.RemoveSubId(id, gs.id)

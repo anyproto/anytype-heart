@@ -373,6 +373,10 @@ func (s *sortedSub) hasDep() bool {
 	return s.depSub != nil
 }
 
+func (s *sortedSub) getDep() subscription {
+	return s.depSub
+}
+
 func (s *sortedSub) close() {
 	el := s.skl.Front()
 	for el != nil {
