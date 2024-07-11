@@ -133,6 +133,10 @@ func (s *simpleSub) hasDep() bool {
 	return s.depSub != nil
 }
 
+func (s *simpleSub) getDep() subscription {
+	return s.depSub
+}
+
 func (s *simpleSub) close() {
 	for id := range s.set {
 		s.cache.RemoveSubId(id, s.id)
