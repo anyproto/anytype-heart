@@ -44,7 +44,9 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	require.NoError(t, err)
 
 	badgerDir := filepath.Join(t.TempDir(), "badger")
-	db, err := badger.Open(badger.DefaultOptions(badgerDir))
+	opts := badger.DefaultOptions(badgerDir)
+	opts.Logger = nil
+	db, err := badger.Open(opts)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

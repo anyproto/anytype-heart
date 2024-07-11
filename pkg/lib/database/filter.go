@@ -257,8 +257,17 @@ func (n FilterNot) FilterObject(g *types.Struct) bool {
 
 func (f FilterNot) AnystoreFilter() query.Filter {
 	filter := f.Filter.AnystoreFilter()
+	return negateFilter(filter)
+}
+
+func negateFilter(filter query.Filter) query.Filter {
 	switch v := filter.(type) {
-	// TODO Add and case
+	case query.And:
+		negated := make(query.And, 0, len(v))
+		for _, f := range v {
+			negated = append(negated, negateFilter(f))
+		}
+		return query.Or(negated)
 	case query.Or:
 		return query.Nor(v)
 	case query.Key:
