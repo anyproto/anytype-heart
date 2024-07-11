@@ -162,7 +162,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				template.WithLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,
-				template.WithRequiredRelations(),
 				template.WithLinkFieldsMigration,
 				template.WithCreatorRemovedFromFeaturedRelations,
 			}

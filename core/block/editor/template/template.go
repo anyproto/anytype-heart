@@ -81,20 +81,12 @@ var WithNoDuplicateLinks = func() StateTransformer {
 
 var WithRelations = func(rels []domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		var links []*model.RelationLink
-		for _, relKey := range rels {
-			if s.HasRelation(relKey.String()) {
-				continue
-			}
-			rel := bundle.MustGetRelation(relKey)
-			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
-		}
-		s.AddRelationLinks(links...)
+		s.AddBundledRelations(rels...)
 	}
 }
 
-var WithRequiredRelations = func() StateTransformer {
-	return WithRelations(bundle.RequiredInternalRelations)
+var WithRequiredRelations = func(s *state.State) {
+	WithRelations(bundle.RequiredInternalRelations)(s)
 }
 
 var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.ObjectTypeLayout) StateTransformer {

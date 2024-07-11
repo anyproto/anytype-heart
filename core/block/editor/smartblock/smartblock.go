@@ -339,11 +339,12 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
 		return
 	}
-
+	// we need to have required internal relations for all objects, including system
+	template.WithRequiredRelations(ctx.State)
 	// Add bundled relations
 	var relKeys []domain.RelationKey
 	for k := range ctx.State.Details().GetFields() {
-		if _, err := bundle.GetRelation(domain.RelationKey(k)); err == nil {
+		if bundle.HasRelation(k) {
 			relKeys = append(relKeys, domain.RelationKey(k))
 		}
 	}

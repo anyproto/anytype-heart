@@ -1934,12 +1934,23 @@ func (s *State) SelectRoots(ids []string) []string {
 }
 
 func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
-	links := make([]*model.RelationLink, 0, len(keys))
-	for _, key := range keys {
-		rel := bundle.MustGetRelation(key)
-		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+	if len(keys) == 0 {
+		return
 	}
-	s.AddRelationLinks(links...)
+	added := false
+	relLinks := s.GetRelationLinks()
+	for _, key := range keys {
+		if !relLinks.Has(key.String()) {
+			added = true
+			relLinks = append(relLinks, &model.RelationLink{
+				Key:    key.String(),
+				Format: bundle.MustGetRelation(key).Format,
+			})
+		}
+	}
+	if added {
+		s.relationLinks = relLinks
+	}
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {

@@ -55,7 +55,6 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 				template.WithEmpty,
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),
-				template.WithRequiredRelations(),
 				template.WithNoDuplicateLinks(),
 			)
 		},
