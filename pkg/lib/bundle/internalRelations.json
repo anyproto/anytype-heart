@@ -24,5 +24,8 @@
   "spaceId",
   "links",
   "internalFlags",
-  "restrictions"
+  "restrictions",
+  "syncDate",
+  "syncStatus",
+  "syncError"
 ]
