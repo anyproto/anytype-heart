@@ -342,7 +342,7 @@ func TestQuery(t *testing.T) {
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "id1/b/block1",
-			Text: "this is a cozy block",
+			Text: "this is a beautiful block block",
 		})
 		require.NoError(t, err)
 
@@ -430,33 +430,45 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text block multi match", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				FullText: "block",
+				Sorts: []*model.BlockContentDataviewSort{
+					{
+						RelationKey: bundle.RelationKeyId.String(),
+						Type:        model.BlockContentDataviewSort_Asc,
+					},
+				},
 			})
 			require.NoError(t, err)
 			removeScoreFromRecords(recs)
 			assert.ElementsMatch(t, []database.Record{
 				{
-					Details: makeDetails(obj2),
+					Details: makeDetails(obj1),
 					Meta: model.SearchMeta{
-						Highlight: "this is a sage block",
-						HighlightRanges: []*model.Range{{
-							From: 15,
-							To:   20,
-						}},
-						BlockId: "321",
+						Highlight: "this is a beautiful block block",
+						HighlightRanges: []*model.Range{
+							{
+								From: 20,
+								To:   25,
+							},
+							{
+								From: 26,
+								To:   31,
+							},
+						},
+						BlockId: "block1",
 					},
 				},
 				// only one result per object
 				{
-					Details: makeDetails(obj1),
+					Details: makeDetails(obj2),
 					Meta: model.SearchMeta{
-						Highlight: "this is a cozy block",
+						Highlight: "this is a sage block",
 						HighlightRanges: []*model.Range{
 							{
 								From: 15,
 								To:   20,
 							},
 						},
-						BlockId: "block1",
+						BlockId: "321",
 					},
 				},
 			}, recs)
