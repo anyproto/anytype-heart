@@ -47,7 +47,7 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 			hasArchivedFilter = true
 		}
 
-		if filter.RelationKey == bundle.RelationKeyType.String() {
+		if filter.RelationKey == bundle.RelationKeyLayout.String() {
 			hasTypeFilter = true
 		}
 
@@ -64,7 +64,7 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.Float64(float64(model.ObjectType_space))})
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyLayout.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Float64(float64(model.ObjectType_space))})
 	}
 	return filters
 }
@@ -104,7 +104,7 @@ func NewFilters(qry Query, store ObjectStore, arena *fastjson.Arena) (filters *F
 		objectStore: store,
 	}
 
-	filterObj, err := qb.compose(qry.Filters)
+	filterObj, err := MakeFiltersAnd(qry.Filters, store)
 	if err != nil {
 		return
 	}

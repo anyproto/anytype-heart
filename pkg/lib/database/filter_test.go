@@ -3,6 +3,7 @@ package database
 import (
 	"testing"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,6 +18,8 @@ import (
 func assertFilter(t *testing.T, f Filter, obj *types.Struct, expected bool) {
 	assert.Equal(t, expected, f.FilterObject(obj))
 	anystoreFilter := f.AnystoreFilter()
+	_, err := query.ParseCondition(anystoreFilter.String())
+	require.NoError(t, err, anystoreFilter.String())
 	arena := &fastjson.Arena{}
 	val := pbtypes.ProtoToJson(arena, obj)
 	assert.Equal(t, expected, anystoreFilter.Ok(val))
@@ -113,6 +116,14 @@ func TestEq_FilterObject(t *testing.T) {
 			assertFilter(t, eq, g, false)
 		})
 	})
+	t.Run("not equal", func(t *testing.T) {
+		eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_NotEqual}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Float64(1)}}
+		assertFilter(t, eq, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.Float64(2)}}
+		assertFilter(t, eq, obj, false)
+	})
 }
 
 func TestNot_FilterObject(t *testing.T) {
@@ -141,6 +152,15 @@ func TestIn_FilterObject(t *testing.T) {
 	t.Run("not ok list -> list", func(t *testing.T) {
 		g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"not ok"})}}
 		assertFilter(t, in, g, false)
+	})
+
+	t.Run("not in", func(t *testing.T) {
+		f := FilterNot{FilterIn{Key: "k", Value: pbtypes.StringList([]string{"1", "2", "3"}).GetListValue()}}
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("4")}}
+		assertFilter(t, f, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.String("1")}}
+		assertFilter(t, f, obj, false)
 	})
 }
 
@@ -260,6 +280,16 @@ func TestAllIn_FilterObject(t *testing.T) {
 		allIn := FilterAllIn{Key: "k", Value: v}
 		g := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"1", "2", "3"})}}
 		assertFilter(t, allIn, g, true)
+	})
+
+	t.Run("not all in", func(t *testing.T) {
+		f := FilterNot{FilterAllIn{Key: "k", Value: pbtypes.StringList([]string{"1", "2"}).GetListValue()}}
+
+		obj := &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"1", "3"})}}
+		assertFilter(t, f, obj, true)
+
+		obj = &types.Struct{Fields: map[string]*types.Value{"k": pbtypes.StringList([]string{"1", "2", "3"})}}
+		assertFilter(t, f, obj, false)
 	})
 }
 

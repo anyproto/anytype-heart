@@ -79,18 +79,13 @@ func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, sto
 		model.BlockContentDataviewFilter_Greater,
 		model.BlockContentDataviewFilter_Less,
 		model.BlockContentDataviewFilter_GreaterOrEqual,
-		model.BlockContentDataviewFilter_LessOrEqual:
+		model.BlockContentDataviewFilter_LessOrEqual,
+		model.BlockContentDataviewFilter_NotEqual:
 		return FilterEq{
 			Key:   rawFilter.RelationKey,
 			Cond:  rawFilter.Condition,
 			Value: rawFilter.Value,
 		}, nil
-	case model.BlockContentDataviewFilter_NotEqual:
-		return FilterNot{FilterEq{
-			Key:   rawFilter.RelationKey,
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: rawFilter.Value,
-		}}, nil
 	case model.BlockContentDataviewFilter_Like:
 		return FilterLike{
 			Key:   rawFilter.RelationKey,
@@ -261,7 +256,21 @@ func (n FilterNot) FilterObject(g *types.Struct) bool {
 }
 
 func (f FilterNot) AnystoreFilter() query.Filter {
-	return query.Not{Filter: f.Filter.AnystoreFilter()}
+	filter := f.Filter.AnystoreFilter()
+	switch v := filter.(type) {
+	// TODO Add and case
+	case query.Or:
+		return query.Nor(v)
+	case query.Key:
+		return query.Key{
+			Path: v.Path,
+			Filter: query.Not{
+				Filter: v.Filter,
+			},
+		}
+	default:
+		return query.Not{Filter: filter}
+	}
 }
 
 type FilterEq struct {
@@ -271,6 +280,7 @@ type FilterEq struct {
 }
 
 func (e FilterEq) AnystoreFilter() query.Filter {
+	path := []string{e.Key}
 	var op query.CompOp
 	switch e.Cond {
 	case model.BlockContentDataviewFilter_Equal:
@@ -283,9 +293,20 @@ func (e FilterEq) AnystoreFilter() query.Filter {
 		op = query.CompOpLt
 	case model.BlockContentDataviewFilter_LessOrEqual:
 		op = query.CompOpLte
+	case model.BlockContentDataviewFilter_NotEqual:
+		return query.Or{
+			query.Key{
+				Path:   path,
+				Filter: query.NewComp(query.CompOpNe, scalarPbValueToAny(e.Value)),
+			},
+			query.Key{
+				Path:   path,
+				Filter: query.Not{Filter: query.Exists{}},
+			},
+		}
 	}
 	return query.Key{
-		Path:   []string{e.Key},
+		Path:   path,
 		Filter: query.NewComp(op, scalarPbValueToAny(e.Value)),
 	}
 }
@@ -337,6 +358,8 @@ func (e FilterEq) filterObject(v *types.Value) bool {
 		return comp == 1
 	case model.BlockContentDataviewFilter_LessOrEqual:
 		return comp >= 0
+	case model.BlockContentDataviewFilter_NotEqual:
+		return comp != 0
 	}
 	return false
 }
@@ -359,14 +382,15 @@ func (i FilterIn) FilterObject(g *types.Struct) bool {
 }
 
 func (i FilterIn) AnystoreFilter() query.Filter {
+	path := []string{i.Key}
 	conds := make([]query.Filter, 0, len(i.Value.GetValues()))
 	for _, v := range i.Value.GetValues() {
-		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
+		conds = append(conds, query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
+		})
 	}
-	return query.Key{
-		Path:   []string{i.Key},
-		Filter: query.Or(conds),
-	}
+	return query.Or(conds)
 }
 
 type FilterLike struct {
@@ -449,22 +473,33 @@ func (e FilterEmpty) FilterObject(g *types.Struct) bool {
 }
 
 func (e FilterEmpty) AnystoreFilter() query.Filter {
+	path := []string{e.Key}
 	return query.Or{
 		query.Key{
-			Path:   []string{e.Key},
+			Path:   path,
 			Filter: query.Not{Filter: query.Exists{}},
 		},
 		query.Key{
-			Path: []string{e.Key},
-			Filter: query.Or{
-				query.NewComp(query.CompOpEq, nil),
-				query.NewComp(query.CompOpEq, ""),
-				query.NewComp(query.CompOpEq, 0),
-				query.NewComp(query.CompOpEq, false),
-				&query.Comp{
-					CompOp:  query.CompOpEq,
-					EqValue: encoding.AppendJSONValue(nil, fastjson.MustParse(`[]`)),
-				},
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, nil),
+		},
+		query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, ""),
+		},
+		query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, 0),
+		},
+		query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, false),
+		},
+		query.Key{
+			Path: path,
+			Filter: &query.Comp{
+				CompOp:  query.CompOpEq,
+				EqValue: encoding.AppendJSONValue(nil, fastjson.MustParse(`[]`)),
 			},
 		},
 	}
@@ -506,14 +541,15 @@ func (l FilterAllIn) FilterObject(g *types.Struct) bool {
 }
 
 func (l FilterAllIn) AnystoreFilter() query.Filter {
+	path := []string{l.Key}
 	conds := make([]query.Filter, 0, len(l.Value.GetValues()))
 	for _, v := range l.Value.GetValues() {
-		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
+		conds = append(conds, query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
+		})
 	}
-	return query.Key{
-		Path:   []string{l.Key},
-		Filter: query.And(conds),
-	}
+	return query.And(conds)
 }
 
 type FilterOptionsEqual struct {
@@ -563,15 +599,19 @@ func (exIn FilterOptionsEqual) FilterObject(g *types.Struct) bool {
 }
 
 func (exIn FilterOptionsEqual) AnystoreFilter() query.Filter {
+	path := []string{exIn.Key}
 	conds := make([]query.Filter, 0, len(exIn.Value.GetValues())+1)
-	conds = append(conds, query.Size{Size: int64(len(exIn.Value.GetValues()))})
+	conds = append(conds, query.Key{
+		Path:   path,
+		Filter: query.Size{Size: int64(len(exIn.Value.GetValues()))},
+	})
 	for _, v := range exIn.Value.GetValues() {
-		conds = append(conds, query.NewComp(query.CompOpEq, scalarPbValueToAny(v)))
+		conds = append(conds, query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, scalarPbValueToAny(v)),
+		})
 	}
-	return query.Key{
-		Path:   []string{exIn.Key},
-		Filter: query.And(conds),
-	}
+	return query.And(conds)
 }
 
 func optionsToMap(spaceID string, key string, store ObjectStore) map[string]string {
@@ -635,14 +675,15 @@ func (i *FilterNestedIn) FilterObject(g *types.Struct) bool {
 }
 
 func (i *FilterNestedIn) AnystoreFilter() query.Filter {
+	path := []string{i.Key}
 	conds := make([]query.Filter, 0, len(i.IDs))
 	for _, id := range i.IDs {
-		conds = append(conds, query.NewComp(query.CompOpEq, id))
+		conds = append(conds, query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, id),
+		})
 	}
-	return query.Key{
-		Path:   []string{i.Key},
-		Filter: query.Or(conds),
-	}
+	return query.Or(conds)
 }
 
 func (i *FilterNestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
