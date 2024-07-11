@@ -20,6 +20,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/valyala/fastjson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -152,6 +153,7 @@ type VirtualSpacesStore interface {
 type dsObjectStore struct {
 	repoPath      string
 	sourceService SourceDetailsFromID
+	anyStore      anystore.DB
 	objects       anystore.Collection
 
 	arenaPool *fastjson.ArenaPool
@@ -236,7 +238,52 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	}
 	objects, err := store.Collection(ctx, "objects")
 	if err != nil {
-		return fmt.Errorf("open objects collection: %w", err)
+		return errors.Join(store.Close(), fmt.Errorf("open objects collection: %w", err))
+	}
+	s.anyStore = store
+
+	indexes := []anystore.IndexInfo{
+		{
+			Name:   "layout",
+			Fields: []string{bundle.RelationKeyLayout.String()},
+		},
+		{
+			Name:   "type",
+			Fields: []string{bundle.RelationKeyType.String()},
+		},
+		{
+			Name:   "spaceId",
+			Fields: []string{bundle.RelationKeySpaceId.String()},
+		},
+		{
+			Name:   "relationKey",
+			Fields: []string{bundle.RelationKeyRelationKey.String()},
+		},
+		{
+			Name:   "uniqueKey",
+			Fields: []string{bundle.RelationKeyUniqueKey.String()},
+		},
+		{
+			Name:   "lastModifiedDate",
+			Fields: []string{bundle.RelationKeyLastModifiedDate.String()},
+		},
+		{
+			Name:   "syncStatus",
+			Fields: []string{bundle.RelationKeySyncStatus.String()},
+		},
+	}
+	gotIndexes := objects.GetIndexes()
+	toCreate := indexes[:0]
+	for _, idx := range indexes {
+		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
+			return i.Info().Name == idx.Name
+		}) {
+			toCreate = append(toCreate, idx)
+		}
+	}
+	err = objects.EnsureIndex(ctx, toCreate...)
+	if err != nil {
+		log.Errorf("ensure index: %s", err)
 	}
 	s.objects = objects
 	return nil
@@ -244,7 +291,13 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	s.componentCtxCancel()
-	return nil
+	if s.objects != nil {
+		err = errors.Join(err, s.objects.Close())
+	}
+	if s.anyStore != nil {
+		err = errors.Join(err, s.anyStore.Close())
+	}
+	return err
 }
 
 // unsafe, use under mutex

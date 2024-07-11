@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/gogo/protobuf/types"
@@ -97,11 +98,33 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 			sortsArg = []any{sorts}
 		}
 	}
-	iter, err := s.objects.Find(anystoreFilter).Sort(sortsArg...).Offset(offset).Limit(limit).Iter(s.componentCtx)
+	var records []database.Record
+	query := s.objects.Find(anystoreFilter).Sort(sortsArg...).Offset(offset).Limit(limit)
+	now := time.Now()
+	defer func() {
+		// Debug slow queries
+		if false {
+			dur := time.Since(now)
+			if dur.Milliseconds() > 10 {
+				explain := ""
+				if exp, expErr := query.Explain(s.componentCtx); expErr == nil {
+					for _, idx := range exp.Indexes {
+						if idx.Used {
+							explain += fmt.Sprintf("index: %s %d ", idx.Name, idx.Weight)
+						}
+					}
+				}
+				fmt.Printf(
+					"SLOW QUERY:\t%v\nFilter:\t%s\nNum results:\t%d\nExplain:\t%s\nSorts:\t%#v\n",
+					dur, anystoreFilter, len(records), explain, sortsArg,
+				)
+			}
+		}
+	}()
+	iter, err := s.objects.Find(anystoreFilter.String()).Sort(sortsArg...).Offset(offset).Limit(limit).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)
 	}
-	var records []database.Record
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
