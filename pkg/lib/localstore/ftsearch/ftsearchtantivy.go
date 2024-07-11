@@ -76,8 +76,7 @@ func (f *ftSearch2) Init(a *app.App) error {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
-	tantivy.LibInit("release")
-	return nil
+	return tantivy.LibInit("release")
 }
 
 func (f *ftSearch2) cleanUpOldIndexes() {
