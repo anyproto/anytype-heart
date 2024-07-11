@@ -82,15 +82,14 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 		return m
 	}
 
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id := domain.FullID{
-			SpaceID:  req.SpaceId,
-			ObjectID: req.ObjectId,
-		}
 		obj, err = bs.OpenBlock(ctx, id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
-
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectOpenResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE),
@@ -111,15 +110,14 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 		return m
 	}
 
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id := domain.FullID{
-			SpaceID:  req.SpaceId,
-			ObjectID: req.ObjectId,
-		}
 		obj, err = bs.ShowBlock(id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
-
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectShowResponseError_OBJECT_DELETED),
 		errToCode(source.ErrUnknownDataFormat, pb.RpcObjectShowResponseError_ANYTYPE_NEEDS_UPGRADE),
@@ -897,6 +895,25 @@ func (mw *Middleware) BlockFileSetName(cctx context.Context, req *pb.RpcBlockFil
 	}
 	// TODO
 	return response(pb.RpcBlockFileSetNameResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockFileSetTargetObjectId(cctx context.Context, req *pb.RpcBlockFileSetTargetObjectIdRequest) *pb.RpcBlockFileSetTargetObjectIdResponse {
+	ctx := mw.newContext(cctx)
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetFileTargetObjectId(ctx, req.ContextId, req.BlockId, req.ObjectId)
+	})
+
+	code := mapErrorCode(err,
+		errToCode(err, pb.RpcBlockFileSetTargetObjectIdResponseError_UNKNOWN_ERROR),
+	)
+
+	return &pb.RpcBlockFileSetTargetObjectIdResponse{
+		Error: &pb.RpcBlockFileSetTargetObjectIdResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		Event: mw.getResponseEvent(ctx),
+	}
 }
 
 func (mw *Middleware) BlockFileListSetStyle(cctx context.Context, req *pb.RpcBlockFileListSetStyleRequest) *pb.RpcBlockFileListSetStyleResponse {

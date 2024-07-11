@@ -98,7 +98,9 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 		return "", nil, err
 	}
 
+	sb.Lock()
 	newDetails = sb.CombinedDetails()
+	sb.Unlock()
 	id = sb.Id()
 
 	if sbType == coresb.SmartBlockTypeObjectType && pbtypes.GetInt64(newDetails, bundle.RelationKeyLastUsedDate.String()) == 0 {

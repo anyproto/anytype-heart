@@ -4,7 +4,7 @@ CLIENT_ANDROID_PATH ?= ../anytype-kotlin
 CLIENT_IOS_PATH ?= ../anytype-swift
 BUILD_FLAGS ?=
 
-export GOLANGCI_LINT_VERSION=v1.54.2
+export GOLANGCI_LINT_VERSION=1.58.1
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion
 
 ifndef $(GOPATH)
@@ -317,14 +317,14 @@ install-linter:
 
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --verbose
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --verbose
 else 
-	@golangci-lint run -v ./... --new-from-rev=origin/main --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --verbose
+	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --verbose
 endif
 
 run-linter-fix:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --timeout 15m --fix
 else 
-	@golangci-lint run -v ./... --new-from-rev=origin/main --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
+	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --fix
 endif

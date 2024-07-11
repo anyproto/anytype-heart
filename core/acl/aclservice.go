@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
@@ -35,6 +36,10 @@ var log = logging.Logger(CName).Desugar()
 
 var sleepTime = time.Millisecond * 500
 
+type NodeConfGetter interface {
+	GetNodeConf() (conf nodeconf.Configuration)
+}
+
 type AccountPermissions struct {
 	Account     crypto.PubKey
 	Permissions model.ParticipantPermissions
@@ -46,7 +51,7 @@ type AclService interface {
 	RevokeInvite(ctx context.Context, spaceId string) error
 	GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error)
-	Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
+	Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error
 	MakeShareable(ctx context.Context, spaceId string) error
 	StopSharing(ctx context.Context, spaceId string) error
@@ -63,14 +68,16 @@ func New() AclService {
 }
 
 type aclService struct {
-	joiningClient  aclclient.AclJoiningClient
-	spaceService   space.Service
-	inviteService  inviteservice.InviteService
-	accountService account.Service
-	coordClient    coordinatorclient.CoordinatorClient
+	nodeConfigGetter NodeConfGetter
+	joiningClient    aclclient.AclJoiningClient
+	spaceService     space.Service
+	inviteService    inviteservice.InviteService
+	accountService   account.Service
+	coordClient      coordinatorclient.CoordinatorClient
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
+	a.nodeConfigGetter = app.MustComponent[NodeConfGetter](ap)
 	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
 	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
@@ -325,7 +332,10 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 	return nil
 }
 
-func (a *aclService) Join(ctx context.Context, spaceId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
+func (a *aclService) Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
+	if a.nodeConfigGetter.GetNodeConf().NetworkId != networkId {
+		return fmt.Errorf("%w. Local network: '%s', network of space to join: '%s'", ErrDifferentNetwork, a.nodeConfigGetter.GetNodeConf().NetworkId, networkId)
+	}
 	invitePayload, err := a.inviteService.GetPayload(ctx, inviteCid, inviteFileKey)
 	if err != nil {
 		return convertedOrInternalError("get invite payload", err)

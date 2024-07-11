@@ -82,6 +82,10 @@ type Config struct {
 	nodeConf nodeconf.Configuration
 }
 
+func (c *Config) IsLocalOnlyMode() bool {
+	return c.NetworkMode == pb.RpcAccount_LocalOnly
+}
+
 type FSConfig struct {
 	IPFSStorageAddr string
 }
@@ -415,4 +419,8 @@ func (c *Config) PersistAccountNetworkId() error {
 
 func (c *Config) GetSpaceStorageMode() storage.SpaceStorageMode {
 	return c.SpaceStorageMode
+}
+
+func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
+	return c.NetworkMode
 }

@@ -118,7 +118,14 @@ func (s *stubSpace) IsPersonal() bool {
 	return false
 }
 
+func (s *stubSpace) StoredIds() []string {
+	return nil
+}
+
 func (st *SmartTest) Space() smartblock.Space {
+	if st.space != nil {
+		return st.space
+	}
 	return &stubSpace{}
 }
 
@@ -244,8 +251,8 @@ func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []st
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(ctx session.Context, objectTypes []string) (err error) {
-	return nil
+func (st *SmartTest) SetObjectTypes(objectTypes []domain.TypeKey) {
+	st.Doc.(*state.State).SetObjectTypeKeys(objectTypes)
 }
 
 func (st *SmartTest) DisableLayouts() {
@@ -256,7 +263,7 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
 	dets := &types.Struct{Fields: map[string]*types.Value{}}
 	for _, d := range details {
 		dets.Fields[d.Key] = d.Value
@@ -388,6 +395,18 @@ func (st *SmartTest) RegisterSession(session.Context) {
 
 func (st *SmartTest) UniqueKey() domain.UniqueKey {
 	return nil
+}
+
+func (st *SmartTest) Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error) {
+	newState := st.NewState()
+	for _, id := range blockIds {
+		if bl := newState.Get(id); bl != nil {
+			if err = apply(bl); err != nil {
+				return err
+			}
+		}
+	}
+	return st.Apply(newState)
 }
 
 type Results struct {

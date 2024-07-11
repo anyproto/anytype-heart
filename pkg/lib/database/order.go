@@ -14,19 +14,19 @@ import (
 )
 
 type Order interface {
-	Compare(a, b Getter) int
+	Compare(a, b *types.Struct) int
 	String() string
 }
 
 // ObjectStore interface is used to enrich filters
 type ObjectStore interface {
-	Query(q Query) (records []Record, total int, err error)
+	Query(q Query) (records []Record, err error)
 	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
 }
 
 type SetOrder []Order
 
-func (so SetOrder) Compare(a, b Getter) int {
+func (so SetOrder) Compare(a, b *types.Struct) int {
 	for _, o := range so {
 		if comp := o.Compare(a, b); comp != 0 {
 			return comp
@@ -55,21 +55,48 @@ type KeyOrder struct {
 	comparator     *collate.Collator
 }
 
-func (ko *KeyOrder) Compare(a, b Getter) int {
-	av := a.Get(ko.Key)
-	bv := b.Get(ko.Key)
+func (ko *KeyOrder) Compare(a, b *types.Struct) int {
+	av := pbtypes.Get(a, ko.Key)
+	bv := pbtypes.Get(b, ko.Key)
 
-	av, bv = ko.handleNoteLayout(a, b, av, bv)
-	av, bv = ko.handleDateWithTime(av, bv)
-	av, bv = ko.handleTag(av, bv)
+	av, bv = ko.tryExtractSnippet(a, b, av, bv)
+	av, bv = ko.tryExtractDateTime(av, bv)
+	av, bv = ko.tryExtractTag(av, bv)
 
 	comp := ko.tryCompareStrings(av, bv)
 	if comp == 0 {
 		comp = av.Compare(bv)
 	}
+	comp = ko.tryAdjustEmptyPositions(av, bv, comp)
 	if ko.Type == model.BlockContentDataviewSort_Desc {
 		comp = -comp
 	}
+	return comp
+}
+
+func (ko *KeyOrder) tryAdjustEmptyPositions(av *types.Value, bv *types.Value, comp int) int {
+	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {
+		return comp
+	}
+	_, aNull := av.GetKind().(*types.Value_NullValue)
+	_, bNull := bv.GetKind().(*types.Value_NullValue)
+	if av == nil {
+		aNull = true
+	}
+	if bv == nil {
+		bNull = true
+	}
+	if aNull && bNull {
+		comp = 0
+	} else if aNull {
+		comp = 1
+	} else if bNull {
+		comp = -1
+	} else {
+		return comp
+	}
+
+	comp = ko.tryFlipComp(comp)
 	return comp
 }
 
@@ -83,16 +110,21 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 		} else if av.GetStringValue() != "" && bv.GetStringValue() == "" {
 			comp = -1
 		}
-		if ko.Type == model.BlockContentDataviewSort_Desc && ko.EmptyPlacement == model.BlockContentDataviewSort_End {
-			comp = -comp
-		}
-		if ko.Type == model.BlockContentDataviewSort_Asc && ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
-			comp = -comp
-		}
 	}
 	if aString && bString && comp == 0 {
 		ko.ensureComparator()
 		comp = ko.comparator.CompareString(av.GetStringValue(), bv.GetStringValue())
+	}
+	if av.GetStringValue() == "" || bv.GetStringValue() == "" {
+		comp = ko.tryFlipComp(comp)
+	}
+	return comp
+}
+
+func (ko *KeyOrder) tryFlipComp(comp int) int {
+	if ko.Type == model.BlockContentDataviewSort_Desc && ko.EmptyPlacement == model.BlockContentDataviewSort_End ||
+		ko.Type == model.BlockContentDataviewSort_Asc && ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+		comp = -comp
 	}
 	return comp
 }
@@ -102,7 +134,7 @@ func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av *types.Value, bv *types.Va
 		(aString || av == nil) && (bString || bv == nil)
 }
 
-func (ko *KeyOrder) handleTag(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+func (ko *KeyOrder) tryExtractTag(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
 	if ko.RelationFormat == model.RelationFormat_tag || ko.RelationFormat == model.RelationFormat_status {
 		av = ko.GetOptionValue(av)
 		bv = ko.GetOptionValue(bv)
@@ -110,7 +142,7 @@ func (ko *KeyOrder) handleTag(av *types.Value, bv *types.Value) (*types.Value, *
 	return av, bv
 }
 
-func (ko *KeyOrder) handleDateWithTime(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+func (ko *KeyOrder) tryExtractDateTime(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
 	if ko.RelationFormat == model.RelationFormat_date && !ko.IncludeTime {
 		av = time_util.CutValueToDay(av)
 		bv = time_util.CutValueToDay(bv)
@@ -118,24 +150,24 @@ func (ko *KeyOrder) handleDateWithTime(av *types.Value, bv *types.Value) (*types
 	return av, bv
 }
 
-func (ko *KeyOrder) handleNoteLayout(a Getter, b Getter, av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+func (ko *KeyOrder) tryExtractSnippet(a *types.Struct, b *types.Struct, av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
 	av = ko.trySubstituteSnippet(a, av)
 	bv = ko.trySubstituteSnippet(b, bv)
 	return av, bv
 }
 
-func (ko *KeyOrder) trySubstituteSnippet(getter Getter, value *types.Value) *types.Value {
+func (ko *KeyOrder) trySubstituteSnippet(getter *types.Struct, value *types.Value) *types.Value {
 	if ko.Key == bundle.RelationKeyName.String() && getLayout(getter) == model.ObjectType_note {
-		value = getter.Get(bundle.RelationKeyName.String())
+		value = pbtypes.Get(getter, bundle.RelationKeyName.String())
 		if value == nil {
-			value = getter.Get(bundle.RelationKeySnippet.String())
+			value = pbtypes.Get(getter, bundle.RelationKeySnippet.String())
 		}
 	}
 	return value
 }
 
-func getLayout(getter Getter) model.ObjectTypeLayout {
-	rawLayout := getter.Get(bundle.RelationKeyLayout.String()).GetNumberValue()
+func getLayout(getter *types.Struct) model.ObjectTypeLayout {
+	rawLayout := pbtypes.Get(getter, bundle.RelationKeyLayout.String()).GetNumberValue()
 	return model.ObjectTypeLayout(int32(rawLayout))
 }
 
@@ -189,9 +221,9 @@ type CustomOrder struct {
 	KeyOrd       KeyOrder
 }
 
-func (co CustomOrder) Compare(a, b Getter) int {
-	aID, okA := co.NeedOrderMap[a.Get(co.Key).String()]
-	bID, okB := co.NeedOrderMap[b.Get(co.Key).String()]
+func (co CustomOrder) Compare(a, b *types.Struct) int {
+	aID, okA := co.NeedOrderMap[pbtypes.Get(a, co.Key).String()]
+	bID, okB := co.NeedOrderMap[pbtypes.Get(b, co.Key).String()]
 
 	if okA && okB {
 		if aID == bID {

@@ -7,15 +7,19 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (
@@ -64,50 +68,85 @@ func (i *indexer) ftLoopRoutine() {
 	}
 }
 
-// TODO maybe use two queues? One for objects, one for files
 func (i *indexer) runFullTextIndexer(ctx context.Context) {
-	docs := make([]ftsearch.SearchDoc, 0, ftBatchLimit)
-	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(ids []string) error {
-		for _, id := range ids {
-			err := i.ftsearch.Delete(id)
+	batcher := i.ftsearch.NewAutoBatcher(ftsearch.AutoBatcherRecommendedMaxDocs, ftsearch.AutoBatcherRecommendedMaxSize)
+	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
+		for _, objectId := range objectIds {
+			objDocs, err := i.prepareSearchDocument(ctx, objectId)
 			if err != nil {
-				log.With("id", id).Errorf("delete document for full-text indexing: %s", err)
-			}
-			err = i.prepareSearchDocument(ctx, id, func(doc ftsearch.SearchDoc) error {
-				docs = append(docs, doc)
-				if len(docs) >= ftBatchLimit {
-					err := i.ftsearch.BatchIndex(ctx, docs)
-					docs = docs[:0]
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			})
-			if err != nil {
-				// in the most cases it's about the files that were deleted
-				// should be fixed with files as objects project
-				// todo: research errors
-				log.With("id", id).Errorf("prepare document for full-text indexing: %s", err)
+				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
 				if errors.Is(err, context.Canceled) {
 					return err
 				}
 				continue
 			}
+
+			objDocs, objRemovedIds, err := i.filterOutNotChangedDocuments(objectId, objDocs)
+			for _, removeId := range objRemovedIds {
+				err = batcher.DeleteDoc(removeId)
+				if err != nil {
+					return fmt.Errorf("batcher delete: %w", err)
+				}
+			}
+
+			for _, doc := range objDocs {
+				err = batcher.UpdateDoc(doc)
+				if err != nil {
+					return fmt.Errorf("batcher add: %w", err)
+				}
+			}
 		}
-		if len(docs) > 0 {
-			return i.ftsearch.BatchIndex(ctx, docs)
-		}
+
 		return nil
 	})
-
 	if err != nil {
 		log.Errorf("list ids from full-text queue: %v", err)
 		return
 	}
+	err = batcher.Finish()
+	if err != nil {
+		log.Errorf("finish batcher: %v", err)
+		return
+	}
 }
 
-func (i *indexer) prepareSearchDocument(ctx context.Context, id string, processor func(doc ftsearch.SearchDoc) error) (err error) {
+func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.SearchDoc) (changed []ftsearch.SearchDoc, removedIds []string, err error) {
+	var (
+		changedDocs []ftsearch.SearchDoc
+		removeDocs  []string
+	)
+	err = i.ftsearch.Iterate(id, []string{"Title", "Text"}, func(doc *ftsearch.SearchDoc) bool {
+		newDocIndex := slice.Find(newDocs, func(d ftsearch.SearchDoc) bool {
+			return d.Id == doc.Id
+		})
+
+		if newDocIndex == -1 {
+			// doc got removed
+			removeDocs = append(removeDocs, doc.Id)
+			return true
+		} else {
+			if newDocs[newDocIndex].Text != doc.Text || newDocs[newDocIndex].Title != doc.Title {
+				changedDocs = append(changedDocs, newDocs[newDocIndex])
+			}
+		}
+		return true
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("iterate over existing objects: %w", err)
+	}
+
+	for _, doc := range newDocs {
+		if !slices.ContainsFunc(changedDocs, func(d ftsearch.SearchDoc) bool {
+			return d.Id == doc.Id
+		}) {
+			// doc is new as it doesn't exist in the index
+			changedDocs = append(changedDocs, doc)
+		}
+	}
+	return changedDocs, removeDocs, nil
+}
+
+func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []ftsearch.SearchDoc, err error) {
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
 	err = cache.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		indexDetails, _ := sb.Type().Indexable()
@@ -123,21 +162,23 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string, processo
 			if val == "" {
 				continue
 			}
+			// skip readonly and hidden system relations
+			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
+				if bundledRel.ReadOnly || bundledRel.Hidden && rel.Key != bundle.RelationKeyName.String() {
+					continue
+				}
+			}
 
-			f := ftsearch.SearchDoc{
+			doc := ftsearch.SearchDoc{
 				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
-				DocId:   id,
 				SpaceID: sb.SpaceID(),
 				Text:    val,
 			}
 
 			if rel.Key == bundle.RelationKeyName.String() {
-				f.Title = val
+				doc.Title = val
 			}
-			err = processor(f)
-			if err != nil {
-				return fmt.Errorf("process relation: %w", err)
-			}
+			docs = append(docs, doc)
 		}
 
 		sb.Iterate(func(b simple.Block) (isContinue bool) {
@@ -149,8 +190,11 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string, processo
 					return true
 				}
 
+				if len(pbtypes.GetStringList(b.Model().GetFields(), text.DetailsKeyFieldName)) > 0 {
+					// block doesn't store the value itself, but it's a reference to relation
+					return true
+				}
 				doc := ftsearch.SearchDoc{
-					DocId:   id,
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
 					SpaceID: sb.SpaceID(),
 				}
@@ -159,18 +203,16 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string, processo
 				} else {
 					doc.Text = tb.Text
 				}
-				err = processor(doc)
-				if err != nil {
-					log.Errorf("process block: %v", err)
-					return false
-				}
+				docs = append(docs, doc)
+
 			}
 			return true
 		})
 
 		return nil
 	})
-	return
+
+	return docs, err
 }
 
 func (i *indexer) ftInit() error {

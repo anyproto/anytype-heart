@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
@@ -29,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -59,16 +57,13 @@ type ObjectCreator struct {
 	objectStore    objectstore.ObjectStore
 	relationSyncer *syncer.FileRelationSyncer
 	syncFactory    *syncer.Factory
-	fileStore      filestore.FileStore
 	objectCreator  objectcreator.Service
-	mu             sync.Mutex
 }
 
 func New(service BlockService,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer *syncer.FileRelationSyncer,
-	fileStore filestore.FileStore,
 	spaceService space.Service,
 	objectCreator objectcreator.Service,
 ) Service {
@@ -77,7 +72,6 @@ func New(service BlockService,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
-		fileStore:      fileStore,
 		spaceService:   spaceService,
 		objectCreator:  objectCreator,
 	}
@@ -117,6 +111,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
+	oc.updateKeys(st, oldIDtoNew)
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(spaceID, st)
 		return nil, newID, nil
@@ -261,7 +256,9 @@ func (oc *ObjectCreator) createNewObject(
 		}
 	})
 	if err == nil {
+		sb.Lock()
 		respDetails = sb.Details()
+		sb.Unlock()
 	} else if errors.Is(err, treestorage.ErrTreeExists) {
 		err = spc.Do(newID, func(sb smartblock.SmartBlock) error {
 			respDetails = sb.Details()
@@ -324,10 +321,10 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
-	var details []*pb.RpcObjectSetDetailsDetail
+	var details []*model.Detail
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 	if spaceDashBoardID != "" {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeySpaceDashboardId.String(),
 			Value: pbtypes.String(spaceDashBoardID),
 		})
@@ -335,7 +332,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 
 	spaceName := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String())
 	if spaceName != "" {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(spaceName),
 		})
@@ -343,7 +340,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 
 	iconOption := pbtypes.GetInt64(st.CombinedDetails(), bundle.RelationKeyIconOption.String())
 	if iconOption != 0 {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
+		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyIconOption.String(),
 			Value: pbtypes.Int64(iconOption),
 		})
@@ -540,4 +537,17 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 		return nil, err
 	}
 	return existingWidgetsTargetIDs, nil
+}
+
+func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
+	for key, value := range st.Details().GetFields() {
+		if newKey, ok := oldIDtoNew[key]; ok {
+			st.SetDetail(newKey, value)
+			st.RemoveRelation(key)
+		}
+	}
+
+	if newKey, ok := oldIDtoNew[st.ObjectTypeKey().String()]; ok {
+		st.SetObjectTypeKey(domain.TypeKey(newKey))
+	}
 }

@@ -10,8 +10,29 @@ import (
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
+type deletionQueueItem struct {
+	ObjectId string
+	SpaceId  string
+	FileId   domain.FileId
+}
+
+func makeDeletionQueueItem() *deletionQueueItem {
+	return &deletionQueueItem{}
+}
+
+func (it *deletionQueueItem) Validate() error {
+	if !it.FileId.Valid() {
+		return fmt.Errorf("invalid file id")
+	}
+	return nil
+}
+
+func (it *deletionQueueItem) Key() string {
+	return it.FileId.String()
+}
+
 func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
-	it := &QueueItem{
+	it := &deletionQueueItem{
 		ObjectId: objectId,
 		SpaceId:  fileId.SpaceId,
 		FileId:   fileId.FileId,
@@ -20,14 +41,14 @@ func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
 	if err != nil {
 		return fmt.Errorf("validate queue item: %w", err)
 	}
-	err = s.removeFromUploadingQueues(it)
+	err = s.removeFromUploadingQueues(it.ObjectId)
 	if err != nil {
 		return fmt.Errorf("remove from uploading queues: %w", err)
 	}
 	return s.deletionQueue.Add(it)
 }
 
-func (s *fileSync) deletionHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
+func (s *fileSync) deletionHandler(ctx context.Context, it *deletionQueueItem) (persistentqueue.Action, error) {
 	fileId := domain.FullFileId{
 		SpaceId: it.SpaceId,
 		FileId:  it.FileId,
@@ -46,10 +67,13 @@ func (s *fileSync) deletionHandler(ctx context.Context, it *QueueItem) (persiste
 	if err != nil {
 		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
+	if s.onDelete != nil {
+		s.onDelete(fileId)
+	}
 	return persistentqueue.ActionDone, nil
 }
 
-func (s *fileSync) retryDeletionHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
+func (s *fileSync) retryDeletionHandler(ctx context.Context, it *deletionQueueItem) (persistentqueue.Action, error) {
 	fileId := domain.FullFileId{
 		SpaceId: it.SpaceId,
 		FileId:  it.FileId,
@@ -62,6 +86,9 @@ func (s *fileSync) retryDeletionHandler(ctx context.Context, it *QueueItem) (per
 	err = s.removeFromDeletionQueues(it)
 	if err != nil {
 		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
+	}
+	if s.onDelete != nil {
+		s.onDelete(fileId)
 	}
 	return persistentqueue.ActionDone, nil
 }
@@ -85,7 +112,7 @@ func (s *fileSync) deleteFile(ctx context.Context, fileId domain.FullFileId) err
 	return nil
 }
 
-func (s *fileSync) removeFromDeletionQueues(item *QueueItem) error {
+func (s *fileSync) removeFromDeletionQueues(item *deletionQueueItem) error {
 	err := s.deletionQueue.Remove(item.Key())
 	if err != nil {
 		return fmt.Errorf("remove upload task: %w", err)
@@ -94,5 +121,38 @@ func (s *fileSync) removeFromDeletionQueues(item *QueueItem) error {
 	if err != nil {
 		return fmt.Errorf("remove upload task from retrying queue: %w", err)
 	}
+	return nil
+}
+
+func (s *fileSync) CancelDeletion(objectId string, fileId domain.FullFileId) error {
+	it := &deletionQueueItem{
+		ObjectId: objectId,
+		SpaceId:  fileId.SpaceId,
+		FileId:   fileId.FileId,
+	}
+	err := it.Validate()
+	if err != nil {
+		return fmt.Errorf("validate queue item: %w", err)
+	}
+
+	waitCh1, err := s.deletionQueue.RemoveWait(it.Key())
+	if err != nil {
+		return fmt.Errorf("remove from deletion queue: %w", err)
+	}
+	waitCh2, err := s.retryDeletionQueue.RemoveWait(it.Key())
+	if err != nil {
+		return fmt.Errorf("remove from retry deletion queue: %w", err)
+	}
+
+	select {
+	case <-waitCh1:
+	case <-s.loopCtx.Done():
+	}
+
+	select {
+	case <-waitCh2:
+	case <-s.loopCtx.Done():
+	}
+
 	return nil
 }

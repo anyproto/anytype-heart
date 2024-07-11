@@ -407,6 +407,36 @@ func TestWithHandlerTickPeriod(t *testing.T) {
 	})
 }
 
+type testContextKeyType string
+
+const testContextKey testContextKeyType = "testKey"
+
+func TestWithContext(t *testing.T) {
+	db := newInMemoryBadger(t)
+	log := logging.Logger("test")
+	testRootCtx := context.WithValue(context.Background(), testContextKey, "testValue")
+
+	wait := make(chan struct{})
+	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+		val, ok := ctx.Value(testContextKey).(string)
+		assert.True(t, ok)
+		assert.Equal(t, "testValue", val)
+		close(wait)
+		return ActionDone, nil
+	}, WithContext(testRootCtx))
+	q.Run()
+	t.Cleanup(func() {
+		q.Close()
+		db.Close()
+	})
+
+	err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+
+	<-wait
+}
+
 func assertEventually(t *testing.T, pred func(t *testing.T) bool) {
 	timeout := time.NewTimer(100 * time.Millisecond)
 	for {
@@ -420,4 +450,98 @@ func assertEventually(t *testing.T, pred func(t *testing.T) bool) {
 			return
 		}
 	}
+}
+
+func TestHandleNext(t *testing.T) {
+	t.Run("Remove: item is deleted after processing has started", func(t *testing.T) {
+		testCase := func(t *testing.T, action Action) {
+			t.Run(fmt.Sprintf("action: %s", action), func(t *testing.T) {
+				var q *Queue[*testItem]
+				db := newInMemoryBadger(t)
+				q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+					err := q.Remove(item.Key())
+					require.NoError(t, err)
+					return action, nil
+				})
+
+				err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+				require.NoError(t, err)
+
+				err = q.handleNext()
+				require.NoError(t, err)
+
+				assert.False(t, q.Has("1"))
+			})
+		}
+
+		testCase(t, ActionDone)
+		testCase(t, ActionRetry)
+	})
+
+	t.Run("RemoveWait", func(t *testing.T) {
+		t.Run("processing of item has not yet started", func(t *testing.T) {
+			testCase := func(t *testing.T, action Action) {
+				t.Run(fmt.Sprintf("action: %s", action), func(t *testing.T) {
+					var q *Queue[*testItem]
+					db := newInMemoryBadger(t)
+
+					q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+						return action, nil
+					})
+
+					err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+					require.NoError(t, err)
+
+					waitCh, err := q.RemoveWait("1")
+					require.NoError(t, err)
+
+					// Wait channel should be closed
+					<-waitCh
+
+					err = q.handleNext()
+					require.ErrorIs(t, err, errRemoved)
+
+					assert.False(t, q.Has("1"))
+				})
+			}
+
+			testCase(t, ActionDone)
+			testCase(t, ActionRetry)
+		})
+		t.Run("processing has started", func(t *testing.T) {
+			testCase := func(t *testing.T, action Action) {
+				t.Run(fmt.Sprintf("action: %s", action), func(t *testing.T) {
+					var q *Queue[*testItem]
+					db := newInMemoryBadger(t)
+
+					var waitCh chan struct{}
+					q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+						var err error
+						waitCh, err = q.RemoveWait(item.Key())
+						require.NoError(t, err)
+						return action, nil
+					})
+
+					err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+					require.NoError(t, err)
+
+					err = q.handleNext()
+					require.NoError(t, err)
+
+					// Wait channel should be closed
+					<-waitCh
+					assert.False(t, q.Has("1"))
+
+					// Remove again, expect that wait channel is closed immediately
+					waitCh, err = q.RemoveWait("1")
+					require.NoError(t, err)
+					<-waitCh
+				})
+			}
+
+			testCase(t, ActionDone)
+			testCase(t, ActionRetry)
+		})
+	})
+
 }

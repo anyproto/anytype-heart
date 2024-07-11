@@ -233,6 +233,21 @@ func (mr *MockObjectStoreMockRecorder) GetAccountStatus() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountStatus", reflect.TypeOf((*MockObjectStore)(nil).GetAccountStatus))
 }
 
+// GetActiveViews mocks base method.
+func (m *MockObjectStore) GetActiveViews(arg0 string) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveViews", arg0)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveViews indicates an expected call of GetActiveViews.
+func (mr *MockObjectStoreMockRecorder) GetActiveViews(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveViews", reflect.TypeOf((*MockObjectStore)(nil).GetActiveViews), arg0)
+}
+
 // GetByIDs mocks base method.
 func (m *MockObjectStore) GetByIDs(arg0 string, arg1 []string) ([]*model.ObjectInfo, error) {
 	m.ctrl.T.Helper()
@@ -609,13 +624,12 @@ func (mr *MockObjectStoreMockRecorder) Name() *gomock.Call {
 }
 
 // Query mocks base method.
-func (m *MockObjectStore) Query(arg0 database.Query) ([]database.Record, int, error) {
+func (m *MockObjectStore) Query(arg0 database.Query) ([]database.Record, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Query", arg0)
 	ret0, _ := ret[0].([]database.Record)
-	ret1, _ := ret[1].(int)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Query indicates an expected call of Query.
@@ -766,6 +780,34 @@ func (m *MockObjectStore) SaveVirtualSpace(arg0 string) error {
 func (mr *MockObjectStoreMockRecorder) SaveVirtualSpace(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).SaveVirtualSpace), arg0)
+}
+
+// SetActiveView mocks base method.
+func (m *MockObjectStore) SetActiveView(arg0, arg1, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetActiveView", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetActiveView indicates an expected call of SetActiveView.
+func (mr *MockObjectStoreMockRecorder) SetActiveView(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetActiveView", reflect.TypeOf((*MockObjectStore)(nil).SetActiveView), arg0, arg1, arg2)
+}
+
+// SetActiveViews mocks base method.
+func (m *MockObjectStore) SetActiveViews(arg0 string, arg1 map[string]string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetActiveViews", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetActiveViews indicates an expected call of SetActiveViews.
+func (mr *MockObjectStoreMockRecorder) SetActiveViews(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetActiveViews", reflect.TypeOf((*MockObjectStore)(nil).SetActiveViews), arg0, arg1)
 }
 
 // SubscribeForAll mocks base method.

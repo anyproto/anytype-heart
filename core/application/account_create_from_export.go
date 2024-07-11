@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -168,38 +169,38 @@ func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	}
 	accountObjects := spc.DerivedIDs()
 
-	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: accountObjects.Profile,
-		Details:   profileDetails,
-	}); err != nil {
+	if err := bs.SetDetails(nil,
+		accountObjects.Profile,
+		profileDetails,
+	); err != nil {
 		return err
 	}
-	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: accountObjects.Workspace,
-		Details:   accountDetails,
-	}); err != nil {
+	if err := bs.SetDetails(nil,
+		accountObjects.Workspace,
+		accountDetails,
+	); err != nil {
 		return err
 	}
 	return nil
 }
 
-func buildDetails(profile *pb.Profile, icon int64) (profileDetails []*pb.RpcObjectSetDetailsDetail, accountDetails []*pb.RpcObjectSetDetailsDetail) {
-	profileDetails = []*pb.RpcObjectSetDetailsDetail{{
+func buildDetails(profile *pb.Profile, icon int64) (profileDetails []*model.Detail, accountDetails []*model.Detail) {
+	profileDetails = []*model.Detail{{
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(profile.Name),
 	}}
 	if profile.Avatar == "" {
-		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+		profileDetails = append(profileDetails, &model.Detail{
 			Key:   bundle.RelationKeyIconOption.String(),
 			Value: pbtypes.Int64(icon),
 		})
 	} else {
-		profileDetails = append(profileDetails, &pb.RpcObjectSetDetailsDetail{
+		profileDetails = append(profileDetails, &model.Detail{
 			Key:   bundle.RelationKeyIconImage.String(),
 			Value: pbtypes.String(profile.Avatar),
 		})
 	}
-	accountDetails = []*pb.RpcObjectSetDetailsDetail{{
+	accountDetails = []*model.Detail{{
 		Key:   bundle.RelationKeyIconOption.String(),
 		Value: pbtypes.Int64(icon),
 	}}

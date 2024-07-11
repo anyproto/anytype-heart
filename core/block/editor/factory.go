@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -37,6 +38,10 @@ type ObjectDeleter interface {
 type accountService interface {
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
+}
+
+type deviceService interface {
+	SaveDeviceInfo(info smartblock.ApplyInfo) error
 }
 
 type ObjectFactory struct {
@@ -58,7 +63,9 @@ type ObjectFactory struct {
 	fileObjectService   fileobject.Service
 	processService      process.Service
 	fileUploaderService fileuploader.Service
+	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
+	deviceService       deviceService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -85,6 +92,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.processService = app.MustComponent[process.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
+	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
+	f.deviceService = app.MustComponent[deviceService](a)
 	return nil
 }
 
@@ -120,8 +129,10 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		sb.SetLocker(ot)
 	}
 
-	// we probably don't need any locks here, because the object is initialized synchronously
 	initCtx.Source = sc
+	// adding locks as a temporary measure to find the place where we have races in our code
+	sb.Lock()
+	defer sb.Unlock()
 	err = sb.Init(initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)
@@ -173,13 +184,15 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, f.objectStore, f.layoutConverter, f.accountService), nil
+		return NewWidgetObject(sb, f.objectStore, f.layoutConverter), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:
 		return f.newParticipant(sb), nil
+	case coresb.SmartBlockTypeDevicesObject:
+		return NewDevicesObject(sb, f.deviceService), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

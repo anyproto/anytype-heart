@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/net/peer"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -22,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
@@ -45,7 +46,6 @@ type notificationService struct {
 	notificationStore  NotificationStore
 	spaceService       space.Service
 	picker             cache.ObjectGetter
-	spaceCore          spacecore.SpaceCoreService
 	mu                 sync.Mutex
 	loadFinish         chan struct{}
 
@@ -68,7 +68,6 @@ func (n *notificationService) Init(a *app.App) (err error) {
 	}
 	n.notificationStore = NewNotificationStore(db)
 	n.eventSender = app.MustComponent[event.Sender](a)
-	n.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	n.spaceService = app.MustComponent[space.Service](a)
 	n.picker = app.MustComponent[cache.ObjectGetter](a)
 	return nil
@@ -282,30 +281,32 @@ func (n *notificationService) loadNotificationObject(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	notificationObject, err := techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-		Key: uk,
-		InitFunc: func(id string) *smartblock.InitContext {
-			return &smartblock.InitContext{
-				Ctx:     ctx,
-				SpaceID: techSpace.Id(),
-				State:   state.NewDoc(id, nil).(*state.State),
-			}
-		},
-	})
-	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-		log.Errorf("failed to derive notification object: %v", err)
+
+	objectId, err := techSpace.DeriveObjectID(ctx, uk)
+	if err != nil {
+		log.Errorf("failed to derive notification object id: %v", err)
 		return
 	}
-	if err == nil {
-		n.notificationId = notificationObject.Id()
-	}
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		notificationID, err := techSpace.DeriveObjectID(ctx, uk)
-		if err != nil {
-			log.Errorf("failed to derive notification object id: %v", err)
+	n.notificationId = objectId
+
+	ctx = context.WithValue(ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(30*time.Second))
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+	_, err = techSpace.GetObject(ctx, objectId)
+	if err != nil {
+		_, err := techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+			Key: uk,
+			InitFunc: func(id string) *smartblock.InitContext {
+				return &smartblock.InitContext{
+					Ctx:     ctx,
+					SpaceID: techSpace.Id(),
+					State:   state.NewDoc(id, nil).(*state.State),
+				}
+			},
+		})
+		if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+			log.Errorf("failed to derive notification object: %v", err)
 			return
 		}
-		n.notificationId = notificationID
 	}
 	n.indexNotifications(ctx)
 }

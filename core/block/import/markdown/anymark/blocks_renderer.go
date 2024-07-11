@@ -41,14 +41,12 @@ type blocksRenderer struct {
 	inTable       bool
 	listParentID  string
 	listNestIsNum []bool
-	listNestLevel uint
 }
 
 func newBlocksRenderer(baseFilepath string, allFileShortPaths []string, inTable bool) *blocksRenderer {
 	return &blocksRenderer{
 		baseFilepath:      baseFilepath,
 		allFileShortPaths: allFileShortPaths,
-		listNestLevel:     0,
 		inTable:           inTable,
 	}
 }
@@ -159,10 +157,8 @@ func (r *blocksRenderer) addChildID(cID string) {
 func (r *blocksRenderer) SetListState(entering bool, isNumbered bool) {
 	if entering {
 		r.listNestIsNum = append(r.listNestIsNum, isNumbered)
-		r.listNestLevel++
 	} else if len(r.listNestIsNum) > 0 {
 		r.listNestIsNum = r.listNestIsNum[:len(r.listNestIsNum)-1]
-		r.listNestLevel--
 	}
 
 	if len(r.listNestIsNum) > 1 {

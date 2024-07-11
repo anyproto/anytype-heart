@@ -13,7 +13,6 @@ import (
 	dependencies2 "github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -39,7 +38,6 @@ type spaceOffloader struct {
 	fileOffloader  dependencies2.FileOffloader
 	storageService storage.ClientStorage
 	indexer        dependencies2.SpaceIndexer
-	spaceCore      spacecore.SpaceCoreService
 	delController  deletioncontroller.DeletionController
 	ctx            context.Context
 	cancel         context.CancelFunc
@@ -51,7 +49,6 @@ func (o *spaceOffloader) Init(a *app.App) (err error) {
 	o.fileOffloader = app.MustComponent[dependencies2.FileOffloader](a)
 	o.storageService = app.MustComponent[storage.ClientStorage](a)
 	o.indexer = app.MustComponent[dependencies2.SpaceIndexer](a)
-	o.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	o.delController = app.MustComponent[deletioncontroller.DeletionController](a)
 	o.ctx, o.cancel = context.WithCancel(context.Background())
 	return nil

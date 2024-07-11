@@ -32,10 +32,25 @@ type HandlerFunc[T Item] func(context.Context, T) (Action, error)
 
 type Action int
 
+func (a Action) String() string {
+	switch a {
+	case ActionRetry:
+		return "retry"
+	case ActionDone:
+		return "done"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	ActionRetry Action = iota
 	ActionDone
 )
+
+type handledWaiter struct {
+	waitCh chan struct{}
+}
 
 // Queue represents a queue with persistent on-disk storage. Items handled one-by-one with one worker
 type Queue[T Item] struct {
@@ -52,6 +67,9 @@ type Queue[T Item] struct {
 	// it will be still in batcher, so we need a separate variable to track removed items
 	set map[string]struct{}
 
+	currentProcessingKey *string
+	waiters              []handledWaiter
+
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
@@ -61,6 +79,7 @@ type Queue[T Item] struct {
 
 type options struct {
 	retryPauseDuration time.Duration
+	ctx                context.Context
 }
 
 type Option func(*options)
@@ -69,6 +88,12 @@ type Option func(*options)
 func WithRetryPause(duration time.Duration) Option {
 	return func(o *options) {
 		o.retryPauseDuration = duration
+	}
+}
+
+func WithContext(ctx context.Context) Option {
+	return func(o *options) {
+		o.ctx = ctx
 	}
 }
 
@@ -90,7 +115,11 @@ func New[T Item](
 	for _, opt := range opts {
 		opt(&q.options)
 	}
-	q.ctx, q.ctxCancel = context.WithCancel(context.Background())
+	rootCtx := context.Background()
+	if q.options.ctx != nil {
+		rootCtx = q.options.ctx
+	}
+	q.ctx, q.ctxCancel = context.WithCancel(rootCtx)
 	err := q.restore()
 	if err != nil {
 		q.logger.Error("can't restore queue", zap.Error(err))
@@ -140,7 +169,7 @@ func (q *Queue[T]) handleNext() error {
 	if err != nil {
 		return fmt.Errorf("wait one: %w", err)
 	}
-	ok := q.Has(it.Key())
+	ok := q.checkExistsAndMarkAsProcessing(it.Key())
 	if !ok {
 		return errRemoved
 	}
@@ -149,11 +178,16 @@ func (q *Queue[T]) handleNext() error {
 	atomic.AddUint32(&q.handledItems, 1)
 	switch action {
 	case ActionDone:
-		removeErr := q.Remove(it.Key())
+		removeErr := q.removeAndNotifyWaiters(it.Key())
 		if removeErr != nil {
 			return fmt.Errorf("remove from queue: %w", removeErr)
 		}
 	case ActionRetry:
+		q.lock.Lock()
+		// We don't need to check that the item has been removed from queue here, it will be checked on next iteration
+		// So just notify waiters that the item has been processed
+		q.notifyWaiters()
+		q.lock.Unlock()
 		addErr := q.batcher.Add(q.ctx, it)
 		if addErr != nil {
 			return fmt.Errorf("add to queue: %w", addErr)
@@ -251,6 +285,36 @@ func (q *Queue[T]) Has(key string) bool {
 	return ok
 }
 
+func (q *Queue[T]) checkExistsAndMarkAsProcessing(key string) bool {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	_, ok := q.set[key]
+	if ok {
+		q.currentProcessingKey = &key
+	}
+	return ok
+}
+
+func (q *Queue[T]) removeAndNotifyWaiters(key string) error {
+	err := q.checkClosed()
+	if err != nil {
+		return err
+	}
+	q.lock.Lock()
+	delete(q.set, key)
+	q.notifyWaiters()
+	q.lock.Unlock()
+
+	return q.storage.Delete(key)
+}
+
+func (q *Queue[T]) notifyWaiters() {
+	for _, w := range q.waiters {
+		close(w.waitCh)
+	}
+	q.currentProcessingKey = nil
+}
+
 // Remove item with specified key from If this item is already in process, it will be processed.
 // If you need to stop processing removable item, you should use own cancellation mechanism
 func (q *Queue[T]) Remove(key string) error {
@@ -262,6 +326,33 @@ func (q *Queue[T]) Remove(key string) error {
 	defer q.lock.Unlock()
 	delete(q.set, key)
 	return q.storage.Delete(key)
+}
+
+func (q *Queue[T]) RemoveWait(key string) (chan struct{}, error) {
+	err := q.checkClosed()
+	if err != nil {
+		return nil, err
+	}
+	q.lock.Lock()
+	delete(q.set, key)
+	waitCh := make(chan struct{})
+	if q.currentProcessingKey != nil && *q.currentProcessingKey == key {
+		// Channel will be closed after handling
+		q.waiters = append(q.waiters, handledWaiter{
+			waitCh: waitCh,
+		})
+		q.lock.Unlock()
+	} else {
+		close(waitCh)
+		q.lock.Unlock()
+	}
+	err = q.storage.Delete(key)
+	if err != nil {
+		// Consume channel
+		<-waitCh
+		return nil, err
+	}
+	return waitCh, nil
 }
 
 // NumProcessedItems returns number of items processed by handler

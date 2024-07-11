@@ -644,7 +644,6 @@ func newFixture(t *testing.T) *fixture {
 
 type fixture struct {
 	*aclNotificationSender
-	store              *objectstore.StoreFixture
 	notificationSender *mock_aclnotifications.MockNotificationSender
 	identityService    *mock_dependencies.MockIdentityService
 }

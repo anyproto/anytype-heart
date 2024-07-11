@@ -14,6 +14,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
@@ -31,14 +33,18 @@ var log = logger.NewNamed(CName)
 
 var loopTimeout = time.Minute
 
-type StatusCallback func(fileObjectId string) error
+type StatusCallback func(fileObjectId string, fileId domain.FullFileId) error
+type LimitCallback func(fileObjectId string, fileId domain.FullFileId, bytesLeft float64) error
+type DeleteCallback func(fileObjectId domain.FullFileId)
 
 type FileSync interface {
 	AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error)
-	UploadSynchronously(spaceId string, fileId domain.FileId) error
+	UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error
 	OnUploadStarted(StatusCallback)
 	OnUploaded(StatusCallback)
-	OnLimited(StatusCallback)
+	OnLimited(LimitCallback)
+	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
+	OnDelete(DeleteCallback)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error
@@ -68,22 +74,24 @@ type fileSync struct {
 	rpcStore        rpcstore.RpcStore
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
-	uploadPingCh    chan struct{}
-	removePingCh    chan struct{}
 	dagService      ipld.DAGService
 	fileStore       filestore.FileStore
 	eventSender     event.Sender
-	onUploaded      StatusCallback
+	onUploaded      []StatusCallback
 	onUploadStarted StatusCallback
-	onLimited       StatusCallback
+	onLimited       LimitCallback
+	onDelete        DeleteCallback
 
-	uploadingQueue      *persistentqueue.Queue[*QueueItem]
-	retryUploadingQueue *persistentqueue.Queue[*QueueItem]
-	deletionQueue       *persistentqueue.Queue[*QueueItem]
-	retryDeletionQueue  *persistentqueue.Queue[*QueueItem]
+	uploadingQueue            *persistentqueue.Queue[*QueueItem]
+	retryUploadingQueue       *persistentqueue.Queue[*QueueItem]
+	deletionQueue             *persistentqueue.Queue[*deletionQueueItem]
+	retryDeletionQueue        *persistentqueue.Queue[*deletionQueueItem]
+	blocksAvailabilityCache   keyvaluestore.Store[*blocksAvailabilityResponse]
+	isLimitReachedErrorLogged keyvaluestore.Store[bool]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
+	cfg               *config.Config
 }
 
 func New() FileSync {
@@ -92,20 +100,23 @@ func New() FileSync {
 
 func (s *fileSync) Init(a *app.App) (err error) {
 	s.dbProvider = app.MustComponent[datastore.Datastore](a)
-	s.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
-	s.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
+	s.rpcStore = app.MustComponent[rpcstore.Service](a).NewStore()
+	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
-	s.removePingCh = make(chan struct{})
-	s.uploadPingCh = make(chan struct{})
+	s.cfg = app.MustComponent[*config.Config](a)
 	db, err := s.dbProvider.LocalStorage()
 	if err != nil {
 		return
 	}
+
+	s.blocksAvailabilityCache = keyvaluestore.NewJson[*blocksAvailabilityResponse](db, []byte(keyPrefix+"bytes_to_upload"))
+	s.isLimitReachedErrorLogged = keyvaluestore.NewJson[bool](db, []byte(keyPrefix+"limit_reached_error_logged"))
+
 	s.uploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, uploadingKeyPrefix, makeQueueItem), log.Logger, s.uploadingHandler)
 	s.retryUploadingQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryUploadingKeyPrefix, makeQueueItem), log.Logger, s.retryingHandler, persistentqueue.WithRetryPause(loopTimeout))
-	s.deletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, deletionKeyPrefix, makeQueueItem), log.Logger, s.deletionHandler)
-	s.retryDeletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeQueueItem), log.Logger, s.retryDeletionHandler, persistentqueue.WithRetryPause(loopTimeout))
+	s.deletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, deletionKeyPrefix, makeDeletionQueueItem), log.Logger, s.deletionHandler)
+	s.retryDeletionQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, retryDeletionKeyPrefix, makeDeletionQueueItem), log.Logger, s.retryDeletionHandler, persistentqueue.WithRetryPause(loopTimeout))
 	return
 }
 
@@ -114,15 +125,19 @@ func (s *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
 }
 
 func (s *fileSync) OnUploaded(callback StatusCallback) {
-	s.onUploaded = callback
+	s.onUploaded = append(s.onUploaded, callback)
 }
 
 func (s *fileSync) OnUploadStarted(callback StatusCallback) {
 	s.onUploadStarted = callback
 }
 
-func (s *fileSync) OnLimited(callback StatusCallback) {
+func (s *fileSync) OnLimited(callback LimitCallback) {
 	s.onLimited = callback
+}
+
+func (s *fileSync) OnDelete(callback DeleteCallback) {
+	s.onDelete = callback
 }
 
 func (s *fileSync) Name() (name string) {
@@ -149,7 +164,9 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-
+	if s.cfg.IsLocalOnlyMode() {
+		return
+	}
 	s.uploadingQueue.Run()
 	s.retryUploadingQueue.Run()
 	s.deletionQueue.Run()

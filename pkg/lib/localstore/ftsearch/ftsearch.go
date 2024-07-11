@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
-	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search"
 	"github.com/blevesearch/bleve/v2/search/query"
@@ -21,6 +20,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/analyzers"
+	_ "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/jsonhighlighter"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -34,7 +35,6 @@ const (
 	fieldTitleNoTerms = "TitleNoTerms"
 	fieldTextNoTerms  = "TextNoTerms"
 	fieldId           = "Id"
-	fieldDocId        = "DocId"
 )
 
 var log = logging.Logger("ftsearch")
@@ -42,7 +42,6 @@ var log = logging.Logger("ftsearch")
 type SearchDoc struct {
 	//nolint:all
 	Id           string
-	DocId        string
 	SpaceID      string
 	Title        string
 	TitleNoTerms string
@@ -57,26 +56,28 @@ func New() FTSearch {
 type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
-	BatchIndex(ctx context.Context, docs []SearchDoc) (err error)
-	BatchDelete(ids []string) (err error)
-	Search(spaceID, query string) (results search.DocumentMatchCollection, err error)
+	NewAutoBatcher(maxDocs int, maxDocsSize uint64) AutoBatcher
+	BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error)
+	BatchDeleteObjects(ids []string) (err error)
+	BatchDeleteDocs(docIds []string) (err error)
+	Search(spaceID string, highlightFormatter HighlightFormatter, query string) (results search.DocumentMatchCollection, err error)
+	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
+	ListIndexedIds(objectId string) (ids []string, err error)
 	Has(id string) (exists bool, err error)
-	Delete(id string) error
+	DeleteObject(id string) error
 	DocCount() (uint64, error)
 }
 
 type ftSearch struct {
-	rootPath       string
-	ftsPath        string
-	index          bleve.Index
-	enStopWordsMap map[string]bool
+	rootPath string
+	ftsPath  string
+	index    bleve.Index
 }
 
 func (f *ftSearch) Init(a *app.App) (err error) {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir, ftsVer)
-	f.enStopWordsMap, err = en.TokenMapConstructor(nil, nil)
 	return err
 }
 
@@ -85,15 +86,16 @@ func (f *ftSearch) Name() (name string) {
 }
 
 func (f *ftSearch) Run(context.Context) (err error) {
-	f.index, err = bleve.Open(f.ftsPath)
+	index, err := bleve.Open(f.ftsPath)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
-		if f.index, err = bleve.New(f.ftsPath, makeMapping()); err != nil {
+		if index, err = bleve.New(f.ftsPath, makeMapping()); err != nil {
 			return
 		}
 		f.cleanUpOldIndexes()
 	} else if err != nil {
 		return
 	}
+	f.index = index
 	return nil
 }
 
@@ -118,7 +120,19 @@ func (f *ftSearch) Index(doc SearchDoc) (err error) {
 	return f.index.Index(doc.Id, doc)
 }
 
-func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc) (err error) {
+func (f *ftSearch) BatchDo(proc func(b *bleve.Batch) error) (err error) {
+	batch := f.index.NewBatch()
+
+	err = proc(batch)
+	if err != nil {
+		batch.Reset()
+		return err
+	}
+
+	return f.index.Batch(batch)
+}
+
+func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
 	if len(docs) == 0 {
 		return nil
 	}
@@ -144,18 +158,24 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc) (err error)
 			return fmt.Errorf("failed to index document %s: %w", doc.Id, err)
 		}
 	}
+	for _, docId := range deletedDocs {
+		if ctx.Err() == context.Canceled {
+			return ctx.Err()
+		}
+		batch.Delete(docId)
+	}
 	return f.index.Batch(batch)
 }
 
-func (f *ftSearch) BatchDelete(ids []string) (err error) {
-	if len(ids) == 0 {
+func (f *ftSearch) BatchDeleteDocs(docIds []string) (err error) {
+	if len(docIds) == 0 {
 		return nil
 	}
 	batch := f.index.NewBatch()
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
-		l := log.With("objects", len(ids)).With("total", time.Since(start).Milliseconds())
+		l := log.With("objects", len(docIds)).With("total", time.Since(start).Milliseconds())
 		if spentMs > 1000 {
 			l.Warnf("ft delete took too long")
 		} else {
@@ -163,19 +183,105 @@ func (f *ftSearch) BatchDelete(ids []string) (err error) {
 		}
 	}()
 
-	for _, id := range ids {
-		docIds, err := f.getDocIdsForObjectId(id)
-		if err != nil {
-			log.With("id", id).Errorf("failed to get doc ids for object id: %s", err)
-		}
-		for _, docId := range docIds {
-			batch.Delete(docId)
-		}
+	for _, docId := range docIds {
+		batch.Delete(docId)
 	}
 	return f.index.Batch(batch)
 }
 
-func (f *ftSearch) Search(spaceID, qry string) (results search.DocumentMatchCollection, err error) {
+func (f *ftSearch) BatchDeleteObjects(objectIds []string) (err error) {
+	if len(objectIds) == 0 {
+		return nil
+	}
+
+	var docIds []string
+	for _, id := range objectIds {
+		ids, err := f.ListIndexedIds(id)
+		if err != nil {
+			log.With("id", id).Errorf("failed to get doc ids for object id: %s", err)
+		}
+		docIds = append(docIds, ids...)
+
+	}
+	return f.BatchDeleteDocs(docIds)
+}
+
+type HighlightFormatter string
+
+const (
+	HtmlHighlightFormatter    HighlightFormatter = "html"
+	JSONHighlightFormatter    HighlightFormatter = "json"
+	DefaultHighlightFormatter                    = JSONHighlightFormatter
+)
+
+type IndexedDoc struct {
+	FullDocId string
+	Text      string
+	Title     string
+}
+
+func (f *ftSearch) Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error) {
+	prefixQuery := bleve.NewPrefixQuery(objectId + "/")
+	prefixQuery.SetField("_id")
+
+	searchRequest := bleve.NewSearchRequest(prefixQuery)
+
+	searchRequest.Size = 10000
+	searchRequest.Explain = false
+	searchRequest.Fields = fields
+	searchResult, err := f.index.Search(searchRequest)
+	if err != nil {
+		return
+	}
+
+	var text, title, spaceId string
+	for _, hit := range searchResult.Hits {
+		text, title, spaceId = "", "", ""
+		if hit.Fields != nil {
+			if hit.Fields["Text"] != nil {
+				text, _ = hit.Fields["Text"].(string)
+			}
+			if hit.Fields["Title"] != nil {
+				title, _ = hit.Fields["Title"].(string)
+			}
+			if hit.Fields["SpaceID"] != nil {
+				spaceId, _ = hit.Fields["SpaceID"].(string)
+			}
+		}
+
+		if !shouldContinue(&SearchDoc{
+			Id:      hit.ID,
+			Text:    text,
+			Title:   title,
+			SpaceID: spaceId,
+		}) {
+			break
+		}
+	}
+	return nil
+}
+
+func (f *ftSearch) ListIndexedIds(objectId string) (ids []string, err error) {
+	prefixQuery := bleve.NewPrefixQuery(objectId + "/")
+	prefixQuery.SetField("_id")
+
+	searchRequest := bleve.NewSearchRequest(prefixQuery)
+
+	searchRequest.Size = 10000
+	searchRequest.Explain = false
+	searchRequest.Fields = []string{"_id", "Text"}
+
+	searchResult, err := f.index.Search(searchRequest)
+	if err != nil {
+		return
+	}
+	for _, hit := range searchResult.Hits {
+		ids = append(ids, hit.ID)
+	}
+	return ids, nil
+}
+
+func (f *ftSearch) Search(spaceID string, highlightFormatter HighlightFormatter, qry string) (results search.DocumentMatchCollection, err error) {
 	qry = strings.ToLower(qry)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
@@ -193,7 +299,7 @@ func (f *ftSearch) Search(spaceID, qry string) (results search.DocumentMatchColl
 		)
 	}
 
-	return f.doSearch(spaceID, queries)
+	return f.doSearch(spaceID, highlightFormatter, queries)
 }
 
 func (f *ftSearch) getTerms(qry string) []string {
@@ -210,7 +316,7 @@ func (f *ftSearch) getTerms(qry string) []string {
 	return terms
 }
 
-func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results search.DocumentMatchCollection, err error) {
+func (f *ftSearch) doSearch(spaceID string, highlightFormatter HighlightFormatter, queries []query.Query) (results search.DocumentMatchCollection, err error) {
 	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
 	if spaceID != "" {
 		spaceQuery := bleve.NewMatchQuery(spaceID)
@@ -219,6 +325,9 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results sear
 	}
 
 	searchRequest := bleve.NewSearchRequest(rootQuery)
+	searchRequest.Highlight = bleve.NewHighlightWithStyle(string(highlightFormatter))
+	searchRequest.Highlight.Fields = []string{fieldText}
+
 	searchRequest.Size = 100
 	searchRequest.Explain = true
 	searchResult, err := f.index.Search(searchRequest)
@@ -236,20 +345,8 @@ func (f *ftSearch) Has(id string) (exists bool, err error) {
 	return d != nil, nil
 }
 
-func (f *ftSearch) getDocIdsForObjectId(id string) ([]string, error) {
-	docIdQuery := bleve.NewMatchQuery(id)
-	docIdQuery.SetField(fieldDocId)
-	result, err := f.index.Search(bleve.NewSearchRequest(docIdQuery))
-	if err != nil {
-		return nil, err
-	}
-	return lo.Map(result.Hits, func(hit *search.DocumentMatch, index int) string {
-		return hit.ID
-	}), nil
-}
-
-func (f *ftSearch) Delete(id string) (err error) {
-	return f.BatchDelete([]string{id})
+func (f *ftSearch) DeleteObject(objectId string) (err error) {
+	return f.BatchDeleteObjects([]string{objectId})
 }
 
 func (f *ftSearch) DocCount() (uint64, error) {
@@ -293,7 +390,6 @@ func addNoTermsMapping(indexMapping *mapping.IndexMappingImpl) {
 		fieldTitleNoTerms,
 		fieldTextNoTerms,
 		fieldId,
-		fieldDocId,
 	}
 	addMappings(indexMapping, fields, keywordMapping)
 }

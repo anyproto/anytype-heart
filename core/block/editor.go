@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
@@ -51,7 +52,7 @@ type BookmarkFetchRequest struct {
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
 	return cache.Do(s, id, func(b basic.CommonOperations) error {
-		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
+		return b.SetDetails(nil, []*model.Detail{
 			{
 				Key:   "isArchived",
 				Value: pbtypes.Bool(archived),
@@ -155,10 +156,32 @@ func (s *Service) SetFields(ctx session.Context, req pb.RpcBlockSetFieldsRequest
 	})
 }
 
-func (s *Service) SetDetails(ctx session.Context, req pb.RpcObjectSetDetailsRequest) (err error) {
-	return cache.Do(s, req.ContextId, func(b basic.DetailsSettable) error {
-		return b.SetDetails(ctx, req.Details, true)
+func (s *Service) SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error) {
+	return cache.Do(s, objectId, func(b basic.DetailsSettable) error {
+		return b.SetDetails(ctx, details, true)
 	})
+}
+
+func (s *Service) SetDetailsList(ctx session.Context, objectIds []string, details []*model.Detail) (err error) {
+	var (
+		resultError error
+		anySucceed  bool
+	)
+	for _, objectId := range objectIds {
+		err := s.SetDetails(ctx, objectId, details)
+		if err != nil {
+			resultError = errors.Join(resultError, err)
+		} else {
+			anySucceed = true
+		}
+	}
+	if resultError != nil {
+		log.Warnf("SetDetailsList: %v", resultError)
+	}
+	if anySucceed {
+		return nil
+	}
+	return resultError
 }
 
 func (s *Service) SetFieldsList(ctx session.Context, req pb.RpcBlockListSetFieldsRequest) (err error) {
@@ -216,7 +239,7 @@ func (s *Service) DeleteDataviewView(ctx session.Context, req pb.RpcBlockDatavie
 
 func (s *Service) SetDataviewActiveView(ctx session.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error {
 	return cache.Do(s, req.ContextId, func(b dataview.Dataview) error {
-		return b.SetActiveView(ctx, req.BlockId, req.ViewId, int(req.Limit), int(req.Offset))
+		return b.SetActiveView(ctx, req.BlockId, req.ViewId)
 	})
 }
 
@@ -470,6 +493,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupI
 		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
+			Bytes:   req.Bytes,
 			GroupID: groupID,
 			Origin:  req.ObjectOrigin,
 		}, false)
@@ -482,6 +506,7 @@ func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (e
 		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
 			Url:    req.Url,
+			Bytes:  req.Bytes,
 			Origin: req.ObjectOrigin,
 		}, true)
 		return err
@@ -511,8 +536,6 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 	upl.SetAdditionalDetails(req.Details)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
-	} else {
-		upl.AutoType(true)
 	}
 	if req.LocalPath != "" {
 		upl.SetFile(req.LocalPath)
@@ -532,6 +555,12 @@ func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	})
 }
 
+func (s *Service) SetFileTargetObjectId(ctx session.Context, contextId string, blockId, targetObjectId string) error {
+	return cache.Do(s, contextId, func(b file.File) error {
+		return b.SetFileTargetObjectId(ctx, blockId, targetObjectId)
+	})
+}
+
 func (s *Service) SetFileStyle(
 	ctx session.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string,
 ) error {
@@ -547,6 +576,7 @@ func (s *Service) UploadFileBlock(
 		fileObjectId, err = b.Upload(nil, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
+			Bytes:   req.Bytes,
 			GroupID: "",
 			Origin:  req.ObjectOrigin,
 		}, true)
@@ -662,7 +692,7 @@ func (s *Service) ListConvertToObjects(
 	ctx session.Context, req pb.RpcBlockListConvertToObjectsRequest,
 ) (linkIds []string, err error) {
 	err = cache.Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		linkIds, err = b.ExtractBlocksToObjects(ctx, s.objectCreator, req)
+		linkIds, err = b.ExtractBlocksToObjects(ctx, s.objectCreator, s.templateService, req)
 		return err
 	})
 	return

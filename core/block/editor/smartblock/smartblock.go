@@ -50,7 +50,6 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
-	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
 const (
@@ -128,6 +127,8 @@ type Space interface {
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
+
+	StoredIds() []string
 }
 
 type SmartBlock interface {
@@ -348,14 +349,30 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	ctx.State.AddBundledRelations(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
-		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(ctx.State)
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(ctx.State)
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+
+	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
+}
+
+func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
+	sb.sendEvent(&pb.Event{
+		ContextId: sb.Id(),
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfObjectClose{
+				ObjectClose: &pb.EventObjectClose{
+					Id: sb.Id(),
+				},
+			},
+		}},
+	})
+	return nil
 }
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
@@ -550,7 +567,7 @@ func (sb *smartBlock) EnabledRelationAsDependentObjects() {
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	startTime := time.Now()
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	var (
 		sendEvent           = true
@@ -701,7 +718,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				sb.undo.Add(act)
 			}
 		}
-	} else if hasChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
+	} else if hasChangesToPush(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		err = pushChange()
 		if err != nil {
@@ -754,7 +771,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, "", sb.objectStore).Migrate(s)
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -968,7 +985,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []st
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	s, changes, err := f(sb.Doc)
 	if err != nil {
@@ -1001,7 +1018,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 // TODO: need to test StateRebuild
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
-		return ErrIsDeleted
+		return domain.ErrObjectIsDeleted
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
@@ -1196,14 +1213,6 @@ func (sb *smartBlock) AddHookOnce(id string, f HookCallback, events ...Hook) {
 	}
 }
 
-func (sb *smartBlock) baseRelations() []*model.Relation {
-	rels := []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji), bundle.MustGetRelation(bundle.RelationKeyName)}
-	for _, rel := range rels {
-		rel.Scope = model.Relation_object
-	}
-	return rels
-}
-
 // deprecated, use RelationLinks instead
 func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	var links []*model.RelationLink
@@ -1326,21 +1335,23 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }
 
-func hasChanges(changes []*pb.ChangeContent) bool {
+func hasChangesToPush(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if isStoreOrNotificationChanges(ch) {
+		if isSuitableChanges(ch) {
 			return true
 		}
 	}
 	return false
 }
 
-func isStoreOrNotificationChanges(ch *pb.ChangeContent) bool {
+func isSuitableChanges(ch *pb.ChangeContent) bool {
 	return ch.GetStoreKeySet() != nil ||
 		ch.GetStoreKeyUnset() != nil ||
 		ch.GetStoreSliceUpdate() != nil ||
 		ch.GetNotificationCreate() != nil ||
-		ch.GetNotificationUpdate() != nil
+		ch.GetNotificationUpdate() != nil ||
+		ch.GetDeviceUpdate() != nil ||
+		ch.GetDeviceAdd() != nil
 }
 
 func hasDetailsMsgs(msgs []simple.EventMessage) bool {

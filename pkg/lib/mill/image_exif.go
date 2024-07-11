@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"io"
+	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
@@ -90,17 +91,23 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 
 		tag, err = exf.Get(exif.ExposureTime)
 		if tag != nil {
-			exposureTimeRat, _ := tag.Rat(0)
-			if exposureTimeRat != nil {
-				exposureTime = exposureTimeRat.String()
+			num, denom, err := tag.Rat2(0)
+			if err == nil {
+				if denom == 0 {
+					exposureTime = "inf"
+				} else {
+					exposureTime = big.NewRat(num, denom).String()
+				}
 			}
 		}
 
 		tag, err = exf.Get(exif.FNumber)
 		if tag != nil {
-			fNumberRat, _ := tag.Rat(0)
-			if fNumberRat != nil {
-				fNumber, _ = fNumberRat.Float64()
+			num, denom, err := tag.Rat2(0)
+			if err == nil {
+				if denom != 0 {
+					fNumber, _ = big.NewRat(num, denom).Float64()
+				}
 			}
 		}
 		tag, err = exf.Get(exif.ISOSpeedRatings)
@@ -144,5 +151,5 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		return nil, err
 	}
 
-	return &Result{File: bytes.NewReader(b)}, nil
+	return &Result{File: noopCloser(bytes.NewReader(b))}, nil
 }

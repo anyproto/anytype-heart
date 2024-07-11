@@ -12,6 +12,13 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+// Semantics in case of NO INTERNET:
+//
+// If called with req.NoCache -> returns error
+// If called without req.NoCache:
+//
+//	has no fresh data -> returns error
+//	has fresh data -> returns data
 func (mw *Middleware) MembershipGetStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) *pb.RpcMembershipGetStatusResponse {
 	log.Info("payments - client asked to get a subscription status", zap.Any("req", req))
 
@@ -52,6 +59,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 	ps := getService[payments.Service](mw)
 	out, err := ps.IsNameValid(ctx, req)
 
+	// 1 - check the validity first (remote call #1)
 	// out will already contain validation Error
 	// but if something bad has happened we need to process other errors here too:
 	if err != nil {
@@ -60,6 +68,7 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipIsNameValidResponseError_NOT_LOGGED_IN),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipIsNameValidResponseError_CAN_NOT_CONNECT),
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipIsNameValidResponseError_CACHE_ERROR),
+			errToCode(payments.ErrNameIsAlreadyReserved, pb.RpcMembershipIsNameValidResponseError_NAME_IS_RESERVED),
 
 			errToCode(payments.ErrNoTiers, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
 			errToCode(payments.ErrNoTierFound, pb.RpcMembershipIsNameValidResponseError_TIER_NOT_FOUND),
@@ -81,39 +90,38 @@ func (mw *Middleware) MembershipIsNameValid(ctx context.Context, req *pb.RpcMemb
 		}
 	}
 
-	// out.Error will contain validation error if something is wrong with the name
 	return out
 }
 
-// TODO: GO-3347 rename GetPaymentUrl to RegisterPaymentRequest
-func (mw *Middleware) MembershipGetPaymentUrl(ctx context.Context, req *pb.RpcMembershipGetPaymentUrlRequest) *pb.RpcMembershipGetPaymentUrlResponse {
+func (mw *Middleware) MembershipRegisterPaymentRequest(ctx context.Context, req *pb.RpcMembershipRegisterPaymentRequestRequest) *pb.RpcMembershipRegisterPaymentRequestResponse {
 	ps := getService[payments.Service](mw)
 	out, err := ps.RegisterPaymentRequest(ctx, req)
 
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipGetPaymentUrlResponseError_NOT_LOGGED_IN),
-			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipGetPaymentUrlResponseError_NOT_LOGGED_IN),
-			errToCode(payments.ErrNoConnection, pb.RpcMembershipGetPaymentUrlResponseError_CAN_NOT_CONNECT),
-			errToCode(payments.ErrCacheProblem, pb.RpcMembershipGetPaymentUrlResponseError_CACHE_ERROR),
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipRegisterPaymentRequestResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipRegisterPaymentRequestResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipRegisterPaymentRequestResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrCacheProblem, pb.RpcMembershipRegisterPaymentRequestResponseError_CACHE_ERROR),
 
-			errToCode(proto.ErrTierNotFound, pb.RpcMembershipGetPaymentUrlResponseError_TIER_NOT_FOUND),
-			errToCode(proto.ErrTierWrong, pb.RpcMembershipGetPaymentUrlResponseError_TIER_INVALID),
-			errToCode(proto.ErrPaymentMethodWrong, pb.RpcMembershipGetPaymentUrlResponseError_PAYMENT_METHOD_INVALID),
-			errToCode(proto.ErrBadAnyName, pb.RpcMembershipGetPaymentUrlResponseError_BAD_ANYNAME),
-			errToCode(proto.ErrSubsAlreadyActive, pb.RpcMembershipGetPaymentUrlResponseError_MEMBERSHIP_ALREADY_EXISTS),
+			errToCode(proto.ErrTierNotFound, pb.RpcMembershipRegisterPaymentRequestResponseError_TIER_NOT_FOUND),
+			errToCode(proto.ErrTierWrong, pb.RpcMembershipRegisterPaymentRequestResponseError_TIER_INVALID),
+			errToCode(proto.ErrPaymentMethodWrong, pb.RpcMembershipRegisterPaymentRequestResponseError_PAYMENT_METHOD_INVALID),
+			errToCode(proto.ErrBadAnyName, pb.RpcMembershipRegisterPaymentRequestResponseError_BAD_ANYNAME),
+			errToCode(proto.ErrSubsAlreadyActive, pb.RpcMembershipRegisterPaymentRequestResponseError_MEMBERSHIP_ALREADY_EXISTS),
+			errToCode(proto.ErrEmailWrongFormat, pb.RpcMembershipRegisterPaymentRequestResponseError_EMAIL_WRONG_FORMAT),
 
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipGetPaymentUrlResponseError_CAN_NOT_CONNECT),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipRegisterPaymentRequestResponseError_CAN_NOT_CONNECT),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
 		errStr := err.Error()
-		if code == pb.RpcMembershipGetPaymentUrlResponseError_CAN_NOT_CONNECT {
+		if code == pb.RpcMembershipRegisterPaymentRequestResponseError_CAN_NOT_CONNECT {
 			errStr = "please connect to the internet"
 		}
 
-		return &pb.RpcMembershipGetPaymentUrlResponse{
-			Error: &pb.RpcMembershipGetPaymentUrlResponseError{
+		return &pb.RpcMembershipRegisterPaymentRequestResponse{
+			Error: &pb.RpcMembershipRegisterPaymentRequestResponseError{
 				Code:        code,
 				Description: errStr,
 			},
