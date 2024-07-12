@@ -16,7 +16,7 @@ import (
 )
 
 // required relations for participant beside the bundle.RequiredInternalRelations
-var relations = []domain.RelationKey{
+var participantRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyGlobalName,
 	bundle.RelationKeyIdentity,
 	bundle.RelationKeyBacklinks,
@@ -57,7 +57,7 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithTitle,
 		template.WithDescription,
 		template.WithFeaturedRelations,
-		template.WithRelations(relations),
+		template.WithRelations(participantRequiredRelations),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 	)
