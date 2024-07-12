@@ -65,10 +65,6 @@ var excludedLongExecutionMethods = []string{
 	"DebugRunProfiler",
 }
 
-func stackTraceHasMethod(method string, stackTrace []byte) bool {
-	return bytes.Contains(stackTrace, []byte("core.(*Middleware)."+method+"("))
-}
-
 func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
 	if lo.Contains(excludedLongExecutionMethods, methodName) {
 		return actualCall(ctx, req)
@@ -107,8 +103,8 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 		Service.Send(
 			&LongMethodEvent{
 				methodName: methodName,
-				middleTime: elapsed.Milliseconds(),
-				stack:      lastTrace.Load(),
+				middleTime: time.Since(start).Milliseconds(),
+				stack:      debug.ParseGoroutinesDump(lastTrace.String(), "core.(*Middleware)."+methodName),
 			},
 		)
 	}
