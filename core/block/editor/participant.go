@@ -8,11 +8,23 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+// required relations for participant beside the bundle.RequiredInternalRelations
+var relations = []domain.RelationKey{
+	bundle.RelationKeyGlobalName,
+	bundle.RelationKeyIdentity,
+	bundle.RelationKeyBacklinks,
+	bundle.RelationKeyParticipantPermissions,
+	bundle.RelationKeyParticipantStatus,
+	bundle.RelationKeyIdentityProfileLink,
+	bundle.RelationKeyIsHiddenDiscovery,
+}
 
 type participant struct {
 	smartblock.SmartBlock
@@ -45,6 +57,7 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithTitle,
 		template.WithDescription,
 		template.WithFeaturedRelations,
+		template.WithRelations(relations),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 	)
