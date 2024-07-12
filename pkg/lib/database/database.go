@@ -215,7 +215,6 @@ func (r FulltextResult) Model() model.SearchMeta {
 type Filters struct {
 	FilterObj Filter
 	Order     Order
-	dateKeys  []string
 }
 
 // ListRelationOptions returns options for specific relation

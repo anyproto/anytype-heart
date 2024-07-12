@@ -129,15 +129,15 @@ func (c *collectionObserver) FilterObject(g *types.Struct) bool {
 func (c *collectionObserver) AnystoreFilter() query.Filter {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-
-	ids := make([]query.Filter, 0, len(c.idsSet))
+	path := []string{bundle.RelationKeyId.String()}
+	filter := make(query.Or, 0, len(c.idsSet))
 	for id := range c.idsSet {
-		ids = append(ids, query.NewComp(query.CompOpEq, id))
+		filter = append(filter, query.Key{
+			Path:   path,
+			Filter: query.NewComp(query.CompOpEq, id),
+		})
 	}
-	return query.Key{
-		Path:   []string{bundle.RelationKeyId.String()},
-		Filter: query.Or(ids),
-	}
+	return filter
 }
 
 func (c *collectionObserver) String() string {

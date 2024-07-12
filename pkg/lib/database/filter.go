@@ -263,13 +263,17 @@ func (f FilterNot) AnystoreFilter() query.Filter {
 func negateFilter(filter query.Filter) query.Filter {
 	switch v := filter.(type) {
 	case query.And:
+		negated := make(query.Or, 0, len(v))
+		for _, f := range v {
+			negated = append(negated, negateFilter(f))
+		}
+		return negated
+	case query.Or:
 		negated := make(query.And, 0, len(v))
 		for _, f := range v {
 			negated = append(negated, negateFilter(f))
 		}
-		return query.Or(negated)
-	case query.Or:
-		return query.Nor(v)
+		return negated
 	case query.Key:
 		return query.Key{
 			Path: v.Path,

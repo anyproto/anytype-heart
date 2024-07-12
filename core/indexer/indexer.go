@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -68,6 +69,7 @@ type indexer struct {
 	btHash  Hasher
 	forceFt chan struct{}
 
+	lock             sync.Mutex
 	reindexLogFields []zap.Field
 }
 

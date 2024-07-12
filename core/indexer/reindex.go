@@ -566,10 +566,14 @@ func (i *indexer) getIdsForTypes(spaceID string, sbt ...smartblock2.SmartBlockTy
 }
 
 func (i *indexer) GetLogFields() []zap.Field {
+	i.lock.Lock()
+	defer i.lock.Unlock()
 	return i.reindexLogFields
 }
 
 func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalIds, succeedIds int, spent time.Duration) {
+	i.lock.Lock()
+	defer i.lock.Unlock()
 	i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String(), totalIds))
 	if succeedIds < totalIds {
 		i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String()+"_failed", totalIds-succeedIds))
