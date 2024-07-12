@@ -55,11 +55,19 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 		err         error
 	)
 
+	isDeleted := pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String())
+	isArchived := pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
+	if isDeleted || isArchived {
+		return nil
+	}
+
 	switch model.ObjectTypeLayout(pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())) {
 	case model.ObjectType_relationOption:
 		relationKey = pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	case model.ObjectType_objectType:
 		relationKey = bundle.RelationKeyType.String()
+	default:
+		return nil
 	}
 	recs, err := s.getObjectsWithObjectInRelation(relationKey, id, maxLength, params)
 	if err != nil {
@@ -401,8 +409,10 @@ func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
 	case database.FilterIn:
 		if f.Key == bundle.RelationKeySpaceId.String() {
 			values := f.Value.GetValues()
-			if len(values) > 0 {
+			if len(values) == 1 {
 				return values[0].GetStringValue()
+			} else {
+				return ""
 			}
 		}
 	case database.FiltersAnd:

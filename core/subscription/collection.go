@@ -169,6 +169,10 @@ func (c *collectionSub) hasDep() bool {
 	return c.sortedSub.hasDep()
 }
 
+func (c *collectionSub) getDep() subscription {
+	return c.sortedSub.depSub
+}
+
 func (c *collectionSub) close() {
 	c.observer.close()
 	c.sortedSub.close()

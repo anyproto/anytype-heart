@@ -57,6 +57,7 @@ type subscription interface {
 	onChange(ctx *opCtx)
 	getActiveRecords() (res []*types.Struct)
 	hasDep() bool
+	getDep() subscription
 	close()
 }
 
@@ -493,6 +494,7 @@ func (s *service) onChange(entries []*entry) time.Duration {
 		sub.onChange(s.ctxBuf)
 		subCount++
 		if sub.hasDep() {
+			sub.getDep().onChange(s.ctxBuf)
 			depCount++
 		}
 	}

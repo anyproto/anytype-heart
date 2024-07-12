@@ -127,6 +127,8 @@ type Space interface {
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
+
+	StoredIds() []string
 }
 
 type SmartBlock interface {

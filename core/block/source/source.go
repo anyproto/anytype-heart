@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -152,7 +151,6 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		id:                 id,
 		space:              space,
 		spaceID:            space.Id(),
-		spaceService:       s.spaceCoreService,
 		smartblockType:     sbt,
 		accountService:     s.accountService,
 		accountKeysService: s.accountKeysService,
@@ -191,7 +189,6 @@ type source struct {
 	fileService        files.Service
 	accountService     accountService
 	accountKeysService accountservice.Service
-	spaceService       spacecore.SpaceCoreService
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	objectStore        RelationGetter
 	fileObjectMigrator fileObjectMigrator
@@ -418,11 +415,10 @@ func checkChangeSize(data []byte, maxSize int) error {
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	spc, err := s.spaceService.Get(context.Background(), s.spaceID)
-	if err != nil {
+	if s.space == nil {
 		return
 	}
-	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
+	ids = slice.Filter(s.space.StoredIds(), func(id string) bool {
 		t, err := s.sbtProvider.Type(s.spaceID, id)
 		if err != nil {
 			return false
