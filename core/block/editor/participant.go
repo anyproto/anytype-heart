@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// required relations for participant beside the bundle.RequiredInternalRelations
 var participantRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyGlobalName,
 	bundle.RelationKeyIdentity,
@@ -41,6 +40,7 @@ func (f *ObjectFactory) newParticipant(sb smartblock.SmartBlock) *participant {
 
 func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	// Details come from aclobjectmanager, see buildParticipantDetails
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, participantRequiredRelations...)
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
@@ -57,7 +57,6 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithTitle,
 		template.WithDescription,
 		template.WithFeaturedRelations,
-		template.WithRelations(participantRequiredRelations),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 	)

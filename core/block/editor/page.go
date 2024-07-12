@@ -23,6 +23,18 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+var pageRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeyCoverId,
+	bundle.RelationKeyCoverScale,
+	bundle.RelationKeyCoverType,
+	bundle.RelationKeyCoverX,
+	bundle.RelationKeyCoverY,
+	bundle.RelationKeySnippet,
+	bundle.RelationKeyFeaturedRelations,
+	bundle.RelationKeyLinks,
+	bundle.RelationKeyLayoutAlign,
+}
+
 type Page struct {
 	smartblock.SmartBlock
 	basic.AllOperations
@@ -72,6 +84,7 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, pageRequiredRelations...)
 	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypeKeys()) == 0) && ctx.IsNewObject {
 		ctx.ObjectTypeKeys = []domain.TypeKey{bundle.TypeKeyPage}
 	}

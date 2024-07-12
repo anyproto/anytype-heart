@@ -89,6 +89,10 @@ var WithRequiredRelations = func(s *state.State) {
 	WithRelations(bundle.RequiredInternalRelations)(s)
 }
 
+var WithRequiredRelationsForSmartblockType = func(s *state.State) {
+	WithRelations(bundle.RequiredInternalRelations)(s)
+}
+
 var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.ObjectTypeLayout) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypeKeys()) == 0 {

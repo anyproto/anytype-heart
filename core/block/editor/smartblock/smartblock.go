@@ -188,17 +188,18 @@ type DocInfo struct {
 
 // TODO Maybe create constructor? Don't want to forget required fields
 type InitContext struct {
-	IsNewObject    bool
-	Source         source.Source
-	ObjectTypeKeys []domain.TypeKey
-	RelationKeys   []string
-	State          *state.State
-	Relations      []*model.Relation
-	Restriction    restriction.Service
-	ObjectStore    objectstore.ObjectStore
-	SpaceID        string
-	BuildOpts      source.BuildOptions
-	Ctx            context.Context
+	IsNewObject                  bool
+	Source                       source.Source
+	ObjectTypeKeys               []domain.TypeKey
+	RelationKeys                 []string
+	RequiredInternalRelationKeys []domain.RelationKey // bundled relations that MUST be present in the state
+	State                        *state.State
+	Relations                    []*model.Relation
+	Restriction                  restriction.Service
+	ObjectStore                  objectstore.ObjectStore
+	SpaceID                      string
+	BuildOpts                    source.BuildOptions
+	Ctx                          context.Context
 }
 
 type linkSource interface {
@@ -310,6 +311,7 @@ func (sb *smartBlock) ObjectTypeID() string {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, bundle.RequiredInternalRelations...)
 	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -327,21 +329,25 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.Doc.BlocksInit(sb.Doc.(simple.DetailsService))
 
+	var stateToInjectRequiredRelations *state.State
 	if ctx.State == nil {
+		// for existing smartblock we implicitly inject it into the state
+		stateToInjectRequiredRelations = sb.Doc.(*state.State)
 		ctx.State = sb.NewState()
 		sb.storeFileKeys(sb.Doc)
 	} else {
 		if !sb.Doc.(*state.State).IsEmpty(true) {
 			return ErrCantInitExistingSmartblockWithNonEmptyState
 		}
+		// for new objects modify the state in the initCtx, so it will be actually saved to the snapshot
+		stateToInjectRequiredRelations = ctx.State
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
+	template.WithRelations(append(bundle.RequiredInternalRelations, ctx.RequiredInternalRelationKeys...))(stateToInjectRequiredRelations)
 
 	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
 		return
 	}
-	// we need to have required internal relations for all objects, including system
-	template.WithRequiredRelations(ctx.State)
 	// Add bundled relations
 	var relKeys []domain.RelationKey
 	for k := range ctx.State.Details().GetFields() {
@@ -847,6 +853,8 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
+	// todo: filter-out existing relation links?
+	// in the most cases it should save as an objectstore query
 	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
 	if err != nil {
 		return

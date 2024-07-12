@@ -66,6 +66,7 @@ func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 
 // Init initializes SpaceView
 func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, spaceViewRequiredRelations...)
 	if err = s.SmartBlock.Init(ctx); err != nil {
 		return
 	}
@@ -110,7 +111,6 @@ func (s *SpaceView) StateMigrations() migration.Migrations {
 func (s *SpaceView) initTemplate(st *state.State) {
 	template.InitTemplate(st,
 		template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
-		template.WithRelations(spaceViewRequiredRelations),
 	)
 }
 

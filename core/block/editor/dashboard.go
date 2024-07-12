@@ -19,6 +19,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+// required relations for archive beside the bundle.RequiredInternalRelations
+var dashboardRequiredRelations = []domain.RelationKey{}
+
 type Dashboard struct {
 	smartblock.SmartBlock
 	basic.AllOperations
@@ -37,6 +40,7 @@ func NewDashboard(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore,
 }
 
 func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, dashboardRequiredRelations...)
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
