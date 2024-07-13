@@ -26,6 +26,7 @@ enum SmartBlockType {
     Home = 0x20;
     Archive = 0x30;
     Widget = 0x70;
+    Store = 0x80;
 
     File = 0x100;
 

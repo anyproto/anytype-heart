@@ -26,20 +26,26 @@ func TestStoreStateTx_GetOrder(t *testing.T) {
 			require.NoError(t, tx.Commit())
 		}()
 		order, err := tx.GetOrder("changeId")
-		assert.ErrorIs(t, err, anystore.ErrDocNotFound)
+		assert.ErrorIs(t, err, ErrOrderNotFound)
 		assert.Empty(t, order)
 	})
 	t.Run("set-get", func(t *testing.T) {
 		fx := newFixture(t, "test", DefaultHandler{Name: "tcoll"})
 		tx, err := fx.NewTx(ctx)
 		require.NoError(t, err)
-		defer func() {
-			require.NoError(t, tx.Commit())
-		}()
-		require.NoError(t, tx.setOrder("changeId", "order"))
+		require.NoError(t, tx.setOrder("changeId", "1"))
 		order, err := tx.GetOrder("changeId")
 		require.NoError(t, err)
-		assert.Equal(t, "order", order)
+		assert.Equal(t, "1", order)
+		assert.Equal(t, "1", tx.GetMaxOrder())
+		require.NoError(t, tx.Commit())
+
+		tx, err = fx.NewTx(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "1", tx.GetMaxOrder())
+		require.NoError(t, tx.setOrder("changeId2", "2"))
+		assert.Equal(t, "2", tx.GetMaxOrder())
+		require.NoError(t, tx.Commit())
 	})
 }
 

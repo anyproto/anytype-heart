@@ -28668,6 +28668,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Home | 32 |  |
 | Archive | 48 |  |
 | Widget | 112 |  |
+| Store | 128 |  |
 | File | 256 |  |
 | Template | 288 |  |
 | BundledTemplate | 289 |  |

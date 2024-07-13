@@ -108,7 +108,11 @@ func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &StoreStateTx{state: ss, tx: tx, ctx: tx.Context(), arena: &fastjson.Arena{}}, nil
+	stx := &StoreStateTx{state: ss, tx: tx, ctx: tx.Context(), arena: &fastjson.Arena{}}
+	if err = stx.init(); err != nil {
+		return nil, err
+	}
+	return stx, nil
 }
 
 func (ss *StoreState) Collection(ctx context.Context, name string) (anystore.Collection, error) {

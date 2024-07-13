@@ -95,8 +95,22 @@ type BuildOptions struct {
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:    b.Listener,
-		TreeBuilder: objecttree.BuildKeyFilterableObjectTree,
+		Listener: b.Listener,
+		TreeBuilder: func(treeStorage treestorage.TreeStorage, aclList list.AclList) (objecttree.ObjectTree, error) {
+			ot, err := objecttree.BuildKeyFilterableObjectTree(treeStorage, aclList)
+			if err != nil {
+				return nil, err
+			}
+			sbt, _, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+			if err != nil {
+				return nil, err
+			}
+			if sbt == smartblock.SmartBlockTypeStore {
+				// here we have special
+				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
+			}
+			return ot, nil
+		},
 		TreeValidator: func(payload treestorage.TreeStorageCreatePayload, buildFunc objecttree.BuildObjectTreeFunc, aclList list.AclList) (retPayload treestorage.TreeStorageCreatePayload, err error) {
 			return objecttree.ValidateFilterRawTree(payload, aclList)
 		},

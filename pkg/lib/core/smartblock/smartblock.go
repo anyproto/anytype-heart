@@ -14,6 +14,7 @@ const (
 
 	SmartBlockTypePage              = SmartBlockType(model.SmartBlockType_Page)
 	SmartBlockTypeProfilePage       = SmartBlockType(model.SmartBlockType_ProfilePage)
+	SmartBlockTypeStore             = SmartBlockType(model.SmartBlockType_Store)
 	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)
 	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive)
 	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File) // Deprecated
