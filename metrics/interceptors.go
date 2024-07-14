@@ -65,10 +65,6 @@ var excludedLongExecutionMethods = []string{
 	"DebugRunProfiler",
 }
 
-func stackTraceHasMethod(method string, stackTrace []byte) bool {
-	return bytes.Contains(stackTrace, []byte("core.(*Middleware)."+method+"("))
-}
-
 func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
 	if lo.Contains(excludedLongExecutionMethods, methodName) {
 		return actualCall(ctx, req)
@@ -104,8 +100,19 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 		// todo: save long stack trace to files
 		lastTraceB := debug.CompressBytes([]byte(lastTrace.String()))
 		l.With("ver", 2).With("error", err).With("in_progress", false).With("goroutines", lastTraceB).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
+		Service.Send(
+			&LongMethodEvent{
+				methodName: methodName,
+				middleTime: time.Since(start).Milliseconds(),
+				stack:      debug.ParseGoroutinesDump(lastTrace.String(), "core.(*Middleware)."+methodName),
+			},
+		)
 	}
 	return resp, err
+}
+
+func stackTraceHasMethod(method string, stackTrace []byte) bool {
+	return bytes.Contains(stackTrace, []byte("core.(*Middleware)."+method+"("))
 }
 
 func SendMethodEvent(method string, err error, resp any, delta int64) {
