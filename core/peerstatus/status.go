@@ -123,9 +123,7 @@ func (p *p2pStatus) RegisterSpace(spaceId string) {
 	defer p.Unlock()
 	p.spaceIds[spaceId] = struct{}{}
 	connection := p.connectionsCount
-	if connection == 0 {
-		connection++ // count current device
-	}
+
 	p.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -176,7 +174,6 @@ func (p *p2pStatus) updateSpaceP2PStatus() {
 	if newStatus == NotPossible {
 		return
 	}
-	connectionCount++ // count current device
 	if p.status != newStatus || p.connectionsCount != connectionCount {
 		p.sendEvent(event, connectionCount)
 		p.status = newStatus
