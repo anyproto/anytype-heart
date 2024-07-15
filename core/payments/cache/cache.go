@@ -33,7 +33,7 @@ var (
 
 // once you change the cache format, you need to update this variable
 // it will cause cache to be dropped and recreated
-const cacheLastVersion = 6
+const cacheLastVersion = 7
 
 const (
 	cacheLifetimeDurExplorer = 24 * time.Hour

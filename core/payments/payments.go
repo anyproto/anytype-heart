@@ -171,14 +171,12 @@ func (s *service) Close(_ context.Context) (err error) {
 
 func (s *service) getPeriodicStatus(ctx context.Context) error {
 	// get subscription status (from cache or from the PP node)
-	// if status has changed -> it will send an event
-	log.Debug("periodic: getting subscription status from cache/PP node")
-
+	// if status has changed -> it will send events, etc
 	_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 	return err
 }
 
-func (s *service) sendEvent(status *pb.RpcMembershipGetStatusResponse) {
+func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusResponse) {
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -211,19 +209,20 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
 	privKey := s.wallet.GetAccountPrivkey()
 
-	// 1 - check in cache
+	// 1 - check in cache first
 	// if cache is disabled -> will return objects and ErrCacheDisabled
 	// if cache is expired -> will return objects and ErrCacheExpired
-	cachedStatus, _, err := s.cache.CacheGet()
-
-	// if NoCache flag -> skip returning from cache
-	if !req.NoCache && (err == nil) && (cachedStatus != nil) && (cachedStatus.Data != nil) {
-		// 2. If found in cache -> return it
-		log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
+	cachedStatus, _, cacheErr := s.cache.CacheGet()
+	if cacheErr == nil && req.NoCache {
+		// as if we have object but it was expired
+		cacheErr = cache.ErrCacheExpired
+	}
+	if cacheErr == nil && canReturnCachedStatus(cachedStatus) {
+		log.Debug("returning subscription status from cache", zap.Error(cacheErr), zap.Any("cachedStatus", cachedStatus))
 		return cachedStatus, nil
 	}
 
-	// 3 - send request to PP node
+	// 2 - if not in cache - send request to PP node
 	gsr := proto.GetSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: ownerID,
@@ -234,7 +233,6 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		return nil, ErrCanNotSign
 	}
 
-	// this is the SignKey
 	signature, err := privKey.Sign(payload)
 	if err != nil {
 		log.Error("can not sign GetSubscriptionRequest", zap.Error(err))
@@ -246,17 +244,22 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		Signature: signature,
 	}
 
-	log.Debug("get sub from PP node", zap.Any("cachedStatus", cachedStatus), zap.Bool("noCache", req.NoCache))
+	log.Debug("get sub from PP node")
 
 	status, err := s.ppclient.GetSubscriptionStatus(ctx, &reqSigned)
 	if err != nil {
-		// 4a. try reading from cache again
-		if (cachedStatus != nil) && (cachedStatus.Data != nil) {
-			log.Debug("returning subscription status from cache again", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
+		// 3 - on PP node error
+		// try returning from cache again (do not care about the NoCache flag here!)
+		cachedStatus, _, cacheErr := s.cache.CacheGet()
+
+		// if cache is expired or OK -> use this data
+		isExpiredErrorOrNoError := (cacheErr == cache.ErrCacheExpired) || (cacheErr == nil)
+		if isExpiredErrorOrNoError && canReturnCachedStatus(cachedStatus) {
+			log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
 			return cachedStatus, nil
 		}
 
-		// 4b. If PP node didn't answer -> create empty response
+		// If PP node didn't answer -> create empty response
 		log.Info("creating empty subscription in cache because can not get subscription status from the payment node")
 
 		// eat error and create empty status ("no tier") so that we will then save it to the cache
@@ -268,7 +271,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 
 	out := convertMembershipStatus(status)
 
-	// 5. Save to cache. Lifetime - min(subscription ends, now + TTL)
+	// 4 - Save to cache. Lifetime - min(subscription ends, now + TTL)
 	// update only status, not tiers
 	err = s.cache.CacheSet(&out, nil)
 	if err != nil {
@@ -276,31 +279,74 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		// return nil, ErrCacheProblem
 	}
 
-	isDiffTier := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Tier != status.Tier)
-	isDiffStatus := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.Status != model.MembershipStatus(status.Status))
-	isEmailDiff := (cachedStatus != nil) && (cachedStatus.Data != nil) && (cachedStatus.Data.UserEmail != status.UserEmail)
+	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
 
-	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus), zap.Bool("isEmailDiff", isEmailDiff))
+	// 5 - Send all messages to the client if needed
+	if !isUpdateRequired(cacheErr, cachedStatus, status) {
+		// no need to send events or enable/disable cache
+		return &out, nil
+	}
+	s.updateStatus(ctx, status)
 
-	// 6. If tier or status has changed -> send event
-	if cachedStatus != nil && !isDiffTier && !isDiffStatus && !isEmailDiff {
+	// 6 - Enable or disable cache (only if status has changed)
+	// also automatically will enable cash in N minutes after DisableForNextMinutes() call
+	s.enableCache(status)
+	s.disableCache(status)
+
+	return &out, nil
+}
+
+func canReturnCachedStatus(s *pb.RpcMembershipGetStatusResponse) bool {
+	return s != nil && s.Data != nil && (s.Error == nil || s.Error.Code == pb.RpcMembershipGetStatusResponseError_NULL)
+}
+
+func isUpdateRequired(cacheErr error, cachedStatus *pb.RpcMembershipGetStatusResponse, status *proto.GetSubscriptionResponse) bool {
+	// 1 - If cache was empty or expire or disabled or NoCache flag was passed
+	// -> treat at is if data was different
+	isCacheEmpty := (cacheErr != nil) && (cacheErr != cache.ErrCacheDisabled)
+
+	if isCacheEmpty {
+		log.Debug("subscription status treated as changed because cache was empty/expired/NoCache flag was passed")
+		return true
+	}
+
+	// 2 - Check if tier or status has changed
+	isDiffTier := false
+	isDiffStatus := false
+	isEmailDiff := false
+
+	if canReturnCachedStatus(cachedStatus) {
+		isDiffTier = cachedStatus.Data.Tier != status.Tier
+		isDiffStatus = cachedStatus.Data.Status != model.MembershipStatus(status.Status)
+		isEmailDiff = cachedStatus.Data.UserEmail != status.UserEmail
+	}
+
+	if !isDiffTier && !isDiffStatus && !isEmailDiff {
 		log.Debug("subscription status has NOT changed",
 			zap.Bool("cache was empty", cachedStatus == nil),
 			zap.Bool("isDiffTier", isDiffTier),
 			zap.Bool("isDiffStatus", isDiffStatus),
 		)
-		return &out, nil
+		return false
 	}
 
-	log.Info("subscription status has changed. sending EventMembershipUpdate",
+	log.Info("subscription status has been changed. sending EventMembershipUpdate",
 		zap.Bool("cache was empty", cachedStatus == nil),
 		zap.Bool("isDiffTier", isDiffTier),
 		zap.Bool("isDiffStatus", isDiffStatus),
 		zap.Bool("isEmailDiff", isEmailDiff),
 	)
-	s.sendEvent(&out)
+	return true
+}
 
-	// 7. If name has changed -> update global name or own identity
+func (s *service) updateStatus(ctx context.Context, status *proto.GetSubscriptionResponse) {
+	out := convertMembershipStatus(status)
+
+	// 1 - Broadcast event
+	log.Debug("sending EventMembershipUpdate", zap.Any("status", status))
+	s.sendMembershipUpdateEvent(&out)
+
+	// 2 - If name has changed -> update global name or own identity
 	if status.RequestedAnyName != "" {
 		log.Debug("update global name",
 			zap.String("requestedAnyName", status.RequestedAnyName),
@@ -309,41 +355,47 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		s.profileUpdater.UpdateOwnGlobalName(status.RequestedAnyName)
 	}
 
-	// 8. UpdateLimits
-	err = s.updateLimits(ctx)
+	// 3 - Update limits
+	err := s.updateLimits(ctx)
 	if err != nil {
+		// eat error
 		log.Error("update limits", zap.Error(err))
 	}
-
-	// 9. Disable cache in case status is Pending
-	if status.Status == proto.SubscriptionStatus_StatusPending {
-		log.Info("disabling cache to wait for Active state")
-		err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
-		if err != nil {
-			log.Warn("can not disable cache", zap.Error(err))
-			// return nil, errors.Wrap(ErrCacheProblem, err.Error())
-		}
-	}
-
-	// 10. Enable cache again if status is active
-	isFinished := status.Status == proto.SubscriptionStatus_StatusActive
-	if isFinished {
-		log.Info("enabling cache again")
-
-		// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
-		err = s.cache.CacheEnable()
-		if err != nil {
-			log.Warn("can not enable cache", zap.Error(err))
-			// return nil, errors.Wrap(ErrCacheProblem, err.Error())
-		}
-	}
-
-	return &out, nil
 }
 
 func (s *service) updateLimits(ctx context.Context) error {
 	s.multiplayerLimitsUpdater.UpdateCoordinatorStatus()
 	return s.fileLimitsUpdater.UpdateNodeUsage(ctx)
+}
+
+func (s *service) disableCache(status *proto.GetSubscriptionResponse) {
+	isDisableCacheStatus := status.Status == proto.SubscriptionStatus_StatusPending
+
+	if isDisableCacheStatus {
+		log.Info("disabling cache to wait for Active state")
+
+		err := s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
+		if err != nil {
+			log.Warn("can not disable cache", zap.Error(err))
+			// return nil, errors.Wrap(ErrCacheProblem, err.Error())
+		}
+	}
+}
+
+func (s *service) enableCache(status *proto.GetSubscriptionResponse) {
+	isEnableCacheStatus := (status.Status != proto.SubscriptionStatus_StatusUnknown) && (status.Status != proto.SubscriptionStatus_StatusPending)
+	isEnableCacheTier := status.Tier > uint32(proto.SubscriptionTier_TierExplorer)
+
+	if isEnableCacheStatus && isEnableCacheTier {
+		log.Info("enabling cache again")
+
+		// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
+		err := s.cache.CacheEnable()
+		if err != nil {
+			log.Warn("can not enable cache", zap.Error(err))
+			// return nil, errors.Wrap(ErrCacheProblem, err.Error())
+		}
+	}
 }
 
 func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
@@ -763,14 +815,15 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersReq
 }
 
 func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error) {
-	// 1 - check in cache
-	// status var. is unused here
-	_, cachedTiers, err := s.cache.CacheGet()
+	// 1 - check in cache in case NoCache is False
+	if !req.NoCache {
+		_, cachedTiers, err := s.cache.CacheGet()
 
-	// if NoCache -> skip returning from cache
-	if !req.NoCache && (err == nil) && (cachedTiers != nil) && (cachedTiers.Tiers != nil) {
-		log.Debug("returning tiers from cache", zap.Error(err), zap.Any("cachedTiers", cachedTiers))
-		return cachedTiers, nil
+		if err == nil && cachedTiers != nil && cachedTiers.Tiers != nil &&
+			(cachedTiers.Error == nil || cachedTiers.Error.Code == pb.RpcMembershipGetTiersResponseError_NULL) {
+			log.Debug("returning tiers from cache", zap.Error(err), zap.Any("cachedTiers", cachedTiers))
+			return cachedTiers, nil
+		}
 	}
 
 	// 2 - send request
