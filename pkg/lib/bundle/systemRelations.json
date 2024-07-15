@@ -82,5 +82,8 @@
   "participantStatus",
   "latestAclHeadId",
   "identity",
-  "globalName"
+  "globalName",
+  "syncDate",
+  "syncStatus",
+  "syncError"
 ]
