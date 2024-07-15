@@ -1936,14 +1936,16 @@ func (s *State) SelectRoots(ids []string) []string {
 func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
 	existingLinks := s.PickRelationLinks()
 
-	links := make([]*model.RelationLink, 0, len(keys))
+	var links []*model.RelationLink
 	for _, key := range keys {
 		if !existingLinks.Has(key.String()) {
 			rel := bundle.MustGetRelation(key)
 			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
 		}
 	}
-	s.AddRelationLinks(links...)
+	if len(links) > 0 {
+		s.AddRelationLinks(links...)
+	}
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {

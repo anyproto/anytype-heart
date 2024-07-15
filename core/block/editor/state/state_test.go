@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -2728,5 +2729,94 @@ func TestState_SetDeviceName(t *testing.T) {
 		// then
 		assert.NotNil(t, newState.deviceStore["id"])
 		assert.Equal(t, newState.deviceStore["id"].Name, "test1")
+	})
+}
+
+func TestAddBundledRealtionLinks(t *testing.T) {
+	t.Run("with relationLinks in state", func(t *testing.T) {
+		t.Run("empty", func(t *testing.T) {
+			st := &State{
+				relationLinks: []*model.RelationLink{},
+			}
+			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+
+			want := &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+					{
+						Key:    bundle.RelationKeyPriority.String(),
+						Format: model.RelationFormat_number,
+					},
+				},
+			}
+
+			assert.Equal(t, want, st)
+		})
+		t.Run("one already exists, one not", func(t *testing.T) {
+			st := &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+				},
+			}
+			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+
+			want := &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+					{
+						Key:    bundle.RelationKeyPriority.String(),
+						Format: model.RelationFormat_number,
+					},
+				},
+			}
+
+			assert.Equal(t, want, st)
+		})
+	})
+	t.Run("with relationLinks only in parent state", func(t *testing.T) {
+		st := &State{
+			relationLinks: nil,
+			parent: &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+				},
+			},
+		}
+		st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+
+		want := &State{
+			relationLinks: []*model.RelationLink{
+				{
+					Key:    bundle.RelationKeyName.String(),
+					Format: model.RelationFormat_shorttext,
+				},
+				{
+					Key:    bundle.RelationKeyPriority.String(),
+					Format: model.RelationFormat_number,
+				},
+			},
+			parent: &State{
+				relationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyName.String(),
+						Format: model.RelationFormat_shorttext,
+					},
+				},
+			},
+		}
+
+		assert.Equal(t, want, st)
 	})
 }
