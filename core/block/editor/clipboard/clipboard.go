@@ -590,11 +590,6 @@ func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
 }
 
 func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {
-	if cb.fileObjectService == nil {
-		log.Errorf("file object service is not initialized")
-		return
-	}
-
 	fileId, err := cb.fileObjectService.GetFileIdFromObject(f.File.TargetObjectId)
 	if err != nil {
 		log.Errorf("failed to get fileId: %v", err)
