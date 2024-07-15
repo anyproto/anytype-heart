@@ -40,6 +40,56 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
 }
 
+func (mw *Middleware) ObjectChatCreate(cctx context.Context, req *pb.RpcObjectChatCreateRequest) *pb.RpcObjectChatCreateResponse {
+	response := func(code pb.RpcObjectChatCreateResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectChatCreateResponse {
+		m := &pb.RpcObjectChatCreateResponse{Error: &pb.RpcObjectChatCreateResponseError{Code: code}, Details: newDetails, ObjectId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Details = newDetails
+		}
+		return m
+	}
+
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		Details:       req.Details,
+		InternalFlags: req.InternalFlags,
+		TemplateId:    req.TemplateId,
+	}
+	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
+
+	if err != nil {
+		return response(pb.RpcObjectChatCreateResponseError_UNKNOWN_ERROR, "", nil, err)
+	}
+	return response(pb.RpcObjectChatCreateResponseError_NULL, id, newDetails, nil)
+}
+
+func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
+	response := func(code pb.RpcObjectChatAddResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectChatAddResponse {
+		m := &pb.RpcObjectChatAddResponse{Error: &pb.RpcObjectChatAddResponseError{Code: code}, Details: newDetails, ObjectId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Details = newDetails
+		}
+		return m
+	}
+
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		Details:       req.Details,
+		InternalFlags: req.InternalFlags,
+		TemplateId:    req.TemplateId,
+	}
+	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
+
+	if err != nil {
+		return response(pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR, "", nil, err)
+	}
+	return response(pb.RpcObjectChatAddResponseError_NULL, id, newDetails, nil)
+}
+
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateSetResponse {
