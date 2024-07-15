@@ -26,6 +26,21 @@ var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
+// required relations for spaceview beside the bundle.RequiredInternalRelations
+var spaceViewRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeySpaceLocalStatus,
+	bundle.RelationKeySpaceRemoteStatus,
+	bundle.RelationKeyTargetSpaceId,
+	bundle.RelationKeySpaceInviteFileCid,
+	bundle.RelationKeySpaceInviteFileKey,
+	bundle.RelationKeyIsAclShared,
+	bundle.RelationKeySharedSpacesLimit,
+	bundle.RelationKeySpaceAccountStatus,
+	bundle.RelationKeySpaceShareableStatus,
+	bundle.RelationKeySpaceAccessType,
+	bundle.RelationKeyLatestAclHeadId,
+}
+
 type spaceService interface {
 	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
 	OnWorkspaceChanged(spaceId string, details *types.Struct)
@@ -51,6 +66,7 @@ func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 
 // Init initializes SpaceView
 func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, spaceViewRequiredRelations...)
 	if err = s.SmartBlock.Init(ctx); err != nil {
 		return
 	}
@@ -95,11 +111,6 @@ func (s *SpaceView) StateMigrations() migration.Migrations {
 func (s *SpaceView) initTemplate(st *state.State) {
 	template.InitTemplate(st,
 		template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
-		template.WithRelations([]domain.RelationKey{
-			bundle.RelationKeySpaceLocalStatus,
-			bundle.RelationKeySpaceRemoteStatus,
-			bundle.RelationKeyTargetSpaceId,
-		}),
 	)
 }
 

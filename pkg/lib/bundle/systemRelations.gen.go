@@ -11,6 +11,15 @@ const SystemRelationsChecksum = "bc2aeab4cefc074963bf2e246506fa4c2449f04f086dc22
 // SystemRelations contains relations that have some special biz logic depends on them in some objects
 // in case EVERY object depend on the relation please add it to RequiredInternalRelations
 var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
+	RelationKeySnippet,
+	RelationKeyLayoutAlign,
+	RelationKeyCoverId,
+	RelationKeyCoverScale,
+	RelationKeyCoverType,
+	RelationKeyCoverX,
+	RelationKeyCoverY,
+	RelationKeyFeaturedRelations,
+	RelationKeyLinks,
 	RelationKeyAddedDate,
 	RelationKeySource,
 	RelationKeySourceObject,
@@ -29,7 +38,6 @@ var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyIsAclShared,
 	RelationKeyIsHiddenDiscovery,
 	RelationKeyDone,
-	RelationKeyIsArchived,
 	RelationKeyTemplateIsBundled,
 	RelationKeySmartblockTypes,
 	RelationKeyTargetObjectType,

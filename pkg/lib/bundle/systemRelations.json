@@ -83,6 +83,10 @@
   "latestAclHeadId",
   "identity",
   "globalName",
+  "syncDate",
+  "syncStatus",
+  "syncError",
+  "globalName",
   "chatId",
   "hasChat"
 ]
