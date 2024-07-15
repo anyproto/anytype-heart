@@ -82,5 +82,7 @@
   "participantStatus",
   "latestAclHeadId",
   "identity",
-  "globalName"
+  "globalName",
+  "chatId",
+  "hasChat"
 ]

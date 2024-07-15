@@ -13075,7 +13075,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ChatAdd.Response.Error](#anytype-Rpc-Object-ChatAdd-Response-Error) |  |  |
 | chatId | [string](#string) |  |  |
-| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -13138,6 +13137,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | error | [Rpc.Object.ChatCreate.Response.Error](#anytype-Rpc-Object-ChatCreate-Response-Error) |  |  |
 | objectId | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| chatId | [string](#string) |  |  |
 
 
 
@@ -28888,6 +28888,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
 | DevicesObject | 536 |  |
+| ChatObject | 537 |  |
 
 
 
