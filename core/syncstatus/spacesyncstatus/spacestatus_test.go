@@ -352,19 +352,6 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 	t.Run("send synced event", func(t *testing.T) {
 		// given
 		eventSender := mock_event.NewMockSender(t)
-		eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						Status:                pb.EventSpace_Synced,
-						Network:               pb.EventSpace_SelfHost,
-						Error:                 pb.EventSpace_Null,
-						SyncingObjectsCounter: 0,
-					},
-				},
-			}},
-		})
 		status := spaceSyncStatus{
 			eventSender:   eventSender,
 			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
@@ -494,6 +481,39 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
 		status.updateSpaceSyncStatus(syncStatus)
 		status.updateSpaceSyncStatus(syncStatus)
+	})
+	t.Run("not send not changed event", func(t *testing.T) {
+		// given
+		eventSender := mock_event.NewMockSender(t)
+		status := spaceSyncStatus{
+			eventSender:   eventSender,
+			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
+			batcher:       mb.New[*domain.SpaceSync](0),
+			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
+		}
+		status.objectsState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
+		status.filesState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
+
+		// then
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		status.objectsState.SetObjectsNumber(syncStatus)
+		status.updateSpaceSyncStatus(syncStatus)
+
+		// when
+		eventSender.AssertNotCalled(t, "Broadcast", &pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:                    "spaceId",
+						Status:                pb.EventSpace_Synced,
+						Network:               pb.EventSpace_SelfHost,
+						Error:                 pb.EventSpace_Null,
+						SyncingObjectsCounter: 0,
+					},
+				},
+			}},
+		})
 	})
 }
 

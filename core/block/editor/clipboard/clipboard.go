@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -386,6 +387,9 @@ func (cb *clipboard) pasteAny(
 				return
 			}
 		}
+		if f, ok := b.Content.(*model.BlockContentOfFile); ok {
+			cb.processFileBlock(f)
+		}
 	}
 	srcState := cb.blocksToState(req.AnySlot)
 	visited := map[string]struct{}{}
@@ -583,6 +587,29 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 
 func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
 	return html.NewHTMLConverter(cb.fileService, s, cb.fileObjectService)
+}
+
+func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {
+	fileId, err := cb.fileObjectService.GetFileIdFromObject(f.File.TargetObjectId)
+	if err != nil {
+		log.Errorf("failed to get fileId: %v", err)
+		return
+	}
+
+	if cb.SpaceID() == fileId.SpaceId {
+		return
+	}
+
+	objectId, err := cb.fileObjectService.CreateFromImport(
+		domain.FullFileId{SpaceId: cb.SpaceID(), FileId: fileId.FileId},
+		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+	)
+	if err != nil {
+		log.Errorf("failed to create file object: %v", err)
+		return
+	}
+
+	f.File.TargetObjectId = objectId
 }
 
 func renderText(s *state.State, ignoreStyle bool) string {

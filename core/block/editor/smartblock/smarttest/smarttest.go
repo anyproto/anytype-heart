@@ -118,6 +118,10 @@ func (s *stubSpace) IsPersonal() bool {
 	return false
 }
 
+func (s *stubSpace) StoredIds() []string {
+	return nil
+}
+
 func (st *SmartTest) Space() smartblock.Space {
 	if st.space != nil {
 		return st.space

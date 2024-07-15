@@ -60,7 +60,7 @@ type Import struct {
 	converters      map[string]common.Converter
 	s               *block.Service
 	oc              creator.Service
-	idProvider      objectid.IDProvider
+	idProvider      objectid.IdAndKeyProvider
 	tempDirProvider core.TempDirProvider
 	fileStore       filestore.FileStore
 	fileSync        filesync.FileSync
@@ -430,6 +430,20 @@ func (i *Import) getObjectID(
 	oldIDToNew[snapshot.Id] = id
 	if payload.RootRawChange != nil {
 		createPayloads[id] = payload
+	}
+	return i.extractInternalKey(snapshot, oldIDToNew)
+}
+
+func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[string]string) error {
+	newUniqueKey := i.idProvider.GetInternalKey(snapshot.SbType)
+	if newUniqueKey != "" {
+		oldUniqueKey := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+		if oldUniqueKey == "" {
+			oldUniqueKey = snapshot.Snapshot.Data.Key
+		}
+		if oldUniqueKey != "" {
+			oldIDToNew[oldUniqueKey] = newUniqueKey
+		}
 	}
 	return nil
 }

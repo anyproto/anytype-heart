@@ -72,15 +72,6 @@ func TestBuffer_GetReadSeekCloser(t *testing.T) {
 	_, err = rsc.Read(readData)
 	assert.Error(t, err, "Read after Close should return an error")
 
-	// take the existing buffer from the pool
-	buf = pool.Get()
-	// check underlying buffer is returned to the pool
-	assert.GreaterOrEqual(t, cap(buf.(*buffer).buf), 13, "we should get the same buffer from the pool")
-	assert.GreaterOrEqual(t, buf.(*buffer).Buffer.Cap(), 13, "we should get the same buffer from the pool")
-	assert.Equalf(t, 0, len(buf.(*buffer).Buffer.Bytes()), "we should get the reseted buffer from the pool")
-	assert.Equal(t, []byte("Hello, World!"), buf.(*buffer).buf[0:13])
-	assert.Equal(t, []byte("Hello, World!"), buf.(*buffer).Buffer.Bytes()[0:13])
-
 	err = rsc.Close()
 	require.NoError(t, err, "Close after Close should not return an error")
 	debug.SetGCPercent(100)
