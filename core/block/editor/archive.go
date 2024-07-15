@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -16,6 +17,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+// required relations for archive beside the bundle.RequiredInternalRelations
+var archiveRequiredRelations = []domain.RelationKey{}
 
 type Archive struct {
 	smartblock.SmartBlock
@@ -35,6 +39,7 @@ func NewArchive(
 }
 
 func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, archiveRequiredRelations...)
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}

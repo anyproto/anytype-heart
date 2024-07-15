@@ -314,7 +314,6 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 		template.WithFeaturedRelations,
 		template.WithAddedFeaturedRelation(bundle.RelationKeyTag),
 		template.WithDetail(bundle.RelationKeyTag, pbtypes.StringList(nil)),
-		template.WithRequiredRelations(),
 		template.WithTitle,
 	)
 	_ = s.converter.Convert(nil, st, model.ObjectType_basic, layout)

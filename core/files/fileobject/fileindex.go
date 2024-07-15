@@ -217,7 +217,7 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	for k := range details.Fields {
 		keys = append(keys, domain.RelationKey(k))
 	}
-	st.AddBundledRelations(keys...)
+	st.AddBundledRelationLinks(keys...)
 
 	details = pbtypes.StructMerge(prevDetails, details, false)
 	st.SetDetails(details)
