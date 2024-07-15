@@ -939,7 +939,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
 func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
-	s.AddBundledRelations(key)
+	s.AddBundledRelationLinks(key)
 	s.SetDetail(key.String(), value)
 	return
 }
@@ -1933,24 +1933,17 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
-func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
-	if len(keys) == 0 {
-		return
-	}
-	added := false
-	relLinks := s.GetRelationLinks()
+func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
+	existingLinks := s.PickRelationLinks()
+
+	links := make([]*model.RelationLink, 0, len(keys))
 	for _, key := range keys {
-		if !relLinks.Has(key.String()) {
-			added = true
-			relLinks = append(relLinks, &model.RelationLink{
-				Key:    key.String(),
-				Format: bundle.MustGetRelation(key).Format,
-			})
+		if !existingLinks.Has(key.String()) {
+			rel := bundle.MustGetRelation(key)
+			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
 		}
 	}
-	if added {
-		s.relationLinks = relLinks
-	}
+	s.AddRelationLinks(links...)
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {

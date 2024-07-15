@@ -81,15 +81,11 @@ var WithNoDuplicateLinks = func() StateTransformer {
 
 var WithRelations = func(rels []domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		s.AddBundledRelations(rels...)
+		s.AddBundledRelationLinks(rels...)
 	}
 }
 
 var WithRequiredRelations = func(s *state.State) {
-	WithRelations(bundle.RequiredInternalRelations)(s)
-}
-
-var WithRequiredRelationsForSmartblockType = func(s *state.State) {
 	WithRelations(bundle.RequiredInternalRelations)(s)
 }
 
@@ -618,7 +614,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, k := range bookmarkRelationKeys {
 		if !s.HasRelation(k) {
-			s.AddBundledRelations(domain.RelationKey(k))
+			s.AddBundledRelationLinks(domain.RelationKey(k))
 		}
 	}
 

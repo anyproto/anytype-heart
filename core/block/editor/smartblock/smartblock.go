@@ -329,21 +329,22 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.Doc.BlocksInit(sb.Doc.(simple.DetailsService))
 
-	var stateToInjectRequiredRelations *state.State
 	if ctx.State == nil {
-		// for existing smartblock we implicitly inject it into the state
-		stateToInjectRequiredRelations = sb.Doc.(*state.State)
 		ctx.State = sb.NewState()
 		sb.storeFileKeys(sb.Doc)
 	} else {
 		if !sb.Doc.(*state.State).IsEmpty(true) {
 			return ErrCantInitExistingSmartblockWithNonEmptyState
 		}
-		// for new objects modify the state in the initCtx, so it will be actually saved to the snapshot
-		stateToInjectRequiredRelations = ctx.State
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
-	template.WithRelations(append(bundle.RequiredInternalRelations, ctx.RequiredInternalRelationKeys...))(stateToInjectRequiredRelations)
+
+	injectRequiredRelationLinks := func(s *state.State) {
+		s.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
+		s.AddBundledRelationLinks(ctx.RequiredInternalRelationKeys...)
+	}
+	injectRequiredRelationLinks(ctx.State)
+	injectRequiredRelationLinks(ctx.State.ParentState())
 
 	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
 		return
@@ -355,7 +356,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			relKeys = append(relKeys, domain.RelationKey(k))
 		}
 	}
-	ctx.State.AddBundledRelations(relKeys...)
+	ctx.State.AddBundledRelationLinks(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
 		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(ctx.State)
 	}
