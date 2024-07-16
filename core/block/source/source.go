@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -349,9 +348,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	change := s.buildChange(params)
 
-	log.Error("push change", zap.String("id", s.id), zap.String("change", pbtypes.Sprint(change)))
 	data, dataType, err := MarshalChange(change)
-
 	if err != nil {
 		return
 	}
