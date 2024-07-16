@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -21,6 +22,8 @@ func (s *service) createChat(ctx context.Context, space clientspace.Space, detai
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, key).(*state.State)
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.String(model.ObjectType_chat.String())
+	createState.SetDetails(details)
 
 	id, newDetails, err := s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyChat}, createState)
 	if err != nil {

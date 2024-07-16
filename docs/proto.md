@@ -764,10 +764,6 @@
     - [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request)
     - [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response)
     - [Rpc.Object.ChatAdd.Response.Error](#anytype-Rpc-Object-ChatAdd-Response-Error)
-    - [Rpc.Object.ChatCreate](#anytype-Rpc-Object-ChatCreate)
-    - [Rpc.Object.ChatCreate.Request](#anytype-Rpc-Object-ChatCreate-Request)
-    - [Rpc.Object.ChatCreate.Response](#anytype-Rpc-Object-ChatCreate-Response)
-    - [Rpc.Object.ChatCreate.Response.Error](#anytype-Rpc-Object-ChatCreate-Response-Error)
     - [Rpc.Object.Close](#anytype-Rpc-Object-Close)
     - [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request)
     - [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response)
@@ -1341,7 +1337,6 @@
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
     - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.ChatAdd.Response.Error.Code](#anytype-Rpc-Object-ChatAdd-Response-Error-Code)
-    - [Rpc.Object.ChatCreate.Response.Error.Code](#anytype-Rpc-Object-ChatCreate-Response-Error-Code)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
     - [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code)
     - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
@@ -1899,7 +1894,6 @@
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
 | ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
 | ObjectCreateFromUrl | [Rpc.Object.CreateFromUrl.Request](#anytype-Rpc-Object-CreateFromUrl-Request) | [Rpc.Object.CreateFromUrl.Response](#anytype-Rpc-Object-CreateFromUrl-Response) |  |
-| ObjectChatCreate | [Rpc.Object.ChatCreate.Request](#anytype-Rpc-Object-ChatCreate-Request) | [Rpc.Object.ChatCreate.Response](#anytype-Rpc-Object-ChatCreate-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ObjectCreateSet | [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request) | [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response) | ObjectCreateSet just creates the new set, without adding the link to it from some other page |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
@@ -13097,69 +13091,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype-Rpc-Object-ChatCreate"></a>
-
-### Rpc.Object.ChatCreate
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ChatCreate-Request"></a>
-
-### Rpc.Object.ChatCreate.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
-| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
-| templateId | [string](#string) |  |  |
-| spaceId | [string](#string) |  |  |
-| objectTypeUniqueKey | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ChatCreate-Response"></a>
-
-### Rpc.Object.ChatCreate.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.ChatCreate.Response.Error](#anytype-Rpc-Object-ChatCreate-Response-Error) |  |  |
-| objectId | [string](#string) |  |  |
-| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| chatId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ChatCreate-Response-Error"></a>
-
-### Rpc.Object.ChatCreate.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.ChatCreate.Response.Error.Code](#anytype-Rpc-Object-ChatCreate-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Object-Close"></a>
 
 ### Rpc.Object.Close
@@ -21372,19 +21303,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-ChatAdd-Response-Error-Code"></a>
 
 ### Rpc.Object.ChatAdd.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-Object-ChatCreate-Response-Error-Code"></a>
-
-### Rpc.Object.ChatCreate.Response.Error.Code
 
 
 | Name | Number | Description |

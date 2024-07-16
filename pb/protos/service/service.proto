@@ -74,7 +74,6 @@ service ClientCommands {
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
     rpc ObjectCreateFromUrl (anytype.Rpc.Object.CreateFromUrl.Request) returns (anytype.Rpc.Object.CreateFromUrl.Response);
 
-    rpc ObjectChatCreate (anytype.Rpc.Object.ChatCreate.Request) returns (anytype.Rpc.Object.ChatCreate.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page

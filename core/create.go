@@ -42,37 +42,20 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
 }
 
-func (mw *Middleware) ObjectChatCreate(cctx context.Context, req *pb.RpcObjectChatCreateRequest) *pb.RpcObjectChatCreateResponse {
-	response := func(objId string, objDetails *types.Struct, chatId string, err error) *pb.RpcObjectChatCreateResponse {
-		code := mapErrorCode(err,
-			errToCode(err, pb.RpcObjectChatCreateResponseError_UNKNOWN_ERROR),
-		)
-		m := &pb.RpcObjectChatCreateResponse{Error: &pb.RpcObjectChatCreateResponseError{Code: code}}
-		m.Error.Code = code
-		m.Error.Description = getErrorDescription(err)
-		m.Details = objDetails
-		m.ObjectId = objId
-		m.ChatId = chatId
-		return m
-	}
-
-	creator := getService[objectcreator.Service](mw)
-	createReq := objectcreator.CreateObjectRequest{
-		Details:       req.Details,
-		InternalFlags: req.InternalFlags,
-		TemplateId:    req.TemplateId,
-	}
-
-	objId, objDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
+func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (string, error) {
+	var spaceId string
+	err := mw.doBlockService(func(bs *block.Service) error {
+		sb, err := bs.GetObject(context.Background(), objectId)
+		if err != nil {
+			return err
+		}
+		spaceId = sb.SpaceID()
+		return nil
+	})
 	if err != nil {
-		return response("", nil, "", err)
+		return "", err
 	}
 
-	chatId, err := mw.addChat(cctx, req.SpaceId, objId)
-	return response(objId, objDetails, chatId, err)
-}
-
-func (mw *Middleware) addChat(cctx context.Context, spaceId string, objId string) (string, error) {
 	chatDetails := &types.Struct{Fields: map[string]*types.Value{}}
 	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatObject, objId)
 	chatDetails.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(chatUniqueKey.Marshal())
@@ -98,32 +81,19 @@ func (mw *Middleware) addChat(cctx context.Context, spaceId string, objId string
 }
 
 func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
-	response := func(chatId string, err error) *pb.RpcObjectChatAddResponse {
-		code := mapErrorCode(err,
-			errToCode(err, pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR),
-		)
-		m := &pb.RpcObjectChatAddResponse{Error: &pb.RpcObjectChatAddResponseError{Code: code}}
-		m.Error.Code = code
-		m.Error.Description = getErrorDescription(err)
-		m.ChatId = chatId
-		return m
-	}
-	var spaceId string
-	err := mw.doBlockService(func(bs *block.Service) error {
-		sb, err := bs.GetObject(nil, req.ObjectId)
-		if err != nil {
-			return err
-		}
-		spaceId = sb.SpaceID()
-		return nil
-	})
+	chatId, err := mw.addChat(cctx, req.ObjectId, req.ObjectId)
 
-	if err != nil {
-		return response("", err)
-	}
+	code := mapErrorCode(err,
+		errToCode(err, pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR),
+	)
 
-	chatId, err := mw.addChat(cctx, spaceId, req.ObjectId)
-	return response(chatId, err)
+	return &pb.RpcObjectChatAddResponse{
+		Error: &pb.RpcObjectChatAddResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		ChatId: chatId,
+	}
 }
 
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
