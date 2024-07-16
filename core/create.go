@@ -45,7 +45,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 func (mw *Middleware) addChat(cctx context.Context, objectId, objId string) (string, error) {
 	var spaceId string
 	err := mw.doBlockService(func(bs *block.Service) error {
-		sb, err := bs.GetObject(context.Background(), objectId)
+		sb, err := bs.GetObject(cctx, objectId)
 		if err != nil {
 			return err
 		}
