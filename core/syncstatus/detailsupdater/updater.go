@@ -161,11 +161,14 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetails, record *types.Struct, objectId string) error {
 	status := syncStatusDetails.status
 	syncError := syncStatusDetails.syncError
+	isFileStatus := false
 	if fileStatus, ok := record.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+		isFileStatus = true
 		status, syncError = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
 	}
+	// we want to update sync date for other stuff
 	changed := u.hasRelationsChange(record, status, syncError)
-	if !changed {
+	if !changed && isFileStatus {
 		return nil
 	}
 	if !u.isLayoutSuitableForSyncRelations(record) {
@@ -260,15 +263,15 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 				Key:   bundle.RelationKeySyncStatus.String(),
 				Value: pbtypes.Int64(int64(status)),
 			},
+			{
+				Key:   bundle.RelationKeySyncError.String(),
+				Value: pbtypes.Int64(int64(syncError)),
+			},
+			{
+				Key:   bundle.RelationKeySyncDate.String(),
+				Value: pbtypes.Int64(time.Now().Unix()),
+			},
 		}
-		syncStatusDetails = append(syncStatusDetails, &model.Detail{
-			Key:   bundle.RelationKeySyncError.String(),
-			Value: pbtypes.Int64(int64(syncError)),
-		})
-		syncStatusDetails = append(syncStatusDetails, &model.Detail{
-			Key:   bundle.RelationKeySyncDate.String(),
-			Value: pbtypes.Int64(time.Now().Unix()),
-		})
 		return d.SetDetails(nil, syncStatusDetails, false)
 	}
 	return nil
