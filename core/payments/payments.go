@@ -252,8 +252,8 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		// try returning from cache again (do not care about the NoCache flag here!)
 		cachedStatus, _, cacheErr := s.cache.CacheGet()
 
-		// if cache is expired or OK -> use this data
-		isExpiredErrorOrNoError := (cacheErr == cache.ErrCacheExpired) || (cacheErr == nil)
+		// if cache is expired/disabled or OK -> use this data
+		isExpiredErrorOrNoError := (cacheErr == cache.ErrCacheExpired) || (cacheErr == cache.ErrCacheDisabled) || (cacheErr == nil)
 		if isExpiredErrorOrNoError && canReturnCachedStatus(cachedStatus) {
 			log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
 			return cachedStatus, nil

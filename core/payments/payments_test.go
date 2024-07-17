@@ -524,6 +524,108 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, "something", resp.Data.NsName)
 	})
 
+	t.Run("success if cache was disabled and GetSubscriptionStatus returns error", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Data: &model.Membership{
+				// same tier returned by cache here
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			},
+		}
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return nil, errors.New("no internet")
+		}).MinTimes(1)
+
+		// here: cache is disabled
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, cache.ErrCacheDisabled)
+
+		// tier was not changed
+		//fx.expectLimitsUpdated()
+
+		// Call the function being tested
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
+		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
+		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
+		assert.Equal(t, true, resp.Data.IsAutoRenew)
+		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
+		assert.Equal(t, "something", resp.Data.NsName)
+	})
+
+	t.Run("success if cache was expired and GetSubscriptionStatus returns error", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Data: &model.Membership{
+				// same tier returned by cache here
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			},
+		}
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return nil, errors.New("no internet")
+		}).MinTimes(1)
+
+		// here: cache is disabled
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, cache.ErrCacheExpired)
+
+		// tier was not changed
+		//fx.expectLimitsUpdated()
+
+		// Call the function being tested
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
+		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
+		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
+		assert.Equal(t, true, resp.Data.IsAutoRenew)
+		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
+		assert.Equal(t, "something", resp.Data.NsName)
+	})
+
 	t.Run("do not fail if no cache, GetSubscriptionStatus returns no error, but can not save to cache", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
