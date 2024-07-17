@@ -44,7 +44,7 @@
     "hidden": true,
     "key": "toBeDeletedDate",
     "maxCount": 1,
-    "name": "Date to delete",
+    "name": "Date toderived delete",
     "readonly": true,
     "source": "account"
   },
@@ -1758,5 +1758,25 @@
     "name": "Sync error",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Object has a chat",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "hasChat",
+    "maxCount": 1,
+    "name": "Has a chat",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Chat id",
+    "format": "object",
+    "hidden": true,
+    "key": "chatId",
+    "maxCount": 1,
+    "name": "Chat id",
+    "readonly": true,
+    "source": "derived"
   }
 ]
