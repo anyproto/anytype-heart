@@ -289,7 +289,7 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, hash)
 
-		ids, err := s.ListIDsFromFullTextQueue()
+		ids, err := s.ListIDsFromFullTextQueue(0)
 		require.NoError(t, err)
 		assert.Empty(t, ids)
 	})

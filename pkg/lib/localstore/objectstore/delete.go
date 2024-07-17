@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -61,13 +62,13 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 		txn := s.db.NewTransaction(true)
 		defer txn.Discard()
 
-		for _, key := range []ds.Key{
-			indexQueueBase.ChildString(id.ObjectID),
-			indexedHeadsState.ChildString(id.ObjectID),
-		} {
-			if err = txn.Delete(key.Bytes()); err != nil {
-				return err
-			}
+		err = s.fulltextQueue.DeleteId(s.componentCtx, id.ObjectID)
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+			return fmt.Errorf("delete from fulltext queue: %w", err)
+		}
+
+		if err = txn.Delete(indexedHeadsState.ChildString(id.ObjectID).Bytes()); err != nil {
+			return err
 		}
 
 		txn, err = s.eraseLinksForObject(txn, id.ObjectID)
@@ -80,10 +81,6 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 		}
 
 		if s.fts != nil {
-			err = s.removeFromIndexQueue(id.ObjectID)
-			if err != nil {
-				log.Errorf("error removing %s from index queue: %s", id, err)
-			}
 			if err := s.fts.DeleteObject(id.ObjectID); err != nil {
 				return err
 			}

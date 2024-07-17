@@ -48,7 +48,6 @@ var (
 	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
-	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
 	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
 	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
 
@@ -125,8 +124,8 @@ type ObjectStore interface {
 
 type IndexerStore interface {
 	AddToIndexQueue(id string) error
-	ListIDsFromFullTextQueue() ([]string, error)
-	RemoveIDsFromFullTextQueue(ids []string)
+	ListIDsFromFullTextQueue(limit int) ([]string, error)
+	RemoveIDsFromFullTextQueue(ids []string) error
 	FTSearch() ftsearch.FTSearch
 	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
 
@@ -155,6 +154,7 @@ type dsObjectStore struct {
 	sourceService SourceDetailsFromID
 	anyStore      anystore.DB
 	objects       anystore.Collection
+	fulltextQueue anystore.Collection
 
 	arenaPool *fastjson.ArenaPool
 
@@ -240,6 +240,10 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open objects collection: %w", err))
 	}
+	fulltextQueue, err := store.Collection(ctx, "fulltext_queue")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open fulltextQueue collection: %w", err))
+	}
 	s.anyStore = store
 
 	indexes := []anystore.IndexInfo{
@@ -286,6 +290,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 		log.Errorf("ensure index: %s", err)
 	}
 	s.objects = objects
+	s.fulltextQueue = fulltextQueue
 	return nil
 }
 

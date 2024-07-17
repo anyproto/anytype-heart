@@ -536,18 +536,18 @@ func (mr *MockObjectStoreMockRecorder) ListAllRelations(arg0 any) *gomock.Call {
 }
 
 // ListIDsFromFullTextQueue mocks base method.
-func (m *MockObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
+func (m *MockObjectStore) ListIDsFromFullTextQueue(arg0 int) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListIDsFromFullTextQueue")
+	ret := m.ctrl.Call(m, "ListIDsFromFullTextQueue", arg0)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListIDsFromFullTextQueue indicates an expected call of ListIDsFromFullTextQueue.
-func (mr *MockObjectStoreMockRecorder) ListIDsFromFullTextQueue() *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) ListIDsFromFullTextQueue(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIDsFromFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).ListIDsFromFullTextQueue))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIDsFromFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).ListIDsFromFullTextQueue), arg0)
 }
 
 // ListIds mocks base method.
@@ -701,9 +701,11 @@ func (mr *MockObjectStoreMockRecorder) QueryRaw(arg0, arg1, arg2 any) *gomock.Ca
 }
 
 // RemoveIDsFromFullTextQueue mocks base method.
-func (m *MockObjectStore) RemoveIDsFromFullTextQueue(arg0 []string) {
+func (m *MockObjectStore) RemoveIDsFromFullTextQueue(arg0 []string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RemoveIDsFromFullTextQueue", arg0)
+	ret := m.ctrl.Call(m, "RemoveIDsFromFullTextQueue", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // RemoveIDsFromFullTextQueue indicates an expected call of RemoveIDsFromFullTextQueue.

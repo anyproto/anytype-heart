@@ -2,6 +2,8 @@ package objectstore
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -11,49 +13,63 @@ import (
 )
 
 func (s *dsObjectStore) AddToIndexQueue(id string) error {
-	return badgerhelper.SetValue(s.db, indexQueueBase.ChildString(id).Bytes(), nil)
-}
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+	obj := arena.NewObject()
+	obj.Set("id", arena.NewString(id))
 
-func (s *dsObjectStore) removeFromIndexQueue(id string) error {
-	return badgerhelper.DeleteValue(s.db, indexQueueBase.ChildString(id).Bytes())
+	_, err := s.fulltextQueue.UpsertOne(s.componentCtx, obj)
+	return err
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {
-	return iterateKeysByPrefixBatched(s.db, indexQueueBase.Bytes(), limit, func(keys [][]byte) error {
-		var ids []string
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-		for id := range keys {
-			ids = append(ids, extractIdFromKey(string(keys[id])))
-		}
-		err := processIds(ids)
-		if err == nil {
-			s.RemoveIDsFromFullTextQueue(ids)
-		}
-		return err
-	})
+	ids, err := s.ListIDsFromFullTextQueue(limit)
+	if err != nil {
+		return fmt.Errorf("list ids from fulltext queue: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	err = processIds(ids)
+	if err != nil {
+		return fmt.Errorf("process ids: %w", err)
+	}
+	return s.RemoveIDsFromFullTextQueue(ids)
 }
 
-func (s *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
+func (s *dsObjectStore) ListIDsFromFullTextQueue(limit int) ([]string, error) {
+	iter, err := s.fulltextQueue.Find(nil).Limit(uint(limit)).Iter(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("create iterator: %w", err)
+	}
 	var ids []string
-	err := iterateKeysByPrefix(s.db, indexQueueBase.Bytes(), func(key []byte) {
-		ids = append(ids, extractIdFromKey(string(key)))
-	})
-	return ids, err
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, errors.Join(iter.Close(), fmt.Errorf("read doc: %w", err))
+		}
+		id := doc.Value().GetStringBytes("id")
+		ids = append(ids, string(id))
+	}
+	return ids, iter.Close()
 }
 
-func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
+func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) error {
+	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
 	for _, id := range ids {
-		err := s.removeFromIndexQueue(id)
+		err := s.fulltextQueue.DeleteId(txn.Context(), id)
 		if err != nil {
 			// if we have the error here we have nothing to do but retry later
 			log.Errorf("failed to remove %s from index, will redo the fulltext index: %v", id, err)
 		}
 	}
+	return txn.Commit()
 }
 
 func (s *dsObjectStore) GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error) {
