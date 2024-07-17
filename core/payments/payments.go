@@ -253,7 +253,7 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 		cachedStatus, _, cacheErr := s.cache.CacheGet()
 
 		// if cache is expired/disabled or OK -> use this data
-		isExpiredErrorOrNoError := (cacheErr == cache.ErrCacheExpired) || (cacheErr == cache.ErrCacheDisabled) || (cacheErr == nil)
+		isExpiredErrorOrNoError := errors.Is(cacheErr, cache.ErrCacheExpired) || errors.Is(cacheErr, cache.ErrCacheDisabled) || (cacheErr == nil)
 		if isExpiredErrorOrNoError && canReturnCachedStatus(cachedStatus) {
 			log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
 			return cachedStatus, nil
@@ -303,7 +303,7 @@ func canReturnCachedStatus(s *pb.RpcMembershipGetStatusResponse) bool {
 func isUpdateRequired(cacheErr error, cachedStatus *pb.RpcMembershipGetStatusResponse, status *proto.GetSubscriptionResponse) bool {
 	// 1 - If cache was empty or expire or disabled or NoCache flag was passed
 	// -> treat at is if data was different
-	isCacheEmpty := (cacheErr != nil) && (cacheErr != cache.ErrCacheDisabled)
+	isCacheEmpty := (cacheErr != nil) && !errors.Is(cacheErr, cache.ErrCacheDisabled)
 
 	if isCacheEmpty {
 		log.Debug("subscription status treated as changed because cache was empty/expired/NoCache flag was passed")
