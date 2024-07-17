@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	syncUpdateInterval = 5
+	syncUpdateInterval = 2
 	syncTimeout        = time.Second
 )
 
