@@ -610,7 +610,7 @@
     "id": "chat",
     "name": "Discussion",
     "types": [
-      "Page"
+      "ChatObject"
     ],
     "emoji": "",
     "hidden": false,

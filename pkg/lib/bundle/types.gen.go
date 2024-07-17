@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "ccff39ba78431f015906dd049ca3ed1d064cd955397c775d82b9da2ca4c48485"
+const TypeChecksum = "92392d474aa160716d8f4fb3d0cd6c69a9f35c343ce1c352b65403102e90f1d3"
 const (
 	TypePrefix = "_ot"
 )
@@ -105,7 +105,7 @@ var (
 			Name:          "Discussion",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
 			Url:           TypePrefix + "chat",
 		},
 		TypeKeyClassNote: {
