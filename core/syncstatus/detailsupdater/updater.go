@@ -39,6 +39,7 @@ type syncStatusDetails struct {
 
 type Updater interface {
 	app.ComponentRunnable
+	UpdateSpaceDetails(existing []string, hasMissing bool, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
 	UpdateDetails(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
 }
 
@@ -54,6 +55,7 @@ type syncStatusUpdater struct {
 	batcher         *mb.MB[*syncStatusDetails]
 	spaceService    space.Service
 	spaceSyncStatus SpaceStatusUpdater
+	missing         map[string]struct{}
 
 	entries map[string]*syncStatusDetails
 	mx      sync.Mutex
@@ -65,6 +67,7 @@ func NewUpdater() Updater {
 	return &syncStatusUpdater{
 		batcher: mb.New[*syncStatusDetails](0),
 		finish:  make(chan struct{}),
+		missing: make(map[string]struct{}),
 		entries: make(map[string]*syncStatusDetails, 0),
 	}
 }
@@ -116,6 +119,20 @@ func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.Objec
 	if err != nil {
 		log.Errorf("failed to add sync details update to queue: %s", err)
 	}
+}
+
+func (u *syncStatusUpdater) UpdateSpaceDetails(existing []string, hasMissing bool, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string) {
+	if spaceId == u.spaceService.TechSpaceId() {
+		return
+	}
+	u.mx.Lock()
+	if hasMissing {
+		u.missing[spaceId] = struct{}{}
+	} else {
+		delete(u.missing, spaceId)
+	}
+	u.mx.Unlock()
+	u.UpdateDetails(existing, status, syncError, spaceId)
 }
 
 func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) {
@@ -231,6 +248,14 @@ func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus, syncError do
 
 func (u *syncStatusUpdater) sendSpaceStatusUpdate(err error, syncStatusDetails *syncStatusDetails, status domain.SpaceSyncStatus, syncError domain.SyncError) {
 	if err == nil {
+		if status == domain.Synced {
+			u.mx.Lock()
+			_, missing := u.missing[syncStatusDetails.spaceId]
+			u.mx.Unlock()
+			if missing {
+				status = domain.Syncing
+			}
+		}
 		u.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(syncStatusDetails.spaceId, status, syncError, domain.Objects))
 	}
 }
