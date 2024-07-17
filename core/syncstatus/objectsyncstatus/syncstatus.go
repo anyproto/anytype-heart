@@ -77,7 +77,7 @@ type treeStatus struct {
 
 type Updater interface {
 	app.Component
-	UpdateDetails(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateDetails(objectId string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 type syncStatusService struct {
@@ -354,5 +354,5 @@ func (s *syncStatusService) updateDetails(treeId string, status domain.ObjectSyn
 		syncErr = domain.IncompatibleVersion
 		status = domain.ObjectError
 	}
-	s.syncDetailsUpdater.UpdateDetails([]string{treeId}, status, syncErr, s.spaceId)
+	s.syncDetailsUpdater.UpdateDetails(treeId, status, syncErr, s.spaceId)
 }

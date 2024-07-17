@@ -17,7 +17,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -89,7 +88,6 @@ type treeSyncer struct {
 	nodeConf           nodeconf.NodeConf
 	syncedTreeRemover  SyncedTreeRemover
 	syncDetailsUpdater SyncDetailsUpdater
-	peerData           map[string][]string
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -107,7 +105,6 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 
 func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
-	t.peerData = map[string][]string{}
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
 	t.peerManager = app.MustComponent[PeerStatusChecker](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
@@ -164,18 +161,11 @@ func (t *treeSyncer) ShouldSync(peerId string) bool {
 	return t.isSyncing
 }
 
-func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) error {
+func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missing []string) (err error) {
 	t.Lock()
 	defer t.Unlock()
-	var (
-		err      error
-		peerData = t.peerData[peerId]
-	)
-	existingRemoved, existingAdded := slice.DifferenceRemovedAdded(peerData, existing)
-	t.peerData[peerId] = existing
 	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
-	t.sendResultEvent(peerId, existingRemoved, missing, err, isResponsible)
-	t.sendSyncingEvent(peerId, existingAdded, missing, isResponsible)
+	t.sendSyncEvents(peerId, existing, missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
@@ -214,26 +204,14 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	return nil
 }
 
-func (t *treeSyncer) sendSyncingEvent(peerId string, existing, missing []string, nodePeer bool) {
+func (t *treeSyncer) sendSyncEvents(peerId string, existing, missing []string, nodePeer bool) {
 	if !nodePeer {
 		return
 	}
 	if t.peerManager.IsPeerOffline(peerId) {
 		t.sendDetailsUpdates(existing, missing, domain.ObjectError, domain.NetworkError)
-		return
-	}
-	if len(existing) != 0 || len(missing) != 0 {
+	} else {
 		t.sendDetailsUpdates(existing, missing, domain.ObjectSyncing, domain.Null)
-	}
-}
-
-func (t *treeSyncer) sendResultEvent(peerId string, existing, missing []string, err error, nodePeer bool) {
-	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
-		if err != nil {
-			t.sendDetailsUpdates(existing, missing, domain.ObjectError, domain.NetworkError)
-		} else {
-			t.sendDetailsUpdates(existing, missing, domain.ObjectSynced, domain.Null)
-		}
 	}
 }
 
