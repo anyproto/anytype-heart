@@ -2,9 +2,14 @@ package spacesyncstatus
 
 import (
 	"context"
+	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -12,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const service = "core.syncstatus.spacesyncstatus"
@@ -21,6 +27,7 @@ var log = logging.Logger("anytype-mw-space-status")
 type Updater interface {
 	app.ComponentRunnable
 	SendUpdate(spaceSync *domain.SpaceSync)
+	UpdateMissingIds(spaceId string, ids []string)
 }
 
 type SpaceIdGetter interface {
@@ -53,8 +60,11 @@ type spaceSyncStatus struct {
 	ctx           context.Context
 	ctxCancel     context.CancelFunc
 	spaceIdGetter SpaceIdGetter
-
-	finish chan struct{}
+	curStatuses   map[string]*domain.SpaceSync
+	missingIds    map[string][]string
+	mx            sync.Mutex
+	periodicCall  periodicsync.PeriodicSync
+	finish        chan struct{}
 }
 
 func NewSpaceSyncStatus() Updater {
@@ -65,11 +75,14 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.networkConfig = app.MustComponent[NetworkConfig](a)
 	store := app.MustComponent[objectstore.ObjectStore](a)
+	s.curStatuses = make(map[string]*domain.SpaceSync)
+	s.missingIds = make(map[string][]string)
 	s.filesState = NewFileState(store)
 	s.objectsState = NewObjectState(store)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
 	sessionHookRunner.RegisterHook(s.sendSyncEventForNewSession)
+	s.periodicCall = periodicsync.NewPeriodicSync(10, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
 	return
 }
 
@@ -85,6 +98,12 @@ func (s *spaceSyncStatus) sendSyncEventForNewSession(ctx session.Context) error 
 	return nil
 }
 
+func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	s.missingIds[spaceId] = ids
+}
+
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	if s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly {
 		s.sendLocalOnlyEvent()
@@ -94,8 +113,27 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
 	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	go s.processEvents()
+	s.periodicCall.Run()
 	return
+}
+
+func (s *spaceSyncStatus) update(ctx context.Context) error {
+	s.mx.Lock()
+	missingIds := lo.MapEntries(s.missingIds, func(key string, value []string) (string, []string) {
+		return key, slice.Copy(value)
+	})
+	statuses := lo.MapToSlice(s.curStatuses, func(key string, value *domain.SpaceSync) *domain.SpaceSync {
+		return value
+	})
+	s.mx.Unlock()
+	for _, st := range statuses {
+		if st.SpaceId == s.spaceIdGetter.TechSpaceId() {
+			continue
+		}
+		st.MissingObjects = missingIds[st.SpaceId]
+		s.updateSpaceSyncStatus(st)
+	}
+	return nil
 }
 
 func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
@@ -134,25 +172,9 @@ func (s *spaceSyncStatus) sendLocalOnlyEvent() {
 }
 
 func (s *spaceSyncStatus) SendUpdate(status *domain.SpaceSync) {
-	e := s.batcher.Add(context.Background(), status)
-	if e != nil {
-		log.Errorf("failed to add space sync event to queue %s", e)
-	}
-}
-
-func (s *spaceSyncStatus) processEvents() {
-	defer close(s.finish)
-	for {
-		status, err := s.batcher.WaitOne(s.ctx)
-		if err != nil {
-			log.Errorf("failed to get event from batcher: %s", err)
-			return
-		}
-		if status.SpaceId == s.spaceIdGetter.TechSpaceId() {
-			continue
-		}
-		s.updateSpaceSyncStatus(status)
-	}
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	s.curStatuses[status.SpaceId] = status
 }
 
 func (s *spaceSyncStatus) updateSpaceSyncStatus(receivedStatus *domain.SpaceSync) {
@@ -204,11 +226,8 @@ func (s *spaceSyncStatus) needToSendEvent(status domain.SpaceSyncStatus, currSyn
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
-	if s.ctxCancel != nil {
-		s.ctxCancel()
-	}
-	<-s.finish
-	return s.batcher.Close()
+	s.periodicCall.Close()
+	return
 }
 
 func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string) *pb.EventSpaceSyncStatusUpdate {

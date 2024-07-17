@@ -1,7 +1,10 @@
 package spacesyncstatus
 
 import (
+	"fmt"
 	"sync"
+
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -9,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type ObjectState struct {
@@ -37,7 +41,11 @@ func (o *ObjectState) SetObjectsNumber(status *domain.SpaceSync) {
 		o.objectSyncCountBySpace[status.SpaceId] = 0
 	default:
 		records := o.getSyncingObjects(status)
-		o.objectSyncCountBySpace[status.SpaceId] = len(records)
+		ids := lo.Map(records, func(r database.Record, idx int) string {
+			return pbtypes.GetString(r.Details, bundle.RelationKeyId.String())
+		})
+		_, added := slice.DifferenceRemovedAdded(ids, status.MissingObjects)
+		o.objectSyncCountBySpace[status.SpaceId] = len(records) + len(added)
 	}
 }
 

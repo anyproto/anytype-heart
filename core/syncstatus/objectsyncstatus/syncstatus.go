@@ -15,12 +15,12 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/periodicsync"
-	"github.com/anyproto/any-sync/util/slice"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const (
@@ -47,6 +47,7 @@ type StatusUpdater interface {
 	HeadsChange(treeId string, heads []string)
 	HeadsReceive(senderId, treeId string, heads []string)
 	HeadsApply(senderId, treeId string, heads []string, allAdded bool)
+	ObjectReceive(senderId, treeId string, heads []string)
 	RemoveAllExcept(senderId string, differentRemoteIds []string)
 }
 
@@ -161,6 +162,20 @@ func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
 	s.updateDetails(treeId, domain.ObjectSyncing)
 }
 
+func (s *syncStatusService) ObjectReceive(senderId, treeId string, heads []string) {
+	s.Lock()
+	defer s.Unlock()
+	if len(heads) == 0 || !s.isSenderResponsible(senderId) {
+		s.tempSynced[treeId] = struct{}{}
+		return
+	}
+	_, ok := s.treeHeads[treeId]
+	if ok {
+		return
+	}
+	s.synced = append(s.synced, treeId)
+}
+
 func (s *syncStatusService) HeadsApply(senderId, treeId string, heads []string, allAdded bool) {
 	s.Lock()
 	defer s.Unlock()
@@ -243,9 +258,7 @@ func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string
 			curTreeHeads.heads[idx] = ""
 		}
 	}
-	curTreeHeads.heads = slice.DiscardFromSlice(curTreeHeads.heads, func(h string) bool {
-		return h == ""
-	})
+	curTreeHeads.heads = slice.RemoveMut(curTreeHeads.heads, "")
 	if len(curTreeHeads.heads) == 0 {
 		curTreeHeads.syncStatus = StatusSynced
 		curTreeHeads.isUpdated = false
