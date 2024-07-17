@@ -265,6 +265,7 @@ func (s *State) CleanupBlock(id string) bool {
 	)
 	for t != nil {
 		if _, ok = t.blocks[id]; ok {
+			s.removeFromCache(id)
 			delete(t.blocks, id)
 			return true
 		}

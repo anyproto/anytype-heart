@@ -220,7 +220,7 @@ func normalizeRow(s *state.State, colIdx map[string]int, row simple.Block) {
 		if s == nil {
 			row.Model().ChildrenIds = rs.cells
 		} else {
-			s.RemoveFromCache(row.Model(), toRemove)
+			s.RemoveFromCache(toRemove)
 			s.SetChildrenIds(row.Model(), rs.cells)
 		}
 	}
