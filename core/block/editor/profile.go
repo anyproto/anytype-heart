@@ -82,7 +82,6 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
-				template.WithRequiredRelations(),
 				migrationSetHidden,
 			)
 		},
