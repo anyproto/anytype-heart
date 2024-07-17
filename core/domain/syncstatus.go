@@ -37,10 +37,11 @@ const (
 )
 
 type SpaceSync struct {
-	SpaceId   string
-	Status    SpaceSyncStatus
-	SyncError SyncError
-	SyncType  SyncType
+	SpaceId        string
+	Status         SpaceSyncStatus
+	SyncError      SyncError
+	SyncType       SyncType
+	MissingObjects int
 }
 
 func MakeSyncStatus(spaceId string, status SpaceSyncStatus, syncError SyncError, syncType SyncType) *SpaceSync {

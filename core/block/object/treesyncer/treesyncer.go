@@ -70,7 +70,7 @@ type PeerStatusChecker interface {
 
 type SyncDetailsUpdater interface {
 	app.Component
-	UpdateSpaceDetails(existing []string, hasMissing bool, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateSpaceDetails(existing []string, missingCount int, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
 }
 
 type treeSyncer struct {
@@ -174,8 +174,8 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	existingRemoved, existingAdded := slice.DifferenceRemovedAdded(peerData, existing)
 	t.peerData[peerId] = existing
 	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
-	t.sendResultEvent(peerId, len(missing) != 0, existingRemoved, err, isResponsible)
-	t.sendSyncingEvent(peerId, len(missing) != 0, existingAdded, isResponsible)
+	t.sendResultEvent(peerId, len(missing), existingRemoved, err, isResponsible)
+	t.sendSyncingEvent(peerId, len(missing), existingAdded, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
@@ -214,31 +214,31 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	return nil
 }
 
-func (t *treeSyncer) sendSyncingEvent(peerId string, hasMissing bool, existing []string, nodePeer bool) {
+func (t *treeSyncer) sendSyncingEvent(peerId string, missingCount int, existing []string, nodePeer bool) {
 	if !nodePeer {
 		return
 	}
 	if t.peerManager.IsPeerOffline(peerId) {
-		t.sendDetailsUpdates(existing, hasMissing, domain.ObjectError, domain.NetworkError)
+		t.sendDetailsUpdates(existing, missingCount, domain.ObjectError, domain.NetworkError)
 		return
 	}
-	if len(existing) != 0 || hasMissing {
-		t.sendDetailsUpdates(existing, hasMissing, domain.ObjectSyncing, domain.Null)
+	if len(existing) != 0 || missingCount != 0 {
+		t.sendDetailsUpdates(existing, missingCount, domain.ObjectSyncing, domain.Null)
 	}
 }
 
-func (t *treeSyncer) sendResultEvent(peerId string, hasMissing bool, existing []string, err error, nodePeer bool) {
+func (t *treeSyncer) sendResultEvent(peerId string, missingCount int, existing []string, err error, nodePeer bool) {
 	if nodePeer && !t.peerManager.IsPeerOffline(peerId) {
 		if err != nil {
-			t.sendDetailsUpdates(existing, hasMissing, domain.ObjectError, domain.NetworkError)
+			t.sendDetailsUpdates(existing, missingCount, domain.ObjectError, domain.NetworkError)
 		} else {
-			t.sendDetailsUpdates(existing, hasMissing, domain.ObjectSynced, domain.Null)
+			t.sendDetailsUpdates(existing, missingCount, domain.ObjectSynced, domain.Null)
 		}
 	}
 }
 
-func (t *treeSyncer) sendDetailsUpdates(existing []string, hasMissing bool, status domain.ObjectSyncStatus, syncError domain.SyncError) {
-	t.syncDetailsUpdater.UpdateSpaceDetails(existing, hasMissing, status, syncError, t.spaceId)
+func (t *treeSyncer) sendDetailsUpdates(existing []string, missingCount int, status domain.ObjectSyncStatus, syncError domain.SyncError) {
+	t.syncDetailsUpdater.UpdateSpaceDetails(existing, missingCount, status, syncError, t.spaceId)
 }
 
 func (t *treeSyncer) requestTree(peerId, id string) {

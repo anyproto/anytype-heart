@@ -39,7 +39,7 @@ type syncStatusDetails struct {
 
 type Updater interface {
 	app.ComponentRunnable
-	UpdateSpaceDetails(existing []string, hasMissing bool, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateSpaceDetails(existing []string, missing int, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
 	UpdateDetails(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
 }
 
@@ -55,7 +55,7 @@ type syncStatusUpdater struct {
 	batcher         *mb.MB[*syncStatusDetails]
 	spaceService    space.Service
 	spaceSyncStatus SpaceStatusUpdater
-	missing         map[string]struct{}
+	missing         map[string]int
 
 	entries map[string]*syncStatusDetails
 	mx      sync.Mutex
@@ -67,7 +67,7 @@ func NewUpdater() Updater {
 	return &syncStatusUpdater{
 		batcher: mb.New[*syncStatusDetails](0),
 		finish:  make(chan struct{}),
-		missing: make(map[string]struct{}),
+		missing: make(map[string]int),
 		entries: make(map[string]*syncStatusDetails, 0),
 	}
 }
@@ -121,29 +121,18 @@ func (u *syncStatusUpdater) UpdateDetails(objectId []string, status domain.Objec
 	}
 }
 
-func (u *syncStatusUpdater) UpdateSpaceDetails(existing []string, hasMissing bool, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string) {
+func (u *syncStatusUpdater) UpdateSpaceDetails(existing []string, missing int, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string) {
 	if spaceId == u.spaceService.TechSpaceId() {
 		return
 	}
 	u.mx.Lock()
-	if hasMissing {
-		u.missing[spaceId] = struct{}{}
+	if missing != 0 {
+		u.missing[spaceId] = missing
 	} else {
 		delete(u.missing, spaceId)
 	}
 	u.mx.Unlock()
 	u.UpdateDetails(existing, status, syncError, spaceId)
-}
-
-func (u *syncStatusUpdater) updateDetails(syncStatusDetails *syncStatusDetails) {
-	details := u.extractObjectDetails(syncStatusDetails)
-	for _, detail := range details {
-		id := pbtypes.GetString(detail.Details, bundle.RelationKeyId.String())
-		err := u.setObjectDetails(syncStatusDetails, detail.Details, id)
-		if err != nil {
-			log.Errorf("failed to update object details %s", err)
-		}
-	}
 }
 
 func (u *syncStatusUpdater) extractObjectDetails(syncStatusDetails *syncStatusDetails) []database.Record {
@@ -248,15 +237,18 @@ func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus, syncError do
 
 func (u *syncStatusUpdater) sendSpaceStatusUpdate(err error, syncStatusDetails *syncStatusDetails, status domain.SpaceSyncStatus, syncError domain.SyncError) {
 	if err == nil {
+		domainStatus := domain.MakeSyncStatus(syncStatusDetails.spaceId, status, syncError, domain.Objects)
 		if status == domain.Synced {
 			u.mx.Lock()
-			_, missing := u.missing[syncStatusDetails.spaceId]
+			cnt := u.missing[syncStatusDetails.spaceId]
 			u.mx.Unlock()
-			if missing {
+			if cnt != 0 {
 				status = domain.Syncing
 			}
+			domainStatus.MissingObjects = cnt
 		}
-		u.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(syncStatusDetails.spaceId, status, syncError, domain.Objects))
+
+		u.spaceSyncStatus.SendUpdate(domainStatus)
 	}
 }
 
@@ -338,9 +330,6 @@ func (u *syncStatusUpdater) processEvents() {
 					log.Errorf("failed to update details %s", err)
 				}
 			}
-		}
-		if len(status.objectIds) == 0 {
-			u.updateDetails(status)
 		}
 	}
 }
