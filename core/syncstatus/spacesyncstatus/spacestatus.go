@@ -82,7 +82,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
 	sessionHookRunner.RegisterHook(s.sendSyncEventForNewSession)
-	s.periodicCall = periodicsync.NewPeriodicSync(10, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
+	s.periodicCall = periodicsync.NewPeriodicSync(1, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
 	return
 }
 
@@ -123,6 +123,7 @@ func (s *spaceSyncStatus) update(ctx context.Context) error {
 		return key, slice.Copy(value)
 	})
 	statuses := lo.MapToSlice(s.curStatuses, func(key string, value *domain.SpaceSync) *domain.SpaceSync {
+		delete(s.curStatuses, key)
 		return value
 	})
 	s.mx.Unlock()
@@ -131,6 +132,8 @@ func (s *spaceSyncStatus) update(ctx context.Context) error {
 			continue
 		}
 		st.MissingObjects = missingIds[st.SpaceId]
+		// if the there are too many updates and this hurts performance,
+		// we may skip some iterations and not do the updates for example
 		s.updateSpaceSyncStatus(st)
 	}
 	return nil
