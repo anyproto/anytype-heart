@@ -185,6 +185,16 @@ func (s *State) setChildrenIds(parent *model.Block, childrenIds []string) {
 	s.addCacheIds(parent, childrenIds...)
 }
 
+// do not use this method outside of normalization
+func (s *State) SetChildrenIds(parent *model.Block, childrenIds []string) {
+	s.setChildrenIds(parent, childrenIds)
+}
+
+// do not use this method outside of normalization
+func (s *State) RemoveFromCache(parent *model.Block, childrenIds []string) {
+	s.setChildrenIds(parent, childrenIds)
+}
+
 func (s *State) removeChildren(parent *model.Block, childrenId string) {
 	parent.ChildrenIds = slice.RemoveMut(parent.ChildrenIds, childrenId)
 	s.removeFromCache(childrenId)
