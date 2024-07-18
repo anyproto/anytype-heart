@@ -30,7 +30,7 @@ func (s *service) onFileLimited(objectId string, _ domain.FullFileId, bytesLeftP
 }
 
 func (s *service) OnFileDelete(fileId domain.FullFileId) {
-	s.sendSpaceStatusUpdate(filesyncstatus.Synced, fileId.SpaceId, 0)
+	s.spaceSyncStatus.Refresh(fileId.SpaceId)
 }
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status, bytesLeftPercentage float64) error {
@@ -56,7 +56,7 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 	if err != nil {
 		return fmt.Errorf("update tree: %w", err)
 	}
-	s.sendSpaceStatusUpdate(status, spaceId, bytesLeftPercentage)
+	s.spaceSyncStatus.Refresh(spaceId)
 	return nil
 }
 
@@ -80,12 +80,6 @@ func provideFileStatusDetails(status filesyncstatus.Status, newStatus int64) []*
 		Value: pbtypes.Int64(newStatus),
 	})
 	return details
-}
-
-func (s *service) sendSpaceStatusUpdate(status filesyncstatus.Status, spaceId string, bytesLeftPercentage float64) {
-	spaceStatus, spaceError := getSyncStatus(status, bytesLeftPercentage)
-	syncStatus := domain.MakeSyncStatus(spaceId, spaceStatus, spaceError, domain.Files)
-	s.spaceSyncStatus.SendUpdate(syncStatus)
 }
 
 func getFileObjectStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {

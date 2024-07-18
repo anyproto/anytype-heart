@@ -7,16 +7,24 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -24,10 +32,18 @@ const service = "core.syncstatus.spacesyncstatus"
 
 var log = logging.Logger("anytype-mw-space-status")
 
+// nodeconfservice
+// nodestatus
+// GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
+
 type Updater interface {
 	app.ComponentRunnable
-	SendUpdate(spaceSync *domain.SpaceSync)
+	Refresh(spaceId string)
 	UpdateMissingIds(spaceId string, ids []string)
+}
+
+type NodeUsage interface {
+	GetNodeUsage(ctx context.Context) (*files.NodeUsageResponse, error)
 }
 
 type SpaceIdGetter interface {
@@ -52,6 +68,10 @@ type NetworkConfig interface {
 type spaceSyncStatus struct {
 	eventSender   event.Sender
 	networkConfig NetworkConfig
+	nodeStatus    nodestatus.NodeStatus
+	nodeConf      nodeconf.Service
+	nodeUsage     NodeUsage
+	store         objectstore.ObjectStore
 	batcher       *mb.MB[*domain.SpaceSync]
 
 	filesState   State
@@ -60,7 +80,7 @@ type spaceSyncStatus struct {
 	ctx           context.Context
 	ctxCancel     context.CancelFunc
 	spaceIdGetter SpaceIdGetter
-	curStatuses   map[string]*domain.SpaceSync
+	curStatuses   map[string]struct{}
 	missingIds    map[string][]string
 	mx            sync.Mutex
 	periodicCall  periodicsync.PeriodicSync
@@ -74,11 +94,12 @@ func NewSpaceSyncStatus() Updater {
 func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.networkConfig = app.MustComponent[NetworkConfig](a)
-	store := app.MustComponent[objectstore.ObjectStore](a)
-	s.curStatuses = make(map[string]*domain.SpaceSync)
+	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
+	s.nodeConf = app.MustComponent[nodeconf.Service](a)
+	s.nodeUsage = app.MustComponent[NodeUsage](a)
+	s.store = app.MustComponent[objectstore.ObjectStore](a)
+	s.curStatuses = make(map[string]struct{})
 	s.missingIds = make(map[string][]string)
-	s.filesState = NewFileState(store)
-	s.objectsState = NewObjectState(store)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
 	sessionHookRunner.RegisterHook(s.sendSyncEventForNewSession)
@@ -122,28 +143,37 @@ func (s *spaceSyncStatus) update(ctx context.Context) error {
 	missingIds := lo.MapEntries(s.missingIds, func(key string, value []string) (string, []string) {
 		return key, slice.Copy(value)
 	})
-	statuses := lo.MapToSlice(s.curStatuses, func(key string, value *domain.SpaceSync) *domain.SpaceSync {
+	statuses := lo.MapToSlice(s.curStatuses, func(key string, value struct{}) string {
 		delete(s.curStatuses, key)
-		return value
+		return key
 	})
 	s.mx.Unlock()
-	for _, st := range statuses {
-		if st.SpaceId == s.spaceIdGetter.TechSpaceId() {
+	for _, spaceId := range statuses {
+		if spaceId == s.spaceIdGetter.TechSpaceId() {
 			continue
 		}
-		st.MissingObjects = missingIds[st.SpaceId]
 		// if the there are too many updates and this hurts performance,
 		// we may skip some iterations and not do the updates for example
-		s.updateSpaceSyncStatus(st)
+		s.updateSpaceSyncStatus(spaceId, missingIds[spaceId])
 	}
 	return nil
 }
 
 func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
+	s.mx.Lock()
+	missingObjects := s.missingIds[spaceId]
+	s.mx.Unlock()
+	params := syncParams{
+		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
+		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
+		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
+		filesSyncingCount:   s.getFileSyncingObjectsCount(spaceId),
+		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
+	}
 	s.eventSender.SendToSession(token, &pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(spaceId),
+				SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
 			},
 		}},
 	})
@@ -151,13 +181,10 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 
 func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
 	for _, id := range spaceIds {
-		s.eventSender.Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(id),
-				},
-			}},
-		})
+		s.mx.Lock()
+		missingObjects := s.missingIds[id]
+		s.mx.Unlock()
+		s.updateSpaceSyncStatus(id, missingObjects)
 	}
 }
 
@@ -174,58 +201,90 @@ func (s *spaceSyncStatus) sendLocalOnlyEvent() {
 	})
 }
 
-func (s *spaceSyncStatus) SendUpdate(status *domain.SpaceSync) {
+func (s *spaceSyncStatus) Refresh(spaceId string) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-	s.curStatuses[status.SpaceId] = status
+	s.curStatuses[spaceId] = struct{}{}
 }
 
-func (s *spaceSyncStatus) updateSpaceSyncStatus(receivedStatus *domain.SpaceSync) {
-	currSyncStatus := s.getSpaceSyncStatus(receivedStatus.SpaceId)
-	if s.isStatusNotChanged(receivedStatus, currSyncStatus) {
-		return
+func (s *spaceSyncStatus) getObjectSyncingObjectsCount(spaceId string, missingObjects []string) int {
+	ids, _, err := s.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySyncStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(domain.Syncing)),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_NotIn,
+				Value: pbtypes.IntList(
+					int(model.ObjectType_file),
+					int(model.ObjectType_image),
+					int(model.ObjectType_video),
+					int(model.ObjectType_audio),
+				),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		log.Errorf("failed to query file status: %s", err)
 	}
-	state := s.getCurrentState(receivedStatus)
-	prevObjectNumber := s.getObjectNumber(receivedStatus.SpaceId)
-	state.SetObjectsNumber(receivedStatus)
-	newObjectNumber := s.getObjectNumber(receivedStatus.SpaceId)
-	state.SetSyncStatusAndErr(receivedStatus.Status, receivedStatus.SyncError, receivedStatus.SpaceId)
+	_, added := slice.DifferenceRemovedAdded(ids, missingObjects)
+	return len(ids) + len(added)
+}
 
-	spaceStatus := s.getSpaceSyncStatus(receivedStatus.SpaceId)
-
-	// send synced event only if files and objects are all synced
-	if !s.needToSendEvent(spaceStatus, currSyncStatus, prevObjectNumber, newObjectNumber) {
-		return
+func (s *spaceSyncStatus) getFileSyncingObjectsCount(spaceId string) int {
+	_, num, err := s.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.IntList(int(filesyncstatus.Syncing), int(filesyncstatus.Queued)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		log.Errorf("failed to query file status: %s", err)
 	}
+	return num
+}
+
+func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
+	nodeUsage, err := s.nodeUsage.GetNodeUsage(context.Background())
+	if err != nil {
+		log.Errorf("failed to get node usage: %s", err)
+		return 0
+	}
+	return float64(nodeUsage.Usage.BytesLeft) / float64(nodeUsage.Usage.AccountBytesLimit)
+}
+
+func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string, missingObjects []string) {
+	params := syncParams{
+		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
+		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
+		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
+		filesSyncingCount:   s.getFileSyncingObjectsCount(spaceId),
+		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
+	}
+	// fmt.Println("[x]: space status", event.Status, "space id", receivedStatus.SpaceId, "network", event.Network, "error", event.Error, "object number", event.SyncingObjectsCounter, "isFile", isFileState)
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSpaceSyncEvent(receivedStatus.SpaceId),
+				SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
 			},
 		}},
 	})
-	state.ResetSpaceErrorStatus(receivedStatus.SpaceId, receivedStatus.SyncError)
-}
-
-func (s *spaceSyncStatus) isStatusNotChanged(status *domain.SpaceSync, syncStatus domain.SpaceSyncStatus) bool {
-	if status.Status == domain.Syncing {
-		// we need to check if number of syncing object is changed first
-		return false
-	}
-	syncErrNotChanged := s.getError(status.SpaceId) == mapError(status.SyncError)
-	if syncStatus == domain.Unknown {
-		return false
-	}
-	statusNotChanged := syncStatus == status.Status
-	if syncErrNotChanged && statusNotChanged {
-		return true
-	}
-	return false
-}
-
-func (s *spaceSyncStatus) needToSendEvent(status domain.SpaceSyncStatus, currSyncStatus domain.SpaceSyncStatus, prevObjectNumber int64, newObjectNumber int64) bool {
-	// that because we get update on syncing objects count, so we need to send updated object counter to client
-	return (status == domain.Syncing && prevObjectNumber != newObjectNumber) || currSyncStatus != status
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
@@ -233,84 +292,40 @@ func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	return
 }
 
-func (s *spaceSyncStatus) makeSpaceSyncEvent(spaceId string) *pb.EventSpaceSyncStatusUpdate {
+type syncParams struct {
+	bytesLeftPercentage float64
+	connectionStatus    nodestatus.ConnectionStatus
+	compatibility       nodeconf.NetworkCompatibilityStatus
+	filesSyncingCount   int
+	objectsSyncingCount int
+}
+
+func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.EventSpaceSyncStatusUpdate {
+	status := pb.EventSpace_Synced
+	err := pb.EventSpace_Null
+	syncingObjectsCount := int64(params.objectsSyncingCount + params.filesSyncingCount)
+	if syncingObjectsCount > 0 {
+		status = pb.EventSpace_Syncing
+	}
+	if params.bytesLeftPercentage < 0.1 {
+		err = pb.EventSpace_StorageLimitExceed
+	}
+	if params.connectionStatus == nodestatus.ConnectionError {
+		status = pb.EventSpace_Offline
+		err = pb.EventSpace_NetworkError
+	}
+	if params.compatibility == nodeconf.NetworkCompatibilityStatusIncompatible {
+		status = pb.EventSpace_Error
+		err = pb.EventSpace_IncompatibleVersion
+	}
+
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    spaceId,
-		Status:                mapStatus(s.getSpaceSyncStatus(spaceId)),
+		Status:                status,
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
-		Error:                 s.getError(spaceId),
-		SyncingObjectsCounter: s.getObjectNumber(spaceId),
+		Error:                 err,
+		SyncingObjectsCounter: syncingObjectsCount,
 	}
-}
-
-func (s *spaceSyncStatus) getObjectNumber(spaceId string) int64 {
-	return int64(s.filesState.GetSyncObjectCount(spaceId) + s.objectsState.GetSyncObjectCount(spaceId))
-}
-
-func (s *spaceSyncStatus) getSpaceSyncStatus(spaceId string) domain.SpaceSyncStatus {
-	filesStatus := s.filesState.GetSyncStatus(spaceId)
-	objectsStatus := s.objectsState.GetSyncStatus(spaceId)
-
-	if s.isUnknown(filesStatus, objectsStatus) {
-		return domain.Unknown
-	}
-	if s.isOfflineStatus(filesStatus, objectsStatus) {
-		return domain.Offline
-	}
-
-	if s.isSyncedStatus(filesStatus, objectsStatus) {
-		return domain.Synced
-	}
-
-	if s.isErrorStatus(filesStatus, objectsStatus) {
-		return domain.Error
-	}
-
-	if s.isSyncingStatus(filesStatus, objectsStatus) {
-		return domain.Syncing
-	}
-	return domain.Synced
-}
-
-func (s *spaceSyncStatus) isSyncingStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
-	return filesStatus == domain.Syncing || objectsStatus == domain.Syncing
-}
-
-func (s *spaceSyncStatus) isErrorStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
-	return filesStatus == domain.Error || objectsStatus == domain.Error
-}
-
-func (s *spaceSyncStatus) isSyncedStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
-	return filesStatus == domain.Synced && objectsStatus == domain.Synced
-}
-
-func (s *spaceSyncStatus) isOfflineStatus(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
-	return filesStatus == domain.Offline || objectsStatus == domain.Offline
-}
-
-func (s *spaceSyncStatus) getCurrentState(status *domain.SpaceSync) State {
-	if status.SyncType == domain.Files {
-		return s.filesState
-	}
-	return s.objectsState
-}
-
-func (s *spaceSyncStatus) getError(spaceId string) pb.EventSpaceSyncError {
-	syncErr := s.filesState.GetSyncErr(spaceId)
-	if syncErr != domain.Null {
-		return mapError(syncErr)
-	}
-
-	syncErr = s.objectsState.GetSyncErr(spaceId)
-	if syncErr != domain.Null {
-		return mapError(syncErr)
-	}
-
-	return pb.EventSpace_Null
-}
-
-func (s *spaceSyncStatus) isUnknown(filesStatus domain.SpaceSyncStatus, objectsStatus domain.SpaceSyncStatus) bool {
-	return filesStatus == domain.Unknown && objectsStatus == domain.Unknown
 }
 
 func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
@@ -321,31 +336,5 @@ func mapNetworkMode(mode pb.RpcAccountNetworkMode) pb.EventSpaceNetwork {
 		return pb.EventSpace_SelfHost
 	default:
 		return pb.EventSpace_Anytype
-	}
-}
-
-func mapStatus(status domain.SpaceSyncStatus) pb.EventSpaceStatus {
-	switch status {
-	case domain.Syncing:
-		return pb.EventSpace_Syncing
-	case domain.Offline:
-		return pb.EventSpace_Offline
-	case domain.Error:
-		return pb.EventSpace_Error
-	default:
-		return pb.EventSpace_Synced
-	}
-}
-
-func mapError(err domain.SyncError) pb.EventSpaceSyncError {
-	switch err {
-	case domain.NetworkError:
-		return pb.EventSpace_NetworkError
-	case domain.IncompatibleVersion:
-		return pb.EventSpace_IncompatibleVersion
-	case domain.StorageLimitExceed:
-		return pb.EventSpace_StorageLimitExceed
-	default:
-		return pb.EventSpace_Null
 	}
 }

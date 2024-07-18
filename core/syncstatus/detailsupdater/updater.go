@@ -36,19 +36,18 @@ type syncStatusDetails struct {
 	objectId            string
 	markAllSyncedExcept []string
 	status              domain.ObjectSyncStatus
-	syncError           domain.SyncError
 	spaceId             string
 }
 
 type Updater interface {
 	app.ComponentRunnable
-	UpdateSpaceDetails(existing, missing []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
-	UpdateDetails(objectId string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateSpaceDetails(existing, missing []string, spaceId string)
+	UpdateDetails(objectId string, status domain.ObjectSyncStatus, spaceId string)
 }
 
 type SpaceStatusUpdater interface {
 	app.Component
-	SendUpdate(status *domain.SpaceSync)
+	Refresh(spaceId string)
 	UpdateMissingIds(spaceId string, ids []string)
 }
 
@@ -99,40 +98,38 @@ func (u *syncStatusUpdater) Name() (name string) {
 	return CName
 }
 
-func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string) {
+func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectSyncStatus, spaceId string) {
 	if spaceId == u.spaceService.TechSpaceId() {
 		return
 	}
 	u.mx.Lock()
 	u.entries[objectId] = &syncStatusDetails{
-		objectId:  objectId,
-		status:    status,
-		syncError: syncError,
-		spaceId:   spaceId,
+		objectId: objectId,
+		status:   status,
+		spaceId:  spaceId,
 	}
 	u.mx.Unlock()
 	err := u.batcher.TryAdd(&syncStatusDetails{
-		objectId:  objectId,
-		status:    status,
-		syncError: syncError,
-		spaceId:   spaceId,
+		objectId: objectId,
+		status:   status,
+		spaceId:  spaceId,
 	})
 	if err != nil {
 		log.Errorf("failed to add sync details update to queue: %s", err)
 	}
 }
 
-func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string) {
+func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, spaceId string) {
 	if spaceId == u.spaceService.TechSpaceId() {
 		return
 	}
 	u.spaceSyncStatus.UpdateMissingIds(spaceId, missing)
 	err := u.batcher.TryAdd(&syncStatusDetails{
 		markAllSyncedExcept: existing,
-		status:              status,
-		syncError:           syncError,
+		status:              domain.ObjectSyncing,
 		spaceId:             spaceId,
 	})
+	fmt.Println("[x]: sending update to batcher, len(existing)", len(existing), "len(missing)", len(missing), "spaceId", spaceId)
 	if err != nil {
 		log.Errorf("failed to add sync details update to queue: %s", err)
 	}
@@ -169,7 +166,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 
 func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetails, record *types.Struct, objectId string) error {
 	status := syncStatusDetails.status
-	syncError := syncStatusDetails.syncError
+	syncError := domain.Null
 	isFileStatus := false
 	if fileStatus, ok := record.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
 		isFileStatus = true
@@ -187,8 +184,7 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if err != nil {
 		return err
 	}
-	spaceStatus := mapObjectSyncToSpaceSyncStatus(status, syncError)
-	defer u.sendSpaceStatusUpdate(err, syncStatusDetails, spaceStatus, syncError)
+	defer u.spaceSyncStatus.Refresh(syncStatusDetails.spaceId)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
 		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, error) {
 			if details == nil || details.Fields == nil {
@@ -221,27 +217,6 @@ func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Stru
 	}
 	layout := details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue()
 	return !slices.Contains(layoutsWithoutSyncRelations, layout)
-}
-
-func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus, syncError domain.SyncError) domain.SpaceSyncStatus {
-	switch status {
-	case domain.ObjectSynced:
-		return domain.Synced
-	case domain.ObjectSyncing, domain.ObjectQueued:
-		return domain.Syncing
-	case domain.ObjectError:
-		// don't send error to space if file were oversized
-		if syncError != domain.Oversized {
-			return domain.Error
-		}
-	}
-	return domain.Synced
-}
-
-func (u *syncStatusUpdater) sendSpaceStatusUpdate(err error, syncStatusDetails *syncStatusDetails, status domain.SpaceSyncStatus, syncError domain.SyncError) {
-	if err == nil {
-		u.spaceSyncStatus.SendUpdate(domain.MakeSyncStatus(syncStatusDetails.spaceId, status, syncError, domain.Objects))
-	}
 }
 
 func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domain.SyncError) {
@@ -321,6 +296,11 @@ func (u *syncStatusUpdater) processEvents() {
 	syncAllObjectsExcept := func(details *syncStatusDetails) {
 		ids := u.getSyncingObjects(details.spaceId)
 		removed, added := slice.DifferenceRemovedAdded(details.markAllSyncedExcept, ids)
+		if len(removed)+len(added) == 0 {
+			u.spaceSyncStatus.Refresh(details.spaceId)
+			return
+		}
+		fmt.Println("[x]: marking synced, len(synced)", len(added), "len(syncing)", len(removed), "spaceId", details.spaceId)
 		details.status = domain.ObjectSynced
 		for _, id := range added {
 			err := u.updateObjectDetails(details, id)

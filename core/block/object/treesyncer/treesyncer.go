@@ -15,8 +15,6 @@ import (
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
-
-	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -69,7 +67,7 @@ type PeerStatusChecker interface {
 
 type SyncDetailsUpdater interface {
 	app.Component
-	UpdateSpaceDetails(existing, missing []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)
+	UpdateSpaceDetails(existing, missing []string, spaceId string)
 }
 
 type treeSyncer struct {
@@ -165,7 +163,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	t.Lock()
 	defer t.Unlock()
 	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
-	t.sendSyncEvents(peerId, existing, missing, isResponsible)
+	t.sendSyncEvents(existing, missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
@@ -204,19 +202,15 @@ func (t *treeSyncer) SyncAll(ctx context.Context, peerId string, existing, missi
 	return nil
 }
 
-func (t *treeSyncer) sendSyncEvents(peerId string, existing, missing []string, nodePeer bool) {
+func (t *treeSyncer) sendSyncEvents(existing, missing []string, nodePeer bool) {
 	if !nodePeer {
 		return
 	}
-	if t.peerManager.IsPeerOffline(peerId) {
-		t.sendDetailsUpdates(existing, missing, domain.ObjectError, domain.NetworkError)
-	} else {
-		t.sendDetailsUpdates(existing, missing, domain.ObjectSyncing, domain.Null)
-	}
+	t.sendDetailsUpdates(existing, missing)
 }
 
-func (t *treeSyncer) sendDetailsUpdates(existing, missing []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
-	t.syncDetailsUpdater.UpdateSpaceDetails(existing, missing, status, syncError, t.spaceId)
+func (t *treeSyncer) sendDetailsUpdates(existing, missing []string) {
+	t.syncDetailsUpdater.UpdateSpaceDetails(existing, missing, t.spaceId)
 }
 
 func (t *treeSyncer) requestTree(peerId, id string) {

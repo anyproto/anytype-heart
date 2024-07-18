@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
@@ -35,7 +34,7 @@ type NodeStatus interface {
 
 type Updater interface {
 	app.ComponentRunnable
-	SendUpdate(spaceSync *domain.SpaceSync)
+	Refresh(spaceId string)
 }
 
 type PeerToPeerStatus interface {
@@ -214,9 +213,8 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		for _, p := range n.responsiblePeers {
 			n.nodeStatus.SetNodesStatus(n.spaceId, p.Id(), nodestatus.ConnectionError)
 		}
-		n.spaceSyncService.SendUpdate(domain.MakeSyncStatus(n.spaceId, domain.Offline, domain.Null, domain.Objects))
 	}
-
+	n.spaceSyncService.Refresh(n.spaceId)
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
 	var needUpdate bool
 	for _, peerId := range peerIds {

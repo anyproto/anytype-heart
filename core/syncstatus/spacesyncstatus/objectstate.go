@@ -45,6 +45,7 @@ func (o *ObjectState) SetObjectsNumber(status *domain.SpaceSync) {
 			return pbtypes.GetString(r.Details, bundle.RelationKeyId.String())
 		})
 		_, added := slice.DifferenceRemovedAdded(ids, status.MissingObjects)
+		fmt.Println("[x]: added", len(added), "records", len(records))
 		o.objectSyncCountBySpace[status.SpaceId] = len(records) + len(added)
 	}
 }
