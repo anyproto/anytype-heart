@@ -41,7 +41,7 @@ func (s *dsObjectStore) SetActiveView(objectId, blockId, viewId string) error {
 func (s *dsObjectStore) GetActiveViews(objectId string) (map[string]string, error) {
 	doc, err := s.activeViews.FindId(s.componentCtx, objectId)
 	if err != nil {
-		return nil, fmt.Errorf("find account status: %w", err)
+		return nil, fmt.Errorf("get active view: %w", err)
 	}
 	val := doc.Value().GetStringBytes("value")
 	views := map[string]string{}

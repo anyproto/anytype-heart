@@ -80,6 +80,10 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		return nil
 	}
 	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
 
 	txn, err := s.pendingDetails.WriteTx(s.componentCtx)
 	if err != nil {
@@ -89,39 +93,37 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		return errors.Join(txn.Rollback(), err)
 	}
 
-	var toDelete bool
-	_, err = s.pendingDetails.UpsertId(txn.Context(), id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
-		inputDetails, err := pbtypes.JsonToProto(val)
-		if err != nil {
-			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
-		}
+	var inputDetails *types.Struct
+	doc, err := s.pendingDetails.FindId(txn.Context(), id)
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		inputDetails = pbtypes.EnsureStructInited(inputDetails)
-		newDetails, err := proc(inputDetails)
+	} else if err != nil {
+		return rollback(fmt.Errorf("find details: %w", err))
+	} else {
+		inputDetails, err = pbtypes.JsonToProto(doc.Value())
 		if err != nil {
-			return nil, false, fmt.Errorf("run a modifier: %w", err)
+			return rollback(fmt.Errorf("json to proto: %w", err))
 		}
-		if newDetails == nil {
-			toDelete = true
-			return val, false, nil
-		}
-		newDetails = pbtypes.EnsureStructInited(newDetails)
-		// Ensure ID is set
-		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-
-		jsonVal := pbtypes.ProtoToJson(arena, newDetails)
-		return jsonVal, true, nil
-	}))
-	arena.Reset()
-	s.arenaPool.Put(arena)
-	if err != nil {
-		return rollback(fmt.Errorf("upsert details: %w", err))
 	}
-	if toDelete {
+	inputDetails = pbtypes.EnsureStructInited(inputDetails)
+	newDetails, err := proc(inputDetails)
+	if err != nil {
+		return rollback(fmt.Errorf("run a modifier: %w", err))
+	}
+	if newDetails == nil {
 		err = s.pendingDetails.DeleteId(txn.Context(), id)
 		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 			return rollback(fmt.Errorf("delete details: %w", err))
 		}
+		return txn.Commit()
 	}
+	newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	jsonVal := pbtypes.ProtoToJson(arena, newDetails)
+	_, err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
+	if err != nil {
+		return rollback(fmt.Errorf("upsert details: %w", err))
+	}
+
 	return txn.Commit()
 }
 

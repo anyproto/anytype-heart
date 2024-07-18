@@ -75,8 +75,11 @@ func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) error {
 
 func (s *dsObjectStore) GetChecksums(spaceID string) (*model.ObjectStoreChecksums, error) {
 	doc, err := s.indexerChecksums.FindId(s.componentCtx, spaceID)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return &model.ObjectStoreChecksums{}, nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("find account status: %w", err)
+		return nil, fmt.Errorf("get checksums: %w", err)
 	}
 	val := doc.Value().GetStringBytes("value")
 	var checksums *model.ObjectStoreChecksums

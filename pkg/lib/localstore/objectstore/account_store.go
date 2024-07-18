@@ -2,8 +2,10 @@ package objectstore
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/valyala/fastjson"
 )
@@ -41,6 +43,9 @@ func (s *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPa
 
 func (s *dsObjectStore) GetAccountStatus() (*coordinatorproto.SpaceStatusPayload, error) {
 	doc, err := s.system.FindId(s.componentCtx, accountStatusKey)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return &coordinatorproto.SpaceStatusPayload{}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("find account status: %w", err)
 	}
