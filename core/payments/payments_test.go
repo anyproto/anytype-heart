@@ -830,6 +830,55 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierBuilder1Year), resp.Data.Tier)
 		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
 	})
+
+	t.Run("cache has error saved, GetSubscriptionStatus returns no error", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		sr := psp.GetSubscriptionResponse{
+			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
+			Status:           psp.SubscriptionStatus_StatusActive,
+			DateStarted:      uint64(timeNow.Unix()),
+			DateEnds:         uint64(subsExpire.Unix()),
+			IsAutoRenew:      true,
+			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
+			RequestedAnyName: "something.any",
+		}
+
+		psgsr := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{
+				// >> here:
+				Code: pb.RpcMembershipGetStatusResponseError_PAYMENT_NODE_ERROR,
+			},
+			Data: &model.Membership{
+				Tier:          uint32(sr.Tier),
+				Status:        model.MembershipStatus(sr.Status),
+				DateStarted:   sr.DateStarted,
+				DateEnds:      sr.DateEnds,
+				IsAutoRenew:   sr.IsAutoRenew,
+				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
+				NsName:        "something",
+				NsNameType:    model.NameserviceNameType_AnyName,
+			},
+		}
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &sr, nil
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
+			return nil
+		})
+		// this should not be called because server returned Explorer tier
+		//fx.cache.EXPECT().CacheEnable().Return(nil)
+
+		fx.expectLimitsUpdated()
+
+		// Call the function being tested
+		_, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+		assert.NoError(t, err)
+	})
 }
 
 func (fx *fixture) expectLimitsUpdated() {

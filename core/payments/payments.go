@@ -296,6 +296,10 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	return &out, nil
 }
 
+func isCacheContainsError(s *pb.RpcMembershipGetStatusResponse) bool {
+	return s != nil && s.Error != nil && s.Error.Code != pb.RpcMembershipGetStatusResponseError_NULL
+}
+
 func canReturnCachedStatus(s *pb.RpcMembershipGetStatusResponse) bool {
 	return s != nil && s.Data != nil && (s.Error == nil || s.Error.Code == pb.RpcMembershipGetStatusResponseError_NULL)
 }
@@ -304,13 +308,18 @@ func isUpdateRequired(cacheErr error, cachedStatus *pb.RpcMembershipGetStatusRes
 	// 1 - If cache was empty or expire or disabled or NoCache flag was passed
 	// -> treat at is if data was different
 	isCacheEmpty := (cacheErr != nil) && !errors.Is(cacheErr, cache.ErrCacheDisabled)
-
 	if isCacheEmpty {
 		log.Debug("subscription status treated as changed because cache was empty/expired/NoCache flag was passed")
 		return true
 	}
 
-	// 2 - Check if tier or status has changed
+	// 2 - Extra check that cache contained previous error
+	if isCacheContainsError(cachedStatus) {
+		log.Debug("subscription status treated as changed because cache contained previous error")
+		return true
+	}
+
+	// 3 - Check if tier or status has changed
 	isDiffTier := false
 	isDiffStatus := false
 	isEmailDiff := false
