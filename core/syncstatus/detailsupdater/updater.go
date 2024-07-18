@@ -18,8 +18,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscritions"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -52,12 +52,13 @@ type SpaceStatusUpdater interface {
 }
 
 type syncStatusUpdater struct {
-	objectStore     objectstore.ObjectStore
-	ctx             context.Context
-	ctxCancel       context.CancelFunc
-	batcher         *mb.MB[*syncStatusDetails]
-	spaceService    space.Service
-	spaceSyncStatus SpaceStatusUpdater
+	objectStore       objectstore.ObjectStore
+	ctx               context.Context
+	ctxCancel         context.CancelFunc
+	batcher           *mb.MB[*syncStatusDetails]
+	spaceService      space.Service
+	spaceSyncStatus   SpaceStatusUpdater
+	syncSubscriptions syncsubscritions.SyncSubscriptions
 
 	entries map[string]*syncStatusDetails
 	mx      sync.Mutex
@@ -91,6 +92,7 @@ func (u *syncStatusUpdater) Init(a *app.App) (err error) {
 	u.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	u.spaceService = app.MustComponent[space.Service](a)
 	u.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
+	u.syncSubscriptions = app.MustComponent[syncsubscritions.SyncSubscriptions](a)
 	return nil
 }
 
@@ -136,50 +138,25 @@ func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, space
 }
 
 func (u *syncStatusUpdater) getSyncingObjects(spaceId string) []string {
-	ids, _, err := u.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySyncStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(domain.ObjectSyncing)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
+	sub, err := u.syncSubscriptions.GetSubscription(spaceId)
 	if err != nil {
-		log.Errorf("failed to update object details %s", err)
+		return nil
 	}
+	ids := make([]string, 0, sub.GetObjectSubscription().Len())
+	sub.GetObjectSubscription().Iterate(func(id string, _ struct{}) bool {
+		ids = append(ids, id)
+		return true
+	})
 	return ids
 }
 
 func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDetails, objectId string) error {
-	record, err := u.objectStore.GetDetails(objectId)
-	if err != nil {
-		return err
-	}
-	return u.setObjectDetails(syncStatusDetails, record.Details, objectId)
+	return u.setObjectDetails(syncStatusDetails, objectId)
 }
 
-func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetails, record *types.Struct, objectId string) error {
+func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetails, objectId string) error {
 	status := syncStatusDetails.status
 	syncError := domain.Null
-	isFileStatus := false
-	if fileStatus, ok := record.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		isFileStatus = true
-		status, syncError = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
-	}
-	// we want to update sync date for other stuff
-	changed := u.hasRelationsChange(record, status, syncError)
-	if !changed && isFileStatus {
-		return nil
-	}
-	if !u.isLayoutSuitableForSyncRelations(record) {
-		return nil
-	}
 	spc, err := u.spaceService.Get(u.ctx, syncStatusDetails.spaceId)
 	if err != nil {
 		return err
@@ -189,6 +166,12 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, error) {
 			if details == nil || details.Fields == nil {
 				details = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			if !u.isLayoutSuitableForSyncRelations(details) {
+				return details, nil
+			}
+			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+				status, syncError = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
 			}
 			details.Fields[bundle.RelationKeySyncStatus.String()] = pbtypes.Int64(int64(status))
 			details.Fields[bundle.RelationKeySyncError.String()] = pbtypes.Int64(int64(syncError))
@@ -241,6 +224,13 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		return nil
 	}
+	details := sb.CombinedDetails()
+	if !u.isLayoutSuitableForSyncRelations(details) {
+		return nil
+	}
+	if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+		status, syncError = mapFileStatus(filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+	}
 	if d, ok := sb.(basic.DetailsSettable); ok {
 		syncStatusDetails := []*model.Detail{
 			{
@@ -259,24 +249,6 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 		return d.SetDetails(nil, syncStatusDetails, false)
 	}
 	return nil
-}
-
-func (u *syncStatusUpdater) hasRelationsChange(record *types.Struct, status domain.ObjectSyncStatus, syncError domain.SyncError) bool {
-	var changed bool
-	if record == nil || len(record.GetFields()) == 0 {
-		changed = true
-	}
-	if pbtypes.Get(record, bundle.RelationKeySyncStatus.String()) == nil ||
-		pbtypes.Get(record, bundle.RelationKeySyncError.String()) == nil {
-		changed = true
-	}
-	if pbtypes.GetInt64(record, bundle.RelationKeySyncStatus.String()) != int64(status) {
-		changed = true
-	}
-	if pbtypes.GetInt64(record, bundle.RelationKeySyncError.String()) != int64(syncError) {
-		changed = true
-	}
-	return changed
 }
 
 func (u *syncStatusUpdater) processEvents() {

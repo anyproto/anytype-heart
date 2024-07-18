@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscritions"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -71,7 +72,7 @@ type spaceSyncStatus struct {
 	store               objectstore.ObjectStore
 	batcher             *mb.MB[*domain.SpaceSync]
 	subscriptionService subscription.Service
-	subs                map[string]*syncingObjects
+	subs                syncsubscritions.SyncSubscriptions
 
 	filesState   State
 	objectsState State
@@ -99,7 +100,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.subscriptionService = app.MustComponent[subscription.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.curStatuses = make(map[string]struct{})
-	s.subs = make(map[string]*syncingObjects)
+	s.subs = app.MustComponent[syncsubscritions.SyncSubscriptions](a)
 	s.missingIds = make(map[string][]string)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
@@ -210,37 +211,19 @@ func (s *spaceSyncStatus) Refresh(spaceId string) {
 }
 
 func (s *spaceSyncStatus) getObjectSyncingObjectsCount(spaceId string, missingObjects []string) int {
-	s.mx.Lock()
-	curSub := s.subs[spaceId]
-	s.mx.Unlock()
-	if curSub == nil {
-		curSub = newSyncingObjects(spaceId, s.subscriptionService)
-		err := curSub.run()
-		if err != nil {
-			log.Errorf("failed to run subscription: %s", err)
-			return 0
-		}
-		s.mx.Lock()
-		s.subs[spaceId] = curSub
-		s.mx.Unlock()
+	curSub, err := s.subs.GetSubscription(spaceId)
+	if err != nil {
+		log.Errorf("failed to get subscription: %s", err)
+		return 0
 	}
 	return curSub.SyncingObjectsCount(missingObjects)
 }
 
 func (s *spaceSyncStatus) getFileSyncingObjectsCount(spaceId string) int {
-	s.mx.Lock()
-	curSub := s.subs[spaceId]
-	s.mx.Unlock()
-	if curSub == nil {
-		curSub = newSyncingObjects(spaceId, s.subscriptionService)
-		err := curSub.run()
-		if err != nil {
-			log.Errorf("failed to run subscription: %s", err)
-			return 0
-		}
-		s.mx.Lock()
-		s.subs[spaceId] = curSub
-		s.mx.Unlock()
+	curSub, err := s.subs.GetSubscription(spaceId)
+	if err != nil {
+		log.Errorf("failed to get subscription: %s", err)
+		return 0
 	}
 	return curSub.FileSyncingObjectsCount()
 }
@@ -262,7 +245,6 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string, missingObjects [
 		filesSyncingCount:   s.getFileSyncingObjectsCount(spaceId),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
 	}
-	// fmt.Println("[x]: space status", event.Status, "space id", receivedStatus.SpaceId, "network", event.Network, "error", event.Error, "object number", event.SyncingObjectsCounter, "isFile", isFileState)
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -274,14 +256,6 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string, missingObjects [
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	s.periodicCall.Close()
-	s.mx.Lock()
-	subs := lo.MapToSlice(s.subs, func(key string, value *syncingObjects) *syncingObjects {
-		return value
-	})
-	s.mx.Unlock()
-	for _, sub := range subs {
-		sub.Close()
-	}
 	return
 }
 

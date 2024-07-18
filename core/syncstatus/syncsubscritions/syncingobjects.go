@@ -1,4 +1,4 @@
-package spacesyncstatus
+package syncsubscritions
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ func newSyncingObjects(spaceId string, service subscription.Service) *syncingObj
 	}
 }
 
-func (s *syncingObjects) run() error {
+func (s *syncingObjects) Run() error {
 	objectReq := subscription.SubscribeRequest{
 		SubId:             fmt.Sprintf("spacestatus.objects.%s", s.spaceId),
 		Internal:          true,
@@ -86,6 +86,14 @@ func (s *syncingObjects) run() error {
 func (s *syncingObjects) Close() {
 	s.fileSubscription.Close()
 	s.objectSubscription.Close()
+}
+
+func (s *syncingObjects) GetFileSubscription() *ObjectSubscription[struct{}] {
+	return s.fileSubscription
+}
+
+func (s *syncingObjects) GetObjectSubscription() *ObjectSubscription[struct{}] {
+	return s.objectSubscription
 }
 
 func (s *syncingObjects) SyncingObjectsCount(missing []string) int {
