@@ -2,6 +2,7 @@ package spacesyncstatus
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -139,6 +140,7 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 }
 
 func (s *spaceSyncStatus) update(ctx context.Context) error {
+	// TODO: use subscriptions inside middleware instead of this
 	s.mx.Lock()
 	missingIds := lo.MapEntries(s.missingIds, func(key string, value []string) (string, []string) {
 		return key, slice.Copy(value)
@@ -240,7 +242,7 @@ func (s *spaceSyncStatus) getObjectSyncingObjectsCount(spaceId string, missingOb
 }
 
 func (s *spaceSyncStatus) getFileSyncingObjectsCount(spaceId string) int {
-	_, num, err := s.store.QueryObjectIDs(database.Query{
+	recs, _, err := s.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
@@ -257,7 +259,7 @@ func (s *spaceSyncStatus) getFileSyncingObjectsCount(spaceId string) int {
 	if err != nil {
 		log.Errorf("failed to query file status: %s", err)
 	}
-	return num
+	return len(recs)
 }
 
 func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
@@ -318,7 +320,7 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		status = pb.EventSpace_Error
 		err = pb.EventSpace_IncompatibleVersion
 	}
-
+	fmt.Println("[x]: status: connection", params.connectionStatus, ", space id", spaceId, ", compatibility", params.compatibility, ", object number", syncingObjectsCount, ", bytes left", params.bytesLeftPercentage)
 	return &pb.EventSpaceSyncStatusUpdate{
 		Id:                    spaceId,
 		Status:                status,
