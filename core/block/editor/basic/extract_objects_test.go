@@ -59,7 +59,7 @@ func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details
 		template.InitTemplate(st, template.WithEmpty,
 			template.WithDefaultFeaturedRelations,
 			template.WithFeaturedRelations,
-			template.WithRequiredRelations(),
+			template.WithRequiredRelations,
 			template.WithTitle,
 		)
 		return st, nil

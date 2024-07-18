@@ -16,6 +16,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+var workspaceRequiredRelations = []domain.RelationKey{
+	// SpaceInviteFileCid and SpaceInviteFileKey are added only when creating invite
+}
+
 type Workspaces struct {
 	smartblock.SmartBlock
 	basic.AllOperations
@@ -49,6 +53,7 @@ func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
 }
 
 func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, workspaceRequiredRelations...)
 	err = w.SmartBlock.Init(ctx)
 	if err != nil {
 		return err

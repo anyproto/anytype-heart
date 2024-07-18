@@ -83,6 +83,15 @@ func StringListValue(list []string) []string {
 	return anonymizeList
 }
 
+func Events(e []*pb.EventMessage) (res []*pb.EventMessage) {
+	res = make([]*pb.EventMessage, len(e))
+	for i, v := range e {
+		res[i] = Event(v)
+
+	}
+	return
+}
+
 func Event(e *pb.EventMessage) (res *pb.EventMessage) {
 	res = &pb.EventMessage{}
 	resB, _ := e.Marshal()

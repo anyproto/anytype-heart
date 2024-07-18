@@ -57,7 +57,7 @@ func TestP2pStatus_SendNewStatus(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotPossible,
-							DevicesCounter: 1,
+							DevicesCounter: 0,
 						},
 					},
 				},
@@ -113,7 +113,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_Connected,
-							DevicesCounter: 2,
+							DevicesCounter: 1,
 						},
 					},
 				},
@@ -148,7 +148,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_Connected,
-							DevicesCounter: 2,
+							DevicesCounter: 1,
 						},
 					},
 				},
@@ -165,7 +165,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotConnected,
-							DevicesCounter: 1,
+							DevicesCounter: 0,
 						},
 					},
 				},
@@ -197,7 +197,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotPossible,
-							DevicesCounter: 1,
+							DevicesCounter: 0,
 						},
 					},
 				},
@@ -221,7 +221,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_Connected,
-							DevicesCounter: 2,
+							DevicesCounter: 1,
 						},
 					},
 				},
@@ -262,7 +262,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_Connected,
-							DevicesCounter: 2,
+							DevicesCounter: 1,
 						},
 					},
 				},
@@ -294,7 +294,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotPossible,
-							DevicesCounter: 1,
+							DevicesCounter: 0,
 						},
 					},
 				},
@@ -311,7 +311,7 @@ func TestP2pStatus_SendPeerUpdate(t *testing.T) {
 						P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 							SpaceId:        "spaceId",
 							Status:         pb.EventP2PStatus_NotConnected,
-							DevicesCounter: 1,
+							DevicesCounter: 0,
 						},
 					},
 				},
@@ -404,7 +404,7 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 				Value: &pb.EventMessageValueOfP2PStatusUpdate{
 					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
 						SpaceId:        spaceId,
-						DevicesCounter: 1,
+						DevicesCounter: 0,
 					},
 				},
 			},
