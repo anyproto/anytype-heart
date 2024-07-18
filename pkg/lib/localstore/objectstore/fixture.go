@@ -61,6 +61,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		sourceService:      &detailsFromId{},
 		db:                 db,
 		arenaPool:          &fastjson.ArenaPool{},
+		parserPool:         &fastjson.ParserPool{},
 		repoPath:           walletService.RepoPath(),
 	}
 	err = ds.initCache()

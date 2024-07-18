@@ -44,11 +44,7 @@ var (
 	pendingDetailsBase  = ds.NewKey("/" + pagesPrefix + "/pending")
 	pagesActiveViewBase = ds.NewKey("/" + pagesPrefix + "/activeView")
 
-	pagesSnippetBase = ds.NewKey("/" + pagesPrefix + "/snippet")
 	bundledChecksums = ds.NewKey("/" + pagesPrefix + "/checksum")
-
-	accountPrefix = "account"
-	accountStatus = ds.NewKey("/" + accountPrefix + "/status")
 
 	spacePrefix   = "space"
 	virtualSpaces = ds.NewKey("/" + spacePrefix + "/virtual")
@@ -86,7 +82,6 @@ type ObjectStore interface {
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error
 	UpdateObjectLinks(id string, links []string) error
-	UpdateObjectSnippet(id string, snippet string) error
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
 
@@ -153,8 +148,10 @@ type dsObjectStore struct {
 	fulltextQueue anystore.Collection
 	links         anystore.Collection
 	headsState    anystore.Collection
+	system        anystore.Collection
 
-	arenaPool *fastjson.ArenaPool
+	arenaPool  *fastjson.ArenaPool
+	parserPool *fastjson.ParserPool
 
 	cache *lru.Cache[string, *model.ObjectDetails]
 	db    *badger.DB
@@ -250,6 +247,10 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open headsState collection: %w", err))
 	}
+	system, err := store.Collection(ctx, "system")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open system collection: %w", err))
+	}
 	s.anyStore = store
 
 	objectIndexes := []anystore.IndexInfo{
@@ -302,6 +303,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	s.fulltextQueue = fulltextQueue
 	s.links = links
 	s.headsState = headsState
+	s.system = system
 	return nil
 }
 

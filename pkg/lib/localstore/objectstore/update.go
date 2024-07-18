@@ -73,10 +73,6 @@ func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 	return nil
 }
 
-func (s *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
-	return badgerhelper.SetValue(s.db, pagesSnippetBase.ChildString(id).Bytes(), snippet)
-}
-
 func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
 	return s.updateTxn(func(txn *badger.Txn) error {
 		key := pendingDetailsBase.ChildString(id).Bytes()
