@@ -10,7 +10,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'self-hosted'
+        default: 'macos-11'
       perf-test:
         description: 'Run perf test times'
         required: true
