@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -39,8 +40,40 @@ func New() Service {
 	return &service{}
 }
 
+type SubscribeRequest struct {
+	SubId   string
+	Filters []*model.BlockContentDataviewFilter
+	Sorts   []*model.BlockContentDataviewSort
+	Limit   int64
+	Offset  int64
+	// (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
+	Keys []string
+	// (optional) pagination: middleware will return results after given id
+	AfterId string
+	// (optional) pagination: middleware will return results before given id
+	BeforeId        string
+	Source          []string
+	IgnoreWorkspace string
+	// disable dependent subscription
+	NoDepSubscription bool
+	CollectionId      string
+
+	// Internal indicates that subscription will send events into message queue instead of global client's event system
+	Internal bool
+}
+
+type SubscribeResponse struct {
+	SubId        string
+	Records      []*types.Struct
+	Dependencies []*types.Struct
+	Counters     *pb.EventObjectSubscriptionCounters
+
+	// Used when Internal flag is set to true
+	Output *mb2.MB[*pb.EventMessage]
+}
+
 type Service interface {
-	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
+	Search(req SubscribeRequest) (resp *SubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
 	SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
@@ -70,7 +103,7 @@ type service struct {
 	cache         *cache
 	ds            *dependencyService
 	subscriptions map[string]subscription
-	customOutput  map[string]mb2.MB[*pb.EventMessage]
+	customOutput  map[string]*mb2.MB[*pb.EventMessage]
 	recBatch      *mb.MB
 
 	objectStore       objectstore.ObjectStore
@@ -88,6 +121,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = newCache()
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
+	s.customOutput = map[string]*mb2.MB[*pb.EventMessage]{}
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
@@ -110,7 +144,7 @@ func (s *service) Run(context.Context) (err error) {
 	return
 }
 
-func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error) {
+func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
 	}
@@ -155,7 +189,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 	return s.subscribeForQuery(req, f, filterDepIds)
 }
 
-func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
+func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
 	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
@@ -201,8 +235,10 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 	if sub.depSub != nil {
 		depRecords = sub.depSub.getActiveRecords()
 	}
-
-	return &pb.RpcObjectSearchSubscribeResponse{
+	if req.Internal {
+		s.customOutput[req.SubId] = mb2.New[*pb.EventMessage](0)
+	}
+	return &SubscribeResponse{
 		Records:      subRecords,
 		Dependencies: depRecords,
 		SubId:        sub.id,
@@ -211,6 +247,7 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 			NextCount: int64(prev),
 			PrevCount: int64(next),
 		},
+		Output: s.customOutput[req.SubId],
 	}, nil
 }
 
@@ -240,7 +277,7 @@ func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*
 	return entries, nil
 }
 
-func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
+func (s *service) subscribeForCollection(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
 	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, filterDepIds, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
 	if err != nil {
 		return nil, err
@@ -258,7 +295,11 @@ func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest,
 		depRecords = sub.sortedSub.depSub.getActiveRecords()
 	}
 
-	return &pb.RpcObjectSearchSubscribeResponse{
+	if req.Internal {
+		s.customOutput[req.SubId] = mb2.New[*pb.EventMessage](0)
+	}
+
+	return &SubscribeResponse{
 		Records:      subRecords,
 		Dependencies: depRecords,
 		SubId:        sub.sortedSub.id,
@@ -267,6 +308,7 @@ func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest,
 			NextCount: int64(prev),
 			PrevCount: int64(next),
 		},
+		Output: s.customOutput[req.SubId],
 	}, nil
 }
 
@@ -513,11 +555,21 @@ func (s *service) onChange(entries []*entry) time.Duration {
 
 	dur := time.Since(st)
 
-	events := s.ctxBuf.outputs[defaultOutput]
-	s.debugEvents(&pb.Event{Messages: events})
+	for id, msgs := range s.ctxBuf.outputs {
+		if len(msgs) > 0 {
+			s.debugEvents(&pb.Event{Messages: msgs})
+			if id == defaultOutput {
+				s.eventSender.Broadcast(&pb.Event{Messages: msgs})
+			} else {
+				err := s.customOutput[id].Add(context.TODO(), msgs...)
+				if err != nil && !errors.Is(err, mb2.ErrClosed) {
+					log.With("subId", id, "error", err).Errorf("push to output")
+				}
+			}
+		}
+	}
 
 	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
-	s.eventSender.Broadcast(&pb.Event{Messages: events})
 
 	return dur
 }

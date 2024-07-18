@@ -230,17 +230,17 @@ func (ctx *opCtx) groupEventsDetailsSet(v *pb.EventObjectDetailsSet) {
 		} else {
 			defaultSubIds = append(defaultSubIds, subId)
 		}
-		if len(defaultSubIds) > 0 {
-			ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectDetailsSet{
-					ObjectDetailsSet: &pb.EventObjectDetailsSet{
-						Id:      v.Id,
-						Details: v.Details,
-						SubIds:  defaultSubIds,
-					},
+	}
+	if len(defaultSubIds) > 0 {
+		ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsSet{
+				ObjectDetailsSet: &pb.EventObjectDetailsSet{
+					Id:      v.Id,
+					Details: v.Details,
+					SubIds:  defaultSubIds,
 				},
-			})
-		}
+			},
+		})
 	}
 }
 
@@ -260,17 +260,17 @@ func (ctx *opCtx) groupEventsDetailsUnset(v *pb.EventObjectDetailsUnset) {
 		} else {
 			defaultSubIds = append(defaultSubIds, subId)
 		}
-		if len(defaultSubIds) > 0 {
-			ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectDetailsUnset{
-					ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
-						Id:     v.Id,
-						Keys:   v.Keys,
-						SubIds: defaultSubIds,
-					},
+	}
+	if len(defaultSubIds) > 0 {
+		ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsUnset{
+				ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+					Id:     v.Id,
+					Keys:   v.Keys,
+					SubIds: defaultSubIds,
 				},
-			})
-		}
+			},
+		})
 	}
 }
 
@@ -290,17 +290,17 @@ func (ctx *opCtx) groupEventsDetailsAmend(v *pb.EventObjectDetailsAmend) {
 		} else {
 			defaultSubIds = append(defaultSubIds, subId)
 		}
-		if len(defaultSubIds) > 0 {
-			ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectDetailsAmend{
-					ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-						Id:      v.Id,
-						Details: v.Details,
-						SubIds:  defaultSubIds,
-					},
+	}
+	if len(defaultSubIds) > 0 {
+		ctx.outputs[defaultOutput] = append(ctx.outputs[defaultOutput], &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsAmend{
+				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+					Id:      v.Id,
+					Details: v.Details,
+					SubIds:  defaultSubIds,
 				},
-			})
-		}
+			},
+		})
 	}
 }
 
