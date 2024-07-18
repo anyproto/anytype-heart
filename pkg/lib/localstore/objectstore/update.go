@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anyproto/any-store/query"
@@ -17,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
+func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error {
 	if details == nil {
 		return nil
 	}
@@ -33,7 +34,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	arena := s.arenaPool.Get()
 	jsonVal := pbtypes.ProtoToJson(arena, details)
 	var isModified bool
-	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
 		diff, err := pbtypes.DiffJson(val, jsonVal)
 		if err != nil {
 			return nil, false, fmt.Errorf("diff json: %w", err)
@@ -56,15 +57,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 }
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
-	var (
-		added, removed []string
-	)
-	err := s.updateTxn(func(txn *badger.Txn) error {
-		var err error
-		added, removed, err = s.updateObjectLinks(txn, id, links)
-		return err
-	})
-	// todo: too big txn is not handled
+	added, removed, err := s.updateObjectLinks(s.componentCtx, id, links)
 	if err != nil {
 		return err
 	}
@@ -180,29 +173,13 @@ func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*mo
 	})
 }
 
-func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []string) (added []string, removed []string, err error) {
-	exLinks, err := findOutboundLinks(txn, id)
-	if err != nil {
-		log.Errorf("error while finding outbound links for %s: %s", id, err)
-	}
-
-	removed, added = slice.DifferenceRemovedAdded(exLinks, links)
-	if len(added) > 0 {
-		for _, k := range pageLinkKeys(id, added) {
-			err = txn.Set(k.Bytes(), nil)
-			if err != nil {
-				err = fmt.Errorf("setting link %s: %w", k, err)
-				return
-			}
-		}
-	}
-	if len(removed) > 0 {
-		for _, k := range pageLinkKeys(id, removed) {
-			if err = txn.Delete(k.Bytes()); err != nil {
-				return
-			}
-		}
-	}
+func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links []string) (added []string, removed []string, err error) {
+	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+		prev := pbtypes.JsonArrayToStrings(val.GetArray(linkOutboundField))
+		added, removed = slice.DifferenceRemovedAdded(prev, links)
+		val.Set(linkOutboundField, pbtypes.StringsToJsonArray(arena, links))
+		return val, len(added)+len(removed) > 0, nil
+	}))
 	return
 }
 

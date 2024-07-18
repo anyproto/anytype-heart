@@ -825,17 +825,17 @@ func (mr *MockObjectStoreMockRecorder) SubscribeForAll(arg0 any) *gomock.Call {
 }
 
 // UpdateObjectDetails mocks base method.
-func (m *MockObjectStore) UpdateObjectDetails(arg0 string, arg1 *types.Struct) error {
+func (m *MockObjectStore) UpdateObjectDetails(arg0 context.Context, arg1 string, arg2 *types.Struct) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateObjectDetails", arg0, arg1)
+	ret := m.ctrl.Call(m, "UpdateObjectDetails", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateObjectDetails indicates an expected call of UpdateObjectDetails.
-func (mr *MockObjectStoreMockRecorder) UpdateObjectDetails(arg0, arg1 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) UpdateObjectDetails(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateObjectDetails", reflect.TypeOf((*MockObjectStore)(nil).UpdateObjectDetails), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateObjectDetails", reflect.TypeOf((*MockObjectStore)(nil).UpdateObjectDetails), arg0, arg1, arg2)
 }
 
 // UpdateObjectLinks mocks base method.

@@ -137,8 +137,8 @@ func (uw *UpdateWatcher) backlinksUpdateHandler() {
 			select {
 			case <-closedCh:
 				l.Lock()
-				defer l.Unlock()
 				process()
+				l.Unlock()
 				return
 			case <-time.After(aggregationInterval):
 				l.Lock()

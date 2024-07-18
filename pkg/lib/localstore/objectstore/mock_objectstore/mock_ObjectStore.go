@@ -2872,17 +2872,17 @@ func (_c *MockObjectStore_SubscribeForAll_Call) RunAndReturn(run func(func(datab
 	return _c
 }
 
-// UpdateObjectDetails provides a mock function with given fields: id, details
-func (_m *MockObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
-	ret := _m.Called(id, details)
+// UpdateObjectDetails provides a mock function with given fields: ctx, id, details
+func (_m *MockObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error {
+	ret := _m.Called(ctx, id, details)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateObjectDetails")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, *types.Struct) error); ok {
-		r0 = rf(id, details)
+	if rf, ok := ret.Get(0).(func(context.Context, string, *types.Struct) error); ok {
+		r0 = rf(ctx, id, details)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2896,15 +2896,16 @@ type MockObjectStore_UpdateObjectDetails_Call struct {
 }
 
 // UpdateObjectDetails is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
 //   - details *types.Struct
-func (_e *MockObjectStore_Expecter) UpdateObjectDetails(id interface{}, details interface{}) *MockObjectStore_UpdateObjectDetails_Call {
-	return &MockObjectStore_UpdateObjectDetails_Call{Call: _e.mock.On("UpdateObjectDetails", id, details)}
+func (_e *MockObjectStore_Expecter) UpdateObjectDetails(ctx interface{}, id interface{}, details interface{}) *MockObjectStore_UpdateObjectDetails_Call {
+	return &MockObjectStore_UpdateObjectDetails_Call{Call: _e.mock.On("UpdateObjectDetails", ctx, id, details)}
 }
 
-func (_c *MockObjectStore_UpdateObjectDetails_Call) Run(run func(id string, details *types.Struct)) *MockObjectStore_UpdateObjectDetails_Call {
+func (_c *MockObjectStore_UpdateObjectDetails_Call) Run(run func(ctx context.Context, id string, details *types.Struct)) *MockObjectStore_UpdateObjectDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(*types.Struct))
+		run(args[0].(context.Context), args[1].(string), args[2].(*types.Struct))
 	})
 	return _c
 }
@@ -2914,7 +2915,7 @@ func (_c *MockObjectStore_UpdateObjectDetails_Call) Return(_a0 error) *MockObjec
 	return _c
 }
 
-func (_c *MockObjectStore_UpdateObjectDetails_Call) RunAndReturn(run func(string, *types.Struct) error) *MockObjectStore_UpdateObjectDetails_Call {
+func (_c *MockObjectStore_UpdateObjectDetails_Call) RunAndReturn(run func(context.Context, string, *types.Struct) error) *MockObjectStore_UpdateObjectDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

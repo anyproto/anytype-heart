@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	context2 "context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -1094,7 +1095,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 	assertRecordsEqual(t, []TestObject{obj1, obj3}, recs)
 
 	t.Run("update details called, but there are no changes", func(t *testing.T) {
-		err = s.UpdateObjectDetails("id1", makeDetails(obj1))
+		err = s.UpdateObjectDetails(context2.Background(), "id1", makeDetails(obj1))
 		require.NoError(t, err)
 
 		select {
@@ -1106,7 +1107,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 
 	t.Run("update details order", func(t *testing.T) {
 		for i := 1; i <= 1000; i++ {
-			err = s.UpdateObjectDetails("id1", makeDetails(makeObjectWithName("id1", fmt.Sprintf("%d", i))))
+			err = s.UpdateObjectDetails(context2.Background(), "id1", makeDetails(makeObjectWithName("id1", fmt.Sprintf("%d", i))))
 			require.NoError(t, err)
 		}
 

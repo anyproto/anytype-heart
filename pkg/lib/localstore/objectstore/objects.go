@@ -31,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -45,11 +44,8 @@ var (
 	pendingDetailsBase  = ds.NewKey("/" + pagesPrefix + "/pending")
 	pagesActiveViewBase = ds.NewKey("/" + pagesPrefix + "/activeView")
 
-	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
-	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
-	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
-	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
-	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
+	pagesSnippetBase = ds.NewKey("/" + pagesPrefix + "/snippet")
+	bundledChecksums = ds.NewKey("/" + pagesPrefix + "/checksum")
 
 	accountPrefix = "account"
 	accountStatus = ds.NewKey("/" + accountPrefix + "/status")
@@ -88,7 +84,7 @@ type ObjectStore interface {
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
-	UpdateObjectDetails(id string, details *types.Struct) error
+	UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
@@ -155,6 +151,8 @@ type dsObjectStore struct {
 	anyStore      anystore.DB
 	objects       anystore.Collection
 	fulltextQueue anystore.Collection
+	links         anystore.Collection
+	headsState    anystore.Collection
 
 	arenaPool *fastjson.ArenaPool
 
@@ -244,9 +242,17 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open fulltextQueue collection: %w", err))
 	}
+	links, err := store.Collection(ctx, "links")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open links collection: %w", err))
+	}
+	headsState, err := store.Collection(ctx, "headsState")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open headsState collection: %w", err))
+	}
 	s.anyStore = store
 
-	indexes := []anystore.IndexInfo{
+	objectIndexes := []anystore.IndexInfo{
 		{
 			Name:   "layout",
 			Fields: []string{bundle.RelationKeyLayout.String()},
@@ -276,7 +282,31 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 			Fields: []string{bundle.RelationKeySyncStatus.String()},
 		},
 	}
-	gotIndexes := objects.GetIndexes()
+	err = s.addIndexes(ctx, objects, objectIndexes)
+	if err != nil {
+		log.Errorf("ensure object indexes: %s", err)
+	}
+
+	linksIndexes := []anystore.IndexInfo{
+		{
+			Name:   linkOutboundField,
+			Fields: []string{linkOutboundField},
+		},
+	}
+	err = s.addIndexes(ctx, links, linksIndexes)
+	if err != nil {
+		log.Errorf("ensure links indexes: %s", err)
+	}
+
+	s.objects = objects
+	s.fulltextQueue = fulltextQueue
+	s.links = links
+	s.headsState = headsState
+	return nil
+}
+
+func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {
+	gotIndexes := coll.GetIndexes()
 	toCreate := indexes[:0]
 	for _, idx := range indexes {
 		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
@@ -285,13 +315,7 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 			toCreate = append(toCreate, idx)
 		}
 	}
-	err = objects.EnsureIndex(ctx, toCreate...)
-	if err != nil {
-		log.Errorf("ensure index: %s", err)
-	}
-	s.objects = objects
-	s.fulltextQueue = fulltextQueue
-	return nil
+	return coll.EnsureIndex(ctx, toCreate...)
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
@@ -533,7 +557,7 @@ func (s *dsObjectStore) getObjectsInfo(ctx context.Context, spaceID string, ids 
 	for _, id := range ids {
 		info, err := s.getObjectInfo(ctx, spaceID, id)
 		if err != nil {
-			if badgerhelper.IsNotFound(err) || errors.Is(err, ErrObjectNotFound) || errors.Is(err, ErrNotAnObject) {
+			if errors.Is(err, anystore.ErrDocNotFound) || errors.Is(err, ErrObjectNotFound) || errors.Is(err, ErrNotAnObject) {
 				continue
 			}
 			return nil, err
@@ -580,14 +604,6 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.Un
 	}
 
 	return &model.ObjectDetails{Details: records[0].Details}, nil
-}
-
-func listIDsByPrefix(txn *badger.Txn, prefix []byte) ([]string, error) {
-	var ids []string
-	err := iterateKeysByPrefixTx(txn, prefix, func(key []byte) {
-		ids = append(ids, path.Base(string(key)))
-	})
-	return ids, err
 }
 
 func extractIdFromKey(key string) (id string) {

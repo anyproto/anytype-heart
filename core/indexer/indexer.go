@@ -188,7 +188,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 
 	indexLinksTime := time.Now()
 	if indexDetails {
-		if err := i.store.UpdateObjectDetails(info.Id, details); err != nil {
+		if err := i.store.UpdateObjectDetails(context.Background(), info.Id, details); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
 		} else {

@@ -2,52 +2,48 @@ package objectstore
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
-	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) DeleteDetails(ids ...string) error {
-	for _, chunk := range lo.Chunk(ids, 100) {
-		err := s.updateTxn(func(txn *badger.Txn) error {
-			for _, id := range chunk {
-				err := s.objects.DeleteId(s.componentCtx, id)
-				if err != nil {
-					return fmt.Errorf("delete object %s: %w", id, err)
-				}
+	txn, err := s.anyStore.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("write txn: %w", err)
+	}
+	for _, id := range ids {
+		err := s.objects.DeleteId(txn.Context(), id)
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+			return errors.Join(txn.Rollback(), fmt.Errorf("delete object %s: %w", id, err))
+		}
 
-				for _, key := range []ds.Key{
-					indexedHeadsState.ChildString(id),
-				} {
-					if err := txn.Delete(key.Bytes()); err != nil {
-						return fmt.Errorf("delete key %s: %w", key, err)
-					}
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return err
+		err = s.headsState.DeleteId(txn.Context(), id)
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+			return errors.Join(txn.Rollback(), fmt.Errorf("delete headsState %s: %w", id, err))
 		}
 	}
-	return nil
+	return txn.Commit()
 }
 
 // DeleteObject removes all details, leaving only id and isDeleted
 func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
+	txn, err := s.anyStore.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("write txn: %w", err)
+	}
+	rollback := func(err error) error {
+		return errors.Join(txn.Rollback(), err)
+	}
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err := s.UpdateObjectDetails(id.ObjectID, &types.Struct{
+	err = s.UpdateObjectDetails(txn.Context(), id.ObjectID, &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():        pbtypes.String(id.ObjectID),
 			bundle.RelationKeySpaceId.String():   pbtypes.String(id.SpaceID),
@@ -55,52 +51,46 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to overwrite details and relations: %w", err)
+		return rollback(fmt.Errorf("failed to overwrite details and relations: %w", err))
+	}
+	err = s.fulltextQueue.DeleteId(txn.Context(), id.ObjectID)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return rollback(fmt.Errorf("delete: fulltext queue: %w", err))
 	}
 
-	return badgerhelper.RetryOnConflict(func() error {
-		txn := s.db.NewTransaction(true)
-		defer txn.Discard()
+	err = s.headsState.DeleteId(txn.Context(), id.ObjectID)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return rollback(fmt.Errorf("delete: heads state: %w", err))
+	}
+	err = s.eraseLinksForObject(txn.Context(), id.ObjectID)
+	if err != nil {
+		return rollback(err)
+	}
+	err = txn.Commit()
+	if err != nil {
+		return fmt.Errorf("delete object info: %w", err)
+	}
 
-		err = s.fulltextQueue.DeleteId(s.componentCtx, id.ObjectID)
-		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-			return fmt.Errorf("delete from fulltext queue: %w", err)
-		}
-
-		if err = txn.Delete(indexedHeadsState.ChildString(id.ObjectID).Bytes()); err != nil {
+	if s.fts != nil {
+		if err := s.fts.DeleteObject(id.ObjectID); err != nil {
 			return err
 		}
-
-		txn, err = s.eraseLinksForObject(txn, id.ObjectID)
-		if err != nil {
-			return err
-		}
-		err = txn.Commit()
-		if err != nil {
-			return fmt.Errorf("delete object info: %w", err)
-		}
-
-		if s.fts != nil {
-			if err := s.fts.DeleteObject(id.ObjectID); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 
-func (s *dsObjectStore) DeleteLinks(ids ...string) (err error) {
-	return badgerhelper.RetryOnConflict(func() error {
-		txn := s.db.NewTransaction(true)
-		defer txn.Discard()
-		for _, id := range ids {
-			txn, err = s.eraseLinksForObject(txn, id)
-			if err != nil {
-				return fmt.Errorf("erase links for object %s: %w", id, err)
-			}
+func (s *dsObjectStore) DeleteLinks(ids ...string) error {
+	txn, err := s.links.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("read txn: %w", err)
+	}
+	for _, id := range ids {
+		err := s.eraseLinksForObject(txn.Context(), id)
+		if err != nil {
+			return errors.Join(txn.Rollback(), fmt.Errorf("erase links for %s: %w", id, err))
 		}
-		return txn.Commit()
-	})
+	}
+	return txn.Commit()
 }
 
 func getLastPartOfKey(key []byte) string {
@@ -111,31 +101,10 @@ func getLastPartOfKey(key []byte) string {
 	return string(key[lastSlashIdx+1:])
 }
 
-func (s *dsObjectStore) eraseLinksForObject(txn *badger.Txn, from string) (*badger.Txn, error) {
-	var toDelete [][]byte
-	outboundPrefix := pagesOutboundLinksBase.ChildString(from).Bytes()
-	err := iterateKeysByPrefixTx(txn, outboundPrefix, func(key []byte) {
-		key = slices.Clone(key)
-		to := getLastPartOfKey(key)
-		toDelete = append(toDelete, key, inboundLinkKey(from, to).Bytes())
-	})
-	if err != nil {
-		return txn, fmt.Errorf("iterate keys: %w", err)
+func (s *dsObjectStore) eraseLinksForObject(ctx context.Context, from string) error {
+	err := s.links.DeleteId(ctx, from)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return err
 	}
-
-	for _, key := range toDelete {
-		err = txn.Delete(key)
-		if errors.Is(err, badger.ErrTxnTooBig) {
-			err = txn.Commit()
-			if err != nil {
-				return txn, fmt.Errorf("commit big transaction: %w", err)
-			}
-			txn = s.db.NewTransaction(true)
-			err = txn.Delete(key)
-		}
-		if err != nil {
-			return txn, fmt.Errorf("delete key %s: %w", key, err)
-		}
-	}
-	return txn, nil
+	return nil
 }
