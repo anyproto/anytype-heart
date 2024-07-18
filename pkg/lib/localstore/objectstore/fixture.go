@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"path/filepath"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
@@ -43,29 +41,15 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	badgerDir := filepath.Join(t.TempDir(), "badger")
-	opts := badger.DefaultOptions(badgerDir)
-	opts.Logger = nil
-	db, err := badger.Open(opts)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err = db.Close()
-		require.NoError(t, err)
-	})
-
 	ds := &dsObjectStore{
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,
 		fts:                fullText,
 		sourceService:      &detailsFromId{},
-		db:                 db,
 		arenaPool:          &fastjson.ArenaPool{},
 		parserPool:         &fastjson.ParserPool{},
 		repoPath:           walletService.RepoPath(),
 	}
-	err = ds.initCache()
-	require.NoError(t, err)
 
 	err = ds.Run(ctx)
 	require.NoError(t, err)

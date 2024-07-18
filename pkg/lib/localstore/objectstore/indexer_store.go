@@ -2,17 +2,15 @@ package objectstore
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/query"
-	"github.com/gogo/protobuf/proto"
 	"github.com/valyala/fastjson"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 func (s *dsObjectStore) AddToIndexQueue(id string) error {
@@ -75,28 +73,37 @@ func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) error {
 	return txn.Commit()
 }
 
-func (s *dsObjectStore) GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error) {
-	return badgerhelper.GetValue(s.db, bundledChecksums.ChildString(spaceID).Bytes(), func(raw []byte) (*model.ObjectStoreChecksums, error) {
-		checksums := &model.ObjectStoreChecksums{}
-		return checksums, proto.Unmarshal(raw, checksums)
-	})
+func (s *dsObjectStore) GetChecksums(spaceID string) (*model.ObjectStoreChecksums, error) {
+	doc, err := s.indexerChecksums.FindId(s.componentCtx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("find account status: %w", err)
+	}
+	val := doc.Value().GetStringBytes("value")
+	var checksums *model.ObjectStoreChecksums
+	err = json.Unmarshal(val, &checksums)
+	return checksums, err
 }
 
-func (s *dsObjectStore) SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error) {
-	// in case we have global checksums we need to remove them, because it should not be used for any new space
-	if spaceID != addr.AnytypeMarketplaceWorkspace {
-		_ = badgerhelper.DeleteValue(s.db, bundledChecksums.Bytes())
+func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectStoreChecksums) (err error) {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	it, err := keyValueItem(arena, spaceId, checksums)
+	if err != nil {
+		return err
 	}
-	return badgerhelper.SetValue(s.db, bundledChecksums.ChildString(spaceID).Bytes(), checksums)
+	_, err = s.indexerChecksums.UpsertOne(s.componentCtx, it)
+	return err
 }
 
 // GetGlobalChecksums is a migration method, it returns checksums stored before we started to store them per space
 // it will be deleted after the first SaveChecksums() call
 func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error) {
-	return badgerhelper.GetValue(s.db, bundledChecksums.Bytes(), func(raw []byte) (*model.ObjectStoreChecksums, error) {
-		checksums := &model.ObjectStoreChecksums{}
-		return checksums, proto.Unmarshal(raw, checksums)
-	})
+	// TODO What to do?
+	return s.GetChecksums("global")
 }
 
 const headsStateField = "h"

@@ -12,7 +12,7 @@ const (
 	accountStatusKey = "account_status"
 )
 
-func keyValueItem(arena *fastjson.Arena, parser *fastjson.Parser, key string, value any) (*fastjson.Value, error) {
+func keyValueItem(arena *fastjson.Arena, key string, value any) (*fastjson.Value, error) {
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return nil, err
@@ -26,14 +26,12 @@ func keyValueItem(arena *fastjson.Arena, parser *fastjson.Parser, key string, va
 
 func (s *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) error {
 	arena := s.arenaPool.Get()
-	parser := s.parserPool.Get()
 	defer func() {
 		arena.Reset()
 		s.arenaPool.Put(arena)
-		s.parserPool.Put(parser)
 	}()
 
-	it, err := keyValueItem(arena, parser, accountStatusKey, status)
+	it, err := keyValueItem(arena, accountStatusKey, status)
 	if err != nil {
 		return fmt.Errorf("create item: %w", err)
 	}

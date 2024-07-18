@@ -1,28 +1,33 @@
 package objectstore
 
 import (
+	"encoding/json"
 	"errors"
-	"strings"
+	"fmt"
 
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	anystore "github.com/anyproto/any-store"
 )
-
-const (
-	blockViewSeparator = ":"
-	viewsSeparator     = ","
-)
-
-var ErrParseView = errors.New("failed to parse view")
 
 // SetActiveViews accepts map of active views by blocks, as objects can handle multiple dataview blocks
 func (s *dsObjectStore) SetActiveViews(objectId string, views map[string]string) error {
-	return badgerhelper.SetValue(s.db, pagesActiveViewBase.ChildString(objectId).Bytes(), viewsMapToString(views))
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	it, err := keyValueItem(arena, objectId, views)
+	if err != nil {
+		return err
+	}
+	_, err = s.activeViews.UpsertOne(s.componentCtx, it)
+	return err
 }
 
 func (s *dsObjectStore) SetActiveView(objectId, blockId, viewId string) error {
 	views, err := s.GetActiveViews(objectId)
 	// if active views are not found in BD, or we could not parse them, then we need to rewrite them
-	if err != nil && !badgerhelper.IsNotFound(err) && !errors.Is(err, ErrParseView) {
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return err
 	}
 	if views == nil {
@@ -33,33 +38,13 @@ func (s *dsObjectStore) SetActiveView(objectId, blockId, viewId string) error {
 }
 
 // GetActiveViews returns a map of activeViews by block ids
-func (s *dsObjectStore) GetActiveViews(objectId string) (views map[string]string, err error) {
-	raw, err := badgerhelper.GetValue(s.db, pagesActiveViewBase.ChildString(objectId).Bytes(), bytesToString)
+func (s *dsObjectStore) GetActiveViews(objectId string) (map[string]string, error) {
+	doc, err := s.activeViews.FindId(s.componentCtx, objectId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find account status: %w", err)
 	}
-	return parseViewsMap(raw)
-}
-
-func viewsMapToString(views map[string]string) (result string) {
-	for block, view := range views {
-		result = result + viewsSeparator + block + blockViewSeparator + view
-	}
-	if len(views) != 0 {
-		result = result[1:]
-	}
-	return result
-}
-
-func parseViewsMap(s string) (viewsMap map[string]string, err error) {
-	viewsMap = make(map[string]string)
-	views := strings.Split(s, viewsSeparator)
-	for _, view := range views {
-		parts := strings.Split(view, blockViewSeparator)
-		if len(parts) != 2 {
-			return nil, ErrParseView
-		}
-		viewsMap[parts[0]] = parts[1]
-	}
-	return viewsMap, nil
+	val := doc.Value().GetStringBytes("value")
+	views := map[string]string{}
+	err = json.Unmarshal(val, &views)
+	return views, err
 }

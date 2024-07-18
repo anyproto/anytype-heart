@@ -2,8 +2,10 @@ package objectstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/query"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
@@ -74,40 +76,53 @@ func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 }
 
 func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		key := pendingDetailsBase.ChildString(id).Bytes()
+	if proc == nil {
+		return nil
+	}
+	arena := s.arenaPool.Get()
 
-		objDetails, err := s.getPendingLocalDetails(txn, key)
-		if err != nil && !badgerhelper.IsNotFound(err) {
-			return fmt.Errorf("get pending details: %w", err)
-		}
+	txn, err := s.pendingDetails.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("write txn: %w", err)
+	}
+	rollback := func(err error) error {
+		return errors.Join(txn.Rollback(), err)
+	}
 
-		oldDetails := objDetails.GetDetails()
-		if oldDetails == nil || oldDetails.Fields == nil {
-			oldDetails = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-		newDetails, err := proc(oldDetails)
+	var toDelete bool
+	_, err = s.pendingDetails.UpsertId(txn.Context(), id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
+		inputDetails, err := pbtypes.JsonToProto(val)
 		if err != nil {
-			return fmt.Errorf("run a modifier: %w", err)
+			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
+		}
+		inputDetails = pbtypes.EnsureStructInited(inputDetails)
+		newDetails, err := proc(inputDetails)
+		if err != nil {
+			return nil, false, fmt.Errorf("run a modifier: %w", err)
 		}
 		if newDetails == nil {
-			err = txn.Delete(key)
-			if err != nil {
-				return err
-			}
-			return nil
+			toDelete = true
+			return val, false, nil
 		}
-
-		if newDetails.Fields == nil {
-			newDetails.Fields = map[string]*types.Value{}
-		}
+		newDetails = pbtypes.EnsureStructInited(newDetails)
+		// Ensure ID is set
 		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-		err = badgerhelper.SetValueTxn(txn, key, &model.ObjectDetails{Details: newDetails})
-		if err != nil {
-			return fmt.Errorf("put pending details: %w", err)
+
+		jsonVal := pbtypes.ProtoToJson(arena, newDetails)
+		return jsonVal, true, nil
+	}))
+	arena.Reset()
+	s.arenaPool.Put(arena)
+	if err != nil {
+		return rollback(fmt.Errorf("upsert details: %w", err))
+	}
+	if toDelete {
+		err = s.pendingDetails.DeleteId(txn.Context(), id)
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+			return rollback(fmt.Errorf("delete details: %w", err))
 		}
-		return nil
-	})
+	}
+	return txn.Commit()
 }
 
 // ModifyObjectDetails updates existing details in store using modification function `proc`
@@ -151,14 +166,6 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *types.
 		return fmt.Errorf("upsert details: %w", err)
 	}
 	return nil
-}
-
-func (s *dsObjectStore) extractDetailsByKey(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
-	it, err := txn.Get(key)
-	if err != nil {
-		return nil, fmt.Errorf("get item: %w", err)
-	}
-	return s.unmarshalDetailsFromItem(it)
 }
 
 func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {

@@ -5,20 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
-	"unsafe"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	lru "github.com/hashicorp/golang-lru/v2"
-	ds "github.com/ipfs/go-datastore"
 	"github.com/valyala/fastjson"
 	"golang.org/x/exp/slices"
 
@@ -27,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -39,16 +32,6 @@ var log = logging.Logger("anytype-localstore")
 const CName = "objectstore"
 
 var (
-	// ObjectInfo is stored in db key pattern:
-	pagesPrefix         = "pages"
-	pendingDetailsBase  = ds.NewKey("/" + pagesPrefix + "/pending")
-	pagesActiveViewBase = ds.NewKey("/" + pagesPrefix + "/activeView")
-
-	bundledChecksums = ds.NewKey("/" + pagesPrefix + "/checksum")
-
-	spacePrefix   = "space"
-	virtualSpaces = ds.NewKey("/" + spacePrefix + "/virtual")
-
 	ErrObjectNotFound = errors.New("object not found")
 	ErrNotAnObject    = fmt.Errorf("not an object")
 
@@ -141,20 +124,21 @@ type VirtualSpacesStore interface {
 }
 
 type dsObjectStore struct {
-	repoPath      string
-	sourceService SourceDetailsFromID
-	anyStore      anystore.DB
-	objects       anystore.Collection
-	fulltextQueue anystore.Collection
-	links         anystore.Collection
-	headsState    anystore.Collection
-	system        anystore.Collection
+	repoPath         string
+	sourceService    SourceDetailsFromID
+	anyStore         anystore.DB
+	objects          anystore.Collection
+	fulltextQueue    anystore.Collection
+	links            anystore.Collection
+	headsState       anystore.Collection
+	system           anystore.Collection
+	activeViews      anystore.Collection
+	indexerChecksums anystore.Collection
+	virtualSpaces    anystore.Collection
+	pendingDetails   anystore.Collection
 
 	arenaPool  *fastjson.ArenaPool
 	parserPool *fastjson.ParserPool
-
-	cache *lru.Cache[string, *model.ObjectDetails]
-	db    *badger.DB
 
 	fts ftsearch.FTSearch
 
@@ -190,23 +174,9 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	} else {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
-	datastoreService := a.MustComponent(datastore.CName).(datastore.Datastore)
-	s.db, err = datastoreService.LocalStorage()
-	if err != nil {
-		return fmt.Errorf("get badger: %w", err)
-	}
 	s.arenaPool = &fastjson.ArenaPool{}
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
 
-	return s.initCache()
-}
-
-func (s *dsObjectStore) initCache() error {
-	cache, err := lru.New[string, *model.ObjectDetails](50000)
-	if err != nil {
-		return fmt.Errorf("init cache: %w", err)
-	}
-	s.cache = cache
 	return nil
 }
 
@@ -250,6 +220,22 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	system, err := store.Collection(ctx, "system")
 	if err != nil {
 		return errors.Join(store.Close(), fmt.Errorf("open system collection: %w", err))
+	}
+	activeViews, err := store.Collection(ctx, "activeViews")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open activeViews collection: %w", err))
+	}
+	indexerChecksums, err := store.Collection(ctx, "indexerChecksums")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open indexerChecksums collection: %w", err))
+	}
+	virtualSpaces, err := store.Collection(ctx, "virtualSpaces")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open virtualSpaces collection: %w", err))
+	}
+	pendingDetails, err := store.Collection(ctx, "pendingDetails")
+	if err != nil {
+		return errors.Join(store.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
 	}
 	s.anyStore = store
 
@@ -304,6 +290,11 @@ func (s *dsObjectStore) runDatabase(ctx context.Context, path string) error {
 	s.links = links
 	s.headsState = headsState
 	s.system = system
+	s.activeViews = activeViews
+	s.indexerChecksums = indexerChecksums
+	s.virtualSpaces = virtualSpaces
+	s.pendingDetails = pendingDetails
+
 	return nil
 }
 
@@ -471,60 +462,9 @@ func (s *dsObjectStore) ListIds() ([]string, error) {
 	return ids, iter.Close()
 }
 
-func (s *dsObjectStore) Prefix() string {
-	return pagesPrefix
-}
-
 // TODO objstore: Just use dependency injection
 func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 	return s.fts
-}
-
-func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
-	key := it.Key()
-	sKey := unsafe.String(unsafe.SliceData(key), len(key))
-	if v, ok := s.cache.Get(sKey); ok {
-		return v, nil
-	}
-	return s.unmarshalDetailsFromItem(it)
-}
-
-func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
-	var details *model.ObjectDetails
-	err := it.Value(func(val []byte) error {
-		var err error
-		details, err = unmarshalDetails(detailsKeyToID(it.Key()), val)
-		if err != nil {
-			return fmt.Errorf("unmarshal details: %w", err)
-		}
-		s.cache.Add(string(it.Key()), details)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("get item value: %w", err)
-	}
-	return details, nil
-}
-
-func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) {
-	result := &model.ObjectDetails{}
-	if err := proto.Unmarshal(rawValue, result); err != nil {
-		return nil, err
-	}
-	if result.Details == nil {
-		result.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	if result.Details.Fields == nil {
-		result.Details.Fields = map[string]*types.Value{}
-	} else {
-		pbtypes.StructDeleteEmptyFields(result.Details)
-	}
-	result.Details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-	return result, nil
-}
-
-func detailsKeyToID(key []byte) string {
-	return path.Base(string(key))
 }
 
 func (s *dsObjectStore) getObjectInfo(ctx context.Context, spaceID string, id string) (*model.ObjectInfo, error) {
