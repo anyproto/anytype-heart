@@ -17,15 +17,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -67,13 +63,15 @@ type NetworkConfig interface {
 }
 
 type spaceSyncStatus struct {
-	eventSender   event.Sender
-	networkConfig NetworkConfig
-	nodeStatus    nodestatus.NodeStatus
-	nodeConf      nodeconf.Service
-	nodeUsage     NodeUsage
-	store         objectstore.ObjectStore
-	batcher       *mb.MB[*domain.SpaceSync]
+	eventSender         event.Sender
+	networkConfig       NetworkConfig
+	nodeStatus          nodestatus.NodeStatus
+	nodeConf            nodeconf.Service
+	nodeUsage           NodeUsage
+	store               objectstore.ObjectStore
+	batcher             *mb.MB[*domain.SpaceSync]
+	subscriptionService subscription.Service
+	subs                map[string]*syncingObjects
 
 	filesState   State
 	objectsState State
@@ -98,8 +96,10 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	s.nodeConf = app.MustComponent[nodeconf.Service](a)
 	s.nodeUsage = app.MustComponent[NodeUsage](a)
+	s.subscriptionService = app.MustComponent[subscription.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.curStatuses = make(map[string]struct{})
+	s.subs = make(map[string]*syncingObjects)
 	s.missingIds = make(map[string][]string)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
@@ -210,56 +210,39 @@ func (s *spaceSyncStatus) Refresh(spaceId string) {
 }
 
 func (s *spaceSyncStatus) getObjectSyncingObjectsCount(spaceId string, missingObjects []string) int {
-	ids, _, err := s.store.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySyncStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(domain.Syncing)),
-			},
-			{
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_NotIn,
-				Value: pbtypes.IntList(
-					int(model.ObjectType_file),
-					int(model.ObjectType_image),
-					int(model.ObjectType_video),
-					int(model.ObjectType_audio),
-				),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
-	if err != nil {
-		log.Errorf("failed to query file status: %s", err)
+	s.mx.Lock()
+	curSub := s.subs[spaceId]
+	s.mx.Unlock()
+	if curSub == nil {
+		curSub = newSyncingObjects(spaceId, s.subscriptionService)
+		err := curSub.run()
+		if err != nil {
+			log.Errorf("failed to run subscription: %s", err)
+			return 0
+		}
+		s.mx.Lock()
+		s.subs[spaceId] = curSub
+		s.mx.Unlock()
 	}
-	_, added := slice.DifferenceRemovedAdded(ids, missingObjects)
-	return len(ids) + len(added)
+	return curSub.SyncingObjectsCount(missingObjects)
 }
 
 func (s *spaceSyncStatus) getFileSyncingObjectsCount(spaceId string) int {
-	recs, _, err := s.store.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(filesyncstatus.Syncing), int(filesyncstatus.Queued)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
-			},
-		},
-	})
-	if err != nil {
-		log.Errorf("failed to query file status: %s", err)
+	s.mx.Lock()
+	curSub := s.subs[spaceId]
+	s.mx.Unlock()
+	if curSub == nil {
+		curSub = newSyncingObjects(spaceId, s.subscriptionService)
+		err := curSub.run()
+		if err != nil {
+			log.Errorf("failed to run subscription: %s", err)
+			return 0
+		}
+		s.mx.Lock()
+		s.subs[spaceId] = curSub
+		s.mx.Unlock()
 	}
-	return len(recs)
+	return curSub.FileSyncingObjectsCount()
 }
 
 func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
@@ -291,6 +274,14 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string, missingObjects [
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
 	s.periodicCall.Close()
+	s.mx.Lock()
+	subs := lo.MapToSlice(s.subs, func(key string, value *syncingObjects) *syncingObjects {
+		return value
+	})
+	s.mx.Unlock()
+	for _, sub := range subs {
+		sub.Close()
+	}
 	return
 }
 
