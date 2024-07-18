@@ -3,6 +3,8 @@ package metrics
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/reflection"
 )
@@ -17,6 +20,7 @@ import (
 const (
 	unexpectedErrorCode = -1
 	parsingErrorCode    = -2
+	accountSelect       = "AccountSelect"
 )
 
 var (
@@ -50,10 +54,22 @@ func extractMethodName(info string) string {
 }
 
 func SharedTraceInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
+	var hotSync bool
+	if methodName == accountSelect {
+		hotSync = extractHotSync(req.(*pb.RpcAccountSelectRequest))
+	}
 	start := time.Now().UnixMilli()
 	resp, err := actualCall(ctx, req)
 	delta := time.Now().UnixMilli() - start
-	SendMethodEvent(methodName, err, resp, delta)
+	if methodName == accountSelect {
+		if hotSync {
+			SendMethodEvent(methodName+"Hot", err, resp, delta)
+		} else {
+			SendMethodEvent(methodName+"Cold", err, resp, delta)
+		}
+	} else {
+		SendMethodEvent(methodName, err, resp, delta)
+	}
 	return resp, err
 }
 
@@ -109,6 +125,25 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 		)
 	}
 	return resp, err
+}
+
+func extractHotSync(req *pb.RpcAccountSelectRequest) bool {
+	exists, err := dirExists(filepath.Join(req.RootPath, req.Id))
+	if err != nil {
+		return false
+	}
+	return exists
+}
+
+func dirExists(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return info.IsDir(), nil
 }
 
 func stackTraceHasMethod(method string, stackTrace []byte) bool {
