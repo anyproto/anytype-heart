@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb"
+	mb2 "github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
@@ -69,6 +70,7 @@ type service struct {
 	cache         *cache
 	ds            *dependencyService
 	subscriptions map[string]subscription
+	customOutput  map[string]mb2.MB[*pb.EventMessage]
 	recBatch      *mb.MB
 
 	objectStore       objectstore.ObjectStore
@@ -490,13 +492,33 @@ func (s *service) onChange(entries []*entry) time.Duration {
 		}
 	}
 	handleTime := time.Since(st)
-	event := s.ctxBuf.apply()
+
+	// Reset output buffer
+	for subId, msgs := range s.ctxBuf.outputs {
+		if subId == defaultOutput {
+			s.ctxBuf.outputs[subId] = msgs[:0]
+		} else if _, ok := s.customOutput[subId]; ok {
+			s.ctxBuf.outputs[subId] = msgs[:0]
+		} else {
+			delete(s.ctxBuf.outputs, subId)
+		}
+	}
+	for subId := range s.customOutput {
+		if _, ok := s.ctxBuf.outputs[subId]; !ok {
+			s.ctxBuf.outputs[subId] = make([]*pb.EventMessage, 0, 10)
+		}
+	}
+
+	s.ctxBuf.apply()
+
 	dur := time.Since(st)
 
-	s.debugEvents(event)
+	events := s.ctxBuf.outputs[defaultOutput]
+	s.debugEvents(&pb.Event{Messages: events})
 
 	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
-	s.eventSender.Broadcast(event)
+	s.eventSender.Broadcast(&pb.Event{Messages: events})
+
 	return dur
 }
 
