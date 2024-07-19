@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -288,7 +289,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 
 			// then
 			assert.Error(t, err)
-			assert.True(t, errors.Is(err, ErrCannotMoveTableBlocks))
+			assert.True(t, errors.Is(err, table.ErrCannotMoveTableBlocks))
 		})
 	}
 
@@ -371,7 +372,7 @@ func TestBasic_MoveTableBlocks(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, ErrCannotMoveTableBlocks))
+		assert.True(t, errors.Is(err, table.ErrCannotMoveTableBlocks))
 	})
 
 	for _, block := range []string{"columns", "rows", "column", "row"} {

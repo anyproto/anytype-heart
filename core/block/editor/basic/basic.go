@@ -2,7 +2,6 @@ package basic
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -99,8 +98,6 @@ type Replaceable interface {
 type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
-
-var ErrCannotMoveTableBlocks = fmt.Errorf("can not move table blocks")
 
 func NewBasic(
 	sb smartblock.SmartBlock,
@@ -240,7 +237,7 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		}
 	}
 
-	targetBlockId, position, err = checkTableBlocksMove(srcState, targetBlockId, position, blockIds)
+	targetBlockId, position, err = table.CheckTableBlocksMove(srcState, targetBlockId, position, blockIds)
 	if err != nil {
 		return err
 	}
@@ -285,44 +282,6 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 	}
 
 	return srcState.InsertTo(targetBlockId, position, blockIds...)
-}
-
-func checkTableBlocksMove(st *state.State, target string, pos model.BlockPosition, blockIds []string) (string, model.BlockPosition, error) {
-	if t, _ := table.NewTable(st, target); t != nil {
-		// we allow moving rows between each other
-		if slice.ContainsAll(t.RowIDs(), append(blockIds, target)...) {
-			if pos == model.Block_Bottom || pos == model.Block_Top {
-				return target, pos, nil
-			}
-			return "", 0, fmt.Errorf("failed to move rows: position should be Top or Bottom, got %s", model.BlockPosition_name[int32(pos)])
-		}
-	}
-
-	for _, id := range blockIds {
-		t := table.GetTableRootBlock(st, id)
-		if t != nil && t.Model().Id != id {
-			// we should not move table blocks except table root block
-			return "", 0, ErrCannotMoveTableBlocks
-		}
-	}
-
-	t := table.GetTableRootBlock(st, target)
-	if t != nil && t.Model().Id != target {
-		// we allow inserting blocks into table cell
-		if isTableCell(target) && slices.Contains([]model.BlockPosition{model.Block_Inner, model.Block_Replace, model.Block_InnerFirst}, pos) {
-			return target, pos, nil
-		}
-
-		// if the target is one of table blocks, but not cell or table root, we should insert blocks under the table
-		return t.Model().Id, model.Block_Bottom, nil
-	}
-
-	return target, pos, nil
-}
-
-func isTableCell(id string) bool {
-	_, _, err := table.ParseCellID(id)
-	return err == nil
 }
 
 func (bs *basic) Replace(ctx session.Context, id string, block *model.Block) (newId string, err error) {
