@@ -1463,9 +1463,9 @@ func TestGetTiers(t *testing.T) {
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
 			return nil
 		})
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		fx.cache.EXPECT().CacheEnable().Return(nil)
 
-		//fx.expectLimitsUpdated()
+		fx.expectLimitsUpdated()
 
 		req := pb.RpcMembershipGetTiersRequest{
 			NoCache: false,
