@@ -31,10 +31,12 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 		a := new(app.App)
 		eventSender := mock_event.NewMockSender(t)
 		space := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
+
 		a.Register(testutil.PrepareMock(ctx, a, eventSender)).
 			Register(objectstore.NewStoreFixture(t)).
 			Register(&config.Config{NetworkMode: pb.RpcAccount_DefaultConfig}).
-			Register(testutil.PrepareMock(ctx, a, space))
+			Register(testutil.PrepareMock(ctx, a, space)).
+			Register(session.NewHookRunner())
 
 		// when
 		err := status.Init(a)
@@ -42,7 +44,7 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 
-		space.EXPECT().PersonalSpaceId().Return("personalId")
+		space.EXPECT().AllSpaceIds().Return([]string{"personalId"})
 		eventSender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -81,7 +83,8 @@ func TestSpaceSyncStatus_Init(t *testing.T) {
 		a.Register(testutil.PrepareMock(ctx, a, eventSender)).
 			Register(objectstore.NewStoreFixture(t)).
 			Register(&config.Config{NetworkMode: pb.RpcAccount_LocalOnly}).
-			Register(testutil.PrepareMock(ctx, a, space))
+			Register(testutil.PrepareMock(ctx, a, space)).
+			Register(session.NewHookRunner())
 
 		// when
 		err := status.Init(a)
@@ -205,7 +208,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
 		objectsSyncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		status.objectsState.SetSyncStatusAndErr(objectsSyncStatus)
+		status.objectsState.SetSyncStatusAndErr(objectsSyncStatus.Status, domain.Null, objectsSyncStatus.SpaceId)
 
 		// then
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Files)
@@ -247,7 +250,7 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
 		assert.Equal(t, domain.Error, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
-	t.Run("send storage error event", func(t *testing.T) {
+	t.Run("send storage error event and then reset it", func(t *testing.T) {
 		// given
 		eventSender := mock_event.NewMockSender(t)
 		eventSender.EXPECT().Broadcast(&pb.Event{
@@ -276,9 +279,9 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status.updateSpaceSyncStatus(syncStatus)
 
 		// when
-		assert.Equal(t, domain.Error, status.filesState.GetSyncStatus("spaceId"))
+		assert.Equal(t, domain.Synced, status.filesState.GetSyncStatus("spaceId"))
 		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Error, status.getSpaceSyncStatus(syncStatus.SpaceId))
+		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
 	t.Run("send incompatible error event", func(t *testing.T) {
 		// given
@@ -349,6 +352,38 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 	t.Run("send synced event", func(t *testing.T) {
 		// given
 		eventSender := mock_event.NewMockSender(t)
+		status := spaceSyncStatus{
+			eventSender:   eventSender,
+			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
+			batcher:       mb.New[*domain.SpaceSync](0),
+			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
+		}
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		status.objectsState.SetObjectsNumber(syncStatus)
+		status.objectsState.SetSyncStatusAndErr(syncStatus.Status, domain.Null, syncStatus.SpaceId)
+
+		// then
+		syncStatus = domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
+		status.updateSpaceSyncStatus(syncStatus)
+
+		// when
+		assert.Equal(t, domain.Synced, status.objectsState.GetSyncStatus("spaceId"))
+		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
+		assert.Equal(t, domain.Unknown, status.filesState.GetSyncStatus("spaceId"))
+		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
+		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus.SpaceId))
+	})
+	t.Run("send initial synced event", func(t *testing.T) {
+		// given
+		eventSender := mock_event.NewMockSender(t)
+		status := spaceSyncStatus{
+			eventSender:   eventSender,
+			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
+			batcher:       mb.New[*domain.SpaceSync](0),
+			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
+		}
 		eventSender.EXPECT().Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{{
 				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
@@ -362,28 +397,11 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 				},
 			}},
 		})
-		status := spaceSyncStatus{
-			eventSender:   eventSender,
-			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
-			batcher:       mb.New[*domain.SpaceSync](0),
-			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
-			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
-		}
-		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
-		status.objectsState.SetObjectsNumber(syncStatus)
-		status.objectsState.SetSyncStatusAndErr(syncStatus)
-
 		// then
-		syncStatus = domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
 		status.updateSpaceSyncStatus(syncStatus)
-
-		// when
-		assert.Equal(t, domain.Synced, status.objectsState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 0, status.objectsState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Synced, status.filesState.GetSyncStatus("spaceId"))
-		assert.Equal(t, 0, status.filesState.GetSyncObjectCount("spaceId"))
-		assert.Equal(t, domain.Synced, status.getSpaceSyncStatus(syncStatus.SpaceId))
 	})
+
 	t.Run("not send not needed synced event", func(t *testing.T) {
 		// given
 		eventSender := mock_event.NewMockSender(t)
@@ -394,8 +412,10 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
 			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
 		}
-		// then
+		status.objectsState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
+		status.filesState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
 
+		// then
 		syncStatus := domain.MakeSyncStatus("spaceId", domain.Synced, domain.Null, domain.Objects)
 		status.updateSpaceSyncStatus(syncStatus)
 
@@ -462,6 +482,39 @@ func TestSpaceSyncStatus_updateSpaceSyncStatus(t *testing.T) {
 		status.updateSpaceSyncStatus(syncStatus)
 		status.updateSpaceSyncStatus(syncStatus)
 	})
+	t.Run("not send not changed event", func(t *testing.T) {
+		// given
+		eventSender := mock_event.NewMockSender(t)
+		status := spaceSyncStatus{
+			eventSender:   eventSender,
+			networkConfig: &config.Config{NetworkMode: pb.RpcAccount_CustomConfig},
+			batcher:       mb.New[*domain.SpaceSync](0),
+			filesState:    NewFileState(objectstore.NewStoreFixture(t)),
+			objectsState:  NewObjectState(objectstore.NewStoreFixture(t)),
+		}
+		status.objectsState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
+		status.filesState.SetSyncStatusAndErr(domain.Synced, domain.Null, "spaceId")
+
+		// then
+		syncStatus := domain.MakeSyncStatus("spaceId", domain.Syncing, domain.Null, domain.Objects)
+		status.objectsState.SetObjectsNumber(syncStatus)
+		status.updateSpaceSyncStatus(syncStatus)
+
+		// when
+		eventSender.AssertNotCalled(t, "Broadcast", &pb.Event{
+			Messages: []*pb.EventMessage{{
+				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+						Id:                    "spaceId",
+						Status:                pb.EventSpace_Synced,
+						Network:               pb.EventSpace_SelfHost,
+						Error:                 pb.EventSpace_Null,
+						SyncingObjectsCounter: 0,
+					},
+				},
+			}},
+		})
+	})
 }
 
 func TestSpaceSyncStatus_SendUpdate(t *testing.T) {
@@ -520,6 +573,6 @@ func TestSpaceSyncStatus_Notify(t *testing.T) {
 				},
 			}},
 		})
-		spaceStatus.Notify(session.NewContext())
+		spaceStatus.sendSyncEventForNewSession(session.NewContext())
 	})
 }

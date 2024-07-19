@@ -53,6 +53,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
+	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -72,7 +73,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
+	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater"
@@ -229,6 +232,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
+		Register(device.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
@@ -260,6 +264,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(block.New()).
 		Register(indexer.New()).
 		Register(detailsupdater.NewUpdater()).
+		Register(session.NewHookRunner()).
 		Register(spacesyncstatus.NewSpaceSyncStatus()).
 		Register(nodestatus.NewNodeStatus()).
 		Register(syncstatus.New()).
@@ -278,18 +283,20 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
+		Register(device.NewDevices()).
 		Register(editor.NewObjectFactory()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
 		Register(profiler.New()).
 		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
-		Register(notifications.New()).
+		Register(notifications.New(time.Second * 10)).
 		Register(paymentserviceclient.New()).
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
-		Register(paymentscache.New())
+		Register(paymentscache.New()).
+		Register(peerstatus.New())
 }
 
 func MiddlewareVersion() string {

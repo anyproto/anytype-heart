@@ -14,6 +14,7 @@ const (
 	Syncing SpaceSyncStatus = 1
 	Error   SpaceSyncStatus = 2
 	Offline SpaceSyncStatus = 3
+	Unknown SpaceSyncStatus = 4
 )
 
 type ObjectSyncStatus int32
@@ -32,6 +33,7 @@ const (
 	StorageLimitExceed  SyncError = 1
 	IncompatibleVersion SyncError = 2
 	NetworkError        SyncError = 3
+	Oversized           SyncError = 4
 )
 
 type SpaceSync struct {

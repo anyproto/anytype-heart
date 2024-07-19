@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -250,6 +251,10 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		s.addNotification(ch.GetNotificationCreate().GetNotification())
 	case ch.GetNotificationUpdate() != nil:
 		s.updateNotification(ch.GetNotificationUpdate())
+	case ch.GetDeviceAdd() != nil:
+		s.addDevice(ch.GetDeviceAdd().GetDevice())
+	case ch.GetDeviceUpdate() != nil:
+		s.updateDevice(ch.GetDeviceUpdate())
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -459,6 +464,23 @@ func (s *State) updateNotification(update *pb.ChangeNotificationUpdate) {
 	s.notifications[update.Id].Status = update.Status
 }
 
+func (s *State) addDevice(deviceInfo *model.DeviceInfo) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	s.deviceStore[deviceInfo.Id] = deviceInfo
+}
+
+func (s *State) updateDevice(update *pb.ChangeDeviceUpdate) {
+	if s.deviceStore == nil {
+		return
+	}
+	if _, ok := s.deviceStore[update.Id]; !ok {
+		return
+	}
+	s.deviceStore[update.Id].Name = update.Name
+}
+
 func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
@@ -577,22 +599,28 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		})
 	}
 	if len(newRelLinks) > 0 {
-		cb.AddChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfRelationAdd{
-				RelationAdd: &pb.ChangeRelationAdd{
-					RelationLinks: newRelLinks,
+		filteredRelationsLinks := s.filterLocalAndDerivedRelations(newRelLinks)
+		if len(filteredRelationsLinks) > 0 {
+			cb.AddChange(&pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationAdd{
+					RelationAdd: &pb.ChangeRelationAdd{
+						RelationLinks: filteredRelationsLinks,
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 	if len(delRelIds) > 0 {
-		cb.AddChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfRelationRemove{
-				RelationRemove: &pb.ChangeRelationRemove{
-					RelationKey: delRelIds,
+		filteredRelationsKeys := s.filterLocalAndDerivedRelationsByKey(delRelIds)
+		if len(filteredRelationsKeys) > 0 {
+			cb.AddChange(&pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationRemove{
+					RelationRemove: &pb.ChangeRelationRemove{
+						RelationKey: filteredRelationsKeys,
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 	if len(updMsgs) > 0 {
 		cb.AddChange(&pb.ChangeContent{
@@ -610,6 +638,27 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
 	s.changes = append(s.changes, s.diffFileInfo()...)
 	s.changes = append(s.changes, s.makeNotificationChanges()...)
+	s.changes = append(s.changes, s.makeDeviceInfoChanges()...)
+}
+
+func (s *State) filterLocalAndDerivedRelations(newRelLinks pbtypes.RelationLinks) pbtypes.RelationLinks {
+	var relLinksWithoutLocal pbtypes.RelationLinks
+	for _, link := range newRelLinks {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
+		}
+	}
+	return relLinksWithoutLocal
+}
+
+func (s *State) filterLocalAndDerivedRelationsByKey(relationKeys []string) []string {
+	var relKeysWithoutLocal []string
+	for _, key := range relationKeys {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
+		}
+	}
+	return relKeysWithoutLocal
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
@@ -819,6 +868,34 @@ func (s *State) makeNotificationChanges() []*pb.ChangeContent {
 				},
 			})
 		}
+	}
+	return changes
+}
+
+func (s *State) makeDeviceInfoChanges() []*pb.ChangeContent {
+	changes := make([]*pb.ChangeContent, 0)
+	for id, device := range s.deviceStore {
+		if s.parent != nil {
+			if d := s.parent.GetDevice(id); d != nil {
+				if device.Name != d.Name {
+					changes = append(changes, &pb.ChangeContent{
+						Value: &pb.ChangeContentValueOfDeviceUpdate{
+							DeviceUpdate: &pb.ChangeDeviceUpdate{
+								Id:   device.Id,
+								Name: device.Name,
+							},
+						},
+					})
+				}
+				continue
+			}
+		}
+		// if parent is nil or device is absence in parent state
+		changes = append(changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDeviceAdd{
+				DeviceAdd: &pb.ChangeDeviceAdd{Device: device},
+			},
+		})
 	}
 	return changes
 }

@@ -56,11 +56,19 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 		err         error
 	)
 
+	isDeleted := pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String())
+	isArchived := pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
+	if isDeleted || isArchived {
+		return nil
+	}
+
 	switch model.ObjectTypeLayout(pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())) {
 	case model.ObjectType_relationOption:
 		relationKey = pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	case model.ObjectType_objectType:
 		relationKey = bundle.RelationKeyType.String()
+	default:
+		return nil
 	}
 	recs, err := s.getObjectsWithObjectInRelation(relationKey, id, maxLength, params)
 	if err != nil {
@@ -90,12 +98,29 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 	return injectedResults
 }
 
+func (s *dsObjectStore) isClosing() bool {
+	select {
+	case <-s.isClosingCh:
+		return true
+	default:
+		return false
+	}
+}
 func (s *dsObjectStore) queryRaw(filter func(g *types.Struct) bool, order database.Order, limit int, offset int) ([]database.Record, error) {
 	var (
 		records []database.Record
+		err     error
 	)
 
-	err := s.db.View(func(txn *badger.Txn) error {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("badger iterator panic: %v", r)
+		}
+	}()
+
+	err = s.db.View(func(txn *badger.Txn) error {
+		s.runningQueriesWG.Add(1)
+		defer s.runningQueriesWG.Done()
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		opts.Prefix = pagesDetailsBase.Bytes()
@@ -103,6 +128,9 @@ func (s *dsObjectStore) queryRaw(filter func(g *types.Struct) bool, order databa
 		defer iterator.Close()
 
 		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
+			if s.isClosing() {
+				return ErrStoreIsClosing
+			}
 			it := iterator.Item()
 			details, err := s.extractDetailsFromItem(it)
 			if err != nil {
@@ -112,6 +140,9 @@ func (s *dsObjectStore) queryRaw(filter func(g *types.Struct) bool, order databa
 
 			if filter == nil || filter(details.Details) {
 				records = append(records, rec)
+			}
+			if s.isClosing() {
+				return ErrStoreIsClosing
 			}
 		}
 		return nil
@@ -152,6 +183,9 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	// this mean we use map to ignore duplicates without checking score
 	err := s.db.View(func(txn *badger.Txn) error {
 		for _, res := range results {
+			if s.isClosing() {
+				return ErrStoreIsClosing
+			}
 			// Don't use spaceID because expected objects are virtual
 			if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
 				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
@@ -394,6 +428,15 @@ func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
 	case database.FilterEq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
 			return f.Value.GetStringValue()
+		}
+	case database.FilterIn:
+		if f.Key == bundle.RelationKeySpaceId.String() {
+			values := f.Value.GetValues()
+			if len(values) == 1 {
+				return values[0].GetStringValue()
+			} else {
+				return ""
+			}
 		}
 	case database.FiltersAnd:
 		spaceID = iterateOverAndFilters(f)

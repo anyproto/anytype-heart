@@ -118,6 +118,7 @@ type State struct {
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
 	notifications     map[string]*model.Notification
+	deviceStore       map[string]*model.DeviceInfo
 
 	migrationVersion uint32
 
@@ -264,6 +265,7 @@ func (s *State) CleanupBlock(id string) bool {
 	)
 	for t != nil {
 		if _, ok = t.blocks[id]; ok {
+			s.removeFromCache(id)
 			delete(t.blocks, id)
 			return true
 		}
@@ -762,6 +764,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.notifications = s.notifications
 	}
 
+	if s.parent != nil && s.deviceStore != nil {
+		s.parent.deviceStore = s.deviceStore
+	}
+
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
@@ -934,7 +940,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
 func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
-	s.AddBundledRelations(key)
+	s.AddBundledRelationLinks(key)
 	s.SetDetail(key.String(), value)
 	return
 }
@@ -1403,6 +1409,7 @@ func (s *State) Copy() *State {
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
 		fileInfo:                 s.fileInfo,
 		notifications:            s.notifications,
+		deviceStore:              s.deviceStore,
 	}
 	return copy
 }
@@ -1927,13 +1934,19 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
-func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
-	links := make([]*model.RelationLink, 0, len(keys))
+func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
+	existingLinks := s.PickRelationLinks()
+
+	var links []*model.RelationLink
 	for _, key := range keys {
-		rel := bundle.MustGetRelation(key)
-		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+		if !existingLinks.Has(key.String()) {
+			rel := bundle.MustGetRelation(key)
+			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+		}
 	}
-	s.AddRelationLinks(links...)
+	if len(links) > 0 {
+		s.AddRelationLinks(links...)
+	}
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {
@@ -1975,6 +1988,73 @@ func (s *State) findStateWithNonEmptyNotifications() *State {
 		iterState = iterState.parent
 	}
 	return iterState
+}
+
+func (s *State) ListDevices() map[string]*model.DeviceInfo {
+	iterState := s.findStateWithDeviceInfo()
+	if iterState == nil {
+		return nil
+	}
+	return iterState.deviceStore
+}
+
+func (s *State) findStateWithDeviceInfo() *State {
+	iterState := s
+	for iterState != nil && iterState.deviceStore == nil {
+		iterState = iterState.parent
+	}
+	return iterState
+}
+
+func (s *State) AddDevice(device *model.DeviceInfo) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	if s.parent != nil {
+		for _, d := range s.parent.ListDevices() {
+			if _, ok := s.deviceStore[d.Id]; !ok {
+				s.deviceStore[d.Id] = pbtypes.CopyDevice(d)
+			}
+		}
+	}
+	if _, ok := s.deviceStore[device.Id]; ok {
+		return
+	}
+	s.deviceStore[device.Id] = device
+}
+
+func (s *State) SetDeviceName(id, name string) {
+	if s.deviceStore == nil {
+		s.deviceStore = map[string]*model.DeviceInfo{}
+	}
+	if s.parent != nil {
+		for _, d := range s.parent.ListDevices() {
+			if _, ok := s.deviceStore[d.Id]; !ok {
+				s.deviceStore[d.Id] = pbtypes.CopyDevice(d)
+			}
+		}
+	}
+	if _, ok := s.deviceStore[id]; !ok {
+		device := &model.DeviceInfo{
+			Id:      id,
+			Name:    name,
+			AddDate: time.Now().Unix(),
+		}
+		s.deviceStore[id] = device
+		return
+	}
+	s.deviceStore[id].Name = name
+}
+
+func (s *State) GetDevice(id string) *model.DeviceInfo {
+	iterState := s.findStateWithDeviceInfo()
+	if iterState == nil {
+		return nil
+	}
+	if device, ok := iterState.deviceStore[id]; ok {
+		return device
+	}
+	return nil
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation

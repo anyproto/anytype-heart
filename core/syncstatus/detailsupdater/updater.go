@@ -168,11 +168,14 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	if !changed {
 		return nil
 	}
+	if !u.isLayoutSuitableForSyncRelations(record) {
+		return nil
+	}
 	spc, err := u.spaceService.Get(u.ctx, syncStatusDetails.spaceId)
 	if err != nil {
 		return err
 	}
-	spaceStatus := mapObjectSyncToSpaceSyncStatus(status)
+	spaceStatus := mapObjectSyncToSpaceSyncStatus(status, syncError)
 	defer u.sendSpaceStatusUpdate(err, syncStatusDetails, spaceStatus, syncError)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
 		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, error) {
@@ -196,14 +199,29 @@ func (u *syncStatusUpdater) setObjectDetails(syncStatusDetails *syncStatusDetail
 	})
 }
 
-func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus) domain.SpaceSyncStatus {
+func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {
+	layoutsWithoutSyncRelations := []float64{
+		float64(model.ObjectType_participant),
+		float64(model.ObjectType_dashboard),
+		float64(model.ObjectType_spaceView),
+		float64(model.ObjectType_space),
+		float64(model.ObjectType_date),
+	}
+	layout := details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue()
+	return !slices.Contains(layoutsWithoutSyncRelations, layout)
+}
+
+func mapObjectSyncToSpaceSyncStatus(status domain.ObjectSyncStatus, syncError domain.SyncError) domain.SpaceSyncStatus {
 	switch status {
 	case domain.ObjectSynced:
 		return domain.Synced
 	case domain.ObjectSyncing, domain.ObjectQueued:
 		return domain.Syncing
 	case domain.ObjectError:
-		return domain.Error
+		// don't send error to space if file were oversized
+		if syncError != domain.Oversized {
+			return domain.Error
+		}
 	}
 	return domain.Synced
 }
@@ -222,7 +240,7 @@ func mapFileStatus(status filesyncstatus.Status) (domain.ObjectSyncStatus, domai
 	case filesyncstatus.Queued:
 		return domain.ObjectQueued, domain.Null
 	case filesyncstatus.Limited:
-		syncError = domain.StorageLimitExceed
+		syncError = domain.Oversized
 		return domain.ObjectError, syncError
 	case filesyncstatus.Unknown:
 		syncError = domain.NetworkError

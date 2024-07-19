@@ -445,7 +445,7 @@ func TestGetStatus(t *testing.T) {
 		assert.Equal(t, "something", resp.Data.NsName)
 	})
 
-	t.Run("fail if no cache, GetSubscriptionStatus returns no error, but can not save to cache", func(t *testing.T) {
+	t.Run("do not fail if no cache, GetSubscriptionStatus returns no error, but can not save to cache", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
@@ -486,7 +486,7 @@ func TestGetStatus(t *testing.T) {
 
 		// Call the function being tested
 		_, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.Error(t, err)
+		assert.NoError(t, err)
 
 		// resp object is nil in case of error
 		// assert.Equal(t, pb.RpcPaymentsSubscriptionGetStatusResponseErrorCode(pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR), resp.Error.Code)

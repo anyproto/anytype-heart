@@ -53,6 +53,7 @@ func NewStoreFixture(t *testing.T) *StoreFixture {
 		fts:           fullText,
 		sourceService: &detailsFromId{},
 		db:            db,
+		isClosingCh:   make(chan struct{}),
 	}
 	err = ds.initCache()
 	require.NoError(t, err)

@@ -40,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -127,6 +128,8 @@ type Space interface {
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
+
+	StoredIds() []string
 }
 
 type SmartBlock interface {
@@ -185,17 +188,18 @@ type DocInfo struct {
 
 // TODO Maybe create constructor? Don't want to forget required fields
 type InitContext struct {
-	IsNewObject    bool
-	Source         source.Source
-	ObjectTypeKeys []domain.TypeKey
-	RelationKeys   []string
-	State          *state.State
-	Relations      []*model.Relation
-	Restriction    restriction.Service
-	ObjectStore    objectstore.ObjectStore
-	SpaceID        string
-	BuildOpts      source.BuildOptions
-	Ctx            context.Context
+	IsNewObject                  bool
+	Source                       source.Source
+	ObjectTypeKeys               []domain.TypeKey
+	RelationKeys                 []string
+	RequiredInternalRelationKeys []domain.RelationKey // bundled relations that MUST be present in the state
+	State                        *state.State
+	Relations                    []*model.Relation
+	Restriction                  restriction.Service
+	ObjectStore                  objectstore.ObjectStore
+	SpaceID                      string
+	BuildOpts                    source.BuildOptions
+	Ctx                          context.Context
 }
 
 type linkSource interface {
@@ -307,6 +311,7 @@ func (sb *smartBlock) ObjectTypeID() string {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, bundle.RequiredInternalRelations...)
 	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -334,18 +339,24 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
 
+	injectRequiredRelationLinks := func(s *state.State) {
+		s.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
+		s.AddBundledRelationLinks(ctx.RequiredInternalRelationKeys...)
+	}
+	injectRequiredRelationLinks(ctx.State)
+	injectRequiredRelationLinks(ctx.State.ParentState())
+
 	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
 		return
 	}
-
 	// Add bundled relations
 	var relKeys []domain.RelationKey
 	for k := range ctx.State.Details().GetFields() {
-		if _, err := bundle.GetRelation(domain.RelationKey(k)); err == nil {
+		if bundle.HasRelation(k) {
 			relKeys = append(relKeys, domain.RelationKey(k))
 		}
 	}
-	ctx.State.AddBundledRelations(relKeys...)
+	ctx.State.AddBundledRelationLinks(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
 		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.objectStore).Migrate(ctx.State)
 	}
@@ -704,7 +715,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	if !act.IsEmpty() {
 		if len(changes) == 0 && !doSnapshot {
-			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
+			log.Errorf("apply 0 changes %s: %v", st.RootId(), anonymize.Events(msgsToEvents(msgs)))
 		}
 		err = pushChange()
 		if err != nil {
@@ -716,7 +727,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				sb.undo.Add(act)
 			}
 		}
-	} else if hasChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
+	} else if hasChangesToPush(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		err = pushChange()
 		if err != nil {
@@ -843,6 +854,8 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
+	// todo: filter-out existing relation links?
+	// in the most cases it should save as an objectstore query
 	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
 	if err != nil {
 		return
@@ -1333,21 +1346,23 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }
 
-func hasChanges(changes []*pb.ChangeContent) bool {
+func hasChangesToPush(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if isStoreOrNotificationChanges(ch) {
+		if isSuitableChanges(ch) {
 			return true
 		}
 	}
 	return false
 }
 
-func isStoreOrNotificationChanges(ch *pb.ChangeContent) bool {
+func isSuitableChanges(ch *pb.ChangeContent) bool {
 	return ch.GetStoreKeySet() != nil ||
 		ch.GetStoreKeyUnset() != nil ||
 		ch.GetStoreSliceUpdate() != nil ||
 		ch.GetNotificationCreate() != nil ||
-		ch.GetNotificationUpdate() != nil
+		ch.GetNotificationUpdate() != nil ||
+		ch.GetDeviceUpdate() != nil ||
+		ch.GetDeviceAdd() != nil
 }
 
 func hasDetailsMsgs(msgs []simple.EventMessage) bool {

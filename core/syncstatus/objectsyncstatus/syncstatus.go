@@ -183,8 +183,16 @@ func (s *syncStatusService) update(ctx context.Context) (err error) {
 		if err != nil {
 			return
 		}
+		s.updateDetails(entry.treeId, mapStatus(entry.status))
 	}
 	return
+}
+
+func mapStatus(status SyncStatus) domain.ObjectSyncStatus {
+	if status == StatusSynced {
+		return domain.ObjectSynced
+	}
+	return domain.ObjectSyncing
 }
 
 func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string) {

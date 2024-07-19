@@ -111,6 +111,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
+	oc.updateKeys(st, oldIDtoNew)
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(spaceID, st)
 		return nil, newID, nil
@@ -255,7 +256,9 @@ func (oc *ObjectCreator) createNewObject(
 		}
 	})
 	if err == nil {
+		sb.Lock()
 		respDetails = sb.Details()
+		sb.Unlock()
 	} else if errors.Is(err, treestorage.ErrTreeExists) {
 		err = spc.Do(newID, func(sb smartblock.SmartBlock) error {
 			respDetails = sb.Details()
@@ -534,4 +537,17 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 		return nil, err
 	}
 	return existingWidgetsTargetIDs, nil
+}
+
+func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
+	for key, value := range st.Details().GetFields() {
+		if newKey, ok := oldIDtoNew[key]; ok {
+			st.SetDetail(newKey, value)
+			st.RemoveRelation(key)
+		}
+	}
+
+	if newKey, ok := oldIDtoNew[st.ObjectTypeKey().String()]; ok {
+		st.SetObjectTypeKey(domain.TypeKey(newKey))
+	}
 }

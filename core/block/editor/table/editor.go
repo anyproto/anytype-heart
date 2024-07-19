@@ -268,7 +268,7 @@ func (t *editor) ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveReques
 		if err != nil {
 			return fmt.Errorf("get row %s: %w", id, err)
 		}
-		normalizeRow(colIdx, row)
+		normalizeRow(nil, colIdx, row)
 	}
 
 	return nil
@@ -427,7 +427,7 @@ func (t *editor) ColumnListFill(s *state.State, req pb.RpcBlockTableColumnListFi
 		if err != nil {
 			return fmt.Errorf("get row %s: %w", rowID, err)
 		}
-		normalizeRow(colIdx, row)
+		normalizeRow(nil, colIdx, row)
 	}
 
 	return nil
@@ -543,7 +543,7 @@ func (t *editor) cloneColumnStyles(s *state.State, srcColID, targetColID string)
 
 			row = s.Get(row.Model().Id)
 			row.Model().ChildrenIds = append(row.Model().ChildrenIds, targetCellID)
-			normalizeRow(colIdx, row)
+			normalizeRow(nil, colIdx, row)
 		}
 	}
 
@@ -619,7 +619,7 @@ func (t *editor) ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDupli
 		}
 
 		row.Model().ChildrenIds = append(row.Model().ChildrenIds, cell.Model().Id)
-		normalizeRow(colIdx, row)
+		normalizeRow(nil, colIdx, row)
 	}
 
 	return newCol.Model().Id, nil
@@ -738,7 +738,7 @@ func (t *editor) CellCreate(s *state.State, rowID string, colID string, b *model
 	}
 
 	colIdx := tb.MakeColumnIndex()
-	normalizeRow(colIdx, row)
+	normalizeRow(nil, colIdx, row)
 
 	return cellID, nil
 }
