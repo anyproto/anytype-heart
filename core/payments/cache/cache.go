@@ -134,10 +134,17 @@ func (s *cacheservice) Run(_ context.Context) (err error) {
 }
 
 func (s *cacheservice) Close(_ context.Context) (err error) {
-	return s.db.Close()
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	s.db = nil
+	return nil
 }
 
 func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	// 1 - check in storage
 	ss, err := s.get()
 	if err != nil {
@@ -153,7 +160,7 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	}
 
 	// 2 - check if cache is disabled
-	if !s.IsCacheEnabled() {
+	if (ss.DisableUntilTime != time.Time{}) && time.Now().UTC().Before(ss.DisableUntilTime) {
 		// return object too
 		return &ss.SubscriptionStatus, &ss.TiersData, ErrCacheDisabled
 	}
@@ -204,6 +211,9 @@ func getExpireTime(latestStatus *model.Membership) time.Time {
 }
 
 func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	var latestStatus *model.Membership
 
 	// 1 - get existing storage
@@ -232,6 +242,9 @@ func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers
 }
 
 func (s *cacheservice) IsCacheEnabled() (enabled bool) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {
@@ -248,6 +261,9 @@ func (s *cacheservice) IsCacheEnabled() (enabled bool) {
 
 // will not return error if already enabled
 func (s *cacheservice) CacheEnable() (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {
@@ -265,6 +281,9 @@ func (s *cacheservice) CacheEnable() (err error) {
 // will not return error if already disabled
 // if currently disabled - will disable for next N minutes
 func (s *cacheservice) CacheDisableForNextMinutes(minutes int) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	// 1 - get existing storage
 	ss, err := s.get()
 	if err != nil {
@@ -281,6 +300,9 @@ func (s *cacheservice) CacheDisableForNextMinutes(minutes int) (err error) {
 
 // does not take into account if cache is enabled or not, erases always
 func (s *cacheservice) CacheClear() (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	// 1 - get existing storage
 	_, err = s.get()
 	if err != nil {
@@ -300,9 +322,6 @@ func (s *cacheservice) get() (out *StorageStruct, err error) {
 		return nil, ErrCacheDbNotInitialized
 	}
 
-	s.m.Lock()
-	defer s.m.Unlock()
-
 	var ss StorageStruct
 	err = s.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(dbKey))
@@ -321,8 +340,9 @@ func (s *cacheservice) get() (out *StorageStruct, err error) {
 }
 
 func (s *cacheservice) set(in *StorageStruct) (err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
+	if s.db == nil {
+		return ErrCacheDbNotInitialized
+	}
 
 	return s.db.Update(func(txn *badger.Txn) error {
 		// convert
