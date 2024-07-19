@@ -74,12 +74,13 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 		return rel.Key, isRelationShouldBeIncludedAsEdge(rel)
 	})...)
 
-	resp, err := gr.subscriptionService.Search(pb.RpcObjectSearchSubscribeRequest{
+	resp, err := gr.subscriptionService.Search(subscription.SubscribeRequest{
 		Source:       req.SetSource,
 		Filters:      req.Filters,
 		Keys:         lo.Map(relations.Models(), func(rel *model.Relation, _ int) string { return rel.Key }),
 		CollectionId: req.CollectionId,
 		Limit:        int64(req.Limit),
+		Internal:     true,
 	})
 
 	if err != nil {
