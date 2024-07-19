@@ -160,7 +160,7 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	}
 
 	// 2 - check if cache is disabled
-	if (ss.DisableUntilTime != time.Time{}) && time.Now().UTC().Before(ss.DisableUntilTime) {
+	if !ss.DisableUntilTime.IsZero() && time.Now().UTC().Before(ss.DisableUntilTime) {
 		// return object too
 		return &ss.SubscriptionStatus, &ss.TiersData, ErrCacheDisabled
 	}
@@ -252,7 +252,7 @@ func (s *cacheservice) IsCacheEnabled() (enabled bool) {
 	}
 
 	// 2 - check if cache is disabled
-	if (ss.DisableUntilTime != time.Time{}) && time.Now().UTC().Before(ss.DisableUntilTime) {
+	if !ss.DisableUntilTime.IsZero() && time.Now().UTC().Before(ss.DisableUntilTime) {
 		return false
 	}
 
