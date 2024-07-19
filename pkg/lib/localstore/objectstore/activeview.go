@@ -40,6 +40,9 @@ func (s *dsObjectStore) SetActiveView(objectId, blockId, viewId string) error {
 // GetActiveViews returns a map of activeViews by block ids
 func (s *dsObjectStore) GetActiveViews(objectId string) (map[string]string, error) {
 	doc, err := s.activeViews.FindId(s.componentCtx, objectId)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get active view: %w", err)
 	}

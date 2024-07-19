@@ -72,7 +72,7 @@ test-integration:
 
 test-race:
 	@echo 'Running tests with race-detector...'
-	@ANYTYPE_LOG_NOGELF=1 go test -race github.com/anyproto/anytype-heart/...
+	@ANYTYPE_LOG_NOGELF=1 go test -count=1 -race github.com/anyproto/anytype-heart/...
 
 test-deps:
 	@echo 'Generating test mocks...'

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/util/slice"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -50,12 +50,12 @@ const (
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	checksums, err := i.store.GetChecksums(spaceID)
-	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return reindexFlags{}, err
 	}
 	if checksums == nil {
 		checksums, err = i.store.GetGlobalChecksums()
-		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 			return reindexFlags{}, err
 		}
 
