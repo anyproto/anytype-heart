@@ -27,8 +27,6 @@ var (
 	ErrCacheDbNotInitialized   = errors.New("cache db is not initialized")
 	ErrCacheDbError            = errors.New("cache db error")
 	ErrUnsupportedCacheVersion = errors.New("unsupported cache version")
-	ErrCacheDisabled           = errors.New("cache is disabled")
-	ErrCacheExpired            = errors.New("cache is empty")
 )
 
 // once you change the cache format, you need to update this variable
@@ -79,8 +77,6 @@ func newStorageStruct() *StorageStruct {
 }
 
 type CacheService interface {
-	// if cache is disabled -> will return objects and ErrCacheDisabled
-	// if cache is expired -> will return objects and ErrCacheExpired
 	CacheGet() (status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, err error)
 
 	// if cache is disabled -> will return no error
@@ -88,7 +84,9 @@ type CacheService interface {
 	// status or tiers can be nil depending on what you want to update
 	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error)
 
-	IsCacheEnabled() (enabled bool)
+	IsCacheDisabled() (disabled bool)
+
+	IsCacheExpired() (expired bool)
 
 	// if already enabled -> will not return error
 	CacheEnable() (err error)
@@ -159,19 +157,7 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 		return nil, nil, ErrUnsupportedCacheVersion
 	}
 
-	// 2 - check if cache is disabled
-	if !ss.DisableUntilTime.IsZero() && time.Now().UTC().Before(ss.DisableUntilTime) {
-		// return object too
-		return &ss.SubscriptionStatus, &ss.TiersData, ErrCacheDisabled
-	}
-
-	// 3 - check if cache is outdated
-	if time.Now().UTC().After(ss.ExpireTime) {
-		// return object too
-		return &ss.SubscriptionStatus, &ss.TiersData, ErrCacheExpired
-	}
-
-	// 4 - return value
+	// 2 - return value
 	return &ss.SubscriptionStatus, &ss.TiersData, nil
 }
 
@@ -241,7 +227,25 @@ func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers
 	return s.set(ss)
 }
 
-func (s *cacheservice) IsCacheEnabled() (enabled bool) {
+func (s *cacheservice) IsCacheDisabled() (disabled bool) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - get existing storage
+	ss, err := s.get()
+	if err != nil {
+		return false
+	}
+
+	// 2 - check if cache is disabled
+	if !ss.DisableUntilTime.IsZero() && time.Now().UTC().Before(ss.DisableUntilTime) {
+		return true
+	}
+
+	return false
+}
+
+func (s *cacheservice) IsCacheExpired() (expired bool) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -251,12 +255,12 @@ func (s *cacheservice) IsCacheEnabled() (enabled bool) {
 		return true
 	}
 
-	// 2 - check if cache is disabled
-	if !ss.DisableUntilTime.IsZero() && time.Now().UTC().Before(ss.DisableUntilTime) {
-		return false
+	// 2 - check if cache is outdated
+	if time.Now().UTC().After(ss.ExpireTime) {
+		return true
 	}
 
-	return true
+	return false
 }
 
 // will not return error if already enabled

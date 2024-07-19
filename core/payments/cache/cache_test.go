@@ -97,13 +97,15 @@ func TestPayments_DisableCache(t *testing.T) {
 		require.NoError(t, err)
 
 		_, _, err = fx.CacheGet()
-		require.Equal(t, ErrCacheDisabled, err)
+		require.NoError(t, err)
+		require.True(t, fx.IsCacheDisabled())
 
 		err = fx.CacheClear()
 		require.NoError(t, err)
 
 		_, _, err = fx.CacheGet()
-		require.Equal(t, ErrCacheExpired, err)
+		require.NoError(t, err)
+		require.False(t, fx.IsCacheDisabled())
 	})
 }
 
@@ -159,7 +161,8 @@ func TestPayments_ClearCache(t *testing.T) {
 		require.NoError(t, err)
 
 		_, _, err = fx.CacheGet()
-		require.Equal(t, ErrCacheExpired, err)
+		require.NoError(t, err)
+		require.True(t, fx.IsCacheExpired())
 	})
 }
 
@@ -216,14 +219,14 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		en := fx.IsCacheEnabled()
-		require.Equal(t, true, en)
+		dis := fx.IsCacheDisabled()
+		require.False(t, dis)
 
 		err := fx.CacheDisableForNextMinutes(10)
 		require.NoError(t, err)
 
-		en = fx.IsCacheEnabled()
-		require.Equal(t, false, en)
+		dis = fx.IsCacheDisabled()
+		require.True(t, dis)
 
 		err = fx.CacheSet(&pb.RpcMembershipGetStatusResponse{
 			Data: &model.Membership{
@@ -236,17 +239,18 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
+		dis = fx.IsCacheDisabled()
+		require.True(t, dis)
 
 		out, _, err := fx.CacheGet()
-		require.Equal(t, ErrCacheDisabled, err)
-		// HERE: weird semantics, error is returned too :-)
+		require.NoError(t, err)
 		require.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), out.Data.Tier)
 
 		err = fx.CacheEnable()
 		require.NoError(t, err)
 
-		en = fx.IsCacheEnabled()
-		require.Equal(t, true, en)
+		dis = fx.IsCacheDisabled()
+		require.False(t, dis)
 
 		out, _, err = fx.CacheGet()
 		require.NoError(t, err)
@@ -272,8 +276,12 @@ func TestPayments_CacheGetSubscriptionStatus(t *testing.T) {
 		err = fx.CacheClear()
 		require.NoError(t, err)
 
+		// check if cache is expired
+		exp := fx.IsCacheExpired()
+		require.True(t, exp)
+
 		_, _, err = fx.CacheGet()
-		require.Equal(t, ErrCacheExpired, err)
+		require.NoError(t, err)
 	})
 }
 
