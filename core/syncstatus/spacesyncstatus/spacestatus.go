@@ -275,6 +275,7 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		status = pb.EventSpace_Syncing
 	}
 	if params.bytesLeftPercentage < 0.1 {
+		status = pb.EventSpace_Error
 		err = pb.EventSpace_StorageLimitExceed
 	}
 	if params.connectionStatus == nodestatus.ConnectionError {
