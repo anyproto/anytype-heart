@@ -206,51 +206,35 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
-	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
-	privKey := s.wallet.GetAccountPrivkey()
-
 	// 1 - check in cache first
 	// if cache is disabled -> will return objects and ErrCacheDisabled
 	// if cache is expired -> will return objects and ErrCacheExpired
-	cachedStatus, _, cacheErr := s.cache.CacheGet()
-	if cacheErr == nil && req.NoCache {
-		// as if we have object but it was expired
-		cacheErr = cache.ErrCacheExpired
-	}
-	if cacheErr == nil && canReturnCachedStatus(cachedStatus) {
-		log.Debug("returning subscription status from cache", zap.Error(cacheErr), zap.Any("cachedStatus", cachedStatus))
-		return cachedStatus, nil
+	var (
+		cachedStatus *pb.RpcMembershipGetStatusResponse
+		cacheErr     error
+	)
+
+	if !req.NoCache {
+		cachedStatus, _, cacheErr = s.cache.CacheGet()
+		if cacheErr == nil && canReturnCachedStatus(cachedStatus) {
+			log.Debug("returning subscription status from cache", zap.Error(cacheErr), zap.Any("cachedStatus", cachedStatus))
+			return cachedStatus, nil
+		}
 	}
 
 	// 2 - if not in cache - send request to PP node
-	gsr := proto.GetSubscriptionRequest{
-		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyID: ownerID,
-	}
-	payload, err := gsr.Marshal()
+	ppReq, err := s.generateRequest()
 	if err != nil {
-		log.Error("can not marshal GetSubscriptionRequest", zap.Error(err))
-		return nil, ErrCanNotSign
-	}
-
-	signature, err := privKey.Sign(payload)
-	if err != nil {
-		log.Error("can not sign GetSubscriptionRequest", zap.Error(err))
-		return nil, ErrCanNotSign
-	}
-
-	reqSigned := proto.GetSubscriptionRequestSigned{
-		Payload:   payload,
-		Signature: signature,
+		return nil, err
 	}
 
 	log.Debug("get sub from PP node")
 
-	status, err := s.ppclient.GetSubscriptionStatus(ctx, &reqSigned)
+	status, err := s.ppclient.GetSubscriptionStatus(ctx, ppReq)
 	if err != nil {
 		// 3 - on PP node error
 		// try returning from cache again (do not care about the NoCache flag here!)
-		cachedStatus, _, cacheErr := s.cache.CacheGet()
+		cachedStatus, _, cacheErr = s.cache.CacheGet()
 
 		// if cache is expired/disabled or OK -> use this data
 		isExpiredErrorOrNoError := errors.Is(cacheErr, cache.ErrCacheExpired) || errors.Is(cacheErr, cache.ErrCacheDisabled) || (cacheErr == nil)
@@ -296,6 +280,32 @@ func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembersh
 	return &out, nil
 }
 
+func (s *service) generateRequest() (*proto.GetSubscriptionRequestSigned, error) {
+	ownerID := s.wallet.Account().SignKey.GetPublic().Account()
+	privKey := s.wallet.GetAccountPrivkey()
+
+	gsr := proto.GetSubscriptionRequest{
+		// payment node will check if signature matches with this OwnerAnyID
+		OwnerAnyID: ownerID,
+	}
+	payload, err := gsr.Marshal()
+	if err != nil {
+		log.Error("can not marshal GetSubscriptionRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Error("can not sign GetSubscriptionRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	return &proto.GetSubscriptionRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}, nil
+}
+
 func isCacheContainsError(s *pb.RpcMembershipGetStatusResponse) bool {
 	return s != nil && s.Error != nil && s.Error.Code != pb.RpcMembershipGetStatusResponseError_NULL
 }
@@ -305,11 +315,11 @@ func canReturnCachedStatus(s *pb.RpcMembershipGetStatusResponse) bool {
 }
 
 func isUpdateRequired(cacheErr error, cachedStatus *pb.RpcMembershipGetStatusResponse, status *proto.GetSubscriptionResponse) bool {
-	// 1 - If cache was empty or expire or disabled or NoCache flag was passed
+	// 1 - If cache was empty or expired
 	// -> treat at is if data was different
-	isCacheEmpty := (cacheErr != nil) && !errors.Is(cacheErr, cache.ErrCacheDisabled)
+	isCacheEmpty := cachedStatus == nil || cachedStatus.Data == nil || cacheErr != nil && !errors.Is(cacheErr, cache.ErrCacheDisabled)
 	if isCacheEmpty {
-		log.Debug("subscription status treated as changed because cache was empty/expired/NoCache flag was passed")
+		log.Debug("subscription status treated as changed because cache was empty/expired")
 		return true
 	}
 
@@ -320,15 +330,13 @@ func isUpdateRequired(cacheErr error, cachedStatus *pb.RpcMembershipGetStatusRes
 	}
 
 	// 3 - Check if tier or status has changed
-	isDiffTier := false
-	isDiffStatus := false
-	isEmailDiff := false
-
-	if canReturnCachedStatus(cachedStatus) {
-		isDiffTier = cachedStatus.Data.Tier != status.Tier
-		isDiffStatus = cachedStatus.Data.Status != model.MembershipStatus(status.Status)
-		isEmailDiff = cachedStatus.Data.UserEmail != status.UserEmail
+	if status == nil {
+		return false
 	}
+
+	isDiffTier := cachedStatus.Data.Tier != status.Tier
+	isDiffStatus := cachedStatus.Data.Status != model.MembershipStatus(status.Status)
+	isEmailDiff := cachedStatus.Data.UserEmail != status.UserEmail
 
 	if !isDiffTier && !isDiffStatus && !isEmailDiff {
 		log.Debug("subscription status has NOT changed",
