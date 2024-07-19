@@ -47,16 +47,18 @@ type notificationService struct {
 	spaceService       space.Service
 	picker             cache.ObjectGetter
 	mu                 sync.Mutex
+	loadTimeout        time.Duration
 	loadFinish         chan struct{}
 
 	sync.RWMutex
 	lastNotificationIdToAcl map[string]string
 }
 
-func New() Notifications {
+func New(loadTimeout time.Duration) Notifications {
 	return &notificationService{
 		lastNotificationIdToAcl: make(map[string]string, 0),
 		loadFinish:              make(chan struct{}),
+		loadTimeout:             loadTimeout,
 	}
 }
 
@@ -227,7 +229,7 @@ func (n *notificationService) Reply(notificationIds []string, notificationAction
 }
 
 func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Notification, error) {
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(n.loadTimeout)
 	defer ticker.Stop()
 
 	select {
