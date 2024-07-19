@@ -12,7 +12,7 @@ import (
 	mb2 "github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 
@@ -100,11 +100,14 @@ type CollectionService interface {
 }
 
 type service struct {
-	cache         *cache
-	ds            *dependencyService
-	subscriptions map[string]subscription
-	customOutput  map[string]*mb2.MB[*pb.EventMessage]
-	recBatch      *mb.MB
+	cache *cache
+	ds    *dependencyService
+
+	subscriptionKeys []string
+	subscriptions    map[string]subscription
+
+	customOutput map[string]*mb2.MB[*pb.EventMessage]
+	recBatch     *mb.MB
 
 	objectStore       objectstore.ObjectStore
 	kanban            kanban.Service
@@ -144,6 +147,32 @@ func (s *service) Run(context.Context) (err error) {
 	return
 }
 
+func (s *service) getSubscription(id string) (subscription, bool) {
+	sub, ok := s.subscriptions[id]
+	return sub, ok
+}
+
+func (s *service) setSubscription(id string, sub subscription) {
+	s.subscriptions[id] = sub
+	if !slices.Contains(s.subscriptionKeys, id) {
+		s.subscriptionKeys = append(s.subscriptionKeys, id)
+	}
+}
+
+func (s *service) deleteSubscription(id string) {
+	delete(s.subscriptions, id)
+	s.subscriptionKeys = slice.RemoveMut(s.subscriptionKeys, id)
+}
+
+func (s *service) iterateSubscriptions(proc func(sub subscription)) {
+	for _, subId := range s.subscriptionKeys {
+		sub, ok := s.getSubscription(subId)
+		if ok && sub != nil {
+			proc(sub)
+		}
+	}
+}
+
 func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
@@ -172,9 +201,9 @@ func (s *service) Search(req SubscribeRequest) (*SubscribeResponse, error) {
 	defer s.m.Unlock()
 
 	filterDepIds := s.depIdsFromFilter(req.Filters)
-	if exists, ok := s.subscriptions[req.SubId]; ok {
-		delete(s.subscriptions, req.SubId)
-		exists.close()
+	if existing, ok := s.getSubscription(req.SubId); ok {
+		s.deleteSubscription(req.SubId)
+		existing.close()
 	}
 	if req.Offset < 0 {
 		req.Offset = 0
@@ -213,7 +242,7 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 				sub.nested = append(sub.nested, childSub)
 				childSub.parent = sub
 				childSub.parentFilter = f
-				s.subscriptions[childSub.id] = childSub
+				s.setSubscription(childSub.id, childSub)
 			}
 			return nil
 		})
@@ -226,7 +255,7 @@ func (s *service) subscribeForQuery(req SubscribeRequest, f *database.Filters, f
 	if err != nil {
 		return nil, fmt.Errorf("init sub entries: %w", err)
 	}
-	s.subscriptions[sub.id] = sub
+	s.setSubscription(sub.id, sub)
 	prev, next := sub.counters()
 
 	var depRecords, subRecords []*types.Struct
@@ -285,7 +314,7 @@ func (s *service) subscribeForCollection(req SubscribeRequest, f *database.Filte
 	if err := sub.init(nil); err != nil {
 		return nil, fmt.Errorf("subscription init error: %w", err)
 	}
-	s.subscriptions[sub.sortedSub.id] = sub
+	s.setSubscription(sub.sortedSub.id, sub)
 	prev, next := sub.counters()
 
 	var depRecords, subRecords []*types.Struct
@@ -336,7 +365,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	if err = sub.init(entries); err != nil {
 		return
 	}
-	s.subscriptions[sub.id] = sub
+	s.setSubscription(sub.id, sub)
 
 	var depRecords, subRecords []*types.Struct
 	subRecords = sub.getActiveRecords()
@@ -435,7 +464,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		if err := sub.init(entries); err != nil {
 			return nil, err
 		}
-		s.subscriptions[subId] = sub
+		s.setSubscription(subId, sub)
 	} else if colObserver != nil {
 		colObserver.close()
 	}
@@ -451,16 +480,24 @@ func (s *service) SubscribeIds(subId string, ids []string) (records []*types.Str
 	return
 }
 
-func (s *service) Unsubscribe(subIds ...string) (err error) {
+func (s *service) Unsubscribe(subIds ...string) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 	for _, subId := range subIds {
-		if sub, ok := s.subscriptions[subId]; ok {
+		if sub, ok := s.getSubscription(subId); ok {
+			out := s.customOutput[subId]
+			if out != nil {
+				err := out.Close()
+				if err != nil {
+					return fmt.Errorf("close subscription %s: %w", subId, err)
+				}
+				s.customOutput[subId] = nil
+			}
 			sub.close()
-			delete(s.subscriptions, subId)
+			s.deleteSubscription(subId)
 		}
 	}
-	return
+	return nil
 }
 
 func (s *service) UnsubscribeAll() (err error) {
@@ -470,13 +507,14 @@ func (s *service) UnsubscribeAll() (err error) {
 		sub.close()
 	}
 	s.subscriptions = make(map[string]subscription)
+	s.subscriptionKeys = s.subscriptionKeys[:0]
 	return
 }
 
 func (s *service) SubscriptionIDs() []string {
 	s.m.Lock()
 	defer s.m.Unlock()
-	return lo.Keys(s.subscriptions)
+	return s.subscriptionKeys
 }
 
 func (s *service) recordsHandler() {
@@ -525,14 +563,14 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	st := time.Now()
 	s.ctxBuf.reset()
 	s.ctxBuf.entries = entries
-	for _, sub := range s.subscriptions {
+	s.iterateSubscriptions(func(sub subscription) {
 		sub.onChange(s.ctxBuf)
 		subCount++
 		if sub.hasDep() {
 			sub.getDep().onChange(s.ctxBuf)
 			depCount++
 		}
-	}
+	})
 	handleTime := time.Since(st)
 
 	// Reset output buffer
@@ -640,8 +678,8 @@ func (s *service) Close(ctx context.Context) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.recBatch.Close()
-	for _, sub := range s.subscriptions {
+	s.iterateSubscriptions(func(sub subscription) {
 		sub.close()
-	}
+	})
 	return
 }

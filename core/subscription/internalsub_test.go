@@ -252,17 +252,17 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		want := givenMessagesForThirdObject(3, "internal1")
+		want := givenMessagesForThirdObject(2, "id1", "internal1")
 		msgs, err := resp1.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 		require.Equal(t, wrapToEventMessages(want), msgs)
 
-		want = givenMessagesForThirdObject(1, "internal2")
+		want = givenMessagesForThirdObject(1, "", "internal2")
 		msgs, err = resp4.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 		require.Equal(t, wrapToEventMessages(want), msgs)
 
-		want = givenMessagesForThirdObject(3, "client1", "client2")
+		want = givenMessagesForThirdObject(2, "id1", "client1", "client2")
 		fx.waitEvents(t, want...)
 	})
 }
@@ -366,7 +366,7 @@ func givenMessagesForSecondObject(subIds ...string) []pb.IsEventMessageValue {
 	return msgs
 }
 
-func givenMessagesForThirdObject(total int, subIds ...string) []pb.IsEventMessageValue {
+func givenMessagesForThirdObject(total int, afterId string, subIds ...string) []pb.IsEventMessageValue {
 	var msgs []pb.IsEventMessageValue
 	msgs = append(msgs, &pb.EventMessageValueOfObjectDetailsSet{
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
@@ -385,8 +385,9 @@ func givenMessagesForThirdObject(total int, subIds ...string) []pb.IsEventMessag
 	for _, subId := range subIds {
 		msgs = append(msgs, &pb.EventMessageValueOfSubscriptionAdd{
 			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
-				SubId: subId,
-				Id:    "id3",
+				SubId:   subId,
+				Id:      "id3",
+				AfterId: afterId,
 			},
 		})
 	}
