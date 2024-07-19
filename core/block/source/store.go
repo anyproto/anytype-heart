@@ -59,14 +59,6 @@ func (s *store) ReadStoreDoc(ctx context.Context, store *storestate.StoreState) 
 	return tx.Commit()
 }
 
-func (s *store) findPrevOrder(tx *storestate.StoreStateTx, ch *objecttree.Change) (order string, err error) {
-	return
-}
-
-func (s *store) findNextOrder(tx *storestate.StoreStateTx, ch *objecttree.Change) (order string, err error) {
-	return
-}
-
 func (s *store) PushStoreChange(params PushStoreChangeParams) (id string, err error) {
 	return
 }
