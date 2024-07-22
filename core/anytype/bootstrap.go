@@ -292,7 +292,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(profiler.New()).
 		Register(identity.New(30*time.Second, 10*time.Second)).
 		Register(templateservice.New()).
-		Register(notifications.New()).
+		Register(notifications.New(time.Second * 10)).
 		Register(paymentserviceclient.New()).
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
