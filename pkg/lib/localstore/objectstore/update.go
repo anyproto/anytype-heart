@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/jsonutil"
 	"github.com/anyproto/any-store/query"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
@@ -40,11 +41,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	jsonVal := pbtypes.ProtoToJson(arena, details)
 	var isModified bool
 	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
-		diff, err := pbtypes.DiffJson(val, jsonVal)
-		if err != nil {
-			return nil, false, fmt.Errorf("diff json: %w", err)
-		}
-		if len(diff) == 0 {
+		if jsonutil.Equal(val, jsonVal) {
 			return nil, false, nil
 		}
 		isModified = true
