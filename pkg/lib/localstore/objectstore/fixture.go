@@ -58,7 +58,6 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		fts:                fullText,
 		sourceService:      &detailsFromId{},
 		arenaPool:          &fastjson.ArenaPool{},
-		parserPool:         &fastjson.ParserPool{},
 		repoPath:           walletService.RepoPath(),
 		oldStore:           oldStore,
 	}
