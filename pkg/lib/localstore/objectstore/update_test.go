@@ -95,43 +95,6 @@ func TestUpdateObjectDetails(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, makeDetails(newObj), det.GetDetails())
 	})
-
-	t.Run("with local details present in old store, merge only missing keys", func(t *testing.T) {
-		s := NewStoreFixture(t)
-		lastUsed := time.Now().Add(-time.Hour).Unix()
-		lastOpened := time.Now().Unix()
-
-		oldObject := TestObject{
-			bundle.RelationKeyId:             pbtypes.String("id1"),
-			bundle.RelationKeyName:           pbtypes.String("foo old"),
-			bundle.RelationKeyLastUsedDate:   pbtypes.Int64(lastUsed - 1000),
-			bundle.RelationKeyLastOpenedDate: pbtypes.Int64(lastOpened),
-		}
-		err := s.oldStore.SetDetails("id1", makeDetails(oldObject))
-		require.NoError(t, err)
-
-		obj := TestObject{
-			bundle.RelationKeyId:           pbtypes.String("id1"),
-			bundle.RelationKeyName:         pbtypes.String("foo"),
-			bundle.RelationKeyLastUsedDate: pbtypes.Int64(lastUsed),
-		}
-		err = s.UpdateObjectDetails(context.Background(), "id1", makeDetails(obj))
-		require.NoError(t, err)
-
-		newObj := TestObject{
-			bundle.RelationKeyId:             pbtypes.String("id1"),
-			bundle.RelationKeyName:           pbtypes.String("foo"),
-			bundle.RelationKeyLastUsedDate:   pbtypes.Int64(lastUsed),
-			bundle.RelationKeyLastOpenedDate: pbtypes.Int64(lastOpened),
-		}
-		det, err := s.GetDetails("id1")
-		assert.NoError(t, err)
-		assert.Equal(t, makeDetails(newObj), det.GetDetails())
-
-		oldDetails, err := s.oldStore.GetLocalDetails("id1")
-		require.Error(t, err)
-		require.Nil(t, oldDetails)
-	})
 }
 
 func TestSendUpdatesToSubscriptions(t *testing.T) {
@@ -245,6 +208,46 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 			return details, nil
 		})
 		require.NoError(t, err)
+	})
+
+	t.Run("with local details present in old store, merge only missing keys", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		lastUsed := time.Now().Add(-time.Hour).Unix()
+		lastOpened := time.Now().Unix()
+
+		obj := TestObject{
+			bundle.RelationKeyId:           pbtypes.String("id1"),
+			bundle.RelationKeyName:         pbtypes.String("foo"),
+			bundle.RelationKeyLastUsedDate: pbtypes.Int64(lastUsed),
+		}
+		err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+			return makeDetails(obj), nil
+		})
+
+		oldObject := TestObject{
+			bundle.RelationKeyId:             pbtypes.String("id1"),
+			bundle.RelationKeyName:           pbtypes.String("foo old"),
+			bundle.RelationKeyLastUsedDate:   pbtypes.Int64(lastUsed - 1000),
+			bundle.RelationKeyLastOpenedDate: pbtypes.Int64(lastOpened),
+		}
+		err = s.oldStore.SetDetails("id1", makeDetails(oldObject))
+		require.NoError(t, err)
+
+		err = s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
+			newObj := TestObject{
+				bundle.RelationKeyId:             pbtypes.String("id1"),
+				bundle.RelationKeyName:           pbtypes.String("foo"),
+				bundle.RelationKeyLastUsedDate:   pbtypes.Int64(lastUsed),
+				bundle.RelationKeyLastOpenedDate: pbtypes.Int64(lastOpened),
+			}
+			assert.Equal(t, makeDetails(newObj), details)
+			return details, nil
+		})
+		require.NoError(t, err)
+
+		oldDetails, err := s.oldStore.GetLocalDetails("id1")
+		require.Error(t, err)
+		require.Nil(t, oldDetails)
 	})
 }
 

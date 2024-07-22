@@ -36,8 +36,6 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 
 	arena := s.arenaPool.Get()
 
-	migrated := s.migrateLocalDetails(id, details)
-
 	jsonVal := pbtypes.ProtoToJson(arena, details)
 	var isModified bool
 	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
@@ -54,13 +52,6 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	s.arenaPool.Put(arena)
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
-	}
-
-	if migrated {
-		err = s.oldStore.DeleteDetails(id)
-		if err != nil {
-			log.With("error", err, "objectId", id).Warn("failed to delete local details from old store")
-		}
 	}
 
 	return nil
@@ -127,6 +118,9 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		}
 	}
 	inputDetails = pbtypes.EnsureStructInited(inputDetails)
+
+	migrated := s.migrateLocalDetails(id, inputDetails)
+
 	newDetails, err := proc(inputDetails)
 	if err != nil {
 		return rollback(fmt.Errorf("run a modifier: %w", err))
@@ -145,7 +139,18 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		return rollback(fmt.Errorf("upsert details: %w", err))
 	}
 
-	return txn.Commit()
+	err = txn.Commit()
+	if err != nil {
+		return fmt.Errorf("commit txn: %w", err)
+	}
+
+	if migrated {
+		err = s.oldStore.DeleteDetails(id)
+		if err != nil {
+			log.With("error", err, "objectId", id).Warn("failed to delete local details from old store")
+		}
+	}
+	return nil
 }
 
 // ModifyObjectDetails updates existing details in store using modification function `proc`
