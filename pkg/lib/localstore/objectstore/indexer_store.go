@@ -19,12 +19,16 @@ func (s *dsObjectStore) removeFromIndexQueue(id string) error {
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {
+	s.runningQueriesWG.Add(1)
+	defer s.runningQueriesWG.Done()
 	return iterateKeysByPrefixBatched(s.db, indexQueueBase.Bytes(), limit, func(keys [][]byte) error {
 		var ids []string
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-s.isClosingCh:
+			return ErrStoreIsClosing
 		default:
 		}
 		for id := range keys {
@@ -40,6 +44,8 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int
 
 func (s *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
 	var ids []string
+	s.runningQueriesWG.Add(1)
+	defer s.runningQueriesWG.Done()
 	err := iterateKeysByPrefix(s.db, indexQueueBase.Bytes(), func(key []byte) {
 		ids = append(ids, extractIdFromKey(string(key)))
 	})

@@ -10,7 +10,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'self-hosted'
+        default: 'ARM64'
       perf-test:
         description: 'Run perf test times'
         required: true
@@ -32,11 +32,11 @@ permissions:
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-12' || (github.event.inputs.run-on-runner || 'self-hosted') }}
+    runs-on: ${{ github.event_name == 'push' && 'macos-12' || (github.event.inputs.run-on-runner || 'ARM64') }}
     steps:
       - name: validate agent
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "self-hosted" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "ARM64" ]]; then
             echo "Invalid runner"
             exit 1
           fi
@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: 1.22
-        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Setup GO
         run: |
           go version
@@ -60,7 +60,7 @@ jobs:
           git fetch
           git checkout db6184738b77fbd5089e5fa1112177f391c91b24
           go install github.com/mitchellh/gox
-        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
@@ -69,7 +69,7 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install grpcurl
           npm i -g node-gyp
-        if: github.event.inputs.run-on-runner != 'self-hosted' && github.event_name != 'schedule'
+        if: github.event.inputs.run-on-runner != 'ARM64' && github.event_name != 'schedule'
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -81,6 +81,7 @@ jobs:
             ${{ runner.os }}-go-${{ matrix.go-version }}-
       - name: Install old MacOS SDK (for backward compatibility of CGO)
         run: source .github/install_macos_sdk.sh 10.15
+        if: runner.os == 'macOS' && startsWith(runner.os_version, '12')
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}

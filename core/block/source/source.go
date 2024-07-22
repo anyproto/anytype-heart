@@ -294,6 +294,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.objectStore)
 	migration.Migrate(st)
 
+	// we need to have required internal relations for all objects, including system
+	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
@@ -347,7 +349,6 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	change := s.buildChange(params)
 
 	data, dataType, err := MarshalChange(change)
-
 	if err != nil {
 		return
 	}
