@@ -333,7 +333,7 @@ endif
 ### Tantivy Section
 
 REPO := anyproto/tantivy-go
-VERSION := go/v0.0.4
+VERSION := go/v0.0.5
 OUTPUT_DIR := deps/libs
 SHA_FILE = tantivity_sha256.txt
 

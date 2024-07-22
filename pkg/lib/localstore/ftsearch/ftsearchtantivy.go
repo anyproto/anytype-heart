@@ -76,7 +76,7 @@ func (f *ftSearch2) Init(a *app.App) error {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
-	return tantivy.LibInit("release")
+	return tantivy.LibInit("debug")
 }
 
 func (f *ftSearch2) cleanUpOldIndexes() {
@@ -282,7 +282,7 @@ func (f *ftSearch2) Search(spaceIds []string, highlightFormatter HighlightFormat
 				object := val.GetObject()
 				fieldName := string(object.Get("field_name").GetStringBytes())
 				if fieldName == fieldTitle {
-					fragments[fieldTitle] = append(fragments[fieldTitle], string(object.Get("fragment").MarshalTo(nil)))
+					// fragments[fieldTitle] = append(fragments[fieldTitle], string(object.Get("fragment").MarshalTo(nil)))
 				} else if fieldName == fieldText {
 					fragments[fieldText] = append(fragments[fieldText], string(object.Get("fragment").MarshalTo(nil)))
 				}
