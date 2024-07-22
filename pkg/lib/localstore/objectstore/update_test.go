@@ -1,7 +1,7 @@
 package objectstore
 
 import (
-	context2 "context"
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -21,21 +21,21 @@ func TestUpdateObjectDetails(t *testing.T) {
 	t.Run("with nil field expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context2.Background(), "id1", &types.Struct{})
+		err := s.UpdateObjectDetails(context.Background(), "id1", &types.Struct{})
 		require.Error(t, err)
 	})
 
 	t.Run("with empty details expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context2.Background(), "id1", &types.Struct{Fields: map[string]*types.Value{}})
+		err := s.UpdateObjectDetails(context.Background(), "id1", &types.Struct{Fields: map[string]*types.Value{}})
 		require.Error(t, err)
 	})
 
 	t.Run("with no id in details expect id is added on write", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context2.Background(), "id1", makeDetails(TestObject{
+		err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(TestObject{
 			bundle.RelationKeyName: pbtypes.String("some name"),
 		}))
 		require.NoError(t, err)
@@ -52,7 +52,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 	t.Run("with no existing details try to write nil details and expect nothing is changed", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context2.Background(), "id1", nil)
+		err := s.UpdateObjectDetails(context.Background(), "id1", nil)
 		require.NoError(t, err)
 
 		det, err := s.GetDetails("id1")
@@ -65,7 +65,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 		obj := makeObjectWithName("id1", "foo")
 		s.AddObjects(t, []TestObject{obj})
 
-		err := s.UpdateObjectDetails(context2.Background(), "id1", nil)
+		err := s.UpdateObjectDetails(context.Background(), "id1", nil)
 		require.NoError(t, err)
 
 		det, err := s.GetDetails("id1")
@@ -78,7 +78,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 		obj := makeObjectWithName("id1", "foo")
 		s.AddObjects(t, []TestObject{obj})
 
-		err := s.UpdateObjectDetails(context2.Background(), "id1", makeDetails(obj))
+		err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(obj))
 		require.NoError(t, err)
 	})
 
@@ -88,12 +88,49 @@ func TestUpdateObjectDetails(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj})
 
 		newObj := makeObjectWithNameAndDescription("id1", "foo", "bar")
-		err := s.UpdateObjectDetails(context2.Background(), "id1", makeDetails(newObj))
+		err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(newObj))
 		require.NoError(t, err)
 
 		det, err := s.GetDetails("id1")
 		assert.NoError(t, err)
 		assert.Equal(t, makeDetails(newObj), det.GetDetails())
+	})
+
+	t.Run("with local details present in old store, merge only missing keys", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		lastUsed := time.Now().Add(-time.Hour).Unix()
+		lastOpened := time.Now().Unix()
+
+		oldObject := TestObject{
+			bundle.RelationKeyId:             pbtypes.String("id1"),
+			bundle.RelationKeyName:           pbtypes.String("foo old"),
+			bundle.RelationKeyLastUsedDate:   pbtypes.Int64(lastUsed - 1000),
+			bundle.RelationKeyLastOpenedDate: pbtypes.Int64(lastOpened),
+		}
+		err := s.oldStore.SetDetails("id1", makeDetails(oldObject))
+		require.NoError(t, err)
+
+		obj := TestObject{
+			bundle.RelationKeyId:           pbtypes.String("id1"),
+			bundle.RelationKeyName:         pbtypes.String("foo"),
+			bundle.RelationKeyLastUsedDate: pbtypes.Int64(lastUsed),
+		}
+		err = s.UpdateObjectDetails(context.Background(), "id1", makeDetails(obj))
+		require.NoError(t, err)
+
+		newObj := TestObject{
+			bundle.RelationKeyId:             pbtypes.String("id1"),
+			bundle.RelationKeyName:           pbtypes.String("foo"),
+			bundle.RelationKeyLastUsedDate:   pbtypes.Int64(lastUsed),
+			bundle.RelationKeyLastOpenedDate: pbtypes.Int64(lastOpened),
+		}
+		det, err := s.GetDetails("id1")
+		assert.NoError(t, err)
+		assert.Equal(t, makeDetails(newObj), det.GetDetails())
+
+		oldDetails, err := s.oldStore.GetLocalDetails("id1")
+		require.Error(t, err)
+		require.Nil(t, oldDetails)
 	})
 }
 
@@ -106,7 +143,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 			require.Fail(t, "unexpected call")
 		})
 
-		err := s.UpdateObjectDetails(context2.Background(), "id1", makeDetails(makeObjectWithName("id1", "foo")))
+		err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(makeObjectWithName("id1", "foo")))
 		require.NoError(t, err)
 	})
 

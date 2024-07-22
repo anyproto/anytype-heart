@@ -2967,53 +2967,6 @@ func (_c *MockObjectStore_UpdateObjectLinks_Call) RunAndReturn(run func(string, 
 	return _c
 }
 
-// UpdateObjectSnippet provides a mock function with given fields: id, snippet
-func (_m *MockObjectStore) UpdateObjectSnippet(id string, snippet string) error {
-	ret := _m.Called(id, snippet)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateObjectSnippet")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(id, snippet)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockObjectStore_UpdateObjectSnippet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateObjectSnippet'
-type MockObjectStore_UpdateObjectSnippet_Call struct {
-	*mock.Call
-}
-
-// UpdateObjectSnippet is a helper method to define mock.On call
-//   - id string
-//   - snippet string
-func (_e *MockObjectStore_Expecter) UpdateObjectSnippet(id interface{}, snippet interface{}) *MockObjectStore_UpdateObjectSnippet_Call {
-	return &MockObjectStore_UpdateObjectSnippet_Call{Call: _e.mock.On("UpdateObjectSnippet", id, snippet)}
-}
-
-func (_c *MockObjectStore_UpdateObjectSnippet_Call) Run(run func(id string, snippet string)) *MockObjectStore_UpdateObjectSnippet_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_UpdateObjectSnippet_Call) Return(_a0 error) *MockObjectStore_UpdateObjectSnippet_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockObjectStore_UpdateObjectSnippet_Call) RunAndReturn(run func(string, string) error) *MockObjectStore_UpdateObjectSnippet_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // UpdatePendingLocalDetails provides a mock function with given fields: id, proc
 func (_m *MockObjectStore) UpdatePendingLocalDetails(id string, proc func(*types.Struct) (*types.Struct, error)) error {
 	ret := _m.Called(id, proc)

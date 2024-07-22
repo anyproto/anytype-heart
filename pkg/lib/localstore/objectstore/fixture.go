@@ -15,7 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -35,10 +37,19 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 
 	fullText := ftsearch.New()
 	testApp := &app.App{}
+
+	dataStore, err := datastore.NewInMemory()
+	require.NoError(t, err)
+
+	testApp.Register(dataStore)
 	testApp.Register(walletService)
-	err := fullText.Init(testApp)
+	err = fullText.Init(testApp)
 	require.NoError(t, err)
 	err = fullText.Run(context.Background())
+	require.NoError(t, err)
+
+	oldStore := oldstore.New()
+	err = oldStore.Init(testApp)
 	require.NoError(t, err)
 
 	ds := &dsObjectStore{
@@ -49,6 +60,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		arenaPool:          &fastjson.ArenaPool{},
 		parserPool:         &fastjson.ParserPool{},
 		repoPath:           walletService.RepoPath(),
+		oldStore:           oldStore,
 	}
 
 	err = ds.Run(ctx)

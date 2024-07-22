@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -124,6 +125,8 @@ type VirtualSpacesStore interface {
 }
 
 type dsObjectStore struct {
+	oldStore oldstore.Service
+
 	repoPath         string
 	sourceService    SourceDetailsFromID
 	anyStore         anystore.DB
@@ -137,8 +140,7 @@ type dsObjectStore struct {
 	virtualSpaces    anystore.Collection
 	pendingDetails   anystore.Collection
 
-	arenaPool  *fastjson.ArenaPool
-	parserPool *fastjson.ParserPool
+	arenaPool *fastjson.ArenaPool
 
 	fts ftsearch.FTSearch
 
@@ -176,6 +178,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	}
 	s.arenaPool = &fastjson.ArenaPool{}
 	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
+	s.oldStore = app.MustComponent[oldstore.Service](a)
 
 	return nil
 }

@@ -852,20 +852,6 @@ func (mr *MockObjectStoreMockRecorder) UpdateObjectLinks(arg0, arg1 any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateObjectLinks", reflect.TypeOf((*MockObjectStore)(nil).UpdateObjectLinks), arg0, arg1)
 }
 
-// UpdateObjectSnippet mocks base method.
-func (m *MockObjectStore) UpdateObjectSnippet(arg0, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateObjectSnippet", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateObjectSnippet indicates an expected call of UpdateObjectSnippet.
-func (mr *MockObjectStoreMockRecorder) UpdateObjectSnippet(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateObjectSnippet", reflect.TypeOf((*MockObjectStore)(nil).UpdateObjectSnippet), arg0, arg1)
-}
-
 // UpdatePendingLocalDetails mocks base method.
 func (m *MockObjectStore) UpdatePendingLocalDetails(arg0 string, arg1 func(*types.Struct) (*types.Struct, error)) error {
 	m.ctrl.T.Helper()

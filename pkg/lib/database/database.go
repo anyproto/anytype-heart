@@ -129,21 +129,6 @@ func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
 	return ""
 }
 
-func (b *queryBuilder) compose(
-	filters []*model.BlockContentDataviewFilter,
-) (FiltersAnd, error) {
-	var filterObj FiltersAnd
-	qryFilter, err := MakeFiltersAnd(filters, b.objectStore)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(qryFilter) > 0 {
-		filterObj = append(filterObj, qryFilter)
-	}
-	return filterObj, nil
-}
-
 func (b *queryBuilder) extractOrder(sorts []*model.BlockContentDataviewSort) SetOrder {
 	if len(sorts) > 0 {
 		order := SetOrder{}

@@ -34,6 +34,9 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	arena := s.arenaPool.Get()
+
+	migrated := s.migrateLocalDetails(id, details)
+
 	jsonVal := pbtypes.ProtoToJson(arena, details)
 	var isModified bool
 	_, err := s.objects.UpsertId(ctx, id, query.ModifyFunc(func(arena *fastjson.Arena, val *fastjson.Value) (*fastjson.Value, bool, error) {
@@ -55,7 +58,28 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
+
+	if migrated {
+		err = s.oldStore.DeleteDetails(id)
+		if err != nil {
+			log.With("error", err, "objectId", id).Warn("failed to delete local details from old store")
+		}
+	}
+
 	return nil
+}
+
+func (s *dsObjectStore) migrateLocalDetails(objectId string, details *types.Struct) bool {
+	existingLocalDetails, err := s.oldStore.GetLocalDetails(objectId)
+	if err != nil || existingLocalDetails == nil {
+		return false
+	}
+	for k, v := range existingLocalDetails.Fields {
+		if _, ok := details.Fields[k]; !ok {
+			details.Fields[k] = v
+		}
+	}
+	return true
 }
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
