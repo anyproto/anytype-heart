@@ -84,6 +84,7 @@ type spaceSyncStatus struct {
 	missingIds    map[string][]string
 	mx            sync.Mutex
 	periodicCall  periodicsync.PeriodicSync
+	isLocal       bool
 	finish        chan struct{}
 }
 
@@ -103,6 +104,7 @@ func (s *spaceSyncStatus) Init(a *app.App) (err error) {
 	s.subs = app.MustComponent[syncsubscritions.SyncSubscriptions](a)
 	s.missingIds = make(map[string][]string)
 	s.spaceIdGetter = app.MustComponent[SpaceIdGetter](a)
+	s.isLocal = s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly
 	sessionHookRunner := app.MustComponent[session.HookRunner](a)
 	sessionHookRunner.RegisterHook(s.sendSyncEventForNewSession)
 	s.periodicCall = periodicsync.NewPeriodicSync(1, time.Second*5, s.update, logger.CtxLogger{Logger: log.Desugar()})
@@ -128,13 +130,7 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
-	if s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly {
-		s.sendLocalOnlyEvent()
-		close(s.finish)
-		return
-	} else {
-		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
-	}
+	s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	s.periodicCall.Run()
 	return
@@ -166,6 +162,10 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 	s.mx.Lock()
 	missingObjects := s.missingIds[spaceId]
 	s.mx.Unlock()
+	if s.isLocal {
+		s.sendLocalOnlyEventToSession(spaceId, token)
+		return
+	}
 	params := syncParams{
 		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
@@ -191,11 +191,26 @@ func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
 	}
 }
 
-func (s *spaceSyncStatus) sendLocalOnlyEvent() {
+func (s *spaceSyncStatus) sendLocalOnlyEvent(spaceId string) {
 	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:      spaceId,
+					Status:  pb.EventSpace_Offline,
+					Network: pb.EventSpace_LocalOnly,
+				},
+			},
+		}},
+	})
+}
+
+func (s *spaceSyncStatus) sendLocalOnlyEventToSession(spaceId, token string) {
+	s.eventSender.SendToSession(token, &pb.Event{
+		Messages: []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:      spaceId,
 					Status:  pb.EventSpace_Offline,
 					Network: pb.EventSpace_LocalOnly,
 				},
@@ -238,6 +253,10 @@ func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
 }
 
 func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string, missingObjects []string) {
+	if s.isLocal {
+		s.sendLocalOnlyEvent(spaceId)
+		return
+	}
 	params := syncParams{
 		bytesLeftPercentage: s.getBytesLeftPercentage(spaceId),
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
