@@ -156,7 +156,7 @@ func TestReindexDeletedObjects(t *testing.T) {
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().Storage().Return(storage1)
-		space1.EXPECT().StoredIds().Return([]string{})
+		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
 
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil)
 
@@ -175,7 +175,7 @@ func TestReindexDeletedObjects(t *testing.T) {
 		space2 := mock_space.NewMockSpace(t)
 		space2.EXPECT().Id().Return(spaceId2)
 		space2.EXPECT().Storage().Return(storage2)
-		space2.EXPECT().StoredIds().Return([]string{})
+		space2.EXPECT().StoredIds().Return([]string{}).Maybe()
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil)
 
 		err = fx.ReindexSpace(space2)
@@ -374,7 +374,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
-		space1.EXPECT().StoredIds().Return([]string{})
+		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
 
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypePage).Return(idsLister{Ids: []string{"1", "2"}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeRelation).Return(idsLister{Ids: []string{}}, nil)
@@ -412,7 +412,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
-		space1.EXPECT().StoredIds().Return([]string{})
+		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
 
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypePage).Return(idsLister{Ids: []string{"1", "2"}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeRelation).Return(idsLister{Ids: []string{}}, nil)

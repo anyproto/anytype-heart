@@ -92,10 +92,12 @@ type fileSync struct {
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
 	cfg               *config.Config
+
+	closeWg *sync.WaitGroup
 }
 
 func New() FileSync {
-	return &fileSync{}
+	return &fileSync{closeWg: &sync.WaitGroup{}}
 }
 
 func (s *fileSync) Init(a *app.App) (err error) {
@@ -173,7 +175,10 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 	s.retryDeletionQueue.Run()
 
 	s.loopCtx, s.loopCancel = context.WithCancel(context.Background())
+
+	s.closeWg.Add(1)
 	go s.runNodeUsageUpdater()
+	
 	return
 }
 
@@ -210,6 +215,8 @@ func (s *fileSync) Close(ctx context.Context) error {
 			log.Error("can't close retry deletion queue: %v", zap.Error(err))
 		}
 	}
+
+	s.closeWg.Wait()
 
 	return nil
 }
