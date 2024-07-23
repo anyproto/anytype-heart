@@ -1,6 +1,7 @@
 package table
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -463,7 +464,7 @@ func (t *editor) cleanupTables(_ smartblock.ApplyInfo) error {
 	}
 
 	if err = t.sb.Apply(s, smartblock.KeepInternalFlags); err != nil {
-		if err == source.ErrReadOnly {
+		if errors.Is(err, source.ErrReadOnly) {
 			return nil
 		}
 		log.Errorf("cleanup apply: %s", err)
