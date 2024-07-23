@@ -178,7 +178,7 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 
 	s.closeWg.Add(1)
 	go s.runNodeUsageUpdater()
-	
+
 	return
 }
 
