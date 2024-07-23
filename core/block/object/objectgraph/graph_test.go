@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -51,7 +52,7 @@ func Test(t *testing.T) {
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyAuthor)},
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyAttachments)},
 		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&pb.RpcObjectSearchSubscribeResponse{
+		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*types.Struct{},
 		}, nil)
 		fixture.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
@@ -73,7 +74,7 @@ func Test(t *testing.T) {
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyAssignee)},
 			{Relation: bundle.MustGetRelation(bundle.RelationKeyAttachments)},
 		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&pb.RpcObjectSearchSubscribeResponse{
+		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*types.Struct{
 				{Fields: map[string]*types.Value{
 					bundle.RelationKeyId.String():       pbtypes.String("id1"),

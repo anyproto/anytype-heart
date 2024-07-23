@@ -581,6 +581,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetRestrictions:
 			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockSetTableRow:
+			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %T", msg.Msg.GetValue())
 		}

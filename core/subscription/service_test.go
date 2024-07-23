@@ -48,7 +48,7 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			SubId: subId,
 			Keys:  []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
 		})
@@ -155,7 +155,7 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId: "subId",
 			Keys:  []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
 			Filters: []*model.BlockContentDataviewFilter{
@@ -199,7 +199,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			SubId: "test",
 			Sorts: []*model.BlockContentDataviewSort{
 				{
@@ -266,7 +266,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(SubscribeRequest{
 			SubId: "test",
 			Sorts: []*model.BlockContentDataviewSort{
 				{
@@ -309,7 +309,7 @@ func TestService_Search(t *testing.T) {
 		collectionID := "id"
 		subscriptionID := "subId"
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return(nil, nil, fmt.Errorf("error"))
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId:        "subId",
 			CollectionId: collectionID,
 		})
@@ -326,7 +326,7 @@ func TestService_Search(t *testing.T) {
 		subscriptionID := "subId"
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return(nil, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId:        subscriptionID,
 			CollectionId: collectionID,
 		})
@@ -368,7 +368,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId:        subscriptionID,
 			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
 			CollectionId: collectionID,
@@ -418,7 +418,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId:        subscriptionID,
 			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
 			CollectionId: collectionID,
@@ -475,7 +475,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId:        subscriptionID,
 			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
 			CollectionId: collectionID,
@@ -521,7 +521,7 @@ func TestService_Search(t *testing.T) {
 		s := fx.Service.(*service)
 		s.ds = newDependencyService(s)
 
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId:             subscriptionID,
 			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey},
 			CollectionId:      collectionID,
@@ -576,7 +576,7 @@ func TestService_Search(t *testing.T) {
 		s := fx.Service.(*service)
 		s.ds = newDependencyService(s)
 
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId:             subscriptionID,
 			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey},
 			CollectionId:      collectionID,
@@ -627,7 +627,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(SubscribeRequest{
 			SubId:        subscriptionID,
 			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
 			CollectionId: collectionID,
@@ -1067,7 +1067,7 @@ func xTestNestedSubscription(t *testing.T) {
 func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 	fx := newFixtureWithRealObjectStore(t)
 	// fx.store.EXPECT().GetRelationByKey(mock.Anything).Return(&model.Relation{}, nil)
-	resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+	resp, err := fx.Search(SubscribeRequest{
 		SubId: "test",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
