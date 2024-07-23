@@ -3,7 +3,6 @@ package detailsupdater
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"sync"
 	"time"
@@ -33,10 +32,9 @@ var log = logging.Logger(CName)
 const CName = "core.syncstatus.objectsyncstatus.updater"
 
 type syncStatusDetails struct {
-	objectId            string
-	markAllSyncedExcept []string
-	status              domain.ObjectSyncStatus
-	spaceId             string
+	objectId string
+	status   domain.ObjectSyncStatus
+	spaceId  string
 }
 
 type Updater interface {
@@ -55,7 +53,7 @@ type syncStatusUpdater struct {
 	objectStore       objectstore.ObjectStore
 	ctx               context.Context
 	ctxCancel         context.CancelFunc
-	batcher           *mb.MB[*syncStatusDetails]
+	batcher           *mb.MB[string]
 	spaceService      space.Service
 	spaceSyncStatus   SpaceStatusUpdater
 	syncSubscriptions syncsubscritions.SyncSubscriptions
@@ -68,7 +66,7 @@ type syncStatusUpdater struct {
 
 func NewUpdater() Updater {
 	return &syncStatusUpdater{
-		batcher: mb.New[*syncStatusDetails](0),
+		batcher: mb.New[string](0),
 		finish:  make(chan struct{}),
 		entries: make(map[string]*syncStatusDetails, 0),
 	}
@@ -104,14 +102,7 @@ func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectS
 	if spaceId == u.spaceService.TechSpaceId() {
 		return
 	}
-	u.mx.Lock()
-	u.entries[objectId] = &syncStatusDetails{
-		objectId: objectId,
-		status:   status,
-		spaceId:  spaceId,
-	}
-	u.mx.Unlock()
-	err := u.batcher.TryAdd(&syncStatusDetails{
+	err := u.addToQueue(&syncStatusDetails{
 		objectId: objectId,
 		status:   status,
 		spaceId:  spaceId,
@@ -121,19 +112,43 @@ func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectS
 	}
 }
 
+func (u *syncStatusUpdater) addToQueue(details *syncStatusDetails) error {
+	u.mx.Lock()
+	u.entries[details.objectId] = details
+	u.mx.Unlock()
+	return u.batcher.TryAdd(details.objectId)
+}
+
 func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, spaceId string) {
 	if spaceId == u.spaceService.TechSpaceId() {
 		return
 	}
 	u.spaceSyncStatus.UpdateMissingIds(spaceId, missing)
-	err := u.batcher.TryAdd(&syncStatusDetails{
-		markAllSyncedExcept: existing,
-		status:              domain.ObjectSyncing,
-		spaceId:             spaceId,
-	})
-	fmt.Println("[x]: sending update to batcher, len(existing)", len(existing), "len(missing)", len(missing), "spaceId", spaceId)
-	if err != nil {
-		log.Errorf("failed to add sync details update to queue: %s", err)
+	ids := u.getSyncingObjects(spaceId)
+	removed, added := slice.DifferenceRemovedAdded(existing, ids)
+	if len(removed)+len(added) == 0 {
+		u.spaceSyncStatus.Refresh(spaceId)
+		return
+	}
+	for _, id := range added {
+		err := u.addToQueue(&syncStatusDetails{
+			objectId: id,
+			status:   domain.ObjectSynced,
+			spaceId:  spaceId,
+		})
+		if err != nil {
+			log.Errorf("failed to add sync details update to queue: %s", err)
+		}
+	}
+	for _, id := range removed {
+		err := u.addToQueue(&syncStatusDetails{
+			objectId: id,
+			status:   domain.ObjectSyncing,
+			spaceId:  spaceId,
+		})
+		if err != nil {
+			log.Errorf("failed to add sync details update to queue: %s", err)
+		}
 	}
 }
 
@@ -253,50 +268,23 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 
 func (u *syncStatusUpdater) processEvents() {
 	defer close(u.finish)
-	updateSpecificObject := func(details *syncStatusDetails) {
+	updateSpecificObject := func(objectId string) {
 		u.mx.Lock()
-		objectStatus := u.entries[details.objectId]
-		delete(u.entries, details.objectId)
+		objectStatus := u.entries[objectId]
+		delete(u.entries, objectId)
 		u.mx.Unlock()
 		if objectStatus != nil {
-			err := u.updateObjectDetails(objectStatus, details.objectId)
-			if err != nil {
-				log.Errorf("failed to update details %s", err)
-			}
-		}
-	}
-	syncAllObjectsExcept := func(details *syncStatusDetails) {
-		ids := u.getSyncingObjects(details.spaceId)
-		removed, added := slice.DifferenceRemovedAdded(details.markAllSyncedExcept, ids)
-		if len(removed)+len(added) == 0 {
-			u.spaceSyncStatus.Refresh(details.spaceId)
-			return
-		}
-		fmt.Println("[x]: marking synced, len(synced)", len(added), "len(syncing)", len(removed), "spaceId", details.spaceId)
-		details.status = domain.ObjectSynced
-		for _, id := range added {
-			err := u.updateObjectDetails(details, id)
-			if err != nil {
-				log.Errorf("failed to update details %s", err)
-			}
-		}
-		details.status = domain.ObjectSyncing
-		for _, id := range removed {
-			err := u.updateObjectDetails(details, id)
+			err := u.updateObjectDetails(objectStatus, objectId)
 			if err != nil {
 				log.Errorf("failed to update details %s", err)
 			}
 		}
 	}
 	for {
-		status, err := u.batcher.WaitOne(u.ctx)
+		objectId, err := u.batcher.WaitOne(u.ctx)
 		if err != nil {
 			return
 		}
-		if status.objectId == "" {
-			syncAllObjectsExcept(status)
-		} else {
-			updateSpecificObject(status)
-		}
+		updateSpecificObject(objectId)
 	}
 }
