@@ -4,7 +4,6 @@ package mock_treesyncer
 
 import (
 	app "github.com/anyproto/any-sync/app"
-	domain "github.com/anyproto/anytype-heart/core/domain"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -112,38 +111,37 @@ func (_c *MockSyncDetailsUpdater_Name_Call) RunAndReturn(run func() string) *Moc
 	return _c
 }
 
-// UpdateDetails provides a mock function with given fields: objectId, status, syncError, spaceId
-func (_m *MockSyncDetailsUpdater) UpdateDetails(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string) {
-	_m.Called(objectId, status, syncError, spaceId)
+// UpdateSpaceDetails provides a mock function with given fields: existing, missing, spaceId
+func (_m *MockSyncDetailsUpdater) UpdateSpaceDetails(existing []string, missing []string, spaceId string) {
+	_m.Called(existing, missing, spaceId)
 }
 
-// MockSyncDetailsUpdater_UpdateDetails_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateDetails'
-type MockSyncDetailsUpdater_UpdateDetails_Call struct {
+// MockSyncDetailsUpdater_UpdateSpaceDetails_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateSpaceDetails'
+type MockSyncDetailsUpdater_UpdateSpaceDetails_Call struct {
 	*mock.Call
 }
 
-// UpdateDetails is a helper method to define mock.On call
-//   - objectId []string
-//   - status domain.ObjectSyncStatus
-//   - syncError domain.SyncError
+// UpdateSpaceDetails is a helper method to define mock.On call
+//   - existing []string
+//   - missing []string
 //   - spaceId string
-func (_e *MockSyncDetailsUpdater_Expecter) UpdateDetails(objectId interface{}, status interface{}, syncError interface{}, spaceId interface{}) *MockSyncDetailsUpdater_UpdateDetails_Call {
-	return &MockSyncDetailsUpdater_UpdateDetails_Call{Call: _e.mock.On("UpdateDetails", objectId, status, syncError, spaceId)}
+func (_e *MockSyncDetailsUpdater_Expecter) UpdateSpaceDetails(existing interface{}, missing interface{}, spaceId interface{}) *MockSyncDetailsUpdater_UpdateSpaceDetails_Call {
+	return &MockSyncDetailsUpdater_UpdateSpaceDetails_Call{Call: _e.mock.On("UpdateSpaceDetails", existing, missing, spaceId)}
 }
 
-func (_c *MockSyncDetailsUpdater_UpdateDetails_Call) Run(run func(objectId []string, status domain.ObjectSyncStatus, syncError domain.SyncError, spaceId string)) *MockSyncDetailsUpdater_UpdateDetails_Call {
+func (_c *MockSyncDetailsUpdater_UpdateSpaceDetails_Call) Run(run func(existing []string, missing []string, spaceId string)) *MockSyncDetailsUpdater_UpdateSpaceDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string), args[1].(domain.ObjectSyncStatus), args[2].(domain.SyncError), args[3].(string))
+		run(args[0].([]string), args[1].([]string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *MockSyncDetailsUpdater_UpdateDetails_Call) Return() *MockSyncDetailsUpdater_UpdateDetails_Call {
+func (_c *MockSyncDetailsUpdater_UpdateSpaceDetails_Call) Return() *MockSyncDetailsUpdater_UpdateSpaceDetails_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockSyncDetailsUpdater_UpdateDetails_Call) RunAndReturn(run func([]string, domain.ObjectSyncStatus, domain.SyncError, string)) *MockSyncDetailsUpdater_UpdateDetails_Call {
+func (_c *MockSyncDetailsUpdater_UpdateSpaceDetails_Call) RunAndReturn(run func([]string, []string, string)) *MockSyncDetailsUpdater_UpdateSpaceDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -79,7 +79,6 @@ type Updater interface {
 
 type syncStatusService struct {
 	sync.Mutex
-	configuration  nodeconf.NodeConf
 	periodicSync   periodicsync.PeriodicSync
 	updateReceiver UpdateReceiver
 	storage        spacestorage.SpaceStorage
@@ -112,7 +111,6 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.updateIntervalSecs = syncUpdateInterval
 	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
-	s.configuration = app.MustComponent[nodeconf.NodeConf](a)
 	s.storage = app.MustComponent[spacestorage.SpaceStorage](a)
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
@@ -143,6 +141,9 @@ func (s *syncStatusService) Run(ctx context.Context) error {
 }
 
 func (s *syncStatusService) HeadsChange(treeId string, heads []string) {
+	s.Lock()
+	s.treeHeads[treeId] = treeHeadsEntry{heads: heads, syncStatus: StatusNotSynced}
+	s.Unlock()
 	s.updateDetails(treeId, domain.ObjectSyncing)
 }
 
@@ -295,7 +296,7 @@ func (s *syncStatusService) Close(ctx context.Context) error {
 }
 
 func (s *syncStatusService) isSenderResponsible(senderId string) bool {
-	return slices.Contains(s.configuration.NodeIds(s.spaceId), senderId)
+	return slices.Contains(s.nodeConfService.NodeIds(s.spaceId), senderId)
 }
 
 func (s *syncStatusService) updateDetails(treeId string, status domain.ObjectSyncStatus) {
