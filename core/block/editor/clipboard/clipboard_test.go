@@ -2,12 +2,14 @@ package clipboard
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -18,6 +20,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -1798,4 +1802,95 @@ bbb`},
 			assert.Equalf(t, tt.want, splitStringIntoParagraphs(tt.args.s, tt.args.lineBreakSoftLimit), "splitStringIntoParagraphs(%v, %v)", tt.args.s, tt.args.lineBreakSoftLimit)
 		})
 	}
+}
+
+func TestProcessFileBlock(t *testing.T) {
+	const (
+		fileObject1 = "fileObject1"
+		fileObject2 = "fileObject2"
+		space1      = "space1"
+		space2      = "space2"
+		fileId      = domain.FileId("fileId")
+	)
+
+	sb := smarttest.New("test")
+	sb.SetSpaceId(space1)
+
+	t.Run("old target object id remains if space is the same", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space1, FileId: fileId}, nil)
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileObject1}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
+	})
+
+	t.Run("new target object id is set if space is different", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return(fileObject2, nil)
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileObject1}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, fileObject2, fb.File.TargetObjectId)
+	})
+
+	t.Run("old target object id remains if failed to create new object", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return("", fmt.Errorf("some error"))
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileObject1}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
+	})
+
+	t.Run("old target object id remains if failed to get file id", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{}, fmt.Errorf("not found"))
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileObject1}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
+	})
 }

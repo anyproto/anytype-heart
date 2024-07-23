@@ -27,10 +27,8 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -153,7 +151,6 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		id:                 id,
 		space:              space,
 		spaceID:            space.Id(),
-		spaceService:       s.spaceCoreService,
 		smartblockType:     sbt,
 		accountService:     s.accountService,
 		accountKeysService: s.accountKeysService,
@@ -173,6 +170,10 @@ type fileObjectMigrator interface {
 	MigrateFileIdsInDetails(st *state.State, spc Space)
 }
 
+type RelationGetter interface {
+	GetRelationByKey(key string) (*model.Relation, error)
+}
+
 type source struct {
 	objecttree.ObjectTree
 	id                   string
@@ -188,9 +189,8 @@ type source struct {
 	fileService        files.Service
 	accountService     accountService
 	accountKeysService accountservice.Service
-	spaceService       spacecore.SpaceCoreService
 	sbtProvider        typeprovider.SmartBlockTypeProvider
-	objectStore        objectstore.ObjectStore
+	objectStore        RelationGetter
 	fileObjectMigrator fileObjectMigrator
 }
 
@@ -294,6 +294,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.objectStore)
 	migration.Migrate(st)
 
+	// we need to have required internal relations for all objects, including system
+	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
@@ -347,7 +349,6 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	change := s.buildChange(params)
 
 	data, dataType, err := MarshalChange(change)
-
 	if err != nil {
 		return
 	}
@@ -415,11 +416,10 @@ func checkChangeSize(data []byte, maxSize int) error {
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	spc, err := s.spaceService.Get(context.Background(), s.spaceID)
-	if err != nil {
+	if s.space == nil {
 		return
 	}
-	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
+	ids = slice.Filter(s.space.StoredIds(), func(id string) bool {
 		t, err := s.sbtProvider.Type(s.spaceID, id)
 		if err != nil {
 			return false

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -55,23 +56,17 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 }
 
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
-	response := func(filesOffloaded int, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
-		m := &pb.RpcFileListOffloadResponse{
-			Error:          &pb.RpcFileListOffloadResponseError{Code: code},
-			BytesOffloaded: bytesOffloaded,
-			FilesOffloaded: int32(filesOffloaded),
-		}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
 	fileOffloader := getService[fileoffloader.Service](mw)
-	filesOffloaded, bytesRemoved, err := fileOffloader.FilesOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
+	err := fileOffloader.FilesOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
-		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
+		return &pb.RpcFileListOffloadResponse{
+			Error: &pb.RpcFileListOffloadResponseError{
+				Code:        pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
 	}
-	return response(filesOffloaded, bytesRemoved, pb.RpcFileListOffloadResponseError_NULL, nil)
+	return &pb.RpcFileListOffloadResponse{}
 }
 
 func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
@@ -192,4 +187,17 @@ func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsag
 	}
 
 	return resp
+}
+
+func (mw *Middleware) FileReconcile(ctx context.Context, req *pb.RpcFileReconcileRequest) *pb.RpcFileReconcileResponse {
+	err := getService[reconciler.Reconciler](mw).Start(ctx)
+	if err != nil {
+		return &pb.RpcFileReconcileResponse{
+			Error: &pb.RpcFileReconcileResponseError{
+				Code:        mapErrorCode[pb.RpcFileReconcileResponseErrorCode](err),
+				Description: err.Error(),
+			},
+		}
+	}
+	return &pb.RpcFileReconcileResponse{}
 }

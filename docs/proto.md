@@ -16,6 +16,8 @@
     - [Change.Content](#anytype-Change-Content)
     - [Change.DetailsSet](#anytype-Change-DetailsSet)
     - [Change.DetailsUnset](#anytype-Change-DetailsUnset)
+    - [Change.DeviceAdd](#anytype-Change-DeviceAdd)
+    - [Change.DeviceUpdate](#anytype-Change-DeviceUpdate)
     - [Change.FileKeys](#anytype-Change-FileKeys)
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
     - [Change.NotificationCreate](#anytype-Change-NotificationCreate)
@@ -525,6 +527,10 @@
     - [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response)
     - [Rpc.Broadcast.PayloadEvent.Response.Error](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
+    - [Rpc.Debug.AccountSelectTrace](#anytype-Rpc-Debug-AccountSelectTrace)
+    - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
+    - [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response)
+    - [Rpc.Debug.AccountSelectTrace.Response.Error](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
     - [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response)
@@ -537,6 +543,10 @@
     - [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request)
     - [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response)
     - [Rpc.Debug.Ping.Response.Error](#anytype-Rpc-Debug-Ping-Response-Error)
+    - [Rpc.Debug.RunProfiler](#anytype-Rpc-Debug-RunProfiler)
+    - [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request)
+    - [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response)
+    - [Rpc.Debug.RunProfiler.Response.Error](#anytype-Rpc-Debug-RunProfiler-Response-Error)
     - [Rpc.Debug.SpaceSummary](#anytype-Rpc-Debug-SpaceSummary)
     - [Rpc.Debug.SpaceSummary.Request](#anytype-Rpc-Debug-SpaceSummary-Request)
     - [Rpc.Debug.SpaceSummary.Response](#anytype-Rpc-Debug-SpaceSummary-Response)
@@ -562,6 +572,20 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
+    - [Rpc.Device](#anytype-Rpc-Device)
+    - [Rpc.Device.List](#anytype-Rpc-Device-List)
+    - [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request)
+    - [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response)
+    - [Rpc.Device.List.Response.Error](#anytype-Rpc-Device-List-Response-Error)
+    - [Rpc.Device.NetworkState](#anytype-Rpc-Device-NetworkState)
+    - [Rpc.Device.NetworkState.Set](#anytype-Rpc-Device-NetworkState-Set)
+    - [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request)
+    - [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response)
+    - [Rpc.Device.NetworkState.Set.Response.Error](#anytype-Rpc-Device-NetworkState-Set-Response-Error)
+    - [Rpc.Device.SetName](#anytype-Rpc-Device-SetName)
+    - [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request)
+    - [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response)
+    - [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -585,6 +609,10 @@
     - [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request)
     - [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response)
     - [Rpc.File.Offload.Response.Error](#anytype-Rpc-File-Offload-Response-Error)
+    - [Rpc.File.Reconcile](#anytype-Rpc-File-Reconcile)
+    - [Rpc.File.Reconcile.Request](#anytype-Rpc-File-Reconcile-Request)
+    - [Rpc.File.Reconcile.Response](#anytype-Rpc-File-Reconcile-Response)
+    - [Rpc.File.Reconcile.Response.Error](#anytype-Rpc-File-Reconcile-Response-Error)
     - [Rpc.File.SpaceOffload](#anytype-Rpc-File-SpaceOffload)
     - [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request)
     - [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response)
@@ -1248,20 +1276,26 @@
     - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
+    - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
+    - [Rpc.Debug.RunProfiler.Response.Error.Code](#anytype-Rpc-Debug-RunProfiler-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
     - [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code)
     - [Rpc.Debug.Stat.Response.Error.Code](#anytype-Rpc-Debug-Stat-Response-Error-Code)
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
+    - [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code)
+    - [Rpc.Device.NetworkState.Set.Response.Error.Code](#anytype-Rpc-Device-NetworkState-Set-Response-Error-Code)
+    - [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
     - [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
+    - [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code)
     - [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
@@ -1568,6 +1602,8 @@
     - [Event.Object.Subscription.Groups](#anytype-Event-Object-Subscription-Groups)
     - [Event.Object.Subscription.Position](#anytype-Event-Object-Subscription-Position)
     - [Event.Object.Subscription.Remove](#anytype-Event-Object-Subscription-Remove)
+    - [Event.P2PStatus](#anytype-Event-P2PStatus)
+    - [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update)
     - [Event.Payload](#anytype-Event-Payload)
     - [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast)
     - [Event.Ping](#anytype-Event-Ping)
@@ -1575,6 +1611,9 @@
     - [Event.Process.Done](#anytype-Event-Process-Done)
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
+    - [Event.Space](#anytype-Event-Space)
+    - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
+    - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
     - [Event.Status](#anytype-Event-Status)
     - [Event.Status.Thread](#anytype-Event-Status-Thread)
     - [Event.Status.Thread.Account](#anytype-Event-Status-Thread-Account)
@@ -1594,6 +1633,10 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
+    - [Event.Space.Network](#anytype-Event-Space-Network)
+    - [Event.Space.Status](#anytype-Event-Space-Status)
+    - [Event.Space.SyncError](#anytype-Event-Space-SyncError)
     - [Event.Status.Thread.SyncStatus](#anytype-Event-Status-Thread-SyncStatus)
     - [Model.Process.State](#anytype-Model-Process-State)
     - [Model.Process.Type](#anytype-Model-Process-Type)
@@ -1614,7 +1657,6 @@
   
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
-    - [Account.Avatar](#anytype-model-Account-Avatar)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
     - [Account.Status](#anytype-model-Account-Status)
@@ -1654,6 +1696,7 @@
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [Detail](#anytype-model-Detail)
+    - [DeviceInfo](#anytype-model-DeviceInfo)
     - [Export](#anytype-model-Export)
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
@@ -1732,6 +1775,7 @@
     - [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
+    - [DeviceNetworkType](#anytype-model-DeviceNetworkType)
     - [Export.Format](#anytype-model-Export-Format)
     - [FileIndexingStatus](#anytype-model-FileIndexingStatus)
     - [ImageKind](#anytype-model-ImageKind)
@@ -1892,8 +1936,8 @@
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
 | HistoryDiffVersions | [Rpc.History.DiffVersions.Request](#anytype-Rpc-History-DiffVersions-Request) | [Rpc.History.DiffVersions.Response](#anytype-Rpc-History-DiffVersions-Response) |  |
-| FileOffload | [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request) | [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response) | Files *** |
-| FileSpaceOffload | [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request) | [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response) |  |
+| FileSpaceOffload | [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request) | [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response) | Files *** |
+| FileReconcile | [Rpc.File.Reconcile.Request](#anytype-Rpc-File-Reconcile-Request) | [Rpc.File.Reconcile.Response](#anytype-Rpc-File-Reconcile-Response) |  |
 | FileListOffload | [Rpc.File.ListOffload.Request](#anytype-Rpc-File-ListOffload-Request) | [Rpc.File.ListOffload.Response](#anytype-Rpc-File-ListOffload-Response) |  |
 | FileUpload | [Rpc.File.Upload.Request](#anytype-Rpc-File-Upload-Request) | [Rpc.File.Upload.Response](#anytype-Rpc-File-Upload-Response) |  |
 | FileDownload | [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request) | [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response) |  |
@@ -2011,6 +2055,8 @@
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request) | [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response) |  |
 | DebugSubscriptions | [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request) | [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response) |  |
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
+| DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) |  |
+| DebugAccountSelectTrace | [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request) | [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
@@ -2030,6 +2076,9 @@
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
 | BroadcastPayloadEvent | [Rpc.Broadcast.PayloadEvent.Request](#anytype-Rpc-Broadcast-PayloadEvent-Request) | [Rpc.Broadcast.PayloadEvent.Response](#anytype-Rpc-Broadcast-PayloadEvent-Response) |  |
+| DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
+| DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
+| DeviceNetworkStateSet | [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request) | [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response) |  |
 
  
 
@@ -2171,6 +2220,8 @@ the element of change tree used to store and internal apply smartBlock history
 | setFileInfo | [Change.SetFileInfo](#anytype-Change-SetFileInfo) |  |  |
 | notificationCreate | [Change.NotificationCreate](#anytype-Change-NotificationCreate) |  |  |
 | notificationUpdate | [Change.NotificationUpdate](#anytype-Change-NotificationUpdate) |  |  |
+| deviceAdd | [Change.DeviceAdd](#anytype-Change-DeviceAdd) |  |  |
+| deviceUpdate | [Change.DeviceUpdate](#anytype-Change-DeviceUpdate) |  |  |
 
 
 
@@ -2202,6 +2253,37 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-DeviceAdd"></a>
+
+### Change.DeviceAdd
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| device | [model.DeviceInfo](#anytype-model-DeviceInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-DeviceUpdate"></a>
+
+### Change.DeviceUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 
 
 
@@ -3916,6 +3998,7 @@ common simple block command
 | blockIds | [string](#string) | repeated |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
 | templateId | [string](#string) |  |  |
+| block | [model.Block](#anytype-model-Block) |  |  |
 
 
 
@@ -9633,6 +9716,58 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-AccountSelectTrace"></a>
+
+### Rpc.Debug.AccountSelectTrace
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AccountSelectTrace-Request"></a>
+
+### Rpc.Debug.AccountSelectTrace.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AccountSelectTrace-Response"></a>
+
+### Rpc.Debug.AccountSelectTrace.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.AccountSelectTrace.Response.Error](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AccountSelectTrace-Response-Error"></a>
+
+### Rpc.Debug.AccountSelectTrace.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore"></a>
 
 ### Rpc.Debug.ExportLocalstore
@@ -9796,6 +9931,63 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler"></a>
+
+### Rpc.Debug.RunProfiler
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Request"></a>
+
+### Rpc.Debug.RunProfiler.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| durationInSeconds | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Response"></a>
+
+### Rpc.Debug.RunProfiler.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.RunProfiler.Response.Error](#anytype-Rpc-Debug-RunProfiler-Response-Error) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Response-Error"></a>
+
+### Rpc.Debug.RunProfiler.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.RunProfiler.Response.Error.Code](#anytype-Rpc-Debug-RunProfiler-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10155,6 +10347,191 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Device"></a>
+
+### Rpc.Device
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List"></a>
+
+### Rpc.Device.List
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Request"></a>
+
+### Rpc.Device.List.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Response"></a>
+
+### Rpc.Device.List.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Device.List.Response.Error](#anytype-Rpc-Device-List-Response-Error) |  |  |
+| devices | [model.DeviceInfo](#anytype-model-DeviceInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-List-Response-Error"></a>
+
+### Rpc.Device.List.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState"></a>
+
+### Rpc.Device.NetworkState
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set"></a>
+
+### Rpc.Device.NetworkState.Set
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set-Request"></a>
+
+### Rpc.Device.NetworkState.Set.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deviceNetworkType | [model.DeviceNetworkType](#anytype-model-DeviceNetworkType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set-Response"></a>
+
+### Rpc.Device.NetworkState.Set.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Device.NetworkState.Set.Response.Error](#anytype-Rpc-Device-NetworkState-Set-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set-Response-Error"></a>
+
+### Rpc.Device.NetworkState.Set.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Device.NetworkState.Set.Response.Error.Code](#anytype-Rpc-Device-NetworkState-Set-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName"></a>
+
+### Rpc.Device.SetName
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Request"></a>
+
+### Rpc.Device.SetName.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deviceId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response"></a>
+
+### Rpc.Device.SetName.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response-Error"></a>
+
+### Rpc.Device.SetName.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File"></a>
 
 ### Rpc.File
@@ -10484,6 +10861,57 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-Reconcile"></a>
+
+### Rpc.File.Reconcile
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-Reconcile-Request"></a>
+
+### Rpc.File.Reconcile.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-Reconcile-Response"></a>
+
+### Rpc.File.Reconcile.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.Reconcile.Response.Error](#anytype-Rpc-File-Reconcile-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-Reconcile-Response-Error"></a>
+
+### Rpc.File.Reconcile.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19984,6 +20412,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code"></a>
+
+### Rpc.Debug.AccountSelectTrace.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -20013,6 +20454,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Debug-Ping-Response-Error-Code"></a>
 
 ### Rpc.Debug.Ping.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Response-Error-Code"></a>
+
+### Rpc.Debug.RunProfiler.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -20101,6 +20555,46 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Device-List-Response-Error-Code"></a>
+
+### Rpc.Device.List.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Device-NetworkState-Set-Response-Error-Code"></a>
+
+### Rpc.Device.NetworkState.Set.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
+<a name="anytype-Rpc-Device-SetName-Response-Error-Code"></a>
+
+### Rpc.Device.SetName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -20165,6 +20659,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NODE_NOT_STARTED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-File-Reconcile-Response-Error-Code"></a>
+
+### Rpc.File.Reconcile.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -24478,6 +24985,8 @@ Precondition: user A opened a block
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
+| spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
+| p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
 
 
 
@@ -24804,6 +25313,33 @@ Removes document from subscription
 
 
 
+<a name="anytype-Event-P2PStatus"></a>
+
+### Event.P2PStatus
+
+
+
+
+
+
+
+<a name="anytype-Event-P2PStatus-Update"></a>
+
+### Event.P2PStatus.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| status | [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status) |  |  |
+| devicesCounter | [int64](#int64) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Payload"></a>
 
 ### Event.Payload
@@ -24893,6 +25429,45 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | process | [Model.Process](#anytype-Model-Process) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Space"></a>
+
+### Event.Space
+
+
+
+
+
+
+
+<a name="anytype-Event-Space-SyncStatus"></a>
+
+### Event.Space.SyncStatus
+
+
+
+
+
+
+
+<a name="anytype-Event-Space-SyncStatus-Update"></a>
+
+### Event.Space.SyncStatus.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| status | [Event.Space.Status](#anytype-Event-Space-Status) |  |  |
+| network | [Event.Space.Network](#anytype-Event-Space-Network) |  |  |
+| error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
+| syncingObjectsCounter | [int64](#int64) |  |  |
 
 
 
@@ -25190,6 +25765,60 @@ Precondition: user A and user B opened the same block
 
 
 
+<a name="anytype-Event-P2PStatus-Status"></a>
+
+### Event.P2PStatus.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NotConnected | 0 |  |
+| NotPossible | 1 |  |
+| Connected | 2 |  |
+
+
+
+<a name="anytype-Event-Space-Network"></a>
+
+### Event.Space.Network
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Anytype | 0 |  |
+| SelfHost | 1 |  |
+| LocalOnly | 2 |  |
+
+
+
+<a name="anytype-Event-Space-Status"></a>
+
+### Event.Space.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Synced | 0 |  |
+| Syncing | 1 |  |
+| Error | 2 |  |
+| Offline | 3 |  |
+
+
+
+<a name="anytype-Event-Space-SyncError"></a>
+
+### Event.Space.SyncError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Null | 0 |  |
+| StorageLimitExceed | 1 |  |
+| IncompatibleVersion | 2 |  |
+| NetworkError | 3 |  |
+
+
+
 <a name="anytype-Event-Status-Thread-SyncStatus"></a>
 
 ### Event.Status.Thread.SyncStatus
@@ -25474,27 +26103,9 @@ Contains basic information about a user account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | User&#39;s thread id |
-| name | [string](#string) |  | User name, that associated with this account |
-| avatar | [Account.Avatar](#anytype-model-Account-Avatar) |  | Avatar of a user&#39;s account |
 | config | [Account.Config](#anytype-model-Account-Config) |  |  |
 | status | [Account.Status](#anytype-model-Account-Status) |  |  |
 | info | [Account.Info](#anytype-model-Account-Info) |  |  |
-
-
-
-
-
-
-<a name="anytype-model-Account-Avatar"></a>
-
-### Account.Avatar
-Avatar of a user&#39;s account. It could be an image or color
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| image | [Block.Content.File](#anytype-model-Block-Content-File) |  | Image of the avatar. Contains the hash to retrieve the image. |
-| color | [string](#string) |  | Color of the avatar, used if image not set. |
 
 
 
@@ -26176,6 +26787,25 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [google.protobuf.Value](#google-protobuf-Value) |  | NUll - removes key |
+
+
+
+
+
+
+<a name="anytype-model-DeviceInfo"></a>
+
+### DeviceInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| addDate | [int64](#int64) |  |  |
+| archived | [bool](#bool) |  |  |
+| isConnected | [bool](#bool) |  |  |
 
 
 
@@ -27509,6 +28139,19 @@ stored |
 
 
 
+<a name="anytype-model-DeviceNetworkType"></a>
+
+### DeviceNetworkType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| WIFI | 0 |  |
+| CELLULAR | 1 |  |
+| NOT_CONNECTED | 2 |  |
+
+
+
 <a name="anytype-model-Export-Format"></a>
 
 ### Export.Format
@@ -27921,6 +28564,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | MissingObject | 519 |  |
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
+| DevicesObject | 536 |  |
 
 
 

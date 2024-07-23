@@ -21,7 +21,7 @@ func (s *dsObjectStore) DeleteDetails(ids ...string) error {
 	for _, chunk := range lo.Chunk(ids, 100) {
 		err := s.updateTxn(func(txn *badger.Txn) error {
 			for _, id := range chunk {
-				s.cache.Del(pagesDetailsBase.ChildString(id).Bytes())
+				s.cache.Remove(pagesDetailsBase.ChildString(id).String())
 
 				for _, key := range []ds.Key{
 					pagesDetailsBase.ChildString(id),
@@ -82,7 +82,7 @@ func (s *dsObjectStore) DeleteObject(id domain.FullID) error {
 			if err != nil {
 				log.Errorf("error removing %s from index queue: %s", id, err)
 			}
-			if err := s.fts.Delete(id.ObjectID); err != nil {
+			if err := s.fts.DeleteObject(id.ObjectID); err != nil {
 				return err
 			}
 		}

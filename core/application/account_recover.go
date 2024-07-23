@@ -24,8 +24,7 @@ func (s *Service) AccountRecover() error {
 				Value: &pb.EventMessageValueOfAccountShow{
 					AccountShow: &pb.EventAccountShow{
 						Account: &model.Account{
-							Id:   res.Identity.GetPublic().Account(),
-							Name: "",
+							Id: res.Identity.GetPublic().Account(),
 						},
 					},
 				},

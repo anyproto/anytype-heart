@@ -52,7 +52,7 @@ func (b *block) Normalize(s *state.State) error {
 		return fmt.Errorf("normilize columns: %w", err)
 	}
 
-	if err = normalizeRows(tb); err != nil {
+	if err = normalizeRows(s, tb); err != nil {
 		return fmt.Errorf("normalize rows: %w", err)
 	}
 
@@ -160,7 +160,6 @@ func normalizeHeaderRows(s *state.State, tb *Table) error {
 
 	var headers []string
 	regular := make([]string, 0, len(rows.Model().ChildrenIds))
-
 	for _, rowID := range rows.Model().ChildrenIds {
 		row, err := pickRow(s, rowID)
 		if err != nil {
@@ -174,12 +173,11 @@ func normalizeHeaderRows(s *state.State, tb *Table) error {
 		}
 	}
 
-	// nolint:gocritic
-	rows.Model().ChildrenIds = append(headers, regular...)
+	s.SetChildrenIds(rows.Model(), append(headers, regular...))
 	return nil
 }
 
-func normalizeRow(colIdx map[string]int, row simple.Block) {
+func normalizeRow(s *state.State, colIdx map[string]int, row simple.Block) {
 	if row == nil || row.Model() == nil {
 		return
 	}
@@ -187,10 +185,12 @@ func normalizeRow(colIdx map[string]int, row simple.Block) {
 		cells:   make([]string, 0, len(row.Model().ChildrenIds)),
 		indices: make([]int, 0, len(row.Model().ChildrenIds)),
 	}
+	toRemove := []string{}
 	for _, id := range row.Model().ChildrenIds {
 		_, colID, err := ParseCellID(id)
 		if err != nil {
 			log.Warnf("normalize row %s: discard cell %s: invalid id", row.Model().Id, id)
+			toRemove = append(toRemove, id)
 			rs.touched = true
 			continue
 		}
@@ -198,6 +198,7 @@ func normalizeRow(colIdx map[string]int, row simple.Block) {
 		v, ok := colIdx[colID]
 		if !ok {
 			log.Warnf("normalize row %s: discard cell %s: column %s not found", row.Model().Id, id, colID)
+			toRemove = append(toRemove, id)
 			rs.touched = true
 			continue
 		}
@@ -207,7 +208,12 @@ func normalizeRow(colIdx map[string]int, row simple.Block) {
 	sort.Sort(rs)
 
 	if rs.touched {
-		row.Model().ChildrenIds = rs.cells
+		if s == nil {
+			row.Model().ChildrenIds = rs.cells
+		} else {
+			s.RemoveFromCache(toRemove)
+			s.SetChildrenIds(row.Model(), rs.cells)
+		}
 	}
 }
 
@@ -237,7 +243,7 @@ func normalizeColumns(tb *Table) error {
 	return nil
 }
 
-func normalizeRows(tb *Table) error {
+func normalizeRows(s *state.State, tb *Table) error {
 	colIdx := map[string]int{}
 	for i, c := range tb.ColumnIDs() {
 		colIdx[c] = i
@@ -266,7 +272,7 @@ func normalizeRows(tb *Table) error {
 			}
 			return fmt.Errorf("get row %s: %w", rowId, err)
 		}
-		normalizeRow(colIdx, row)
+		normalizeRow(s, colIdx, row)
 		rowIds = append(rowIds, rowId)
 	}
 

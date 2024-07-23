@@ -51,4 +51,18 @@ var Images = []TestImage{
 		Width:   1440,
 		Height:  960,
 	},
+	{
+		Path:    "testdata/image_inf_exposure_time.jpeg",
+		Format:  "jpeg",
+		HasExif: true,
+		Width:   102,
+		Height:  79,
+	},
+	{
+		Path:    "testdata/image_invalid_f_number.jpeg",
+		Format:  "jpeg",
+		HasExif: true,
+		Width:   102,
+		Height:  79,
+	},
 }

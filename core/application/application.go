@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"runtime/trace"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -28,6 +29,7 @@ type Service struct {
 	clientWithVersion string
 	eventSender       event.Sender
 	sessions          session.Service
+	traceRecorder     *traceRecorder
 
 	appAccountStartInProcessCancel      context.CancelFunc
 	appAccountStartInProcessCancelMutex sync.Mutex
@@ -35,7 +37,8 @@ type Service struct {
 
 func New() *Service {
 	return &Service{
-		sessions: session.New(),
+		sessions:      session.New(),
+		traceRecorder: &traceRecorder{},
 	}
 }
 
@@ -58,8 +61,11 @@ func (s *Service) Stop() error {
 }
 
 func (s *Service) stop() error {
+	ctx, task := trace.NewTask(context.Background(), "application.stop")
+	defer task.End()
+
 	if s != nil && s.app != nil {
-		err := s.app.Close(context.Background())
+		err := s.app.Close(ctx)
 		if err != nil {
 			log.Warnf("error while stop anytype: %v", err)
 		}

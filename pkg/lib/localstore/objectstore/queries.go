@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// minFulltextScore trim fulltext results with score lower than this value
+	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
 	minFulltextScore = 0.02
 )
 
@@ -34,7 +34,7 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 
 // getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
 func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
-	return s.queryRaw(func(g database.Getter) bool {
+	return s.queryRaw(func(g *types.Struct) bool {
 		listValue := pbtypes.StringList([]string{objectId})
 		optionFilter := database.FilterAllIn{relationKey, listValue.GetListValue()}
 		if !optionFilter.FilterObject(g) {
@@ -56,11 +56,19 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 		err         error
 	)
 
+	isDeleted := pbtypes.GetBool(details, bundle.RelationKeyIsDeleted.String())
+	isArchived := pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
+	if isDeleted || isArchived {
+		return nil
+	}
+
 	switch model.ObjectTypeLayout(pbtypes.GetInt64(details, bundle.RelationKeyLayout.String())) {
 	case model.ObjectType_relationOption:
 		relationKey = pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	case model.ObjectType_objectType:
 		relationKey = bundle.RelationKeyType.String()
+	default:
+		return nil
 	}
 	recs, err := s.getObjectsWithObjectInRelation(relationKey, id, maxLength, params)
 	if err != nil {
@@ -90,12 +98,29 @@ func (s *dsObjectStore) getInjectedResults(details *types.Struct, score float64,
 	return injectedResults
 }
 
-func (s *dsObjectStore) queryRaw(filter func(g database.Getter) bool, order database.Order, limit int, offset int) ([]database.Record, error) {
+func (s *dsObjectStore) isClosing() bool {
+	select {
+	case <-s.isClosingCh:
+		return true
+	default:
+		return false
+	}
+}
+func (s *dsObjectStore) queryRaw(filter func(g *types.Struct) bool, order database.Order, limit int, offset int) ([]database.Record, error) {
 	var (
 		records []database.Record
+		err     error
 	)
 
-	err := s.db.View(func(txn *badger.Txn) error {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("badger iterator panic: %v", r)
+		}
+	}()
+
+	err = s.db.View(func(txn *badger.Txn) error {
+		s.runningQueriesWG.Add(1)
+		defer s.runningQueriesWG.Done()
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		opts.Prefix = pagesDetailsBase.Bytes()
@@ -103,6 +128,9 @@ func (s *dsObjectStore) queryRaw(filter func(g database.Getter) bool, order data
 		defer iterator.Close()
 
 		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
+			if s.isClosing() {
+				return ErrStoreIsClosing
+			}
 			it := iterator.Item()
 			details, err := s.extractDetailsFromItem(it)
 			if err != nil {
@@ -110,8 +138,11 @@ func (s *dsObjectStore) queryRaw(filter func(g database.Getter) bool, order data
 			}
 			rec := database.Record{Details: details.Details}
 
-			if filter == nil || filter(rec) {
+			if filter == nil || filter(details.Details) {
 				records = append(records, rec)
+			}
+			if s.isClosing() {
+				return ErrStoreIsClosing
 			}
 		}
 		return nil
@@ -125,7 +156,7 @@ func (s *dsObjectStore) queryRaw(filter func(g database.Getter) bool, order data
 	}
 	if order != nil {
 		sort.Slice(records, func(i, j int) bool {
-			return order.Compare(records[i], records[j]) == -1
+			return order.Compare(records[i].Details, records[j].Details) == -1
 		})
 	}
 	if limit > 0 {
@@ -152,6 +183,9 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	// this mean we use map to ignore duplicates without checking score
 	err := s.db.View(func(txn *badger.Txn) error {
 		for _, res := range results {
+			if s.isClosing() {
+				return ErrStoreIsClosing
+			}
 			// Don't use spaceID because expected objects are virtual
 			if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
 				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
@@ -163,7 +197,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 					details.Fields[database.RecordIDField] = pbtypes.ToValue(res.Path.ObjectId)
 					details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
 					rec := database.Record{Details: details}
-					if params.FilterObj == nil || params.FilterObj.FilterObject(rec) {
+					if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 						resultObjectMap[res.Path.ObjectId] = struct{}{}
 						records = append(records, rec)
 					}
@@ -185,7 +219,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			details.Fields[database.RecordScoreField] = pbtypes.ToValue(res.Score)
 
 			rec := database.Record{Details: details}
-			if params.FilterObj == nil || params.FilterObj.FilterObject(rec) {
+			if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 				rec.Meta = res.Model()
 				if _, ok := resultObjectMap[res.Path.ObjectId]; !ok {
 					records = append(records, rec)
@@ -223,7 +257,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	}
 	if params.Order != nil {
 		sort.Slice(records, func(i, j int) bool {
-			return params.Order.Compare(records[i], records[j]) == -1
+			return params.Order.Compare(records[i].Details, records[j].Details) == -1
 		})
 	}
 	if limit > 0 {
@@ -316,9 +350,6 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 
 	var resultsByObjectId = make(map[string][]*search.DocumentMatch)
 	for _, result := range bleveResults {
-		if result.Score < minFulltextScore {
-			continue
-		}
 		path, err := domain.NewFromPath(result.ID)
 		if err != nil {
 			return nil, fmt.Errorf("fullText search: %w", err)
@@ -382,6 +413,9 @@ func (s *dsObjectStore) performFulltextSearch(text string, highlightFormatter ft
 		if highlightFormatter == ftsearch.JSONHighlightFormatter {
 			res.Highlight, res.HighlightRanges = jsonHighlightToRanges(highlight)
 		}
+		if result.Score < minFulltextScore && len(res.HighlightRanges) == 0 {
+			continue
+		}
 		results = append(results, res)
 
 	}
@@ -394,6 +428,15 @@ func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
 	case database.FilterEq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
 			return f.Value.GetStringValue()
+		}
+	case database.FilterIn:
+		if f.Key == bundle.RelationKeySpaceId.String() {
+			values := f.Value.GetValues()
+			if len(values) == 1 {
+				return values[0].GetStringValue()
+			} else {
+				return ""
+			}
 		}
 	case database.FiltersAnd:
 		spaceID = iterateOverAndFilters(f)

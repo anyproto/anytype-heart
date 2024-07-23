@@ -12,17 +12,27 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
+
+// required relations for files beside the bundle.RequiredInternalRelations
+var fileRequiredRelations = append(pageRequiredRelations, []domain.RelationKey{
+	bundle.RelationKeyFileBackupStatus,
+	bundle.RelationKeyFileSyncStatus,
+}...)
 
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
 	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
 	return &File{
-		SmartBlock:     sb,
-		ChangeReceiver: sb.(source.ChangeReceiver),
-		AllOperations:  basicComponent,
-		Text:           stext.NewText(sb, f.objectStore, f.eventSender), fileObjectService: f.fileObjectService,
+		SmartBlock:        sb,
+		ChangeReceiver:    sb.(source.ChangeReceiver),
+		AllOperations:     basicComponent,
+		Text:              stext.NewText(sb, f.objectStore, f.eventSender),
+		fileObjectService: f.fileObjectService,
+		reconciler:        f.fileReconciler,
 	}
 }
 
@@ -32,6 +42,7 @@ type File struct {
 	basic.AllOperations
 	stext.Text
 	fileObjectService fileobject.Service
+	reconciler        reconciler.Reconciler
 }
 
 func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -61,6 +72,8 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source type should be a file")
 	}
 
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, fileRequiredRelations...)
+
 	if ctx.BuildOpts.DisableRemoteLoad {
 		ctx.Ctx = context.WithValue(ctx.Ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
 	}
@@ -69,6 +82,8 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
+
+	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}), smartblock.HookBeforeApply)
 
 	if !ctx.IsNewObject {
 		err = f.fileObjectService.EnsureFileAddedToSyncQueue(domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}, ctx.State.Details())

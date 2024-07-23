@@ -124,7 +124,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 		if _, ok := b.(relation.Block); ok {
 			relKey := b.Model().GetRelation().Key
 			if !st.HasRelation(relKey) {
-				st.AddBundledRelations(domain.RelationKey(relKey))
+				st.AddBundledRelationLinks(domain.RelationKey(relKey))
 			}
 		}
 		return true

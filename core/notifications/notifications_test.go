@@ -29,6 +29,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: NewTestStore(t),
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -49,6 +50,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -69,6 +71,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -89,6 +92,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -109,6 +113,7 @@ func TestNotificationService_List(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -134,6 +139,7 @@ func TestNotificationService_Reply(t *testing.T) {
 			eventSender:             sender,
 			notificationStore:       storeFixture,
 			lastNotificationIdToAcl: map[string]string{},
+			loadTimeout:             10 * time.Millisecond,
 		}
 
 		// when
@@ -157,6 +163,7 @@ func TestNotificationService_Reply(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -183,6 +190,7 @@ func TestNotificationService_Reply(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -219,6 +227,7 @@ func TestNotificationService_CreateAndSend(t *testing.T) {
 		notifications := notificationService{
 			eventSender:       sender,
 			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -255,6 +264,7 @@ func TestNotificationService_CreateAndSend(t *testing.T) {
 			notificationStore: storeFixture,
 			picker:            objectGetter,
 			notificationId:    notificationObjectId,
+			loadTimeout:       10 * time.Millisecond,
 		}
 
 		// when
@@ -301,6 +311,7 @@ func TestNotificationService_CreateAndSend(t *testing.T) {
 			picker:                  objectGetter,
 			notificationId:          notificationObjectId,
 			lastNotificationIdToAcl: map[string]string{},
+			loadTimeout:             10 * time.Millisecond,
 		}
 
 		// when

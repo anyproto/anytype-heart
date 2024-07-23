@@ -149,8 +149,8 @@ service ClientCommands {
 
     // Files
     // ***
-    rpc FileOffload (anytype.Rpc.File.Offload.Request) returns (anytype.Rpc.File.Offload.Response);
     rpc FileSpaceOffload (anytype.Rpc.File.SpaceOffload.Request) returns (anytype.Rpc.File.SpaceOffload.Response);
+    rpc FileReconcile (anytype.Rpc.File.Reconcile.Request) returns (anytype.Rpc.File.Reconcile.Response);
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
@@ -305,6 +305,8 @@ service ClientCommands {
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
     rpc DebugSubscriptions (anytype.Rpc.Debug.Subscriptions.Request) returns (anytype.Rpc.Debug.Subscriptions.Response);
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
+    rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
+    rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
 
     rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
 
@@ -350,4 +352,8 @@ service ClientCommands {
     rpc NameServiceResolveAnyId( anytype.Rpc.NameService.ResolveAnyId.Request ) returns (anytype.Rpc.NameService.ResolveAnyId.Response);
     
     rpc BroadcastPayloadEvent (anytype.Rpc.Broadcast.PayloadEvent.Request) returns (anytype.Rpc.Broadcast.PayloadEvent.Response);
+
+    rpc DeviceSetName (anytype.Rpc.Device.SetName.Request) returns (anytype.Rpc.Device.SetName.Response);
+    rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
+    rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
 }

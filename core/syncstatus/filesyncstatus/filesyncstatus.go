@@ -1,6 +1,8 @@
 package filesyncstatus
 
-import "github.com/anyproto/any-sync/commonspace/syncstatus"
+import (
+	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
+)
 
 type Status int
 
@@ -12,17 +14,18 @@ const (
 	Syncing
 	Limited
 	Synced
+	Queued
 )
 
-func (s Status) ToSyncStatus() syncstatus.SyncStatus {
+func (s Status) ToSyncStatus() objectsyncstatus.SyncStatus {
 	switch s {
 	case Unknown, SyncedLegacy:
-		return syncstatus.StatusUnknown
+		return objectsyncstatus.StatusUnknown
 	case Synced:
-		return syncstatus.StatusSynced
-	case Syncing, Limited:
-		return syncstatus.StatusNotSynced
+		return objectsyncstatus.StatusSynced
+	case Syncing, Limited, Queued:
+		return objectsyncstatus.StatusNotSynced
 	default:
-		return syncstatus.StatusUnknown
+		return objectsyncstatus.StatusUnknown
 	}
 }
