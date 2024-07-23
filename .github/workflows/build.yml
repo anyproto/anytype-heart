@@ -117,7 +117,6 @@ jobs:
           which gomobile
       - name: Cross-compile library mac/win
         run: |
-          make download-tantivy-all
           echo $FLAGS
           mkdir -p .release
           echo $SDKROOT
@@ -227,6 +226,7 @@ jobs:
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Compile ios lib
         run: |
+          make download-tantivy-all
           go install github.com/vektra/mockery/v2@v2.42.2
           go install go.uber.org/mock/mockgen@v0.3.0
           make test-deps
