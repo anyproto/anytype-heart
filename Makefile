@@ -66,6 +66,10 @@ test:
 	@echo 'Running tests...'
 	@ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anyproto/anytype-heart/...
 
+test-no-cache:
+	@echo 'Running tests...'
+	@ANYTYPE_LOG_NOGELF=1 go test -count=1 github.com/anyproto/anytype-heart/...
+
 test-integration:
 	@echo 'Running integration tests...'
 	@go test -run=TestBasic -tags=integration -v -count 1 ./tests
