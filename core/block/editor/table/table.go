@@ -2,7 +2,6 @@ package table
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -90,11 +89,6 @@ func ParseCellID(id string) (rowID string, colID string, err error) {
 	return toks[0], toks[1], nil
 }
 
-func isTableCell(id string) bool {
-	_, _, err := ParseCellID(id)
-	return err == nil
-}
-
 func addCell(s *state.State, rowID, colID string) (string, error) {
 	c := simple.New(&model.Block{
 		Id: MakeCellID(rowID, colID),
@@ -121,7 +115,7 @@ func NewTable(s *state.State, id string) (*Table, error) {
 		s: s,
 	}
 
-	tb.block = GetTableRootBlock(s, id)
+	tb.block = PickTableRootBlock(s, id)
 	if tb.block == nil {
 		return nil, fmt.Errorf("root table block is not found")
 	}
@@ -147,8 +141,8 @@ func NewTable(s *state.State, id string) (*Table, error) {
 	return &tb, nil
 }
 
-// GetTableRootBlock iterates over parents of block. Returns nil in case root table block is not found
-func GetTableRootBlock(s *state.State, id string) (block simple.Block) {
+// PickTableRootBlock iterates over parents of block. Returns nil in case root table block is not found
+func PickTableRootBlock(s *state.State, id string) (block simple.Block) {
 	next := s.Pick(id)
 	for next != nil {
 		if next.Model().GetTable() != nil {
@@ -268,8 +262,7 @@ func (tb Table) Iterate(f func(b simple.Block, pos CellPosition) bool) error {
 
 // CheckTableBlocksMove checks if Insert operation is allowed in case table blocks are affected
 func CheckTableBlocksMove(st *state.State, target string, pos model.BlockPosition, blockIds []string) (string, model.BlockPosition, error) {
-	// nolint:errcheck
-	if t, _ := NewTable(st, target); t != nil {
+	if t, err := NewTable(st, target); err == nil && t != nil {
 		// we allow moving rows between each other
 		if slice.ContainsAll(t.RowIDs(), append(blockIds, target)...) {
 			if pos == model.Block_Bottom || pos == model.Block_Top {
@@ -280,21 +273,16 @@ func CheckTableBlocksMove(st *state.State, target string, pos model.BlockPositio
 	}
 
 	for _, id := range blockIds {
-		t := GetTableRootBlock(st, id)
+		t := PickTableRootBlock(st, id)
 		if t != nil && t.Model().Id != id {
 			// we should not move table blocks except table root block
 			return "", 0, ErrCannotMoveTableBlocks
 		}
 	}
 
-	t := GetTableRootBlock(st, target)
+	t := PickTableRootBlock(st, target)
 	if t != nil && t.Model().Id != target {
-		// we allow inserting blocks into table cell
-		if isTableCell(target) && slices.Contains([]model.BlockPosition{model.Block_Inner, model.Block_Replace, model.Block_InnerFirst}, pos) {
-			return target, pos, nil
-		}
-
-		// if the target is one of table blocks, but not cell or table root, we should insert blocks under the table
+		// if the target is one of table blocks, but not table root, we should insert blocks under the table
 		return t.Model().Id, model.Block_Bottom, nil
 	}
 
